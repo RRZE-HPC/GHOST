@@ -1,0 +1,11 @@
+
+CC	= icc
+CFLAGS  = -O3 -xT -fno-alias -openmp
+
+FC	= ifort
+FFLAGS  = -O3 -xT -fno-alias -openmp
+
+LDFLAGS = -O3 -openmp
+
+LIBS = -L$(INTEL_F_HOME)/lib -lifcore
+ 
