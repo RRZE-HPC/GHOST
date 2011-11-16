@@ -1,0 +1,52 @@
+[1;36m[likwid-pin] Main PID -> core 0 - OK
+[0m[1;36m[pthread wrapper] [pthread wrapper] PIN_MASK: 0->1  
+[pthread wrapper] SKIP MASK: 0x3
+	threadid 140651598288640 -> SKIP 
+[1;36m	threadid 140651641018112 -> SKIP 
+[1;36m	threadid 140651587798784 -> core 1 - OK
+[0mRank 0 Thread (0/2) running on node tg008 core 0 
+Rank 0 Thread (1/2) running on node tg008 core 1 
+PE0 hat in single_node_comm den rank 0
+## rank 0/0 on tg008 --	 Device Test: No. Cards: 2
+## rank 0/0 on tg008 --	 Device 0: Tesla M1060
+## rank 0/0 on tg008 --	 Device 1: Tesla M1060
+rank 0/0 on tg008 --	 Selecting Device 0: Tesla M1060
+=====================================================
+-------   Architecture and operating system   -------
+-----------------------------------------------------
+Running on machine          :        tg008
+Identifier of current run   :        16248
+Running kernel version      : 2.6.32-32-server
+CPU-Type                    : Intel(R)Xeon(R)CPUX5550
+CPUClockFrequency [MHz]     :     2668.000
+Frequency rdtsc [MHz]       :     2666.795
+Cache size per socket [kB]  :         8192
+Total memory [kB]           :     24733112
+Number of MPI processes     :            1
+Number of OpenMP threads    :            2
+Value of $KMP_AFFINITY      :     disabled
+Value of $OMP_SCHEDULE      :       static
+Value of $LD_PRELOAD        : /apps/likwid/likwid-2.3beta/lib/liblikwidpin.so
+Value of $I_MPI_DEVICE      :        rdssm
+Threading support of MPI    : MPI_THREAD_MULTIPLE
+-----------------------------------------------------
+-------        Command line arguments         -------
+-----------------------------------------------------
+Executable                  : ./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_PLACE_CYCLES_INT_gpu.x
+Number of multiplications   :           40
+NUMA-placement of RHS       :          CRS
+NUMA-placement of matrix    :          yes
+Use of revolving buffers    :          yes
+Performing initial memsweep :           no
+Using LIKWID marker API     :           no
+Type of matrix-file I/O     :        ASCII
+Matrix distribution on PEs  :       EQ_NZE
+Jobmask (integer)           :       262142
+Jobmask (hexadecimal)       :      0x3fffe
+Type of benchmark           : pure multiply: y=A*x
+-----------------------------------------------------
+else case
+file: /home/vault/ungr/ungr02/rrze3/rrze3.mtx 
+PE:0 acc_mem= 0.000
+PE0:  before placement of MM: NUMA-LD-0:     0 (    0 )MB free
+PE0:  before placement of MM: NUMA-LD-1:     0 (    0 )MB free

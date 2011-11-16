@@ -125,3 +125,4 @@ clean:
 	-rm -f *.o
 	-rm -f OBJ/*.o
 	-rm -f core
+	-rm -f *.x
