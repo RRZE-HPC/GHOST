@@ -142,6 +142,16 @@ void hybrid_kernel_XI(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
    /*****************************************************************************
     *******                          Overlap region                       *******
     ****************************************************************************/
+#ifdef OPEN_MPI
+#pragma omp parallel                                                           \
+   default   (none)                                                             \
+   private   (i, j, ierr, to_PE, hlp1, tid, n_local)                            \
+   shared    (ompi_mpi_double, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	 send_status, recv_status, recv_request, recv_messages,            \
+	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,              \
+	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles)                                  \
+   reduction (+:send_messages) 
+#else
 #pragma omp parallel                                                           \
    default   (none)                                                             \
    private   (i, j, ierr, to_PE, hlp1, tid, n_local)                            \
@@ -150,6 +160,7 @@ void hybrid_kernel_XI(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,              \
 	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles)                                  \
    reduction (+:send_messages) 
+#endif
    {
 
 #ifdef _OPENMP

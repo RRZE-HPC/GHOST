@@ -73,7 +73,7 @@ LINREG	=	#g02caft.o p01abft.o x04baft.o x04aaft.o x02alft.o x02akft.o p01abzt.o
 
 ifeq (${CUDASWITCH},DOCUDA)
 	OBJS += ${CUDAOBJS}
-	MAKROS += -DCUDAKERNEL #-DTEXCACHE
+	MAKROS += -DCUDAKERNEL -DTEXCACHE
 endif
 
 ifeq (${NUMA},PLACE)
@@ -125,4 +125,3 @@ clean:
 	-rm -f *.o
 	-rm -f OBJ/*.o
 	-rm -f core
-	-rm -f *.x

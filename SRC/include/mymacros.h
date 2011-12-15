@@ -1,7 +1,7 @@
 #ifndef _MY_MACROS_H_
 #define _MY_MACROS_H_
 
-#define DEBUG 0
+#define DEBUG 1
 #define xMAIN_DIAGONAL_FIRST
 
 #define SINGLE 1

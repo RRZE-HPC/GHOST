@@ -160,6 +160,18 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
     ****************************************************************************/
    IF_DEBUG(1) for_timing_start_asm_( &asm_acccyclecounter);
 
+#ifdef OPEN_MPI
+#pragma omp parallel                                                            \
+   default   (none)                                                             \
+   private   (i, j, ierr, to_PE, from_PE, hlp1, tid, n_local, numelements,      \
+	 allshare)                                                              \
+   shared    (ompi_mpi_double, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	 send_status, recv_status, recv_request, lc_firstrow, lc_numrows,       \
+         nl_firstrow, nl_numrows,                                               \
+	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
+	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles) \
+   reduction (+ : send_messages, recv_messages) 
+#else
 #pragma omp parallel                                                            \
    default   (none)                                                             \
    private   (i, j, ierr, to_PE, from_PE, hlp1, tid, n_local, numelements,      \
@@ -170,6 +182,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
 	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles) \
    reduction (+ : send_messages, recv_messages) 
+#endif
    {
 
 #ifdef _OPENMP

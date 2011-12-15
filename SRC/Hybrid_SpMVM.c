@@ -356,31 +356,31 @@ int main( int nArgs, char* arg[] ) {
 			AS_WRITE_TIME("Binary write of CR row numbers");
 
 			/*printf("unFORTRAN CRS:\n");
-				for(i=0; i < cr->nEnts; ++i) {
-				cr->col[i] -= 1;
-				}
-				sprintf(restartfilename, "%s_unfort", testcase);
-				AS_CYCLE_START;
-				bin_write_cr(cr, restartfilename);
-				AS_CYCLE_STOP;
-				AS_WRITE_TIME("Binary write of CR");*/
+			  for(i=0; i < cr->nEnts; ++i) {
+			  cr->col[i] -= 1;
+			  }
+			  sprintf(restartfilename, "%s_unfort", testcase);
+			  AS_CYCLE_START;
+			  bin_write_cr(cr, restartfilename);
+			  AS_CYCLE_STOP;
+			  AS_WRITE_TIME("Binary write of CR");*/
 
 			/*#ifdef CMEM
-				if (allocatedMem > 0.02*total_mem){
-				AS_CYCLE_START;
-				IF_DEBUG(1) printf("CR setup: Large matrix -- allocated mem=%8.3f MB\n",
-				(float)(allocatedMem)/(1024.0*1024.0)); 
-				sweepMemory(SINGLE);
-				IF_DEBUG(1) printf("Nach memsweep\n"); fflush(stdout);
-				AS_WRITE_TIME("Flushing buffer cache");
-				}
+			  if (allocatedMem > 0.02*total_mem){
+			  AS_CYCLE_START;
+			  IF_DEBUG(1) printf("CR setup: Large matrix -- allocated mem=%8.3f MB\n",
+			  (float)(allocatedMem)/(1024.0*1024.0)); 
+			  sweepMemory(SINGLE);
+			  IF_DEBUG(1) printf("Nach memsweep\n"); fflush(stdout);
+			  AS_WRITE_TIME("Flushing buffer cache");
+			  }
 #endif
 			 */
 		}
 		else{
 			/* ascii format *************************************/
 			AS_CYCLE_START;
-			sprintf(restartfilename, "/home/vault/ungr/ungr02/%s/%s.mtx", testcase,testcase);
+			sprintf(restartfilename, "/home/vault/unrz/unrza317/%s/%s.mtx", testcase,testcase);
 			//sprintf(restartfilename, "/home/woody/unrz/unrza337/mucosim/SpMVM/SpMVM/CUDA/SRC/daten/%s/%s.mtx", testcase, testcase);
 			printf("file: %s \n", restartfilename);
 			/* Kein threashold beim Einlesen: nehme alle Elemente komplett mit */
@@ -473,8 +473,8 @@ int main( int nArgs, char* arg[] ) {
 #endif
 
 	/* Gerald's old parallel code, not working?
-		 if (io_format == 1){
-		 PAS_CYCLE_START
+	   if (io_format == 1){
+	   PAS_CYCLE_START
 	//lcrp = parallel_MatRead(testcase, work_dist);
 	lcrp = new_pio_read(testcase, work_dist);
 	PAS_CYCLE_STOP;
@@ -543,8 +543,8 @@ sweepMemory(GLOBAL);
 #ifndef FAST_EXIT
 	/* Diagnostic output corresponding to given output level */
 	/*PAS_CYCLE_START;
-		check_lcrp(me, lcrp);
-		PAS_WRITE_TIME("Check of lcrp");
+	  check_lcrp(me, lcrp);
+	  PAS_WRITE_TIME("Check of lcrp");
 	 */
 #endif
 
@@ -593,20 +593,20 @@ sweepMemory(GLOBAL);
 	}
 
 	/*IF_DEBUG(1) printf("PE%i: pre-scatter\n\trecvbuff: %p\n\trecvcnt: %i ( %f MB )\n\troot: %i\n", 
-		me, RevBuf->vec[0], lcrp->lnRows[me], (double)lcrp->lnRows[me]*sizeof(double)/(1024*1024), 
-		0); fflush(stdout);
+	  me, RevBuf->vec[0], lcrp->lnRows[me], (double)lcrp->lnRows[me]*sizeof(double)/(1024*1024), 
+	  0); fflush(stdout);
 	 */
 
 
 	/*IF_DEBUG(1) if(0==me) {
-		printf("PE%i: scattering from: %p\n", me, rhsVec->val);
-		for(i=0; i < n_nodes; ++i) { 
-		printf("PE%i: scattering to %i:\tsendcnt: %i ( %f MB )\tdispls: %i\n",
-		me, i, lcrp->lnRows[i], (double)lcrp->lnRows[i]*sizeof(double)/(1024*1024), 
-		lcrp->lfRow[i]); fflush(stdout);
-		for(j=0; j<10 && j<lcrp->lnRows[i];++j) printf("PE%i: to %i Buffer[%i]=%f\n",me,i,j,rhsVec->val[lcrp->lfRow[i]+j]);
-		}
-		}
+	  printf("PE%i: scattering from: %p\n", me, rhsVec->val);
+	  for(i=0; i < n_nodes; ++i) { 
+	  printf("PE%i: scattering to %i:\tsendcnt: %i ( %f MB )\tdispls: %i\n",
+	  me, i, lcrp->lnRows[i], (double)lcrp->lnRows[i]*sizeof(double)/(1024*1024), 
+	  lcrp->lfRow[i]); fflush(stdout);
+	  for(j=0; j<10 && j<lcrp->lnRows[i];++j) printf("PE%i: to %i Buffer[%i]=%f\n",me,i,j,rhsVec->val[lcrp->lfRow[i]+j]);
+	  }
+	  }
 	 */
 
 	MPI_Comm_size( MPI_COMM_WORLD, &i );
@@ -620,24 +620,24 @@ sweepMemory(GLOBAL);
 
 	// plain MPI alternative to Scatterv
 	/* 
-		 if( 0==me) {
-		 j=0;
-		 for(i=1; i<n_nodes; ++i) {
-		 j= j >  lcrp->lnRows[i] ? j : lcrp->lnRows[i];
-		 }
-		 printf("PE%i: maxlength=%i\n", me, j);
-		 scatterBuf = (double*)malloc(sizeof(double)*j);
+	   if( 0==me) {
+	   j=0;
+	   for(i=1; i<n_nodes; ++i) {
+	   j= j >  lcrp->lnRows[i] ? j : lcrp->lnRows[i];
+	   }
+	   printf("PE%i: maxlength=%i\n", me, j);
+	   scatterBuf = (double*)malloc(sizeof(double)*j);
 
-		 for(i=n_nodes-1; i>0; --i) {
-		 IF_DEBUG(1) { printf("PE%i: to %i: %i entries, %i offset, %i rhs length, from adress %p\n",
-		 me,i,lcrp->lnRows[i],lcrp->lfRow[i],rhsVec->nRows, &rhsVec->val[lcrp->lfRow[i]] ); fflush(stdout); 
-		 }
-		 for(j=0; j<lcrp->lnRows[i]; ++j) {
-		 scatterBuf[j] = rhsVec->val[lcrp->lfRow[i]+j];
-		 }
-		 int k = lcrp->lnRows[i];
-		 ierr = MPI_Send(scatterBuf, k, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
-		 printf("PE%i: ierr=%i\n",me,ierr);fflush(stdout);
+	   for(i=n_nodes-1; i>0; --i) {
+	   IF_DEBUG(1) { printf("PE%i: to %i: %i entries, %i offset, %i rhs length, from adress %p\n",
+	   me,i,lcrp->lnRows[i],lcrp->lfRow[i],rhsVec->nRows, &rhsVec->val[lcrp->lfRow[i]] ); fflush(stdout); 
+	   }
+	   for(j=0; j<lcrp->lnRows[i]; ++j) {
+	   scatterBuf[j] = rhsVec->val[lcrp->lfRow[i]+j];
+	   }
+	   int k = lcrp->lnRows[i];
+	   ierr = MPI_Send(scatterBuf, k, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
+	   printf("PE%i: ierr=%i\n",me,ierr);fflush(stdout);
 	//ierr = MPI_Isend(&rhsVec->val[lcrp->lfRow[i]], lcrp->lnRows[i], MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &req_vec[i-1]);
 	}
 

@@ -129,6 +129,16 @@ void hybrid_kernel_XIII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp
     ****************************************************************************/
    IF_DEBUG(1) for_timing_start_asm_( &asm_acccyclecounter);
 
+#ifdef OPEN_MPI
+#pragma omp parallel                                                            \
+   default   (none)                                                             \
+   private   (i, j, ierr, to_PE, hlp1, tid, n_local, numelements, allshare)     \
+   shared    (ompi_mpi_double, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	 send_status, recv_status, recv_request, recv_messages,                 \
+	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
+	 cp_cycles, sw_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles)  \
+   reduction (+:send_messages) 
+#else
 #pragma omp parallel                                                            \
    default   (none)                                                             \
    private   (i, j, ierr, to_PE, hlp1, tid, n_local, numelements, allshare)     \
@@ -136,7 +146,9 @@ void hybrid_kernel_XIII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp
 	 send_status, recv_status, recv_request, recv_messages,                 \
 	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
 	 cp_cycles, sw_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles)  \
-   reduction (+:send_messages) 
+   reduction (+:send_messages)
+#endif 
+
    {
 
 #ifdef _OPENMP

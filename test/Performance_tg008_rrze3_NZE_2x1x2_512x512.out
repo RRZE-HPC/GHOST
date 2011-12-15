@@ -1,28 +1,41 @@
 [1;36m[likwid-pin] Main PID -> core 0 - OK
+[0m[1;36m[likwid-pin] Main PID -> core 0 - OK
 [0m[1;36m[pthread wrapper] [pthread wrapper] PIN_MASK: 0->1  
 [pthread wrapper] SKIP MASK: 0x3
-	threadid 140651598288640 -> SKIP 
-[1;36m	threadid 140651641018112 -> SKIP 
-[1;36m	threadid 140651587798784 -> core 1 - OK
+	threadid 140138941212416 -> SKIP 
+[1;36m[pthread wrapper] [pthread wrapper] PIN_MASK: 0->1  
+[pthread wrapper] SKIP MASK: 0x3
+	threadid 140081139730176 -> SKIP 
+[1;36m	threadid 140081182574336 -> SKIP 
+[1;36m	threadid 140081129240320 -> core 1 - OK
+[0m[1;36m	threadid 140138984056576 -> SKIP 
+[1;36m	threadid 140138932819712 -> core 1 - OK
 [0mRank 0 Thread (0/2) running on node tg008 core 0 
+Rank 1 Thread (0/2) running on node tg007 core 0 
 Rank 0 Thread (1/2) running on node tg008 core 1 
+Rank 1 Thread (1/2) running on node tg007 core 1 
 PE0 hat in single_node_comm den rank 0
+PE1 hat in single_node_comm den rank 0
 ## rank 0/0 on tg008 --	 Device Test: No. Cards: 2
 ## rank 0/0 on tg008 --	 Device 0: Tesla M1060
 ## rank 0/0 on tg008 --	 Device 1: Tesla M1060
 rank 0/0 on tg008 --	 Selecting Device 0: Tesla M1060
+## rank 0/0 on tg007 --	 Device Test: No. Cards: 2
+## rank 0/0 on tg007 --	 Device 0: Tesla M1060
+## rank 0/0 on tg007 --	 Device 1: Tesla M1060
+rank 0/0 on tg007 --	 Selecting Device 0: Tesla M1060
 =====================================================
 -------   Architecture and operating system   -------
 -----------------------------------------------------
 Running on machine          :        tg008
-Identifier of current run   :        16248
+Identifier of current run   :        12437
 Running kernel version      : 2.6.32-32-server
 CPU-Type                    : Intel(R)Xeon(R)CPUX5550
 CPUClockFrequency [MHz]     :     2668.000
-Frequency rdtsc [MHz]       :     2666.795
+Frequency rdtsc [MHz]       :     2666.798
 Cache size per socket [kB]  :         8192
 Total memory [kB]           :     24733112
-Number of MPI processes     :            1
+Number of MPI processes     :            2
 Number of OpenMP threads    :            2
 Value of $KMP_AFFINITY      :     disabled
 Value of $OMP_SCHEDULE      :       static
@@ -32,21 +45,119 @@ Threading support of MPI    : MPI_THREAD_MULTIPLE
 -----------------------------------------------------
 -------        Command line arguments         -------
 -----------------------------------------------------
-Executable                  : ./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_PLACE_CYCLES_INT_gpu.x
-Number of multiplications   :           40
+Executable                  : ./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_TEXCACHE_PLACE_CYCLES_INT_gpu.x
+Number of multiplications   :           20
 NUMA-placement of RHS       :          CRS
 NUMA-placement of matrix    :          yes
 Use of revolving buffers    :          yes
 Performing initial memsweep :           no
 Using LIKWID marker API     :           no
-Type of matrix-file I/O     :        ASCII
+Type of matrix-file I/O     :       BINARY
 Matrix distribution on PEs  :       EQ_NZE
 Jobmask (integer)           :       262142
 Jobmask (hexadecimal)       :      0x3fffe
 Type of benchmark           : pure multiply: y=A*x
 -----------------------------------------------------
-else case
-file: /home/vault/ungr/ungr02/rrze3/rrze3.mtx 
-PE:0 acc_mem= 0.000
-PE0:  before placement of MM: NUMA-LD-0:     0 (    0 )MB free
-PE0:  before placement of MM: NUMA-LD-1:     0 (    0 )MB free
+PE:0 acc_mem=1082.555
+PE0: before placement zusteller: NUMA-LD-0:     0 (    0 )MB free
+PE0: before placement zusteller: NUMA-LD-1:     0 (    0 )MB free
+gezieltes placement in die falschen LD
+PE:0 acc_mem=4515.782
+PE0: after placement zusteller: NUMA-LD-0:     0 (    0 )MB free
+PE0: after placement zusteller: NUMA-LD-1:     0 (    0 )MB free
+PE:0 acc_mem=4515.782
+PE0:    after CR-binary read: NUMA-LD-0:     0 (    0 )MB free
+PE0:    after CR-binary read: NUMA-LD-1:     0 (    0 )MB free
+PE:0 acc_mem=1082.555
+PE0: after freeing zusteller: NUMA-LD-0:     0 (    0 )MB free
+PE0: after freeing zusteller: NUMA-LD-1:     0 (    0 )MB free
+Binary reading of CR    [s] :        1.434
+ 
+ Schreibe ./daten/rrze3_CRS_bin_rows.dat ( 23.66 MB)
+Schreibe: Anzahl Zeilen      = 6201600
+Schreibe: Anzahl Spalten     = 6201600
+Schreibe: Anzahl NZE         = 92527872
+Schreibe: Array mit row-Offsets (6201600 Eintraege)
+Schreiben der CRS-Zeilenlaengen (binaer):     1.03 s 
+Entspricht:    22.90 MB/s 
+Binary write of CR row numbers [s] :        1.033
+CR to Fortran: for 92527872 entries in 6201600 rows
+CR to Fortran: completed 92527872 entries
+PE:0 acc_mem=1177.184
+PE0:     entry of setup_comm: NUMA-LD-0:     0 (    0 )MB free
+PE0:     entry of setup_comm: NUMA-LD-1:     0 (    0 )MB free
+PE:1 acc_mem= 0.000
+PE1:     entry of setup_comm: NUMA-LD-0:     0 (    0 )MB free
+PE1:     entry of setup_comm: NUMA-LD-1:     0 (    0 )MB free
+PE:0 acc_mem=1718.461
+PE0: before placing of lcrp main arrays: NUMA-LD-0:     0 (    0 )MB free
+PE0: before placing of lcrp main arrays: NUMA-LD-1:     0 (    0 )MB free
+PE:1 acc_mem=541.278
+PE1: before placing of lcrp main arrays: NUMA-LD-0:     0 (    0 )MB free
+PE1: before placing of lcrp main arrays: NUMA-LD-1:     0 (    0 )MB free
+PE:0 acc_mem=1718.461
+PE0: after placing of lcrp main arrays: NUMA-LD-0:     0 (    0 )MB free
+PE0: after placing of lcrp main arrays: NUMA-LD-1:     0 (    0 )MB free
+PE:1 acc_mem=541.278
+PE1: after placing of lcrp main arrays: NUMA-LD-0:     0 (    0 )MB free
+PE1: after placing of lcrp main arrays: NUMA-LD-1:     0 (    0 )MB free
+Gerade nicht skippen!
+Setup of Communication  [s] :        4.771
+-----------------------------------------------------
+-------         Statistics about matrix       -------
+-----------------------------------------------------
+Investigated matrix         :        rrze3
+Dimension of matrix         :      6201600
+Non-zero elements           :     92527872
+Average elements per row    :       14.920
+Working set [MB]            :     1177.184
+-----------------------------------------------------
+------   Hybrid SpMVM using kernel version     ------
+-----------------------------------------------------
+Using texture cache
+*****************************
+**** Outer iteration   0 ****
+*****************************
+HyK_I                   [s] :        0.954
+HyK_II                  [s] :        0.976
+HyK_III                 [s] :        0.958
+HyK_IV                  [s] :        0.977
+HyK_V                   [s] :        0.955
+HyK_VI                  [s] :        0.939
+HyK_VII                 [s] :        0.939
+HyK_VIII                [s] :        0.980
+HyK_IX                  [s] :        0.947
+HyK_X                   [s] :        0.938
+HyK_XI                  [s] :        0.705
+HyK_XII                 [s] :        0.705
+HyK_XIII                [s] :        0.993
+HyK_XIV                 [s] :        0.703
+HyK_XV                  [s] :        0.697
+HyK_XVI                 [s] :        0.692
+HyK_XVII                [s] :        0.955
+-------------------------------------------------------
+performed (17/17) successful error-checks
+-------------------------------------------------------
+serial time measurement [us]:        0.117
+global sync & time      [us]:        3.800
+Number of iterations        :           20
+-------------------------------------------------------
+Kernel | Cycles per nze | Time per MVM [ms] |   MFlop/s
+Kern No.    1           1.375           47.71393        3878.443
+Kern No.    2           1.406           48.79983        3792.139
+Kern No.    3           1.380           47.87894        3865.076
+Kern No.    4           1.408           48.83830        3789.152
+Kern No.    5           1.377           47.76566        3874.243
+Kern No.    6           1.353           46.94725        3941.780
+Kern No.    7           1.353           46.93569        3942.751
+Kern No.    8           1.412           48.97898        3778.269
+Kern No.    9           1.365           47.34646        3908.544
+Kern No.   10           1.352           46.90973        3944.933
+Kern No.   11           1.015           35.22881        5252.967
+Kern No.   12           1.016           35.24604        5250.399
+Kern No.   13           1.430           49.62685        3728.944
+Kern No.   14           1.013           35.14015        5266.219
+Kern No.   15           1.004           34.84866        5310.269
+Kern No.   16           0.997           34.59839        5348.681
+Kern No.   17           1.377           47.77039        3873.859
+=======================================================

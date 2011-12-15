@@ -121,7 +121,7 @@ void bin_read_cr(CR_TYPE* cr, const char* testcase){
 
    timing( &startTime, &ct );
 
-   sprintf(restartfilename, "./daten/%s_CRS_bin.dat", testcase);
+   sprintf(restartfilename, "/home/vault/unrz/unrza317/matrices/%s/%s_CRS_bin.dat", testcase,testcase);
    IF_DEBUG(1) printf(" \n Lese %s \n", restartfilename);
 
    if ((RESTFILE = fopen(restartfilename, "rb"))==NULL){
