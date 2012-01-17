@@ -19,6 +19,14 @@ typedef struct {
 } VECTOR_TYPE;
 
 typedef struct {
+	int nRows;
+	int* val;
+#ifdef CUDAKERNEL
+  int* val_gpu;
+#endif
+} INT_VECTOR_TYPE;
+
+typedef struct {
 	int row, col, nThEntryInRow;
 	double val;
 } NZE_TYPE;
@@ -108,9 +116,18 @@ typedef struct {
   double* lval;
   double* rval;
 #ifdef CUDAKERNEL
+#ifdef ELR
   CUDA_ELR_TYPE* celr;
   CUDA_ELR_TYPE* lcelr;
   CUDA_ELR_TYPE* rcelr;
+#else
+  CUDA_PJDS_TYPE* cpjds;
+  CUDA_PJDS_TYPE* lcpjds;
+  CUDA_ELR_TYPE* rcelr;
+  int nMaxRow;
+  INT_VECTOR_TYPE* rowPerm;
+  INT_VECTOR_TYPE* invRowPerm;
+#endif
 #endif
 } LCRP_TYPE;
 
@@ -236,6 +253,8 @@ VECTOR_TYPE* newVector( const int nRows );
 void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
 #endif
 
+void permuteVector( double* vec, int* perm, int len);
+
 MM_TYPE* readMMFile( const char* filename, const double epsilon );
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm );
@@ -307,6 +326,7 @@ int get_NUMA_info(int*, int*, int*, int*);
 uint64 cachesize(void);
 
 void freeMemory(size_t, const char*, void*);
+int compareNZEOrgPos( const void* a, const void* b );
 int compareNZEPos(const void*, const void*);
 int compareNZEPerRow( const void*, const void*);
 int compareNZEForJD( const void*, const void* );

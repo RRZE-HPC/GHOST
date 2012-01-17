@@ -17,10 +17,10 @@ set pinlist = ( 0,1 0,1 0,1 0,1 0,1 0,1 ) # 1 gpu pro knoten
 #set pinlist = ( 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 ) # 2 gpus pro knoten
  
 set distscheme = ( NZE LNZ ROW ) # MPI distribution of matrix: equal_NZE equal_NZE_opt equal_row
-set mymasks    = ( 502 261640 262142 5124 4 5120 ) # kernel selector: full_only split_only all
-set mults      = "100"
+set mymasks    = ( 502 261640 262142 5124 4 5120 512 ) # kernel selector: full_only split_only all
+set mults      = "1"
 set work_dist  = "1" # 1 approx eq NZE / 2 fancy NZE / else eq NRows
-set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_TEXCACHE_PLACE_CYCLES_INT_gpu_IntelMPI.x"
+set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_ELR_TEXCACHE_PLACE_CYCLES_INT_gpu.x"
 set thismpi    = "/apps/rrze/bin/mpirun_rrze-intelmpd" 
 #set thismpi    = "mpirun"
 set thispin    = "/apps/likwid/devel/bin/likwid-pin"
@@ -34,11 +34,11 @@ set wd_flag    = $distscheme[$work_dist]
 mkdir $datadir
 setenv KMP_AFFINITY disabled 
 setenv OMP_SCHEDULE static
-foreach mat ( dlr2 ) 
+foreach mat ( rrze3 ) 
 
 foreach nodes ( 2 )
 
-   foreach jobtype (  6 )
+   foreach jobtype (  5 )
     foreach gridDim ( 512 ) # 256 512 1024 )
       foreach blockDim( 512 )
       set jobmask      = $mymasks[$jobtype]

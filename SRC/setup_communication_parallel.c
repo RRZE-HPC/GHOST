@@ -79,14 +79,22 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, int work_dist, const char* 
 	MPI_Status *status=NULL;
 
 #ifdef CUDAKERNEL
+#ifdef ELR
 	ELR_TYPE* elr 	= NULL;
 	ELR_TYPE* lelr	= NULL;
 	ELR_TYPE* relr	= NULL;
 	CUDA_ELR_TYPE* celr  = NULL;
 	CUDA_ELR_TYPE* lcelr = NULL;
 	CUDA_ELR_TYPE* rcelr = NULL;
+#else
+	PJDS_TYPE* pjds	= NULL;
+	PJDS_TYPE* lpjds= NULL;
+	ELR_TYPE* relr= NULL;
+	CUDA_PJDS_TYPE* cpjds  = NULL;
+	CUDA_PJDS_TYPE* lcpjds = NULL;
+	CUDA_ELR_TYPE* rcelr = NULL;
 #endif
-
+#endif
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -588,6 +596,7 @@ sweepMemory(GLOBAL);
 
 
 #ifdef CUDAKERNEL
+#ifdef ELR
 	IF_DEBUG(1) printf("PE%i: creating ELR matrices:\n", me);
 
 	if( jobmask & 502 ) { // only if jobtype requires combined computation
@@ -658,9 +667,83 @@ sweepMemory(GLOBAL);
 		freeELRMatrix( relr );  
 
 	}
+#else
 
+	IF_DEBUG(1) printf("PE%i: creating pJDS matrices:\n", me);
+
+	printf("me: %d, nRows: %d\n",me,lcrp->lnRows[me]);
+
+	lcrp->rowPerm = (INT_VECTOR_TYPE*)allocateMemory(sizeof(INT_VECTOR_TYPE*),"rowPerm");
+	lcrp->invRowPerm = (INT_VECTOR_TYPE*)allocateMemory(sizeof(INT_VECTOR_TYPE*),"invRowPerm");
+
+	lcrp->rowPerm->val = (int*)allocateMemory(sizeof(int)*lcrp->lnRows[me], "rowPerm->val");
+	lcrp->rowPerm->nRows = lcrp->lnRows[me];
+	lcrp->invRowPerm->val = (int*)allocateMemory(sizeof(int)*lcrp->lnRows[me], "invRowPerm->val");
+	lcrp->invRowPerm->nRows = lcrp->lnRows[me];
+
+
+/*	if( jobmask & 502 ) { // only if jobtype requires combined computation
+
+		// all-entries ELR
+		IF_DEBUG(1) printf("PE%i: FULL pjds:\n", me);
+
+		pjds = convertCRSToPJDSMatrix( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], lcrp->rowPerm->val, lcrp->invRowPerm->val );
+
+		//elrColIdToC( elr ); // lcrp setup converts CRS to C numbering, so this should not be necessary 
+
+
+		cpjds = cudaPJDSInit( pjds );
+		cudaCopyPJDSToDevice(cpjds, pjds);
+		lcrp->cpjds = cpjds;*/
+
+		/*IF_DEBUG(1) {
+		  resetPJDS( pjds );
+		  cudaCopyPJDSBackToHost( pjds, cpjds );
+		  checkCRSToPJDSsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], pjds, lcrp->invRowPerm );
+		  }*/
+//		freePJDSMatrix( pjds );
+
+//	}
+
+	//if( jobmask & 261640 ) { // only if jobtype requires split computation
+
+		/* local entries only */
+		IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
+
+		lpjds = convertCRSToPJDSMatrix( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lcrp->rowPerm->val, lcrp->invRowPerm->val );
+		//elrColIdToC( lelr );
+
+		lcpjds = cudaPJDSInit( lpjds );
+		cudaCopyPJDSToDevice(lcpjds, lpjds);
+		lcrp->lcpjds = lcpjds;
+
+/*		IF_DEBUG(1) {
+			resetPJDS( lpjds );
+			cudaCopyPJDSBackToHost( lpjds, lcpjds );
+			checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
+		}*/
+		freePJDSMatrix( lpjds );
+
+		/* remote entries only */
+		IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
+
+		relr = convertCRSToELRMatrix( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me] );
+		//elrColIdToC( relr );
+
+		rcelr = cudaELRInit( relr );
+		cudaCopyELRToDevice(rcelr, relr);
+		lcrp->rcelr = rcelr;
+
+		/*IF_DEBUG(1) {
+			resetPJDS( rpjds );
+			cudaCopyPJDSBackToHost( rpjds, rcpjds );
+			checkCRSToPJDSsanity( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me], rpjds, lcrp->invRowPerm->val);
+		}*/
+		freeELRMatrix( relr );  
+
+	//}
 #endif
-
-
-	return lcrp;
+#endif
+	
+		return lcrp;
 }

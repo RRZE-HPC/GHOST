@@ -35,6 +35,28 @@ static int now1  = 0;
 
 
 /* ########################################################################## */
+void permuteVector( double* vec, int* perm, int len) {
+  /* permutes values in vector so that i-th entry is mapped to position perm[i] */
+  int i;
+  double* tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
+
+  for(i = 0; i < len; ++i) {
+    if( perm[i] >= len ) {
+      fprintf(stderr, "ERROR: permutation index out of bounds\n");
+      free(tmp);
+	  exit(-1);
+//      return;
+    }
+    tmp[perm[i]] = vec[i];
+  }
+  for(i=0; i < len; ++i) {
+    vec[i] = tmp[i];
+  }
+
+  free(tmp);
+}
+
+/* ########################################################################## */
 #ifdef CUDAKERNEL
 void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
 
@@ -561,6 +583,9 @@ int compareNZEPerRow( const void* a, const void* b ) {
 	return  ((JD_SORT_TYPE*)b)->nEntsInRow - ((JD_SORT_TYPE*)a)->nEntsInRow;
 }
 
+int compareNZEOrgPos( const void* a, const void* b ) {
+	return  ((JD_SORT_TYPE*)a)->row - ((JD_SORT_TYPE*)b)->row;
+}
 
 /* ########################################################################## */
 
@@ -1033,9 +1058,15 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->lval );
 		free( lcrp->rval );
 #ifdef CUDAKERNEL
+#ifdef ELR
 		freeCUDAELRMatrix( lcrp->celr );
 		freeCUDAELRMatrix( lcrp->lcelr );
 		freeCUDAELRMatrix( lcrp->rcelr );
+#else
+		freeCUDAPJDSMatrix( lcrp->cpjds );
+		freeCUDAPJDSMatrix( lcrp->lcpjds );
+		freeCUDAELRMatrix( lcrp->rcelr );
+#endif
 #endif
 		free( lcrp );
 	}

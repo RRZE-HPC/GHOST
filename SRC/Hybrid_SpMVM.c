@@ -518,6 +518,7 @@ int main( int nArgs, char* arg[] ) {
 	PAS_WRITE_TIME("Flushing buffer cache");
 #endif
 
+
 	/* Setup of communication pattern between all PEs */
 	//   ierr= MPI_Barrier(MPI_COMM_WORLD); if (me==0) printf("before setup_communication\n");
 	PAS_CYCLE_START;
@@ -528,6 +529,8 @@ int main( int nArgs, char* arg[] ) {
 		lcrp = setup_communication_parallel(cr, work_dist, testcase);
 	}
 	PAS_WRITE_TIME("Setup of Communication");
+
+
 
 
 	/* Free memory for CR stored matrix and sweep memory */
@@ -730,9 +733,13 @@ sweepMemory(GLOBAL);
 #ifdef CUDAKERNEL
 	setKernelDims( gridDim, blockDim );
 #ifdef TEXCACHE
-	if(me==0) printf("Using texture cache\n");
-	bindTexRefToPtr();
-	bindMemoryToTexCache(hlpvec_in->val_gpu, hlpvec_in->nRows);
+	if(me==0) printf("Using texture cache for rhs vector\n");
+	prepareTexCacheRhs(hlpvec_in->val_gpu,hlpvec_in->nRows*sizeof(double));
+//	prepareTexCacheColStart(pjds->colStart,(pjds->rowLen[0]+1)*sizeof(int));
+#ifdef COLSTARTTC
+	if(me==0) printf("Using texture cache for colStart vector\n");
+	prepareTexCacheCS(lcrp->cpjds->colStart,(lcrp->nMaxRow+1)*sizeof(int));
+#endif
 #endif
 #endif
 

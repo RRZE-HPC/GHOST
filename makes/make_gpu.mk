@@ -16,7 +16,7 @@ LIBS = -L$(INTEL_F_HOME)/lib -lifcore -L${LIKWID_DIR}/lib -llikwid -pthread -L${
 IPATH   += -I${LIKWID_DIR}/include
 
 NVCC = nvcc
-NVCCFLAGS = -O3 ${MAKROS} --gpu-architecture sm_13 ${IPATH} -I${CUDA_INSTALL_PATH}/include
+NVCCFLAGS = -g -G ${MAKROS} -gencode=arch=compute_13,code=\"sm_13,compute_13\" -gencode=arch=compute_20,code=\"sm_20,compute_20\" ${IPATH} -I${CUDA_INSTALL_PATH}/include
 
 #IPATH	+=	-I/$(INTEL_F_HOME)/include
  

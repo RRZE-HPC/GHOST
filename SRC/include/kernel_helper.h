@@ -21,7 +21,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
   #ifdef CUDAKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-   copyHostToDevice(invec->val_gpu, invec->val, invec->nRows*sizeof(double));
+  copyHostToDevice(invec->val_gpu, invec->val, invec->nRows*sizeof(double));
   
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -32,7 +32,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
   #ifdef CUDAKERNEL
-
+#ifdef ELR
     #ifdef TEXCACHE
       elrCudaKernelTexCache( lcrp->celr->val, lcrp->celr->col, lcrp->celr->rowLen, lcrp->celr->nRows, 
         lcrp->celr->padding, res->val_gpu );
@@ -40,6 +40,16 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
       elrCudaKernel( lcrp->celr->val, lcrp->celr->col, lcrp->celr->rowLen, lcrp->celr->nRows, 
         lcrp->celr->padding, invec->val_gpu, res->val_gpu );
     #endif
+#else
+    #ifdef TEXCACHE
+      pjdsCudaKernelTexCache( lcrp->cpjds->val, lcrp->cpjds->col, lcrp->cpjds->colStart, lcrp->cpjds->rowLen, lcrp->cpjds->nRows, 
+        lcrp->cpjds->padding, res->val_gpu );
+    #else
+      pjdsCudaKernel( lcrp->cpjds->val, lcrp->cpjds->col, lcrp->cpjds->colStart, lcrp->cpjds->rowLen, lcrp->cpjds->nRows, 
+        lcrp->cpjds->padding, invec->val_gpu, res->val_gpu );
+    #endif
+#endif
+
 
   #else
   
@@ -100,7 +110,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
   #ifdef CUDAKERNEL
-
+#ifdef ELR
     #ifdef TEXCACHE
       elrCudaKernelTexCache( lcrp->lcelr->val, lcrp->lcelr->col, lcrp->lcelr->rowLen, lcrp->lcelr->nRows, 
         lcrp->lcelr->padding, res->val_gpu );
@@ -108,6 +118,15 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
       elrCudaKernel( lcrp->lcelr->val, lcrp->lcelr->col, lcrp->lcelr->rowLen, lcrp->lcelr->nRows, 
         lcrp->lcelr->padding, invec->val_gpu, res->val_gpu );
     #endif
+#else
+    #ifdef TEXCACHE
+      pjdsCudaKernelTexCache( lcrp->lcpjds->val, lcrp->lcpjds->col, lcrp->lcpjds->colStart, lcrp->lcpjds->rowLen, lcrp->lcpjds->nRows, 
+        lcrp->lcpjds->padding, res->val_gpu );
+    #else
+      pjdsCudaKernel( lcrp->lcpjds->val, lcrp->lcpjds->col, lcrp->lcpjds->colStart, lcrp->lcpjds->rowLen, lcrp->lcpjds->nRows, 
+        lcrp->lcpjds->padding, invec->val_gpu, res->val_gpu );
+    #endif
+#endif
 
   #else
   
@@ -158,7 +177,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
   #ifdef CUDAKERNEL
-
+#ifdef ELR
     #ifdef TEXCACHE
       elrCudaKernelTexCacheAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
         lcrp->rcelr->padding, res->val_gpu );
@@ -166,6 +185,15 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
       elrCudaKernelAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
         lcrp->rcelr->padding, invec->val_gpu, res->val_gpu );
     #endif
+#else
+    #ifdef TEXCACHE
+      pjdsCudaKernelTexCacheAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, lcrp->rcelr->padding, res->val_gpu );
+    #else
+      elrCudaKernelAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
+        lcrp->rcelr->padding, invec->val_gpu, res->val_gpu );
+    #endif
+#endif
+
 
   #else
   
@@ -221,6 +249,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
  
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
+#ifdef ELR
     #ifdef TEXCACHE
       elrCudaKernelTexCache( lcrp->lcelr->val, lcrp->lcelr->col, lcrp->lcelr->rowLen, lcrp->lcelr->nRows, 
         lcrp->lcelr->padding, res->val_gpu );
@@ -228,6 +257,16 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
       elrCudaKernel( lcrp->lcelr->val, lcrp->lcelr->col, lcrp->lcelr->rowLen, lcrp->lcelr->nRows, 
         lcrp->lcelr->padding, invec->val_gpu, res->val_gpu );
     #endif
+#else
+    #ifdef TEXCACHE
+      pjdsCudaKernelTexCache( lcrp->lcpjds->val, lcrp->lcpjds->col, lcrp->lcpjds->colStart, lcrp->lcpjds->rowLen, lcrp->lcpjds->nRows, 
+        lcrp->lcpjds->padding, res->val_gpu );
+    #else
+      pjdsCudaKernel( lcrp->lcpjds->val, lcrp->lcpjds->col, lcrp->lcpjds->colStart, lcrp->lcpjds->rowLen, lcrp->lcpjds->nRows, 
+        lcrp->lcpjds->padding, invec->val_gpu, res->val_gpu );
+    #endif
+#endif
+
 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -260,7 +299,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
    }
   
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-  
+#ifdef ELR 
     #ifdef TEXCACHE
       elrCudaKernelTexCacheAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
         lcrp->rcelr->padding, res->val_gpu );
@@ -268,6 +307,14 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
       elrCudaKernelAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
         lcrp->rcelr->padding, invec->val_gpu, res->val_gpu );
     #endif
+#else
+    #ifdef TEXCACHE
+      pjdsCudaKernelTexCacheAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows,lcrp->rcelr->padding, res->val_gpu );
+    #else
+      elrCudaKernelAdd( lcrp->rcelr->val, lcrp->rcelr->col, lcrp->rcelr->rowLen, lcrp->rcelr->nRows, 
+        lcrp->rcelr->padding, invec->val_gpu, res->val_gpu );
+    #endif
+#endif
 
    IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -283,8 +330,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
       *cp_res_cycles = *asm_cycles - *cycles4measurement; 
    }
 
-}
-
+} 
 #endif //CUDAKERNEL
 
 #endif
