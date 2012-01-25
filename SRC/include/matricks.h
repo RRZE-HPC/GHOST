@@ -116,15 +116,15 @@ typedef struct {
   double* lval;
   double* rval;
 #ifdef CUDAKERNEL
+  CUDA_ELR_TYPE* rcelr;
+  size_t pJDSmemSize;
+  size_t ELRmemSize;
 #ifdef ELR
   CUDA_ELR_TYPE* celr;
   CUDA_ELR_TYPE* lcelr;
-  CUDA_ELR_TYPE* rcelr;
 #else
   CUDA_PJDS_TYPE* cpjds;
   CUDA_PJDS_TYPE* lcpjds;
-  CUDA_ELR_TYPE* rcelr;
-  int nMaxRow;
   INT_VECTOR_TYPE* rowPerm;
   INT_VECTOR_TYPE* invRowPerm;
 #endif

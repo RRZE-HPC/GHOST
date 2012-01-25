@@ -126,9 +126,95 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
 
 		}	
 	}
-	
+
 
 	return pjds;
+
+}
+
+ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* crs_val, const int* crs_col, 
+		const int* crs_row_ptr, const int nRows, const int* rowPerm, const int* invRowPerm) {
+	
+	
+	JD_SORT_TYPE* rowSort;
+	int i, j, rowMaxEnt, padRows;
+	size_t size_val, size_col, size_rowlen;
+	int *rowLen, *col;
+	double* val;
+	ELR_TYPE* elr = NULL;
+	
+	/* get max number of entries in one row ###########################*/
+	rowSort = (JD_SORT_TYPE*) allocateMemory( nRows * sizeof( JD_SORT_TYPE ),
+			"rowSort" );
+
+	for( i = 0; i < nRows; i++ ) {
+		rowSort[i].row = i;
+		rowSort[i].nEntsInRow = 0;
+	} 
+
+	/* count entries per row ################################################## */
+	for( i = 0; i < nRows; i++) {
+		rowSort[i].nEntsInRow = crs_row_ptr[i+1] - crs_row_ptr[i];
+		//IF_DEBUG(1) printf("row: %d, nEnts: %d\n",i,rowSort[i].nEntsInRow);
+	}
+
+	IF_DEBUG(2) {
+		i=0;
+		while(i < nRows) {
+			int start = i;
+
+			j = rowSort[start].nEntsInRow;
+			while( i<nRows && rowSort[i].nEntsInRow == j ) ++i;
+
+			if( (i-start)%5 != 0 || j%5 != 0 )
+				printf("%i rows (%i): %i - %i\n",i-start,j, start, i-1);
+
+		}
+	}
+	/* sort rows with desceding number of NZEs ################################ */
+	qsort( rowSort, nRows, sizeof( JD_SORT_TYPE  ), compareNZEPerRow );
+	rowMaxEnt = rowSort[0].nEntsInRow;
+	
+	/* allocate memory ################################################*/
+	elr = (ELR_TYPE*) allocateMemory( sizeof( ELR_TYPE ), "elr_sorted");
+	padRows = nRows;
+	//#ifdef PADDING
+	getPadding(nRows, &padRows);
+	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
+	//#endif
+
+	size_val    = (size_t) sizeof(double) * padRows * rowMaxEnt;
+	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
+	size_rowlen = (size_t) sizeof(int) * nRows;
+	
+	rowLen = (int*)   allocHostMemory( size_rowlen ); 
+	col   = (int*)    allocHostMemory( size_col ); 
+	val   = (double*)   allocHostMemory( size_val ); 
+
+	/* initialize values ########################################### */
+	elr->rowLen = rowLen;
+	elr->col = col;
+	elr->val = val;
+	elr->nRows  = nRows;
+	elr->nMaxRow = rowMaxEnt;
+	elr->padding = padRows;
+	
+	for( i = 0; i < nRows; ++i) {
+		/* i runs in the permuted index, access to crs needs to be original index */
+		/* RHS is also permuted to sorted system */
+		elr->rowLen[i] = crs_row_ptr[invRowPerm[i]+1] - crs_row_ptr[invRowPerm[i]];
+		for( j = 0; j < elr->rowLen[i]; ++j) {
+
+			if( j*padRows+i >= elr->nMaxRow*padRows ) 
+				printf("error: in i=%i, j=%i\n",i,j);
+
+			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
+			elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
+			elr->val[ j*padRows+i ]   = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
+		}
+	}
+
+	return elr;
 
 }
 
@@ -187,7 +273,7 @@ ELR_TYPE* convertCRSToELRSortedMatrix(  const double* crs_val, const int* crs_co
 		while( i<nRows && rowSort[i].nEntsInRow >= j ) 
 			++i;
 
-		printf("sorting over %i rows (%i): %i - %i\n",i-start,j, start, i-1);
+		IF_DEBUG(1) printf("sorting over %i rows (%i): %i - %i\n",i-start,j, start, i-1);
 		qsort( &rowSort[start], i-start, sizeof(JD_SORT_TYPE), compareNZEOrgPos );
 	}
 
@@ -272,18 +358,21 @@ ELR_TYPE* convertCRSToELRSortedMatrix(  const double* crs_val, const int* crs_co
 		if(rowSort[i].row == rowSort[i-1].row+1) 
 			j++;
 
-	printf("coherency: %2f\n", 100.0*j/nRows);
+	IF_DEBUG(1)
+	{
+		printf("coherency: %2f\n", 100.0*j/nRows);
 
-	for(i=0; i <10; ++i) {
-		printf("row %i (len: %d): ",i,rowLen[i]);
-		for(j=0; j<10 && j< elr->rowLen[i]; ++j) {
-			printf("%d: %f ",elr->col[j*padRows+i],elr->val[j*padRows+i]);
+		for(i=0; i <10; ++i) {
+			printf("row %i (len: %d): ",i,rowLen[i]);
+			for(j=0; j<10 && j< elr->rowLen[i]; ++j) {
+				printf("%d: %f ",elr->col[j*padRows+i],elr->val[j*padRows+i]);
+			}
+			printf("\n");
 		}
-		printf("\n");
 	}
 
 	free(rowSort);
-
+	
 	return elr;
 }
 
@@ -292,7 +381,7 @@ void checkCRSToPJDSsanity(const double* crs_val, const int* crs_col,
 		const int* crs_row_ptr, const int nRows,
 		const PJDS_TYPE* pjds, const int* invRowPerm) {
 
-	
+
 }
 
 /**********************  ELR MATRIX TYPE *********************************/

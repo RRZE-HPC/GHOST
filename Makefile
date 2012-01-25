@@ -73,7 +73,7 @@ LINREG	=	#g02caft.o p01abft.o x04baft.o x04aaft.o x02alft.o x02akft.o p01abzt.o
 
 ifeq (${CUDASWITCH},DOCUDA)
 	OBJS += ${CUDAOBJS}
-	MAKROS += -DCUDAKERNEL -DELR -DTEXCACHE
+	MAKROS += -DCUDAKERNEL -DTEXCACHE -DCOLSTARTTC  
 endif
 
 ifeq (${NUMA},PLACE)

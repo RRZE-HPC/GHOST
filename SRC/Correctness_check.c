@@ -42,6 +42,12 @@ void Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out)
 	permuteVector(hlpvec_out,lcrp->invRowPerm[me].val,lcrp->lnRows[me]);
 #endif
 
+	/*printf("\n- RESULT PE%d\n",me);
+	for (i=0; i<lcrp->lnRows[me]; i++) {
+		printf("  | %4.0f |\n",hlpvec_out[i]);
+	}
+	printf("-------------\n");*/
+
 
 	/* check error */
 	error_count = 0;

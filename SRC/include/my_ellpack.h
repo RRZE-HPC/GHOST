@@ -1,6 +1,8 @@
 #ifndef _MY_ELLPACK_H_
 #define _MY_ELLPACK_H_
 
+#include <stdio.h>
+
 typedef struct {
 	int nRows, nMaxRow, padding;
 	int* col;
@@ -36,6 +38,8 @@ void freeCUDAELRMatrix( CUDA_ELR_TYPE* const celr );
 
 ELR_TYPE* convertCRSToELRSortedMatrix(  const double* , const int* , const int*,  const int,
 		int*, int*);
+ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* , const int* , const int*,  const int,
+		const int*, const int*);
 /************ PJDS *******/
 
 typedef struct {
