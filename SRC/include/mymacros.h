@@ -1,8 +1,10 @@
 #ifndef _MY_MACROS_H_
 #define _MY_MACROS_H_
 
-#define DEBUG 1
+#define DEBUG 0
 #define xMAIN_DIAGONAL_FIRST
+
+#define PJDS_CHUNK_HEIGHT 32
 
 #define SINGLE 1
 #define GLOBAL 0

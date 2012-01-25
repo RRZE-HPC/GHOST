@@ -6,57 +6,57 @@
 /* *********** DEVICE SELECTION ************************* */
 
 extern "C" void getDeviceInfo( int rank, int size, const char* hostname) {
-  int deviceCount, device;
-  cudaDeviceProp deviceProp;
+	int deviceCount, device;
+	cudaDeviceProp deviceProp;
 
-  cudaGetDeviceCount(&deviceCount);
+	cudaGetDeviceCount(&deviceCount);
 
-  if ( 0 == rank ) {
-    printf("## rank %i/%i on %s --\t Device Test: No. Cards: %d\n", 
-      rank, size-1, hostname, deviceCount);
-    for( device = 0; device < deviceCount; ++device) {
-      cudaGetDeviceProperties(&deviceProp, device);
-      printf("## rank %i/%i on %s --\t Device %d: %s\n", 
-        rank, size-1, hostname, device, deviceProp.name);
-    }
-  }
+	if ( 0 == rank ) {
+		printf("## rank %i/%i on %s --\t Device Test: No. Cards: %d\n", 
+				rank, size-1, hostname, deviceCount);
+		for( device = 0; device < deviceCount; ++device) {
+			cudaGetDeviceProperties(&deviceProp, device);
+			printf("## rank %i/%i on %s --\t Device %d: %s\n", 
+					rank, size-1, hostname, device, deviceProp.name);
+		}
+	}
 }
 
 
 extern "C" int selectDevice( int rank, int size, const char* hostname ) {
-  int deviceCount, takedevice, device;
-  cudaDeviceProp deviceProp;
+	int deviceCount, takedevice, device;
+	cudaDeviceProp deviceProp;
 
-  cudaGetDeviceCount(&deviceCount);
+	cudaGetDeviceCount(&deviceCount);
 
-  takedevice = (rank%deviceCount);
-  cudaSetDevice(takedevice);
-  cudaGetDevice(&device);
-  cudaGetDeviceProperties(&deviceProp, device);
+	takedevice = (rank%deviceCount);
+	cudaSetDevice(takedevice);
+	cudaGetDevice(&device);
+	cudaGetDeviceProperties(&deviceProp, device);
 
-  printf("rank %i/%i on %s --\t Selecting Device %d: %s\n", 
-    rank, size-1, hostname, device, deviceProp.name);
+	printf("rank %i/%i on %s --\t Selecting Device %d: %s\n", 
+			rank, size-1, hostname, device, deviceProp.name);
 
-  return device;
+	return device;
 }
 
 
 /* *********** KERNEL LAUNCH PARAMETERS ***************** */
 
 typedef struct {
-  int gridDim;
-  int blockDim;
+	int gridDim;
+	int blockDim;
 } KERNEL_LAUNCHER;
 
 KERNEL_LAUNCHER _launcher_;
 
 extern "C" void setKernelDims( const int gridDim, const int blockDim ) {
 
-  /* set kernel launch parameters in global object _launcher_;
-   * _launcher_ used for all subsequent CUDA kernels */
+	/* set kernel launch parameters in global object _launcher_;
+	 * _launcher_ used for all subsequent CUDA kernels */
 
-  _launcher_.gridDim  = gridDim;
-  _launcher_.blockDim = blockDim;
+	_launcher_.gridDim  = gridDim;
+	_launcher_.blockDim = blockDim;
 }
 
 
@@ -64,221 +64,129 @@ extern "C" void setKernelDims( const int gridDim, const int blockDim ) {
 
 #ifdef TEXCACHE
 texture<int2, 1, cudaReadModeElementType> texRef;
-
 const textureReference* texRefPtr;
-
 cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<int2>();
 
-extern "C" void bindTexRefToPtr() {
-  safecall(cudaGetTextureReference( &texRefPtr, "texRef" ));
-}
-
-extern "C" void bindMemoryToTexCache( double* dblptr, int nElem ) {
-  size_t bytesize = (size_t) sizeof(double) * nElem;
-  safecall(cudaBindTexture( 0, texRefPtr, dblptr, &channelDesc, bytesize ));
-  //safecall(cudaBindTexture( 0, texRef, dblptr, channelDesc, nElem ));
+extern "C" void prepareTexCacheRhs(double * rhsVec, size_t memSize) 
+{
+	safecall(cudaGetTextureReference( &texRefPtr, "texRef" ));
+	safecall(cudaBindTexture( 0, texRefPtr, rhsVec, &channelDesc, memSize ));
 }
 #endif
+
+#ifdef COLSTARTTC
+texture<int, 1, cudaReadModeElementType> colStartTexRef;
+const textureReference* colStartTexRefPtr;
+cudaChannelFormatDesc colStartChannelDesc = cudaCreateChannelDesc<int>();
+
+extern "C" void prepareTexCacheCS(int * colStartVec, size_t memSize) 
+{
+	safecall(cudaGetTextureReference( &colStartTexRefPtr, "colStartTexRef" ));
+	safecall(cudaBindTexture( 0, colStartTexRefPtr, colStartVec, &colStartChannelDesc, memSize ));
+}
+#endif
+
+
+
 
 /* *********** CUDA MEMORY **************************** */
 
 extern "C" void* allocDeviceMemory( size_t bytesize ) {
-    char* mem = NULL;
-    safecall(cudaMalloc( (void**)&mem, bytesize ));
+	char* mem = NULL;
+	safecall(cudaMalloc( (void**)&mem, bytesize ));
 
-    return (void*)mem;
+	return (void*)mem;
 }
 
 extern "C" void* allocHostMemory( size_t bytesize ) {
-    char* mem = NULL;
-    safecall(cudaHostAlloc( (void**)&mem, bytesize, 0 ));
-    //mem = (char*) malloc( bytesize );
-    //if( NULL == mem ) printf("failed to allocate %lu bytes of memory\n",bytesize);
+	char* mem = NULL;
+	safecall(cudaHostAlloc( (void**)&mem, bytesize, 0 ));
+	//mem = (char*) malloc( bytesize );
+	//if( NULL == mem ) printf("failed to allocate %lu bytes of memory\n",bytesize);
 
-    return (void*)mem;
+	return (void*)mem;
 }
 
 
 extern "C" void copyDeviceToHost( void* hostmem, void* devmem, size_t bytesize ) {
-  safecall(cudaMemcpy( hostmem, devmem, bytesize, cudaMemcpyDeviceToHost ));
+	safecall(cudaMemcpy( hostmem, devmem, bytesize, cudaMemcpyDeviceToHost ));
 }
 
 extern "C" void copyHostToDevice( void* devmem, void* hostmem, size_t bytesize ) {
-  safecall(cudaMemcpy( devmem, hostmem, bytesize, cudaMemcpyHostToDevice ));
+	safecall(cudaMemcpy( devmem, hostmem, bytesize, cudaMemcpyHostToDevice ));
 }
 
 
 extern "C" void freeDeviceMemory( void* mem ) {
-    safecall(cudaFree( mem ));
+	safecall(cudaFree( mem ));
 }
 
 extern "C" void freeHostMemory( void* mem ) {
-    safecall(cudaFreeHost( mem ));
+	safecall(cudaFreeHost( mem ));
 }
-
-
-/* *********** KERNEL **************************** */
 
 #ifdef TEXCACHE
-__global__ void __ELR_kernel_tex__(   const double* val, 
-                                      const int* col, 
-                                      const int* rowLen, 
-                                      const int N, 
-                                      const int pad, 
-                                      double* resVec ) {
-  /* SpMVM kernel, ELR format, texture cache */
-
-  int idx, i, idcol, max;
-  double svalue, value;
-  int2 rhstmp;
-
-  for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < N; idx += gridDim.x * blockDim.x ) {
-    svalue = 0.0;
-    max = rowLen[idx];
-    for( i = 0; i < max; ++i) {
-      value = val[i*pad+idx];
-      idcol = col[i*pad+idx];
-      rhstmp = tex1Dfetch(texRef, idcol);
-      svalue += value * __hiloint2double(rhstmp.y,rhstmp.x);
-    }
-    resVec[idx] = svalue;
-  }
-}
-
-
-__global__ void __ELR_kernel_tex_add__(   const double* val, 
-                                      const int* col, 
-                                      const int* rowLen, 
-                                      const int N, 
-                                      const int pad, 
-                                      double* resVec ) {
-  /* SpMVM kernel, ELR format, Daxpy, texture cache */
-
-  int idx, i, idcol, max;
-  double svalue, value;
-  int2 rhstmp;
-
-  for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < N; idx += gridDim.x * blockDim.x ) {
-    svalue = 0.0;
-    max = rowLen[idx];
-    for( i = 0; i < max; ++i) {
-      value = val[i*pad+idx];
-      idcol = col[i*pad+idx];
-      rhstmp = tex1Dfetch(texRef, idcol);
-      svalue += value * __hiloint2double(rhstmp.y,rhstmp.x);
-    }
-    resVec[idx] += svalue;
-  }
-}
-
-
-extern "C" void elrCudaKernelTexCache( const double* val,
-                               const int* col, 
-                               const int* rowLen,
-                               const int N, 
-                               const int pad,
-                               double* resVec ) {
-    /* SpMVM kernel wrapper, ELR, texture cache */
-
-    __ELR_kernel_tex__ <<< _launcher_.gridDim, _launcher_.blockDim >>> ( val, col, rowLen, N, pad, resVec );
-
-    safecall(cudaThreadSynchronize());
-    safecall(cudaGetLastError());
-}
-
-
-extern "C" void elrCudaKernelTexCacheAdd( const double* val,
-                               const int* col, 
-                               const int* rowLen,
-                               const int N, 
-                               const int pad,
-                               double* resVec ) {
-    /* SpMVM kernel wrapper, ELR, Daxpy, texture cache */
-
-    __ELR_kernel_tex_add__ <<< _launcher_.gridDim, _launcher_.blockDim >>> ( val, col, rowLen, N, pad, resVec );
-
-    safecall(cudaThreadSynchronize());
-    safecall(cudaGetLastError());
+static __inline__ __device__ double fetch_double(texture<int2, 1> t, int i)
+{
+	int2 v = tex1Dfetch(t,i);
+	return __hiloint2double(v.y, v.x);
 }
 #endif
 
-__global__ void __ELR_kernel__(   const double* val, 
-                                      const int* col, 
-                                      const int* rowLen, 
-                                      const int N, 
-                                      const int pad,
-                                      const double* rhs,
-                                      double* resVec ) {
-  /* SpMVM kernel, ELR format */
-  
-  int idx, i, idcol, max;
-  double svalue, value;
+/* *********** KERNEL **************************** */
+template<bool add> __global__ void __ELRkernel__(  ELRkernelArgs args ) {
 
-  for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < N; idx += gridDim.x * blockDim.x ) {
-    svalue = 0.0;
-    max = rowLen[idx];
-    for( i = 0; i < max; ++i) {
-      value = val[i*pad+idx];
-      idcol = col[i*pad+idx];
-      svalue += value * rhs[idcol];
-    }
-    resVec[idx] = svalue;
-  }
+	int idx, i, idcol, max;
+	double svalue, value;
+
+	for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < args.N; idx += gridDim.x * blockDim.x ) {
+		svalue = 0.0;
+		max = args.rowLen[idx];
+		for( i = 0; i < max; ++i) {
+			value = args.val[i*args.pad+idx];
+			idcol = args.col[i*args.pad+idx];
+			svalue += value * RHS(idcol);
+		}
+		if (add)
+			args.resVec[idx] += svalue;
+		else
+			args.resVec[idx] = svalue;
+	}
+}
+template<bool add> __global__ void __pJDSkernel__(  pJDSkernelArgs args ) {
+
+	int idx, i, idcol, max;
+	double svalue, value;
+
+	for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < args.N; idx += gridDim.x * blockDim.x ) {
+		svalue = 0.0;
+		max = args.rowLen[idx];
+		for( i = 0; i < max; ++i) {
+			value = args.val[COLSTART(i)+idx];
+			idcol = args.col[COLSTART(i)+idx];
+			svalue += value * RHS(idcol);
+		}
+		if (add)
+			args.resVec[idx] += svalue;
+		else
+			args.resVec[idx] = svalue;
+	}
 }
 
+extern "C" void cudaKernel( void* args, bool add, bool elr) {
 
-extern "C" void elrCudaKernel( const double* val,
-                               const int* col, 
-                               const int* rowLen,
-                               const int N, 
-                               const int pad,
-                               const double* rhs,
-                               double* resVec ) {
-    /* SpMVM kernel wrapper, ELR format */
+	if (elr) {
+		if (add)
+			__ELRkernel__<true> <<< _launcher_.gridDim, _launcher_.blockDim >>> ( *((ELRkernelArgs *)(args)) );
+		else
+			__ELRkernel__<false> <<< _launcher_.gridDim, _launcher_.blockDim >>> ( *((ELRkernelArgs *)(args)) );
+	} else {
+		if (add)
+			__pJDSkernel__<true> <<< _launcher_.gridDim, _launcher_.blockDim >>> ( *((pJDSkernelArgs *)(args)) );
+		else
+			__pJDSkernel__<false> <<< _launcher_.gridDim, _launcher_.blockDim >>> ( *((pJDSkernelArgs *)(args)) );
+	}
 
-    __ELR_kernel__ <<< _launcher_.gridDim, _launcher_.blockDim >>> ( val, col, rowLen, N, pad, rhs, resVec );
-
-    safecall(cudaThreadSynchronize());
-    safecall(cudaGetLastError());
+	safecall(cudaThreadSynchronize());
+	safecall(cudaGetLastError());
 }
-
-__global__ void __ELR_kernel_add__(   const double* val, 
-                                      const int* col, 
-                                      const int* rowLen, 
-                                      const int N, 
-                                      const int pad,
-                                      const double* rhs,
-                                      double* resVec ) {
-  /* SpMVM kernel, ELR format, Daxpy */
-
-  int idx, i, idcol, max;
-  double svalue, value;
-
-  for( idx = blockIdx.x * blockDim.x + threadIdx.x; idx < N; idx += gridDim.x * blockDim.x ) {
-    svalue = 0.0;
-    max = rowLen[idx];
-    for( i = 0; i < max; ++i) {
-      value = val[i*pad+idx];
-      idcol = col[i*pad+idx];
-      svalue += value * rhs[idcol];
-    }
-    resVec[idx] += svalue;
-  }
-}
-
-
-extern "C" void elrCudaKernelAdd( const double* val,
-                               const int* col, 
-                               const int* rowLen,
-                               const int N, 
-                               const int pad,
-                               const double* rhs,
-                               double* resVec ) {
-    /* SpMVM kernel wrapper, ELR format, Daxpy */
-
-    __ELR_kernel_add__ <<< _launcher_.gridDim, _launcher_.blockDim >>> ( val, col, rowLen, N, pad, rhs, resVec );
-
-    safecall(cudaThreadSynchronize());
-    safecall(cudaGetLastError());
-}
-

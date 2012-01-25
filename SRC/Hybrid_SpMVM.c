@@ -518,6 +518,7 @@ int main( int nArgs, char* arg[] ) {
 	PAS_WRITE_TIME("Flushing buffer cache");
 #endif
 
+
 	/* Setup of communication pattern between all PEs */
 	//   ierr= MPI_Barrier(MPI_COMM_WORLD); if (me==0) printf("before setup_communication\n");
 	PAS_CYCLE_START;
@@ -528,6 +529,8 @@ int main( int nArgs, char* arg[] ) {
 		lcrp = setup_communication_parallel(cr, work_dist, testcase);
 	}
 	PAS_WRITE_TIME("Setup of Communication");
+
+
 
 
 	/* Free memory for CR stored matrix and sweep memory */
@@ -724,15 +727,40 @@ sweepMemory(GLOBAL);
 		fflush(stdout);
 	}
 
+
+	size_t totalPJDSmemSize;
+	size_t totalELRmemSize;
+
+	MPI_Reduce(&lcrp->pJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+	MPI_Reduce(&lcrp->ELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+
+	if (me==0) {
+		printf("\n");
+		printf("----------------------\n");
+		printf("--- ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
+		printf("-- pJDS size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
+		printf("------ saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
+		printf("----------------------\n");
+	}
+		
+
 	/****************************************************************************
 	 ********************    Set Cuda kernel params/texture cache *************** 
 	 ***************************************************************************/
 #ifdef CUDAKERNEL
 	setKernelDims( gridDim, blockDim );
 #ifdef TEXCACHE
-	if(me==0) printf("Using texture cache\n");
-	bindTexRefToPtr();
-	bindMemoryToTexCache(hlpvec_in->val_gpu, hlpvec_in->nRows);
+	if(me==0) printf("Using texture cache for rhs vector\n");
+	prepareTexCacheRhs(hlpvec_in->val_gpu,hlpvec_in->nRows*sizeof(double));
+#endif
+#ifdef COLSTARTTC
+	if(me==0) printf("Using texture cache for colStart vector\n");
+	if( jobmask & 502 ) { // only if jobtype requires combined computation
+		prepareTexCacheCS(lcrp->cpjds->colStart,(lcrp->cpjds->nMaxRow+1)*sizeof(int)); // TODO nicht hier
+	}
+	if( jobmask & 261640 ) { // only if jobtype requires split computation
+		prepareTexCacheCS(lcrp->lcpjds->colStart,(lcrp->lcpjds->nMaxRow+1)*sizeof(int)); // FIXME remote ELR!!
+	}
 #endif
 #endif
 
