@@ -30,6 +30,8 @@ PJDS_TYPE* convertCRSToPJDSMatrix(  const double* crs_val, const int* crs_col,
 	elrs = convertCRSToELRSortedMatrix(crs_val, crs_col, crs_row_ptr, nRows, rowPerm, invRowPerm);
 	PJDS_TYPE * pjds;
 	pjds = convertELRSortedToPJDSMatrix(elrs);
+
+	freeELRMatrix(elrs);
 	return pjds;
 }
 

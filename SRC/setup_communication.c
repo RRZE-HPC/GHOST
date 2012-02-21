@@ -808,7 +808,7 @@ sweepMemory(GLOBAL);
 		  cudaCopyPJDSBackToHost( pjds, cpjds );
 		  checkCRSToPJDSsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], pjds, lcrp->invRowPerm );
 		  }*/
-//		freePJDSMatrix( pjds );
+		freePJDSMatrix( pjds );
 
 	}
 
