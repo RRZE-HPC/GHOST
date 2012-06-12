@@ -7,7 +7,7 @@
 #PBS -V
 
 
-cd /home/hpc/unrz/unrza317/proj/SpMVM/Hybrid
+cd /home/hpc/unrz/unrza317/proj/SpMVM/Hybrid-stripped
 
 module load intel64/11.1
 module load cuda
@@ -17,10 +17,11 @@ set pinlist = ( 0,1 0,1 0,1 0,1 0,1 0,1 0,1 0,1 0,1 ) # 1 gpu pro knoten
 #set pinlist = ( 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 ) # 2 gpus pro knoten
  
 set distscheme = ( NZE LNZ ROW ) # MPI distribution of matrix: equal_NZE equal_NZE_opt equal_row
-set mymasks    = ( 502 261640 262142 5124 4 5120 512 2 4096 ) # kernel selector: full_only split_only all
-set mults      = "100"
+set mymasks    = ( 8 502 261640 262142 5124 4 5120 512 2 4096 ) # kernel selector: full_only split_only all
+set mults      = "1"
 set work_dist  = "1" # 1 approx eq NZE / 2 fancy NZE / else eq NRows
-set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_CUDAKERNEL_TEXCACHE_COLSTARTTC_PLACE_CYCLES_INT_gpu.x"
+set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_OCLKERNEL_PLACE_CYCLES_INT_gpu.x"
+#set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_OCLKERNEL_PLACE_CYCLES_INT_gpu.x"
 set thismpi    = "/apps/rrze/bin/mpirun_rrze-intelmpd" 
 #set thismpi    = "mpirun"
 set thispin    = "/apps/likwid/devel/bin/likwid-pin"
@@ -34,11 +35,11 @@ set wd_flag    = $distscheme[$work_dist]
 mkdir $datadir
 setenv KMP_AFFINITY disabled 
 setenv OMP_SCHEDULE static
-foreach mat ( dlr1 dlr2 dlr3 rrze3 rrze3_vv  ) 
+foreach mat ( test1  ) 
 
-foreach nodes ( 1 2 3 4 5 6 )
+foreach nodes ( 3 )
 
-   foreach jobtype (  6 7 )
+   foreach jobtype ( 1 )
     foreach gridDim ( 512 ) # 256 512 1024 )
       foreach blockDim( 512 )
       set jobmask      = $mymasks[$jobtype]
@@ -74,7 +75,7 @@ set pinlikwid    = "${thispin} ${skip} -c ${pin2cores}"
       setenv OMP_NUM_THREADS ${threadsperPE}
       setenv I_MPI_DEVICE rdssm 
 
-      $command > ${datadir}/Performance_${root}
+      $command #> ${datadir}/Performance_${root}
       #echo "${gridDim} ${blockDim}" >> perfmeasure.dat
       #grep "Kern No. " ${datadir}/Performance_${root} >> perfmeasure.dat
     end

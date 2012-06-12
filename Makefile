@@ -53,7 +53,9 @@ COBJS	 +=    matricks.o mpihelper.o aux.o setup_communication.o hybrid_kernel_${
 	           hybrid_kernel_XIII.o hybrid_kernel_XIV.o hybrid_kernel_XV.o hybrid_kernel_0.o \
              hybrid_kernel_XVI.o hybrid_kernel_XVII.o 
 
-CUDAOBJS = cudafun.o my_ellpack.o 
+CUDAOBJS = cudafun.o my_ellpack.o  
+
+OCLOBJS = oclfun.o my_ellpack.o 
 
 COBJS	+=#	timing.o matricks.o aux.o resort_JDS.o check_divide.o restartfile.o \
 		parallel_IO.o #myODJDS.o # test_comp.o #Offdiagonal_JDS.o
@@ -73,7 +75,12 @@ LINREG	=	#g02caft.o p01abft.o x04baft.o x04aaft.o x02alft.o x02akft.o p01abzt.o
 
 ifeq (${CUDASWITCH},DOCUDA)
 	OBJS += ${CUDAOBJS}
-	MAKROS += -DCUDAKERNEL -DTEXCACHE -DCOLSTARTTC  
+	MAKROS += -DCUDAKERNEL #-DTEXCACHE -DCOLSTARTTC  
+endif
+
+ifeq (${OCLSWITCH},DOOCL)
+	OBJS += ${OCLOBJS}
+	MAKROS += -DOCLKERNEL 
 endif
 
 ifeq (${NUMA},PLACE)

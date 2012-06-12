@@ -6,8 +6,12 @@
 #include <mymacros.h>
 #include <mpi.h>
 
-#ifdef CUDAKERNEL
+#if (defined(CUDAKERNEL) || defined(OCLKERNEL))
 #include "my_ellpack.h"
+#endif
+
+#ifdef OCLKERNEL
+#include <CL/cl.h>
 #endif
 
 typedef struct {
@@ -16,6 +20,10 @@ typedef struct {
 #ifdef CUDAKERNEL
   double* val_gpu;
 #endif
+#ifdef OCLKERNEL
+  cl_mem CL_val_gpu;
+#endif
+
 } VECTOR_TYPE;
 
 typedef struct {
@@ -23,6 +31,9 @@ typedef struct {
 	int* val;
 #ifdef CUDAKERNEL
   int* val_gpu;
+#endif
+#ifdef OCLKERNEL
+  cl_mem CL_val_gpu;
 #endif
 } INT_VECTOR_TYPE;
 
@@ -115,18 +126,37 @@ typedef struct {
   int* rcol;
   double* lval;
   double* rval;
+#if defined(CUDAKERNEL) || defined(OCLKERNEL)
 #ifdef CUDAKERNEL
   CUDA_ELR_TYPE* rcelr;
+#endif
+#ifdef OCLKERNEL
+  CL_ELR_TYPE* rcelr;
+#endif
   size_t pJDSmemSize;
   size_t ELRmemSize;
 #ifdef ELR
+#ifdef CUDAKERNEL
   CUDA_ELR_TYPE* celr;
   CUDA_ELR_TYPE* lcelr;
+#endif
+#ifdef OCLKERNEL
+  CL_ELR_TYPE* celr;
+  CL_ELR_TYPE* lcelr;
+#endif
 #else
+#ifdef CUDAKERNEL
   CUDA_PJDS_TYPE* cpjds;
   CUDA_PJDS_TYPE* lcpjds;
-  INT_VECTOR_TYPE* rowPerm;
-  INT_VECTOR_TYPE* invRowPerm;
+#endif
+#ifdef OCLKERNEL
+  CL_PJDS_TYPE* cpjds;
+  CL_PJDS_TYPE* lcpjds;
+#endif
+  PJDS_TYPE* pjds;
+  PJDS_TYPE* lpjds;
+//  INT_VECTOR_TYPE* rowPerm;
+//  INT_VECTOR_TYPE* invRowPerm;
 #endif
 #endif
 } LCRP_TYPE;

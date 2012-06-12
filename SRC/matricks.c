@@ -1,5 +1,6 @@
 #include "matricks.h"
 #include "cudafun.h"
+#include "oclfun.h"
 #include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
@@ -15,9 +16,7 @@
 #include <sun_prefetch.h>
 #endif
 
-#ifdef CUDAKERNEL
 #include "my_ellpack.h"
-#endif
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -85,6 +84,33 @@ void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
 }
 #endif
 
+#ifdef OCLKERNEL
+void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
+
+	/* copy val to gpuval on device in testvec, copy back to temporary and check for consistency*/
+
+	int i;
+	double* tmp = NULL;
+	size_t bytesize = sizeof(double) * testvec->nRows;
+	printf("PE %d: vectorDeviceCopyCheck: size = %lu (%i)\n", me, bytesize, testvec->nRows);
+	tmp = (double*) allocateMemory( bytesize, "copycheck");
+	for( i = 0; i < testvec->nRows; ++i) tmp[i] = -77.3;
+
+	printf("copying to device...");
+	CL_copyHostToDevice( testvec->CL_val_gpu, testvec->val, bytesize );
+	printf("done\n");
+	printf("copying back to host...");
+	CL_copyDeviceToHost( tmp, testvec->CL_val_gpu, bytesize );
+	printf("done\n");
+
+	for( i=0; i < testvec->nRows; ++i) {
+		if( testvec->val[i] != tmp[i] )
+			printf("PE %d: error: \tcpu %e , \t gpu %e\n", me, testvec->val[i], tmp[i]);
+	}
+	free( tmp );
+	printf("PE %d: completed copycheck\n", me);
+}
+#endif
 
 void* allocateMemory( const size_t size, const char* desc ) {
 
@@ -965,6 +991,9 @@ VECTOR_TYPE* newVector( const int nRows ) {
 #ifdef CUDAKERNEL
 	vec->val_gpu = allocDeviceMemory( size_val );
 #endif
+#ifdef OCLKERNEL
+	vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
+#endif
 
 	vec->val = (double*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
@@ -981,6 +1010,9 @@ void freeVector( VECTOR_TYPE* const vec ) {
 		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
 #ifdef CUDAKERNEL
 		freeDeviceMemory( vec->val_gpu );
+#endif
+#ifdef OCLKERNEL
+		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
 		free( vec );
 	}

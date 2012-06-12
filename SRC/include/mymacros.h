@@ -4,7 +4,7 @@
 #define DEBUG 0
 #define xMAIN_DIAGONAL_FIRST
 
-#define PJDS_CHUNK_HEIGHT 32
+#define PJDS_CHUNK_HEIGHT 1
 
 #define SINGLE 1
 #define GLOBAL 0

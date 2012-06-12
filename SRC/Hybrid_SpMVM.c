@@ -168,9 +168,13 @@ int main( int nArgs, char* arg[] ) {
 
 	/* get nodal MPI communicator ******************************/
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
-#ifdef CUDAKERNEL
+#if defined(CUDAKERNEL)
 	/* select cards on node *******************/
 	selectNodalGPUs( &single_node_comm, hostname );
+#endif
+#if defined(OCLKERNEL)
+	/* select cards on node *******************/
+	CL_selectNodalGPUs( &single_node_comm, hostname );
 #endif
 
 #ifdef DAXPY
@@ -742,7 +746,7 @@ sweepMemory(GLOBAL);
 		printf("------ saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
 		printf("----------------------\n");
 	}
-		
+
 
 	/****************************************************************************
 	 ********************    Set Cuda kernel params/texture cache *************** 
@@ -797,6 +801,10 @@ sweepMemory(GLOBAL);
 				IF_DEBUG(2) vectorDeviceCopyCheck( hlpvec_in, me );
 				IF_DEBUG(2) vectorDeviceCopyCheck( hlpvec_out, me );
 #endif
+#ifdef OCLKERNEL
+				IF_DEBUG(2) CL_vectorDeviceCopyCheck( hlpvec_in, me );
+				IF_DEBUG(2) CL_vectorDeviceCopyCheck( hlpvec_out, me );
+#endif
 #endif
 
 				/* Timing starts after the initialisation iteration */
@@ -846,7 +854,17 @@ sweepMemory(GLOBAL);
 			/* Perform correctness check once for each kernel version */ 
 			performed++;
 			IF_DEBUG(1) PAS_CYCLE_START;
+#if (defined(CUDAKERNEL) || defined (OCLKERNEL)) && !defined (ELR)
+			if( 0x1<<version & 261640 ) { // only if jobtype requires split computation
+				permuteVector(hlpvec_out->val,lcrp->lpjds->invRowPerm,lcrp->lnRows[me]);
+
+			} else if( 0x1<<version & 502 ) { 
+				permuteVector(hlpvec_out->val,lcrp->pjds->invRowPerm,lcrp->lnRows[me]);
+
+			} 
 			Correctness_check( resCR, lcrp, hlpvec_out->val );
+
+#endif
 			IF_DEBUG(1){PAS_WRITE_TIME("Correctness-Check");}
 #endif
 		}
@@ -915,6 +933,10 @@ sweepMemory(GLOBAL);
 	// printf("Debug-free: freed cr\n");fflush(stdout);
 	 */
 	MPI_Finalize();
+
+#ifdef OCLKERNEL
+	CL_finish();
+#endif
 
 	return 0;
 }

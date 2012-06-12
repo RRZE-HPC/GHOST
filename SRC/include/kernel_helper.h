@@ -2,7 +2,15 @@
 #define __KERNEL_HELPER_H__
 
 #include "mymacros.h"
+
+#ifdef CUDAKERNEL
 #include "cudamacros.h"
+#endif
+
+#ifdef OCLKERNEL
+#include "oclmacros.h"
+#endif
+
 #include <stdbool.h>
 
 #ifdef ELR
@@ -10,43 +18,6 @@ static const bool elr = true;
 #else
 static const bool elr = false;
 #endif
-
-inline ELRkernelArgs setKernelArgsELR(CUDA_ELR_TYPE* matrix, VECTOR_TYPE* invec, VECTOR_TYPE* resvec) 
-{
-	ELRkernelArgs args;
-
-	args.val =    matrix->val;
-	args.col =    matrix->col;
-	args.rowLen = matrix->rowLen;
-	args.N =      matrix->nRows;
-	args.pad =    matrix->padding;
-	args.resVec = resvec->val_gpu;
-#ifndef TEXCACHE
-	args.rhs =    invec->val_gpu;
-#endif
-
-	return args;
-}
-
-inline pJDSkernelArgs setKernelArgsPJDS(CUDA_PJDS_TYPE* matrix, VECTOR_TYPE* invec, VECTOR_TYPE* resvec) 
-{
-	pJDSkernelArgs args;
-
-	args.val =    matrix->val;
-	args.col =    matrix->col;
-	args.rowLen = matrix->rowLen;
-	args.N =      matrix->nRows;
-	args.pad =    matrix->padding;
-	args.resVec = resvec->val_gpu;
-#ifndef TEXCACHE
-	args.rhs =    invec->val_gpu;
-#endif
-#ifndef COLSTARTTC
-	args.colStart = matrix->colStart;
-#endif
-
-	return args;
-}
 
 
 
@@ -65,27 +36,28 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
   int i, j;
   double hlp1;
 
-  #ifdef CUDAKERNEL
+  
+#ifdef OCLKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-  copyHostToDevice(invec->val_gpu, invec->val, invec->nRows*sizeof(double));
-#ifdef ELR
-  ELRkernelArgs args = setKernelArgsELR(lcrp->celr,invec,res);
-#else
-  pJDSkernelArgs args = setKernelArgsPJDS(lcrp->cpjds,invec,res);
+  CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(double));
 #endif
 
-  
+#ifdef OCLKERNEL
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
      *cp_in_cycles = *asm_cycles - *cycles4measurement; 
   }
-  #endif
+#endif
 
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  #ifdef CUDAKERNEL
-	cudaKernel(&args,false,elr);
+#ifdef OCLKERNEL
+#ifdef ELR
+	oclKernel(lcrp->celr,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#else
+	oclKernel(lcrp->cpjds,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#endif
 
   #else
   
@@ -105,11 +77,13 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
      *ca_cycles = *asm_cycles - *cycles4measurement; 
   }
   
-  #ifdef CUDAKERNEL
+#ifdef OCLKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-  copyDeviceToHost( res->val, res->val_gpu, res->nRows*sizeof(double) );
+  CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+#endif
 
+#ifdef OCLKERNEL 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
      *cp_res_cycles = *asm_cycles - *cycles4measurement; 
@@ -132,28 +106,27 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
   int i, j;
   double hlp1;
 
-  #ifdef CUDAKERNEL
+  #ifdef OCLKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  copyHostToDevice(invec->val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
-#ifdef ELR
-  ELRkernelArgs args = setKernelArgsELR(lcrp->lcelr,invec,res);;
-#else
-  pJDSkernelArgs args = setKernelArgsPJDS(lcrp->lcpjds,invec,res);
-#endif
+  CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
      *cp_lin_cycles = *asm_cycles - *cycles4measurement; 
   }
-  #endif
 
+#endif
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+#ifdef OCLKERNEL
+#ifdef ELR
+	oclKernel(lcrp->lcelr,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#else
+	oclKernel(lcrp->lcpjds,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#endif
   
-  #ifdef CUDAKERNEL
-  cudaKernel(&args,false,elr);
-
   #else
+
   
     #pragma omp parallel for schedule(runtime) private (hlp1, j)
     for (i=0; i<lcrp->lnRows[*me]; i++){
@@ -164,13 +137,17 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
       res->val[i] = hlp1;
     }
 
-  #endif
+#endif
+
+  #ifdef OCLKERNEL
+  CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
      *lc_cycles = *asm_cycles - *cycles4measurement;
 
   }
+#endif
 }
 
 /*********** kernel for remote entries only *********************/
@@ -188,15 +165,12 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
   int i, j;
   double hlp1;
 
-  #ifdef CUDAKERNEL
+  #ifdef OCLKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-   copyHostToDevice(invec->val_gpu+lcrp->lnRows[*me], invec->val+lcrp->lnRows[*me],
-    lcrp->halo_elements*sizeof(double));
+   CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double), lcrp->lnRows[*me]*sizeof(double));
   
-   // always ELR, no matter whether ELR or pJDS
-   ELRkernelArgs args = setKernelArgsELR(lcrp->rcelr,invec,res);
    
    IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -206,8 +180,8 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
   
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  #ifdef CUDAKERNEL
-	cudaKernel(&args,true,true); // alwas ELR
+  #ifdef OCLKERNEL
+	oclKernel(lcrp->rcelr,invec->CL_val_gpu,res->CL_val_gpu,true,true);
   #else
   
     #pragma omp parallel for schedule(runtime) private (hlp1, j)
@@ -226,10 +200,10 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
       *nl_cycles = *asm_cycles - *cycles4measurement; 
    }
    
-  #ifdef CUDAKERNEL
+  #ifdef OCLKERNEL
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  copyDeviceToHost( res->val, res->val_gpu, res->nRows*sizeof(double) );
+  CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
   
   IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -241,7 +215,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 
 /*********** kernel for local entries only -- comm thread *********************/
 
-#ifdef CUDAKERNEL
+#ifdef OCLKERNEL
 
 inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
                       uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
@@ -253,12 +227,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  copyHostToDevice(invec->val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
-#ifdef ELR
-  ELRkernelArgs args = setKernelArgsELR(lcrp->lcelr,invec,res);;
-#else
-  pJDSkernelArgs args = setKernelArgsPJDS(lcrp->lcpjds,invec,res);
-#endif
+  CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -267,7 +236,11 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
  
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	cudaKernel(&args,false,elr);
+#ifdef ELR
+	oclKernel(lcrp->lcelr,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#else
+	oclKernel(lcrp->lcpjds,invec->CL_val_gpu,res->CL_val_gpu,false,elr);
+#endif
 
   IF_DEBUG(1){
      for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -291,9 +264,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-   copyHostToDevice(invec->val_gpu+lcrp->lnRows[*me], invec->val+lcrp->lnRows[*me],
-    lcrp->halo_elements*sizeof(double));
-  ELRkernelArgs args = setKernelArgsELR(lcrp->rcelr,invec,res);
+   CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double),lcrp->lnRows[*me]*sizeof(double));
    
    IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -302,7 +273,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
   
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-  cudaKernel(&args,true,true); // always ELR
+	oclKernel(lcrp->rcelr,invec->CL_val_gpu,res->CL_val_gpu,true,true);
 
    IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -311,7 +282,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
    
   IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
   
-  copyDeviceToHost( res->val, res->val_gpu, res->nRows*sizeof(double) );
+  CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
   
   IF_DEBUG(1){
       for_timing_stop_asm_( asm_cyclecounter, asm_cycles);

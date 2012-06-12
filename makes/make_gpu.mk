@@ -12,8 +12,8 @@ FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp #-vec-report3 -opt-
 
 LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic #-openmp -static #-parallel
 
-LIBS = -L$(INTEL_F_HOME)/lib -lifcore -L${LIKWID_DIR}/lib -llikwid -pthread -L${CUDA_INSTALL_PATH}/lib64 -lcudart
-IPATH   += -I${LIKWID_DIR}/include
+LIBS = -L$(INTEL_F_HOME)/lib -lifcore -L${LIKWID_DIR}/lib -llikwid -pthread -L${CUDA_INSTALL_PATH}/lib64 -L${CUDA_DRIVERDIR}/lib -lcudart -lOpenCL
+IPATH   += -I${LIKWID_DIR}/include -I${CUDA_INSTALL_PATH}/include
 
 NVCC = nvcc
 NVCCFLAGS = -O3 ${MAKROS} -gencode=arch=compute_13,code=\"sm_13,compute_13\" -gencode=arch=compute_20,code=\"sm_20,compute_20\" ${IPATH} -I${CUDA_INSTALL_PATH}/include
@@ -23,7 +23,8 @@ NVCCFLAGS = -O3 ${MAKROS} -gencode=arch=compute_13,code=\"sm_13,compute_13\" -ge
 AS	= as
 ASFLAGS = -g -gstabs
 
-CUDASWITCH = DOCUDA
+CUDASWITCH = #DOCUDA
+OCLSWITCH = DOOCL
 
 ENDG    =       $(shell echo ${MAKROS} | sed -e 's/\-D/_/g' | sed -e 's/\ //g')
 SUFX    =      ${ENDG}_${SYSTEM}

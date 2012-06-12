@@ -1,5 +1,6 @@
 #ifndef _CUDAFUN_H_
 #define _CUDAFUN_H_
+
 #include <stdlib.h>
 
 void getDeviceInfo( int, int, const char* );
