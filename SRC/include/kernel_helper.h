@@ -3,10 +3,6 @@
 
 #include "mymacros.h"
 
-#ifdef CUDAKERNEL
-#include "cudamacros.h"
-#endif
-
 #ifdef OCLKERNEL
 #include "oclmacros.h"
 #endif

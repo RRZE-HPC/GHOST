@@ -1,6 +1,5 @@
 #include "matricks.h"
 #include "my_ellpack.h"
-#include "cudafun.h"
 
 #include <math.h>
 

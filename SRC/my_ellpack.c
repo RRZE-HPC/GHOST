@@ -2,7 +2,6 @@
 #include "my_ellpack.h"
 #include "matricks.h"
 #include "mymacros.h"
-#include "cudafun.h"
 #include "oclfun.h"
 #include "oclmacros.h"
 
@@ -690,63 +689,6 @@ void elrColIdToC( ELR_TYPE* elr ) {
 	}
 }
 
-/* ########################################################################## */
-#ifdef CUDAKERNEL
-CUDA_PJDS_TYPE* cudaPJDSInit( const PJDS_TYPE* pjds) {
-
-	/* allocate (but do not fill) memory for elr matrix on device */
-
-	int *col, *rowLen, *colStart;
-	double *val;
-
-	int me, ierr;
-
-	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
-	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( double );
-	size_t rowMemSize = (size_t) pjds->padding * sizeof( int );
-
-	/* allocate */
-
-	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
-	}
-	col     = allocDeviceMemory( colMemSize );
-
-	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colStartMemSize/(1024*1024));	
-	}
-	colStart     = allocDeviceMemory( colStartMemSize );
-
-	IF_DEBUG(1) printf("PE%i: CPJDSinitAlloc: in rows\t %lu MB\n",
-			me, valMemSize/(1024*1024));
-	val     = allocDeviceMemory( valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: CPJDSinitAlloc: in rLeng\t %lu MB\n",
-			me, rowMemSize/(1024*1024));
-	rowLen  = allocDeviceMemory( rowMemSize );
-
-	/* create host handle */
-	CUDA_PJDS_TYPE* cupjds = (CUDA_PJDS_TYPE*) allocateMemory( sizeof( CUDA_PJDS_TYPE ), "cuda_pjds");
-	cupjds->nEnts   	= pjds->nEnts;
-	cupjds->nRows   	= pjds->nRows;
-	cupjds->padding  = pjds->padding;
-	cupjds->nMaxRow 	= pjds->nMaxRow;
-	cupjds->rowLen 	= rowLen;
-	cupjds->col		= col;
-	cupjds->colStart= colStart;
-	cupjds->val		= val;
-	IF_DEBUG(1) {
-		printf("PE%i: created cudaPJDS type from PJDS with:\n nRows:\tcpjds=%i\t(pjds=%i)\n padding:\tcpjds=%i\t(pjds=%i)\nnMaxRow:\tcpjds=%i\t(pjds=%i)\n",
-				me, cupjds->nRows, pjds->nRows, cupjds->padding, pjds->padding,
-				cupjds->nMaxRow, pjds->nMaxRow);
-	}
-	return cupjds;
-}
-#endif
-
 #ifdef OCLKERNEL
 CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
 
@@ -803,52 +745,6 @@ CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
 }
 #endif
 
-#ifdef CUDAKERNEL
-CUDA_ELR_TYPE* cudaELRInit( const ELR_TYPE* elr) {
-
-	/* allocate (but do not fill) memory for elr matrix on device */
-
-	int *col, *rowLen;
-	double *val;
-
-	int me, ierr;
-
-	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( double );
-	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
-
-	/* allocate */
-
-	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-		printf("PE%i: CELRinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
-	}
-	col     = allocDeviceMemory( colMemSize );
-
-	IF_DEBUG(1) printf("PE%i: CELRinitAlloc: in rows\t %lu MB\n",
-			me, valMemSize/(1024*1024));
-	val     = allocDeviceMemory( valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: CELRinitAlloc: in rLeng\t %lu MB\n",
-			me, rowMemSize/(1024*1024));
-	rowLen  = allocDeviceMemory( rowMemSize );
-
-	/* create host handle */
-	CUDA_ELR_TYPE* cuelr = (CUDA_ELR_TYPE*) allocateMemory( sizeof( CUDA_ELR_TYPE ), "cuda_elr");
-	cuelr->nRows   	= elr->nRows;
-	cuelr->padding  = elr->padding;
-	cuelr->nMaxRow 	= elr->nMaxRow;
-	cuelr->rowLen 	= rowLen;
-	cuelr->col		= col;
-	cuelr->val		= val;
-	IF_DEBUG(1) {
-		printf("PE%i: created cudaELR type from ELR with:\n nRows:\tcelr=%i\t(elr=%i)\n padding:\tcelr=%i\t(elr=%i)\nnMaxRow:\tcelr=%i\t(elr=%i)\n",
-				me, cuelr->nRows, elr->nRows, cuelr->padding, elr->padding,
-				cuelr->nMaxRow, elr->nMaxRow);
-	}
-	return cuelr;
-}
-#endif
 
 #ifdef OCLKERNEL
 CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
@@ -901,43 +797,6 @@ CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
 
 /* ########################################################################## */
 
-#ifdef CUDAKERNEL
-void cudaCopyPJDSToDevice( CUDA_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
-
-	/* copy col, val and rowLen from CPU elr format to device;
-	 * celr must be allocated in advance (using cudaELRInit) */
-
-	assert( cpjds->nEnts == pjds->nEnts );
-	assert( cpjds->nRows == pjds->nRows );
-	assert( cpjds->padding == pjds->padding );
-	assert( cpjds->nMaxRow == pjds->nMaxRow );
-
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-
-	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
-	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( double );
-	size_t rowMemSize = (size_t) pjds->padding * sizeof( int );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
-			colMemSize, colMemSize/(1024*1024));
-	copyHostToDevice( cpjds->col, pjds->col, colMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
-			colStartMemSize, colStartMemSize/(1024*1024));
-	copyHostToDevice( cpjds->colStart, pjds->colStart, colStartMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: val %lu \t(%lu MB)\n", me,
-			valMemSize, valMemSize/(1024*1024));
-	copyHostToDevice( cpjds->val, pjds->val, valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: row %lu \t(%lu MB)\n", me,
-			rowMemSize, rowMemSize/(1024*1024));
-	copyHostToDevice( cpjds->rowLen, pjds->rowLen, rowMemSize );
-}
-#endif
-
 #ifdef OCLKERNEL
 void CL_CopyPJDSToDevice( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 
@@ -972,39 +831,6 @@ void CL_CopyPJDSToDevice( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: row %lu \t(%lu MB)\n", me,
 			rowMemSize, rowMemSize/(1024*1024));
 	CL_copyHostToDevice( cpjds->rowLen, pjds->rowLen, rowMemSize );
-}
-#endif
-
-#ifdef CUDAKERNEL
-void cudaCopyELRToDevice( CUDA_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
-
-	/* copy col, val and rowLen from CPU elr format to device;
-	 * celr must be allocated in advance (using cudaELRInit) */
-
-	assert( celr->nRows == elr->nRows );
-	assert( celr->padding == elr->padding );
-	assert( celr->nMaxRow == elr->nMaxRow );
-
-
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-
-	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( double );
-	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoDevice: col %lu \t(%lu MB)\n", me,
-			colMemSize, colMemSize/(1024*1024));
-	copyHostToDevice( celr->col, elr->col, colMemSize );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoDevice: val %lu \t(%lu MB)\n", me,
-			valMemSize, valMemSize/(1024*1024));
-	copyHostToDevice( celr->val, elr->val, valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoDevice: row %lu \t(%lu MB)\n", me,
-			rowMemSize, rowMemSize/(1024*1024));
-	copyHostToDevice( celr->rowLen, elr->rowLen, rowMemSize );
-
 }
 #endif
 
@@ -1043,45 +869,6 @@ void CL_CopyELRToDevice( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 #endif
 
 
-/* ########################################################################## */
-
-#ifdef CUDAKERNEL
-void cudaCopyPJDSBackToHost( PJDS_TYPE* pjds, const CUDA_PJDS_TYPE* cpjds ) {
-
-	/* copy col, val and rowLen from CPU elr format to device;
-	 * celr must be allocated in advance (using cudaELRInit) */
-
-	assert( cpjds->nEnts == pjds->nEnts );
-	assert( cpjds->nRows == pjds->nRows );
-	assert( cpjds->padding == pjds->padding );
-	assert( cpjds->nMaxRow == pjds->nMaxRow );
-
-
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-
-	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
-	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( double );
-	size_t rowMemSize = (size_t) pjds->padding * sizeof( int );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
-			colMemSize, colMemSize/(1024*1024));
-	copyHostToDevice( cpjds->col, pjds->col, colMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
-			colStartMemSize, colStartMemSize/(1024*1024));
-	copyHostToDevice( cpjds->colStart, pjds->colStart, colStartMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: val %lu \t(%lu MB)\n", me,
-			valMemSize, valMemSize/(1024*1024));
-	copyHostToDevice( cpjds->val, pjds->val, valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: row %lu \t(%lu MB)\n", me,
-			rowMemSize, rowMemSize/(1024*1024));
-	copyHostToDevice( cpjds->rowLen, pjds->rowLen, rowMemSize );
-}
-#endif
 
 #ifdef OCLKERNEL
 void CL_CopyPJDSBackToHost( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
@@ -1118,38 +905,6 @@ void CL_CopyPJDSBackToHost( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: row %lu \t(%lu MB)\n", me,
 			rowMemSize, rowMemSize/(1024*1024));
 	CL_copyHostToDevice( cpjds->rowLen, pjds->rowLen, rowMemSize );
-}
-#endif
-
-#ifdef CUDAKERNEL
-void cudaCopyELRBackToHost( ELR_TYPE* elr, const CUDA_ELR_TYPE* celr ) {
-
-	/* copy col, val and rowLen from device celr to CPU;
-	 * elr must be allocated in advance */
-
-	assert( celr->nRows == elr->nRows );
-	assert( celr->padding == elr->padding );
-	assert( celr->nMaxRow == elr->nMaxRow );
-
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
-
-	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( double );
-	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoHost: col %lu \t(%lu MB)\n", me,
-			colMemSize, colMemSize/(1024*1024));
-	copyDeviceToHost( elr->col, celr->col, colMemSize );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoHost: val %lu \t(%lu MB)\n", me,
-			valMemSize, valMemSize/(1024*1024));
-	copyDeviceToHost( elr->val, celr->val, valMemSize );
-
-	IF_DEBUG(1) printf("PE%i: ELRtoHost: row %lu \t(%lu MB)\n", me,
-			rowMemSize, rowMemSize/(1024*1024));
-	copyDeviceToHost( elr->rowLen, celr->rowLen, rowMemSize );
-
 }
 #endif
 
@@ -1207,28 +962,6 @@ void freeELRMatrix( ELR_TYPE* const elr ) {
 	}
 }
 
-
-/* ########################################################################## */
-#ifdef CUDAKERNEL
-void freeCUDAPJDSMatrix( CUDA_PJDS_TYPE* const cpjds ) {
-	if( cpjds ) {
-		freeDeviceMemory( cpjds->rowLen );
-		freeDeviceMemory( cpjds->col );
-		freeDeviceMemory( cpjds->colStart );
-		freeDeviceMemory( cpjds->val );
-		free( cpjds );
-	}
-}
-
-void freeCUDAELRMatrix( CUDA_ELR_TYPE* const celr ) {
-	if( celr ) {
-		freeDeviceMemory( celr->rowLen );
-		freeDeviceMemory( celr->col );
-		freeDeviceMemory( celr->val );
-		free( celr );
-	}
-}
-#endif
 
 #ifdef OCLKERNEL
 void CL_freePJDSMatrix( CL_PJDS_TYPE* const cpjds ) {

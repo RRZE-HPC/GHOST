@@ -39,9 +39,6 @@ int main( int nArgs, char* arg[] ) {
 	int N_MULTS;
 	int mypid;
 	int i,j; 
-#ifdef CUDAKERNEL
-	int gridDim, blockDim;
-#endif
 	double ws;
 	unsigned long mystringlength;
 
@@ -168,10 +165,6 @@ int main( int nArgs, char* arg[] ) {
 
 	/* get nodal MPI communicator ******************************/
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
-#if defined(CUDAKERNEL)
-	/* select cards on node *******************/
-	selectNodalGPUs( &single_node_comm, hostname );
-#endif
 #if defined(OCLKERNEL)
 	/* select cards on node *******************/
 	CL_selectNodalGPUs( &single_node_comm, hostname );
@@ -226,21 +219,12 @@ int main( int nArgs, char* arg[] ) {
 
 
 	if (me == 0){
-#ifdef CUDAKERNEL
-		if ( nArgs < 10 ) myabort("expect input: [N_MULTS] [NUMA-placement RHS] [testcase] [I/O format] [distribute] [jobmask] [outer_iter] [gridDim] [blockDim]"); 
-#else
-		if ( nArgs < 8 ) myabort("expect input: [N_MULTS] [NUMA-placement RHS] [testcase] [I/O format] [distribute] [jobmask] [outer_iter]"); 
-#endif
 		N_MULTS    = atoi(arg[1]);
 		place_rhs  = atoi(arg[2]);
 		io_format  = atoi(arg[4]);
 		work_dist  = atoi(arg[5]);
 		jobmask    = atoi(arg[6]);
 		outer_it   = atoi(arg[7]);
-#ifdef CUDAKERNEL
-		gridDim    = atoi(arg[8]);
-		blockDim   = atoi(arg[9]);
-#endif
 
 		if      (place_rhs == 1) sprintf(pr_flag, "CRS");
 		else if (place_rhs == 2) sprintf(pr_flag, "LNL");
@@ -385,7 +369,6 @@ int main( int nArgs, char* arg[] ) {
 			/* ascii format *************************************/
 			AS_CYCLE_START;
 			sprintf(restartfilename, "/home/vault/unrz/unrza317/%s/%s.mtx", testcase,testcase);
-			//sprintf(restartfilename, "/home/woody/unrz/unrza337/mucosim/SpMVM/SpMVM/CUDA/SRC/daten/%s/%s.mtx", testcase, testcase);
 			printf("file: %s \n", restartfilename);
 			/* Kein threashold beim Einlesen: nehme alle Elemente komplett mit */
 			mm = readMMFile( restartfilename, 0.0 );
@@ -471,10 +454,6 @@ int main( int nArgs, char* arg[] ) {
 	ierr = MPI_Bcast(&work_dist, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(&io_format, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(testcase, 50, MPI_CHAR, 0, MPI_COMM_WORLD);
-#ifdef CUDAKERNEL
-	ierr = MPI_Bcast(&gridDim,   1, MPI_INTEGER, 0, MPI_COMM_WORLD);
-	ierr = MPI_Bcast(&blockDim,  1, MPI_INTEGER, 0, MPI_COMM_WORLD);
-#endif
 
 	/* Gerald's old parallel code, not working?
 	   if (io_format == 1){
@@ -748,26 +727,6 @@ sweepMemory(GLOBAL);
 	}
 
 
-	/****************************************************************************
-	 ********************    Set Cuda kernel params/texture cache *************** 
-	 ***************************************************************************/
-#ifdef CUDAKERNEL
-	setKernelDims( gridDim, blockDim );
-#ifdef TEXCACHE
-	if(me==0) printf("Using texture cache for rhs vector\n");
-	prepareTexCacheRhs(hlpvec_in->val_gpu,hlpvec_in->nRows*sizeof(double));
-#endif
-#ifdef COLSTARTTC
-	if(me==0) printf("Using texture cache for colStart vector\n");
-	if( jobmask & 502 ) { // only if jobtype requires combined computation
-		prepareTexCacheCS(lcrp->cpjds->colStart,(lcrp->cpjds->nMaxRow+1)*sizeof(int)); // TODO nicht hier
-	}
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
-		prepareTexCacheCS(lcrp->lcpjds->colStart,(lcrp->lcpjds->nMaxRow+1)*sizeof(int)); // FIXME remote ELR!!
-	}
-#endif
-#endif
-
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	for (outer_iter=0; outer_iter<outer_it; outer_iter++){
@@ -797,10 +756,6 @@ sweepMemory(GLOBAL);
 				/* choose current input vector from revolving buffer */
 				this_one = iteration%RevBuf->numvecs;
 				hlpvec_in->val = RevBuf->vec[this_one];
-#ifdef CUDAKERNEL
-				IF_DEBUG(2) vectorDeviceCopyCheck( hlpvec_in, me );
-				IF_DEBUG(2) vectorDeviceCopyCheck( hlpvec_out, me );
-#endif
 #ifdef OCLKERNEL
 				IF_DEBUG(2) CL_vectorDeviceCopyCheck( hlpvec_in, me );
 				IF_DEBUG(2) CL_vectorDeviceCopyCheck( hlpvec_out, me );
@@ -854,7 +809,7 @@ sweepMemory(GLOBAL);
 			/* Perform correctness check once for each kernel version */ 
 			performed++;
 			IF_DEBUG(1) PAS_CYCLE_START;
-#if (defined(CUDAKERNEL) || defined (OCLKERNEL)) && !defined (ELR)
+#ifdef OCLKERNEL && !defined (ELR)
 			if( 0x1<<version & 261640 ) { // only if jobtype requires split computation
 				permuteVector(hlpvec_out->val,lcrp->lpjds->invRowPerm,lcrp->lnRows[me]);
 

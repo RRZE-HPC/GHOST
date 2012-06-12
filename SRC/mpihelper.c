@@ -1,6 +1,5 @@
 #include "mpihelper.h"
 #include "mymacros.h"
-#include "cudafun.h"
 #include "oclfun.h"
 #include <stdio.h>
 
@@ -58,23 +57,6 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    free( all_hn_mem );
    free( all_hostnames );
 }
-
-#ifdef CUDAKERNEL
-void selectNodalGPUs( MPI_Comm* single_node_comm, const char* hostname ) {
-  /* each MPI rank chooses its device id according to nodal rank */
-
-  int node_rank, node_size, ierr;
-
-  ierr = MPI_Comm_size( *single_node_comm, &node_size);
-  ierr = MPI_Comm_rank( *single_node_comm, &node_rank);
-  
-  getDeviceInfo( node_rank, node_size, hostname );
-  MPI_Barrier( MPI_COMM_WORLD );
-  selectDevice( node_rank, node_size, hostname);
-
-}
-#endif
-
 
 #ifdef OCLKERNEL
 void CL_selectNodalGPUs( MPI_Comm* single_node_comm, const char* hostname ) {

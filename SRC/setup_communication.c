@@ -1,6 +1,5 @@
 #include "matricks.h"
 #include "my_ellpack.h"
-#include "cudafun.h"
 
 #include <math.h>
 
@@ -71,23 +70,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	size_t size_revc, size_a2ai, size_nptr, size_pval;  
 	size_t size_mem, size_wish, size_dues;
 
-#ifdef CUDAKERNEL
-#ifdef ELR
-	ELR_TYPE* elr 	= NULL;
-	ELR_TYPE* lelr	= NULL;
-	ELR_TYPE* relr	= NULL;
-	CUDA_ELR_TYPE* celr  = NULL;
-	CUDA_ELR_TYPE* lcelr = NULL;
-	CUDA_ELR_TYPE* rcelr = NULL;
-#else
-	PJDS_TYPE* pjds	= NULL;
-	PJDS_TYPE* lpjds= NULL;
-	ELR_TYPE* relr = NULL;
-	CUDA_PJDS_TYPE* cpjds  = NULL;
-	CUDA_PJDS_TYPE* lcpjds = NULL;
-	CUDA_ELR_TYPE* rcelr = NULL;
-#endif
-#endif
 #ifdef OCLKERNEL
 #ifdef ELR
 	ELR_TYPE* elr 	= NULL;
@@ -684,7 +666,7 @@ sweepMemory(GLOBAL);
 	freeCRMatrix( cr );
 
 
-#if defined(CUDAKERNEL) || defined (OCLKERNEL)
+#ifdef OCLKERNEL
 	/*printf("--------------- PE%d CRS --------------\n",me);
 	for (i=0; i<lcrp->lnRows[me]; i++) {
 		printf("[%1d] ",i);
@@ -723,18 +705,6 @@ sweepMemory(GLOBAL);
 	}
 	printf("-----------------------------------\n");*/
 	
-#ifdef CUDAKERNEL
-		celr = cudaELRInit( elr );
-		cudaCopyELRToDevice(celr, elr);
-		lcrp->celr = celr;
-
-		IF_DEBUG(1) {
-			resetELR( elr );
-			cudaCopyELRBackToHost( elr, celr );
-			checkCRSToELRsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], elr );
-		}
-#endif
-#ifdef OCLKERNEL
 		celr = CL_ELRInit( elr );
 		CL_CopyELRToDevice(celr, elr);
 		lcrp->celr = celr;
@@ -744,7 +714,6 @@ sweepMemory(GLOBAL);
 			CL_CopyELRBackToHost( elr, celr );
 			checkCRSToELRsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], elr );
 		}
-#endif
 
 		freeELRMatrix( elr );
 
@@ -830,14 +799,8 @@ sweepMemory(GLOBAL);
 		//elrColIdToC( elr ); // lcrp setup converts CRS to C numbering, so this should not be necessary 
 
 
-#ifdef CUDAKERNEL
-		cpjds = cudaPJDSInit( pjds );
-		cudaCopyPJDSToDevice(cpjds, pjds);
-#endif
-#ifdef OCLKERNEL
 		cpjds = CL_PJDSInit( pjds );
 		CL_CopyPJDSToDevice(cpjds, pjds);
-#endif
 		lcrp->cpjds = cpjds;
 
 		/*IF_DEBUG(1) {
@@ -858,14 +821,8 @@ sweepMemory(GLOBAL);
 		lcrp->lpjds = lpjds;
 
 		//elrColIdToC( lelr );
-#ifdef CUDAKERNEL
-		lcpjds = cudaPJDSInit( lpjds );
-		cudaCopyPJDSToDevice(lcpjds, lpjds);
-#endif
-#ifdef OCLKERNEL
 		lcpjds = CL_PJDSInit( lpjds );
 		CL_CopyPJDSToDevice(lcpjds, lpjds);
-#endif
 
 		lcrp->lcpjds = lcpjds;
 	printf("--------------- PE%d pJDS -------------\n",me);
@@ -893,14 +850,8 @@ sweepMemory(GLOBAL);
 		relr = convertCRSToELRPermutedMatrix( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lpjds->rowPerm,lpjds->invRowPerm );
 		//elrColIdToC( relr );
 
-#ifdef CUDAKERNEL
-		rcelr = cudaELRInit( relr );
-		cudaCopyELRToDevice(rcelr, relr);
-#endif
-#ifdef OCLKERNEL
 		rcelr = CL_ELRInit( relr );
 		CL_CopyELRToDevice(rcelr, relr);
-#endif
 		lcrp->rcelr = rcelr;
 
 		size_t r_elr_size  = relr->nMaxRow*relr->padding*(sizeof(double)+sizeof(int)) + relr->nRows*sizeof(int);

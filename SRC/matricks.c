@@ -1,5 +1,4 @@
 #include "matricks.h"
-#include "cudafun.h"
 #include "oclfun.h"
 #include <math.h>
 #ifdef _OPENMP
@@ -55,34 +54,6 @@ void permuteVector( double* vec, int* perm, int len) {
   free(tmp);
 }
 
-/* ########################################################################## */
-#ifdef CUDAKERNEL
-void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
-
-	/* copy val to gpuval on device in testvec, copy back to temporary and check for consistency*/
-
-	int i;
-	double* tmp = NULL;
-	size_t bytesize = sizeof(double) * testvec->nRows;
-	printf("PE %d: vectorDeviceCopyCheck: size = %lu (%i)\n", me, bytesize, testvec->nRows);
-	tmp = (double*) allocateMemory( bytesize, "copycheck");
-	for( i = 0; i < testvec->nRows; ++i) tmp[i] = -77.3;
-
-	printf("copying to device...");
-	copyHostToDevice( testvec->val_gpu, testvec->val, bytesize );
-	printf("done\n");
-	printf("copying back to host...");
-	copyDeviceToHost( tmp, testvec->val_gpu, bytesize );
-	printf("done\n");
-
-	for( i=0; i < testvec->nRows; ++i) {
-		if( testvec->val[i] != tmp[i] )
-			printf("PE %d: error: \tcpu %e , \t gpu %e\n", me, testvec->val[i], tmp[i]);
-	}
-	free( tmp );
-	printf("PE %d: completed copycheck\n", me);
-}
-#endif
 
 #ifdef OCLKERNEL
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
@@ -979,18 +950,12 @@ void crColIdToC( CR_TYPE* cr ) {
 
 
 VECTOR_TYPE* newVector( const int nRows ) {
-	/* allocate VECTOR_TYPE to hold nRows double entries;
-	 * if CUDAKERNEL is defined also allocate matching array on device */
-
 	VECTOR_TYPE* vec;
 	size_t size_val;
 
 	size_val = (size_t)( nRows * sizeof(double) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
-#ifdef CUDAKERNEL
-	vec->val_gpu = allocDeviceMemory( size_val );
-#endif
 #ifdef OCLKERNEL
 	vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
 #endif
@@ -1008,9 +973,6 @@ VECTOR_TYPE* newVector( const int nRows ) {
 void freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
 		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
-#ifdef CUDAKERNEL
-		freeDeviceMemory( vec->val_gpu );
-#endif
 #ifdef OCLKERNEL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
@@ -1089,15 +1051,15 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
-#ifdef CUDAKERNEL
+#ifdef OCLAKERNEL
 #ifdef ELR
-		freeCUDAELRMatrix( lcrp->celr );
-		freeCUDAELRMatrix( lcrp->lcelr );
-		freeCUDAELRMatrix( lcrp->rcelr );
+		CL_freeELRMatrix( lcrp->celr );
+		CL_freeELRMatrix( lcrp->lcelr );
+		CL_freeELRMatrix( lcrp->rcelr );
 #else
-		freeCUDAPJDSMatrix( lcrp->cpjds );
-		freeCUDAPJDSMatrix( lcrp->lcpjds );
-		freeCUDAELRMatrix( lcrp->rcelr );
+		CL_freePJDSMatrix( lcrp->cpjds );
+		CL_freePJDSMatrix( lcrp->lcpjds );
+		CL_freeELRMatrix( lcrp->rcelr );
 #endif
 #endif
 		free( lcrp );
