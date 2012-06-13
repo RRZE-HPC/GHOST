@@ -711,20 +711,45 @@ sweepMemory(GLOBAL);
 	}
 
 
-	size_t totalPJDSmemSize;
-	size_t totalELRmemSize;
+	size_t totalPJDSmemSize, nodeLocalPJDSmemSize;
+	size_t totalELRmemSize, nodeLocalELRmemSize;
 
-	MPI_Reduce(&lcrp->pJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-	MPI_Reduce(&lcrp->ELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+	if( jobmask & 502 ) { 
+		nodeLocalPJDSmemSize = lcrp->cpjds->nEnts*(sizeof(double)+sizeof(int)) + lcrp->cpjds->nRows*sizeof(int) + (lcrp->cpjds->nMaxRow)*sizeof(int);
+		nodeLocalELRmemSize = lcrp->cpjds->nMaxRow*lcrp->cpjds->padding*(sizeof(double)+sizeof(int)) + lcrp->cpjds->nRows*sizeof(int);
+	
+		MPI_Reduce(&nodeLocalPJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&nodeLocalELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
 
-	if (me==0) {
-		printf("\n");
-		printf("----------------------\n");
-		printf("--- ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
-		printf("-- pJDS size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
-		printf("------ saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
-		printf("----------------------\n");
-	}
+		if (me==0) {
+			printf("\n");
+			printf("----------------------\n");
+			printf("--- ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
+			printf("-- pJDS size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
+			printf("------ saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
+			printf("----------------------\n");
+		}
+	} 
+	if( jobmask & 261640 ) { // only if jobtype requires split computation
+		nodeLocalPJDSmemSize = lcrp->lcpjds->nEnts*(sizeof(double)+sizeof(int)) + lcrp->lcpjds->nRows*sizeof(int) + (lcrp->lcpjds->nMaxRow)*sizeof(int);
+		nodeLocalPJDSmemSize += lcrp->rcelr->nMaxRow*lcrp->rcelr->padding*(sizeof(double)+sizeof(int)) + lcrp->rcelr->nRows*sizeof(int);
+		
+		nodeLocalELRmemSize = lcrp->lcpjds->nMaxRow*lcrp->lcpjds->padding*(sizeof(double)+sizeof(int)) + lcrp->lcpjds->nRows*sizeof(int);
+		nodeLocalELRmemSize += lcrp->rcelr->nMaxRow*lcrp->rcelr->padding*(sizeof(double)+sizeof(int)) + lcrp->rcelr->nRows*sizeof(int);
+		
+		MPI_Reduce(&nodeLocalPJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&nodeLocalELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+
+		if (me==0) {
+			printf("\n");
+			printf("--------------------------\n");
+			printf("--- ELR+ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
+			printf("-- pJDS+ELR size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
+			printf("---------- saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
+			printf("--------------------------\n");
+		}
+	} 
+
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -798,7 +823,6 @@ sweepMemory(GLOBAL);
 			}                                                                 
 #else
 			PAS_WRITE_TIME(HyK[version].tag);
-			//AS_WRITE_TIME(HyK[version].tag);
 			IF_DEBUG(1) if (me==0) printf("%s\n", HyK[version].name);
 
 			if (me==0){ 
@@ -809,17 +833,14 @@ sweepMemory(GLOBAL);
 			/* Perform correctness check once for each kernel version */ 
 			performed++;
 			IF_DEBUG(1) PAS_CYCLE_START;
-#ifdef OCLKERNEL && !defined (ELR)
-			if( 0x1<<version & 261640 ) { // only if jobtype requires split computation
-				permuteVector(hlpvec_out->val,lcrp->lpjds->invRowPerm,lcrp->lnRows[me]);
+		
+			if ( ((0x1<<version) & 502) ) 
+				permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+			if ( ((0x1<<version) & 261640) ) 
+				permuteVector(hlpvec_out->val,lcrp->localInvRowPerm,lcrp->lnRows[me]);
 
-			} else if( 0x1<<version & 502 ) { 
-				permuteVector(hlpvec_out->val,lcrp->pjds->invRowPerm,lcrp->lnRows[me]);
-
-			} 
 			Correctness_check( resCR, lcrp, hlpvec_out->val );
 
-#endif
 			IF_DEBUG(1){PAS_WRITE_TIME("Correctness-Check");}
 #endif
 		}

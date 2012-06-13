@@ -6,7 +6,7 @@
 #include <mymacros.h>
 #include <mpi.h>
 
-#if (defined(CUDAKERNEL) || defined(OCLKERNEL))
+#ifdef OCLKERNEL
 #include "my_ellpack.h"
 #endif
 
@@ -17,9 +17,6 @@
 typedef struct {
 	int nRows;
 	double* val;
-#ifdef CUDAKERNEL
-  double* val_gpu;
-#endif
 #ifdef OCLKERNEL
   cl_mem CL_val_gpu;
 #endif
@@ -29,9 +26,6 @@ typedef struct {
 typedef struct {
 	int nRows;
 	int* val;
-#ifdef CUDAKERNEL
-  int* val_gpu;
-#endif
 #ifdef OCLKERNEL
   cl_mem CL_val_gpu;
 #endif
@@ -126,37 +120,18 @@ typedef struct {
   int* rcol;
   double* lval;
   double* rval;
-#if defined(CUDAKERNEL) || defined(OCLKERNEL)
-#ifdef CUDAKERNEL
-  CUDA_ELR_TYPE* rcelr;
-#endif
+  int *fullRowPerm;     // may be NULL
+  int *fullInvRowPerm;  // may be NULL
+  int *localRowPerm;    // may be NULL
+  int *localInvRowPerm; // may be NULL
 #ifdef OCLKERNEL
-  CL_ELR_TYPE* rcelr;
-#endif
-  size_t pJDSmemSize;
-  size_t ELRmemSize;
+  CL_ELR_TYPE* rcelr;   // remote device ELR matrix
 #ifdef ELR
-#ifdef CUDAKERNEL
-  CUDA_ELR_TYPE* celr;
-  CUDA_ELR_TYPE* lcelr;
-#endif
-#ifdef OCLKERNEL
-  CL_ELR_TYPE* celr;
-  CL_ELR_TYPE* lcelr;
-#endif
+  CL_ELR_TYPE* celr;    // full device ELR matrix
+  CL_ELR_TYPE* lcelr;   // local device ELR matrix
 #else
-#ifdef CUDAKERNEL
-  CUDA_PJDS_TYPE* cpjds;
-  CUDA_PJDS_TYPE* lcpjds;
-#endif
-#ifdef OCLKERNEL
-  CL_PJDS_TYPE* cpjds;
-  CL_PJDS_TYPE* lcpjds;
-#endif
-  PJDS_TYPE* pjds;
-  PJDS_TYPE* lpjds;
-//  INT_VECTOR_TYPE* rowPerm;
-//  INT_VECTOR_TYPE* invRowPerm;
+  CL_PJDS_TYPE* cpjds;  // full device pJDS matrix
+  CL_PJDS_TYPE* lcpjds; // local device pJDS matrix
 #endif
 #endif
 } LCRP_TYPE;

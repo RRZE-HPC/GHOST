@@ -3,3 +3,4 @@ SRC/*.swp
 SRC/include/*.swp
 daten/*
 SRC/tags
+OBJ/

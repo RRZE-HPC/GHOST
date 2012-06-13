@@ -17,7 +17,7 @@ set pinlist = ( 0,1 0,1 0,1 0,1 0,1 0,1 0,1 0,1 0,1 ) # 1 gpu pro knoten
 #set pinlist = ( 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 0,1_4,5 ) # 2 gpus pro knoten
  
 set distscheme = ( NZE LNZ ROW ) # MPI distribution of matrix: equal_NZE equal_NZE_opt equal_row
-set mymasks    = ( 8 502 261640 262142 5124 4 5120 512 2 4096 ) # kernel selector: full_only split_only all
+set mymasks    = ( 62 502 261640 262142 5124 4 5120 512 2 4096 ) # kernel selector: full_only split_only all
 set mults      = "1"
 set work_dist  = "1" # 1 approx eq NZE / 2 fancy NZE / else eq NRows
 set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_OCLKERNEL_PLACE_CYCLES_INT_gpu.x"
@@ -35,7 +35,7 @@ set wd_flag    = $distscheme[$work_dist]
 mkdir $datadir
 setenv KMP_AFFINITY disabled 
 setenv OMP_SCHEDULE static
-foreach mat ( test1  ) 
+foreach mat ( rrze3  ) 
 
 foreach nodes ( 3 )
 

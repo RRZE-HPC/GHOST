@@ -117,9 +117,11 @@ void CL_selectDevice( int rank, int size, const char* hostname ) {
 
 cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 	cl_mem mem;
+
 	cl_int err;
 
 	mem = clCreateBuffer(context,CL_MEM_READ_WRITE,bytesize,NULL,&err);
+
 	CL_checkerror(err);
 
 	return mem;
@@ -138,17 +140,20 @@ void* allocHostMemory( size_t sz) {
 
 }
 
-void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
-	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,NULL,NULL));
-}
+	void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
+		if (bytesize > 0)
+			CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,NULL,NULL));
+	}
 
-void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
-	CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,hostmem,0,NULL,NULL));
-}
+	void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
+		if (bytesize > 0)
+			CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,hostmem,0,NULL,NULL));
+	}
 
-void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
-	CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
-}
+	void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
+		if (bytesize > 0)
+			CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
+	}
 
 
 
@@ -191,10 +196,10 @@ void oclKernel(void *mat,  cl_mem rhsVec, cl_mem resVec, bool add, bool elr) {
 			kernel = kernels[KERNEL_PJDS];
 		}
 
-		
+
 		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
 		global = (size_t)matrix->padding;
-		
+
 		CL_safecall(clSetKernelArg(kernel,0,sizeof(int),   &matrix->nRows));
 		CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem),&resVec));
 		CL_safecall(clSetKernelArg(kernel,2,sizeof(cl_mem),&rhsVec));
@@ -214,11 +219,11 @@ void CL_finish() {
 
 	int i;
 
-/*	for (i=0; i<NUM_KERNELS; i++) 
+	/*	for (i=0; i<NUM_KERNELS; i++) 
 		CL_safecall(clReleaseKernel(kernels[i]));
-	CL_safecall(clReleaseCommandQueue(queue));
-	CL_safecall(clReleaseContext(context));
-*/
+		CL_safecall(clReleaseCommandQueue(queue));
+		CL_safecall(clReleaseContext(context));
+	 */
 
 }
 

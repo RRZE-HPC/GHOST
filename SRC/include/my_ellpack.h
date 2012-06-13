@@ -3,7 +3,11 @@
 
 #include <stdio.h>
 #include <CL/cl.h>
-	
+
+typedef struct {
+	int nRows, nMaxRow, padding;
+} ELR_PROPS;
+
 typedef struct {
 	int nRows, nMaxRow, padding;
 	int* col;

@@ -36,14 +36,19 @@ static int now1  = 0;
 void permuteVector( double* vec, int* perm, int len) {
   /* permutes values in vector so that i-th entry is mapped to position perm[i] */
   int i;
-  double* tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
+  double* tmp;
+ 
+  if (perm == NULL)
+	  return;
+
+
+  tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
 
   for(i = 0; i < len; ++i) {
     if( perm[i] >= len ) {
       fprintf(stderr, "ERROR: permutation index out of bounds\n");
       free(tmp);
 	  exit(-1);
-//      return;
     }
     tmp[perm[i]] = vec[i];
   }
