@@ -109,7 +109,7 @@ void bin_write_jd(const JD_TYPE* jd, const char* testcase){
  *          Einlesen der Matrix in Binaerformat (CRS)                          *
  ******************************************************************************/
 
-void bin_read_cr(CR_TYPE* cr, const char* testcase){
+void bin_read_cr(CR_TYPE* cr, const char* path){
 
    int i, j;
    size_t size_offs, size_col, size_val;
@@ -121,11 +121,10 @@ void bin_read_cr(CR_TYPE* cr, const char* testcase){
 
    timing( &startTime, &ct );
 
-   sprintf(restartfilename, "/home/vault/unrz/unrza317/matrices/%s/%s_CRS_bin.dat", testcase,testcase);
-   IF_DEBUG(1) printf(" \n Lese %s \n", restartfilename);
+   IF_DEBUG(1) printf(" \n Lese %s \n", path);
 
-   if ((RESTFILE = fopen(restartfilename, "rb"))==NULL){
-      printf("Fehler beim Oeffnen von %s\n", restartfilename);
+   if ((RESTFILE = fopen(path, "rb"))==NULL){
+      printf("Fehler beim Oeffnen von %s\n", path);
       exit(1);
    }
 

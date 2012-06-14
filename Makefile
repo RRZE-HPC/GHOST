@@ -1,4 +1,4 @@
-SYSTEM = dirac
+SYSTEM = gpu
 #SYSTEM  = woody
 #SYSTEM  = lima
 include makes/make_$(SYSTEM).mk

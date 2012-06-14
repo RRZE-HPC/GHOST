@@ -72,8 +72,8 @@ void pio_write_cr_rownumbers(const CR_TYPE* cr, const char* testcase) {
 	FILE* RESTFILE;
 
 	timing( &startTime, &ct );
-
 	sprintf(restartfilename, "./daten/%s_CRS_bin_rows.dat", testcase);
+
 
 	mybytes = 3.0*sizeof(int) + (cr->nRows+1)*sizeof(int);
 

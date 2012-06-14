@@ -27,6 +27,7 @@ int threadId = 0;
 
 
 
+
 int main( int nArgs, char* arg[] ) {
 
 #ifdef INDIVIDUAL
@@ -60,6 +61,7 @@ int main( int nArgs, char* arg[] ) {
 	char pm_flag[50];
 	char io_flag[50];
 	char wd_flag[50];
+	char matrixpath[1024];
 
 
 	VECTOR_TYPE* hlpvec_out = NULL;
@@ -262,6 +264,8 @@ int main( int nArgs, char* arg[] ) {
 				(modelname(model_name) > 49)    ) 
 			myabort("some system variable longer than field"); 
 
+		getMatrixPath(testcase,matrixpath);
+
 		/* Get overhead of cycles measurement */
 		AS_CYCLE_START;
 		AS_CYCLE_STOP;
@@ -319,10 +323,12 @@ int main( int nArgs, char* arg[] ) {
 		printf("Matrix distribution on PEs  : %12s\n", wd_flag); 
 		printf("Jobmask (integer)           : %12d\n", jobmask); 
 		printf("Jobmask (hexadecimal)       : %#12x\n", jobmask); 
-		printf("Type of benchmark           : %12s\n", benchmark); 
+		printf("Type of benchmark           : %12s\n", benchmark);
+#ifdef OCLKERNEL	
 		printf("Full matrix format          : %12s\n", SPM_FORMAT_NAME[matrixFormat[0]]); 
 		printf("Local matrix format         : %12s\n", SPM_FORMAT_NAME[matrixFormat[1]]); 
 		printf("Remote matrix format        : %12s\n", SPM_FORMAT_NAME[matrixFormat[2]]); 
+#endif
 		printf("-----------------------------------------------------\n");
 
 
@@ -332,8 +338,8 @@ int main( int nArgs, char* arg[] ) {
 
 		clockfreq = recal_clockfreq;
 
-		if (io_format == 1){
-			/* read-in CR-row numbers in binary format for lateron use */
+		/*if (io_format == 1){
+			// read-in CR-row numbers in binary format for lateron use 
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
 			AS_CYCLE_START;
@@ -341,13 +347,13 @@ int main( int nArgs, char* arg[] ) {
 			AS_CYCLE_STOP;
 			IF_DEBUG(1) AS_WRITE_TIME("Binary read of CR row numbers");
 		}
-		else if (io_format == 2){
+		else */if (!isMMFile(matrixpath)){
 			/* binary format *************************************/
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
 			/* Binary read of matrix in serial CRS-format */
 			AS_CYCLE_START;
-			bin_read_cr(cr, testcase);
+			bin_read_cr(cr, matrixpath);
 			AS_CYCLE_STOP;
 			IF_DEBUG(1) AS_WRITE_TIME("Binary reading of CR");
 
@@ -382,10 +388,9 @@ int main( int nArgs, char* arg[] ) {
 		else{
 			/* ascii format *************************************/
 			AS_CYCLE_START;
-			sprintf(restartfilename, "/home/vault/unrz/unrza317/%s/%s.mtx", testcase,testcase);
-			printf("file: %s \n", restartfilename);
+			printf("file: %s \n", matrixpath);
 			/* Kein threashold beim Einlesen: nehme alle Elemente komplett mit */
-			mm = readMMFile( restartfilename, 0.0 );
+			mm = readMMFile( matrixpath, 0.0 );
 			AS_CYCLE_STOP;
 			IF_DEBUG(1) AS_WRITE_TIME("Reading of MM");
 

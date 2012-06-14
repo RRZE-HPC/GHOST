@@ -248,6 +248,9 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
+void getMatrixPath(char *given, char *complete);
+int isMMfile(const char *filename);
+
 void* allocateMemory( const size_t size, const char* desc );
 
 VECTOR_TYPE* newVector( const int nRows );

@@ -31,6 +31,66 @@ static int size1 = 0;
 static int now0  = 0;
 static int now1  = 0;
 
+void getMatrixPath(char *given, char *complete) {
+	FILE *file;
+
+	strcpy(complete,given);
+	file = fopen(complete,"r");
+	if (file) { // given complete is already a full path
+		return;
+	}
+
+	char *mathome = getenv("MATHOME");
+	if (mathome == NULL)
+		myabort("$MATHOME not set! Can't find matrix!");
+
+
+	strcpy(complete,mathome);
+	strcat(complete,"/");
+	strcat(complete,given);
+	strcat(complete,"/");
+	strcat(complete,given);
+	strcat(complete,"_CRS_bin.dat");
+
+	file = fopen(complete,"r");
+	if (file) {
+		return;
+	}
+
+	strcpy(complete,mathome);
+	strcat(complete,"/");
+	strcat(complete,given);
+	strcat(complete,"/");
+	strcat(complete,given);
+	strcat(complete,".mtx");
+
+	file = fopen(complete,"r");
+	if (file) {
+		return;
+	}
+
+	complete = NULL;
+	return;
+}
+
+int isMMfile(const char *filename) {
+
+	FILE *file = fopen( filename, "r" );
+
+	if( ! file ) {
+		myabort("Could not open file in isMMfile!");
+	}
+
+	const char *keyword="%%MatrixMarket";
+	char *readkw = (char *)allocateMemory((strlen(keyword)+1)*sizeof(char),"readkw");
+	if (NULL == fgets(readkw,strlen(keyword)+1,file))
+		return 0;
+
+	int cmp = strcmp(readkw,keyword);
+
+	free(readkw);
+	return cmp==0?1:0;
+}
 
 /* ########################################################################## */
 void permuteVector( double* vec, int* perm, int len) {
