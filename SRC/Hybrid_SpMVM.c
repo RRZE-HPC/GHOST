@@ -265,6 +265,8 @@ int main( int nArgs, char* arg[] ) {
 			myabort("some system variable longer than field"); 
 
 		getMatrixPath(testcase,matrixpath);
+		if (!matrixpath)
+			myabort("Matrix could not be read");
 
 		/* Get overhead of cycles measurement */
 		AS_CYCLE_START;
@@ -347,7 +349,8 @@ int main( int nArgs, char* arg[] ) {
 			AS_CYCLE_STOP;
 			IF_DEBUG(1) AS_WRITE_TIME("Binary read of CR row numbers");
 		}
-		else */if (!isMMFile(matrixpath)){
+		else */
+		if (!isMMfile(matrixpath)){
 			/* binary format *************************************/
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 

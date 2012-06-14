@@ -16,6 +16,7 @@
 #endif
 
 #include "my_ellpack.h"
+#include <string.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -94,32 +95,32 @@ int isMMfile(const char *filename) {
 
 /* ########################################################################## */
 void permuteVector( double* vec, int* perm, int len) {
-  /* permutes values in vector so that i-th entry is mapped to position perm[i] */
-  int i;
-  double* tmp;
- 
-  if (perm == NULL) {
-	  IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
-	  return;
+	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
+	int i;
+	double* tmp;
 
-  }
+	if (perm == NULL) {
+		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
+		return;
+
+	}
 
 
-  tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
+	tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
 
-  for(i = 0; i < len; ++i) {
-    if( perm[i] >= len ) {
-      fprintf(stderr, "ERROR: permutation index out of bounds\n");
-      free(tmp);
-	  exit(-1);
-    }
-    tmp[perm[i]] = vec[i];
-  }
-  for(i=0; i < len; ++i) {
-    vec[i] = tmp[i];
-  }
+	for(i = 0; i < len; ++i) {
+		if( perm[i] >= len ) {
+			fprintf(stderr, "ERROR: permutation index out of bounds\n");
+			free(tmp);
+			exit(-1);
+		}
+		tmp[perm[i]] = vec[i];
+	}
+	for(i=0; i < len; ++i) {
+		vec[i] = tmp[i];
+	}
 
-  free(tmp);
+	free(tmp);
 }
 
 
@@ -167,11 +168,11 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	/*if( allocatedMem + size > maxMem ) {
-		fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
-		"when allocating %-23s\n", me, (uint64)(maxMem), desc );
-		printf("PE%d: tried to allocate %llu bytes for %s\n", me, (uint64)(size), desc);
-		mypabort("exceeded memory on allocation");
-		}*/
+	  fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
+	  "when allocating %-23s\n", me, (uint64)(maxMem), desc );
+	  printf("PE%d: tried to allocate %llu bytes for %s\n", me, (uint64)(size), desc);
+	  mypabort("exceeded memory on allocation");
+	  }*/
 
 	IF_DEBUG(2){
 		//if (size>1024.0*1024.0){  
@@ -393,9 +394,9 @@ int compareNZEPos( const void* a, const void* b ) {
 	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
-			bRow = ((NZE_TYPE*)b)->row,
-			aCol = ((NZE_TYPE*)a)->col,
-			bCol = ((NZE_TYPE*)b)->col;
+		bRow = ((NZE_TYPE*)b)->row,
+		aCol = ((NZE_TYPE*)a)->col,
+		bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
 #ifdef MAIN_DIAGONAL_FIRST
@@ -610,11 +611,11 @@ if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
 /* store values in compressed row data structure ########################## */
 for( e = 0; e < mm->nEnts; e++ ) {
 	const int row = mm->nze[e].row,
-				col = mm->nze[e].col;
+		  col = mm->nze[e].col;
 	const double val = mm->nze[e].val;
 	pos = cr->rowOffset[row] + nEntsInRow[row];
 	/* GW 
-		 cr->col[pos] = col;
+	   cr->col[pos] = col;
 	 */
 	cr->col[pos] = col;
 
@@ -659,15 +660,15 @@ static int* invRowPerm;
 
 int compareNZEForJD( const void* a, const void* b ) {
 	const int aRow = invRowPerm[((NZE_TYPE*)a)->row],
-				bRow = invRowPerm[((NZE_TYPE*)b)->row],
+		  bRow = invRowPerm[((NZE_TYPE*)b)->row],
 
-				/*  GeWe
-						aCol = ((NZE_TYPE*)a)->col,
-						bCol = ((NZE_TYPE*)b)->col; 
-				 */
+		  /*  GeWe
+			  aCol = ((NZE_TYPE*)a)->col,
+			  bCol = ((NZE_TYPE*)b)->col; 
+		   */
 
-				aCol = invRowPerm[((NZE_TYPE*)a)->col],
-				bCol = invRowPerm[((NZE_TYPE*)b)->col];
+		  aCol = invRowPerm[((NZE_TYPE*)a)->col],
+		  bCol = invRowPerm[((NZE_TYPE*)b)->col];
 
 	if( aRow == bRow )
 		return aCol - bCol;
@@ -850,7 +851,7 @@ for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
 			jd->val[pos] = mm->nze[e].val;
 
 			/*  GeWe
-					jd->col[pos] = mm->nze[e].col; 
+				jd->col[pos] = mm->nze[e].col; 
 			 */
 
 			jd->col[pos] = invRowPerm[mm->nze[e].col]+1;
@@ -872,12 +873,12 @@ IF_DEBUG(2) {
 
 IF_DEBUG(1) printf( "convertMMToJDMatrix: done\n" );
 /*  sprintf(statfilename, "./intermediate3.dat");
-		if ((STATFILE = fopen(statfilename, "w"))==NULL){
-		printf("Fehler beim Oeffnen von %s\n", statfilename);
-		exit(1);
-		}
-		for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
-		fclose(STATFILE);
+	if ((STATFILE = fopen(statfilename, "w"))==NULL){
+	printf("Fehler beim Oeffnen von %s\n", statfilename);
+	exit(1);
+	}
+	for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
+	fclose(STATFILE);
  */
 return jd;
 }
@@ -960,7 +961,7 @@ BOOL multiplyJDWithVector( VECTOR_TYPE* res, const JD_TYPE* jd, const VECTOR_TYP
 
 	for( d = 0; d < jd->nDiags; d++ ) {
 		const int diagOffset = jd->diagOffset[d],
-					diagLen    = jd->diagOffset[d+1] - diagOffset;
+			  diagLen    = jd->diagOffset[d+1] - diagOffset;
 #pragma ivdep
 #pragma vector always
 #pragma vector aligned
@@ -983,7 +984,7 @@ void crColIdToFortran( CR_TYPE* cr ) {
 	int i;
 	IF_DEBUG(1) {
 		printf("CR to Fortran: for %i entries in %i rows\n",
-			cr->rowOffset[cr->nRows], cr->nRows); 
+				cr->rowOffset[cr->nRows], cr->nRows); 
 		fflush(stdout);
 	}
 
@@ -996,7 +997,7 @@ void crColIdToFortran( CR_TYPE* cr ) {
 	}
 	IF_DEBUG(1) {
 		printf("CR to Fortran: completed %i entries\n",
-			i); 
+				i); 
 		fflush(stdout);
 	}
 }
