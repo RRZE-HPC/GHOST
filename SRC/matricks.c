@@ -38,8 +38,11 @@ void permuteVector( double* vec, int* perm, int len) {
   int i;
   double* tmp;
  
-  if (perm == NULL)
+  if (perm == NULL) {
+	  IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
 	  return;
+
+  }
 
 
   tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
@@ -918,8 +921,12 @@ void crColIdToFortran( CR_TYPE* cr ) {
 	 * check index after conversion */
 
 	int i;
-	fprintf(stdout,"CR to Fortran: for %i entries in %i rows\n",
-			cr->rowOffset[cr->nRows], cr->nRows); fflush(stdout);
+	IF_DEBUG(1) {
+		printf("CR to Fortran: for %i entries in %i rows\n",
+			cr->rowOffset[cr->nRows], cr->nRows); 
+		fflush(stdout);
+	}
+
 	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] += 1;
 		if( cr->col[i] < 1 || cr->col[i] > cr->nCols) {
@@ -927,8 +934,11 @@ void crColIdToFortran( CR_TYPE* cr ) {
 			exit(1);
 		}
 	}
-	fprintf(stdout,"CR to Fortran: completed %i entries\n",
-			i); fflush(stdout);
+	IF_DEBUG(1) {
+		printf("CR to Fortran: completed %i entries\n",
+			i); 
+		fflush(stdout);
+	}
 }
 
 

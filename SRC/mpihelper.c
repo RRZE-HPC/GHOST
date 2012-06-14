@@ -68,7 +68,7 @@ void CL_selectNodalGPUs( MPI_Comm* single_node_comm, const char* hostname ) {
   ierr = MPI_Comm_rank( *single_node_comm, &node_rank);
   
   MPI_Barrier( MPI_COMM_WORLD );
-  CL_selectDevice( node_rank, node_size, hostname);
+  CL_init( node_rank, node_size, hostname);
 }
 #endif
 

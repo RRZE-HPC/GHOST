@@ -14,6 +14,7 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
 
    uint64 asm_cycles, asm_cyclecounter;
    uint64 ca_cycles, glob_cycles, glob_cyclecounter;
+   uint64 cp_in_cycles, cp_res_cycles;
    double time_it_took;
 
    double hlp1;
@@ -29,8 +30,10 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
    ****************************************************************************/
   IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
+  spmvmKernAll( lcrp, invec, res, &asm_cyclecounter, &asm_cycles, &cycles4measurement,
+              &ca_cycles, &cp_in_cycles, &cp_res_cycles, &me);
 //#pragma omp parallel for schedule(runtime) private (hlp1, j, start, end)
-#pragma omp parallel for schedule(static) private (hlp1, j, start, end)
+/*#pragma omp parallel for schedule(static) private (hlp1, j, start, end)
   for (i=0; i<lcrp->lnRows[me]; i++){
      hlp1  = 0.0;
      start = lcrp->lrow_ptr[i];
@@ -41,7 +44,7 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
      }
      res->val[i] = hlp1;
   }
-
+*/
   IF_DEBUG(1){
      for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles);
      ca_cycles = asm_cycles - cycles4measurement; 
@@ -60,6 +63,20 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
 	  me, current_iteration, 1000*time_it_took);
     printf(" nnz = %d (@%7.3f GFlop/s)\n", lcrp->lrow_ptr[lcrp->lnRows[me]], 
 	   2e-9*lcrp->lrow_ptr[lcrp->lnRows[me]]/time_it_took);
+    
+#ifdef OCLKERNEL
+    time_it_took = (1.0*cp_in_cycles)/clockfreq;
+    printf("HyK_I: PE %d: It %d: Rhs nach Device [ms]              : %8.3f",
+	  me, current_iteration, 1000*time_it_took);
+    printf(" Datenvolumen: %6.3f MB (@%6.3f GB/s)\n", 8e-6*invec->nRows, 
+	   8e-9*invec->nRows/time_it_took);
+
+    time_it_took = (1.0*cp_res_cycles)/clockfreq;
+    printf("HyK_I: PE %d: It %d: Res von Device [ms]               : %8.3f",
+	  me, current_iteration, 1000*time_it_took);
+    printf(" Datenvolumen: %6.3f MB (@%6.3f GB/s)\n", 8e-6*res->nRows, 
+	   8e-9*res->nRows/time_it_took);
+    #endif
 
     time_it_took = (1.0*glob_cycles)/clockfreq;
     printf("HyK_I: PE %d: It %d: Kompletter Hybrid-kernel [ms]     : %8.3f\n", 

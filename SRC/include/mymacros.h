@@ -4,7 +4,7 @@
 #define DEBUG 0
 #define xMAIN_DIAGONAL_FIRST
 
-#define PJDS_CHUNK_HEIGHT 1
+#define PJDS_CHUNK_HEIGHT 32
 
 #define SINGLE 1
 #define GLOBAL 0
@@ -58,13 +58,13 @@ ierr = MPI_Barrier(MPI_COMM_WORLD);
 if (me == 0) for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles); \
 ierr = MPI_Barrier(MPI_COMM_WORLD);
 
-#define PAS_WRITE_TIME(identifier) \
+#define PAS_WRITE_TIME(identifier) {\
    ierr = MPI_Barrier(MPI_COMM_WORLD);\
 if (me == 0){ \
    for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles); \
    asm_cycles = asm_cycles - p_cycles4measurement; \
    time_it_took = (1.0*asm_cycles)/clockfreq; \
-   printf("%-23s [s] : %12.3f\n", identifier, time_it_took ); } \
+   printf("%-23s [s] : %12.3f\n", identifier, time_it_took ); }} \
 ierr = MPI_Barrier(MPI_COMM_WORLD);
 
 #define PAS_GET_TIME \
@@ -104,10 +104,10 @@ printf("%-23s:   %15.3f   %20.5f   %18.3f\n", identifier,		\
       2.0e-6*(double)N_MULTS*(double)entries/time_it_took);		\
 printf("Gesamtzahl Cycles:  %25.13lg %15.3f\n", (double)asm_cycles, time_it_took);
 
-#define AS_WRITE_TIME(identifier)		 \
+#define AS_WRITE_TIME(identifier){		 \
    asm_cycles = asm_cycles - cycles4measurement; \
 time_it_took = (1.0*asm_cycles)/clockfreq; \
-printf("%-23s [s] : %12.3f\n", identifier, time_it_took );
+printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 
 #endif
 
@@ -138,12 +138,12 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );
                              MPI_SUM, 0, single_node_comm);                    \
          coreId = likwid_processGetProcessorId();                              \
          if (coreId==0){                                                       \
-	    printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \
+	    IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \
 	    if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                  \
 	       mypabort("failed to retrieve NUMA-info");                       \
-	    printf("PE%d: %23s: NUMA-LD-0: %5d (%5d )MB free\n",               \
+	    IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-0: %5d (%5d )MB free\n",               \
                     me, identifier, nf0, ns0);                                 \
-	    printf("PE%d: %23s: NUMA-LD-1: %5d (%5d )MB free\n",               \
+	    IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-1: %5d (%5d )MB free\n",               \
                     me, identifier, nf1, ns1);                                 \
             fflush(stdout);                                                    \
             }                                                                  \
@@ -159,12 +159,12 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );
          int nf1=0;                                                            \
          naccmem = (double) allocatedMem;                                      \
          ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );                         \
-	 printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));         \
+	 IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));         \
 	 if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                     \
 	    mypabort("failed to retrieve NUMA-info");                          \
-	 printf("PE%d: %23s: NUMA-LD-0: %5d (%5d )MB free\n",                  \
+	 IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-0: %5d (%5d )MB free\n",                  \
                  me, identifier, nf0, ns0);                                    \
-	 printf("PE%d: %23s: NUMA-LD-1: %5d (%5d )MB free\n",                  \
+	 IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-1: %5d (%5d )MB free\n",                  \
                  me, identifier, nf1, ns1);                                    \
          fflush(stdout);                                                       \
          } 

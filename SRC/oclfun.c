@@ -8,7 +8,7 @@ void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
 }
 
-void CL_selectDevice( int rank, int size, const char* hostname ) {
+void CL_init( int rank, int size, const char* hostname ) {
 	cl_uint numPlatforms;
 	cl_uint numDevices;
 	cl_platform_id *platformIDs;
@@ -42,12 +42,12 @@ void CL_selectDevice( int rank, int size, const char* hostname ) {
 	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_DEVTYPE, numDevices, deviceIDs, &numDevices));
 
 	if ( 0 == rank ) {
-		printf("## rank %i/%i on %s --\t Platform: %d, No. devices of desired type: %d\n", 
+		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Platform: %d, No. devices of desired type: %d\n", 
 				rank, size-1, hostname, platform, numDevices);
 
 		for( device = 0; device < numDevices; ++device) {
 			CL_safecall(clGetDeviceInfo(deviceIDs[device],CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
-			printf("## rank %i/%i on %s --\t Device %d: %s\n", 
+			IF_DEBUG(1) printf("## rank %i/%i on %s --\t Device %d: %s\n", 
 					rank, size-1, hostname, device, devicename);
 		}
 
@@ -60,12 +60,12 @@ void CL_selectDevice( int rank, int size, const char* hostname ) {
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 	printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", rank, size-1, hostname, takedevice, devicename);
 
-	printf("## rank %i/%i on %s --\t Creating context \n", rank, size-1, hostname);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating context \n", rank, size-1, hostname);
 	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platformIDs[platform],0};
 	context = clCreateContext(cprops,1,&deviceIDs[takedevice],pfn_notify,NULL,&err);
 	CL_checkerror(err);
 
-	printf("## rank %i/%i on %s --\t Creating command queue\n", rank, size-1, hostname);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating command queue\n", rank, size-1, hostname);
 	queue = clCreateCommandQueue(context,deviceIDs[takedevice],CL_QUEUE_PROFILING_ENABLE,&err);
 	CL_checkerror(err);
 
@@ -86,19 +86,19 @@ void CL_selectDevice( int rank, int size, const char* hostname ) {
 	source_size = fread( source_str, 1, 10000, fp);
 	fclose( fp );
 
-	printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
 	program = clCreateProgramWithSource(context,1,(const char **)&source_str,&source_size,&err);
 	CL_checkerror(err);
 
-	printf("## rank %i/%i on %s --\t Building program\n", rank, size-1, hostname);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program\n", rank, size-1, hostname);
 	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],NULL,NULL,NULL));
 	CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
 	build_log = (char *)malloc(log_size+1);
 	CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-	printf("Build log: %s",build_log);
+	IF_DEBUG(1) printf("Build log: %s",build_log);
 
 
-	printf("## rank %i/%i on %s --\t Creating kernels\n", rank, size-1, hostname);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating kernels\n", rank, size-1, hostname);
 	kernels[KERNEL_ELR] = clCreateKernel(program,"ELRkernel",&err);
 	CL_checkerror(err);
 	kernels[KERNEL_ELR_ADD] = clCreateKernel(program,"ELRkernelAdd",&err);
@@ -117,12 +117,12 @@ void CL_selectDevice( int rank, int size, const char* hostname ) {
 
 cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 	cl_mem mem;
-
 	cl_int err;
 
 	mem = clCreateBuffer(context,CL_MEM_READ_WRITE,bytesize,NULL,&err);
 
-	CL_checkerror(err);
+	if (bytesize > 0)
+		CL_checkerror(err);
 
 	return mem;
 }
@@ -162,15 +162,16 @@ void CL_freeDeviceMemory( cl_mem mem ) {
 }
 
 void freeHostMemory( void *mem ) {
-	free(mem);
+	if (mem)
+		free(mem);
 }
 
 
-void oclKernel(void *mat,  cl_mem rhsVec, cl_mem resVec, bool add, bool elr) {
+void oclKernel(void *mat,  cl_mem rhsVec, cl_mem resVec, bool add, int format) {
 	cl_kernel kernel;
 	size_t global;
 
-	if (elr) {
+	if (format == SPM_FORMAT_ELR) {
 		if (add) {
 			kernel = kernels[KERNEL_ELR_ADD];
 		} else {
@@ -219,11 +220,12 @@ void CL_finish() {
 
 	int i;
 
-	/*	for (i=0; i<NUM_KERNELS; i++) 
+	for (i=0; i<NUM_KERNELS; i++) 
 		CL_safecall(clReleaseKernel(kernels[i]));
-		CL_safecall(clReleaseCommandQueue(queue));
-		CL_safecall(clReleaseContext(context));
-	 */
+	
+	CL_safecall(clReleaseCommandQueue(queue));
+	CL_safecall(clReleaseContext(context));
+	 
 
 }
 

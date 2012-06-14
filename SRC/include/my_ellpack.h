@@ -18,13 +18,6 @@ typedef struct {
 } ELR_TYPE;
 
 typedef struct {
-	int nRows, nMaxRow, padding;
-	int* col;
-	int* rowLen;
-	double* val;
-} CUDA_ELR_TYPE;
-
-typedef struct {
 	cl_int nRows, nMaxRow, padding;
 	cl_mem col;
 	cl_mem rowLen;
@@ -38,14 +31,9 @@ void resetELR( ELR_TYPE* elr );
 void elrColIdToFortran( ELR_TYPE* elr );
 void elrColIdToC( ELR_TYPE* elr );
 
-CUDA_ELR_TYPE* cudaELRInit( const ELR_TYPE* elr );
-
-void cudaCopyELRToDevice(CUDA_ELR_TYPE* celr, const ELR_TYPE* elr );
-void cudaCopyELRBackToHost( ELR_TYPE* elr, const CUDA_ELR_TYPE* celr );
 
 void freeELRMatrix( ELR_TYPE* const elr );
 
-void freeCUDAELRMatrix( CUDA_ELR_TYPE* const celr );
 
 
 CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr );
@@ -72,14 +60,6 @@ typedef struct {
 } PJDS_TYPE;
 
 typedef struct {
-	int nRows, nMaxRow, padding, nEnts;
-	int* col;
-	int* colStart;
-	int* rowLen;
-	double* val;
-} CUDA_PJDS_TYPE;
-
-typedef struct {
 	cl_int nRows, nMaxRow, padding, nEnts;
 	cl_mem col;
 	cl_mem colStart;
@@ -93,15 +73,8 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* );
 void checkCRSToPJDSsanity( const double*, const int*, const int*, const int, const PJDS_TYPE*, const int* ); // TODO
 void resetPJDS( PJDS_TYPE* pjds );
 
-CUDA_PJDS_TYPE* cudaPJDSInit( const PJDS_TYPE* pjds );
-
-void cudaCopyPJDSToDevice(CUDA_PJDS_TYPE* cpjds, const PJDS_TYPE* pjds );
-void cudaCopyPJDSBackToHost( PJDS_TYPE* pjds, const CUDA_PJDS_TYPE* cpjds );
 
 void freePJDSMatrix( PJDS_TYPE* const pjds );
-
-void freeCUDAPJDSMatrix( CUDA_PJDS_TYPE* const cpjds );
-
 
 
 CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds );

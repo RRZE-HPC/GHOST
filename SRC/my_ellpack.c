@@ -9,7 +9,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern cl_context context;
+
+size_t getBytesize(void *mat, int format) {
+	size_t sz;
+	switch (format) {
+		case SPM_FORMAT_PJDS:
+			{
+				CL_PJDS_TYPE * matrix = (CL_PJDS_TYPE *)mat;
+				sz = matrix->nEnts*(sizeof(double)+sizeof(int)) + matrix->nRows*sizeof(int) + matrix->nMaxRow*sizeof(int);
+				break;
+			}
+		case SPM_FORMAT_ELR:
+			{
+				CL_ELR_TYPE * matrix = (CL_ELR_TYPE *)mat;
+				sz = matrix->nMaxRow * matrix->padding*(sizeof(double)+sizeof(int)) + (matrix->nRows*sizeof(int));
+				break;
+			}
+	}
+
+	return sz;
+}
 
 
 void getPadding(int nRows, int* paddedRows) {
@@ -414,7 +433,6 @@ ELR_TYPE* convertCRSToELRSortedMatrix(  const double* crs_val, const int* crs_co
 	elr->invRowPerm = (int *)allocHostMemory(size_rowperm);
 
 	/* get the permutation indices ############################################ */
-	printf("permuted ELR format\n");
 	for(i=0; i < nRows; ++i) {
 		/* invRowPerm maps an index in the permuted system to the original index,
 		 * rowPerm gets the original index and returns the corresponding permuted position.
@@ -737,7 +755,7 @@ CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
 	cupjds->colStart= colStart;
 	cupjds->val		= val;
 	IF_DEBUG(1) {
-		printf("PE%i: created cudaPJDS type from PJDS with:\n nRows:\tcpjds=%i\t(pjds=%i)\n padding:\tcpjds=%i\t(pjds=%i)\nnMaxRow:\tcpjds=%i\t(pjds=%i)\n",
+		printf("PE%i: created CL_PJDS type from PJDS with:\n nRows:\tcpjds=%i\t(pjds=%i)\n padding:\tcpjds=%i\t(pjds=%i)\nnMaxRow:\tcpjds=%i\t(pjds=%i)\n",
 				me, cupjds->nRows, pjds->nRows, cupjds->padding, pjds->padding,
 				cupjds->nMaxRow, pjds->nMaxRow);
 	}
@@ -749,7 +767,6 @@ CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
 #ifdef OCLKERNEL
 CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
 
-	printf("CL_ELRInit\n");
 	/* allocate (but do not fill) memory for elr matrix on device */
 
 	cl_mem col, rowLen, val;
@@ -770,11 +787,11 @@ CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
 	col = CL_allocDeviceMemory(colMemSize);
 
 
-	IF_DEBUG(1) printf("PE%i: CPJDSinitAlloc: in rows\t %lu MB\n",
+	IF_DEBUG(1) printf("PE%i: CELRinitAlloc: in rows\t %lu MB\n",
 			me, valMemSize/(1024*1024));
 	val = CL_allocDeviceMemory(valMemSize);
 
-	IF_DEBUG(1) printf("PE%i: CPJDSinitAlloc: in rLeng\t %lu MB\n",
+	IF_DEBUG(1) printf("PE%i: CELRinitAlloc: in rLeng\t %lu MB\n",
 			me, rowMemSize/(1024*1024));
 	rowLen = CL_allocDeviceMemory(rowMemSize);
 
@@ -787,7 +804,7 @@ CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
 	cuelr->col		= col;
 	cuelr->val		= val;
 	IF_DEBUG(1) {
-		printf("PE%i: created cudaELR type from ELR with:\n nRows:\tcelr=%i\t(elr=%i)\n padding:\tcelr=%i\t(elr=%i)\nnMaxRow:\tcelr=%i\t(elr=%i)\n",
+		printf("PE%i: created CL_ELR type from ELR with:\n nRows:\tcelr=%i\t(elr=%i)\n padding:\tcelr=%i\t(elr=%i)\nnMaxRow:\tcelr=%i\t(elr=%i)\n",
 				me, cuelr->nRows, elr->nRows, cuelr->padding, elr->padding,
 				cuelr->nMaxRow, elr->nMaxRow);
 	}
@@ -820,7 +837,7 @@ void CL_CopyPJDSToDevice( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 			colMemSize, colMemSize/(1024*1024));
 	CL_copyHostToDevice( cpjds->col, pjds->col, colMemSize );
 
-	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
+	IF_DEBUG(1) printf("PE%i: PJDStoDevice: colStart %lu \t(%lu MB)\n", me,
 			colStartMemSize, colStartMemSize/(1024*1024));
 	CL_copyHostToDevice( cpjds->colStart, pjds->colStart, colStartMemSize );
 
@@ -839,7 +856,6 @@ void CL_CopyELRToDevice( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
 	 * celr must be allocated in advance (using cudaELRInit) */
-	printf("CL_CopyELRToDevice\n");
 
 	assert( celr->nRows == elr->nRows );
 	assert( celr->padding == elr->padding );
@@ -944,11 +960,12 @@ void CL_CopyELRBackToHost( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 
 void freePJDSMatrix( PJDS_TYPE* const pjds ) {
 	if( pjds ) {
-		printf("freeing host mem %p\n",pjds->rowLen);
 		freeHostMemory( pjds->rowLen );
 		freeHostMemory( pjds->col );
 		freeHostMemory( pjds->colStart );
 		freeHostMemory( pjds->val );
+	//	freeHostMemory( pjds->invRowPerm );
+	//	freeHostMemory( pjds->rowPerm );
 		free( pjds );
 	}
 }
@@ -958,6 +975,8 @@ void freeELRMatrix( ELR_TYPE* const elr ) {
 		freeHostMemory( elr->rowLen );
 		freeHostMemory( elr->col );
 		freeHostMemory( elr->val );
+		//freeHostMemory( elr->invRowPerm );
+		//freeHostMemory( elr->rowPerm );
 		free( elr );
 	}
 }

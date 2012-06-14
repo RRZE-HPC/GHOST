@@ -7,6 +7,7 @@
 #include <CL/cl.h>
 #include <stdbool.h>
 #include "my_ellpack.h"
+#include "matricks.h"
 
 #define NUM_KERNELS 4
 #define KERNEL_ELR 0
@@ -14,8 +15,7 @@
 #define KERNEL_PJDS 2
 #define KERNEL_PJDS_ADD 3
 
-
-void CL_selectDevice( int, int, const char* );
+void CL_init( int, int, const char* );
 
 cl_mem CL_allocDeviceMemory( size_t );
 void* allocHostMemory( size_t );
@@ -26,7 +26,7 @@ void CL_freeDeviceMemory( cl_mem );
 void freeHostMemory( void* );
 void CL_finish();
 
-void oclKernel(void *,  cl_mem, cl_mem, bool, bool);
+void oclKernel(void *,  cl_mem, cl_mem, bool, int);
 
 /*void elrCudaKernel( const double* , const int* , const int* , const int, const int, const double*, double* );
 void elrCudaKernelTexCache( const double* , const int* , const int* , const int, const int, double* );

@@ -12,6 +12,9 @@
 #include <likwid.h>
 
 /* Global variables */
+const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
+
+
 int error_count, acc_error_count;
 
 int coreId=2;
@@ -39,7 +42,7 @@ int main( int nArgs, char* arg[] ) {
 	int N_MULTS;
 	int mypid;
 	int i,j; 
-	double ws;
+	size_t ws;
 	unsigned long mystringlength;
 
 	char restartfilename[50];
@@ -120,6 +123,14 @@ int main( int nArgs, char* arg[] ) {
 	 *******            ........ Executable statements ........          ********
 	 ***************************************************************************/
 
+	int matrixFormat[3]; // {full matrix, local matrix, remote matrix}
+	matrixFormat[0] = SPM_FORMAT_PJDS;
+	matrixFormat[1] = SPM_FORMAT_PJDS;
+	matrixFormat[2] = SPM_FORMAT_ELR;
+
+	if (matrixFormat[1] == matrixFormat[2] && matrixFormat[1] == SPM_FORMAT_PJDS)
+		myabort ("There must NOT be pJDS for the local AND remote part");
+
 
 	allocatedMem = 0;
 	required_threading_level = MPI_THREAD_MULTIPLE;
@@ -172,10 +183,10 @@ int main( int nArgs, char* arg[] ) {
 
 #ifdef DAXPY
 	job_flag = IS_DAXPY;
-	sprintf(benchmark, "DAXPY: y=y+A*x");
+	sprintf(benchmark, "y=y+A*x");
 #else
 	job_flag = IS_AX;
-	sprintf(benchmark, "pure multiply: y=A*x");
+	sprintf(benchmark, "y=A*x");
 #endif
 
 #ifdef REVBUF
@@ -309,6 +320,9 @@ int main( int nArgs, char* arg[] ) {
 		printf("Jobmask (integer)           : %12d\n", jobmask); 
 		printf("Jobmask (hexadecimal)       : %#12x\n", jobmask); 
 		printf("Type of benchmark           : %12s\n", benchmark); 
+		printf("Full matrix format          : %12s\n", SPM_FORMAT_NAME[matrixFormat[0]]); 
+		printf("Local matrix format         : %12s\n", SPM_FORMAT_NAME[matrixFormat[1]]); 
+		printf("Remote matrix format        : %12s\n", SPM_FORMAT_NAME[matrixFormat[2]]); 
 		printf("-----------------------------------------------------\n");
 
 
@@ -325,7 +339,7 @@ int main( int nArgs, char* arg[] ) {
 			AS_CYCLE_START;
 			pio_read_cr_rownumbers(cr, testcase);
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Binary read of CR row numbers");
+			IF_DEBUG(1) AS_WRITE_TIME("Binary read of CR row numbers");
 		}
 		else if (io_format == 2){
 			/* binary format *************************************/
@@ -335,13 +349,13 @@ int main( int nArgs, char* arg[] ) {
 			AS_CYCLE_START;
 			bin_read_cr(cr, testcase);
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Binary reading of CR");
+			IF_DEBUG(1) AS_WRITE_TIME("Binary reading of CR");
 
 			/* Write out CR-row numbers in binary format for lateron use */
 			AS_CYCLE_START;
 			pio_write_cr_rownumbers(cr, testcase);
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Binary write of CR row numbers");
+			IF_DEBUG(1) AS_WRITE_TIME("Binary write of CR row numbers");
 
 			/*printf("unFORTRAN CRS:\n");
 			  for(i=0; i < cr->nEnts; ++i) {
@@ -373,25 +387,25 @@ int main( int nArgs, char* arg[] ) {
 			/* Kein threashold beim Einlesen: nehme alle Elemente komplett mit */
 			mm = readMMFile( restartfilename, 0.0 );
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Reading of MM");
+			IF_DEBUG(1) AS_WRITE_TIME("Reading of MM");
 
 			/* Convert general MM-matrix to CRS-format */
 			AS_CYCLE_START;
 			cr = convertMMToCRMatrix( mm );
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Setup of CR");
+			IF_DEBUG(1) AS_WRITE_TIME("Setup of CR");
 
 			/* Write out CR-matrix in binary format for lateron use */
 			AS_CYCLE_START;
 			bin_write_cr(cr, testcase);
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Binary write of CR");
+			IF_DEBUG(1) AS_WRITE_TIME("Binary write of CR");
 
 			/* Write out CR-row numbers in binary format for lateron use */
 			AS_CYCLE_START;
 			pio_write_cr_rownumbers(cr, testcase);
 			AS_CYCLE_STOP;
-			AS_WRITE_TIME("Binary write of CR row numbers");
+			IF_DEBUG(1) AS_WRITE_TIME("Binary write of CR row numbers");
 
 			/* Free memory for MM matrix */
 			freeMMMatrix(mm);
@@ -506,12 +520,12 @@ int main( int nArgs, char* arg[] ) {
 	//   ierr= MPI_Barrier(MPI_COMM_WORLD); if (me==0) printf("before setup_communication\n");
 	PAS_CYCLE_START;
 	if(io_format!=1) {
-		lcrp = setup_communication(cr, work_dist);
+		lcrp = setup_communication(cr, work_dist,matrixFormat);
 	}
 	else {
 		lcrp = setup_communication_parallel(cr, work_dist, testcase);
 	}
-	PAS_WRITE_TIME("Setup of Communication");
+	IF_DEBUG(1) PAS_WRITE_TIME("Setup of Communication");
 
 
 
@@ -692,10 +706,24 @@ sweepMemory(GLOBAL);
 	IF_DEBUG(1) { printf("PE%i: donedonedone\n", me);fflush(stdout); }
 	//NUMA_CHECK("after placement of RHS & Solution");
 
-	//PAS_WRITE_TIME("Setup of invec");
+#ifdef OCLKERNEL	
+	size_t fullMemSize, localMemSize, remoteMemSize, 
+		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
+	if( jobmask & 503 ) { 
+		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
+		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+
+	} 
+	if( jobmask & 261640 ) { // only if jobtype requires split computation
+		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
+		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
+		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+	}
+#endif	
 
 	if(me==0){
-		ws = (lcrp->nRows*20.0 + lcrp->nEnts*12.0)/(1024*1024);
+		ws = ((lcrp->nRows+1)*sizeof(int) + lcrp->nEnts*(sizeof(double)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------------\n");
 		printf("-------         Statistics about matrix       -------\n");
 		printf("-----------------------------------------------------\n");
@@ -703,7 +731,16 @@ sweepMemory(GLOBAL);
 		printf("Dimension of matrix         : %12.0f\n", (float)lcrp->nRows); 
 		printf("Non-zero elements           : %12.0f\n", (float)lcrp->nEnts); 
 		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
-		printf("Working set [MB]            : %12.3f\n", ws); 
+		printf("Working set             [MB]: %12lu\n", ws);
+#ifdef OCLKERNEL	
+		if( jobmask & 503 ) 
+			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
+		if( jobmask & 261640 ) {
+			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
+			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
+			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
+		}
+#endif
 		printf("-----------------------------------------------------\n");
 		printf("------   Hybrid SpMVM using kernel version     ------\n");
 		printf("-----------------------------------------------------\n");
@@ -711,44 +748,7 @@ sweepMemory(GLOBAL);
 	}
 
 
-	size_t totalPJDSmemSize, nodeLocalPJDSmemSize;
-	size_t totalELRmemSize, nodeLocalELRmemSize;
 
-	if( jobmask & 502 ) { 
-		nodeLocalPJDSmemSize = lcrp->cpjds->nEnts*(sizeof(double)+sizeof(int)) + lcrp->cpjds->nRows*sizeof(int) + (lcrp->cpjds->nMaxRow)*sizeof(int);
-		nodeLocalELRmemSize = lcrp->cpjds->nMaxRow*lcrp->cpjds->padding*(sizeof(double)+sizeof(int)) + lcrp->cpjds->nRows*sizeof(int);
-	
-		MPI_Reduce(&nodeLocalPJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-		MPI_Reduce(&nodeLocalELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-
-		if (me==0) {
-			printf("\n");
-			printf("----------------------\n");
-			printf("--- ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
-			printf("-- pJDS size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
-			printf("------ saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
-			printf("----------------------\n");
-		}
-	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
-		nodeLocalPJDSmemSize = lcrp->lcpjds->nEnts*(sizeof(double)+sizeof(int)) + lcrp->lcpjds->nRows*sizeof(int) + (lcrp->lcpjds->nMaxRow)*sizeof(int);
-		nodeLocalPJDSmemSize += lcrp->rcelr->nMaxRow*lcrp->rcelr->padding*(sizeof(double)+sizeof(int)) + lcrp->rcelr->nRows*sizeof(int);
-		
-		nodeLocalELRmemSize = lcrp->lcpjds->nMaxRow*lcrp->lcpjds->padding*(sizeof(double)+sizeof(int)) + lcrp->lcpjds->nRows*sizeof(int);
-		nodeLocalELRmemSize += lcrp->rcelr->nMaxRow*lcrp->rcelr->padding*(sizeof(double)+sizeof(int)) + lcrp->rcelr->nRows*sizeof(int);
-		
-		MPI_Reduce(&nodeLocalPJDSmemSize, &totalPJDSmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-		MPI_Reduce(&nodeLocalELRmemSize, &totalELRmemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-
-		if (me==0) {
-			printf("\n");
-			printf("--------------------------\n");
-			printf("--- ELR+ELR size: %5ld MB\n",totalELRmemSize/(1000*1000));
-			printf("-- pJDS+ELR size: %5ld MB\n",totalPJDSmemSize/(1000*1000));
-			printf("---------- saved: %2.2lf  %\n",(double)(totalELRmemSize-totalPJDSmemSize)/totalELRmemSize*100);
-			printf("--------------------------\n");
-		}
-	} 
 
 
 
@@ -829,15 +829,19 @@ sweepMemory(GLOBAL);
 				HyK[version].cycles = (double) asm_cycles;
 				HyK[version].time   = time_it_took; 
 			}
+			
+			IF_DEBUG(1) PAS_CYCLE_START;
+			if ( ((0x1<<version) & 503) ) { 
+				permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+			} else if ( ((0x1<<version) & 261640) ) {
+				permuteVector(hlpvec_out->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
+			}
+			IF_DEBUG(1){PAS_WRITE_TIME("Permuting back vectors (if necessary)");}
 
 			/* Perform correctness check once for each kernel version */ 
 			performed++;
 			IF_DEBUG(1) PAS_CYCLE_START;
-		
-			if ( ((0x1<<version) & 502) ) 
-				permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-			if ( ((0x1<<version) & 261640) ) 
-				permuteVector(hlpvec_out->val,lcrp->localInvRowPerm,lcrp->lnRows[me]);
+
 
 			Correctness_check( resCR, lcrp, hlpvec_out->val );
 
@@ -860,7 +864,7 @@ sweepMemory(GLOBAL);
 			printf("global sync & time      [us]: %12.3f\n", (1e6*p_cycles4measurement)/clockfreq);
 			printf("Number of iterations        : %12.0f\n", 1.0*N_MULTS);
 			printf("-------------------------------------------------------\n");
-			printf("Kernel | Cycles per nze | Time per MVM [ms] |   MFlop/s\n"); 
+			printf("Kernel            Cyc/NZE  Time/MVM [ms]        MFlop/s\n"); 
 			for (version=0; version<NUMKERNELS; version++){
 				if ( ((0x1<<version) & jobmask) == 0 ) continue; 
 				acc_cycles = (double) HyK[version].cycles;
@@ -868,7 +872,7 @@ sweepMemory(GLOBAL);
 				/* Skip loop body if version does not make sense for used parametes */
 				if (version==0 && lcrp->nodes>1) continue;      /* no MPI available */
 				if (version>10 && version<17 && lcrp->threads==1) continue; /* not enough threads */
-				printf("Kern No. %4d    %12.3f   %16.5f %15.3f\n", 
+				printf("Kern No. %3d %12.2f %14.2f %14.2f\n", 
 						version, acc_cycles/((double)N_MULTS*(double)lcrp->nEnts), 
 						1000*acc_time/((double)N_MULTS), 
 						2.0e-6*(double)N_MULTS*(double)lcrp->nEnts/acc_time);

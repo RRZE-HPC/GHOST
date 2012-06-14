@@ -20,19 +20,19 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
    mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
       1.0*(cr->nEnts)*sizeof(double);
 
-   printf(" \n Schreibe %s (%6.2f MB)\n", restartfilename,
+   IF_DEBUG(1) printf(" \n Schreibe %s (%6.2f MB)\n", restartfilename,
 	 mybytes/1048576.0) ;
 
    if ((RESTFILE = fopen(restartfilename, "wb"))==NULL){
       printf("Fehler beim Oeffnen von %s\n", restartfilename);
       exit(1);
    }
-   printf("Schreibe: Anzahl Zeilen      = %d\n", cr->nRows);
-   printf("Schreibe: Anzahl Spalten     = %d\n", cr->nCols);
-   printf("Schreibe: Anzahl NZE         = %d\n", cr->nEnts);
-   printf("Schreibe: Array mit row-Offsets (%d Eintraege)\n", cr->nRows);
-   printf("Schreibe: Array mit Spalteneintraegen (%d Eintraege)\n", cr->nEnts);
-   printf("Schreibe: Array mit Matrixeintraegen (%d Eintraege)\n", cr->nEnts);
+   IF_DEBUG(1) printf("Schreibe: Anzahl Zeilen      = %d\n", cr->nRows);
+   IF_DEBUG(1) printf("Schreibe: Anzahl Spalten     = %d\n", cr->nCols);
+   IF_DEBUG(1) printf("Schreibe: Anzahl NZE         = %d\n", cr->nEnts);
+   IF_DEBUG(1) printf("Schreibe: Array mit row-Offsets (%d Eintraege)\n", cr->nRows);
+   IF_DEBUG(1) printf("Schreibe: Array mit Spalteneintraegen (%d Eintraege)\n", cr->nEnts);
+   IF_DEBUG(1) printf("Schreibe: Array mit Matrixeintraegen (%d Eintraege)\n", cr->nEnts);
 
    fwrite(&cr->nRows,               sizeof(int),    1,           RESTFILE);
    fwrite(&cr->nCols,               sizeof(int),    1,           RESTFILE);
@@ -45,9 +45,9 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
    fclose(RESTFILE);
 
    timing( &stopTime, &ct );
-   printf( "Schreiben der Matrix im CRS-Format (binaer): %8.2f s \n", 
+   IF_DEBUG(1) printf( "Schreiben der Matrix im CRS-Format (binaer): %8.2f s \n", 
 	 (double)(stopTime-startTime) );
-   printf( "Entspricht: %8.2f MB/s \n",  
+   IF_DEBUG(1) printf( "Entspricht: %8.2f MB/s \n",  
 	 (mybytes/1048576.0)/(double)(stopTime-startTime) );
 
 
@@ -160,7 +160,7 @@ void bin_read_cr(CR_TYPE* cr, const char* testcase){
 
    NUMA_CHECK_SERIAL("before placement zusteller");
 
-   printf("gezieltes placement in die falschen LD\n");
+   IF_DEBUG(1) printf("gezieltes placement in die falschen LD\n");
    size_hlp = (size_t) ( 450000000*sizeof(double));
    zusteller = (double*) allocateMemory( size_hlp,  "zusteller" );
 

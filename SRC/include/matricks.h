@@ -8,11 +8,12 @@
 
 #ifdef OCLKERNEL
 #include "my_ellpack.h"
-#endif
-
-#ifdef OCLKERNEL
 #include <CL/cl.h>
 #endif
+
+#define SPM_FORMAT_ELR 0
+#define SPM_FORMAT_PJDS 1
+
 
 typedef struct {
 	int nRows;
@@ -120,20 +121,16 @@ typedef struct {
   int* rcol;
   double* lval;
   double* rval;
+  int fullFormat;
+  int localFormat;
+  int remoteFormat;
   int *fullRowPerm;     // may be NULL
   int *fullInvRowPerm;  // may be NULL
-  int *localRowPerm;    // may be NULL
-  int *localInvRowPerm; // may be NULL
-#ifdef OCLKERNEL
-  CL_ELR_TYPE* rcelr;   // remote device ELR matrix
-#ifdef ELR
-  CL_ELR_TYPE* celr;    // full device ELR matrix
-  CL_ELR_TYPE* lcelr;   // local device ELR matrix
-#else
-  CL_PJDS_TYPE* cpjds;  // full device pJDS matrix
-  CL_PJDS_TYPE* lcpjds; // local device pJDS matrix
-#endif
-#endif
+  int *splitRowPerm;    // may be NULL
+  int *splitInvRowPerm; // may be NULL
+  void *fullMatrix;
+  void *localMatrix;
+  void *remoteMatrix;
 } LCRP_TYPE;
 
 typedef struct {
@@ -296,7 +293,7 @@ void bin_write_jd(const JD_TYPE*, const char*);
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);
 
-LCRP_TYPE* setup_communication(CR_TYPE* const, int);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int, int *);
 LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);
