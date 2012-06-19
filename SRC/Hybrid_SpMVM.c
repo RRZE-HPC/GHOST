@@ -126,7 +126,7 @@ int main( int nArgs, char* arg[] ) {
 	 ***************************************************************************/
 
 	MATRIX_FORMATS matrixFormats;
-	matrixFormats.format[0] = SPM_FORMAT_PJDS;
+	matrixFormats.format[0] = SPM_FORMAT_ELR;
 	matrixFormats.format[1] = SPM_FORMAT_PJDS;
 	matrixFormats.format[2] = SPM_FORMAT_ELR;
 	matrixFormats.T[0] = 2;
