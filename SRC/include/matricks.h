@@ -32,6 +32,12 @@ typedef struct {
 #endif
 } INT_VECTOR_TYPE;
 
+
+typedef struct {
+	int format[3];
+	int T[3];
+} MATRIX_FORMATS;
+
 typedef struct {
 	int row, col, nThEntryInRow;
 	double val;
@@ -124,13 +130,13 @@ typedef struct {
   int fullFormat;
   int localFormat;
   int remoteFormat;
+  void *fullMatrix;
+  void *localMatrix;
+  void *remoteMatrix;
   int *fullRowPerm;     // may be NULL
   int *fullInvRowPerm;  // may be NULL
   int *splitRowPerm;    // may be NULL
   int *splitInvRowPerm; // may be NULL
-  void *fullMatrix;
-  void *localMatrix;
-  void *remoteMatrix;
 } LCRP_TYPE;
 
 typedef struct {
@@ -296,7 +302,7 @@ void bin_write_jd(const JD_TYPE*, const char*);
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);
 
-LCRP_TYPE* setup_communication(CR_TYPE* const, int, int *);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int, MATRIX_FORMATS);
 LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);

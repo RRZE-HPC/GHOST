@@ -1119,7 +1119,7 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->hput_pos );
 		free( lcrp->val );
 		free( lcrp->col );
-		free( lcrp->row_ptr );
+		//free( lcrp->row_ptr );
 		free( lcrp->lrow_ptr );
 		free( lcrp->lrow_ptr_l );
 		free( lcrp->lrow_ptr_r );
@@ -1127,17 +1127,9 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
-#ifdef OCLAKERNEL
-#ifdef ELR
-		CL_freeELRMatrix( lcrp->celr );
-		CL_freeELRMatrix( lcrp->lcelr );
-		CL_freeELRMatrix( lcrp->rcelr );
-#else
-		CL_freePJDSMatrix( lcrp->cpjds );
-		CL_freePJDSMatrix( lcrp->lcpjds );
-		CL_freeELRMatrix( lcrp->rcelr );
-#endif
-#endif
+		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
+		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
+		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
 		free( lcrp );
 	}
 }

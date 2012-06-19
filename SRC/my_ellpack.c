@@ -30,6 +30,17 @@ size_t getBytesize(void *mat, int format) {
 	return sz;
 }
 
+int comparePosRowMajor( const void* a, const void* b ) {
+	int aRow = ((MATRIX_ENTRY*)a)->row,
+		bRow = ((MATRIX_ENTRY*)b)->row,
+		aCol = ((MATRIX_ENTRY*)a)->col,
+		bCol = ((MATRIX_ENTRY*)b)->col;
+
+	if( aRow == bRow ) {
+		return aCol - bCol;
+	}
+	else return aRow - bRow;
+}
 
 void getPadding(int nRows, int* paddedRows) {
 
@@ -46,21 +57,26 @@ void getPadding(int nRows, int* paddedRows) {
 
 /**********************  pJDS MATRIX TYPE *********************************/
 
-PJDS_TYPE* convertCRSToPJDSMatrix(  const double* crs_val, const int* crs_col, 
-		const int* crs_row_ptr, const int nRows) 
+PJDS_TYPE* CRStoPJDST(  const double* crs_val, const int* crs_col, 
+		const int* crs_row_ptr, const int nRows, const int threadsPerRow) 
 {
 	ELR_TYPE * elrs;
-	elrs = convertCRSToELRSortedMatrix(crs_val, crs_col, crs_row_ptr, nRows);
+	elrs = CRStoELRS(crs_val, crs_col, crs_row_ptr, nRows);
 	PJDS_TYPE * pjds;
-	pjds = convertELRSortedToPJDSMatrix(elrs);
+	pjds = ELRStoPJDST(elrs,threadsPerRow);
 
-	freeELRMatrix(elrs);
+	freeELR(elrs);
 	return pjds;
 }
 
-PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
+PJDS_TYPE* CRStoPJDS(  const double* crs_val, const int* crs_col, 
+		const int* crs_row_ptr, const int nRows) 
+{
+	return CRStoPJDST( crs_val, crs_col, crs_row_ptr, nRows, 1); 
+}
 
-	int threadsPerRow = 1;
+PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow ) {
+
 	PJDS_TYPE *pjds = NULL;
 	int  i,j,st;
 
@@ -69,18 +85,18 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
 		exit(EXIT_FAILURE);
 	}
 
-	pjds = (PJDS_TYPE*) malloc(sizeof(PJDS_TYPE));
+	pjds = (PJDS_TYPE*) allocateMemory(sizeof(PJDS_TYPE),"pjds");
 
 	// initialize pjds entries
-	pjds->rowPerm = (int *)malloc(elr->nRows*sizeof(int));	
-	pjds->invRowPerm = (int *)malloc(elr->nRows*sizeof(int));	
+	pjds->rowPerm = (int *)allocateMemory(elr->nRows*sizeof(int),"pjds->rowPerm");	
+	pjds->invRowPerm = (int *)allocateMemory(elr->nRows*sizeof(int),"pjds->invRowPerm");	
 	pjds->padding = elr->padding;
 	pjds->nRows = elr->nRows;
 	pjds->nMaxRow = elr->nMaxRow;
-	int * chunkLen = (int*) malloc((int)sizeof(int)*elr->padding/PJDS_CHUNK_HEIGHT);
-	pjds->rowLen = (int*) malloc((int)sizeof(int)*elr->nRows);
+	int * chunkLen = (int*) allocateMemory((int)sizeof(int)*elr->padding/PJDS_CHUNK_HEIGHT,"chunkLen");
+	pjds->rowLen = (int*) allocateMemory((int)sizeof(int)*elr->nRows,"pjds->rowLen");
 	pjds->nEnts = 0;
-	//pjds->T = threadsPerRow;
+	pjds->T = threadsPerRow;
 
 	memcpy(pjds->rowPerm,elr->rowPerm,elr->nRows*sizeof(int));
 	memcpy(pjds->invRowPerm,elr->invRowPerm,elr->nRows*sizeof(int));
@@ -92,7 +108,7 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
 	}
 
 
-	int *colHeight = (int *)malloc(sizeof(int)*pjds->rowLen[0]);
+	int *colHeight = (int *)allocateMemory(sizeof(int)*pjds->rowLen[0],"colHeight");
 	int curCol = pjds->rowLen[0]-1;
 	int curChunk = 0;
 
@@ -128,9 +144,9 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
 	//	printf("### nEnts: %d\n",pjds->nEnts);
 
 
-	pjds->val = (double*) malloc(sizeof(double)*pjds->nEnts); 
-	pjds->colStart = (int*) malloc(sizeof(int)*(chunkLen[0]));
-	pjds->col = (int*) malloc(sizeof(int)*pjds->nEnts);
+	pjds->val = (double*) allocateMemory(sizeof(double)*pjds->nEnts,"pjds->val"); 
+	pjds->colStart = (int*) allocateMemory(sizeof(int)*(chunkLen[0]),"pjds->colStart");
+	pjds->col = (int*) allocateMemory(sizeof(int)*pjds->nEnts,"pjds->col");
 
 	for( i=0; i < pjds->nRows; ++i) {
 		pjds->rowLen[i] /= threadsPerRow; 
@@ -170,104 +186,245 @@ PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
 	return pjds;
 }
 
-/*PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* elr ) {
-  PJDS_TYPE *pjds = NULL;
-  int *rowLen;
-  int  i;
-  size_t size_val, size_col, size_rowlen, size_colStart;
+ELR_TYPE *MMtoELR(const char *filename, int threadsPerRow) {
 
-  if (elr->padding % PJDS_CHUNK_HEIGHT != 0) {
-  printf("ELR matrix cannot be divided into chunks.\n");
-  exit(EXIT_FAILURE);
-  }
+	ELR_TYPE* mat = NULL;
+	FILE *file;
+	int nCols, nEnts;
+	int i,j;
+	MATRIX_ENTRY *entries;
 
-  size_rowlen   = (int)sizeof(int)*elr->nRows;
+	mat = (ELR_TYPE*) allocateMemory(sizeof(ELR_TYPE),"elr");
 
+	file = fopen( filename, "r" );
 
-  rowLen = (int*) allocHostMemory( size_rowlen ); 
-
-  pjds = (PJDS_TYPE*) allocateMemory( sizeof( PJDS_TYPE ), "pjds");
-
-// initialize pjds entries	
-pjds->padding = elr->padding;
-pjds->nRows = elr->nRows;
-pjds->nMaxRow = elr->nMaxRow;
-pjds->rowLen = rowLen;
-pjds->nEnts = 0;
-memcpy(pjds->rowLen,elr->rowLen,size_rowlen);
+	if( ! file ) {
+		fprintf( stderr, "readMatrix: could not open file '%s' for reading\n", filename );
+		free( mat );
+		return NULL;
+	}
+	int skippingComments = 1, readUntilEndOfLine = 0;
 
 
-size_t *colHeight = (size_t *)malloc(sizeof(size_t)*elr->rowLen[0]);
-int curCol = elr->rowLen[0]-1;
-int curChunk = 0, st=0;
+	while( skippingComments ) {
+		char c;
+		if( fread( &c, 1, 1, file ) != 1 ) {
+			fprintf( stderr, "readMMFile: error while skipping comments\n" );
+			fclose( file );
+			free( mat );
+			return NULL;
+		}
 
-for (i=0; i<elr->padding; i+=PJDS_CHUNK_HEIGHT) 
-{
-if (i>=elr->nRows)
-pjds->rowLen[i] = pjds->rowLen[pjds->nRows-1];
+		if( readUntilEndOfLine ) {
+			if( c == '\n' ) readUntilEndOfLine = 0;
+		}
+		else {
+			if( c == '%' ) readUntilEndOfLine = 1;
+			else {
+				ungetc( c, file );
+				skippingComments = 0;
+			}
+		}
+	}
 
-pjds->nEnts += PJDS_CHUNK_HEIGHT*pjds->rowLen[i];
 
-// if a step occurs save the column heights
-if (curChunk != 0 && pjds->rowLen[i] != pjds->rowLen[i-PJDS_CHUNK_HEIGHT]) 
-{
-IF_DEBUG(1) printf("step at chunk %d from %d to %d\n",curChunk,pjds->rowLen[i-PJDS_CHUNK_HEIGHT],pjds->rowLen[i]);
-for (st=0; st<pjds->rowLen[i-PJDS_CHUNK_HEIGHT]-pjds->rowLen[i]; st++) // count all cols
-{ 
-colHeight[curCol] = i;
-IF_DEBUG(2)	printf("col: %d | height: %ld\n",curCol,colHeight[curCol]);
-curCol--;
+	if( fscanf( file, "%i %i %i\n", &mat->nRows, &nCols, &nEnts ) != 3 ) {
+		fprintf( stderr, "readMatrix: error while reading header\n" );
+		fclose( file );
+		free( mat );
+		return NULL;
+	}
+
+	//	mat->nRows--;
+	//	nCols--;
+
+	getPadding(mat->nRows,&mat->padding);
+
+	mat->rowLen = (int *)allocateMemory(mat->nRows*sizeof(int),"mat->rowLen");
+
+	entries = (MATRIX_ENTRY *)allocateMemory(nEnts*sizeof(MATRIX_ENTRY),"entries");
+	mat->T = threadsPerRow;
+
+	for (i = 0; i < nEnts; i++) { 
+		if( fscanf( file, "%i %i %le\n", &entries[i].row, &entries[i].col, &entries[i].val ) != 3 ||
+				entries[i].row < 1 || entries[i].row > mat->nRows ||
+				entries[i].col < 1 || entries[i].col > nCols ) 
+
+		{
+			fprintf( stderr, "readMatrix: error while reading entries\n" );
+			fclose( file );
+			free( entries );
+			free( mat );
+			return NULL;
+		}
+
+		entries[i].row--;
+		entries[i].col--;
+	}
+
+
+	// initialize row lengths
+	for (i = 0; i<mat->nRows; i++)
+		mat->rowLen[i] = 0;
+
+	// sort entries (row-major)
+	qsort(entries, nEnts, sizeof(MATRIX_ENTRY), comparePosRowMajor);
+
+	// set row lengths and find maximum row length
+	mat->nMaxRow = 0;
+	for (i = 0; i < nEnts; i++) {
+		mat->rowLen[entries[i].row]++;
+		if (mat->nMaxRow < mat->rowLen[entries[i].row])
+			mat->nMaxRow = mat->rowLen[entries[i].row];
+	}
+	if (mat->nMaxRow%threadsPerRow != 0)
+		mat->nMaxRow += threadsPerRow-mat->nMaxRow%threadsPerRow;
+
+	mat->col = (int *)calloc(mat->nMaxRow*mat->padding,sizeof(int));
+	mat->val = (double *)calloc(mat->nMaxRow*mat->padding,sizeof(double));
+
+	// store values and columns in COLUMN-MAJOR order
+	int rowOffset; // offset to current row
+
+	int* curIdxOfNZE = (int*)allocateMemory(mat->nRows * sizeof(int),"curIdxOfNZE"); // (local) index of current non-zero element in each row
+	for (i=0; i<mat->nRows; i++) 
+		curIdxOfNZE[i]=0;
+
+	int idb,stack;
+	rowOffset=0;
+	for (i=0; i<mat->nRows; i++) {
+		for (j=0; j<mat->rowLen[i]; j++) {
+			idb = j%threadsPerRow;
+			stack = j/threadsPerRow;
+			mat->col[ stack*threadsPerRow*mat->padding + threadsPerRow*i + idb ]   = entries[rowOffset+curIdxOfNZE[i]].col;
+			mat->val[ stack*threadsPerRow*mat->padding + threadsPerRow*i + idb ]   = entries[rowOffset+curIdxOfNZE[i]].val;
+
+			curIdxOfNZE[i]++;
+		}
+		rowOffset+=mat->rowLen[i];
+	}
+	for(i=0; i < mat->nRows; ++i) {
+		if (mat->rowLen[i]%threadsPerRow != 0)
+			mat->rowLen[i] += threadsPerRow-mat->rowLen[i]%threadsPerRow;
+		mat->rowLen[i] /= threadsPerRow; 
+	}
+
+	free(curIdxOfNZE);
+	free(entries);
+
+	return mat;
 }
+
+ELR_TYPE* CRStoELRT(const double* crs_val, const int* crs_col, 
+		const int* crs_row_ptr, const int nRows, int threadsPerRow) {
+
+	int i, j;
+	ELR_TYPE* elr = NULL;
+
+	elr = (ELR_TYPE *) allocateMemory(sizeof(ELR_TYPE ),"elr");
+	elr->nRows       = nRows;
+	getPadding(nRows,&elr->padding);
+
+	elr->nMaxRow   = 0;
+	for (i=0; i<nRows; ++i) 
+		elr->nMaxRow = (elr->nMaxRow > crs_row_ptr[i+1]-crs_row_ptr[i])?elr->nMaxRow:crs_row_ptr[i+1]-crs_row_ptr[i];
+
+	if (elr->nMaxRow%threadsPerRow != 0)
+		elr->nMaxRow += threadsPerRow-elr->nMaxRow%threadsPerRow;
+
+	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
+	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
+	elr->val         = (double*)allocateMemory(sizeof(double)*elr->padding*elr->nMaxRow,"elr->val"); 
+	elr->T			 = threadsPerRow;
+
+
+	for( j=0; j < elr->nMaxRow; ++j) {
+		for( i=0; i < elr->padding; ++i) {
+			elr->col[i+j*elr->padding] = 0;
+			elr->val[i+j*elr->padding] = 0.0;
+		}
+	}
+
+	for( i=0; i < elr->nRows; ++i) {
+		elr->rowLen[i] = crs_row_ptr[i+1]-crs_row_ptr[i];
+	}
+
+	int idb,stack;
+
+
+	for( i = 0; i < elr->nRows; ++i) {
+		for( j = 0; j < elr->rowLen[i]; ++j) {
+
+			idb = j%threadsPerRow;
+			stack = j/threadsPerRow;
+			elr->col[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_col[ crs_row_ptr[i]+j ];
+			elr->val[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_val[ crs_row_ptr[i]+j ];
+		}
+	}
+
+	for( i=0; i < elr->nRows; ++i) {
+		if (elr->rowLen[i]%threadsPerRow != 0)
+			elr->rowLen[i] += threadsPerRow-elr->rowLen[i]%threadsPerRow;
+		elr->rowLen[i] /= threadsPerRow; 
+	}
+
+	return elr;
 }
-curChunk++;
 
+ELR_TYPE* CRStoELRTP(const double* crs_val, const int* crs_col, 
+		const int* crs_row_ptr, const int nRows, const int* rowPerm, const int* invRowPerm, int threadsPerRow) {
+
+	int i, j;
+	ELR_TYPE* elr = NULL;
+
+	elr = (ELR_TYPE *) allocateMemory(sizeof(ELR_TYPE ),"elr");
+	elr->nRows       = nRows;
+	getPadding(nRows,&elr->padding);
+
+	elr->nMaxRow   = 0;
+	for (i=0; i<nRows; ++i) 
+		elr->nMaxRow = (elr->nMaxRow > crs_row_ptr[i+1]-crs_row_ptr[i])?elr->nMaxRow:crs_row_ptr[i+1]-crs_row_ptr[i];
+
+	if (elr->nMaxRow%threadsPerRow != 0)
+		elr->nMaxRow += threadsPerRow-elr->nMaxRow%threadsPerRow;
+
+	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
+	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
+	elr->val         = (double*)allocateMemory(sizeof(double)*elr->padding*elr->nMaxRow,"elr->val"); 
+	elr->T			 = threadsPerRow;
+
+
+	for( j=0; j < elr->nMaxRow; ++j) {
+		for( i=0; i < elr->padding; ++i) {
+			elr->col[i+j*elr->padding] = 0;
+			elr->val[i+j*elr->padding] = 0.0;
+		}
+	}
+
+
+	int idb,stack;
+
+	for( i = 0; i < elr->nRows; ++i) {
+		elr->rowLen[i] = crs_row_ptr[invRowPerm[i]+1]-crs_row_ptr[invRowPerm[i]];
+		for( j = 0; j < elr->rowLen[i]; ++j) {
+
+			idb = j%threadsPerRow;
+			stack = j/threadsPerRow;
+			elr->col[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
+			elr->val[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
+		}
+	}
+
+	for( i=0; i < elr->nRows; ++i) {
+		if (elr->rowLen[i]%threadsPerRow != 0)
+			elr->rowLen[i] += threadsPerRow-elr->rowLen[i]%threadsPerRow;
+		elr->rowLen[i] /= threadsPerRow; 
+	}
+
+	return elr;
 }
 
-// collect all columns with maximal height
-while(curCol >= 0) {
-colHeight[curCol] = elr->padding;
-IF_DEBUG(2)	printf("col: %d | height: %ld\n",curCol,colHeight[curCol]);
-curCol--;
-}
-
-size_val = (size_t)sizeof(double)*pjds->nEnts;
-size_col = (size_t)sizeof(int)*pjds->nEnts;
-size_colStart = sizeof(int)*pjds->rowLen[0];
-
-
-pjds->val = (double*) allocHostMemory( size_val ); 
-pjds->colStart = (int*) allocHostMemory( size_colStart );
-pjds->col = (int*) allocHostMemory( size_col);
-
-int j;
-pjds->colStart[0] = 0; // initial colStart is zero
-for (j=1; j<pjds->rowLen[0]; j++) // save all other colStart
-{
-	pjds->colStart[j] = pjds->colStart[j-1]+colHeight[j-1];
-}
-pjds->colStart[pjds->rowLen[0]]=pjds->nEnts;
-
-// check for sanity
-//	assert(pjds->colStart[pjds->rowLen[0]-1] + colHeight[(pjds->rowLen[0]-1)] == pjds->nEnts);
-
-// copy col and val from elr-s to pjds
-
-for (j=0; j<pjds->rowLen[0]; j++) 
-{
-	for (i=0; i<colHeight[j]; i++) 
-	{
-		pjds->val[pjds->colStart[j]+i] = elr->val[j*elr->padding+i];
-		pjds->col[pjds->colStart[j]+i] = elr->col[j*elr->padding+i];
-
-	}	
-}
-
-
-return pjds;
-
-}*/
-
-ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRP(  const double* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows, const int* rowPerm, const int* invRowPerm) {
 
 
@@ -343,7 +500,7 @@ ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* crs_val, const int* crs_
 			if( j*padRows+i >= elr->nMaxRow*padRows ) 
 				printf("error: in i=%i, j=%i\n",i,j);
 
-			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
+			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]]; //PERMCOLS
 			elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
 			elr->val[ j*padRows+i ]   = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
 		}
@@ -356,7 +513,7 @@ ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* crs_val, const int* crs_
 
 /**********************  sorted ELR MATRIX TYPE *********************************/
 
-ELR_TYPE* convertCRSToELRSortedMatrix(  const double* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRS(  const double* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
 
 	JD_SORT_TYPE* rowSort;
@@ -513,16 +670,16 @@ ELR_TYPE* convertCRSToELRSortedMatrix(  const double* crs_val, const int* crs_co
 }
 
 
-void checkCRSToPJDSsanity(const double* crs_val, const int* crs_col, 
+void checkCRStToPJDS(const double* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,
-		const PJDS_TYPE* pjds, const int* invRowPerm) {
+		const PJDS_TYPE* pjds) {
 
 
 }
 
 /**********************  ELR MATRIX TYPE *********************************/
 
-ELR_TYPE* convertCRSToELRMatrix(  const double* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELR(  const double* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
 
 	/* allocate and fill ELR-format matrix from CRS format data;
@@ -607,7 +764,7 @@ ELR_TYPE* convertCRSToELRMatrix(  const double* crs_val, const int* crs_col,
 /* ########################################################################## */
 
 
-void checkCRSToELRsanity(	const double* crs_val, const int* crs_col, 
+void checkCRSToELR(	const double* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,
 		const ELR_TYPE* elr) {
 	/* check if matrix in elr is consistent with CRS;
@@ -708,7 +865,7 @@ void elrColIdToC( ELR_TYPE* elr ) {
 }
 
 #ifdef OCLKERNEL
-CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
+CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	/* allocate (but do not fill) memory for elr matrix on device */
 
@@ -765,7 +922,7 @@ CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds) {
 
 
 #ifdef OCLKERNEL
-CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
+CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	/* allocate (but do not fill) memory for elr matrix on device */
 
@@ -815,7 +972,7 @@ CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr) {
 /* ########################################################################## */
 
 #ifdef OCLKERNEL
-void CL_CopyPJDSToDevice( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
+void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
 	 * celr must be allocated in advance (using cudaELRInit) */
@@ -852,7 +1009,7 @@ void CL_CopyPJDSToDevice( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 #endif
 
 #ifdef OCLKERNEL
-void CL_CopyELRToDevice( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
+void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
 	 * celr must be allocated in advance (using cudaELRInit) */
@@ -887,7 +1044,7 @@ void CL_CopyELRToDevice( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 
 #ifdef OCLKERNEL
-void CL_CopyPJDSBackToHost( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
+void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
 	 * celr must be allocated in advance (using cudaELRInit) */
@@ -925,7 +1082,7 @@ void CL_CopyPJDSBackToHost( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 #endif
 
 #ifdef OCLKERNEL
-void CL_CopyELRBackToHost( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
+void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 
 	/* copy col, val and rowLen from device celr to CPU;
 	 * elr must be allocated in advance */
@@ -958,19 +1115,19 @@ void CL_CopyELRBackToHost( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 
 /* ########################################################################## */
 
-void freePJDSMatrix( PJDS_TYPE* const pjds ) {
+void freePJDS( PJDS_TYPE* const pjds ) {
 	if( pjds ) {
 		freeHostMemory( pjds->rowLen );
 		freeHostMemory( pjds->col );
 		freeHostMemory( pjds->colStart );
 		freeHostMemory( pjds->val );
-	//	freeHostMemory( pjds->invRowPerm );
-	//	freeHostMemory( pjds->rowPerm );
+		//	freeHostMemory( pjds->invRowPerm );
+		//	freeHostMemory( pjds->rowPerm );
 		free( pjds );
 	}
 }
 
-void freeELRMatrix( ELR_TYPE* const elr ) {
+void freeELR( ELR_TYPE* const elr ) {
 	if( elr ) {
 		freeHostMemory( elr->rowLen );
 		freeHostMemory( elr->col );
@@ -983,7 +1140,7 @@ void freeELRMatrix( ELR_TYPE* const elr ) {
 
 
 #ifdef OCLKERNEL
-void CL_freePJDSMatrix( CL_PJDS_TYPE* const cpjds ) {
+void CL_freePJDS( CL_PJDS_TYPE* const cpjds ) {
 	if( cpjds ) {
 		CL_freeDeviceMemory( cpjds->rowLen );
 		CL_freeDeviceMemory( cpjds->col );
@@ -993,7 +1150,7 @@ void CL_freePJDSMatrix( CL_PJDS_TYPE* const cpjds ) {
 	}
 }
 
-void CL_freeELRMatrix( CL_ELR_TYPE* const celr ) {
+void CL_freeELR( CL_ELR_TYPE* const celr ) {
 	if( celr ) {
 		CL_freeDeviceMemory( celr->rowLen );
 		CL_freeDeviceMemory( celr->col );
@@ -1001,4 +1158,15 @@ void CL_freeELRMatrix( CL_ELR_TYPE* const celr ) {
 		free( celr );
 	}
 }
+
+void CL_freeMatrix(void *matrix, int format) {
+	if (matrix) {
+		if (format == SPM_FORMAT_ELR) {
+			CL_freeELR((CL_ELR_TYPE *)matrix);
+		} else if (format == SPM_FORMAT_PJDS) {
+			CL_freePJDS((CL_PJDS_TYPE *)matrix);
+		}
+	}
+}
+
 #endif

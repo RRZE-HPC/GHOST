@@ -9,13 +9,38 @@
 #include "my_ellpack.h"
 #include "matricks.h"
 
-#define NUM_KERNELS 4
+#define SPM_KERNEL_FULL 0
+#define SPM_KERNEL_LOCAL 1
+#define SPM_KERNEL_REMOTE 2
+
+/*#define NUM_KERNELS 20
 #define KERNEL_ELR 0
 #define KERNEL_ELR_ADD 1
 #define KERNEL_PJDS 2
 #define KERNEL_PJDS_ADD 3
 
-void CL_init( int, int, const char* );
+#define KERNEL_ELR2 4
+#define KERNEL_ELR2_ADD 5
+#define KERNEL_PJDS2 6
+#define KERNEL_PJDS2_ADD 7
+
+#define KERNEL_ELR4 8
+#define KERNEL_ELR4_ADD 9
+#define KERNEL_PJDS4 10
+#define KERNEL_PJDS4_ADD 11
+
+#define KERNEL_ELR8 12
+#define KERNEL_ELR8_ADD 13
+#define KERNEL_PJDS8 14
+#define KERNEL_PJDS8_ADD 15
+
+#define KERNEL_ELR16 16
+#define KERNEL_ELR16_ADD 17
+#define KERNEL_PJDS16 18
+#define KERNEL_PJDS16_ADD 19*/
+
+void CL_init( int, int, const char*, MATRIX_FORMATS );
+void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
 cl_mem CL_allocDeviceMemory( size_t );
 void* allocHostMemory( size_t );
@@ -26,12 +51,6 @@ void CL_freeDeviceMemory( cl_mem );
 void freeHostMemory( void* );
 void CL_finish();
 
-void oclKernel(void *,  cl_mem, cl_mem, bool, int);
-
-/*void elrCudaKernel( const double* , const int* , const int* , const int, const int, const double*, double* );
-void elrCudaKernelTexCache( const double* , const int* , const int* , const int, const int, double* );
-
-void elrCudaKernelAdd( const double* , const int* , const int* , const int, const int, const double*, double* );
-void elrCudaKernelTexCacheAdd( const double* , const int* , const int* , const int, const int, double* );*/
+void CL_spMVM(void *,  cl_mem, cl_mem, bool, int);
 
 #endif

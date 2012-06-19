@@ -5,6 +5,7 @@
 
 #ifdef OCLKERNEL
 #include "oclmacros.h"
+#include "oclfun.h"
 #endif
 
 #include <stdbool.h>
@@ -42,7 +43,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 #ifdef OCLKERNEL
-	oclKernel(lcrp->fullMatrix,invec->CL_val_gpu,res->CL_val_gpu,false,lcrp->fullFormat);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
 
 #else
 
@@ -64,6 +65,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #ifdef OCLKERNEL
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+
 
 	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 #endif
@@ -104,7 +106,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 #endif
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 #ifdef OCLKERNEL
-	oclKernel(lcrp->localMatrix,invec->CL_val_gpu,res->CL_val_gpu,false,lcrp->localFormat);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
 
 #else
 
@@ -158,7 +160,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 #ifdef OCLKERNEL
-	oclKernel(lcrp->remoteMatrix,invec->CL_val_gpu,res->CL_val_gpu,true,lcrp->remoteFormat);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 #else
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
@@ -213,7 +215,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	oclKernel(lcrp->localMatrix,invec->CL_val_gpu,res->CL_val_gpu,false,lcrp->localFormat);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
 
 	IF_DEBUG(1){
 		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -246,7 +248,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	oclKernel(lcrp->remoteMatrix,invec->CL_val_gpu,res->CL_val_gpu,true,lcrp->remoteFormat);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 
 	IF_DEBUG(1){
 		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);

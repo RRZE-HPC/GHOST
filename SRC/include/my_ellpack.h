@@ -6,15 +6,12 @@
 
 typedef struct {
 	int nRows, nMaxRow, padding;
-} ELR_PROPS;
-
-typedef struct {
-	int nRows, nMaxRow, padding;
 	int* col;
 	int* rowLen;
 	double* val;
 	int *invRowPerm;
 	int *rowPerm;
+	int T;
 } ELR_TYPE;
 
 typedef struct {
@@ -24,31 +21,6 @@ typedef struct {
 	cl_mem val;
 } CL_ELR_TYPE;
 
-
-ELR_TYPE* convertCRSToELRMatrix( const double*, const int*, const int*, const int ); 
-void checkCRSToELRsanity( const double*, const int*, const int*, const int, const ELR_TYPE* );
-void resetELR( ELR_TYPE* elr );
-void elrColIdToFortran( ELR_TYPE* elr );
-void elrColIdToC( ELR_TYPE* elr );
-
-
-void freeELRMatrix( ELR_TYPE* const elr );
-
-
-
-CL_ELR_TYPE* CL_ELRInit( const ELR_TYPE* elr );
-
-void CL_CopyELRToDevice(CL_ELR_TYPE* celr, const ELR_TYPE* elr );
-void CL_CopyELRBackToHost( ELR_TYPE* elr, const CL_ELR_TYPE* celr );
-
-
-void CLfreeELRMatrix( CL_ELR_TYPE* const celr );
-
-
-ELR_TYPE* convertCRSToELRSortedMatrix(  const double* , const int* , const int*,  const int);
-ELR_TYPE* convertCRSToELRPermutedMatrix(  const double* , const int* , const int*,  const int,	const int*, const int*);
-/************ PJDS *******/
-
 typedef struct {
 	int nRows, nMaxRow, padding, nEnts;
 	int* col;
@@ -57,6 +29,7 @@ typedef struct {
 	double* val;
 	int *invRowPerm;
 	int *rowPerm;
+	int T;
 } PJDS_TYPE;
 
 typedef struct {
@@ -67,21 +40,43 @@ typedef struct {
 	cl_mem val;
 } CL_PJDS_TYPE;
 
+typedef struct {
+	int row, col;
+	double val;
+} MATRIX_ENTRY;
 
-PJDS_TYPE* convertCRSToPJDSMatrix( const double*, const int*, const int*, const int); 
-PJDS_TYPE* convertELRSortedToPJDSMatrix( const ELR_TYPE* ); 
-void checkCRSToPJDSsanity( const double*, const int*, const int*, const int, const PJDS_TYPE*, const int* ); // TODO
+ELR_TYPE* CRStoELR( const double*, const int*, const int*, const int ); 
+ELR_TYPE* CRStoELRT(const double*, const int*, const int*, const int, int);
+ELR_TYPE* CRStoELRS(  const double* , const int* , const int*,  const int);
+ELR_TYPE* CRStoELRP(  const double* , const int* , const int*,  const int,	const int*, const int*);
+ELR_TYPE* CRStoELRTP(  const double* , const int* , const int*,  const int,	const int*, const int*, int);
+ELR_TYPE* MMtoELR(const char *, int);
+void checkCRStoELR( const double*, const int*, const int*, const int, const ELR_TYPE* );
+void resetELR( ELR_TYPE* elr );
+void freeELR( ELR_TYPE* const elr );
+
+
+PJDS_TYPE* CRStoPJDS( const double*, const int*, const int*, const int); 
+PJDS_TYPE* CRStoPJDST( const double*, const int*, const int*, const int, const int); 
+PJDS_TYPE* ELRStoPJDST( const ELR_TYPE*, int ); 
+void checkCRStoPJDS( const double*, const int*, const int*, const int, const PJDS_TYPE* ); // TODO
 void resetPJDS( PJDS_TYPE* pjds );
+void freePJDS( PJDS_TYPE* pjds );
 
 
-void freePJDSMatrix( PJDS_TYPE* const pjds );
+CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds );
+void CL_uploadPJDS(CL_PJDS_TYPE* cpjds, const PJDS_TYPE* pjds );
+void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds );
+void CL_freePJDS( CL_PJDS_TYPE* const cpjds );
+
+CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr );
+void CL_uploadELR(CL_ELR_TYPE* celr, const ELR_TYPE* elr );
+void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr );
+void CL_freeELR( CL_ELR_TYPE* const celr );
+
+void CL_freeMatrix(void *matrix, int format);
 
 
-CL_PJDS_TYPE* CL_PJDSInit( const PJDS_TYPE* pjds );
-
-void CL_CopyPJDSToDevice(CL_PJDS_TYPE* cpjds, const PJDS_TYPE* pjds );
-void CL_CopyPJDSBackToHost( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds );
-
-
-void CL_freePJDSMatrix( CL_PJDS_TYPE* const cpjds );
+void elrColIdToFortran( ELR_TYPE* elr );
+void elrColIdToC( ELR_TYPE* elr );
 #endif

@@ -125,12 +125,15 @@ int main( int nArgs, char* arg[] ) {
 	 *******            ........ Executable statements ........          ********
 	 ***************************************************************************/
 
-	int matrixFormat[3]; // {full matrix, local matrix, remote matrix}
-	matrixFormat[0] = SPM_FORMAT_PJDS;
-	matrixFormat[1] = SPM_FORMAT_PJDS;
-	matrixFormat[2] = SPM_FORMAT_ELR;
+	MATRIX_FORMATS matrixFormats;
+	matrixFormats.format[0] = SPM_FORMAT_PJDS;
+	matrixFormats.format[1] = SPM_FORMAT_PJDS;
+	matrixFormats.format[2] = SPM_FORMAT_ELR;
+	matrixFormats.T[0] = 2;
+	matrixFormats.T[1] = 2;
+	matrixFormats.T[2] = 1;
 
-	if (matrixFormat[1] == matrixFormat[2] && matrixFormat[1] == SPM_FORMAT_PJDS)
+	if (matrixFormats.format[1] == matrixFormats.format[2] && matrixFormats.format[1] == SPM_FORMAT_PJDS)
 		myabort ("There must NOT be pJDS for the local AND remote part");
 
 
@@ -178,9 +181,14 @@ int main( int nArgs, char* arg[] ) {
 
 	/* get nodal MPI communicator ******************************/
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
-#if defined(OCLKERNEL)
+#ifdef OCLKERNEL
 	/* select cards on node *******************/
-	CL_selectNodalGPUs( &single_node_comm, hostname );
+  int node_rank, node_size;
+
+  ierr = MPI_Comm_size( single_node_comm, &node_size);
+  ierr = MPI_Comm_rank( single_node_comm, &node_rank);
+  	MPI_Barrier( MPI_COMM_WORLD );
+  	CL_init( node_rank, node_size, hostname, matrixFormats);
 #endif
 
 #ifdef DAXPY
@@ -327,9 +335,9 @@ int main( int nArgs, char* arg[] ) {
 		printf("Jobmask (hexadecimal)       : %#12x\n", jobmask); 
 		printf("Type of benchmark           : %12s\n", benchmark);
 #ifdef OCLKERNEL	
-		printf("Full matrix format          : %12s\n", SPM_FORMAT_NAME[matrixFormat[0]]); 
-		printf("Local matrix format         : %12s\n", SPM_FORMAT_NAME[matrixFormat[1]]); 
-		printf("Remote matrix format        : %12s\n", SPM_FORMAT_NAME[matrixFormat[2]]); 
+		printf("Full matrix format          : %9s-%2d\n", SPM_FORMAT_NAME[matrixFormats.format[0]],matrixFormats.T[0]); 
+		printf("Local matrix format         : %9s-%2d\n", SPM_FORMAT_NAME[matrixFormats.format[1]],matrixFormats.T[1]); 
+		printf("Remote matrix format        : %9s-%2d\n", SPM_FORMAT_NAME[matrixFormats.format[2]],matrixFormats.T[2]); 
 #endif
 		printf("-----------------------------------------------------\n");
 
@@ -528,12 +536,25 @@ int main( int nArgs, char* arg[] ) {
 	//   ierr= MPI_Barrier(MPI_COMM_WORLD); if (me==0) printf("before setup_communication\n");
 	PAS_CYCLE_START;
 	if(io_format!=1) {
-		lcrp = setup_communication(cr, work_dist,matrixFormat);
+		lcrp = setup_communication(cr, work_dist,matrixFormats);
 	}
 	else {
 		lcrp = setup_communication_parallel(cr, work_dist, testcase);
 	}
 	IF_DEBUG(1) PAS_WRITE_TIME("Setup of Communication");
+
+
+#ifdef OCLKERNEL
+  	MPI_Barrier( MPI_COMM_WORLD );
+	if( jobmask & 503 ) { 
+		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats.T[0],0);
+
+	} 
+	if( jobmask & 261640 ) { // only if jobtype requires split computation
+		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats.T[1],1);
+		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats.T[2],2);
+	}
+#endif
 
 
 
@@ -839,7 +860,7 @@ sweepMemory(GLOBAL);
 			}
 			
 			IF_DEBUG(1) PAS_CYCLE_START;
-			if ( ((0x1<<version) & 503) ) { 
+			if ( ((0x1<<version) & 503) ) {
 				permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
 			} else if ( ((0x1<<version) & 261640) ) {
 				permuteVector(hlpvec_out->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);

@@ -1,20 +1,23 @@
 #include "oclfun.h"
+#include <string.h>
 
 static cl_command_queue queue;
 static cl_context context;
-static cl_kernel kernels[NUM_KERNELS];
+static cl_kernel kernel[3];
+static size_t localSize[3] = {256,256,256};
+static size_t globalSize[3];
 
 void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
 }
 
-void CL_init( int rank, int size, const char* hostname ) {
+void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS matrixFormats) {
 	cl_uint numPlatforms;
 	cl_uint numDevices;
 	cl_platform_id *platformIDs;
 	cl_device_id *deviceIDs;
 	cl_int err;
-	cl_program program;
+	cl_program program[3];
 	int platform, device, takedevice;
 	char devicename[1024];
 
@@ -23,7 +26,7 @@ void CL_init( int rank, int size, const char* hostname ) {
 	cl_uint dummy;
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
-	platformIDs = (cl_platform_id *)malloc(sizeof(cl_platform_id)*numPlatforms); // segfault with aligned mem
+	platformIDs = (cl_platform_id *)allocateMemory(sizeof(cl_platform_id)*numPlatforms,"platformIDs"); // segfault with aligned mem
 
 
 	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, &dummy));
@@ -38,7 +41,7 @@ void CL_init( int rank, int size, const char* hostname ) {
 		}
 
 	}
-	deviceIDs = (cl_device_id *)malloc(sizeof(cl_device_id)*numDevices);
+	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,"deviceIDs");
 	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_DEVTYPE, numDevices, deviceIDs, &numDevices));
 
 	if ( 0 == rank ) {
@@ -50,13 +53,9 @@ void CL_init( int rank, int size, const char* hostname ) {
 			IF_DEBUG(1) printf("## rank %i/%i on %s --\t Device %d: %s\n", 
 					rank, size-1, hostname, device, devicename);
 		}
-
-
-
-
 	}
 
-	takedevice = 1;//rank%numDevices;
+	takedevice = rank%numDevices;
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 	printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", rank, size-1, hostname, takedevice, devicename);
 
@@ -82,31 +81,59 @@ void CL_init( int rank, int size, const char* hostname ) {
 		fprintf(stderr, "Failed to load kernel.\n");
 		exit(1);
 	}
-	source_str = (char*)malloc(10000);
+	source_str = (char*)allocateMemory(10000,"source");
 	source_size = fread( source_str, 1, 10000, fp);
 	fclose( fp );
 
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
-	program = clCreateProgramWithSource(context,1,(const char **)&source_str,&source_size,&err);
-	CL_checkerror(err);
-
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program\n", rank, size-1, hostname);
-	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],NULL,NULL,NULL));
-	CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
-	build_log = (char *)malloc(log_size+1);
-	CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-	IF_DEBUG(1) printf("Build log: %s",build_log);
 
 
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating kernels\n", rank, size-1, hostname);
-	kernels[KERNEL_ELR] = clCreateKernel(program,"ELRkernel",&err);
-	CL_checkerror(err);
-	kernels[KERNEL_ELR_ADD] = clCreateKernel(program,"ELRkernelAdd",&err);
-	CL_checkerror(err);
-	kernels[KERNEL_PJDS] = clCreateKernel(program,"pJDSkernel",&err);
-	CL_checkerror(err);
-	kernels[KERNEL_PJDS_ADD] = clCreateKernel(program,"pJDSkernelAdd",&err);
-	CL_checkerror(err);
+	int i;
+	for (i=0; i<3; i++) {
+		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
+		program[i] = clCreateProgramWithSource(context,1,(const char **)&source_str,&source_size,&err);
+		CL_checkerror(err);
+
+
+		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
+		char opt[7];
+		strcpy(opt,"-DT=");
+		sprintf(opt+4,"%d",matrixFormats.T[i]);
+		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
+		IF_DEBUG(1) {
+			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
+			build_log = (char *)allocateMemory(log_size+1,"build log");
+			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
+			printf("Build log: %s",build_log);
+		}
+		if (matrixFormats.T[i] == 1) {
+
+			switch(matrixFormats.format[i]) {
+				case SPM_FORMAT_ELR:
+					kernel[i] = clCreateKernel(program[i],i==2?"ELRkernelAdd":"ELRkernel",&err);
+					CL_checkerror(err);
+					break;
+				case SPM_FORMAT_PJDS:
+					kernel[i] = clCreateKernel(program[i],i==2?"pJDSkernelAdd":"pJDSkernel",&err);
+					CL_checkerror(err);
+					break;
+			}
+		} else {
+
+			switch(matrixFormats.format[i]) {
+				case SPM_FORMAT_ELR:
+					kernel[i] = clCreateKernel(program[i],i==2?"ELRTkernelAdd":"ELRTkernel",&err);
+					CL_checkerror(err);
+					break;
+				case SPM_FORMAT_PJDS:
+					kernel[i] = clCreateKernel(program[i],i==2?"pJDSTkernelAdd":"pJDSTkernel",&err);
+					CL_checkerror(err);
+					break;
+			}
+		}
+	}
+
+
+
 
 	free(deviceIDs);
 	free(platformIDs);
@@ -121,39 +148,26 @@ cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 
 	mem = clCreateBuffer(context,CL_MEM_READ_WRITE,bytesize,NULL,&err);
 
-	if (bytesize > 0)
-		CL_checkerror(err);
+	CL_checkerror(err);
 
 	return mem;
 }
 
 void* allocHostMemory( size_t sz) {
-	void *mem;
-	mem = malloc(sz);
-	if (!mem) {
-		fprintf(stderr,"allocHostMemory failed!\n");
-		abort();
-	}
-
-	return mem;
-
-
+	return allocateMemory(sz,"allocHostMemory");
 }
 
-	void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
-		if (bytesize > 0)
-			CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,NULL,NULL));
-	}
+void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
+	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,NULL,NULL));
+}
 
-	void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
-		if (bytesize > 0)
-			CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,hostmem,0,NULL,NULL));
-	}
+void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
+	CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,hostmem,0,NULL,NULL));
+}
 
-	void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
-		if (bytesize > 0)
-			CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
-	}
+void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
+	CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
+}
 
 
 
@@ -162,70 +176,55 @@ void CL_freeDeviceMemory( cl_mem mem ) {
 }
 
 void freeHostMemory( void *mem ) {
-	if (mem)
-		free(mem);
+	free(mem);
+}
+
+void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) {
+	if (format == SPM_FORMAT_ELR) {
+		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
+		globalSize[kernelIdx] = (size_t)matrix->padding*T;
+
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   &matrix->nRows));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(int),   &matrix->padding));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),&matrix->val));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),&matrix->col));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->rowLen));
+		if (T>1)
+			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+	} else {
+		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
+		globalSize[kernelIdx] = (size_t)matrix->padding*T;
+
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   &matrix->nRows));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(cl_mem),&matrix->val));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),&matrix->col));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),&matrix->rowLen));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->colStart));
+		if (T>1)
+			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+	}
 }
 
 
-void oclKernel(void *mat,  cl_mem rhsVec, cl_mem resVec, bool add, int format) {
-	cl_kernel kernel;
-	size_t global;
-
-	if (format == SPM_FORMAT_ELR) {
-		if (add) {
-			kernel = kernels[KERNEL_ELR_ADD];
-		} else {
-			kernel = kernels[KERNEL_ELR];
-		}
-
-		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
-		global = (size_t)matrix->padding;
-
-		CL_safecall(clSetKernelArg(kernel,0,sizeof(int),   &matrix->nRows));
-		CL_safecall(clSetKernelArg(kernel,1,sizeof(int),   &matrix->padding));
-		CL_safecall(clSetKernelArg(kernel,2,sizeof(cl_mem),&resVec));
-		CL_safecall(clSetKernelArg(kernel,3,sizeof(cl_mem),&rhsVec));
-		CL_safecall(clSetKernelArg(kernel,4,sizeof(cl_mem),&matrix->val));
-		CL_safecall(clSetKernelArg(kernel,5,sizeof(cl_mem),&matrix->col));
-		CL_safecall(clSetKernelArg(kernel,6,sizeof(cl_mem),&matrix->rowLen));
-
-		CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&global,NULL,0,NULL,NULL));
-	} else {
-		if (add) {
-			kernel = kernels[KERNEL_PJDS_ADD];
-		} else {
-			kernel = kernels[KERNEL_PJDS];
-		}
 
 
-		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
-		global = (size_t)matrix->padding;
+void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) {
+	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
+	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
-		CL_safecall(clSetKernelArg(kernel,0,sizeof(int),   &matrix->nRows));
-		CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem),&resVec));
-		CL_safecall(clSetKernelArg(kernel,2,sizeof(cl_mem),&rhsVec));
-		CL_safecall(clSetKernelArg(kernel,3,sizeof(cl_mem),&matrix->val));
-		CL_safecall(clSetKernelArg(kernel,4,sizeof(cl_mem),&matrix->col));
-		CL_safecall(clSetKernelArg(kernel,5,sizeof(cl_mem),&matrix->rowLen));
-		CL_safecall(clSetKernelArg(kernel,6,sizeof(cl_mem),&matrix->colStart));
-
-		CL_safecall(clFinish(queue));
-		CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&global,NULL,0,NULL,NULL));
-	}
-
-
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 }
 
 void CL_finish() {
 
 	int i;
 
-	for (i=0; i<NUM_KERNELS; i++) 
-		CL_safecall(clReleaseKernel(kernels[i]));
-	
+	for (i=0; i<3; i++) 
+		CL_safecall(clReleaseKernel(kernel[i]));
+
 	CL_safecall(clReleaseCommandQueue(queue));
 	CL_safecall(clReleaseContext(context));
-	 
+
 
 }
 
