@@ -200,6 +200,17 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) {
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 }
 
+void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) {
+	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&a));
+	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&b));
+	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(double),&si));
+	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(int),&nRows));
+
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
+
+}
+
+
 void CL_finish() {
 
 	int i;

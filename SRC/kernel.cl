@@ -258,3 +258,9 @@ kernel void ELRTkernelAdd ( global double *resVec, global double *rhsVec,int nRo
 		}
 	}
 }
+
+kernel void axpyKernel(global real *a, global real *b, real s, int nRows){
+	int i = get_global_id(0); 
+	if (i<nRows)
+		a[i] = a[i] + s*b[i]; 
+} 
