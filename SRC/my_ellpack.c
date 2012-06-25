@@ -75,7 +75,8 @@ PJDS_TYPE* CRStoPJDS(  const double* crs_val, const int* crs_col,
 	return CRStoPJDST( crs_val, crs_col, crs_row_ptr, nRows, 1); 
 }
 
-PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow ) {
+PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
+{
 
 	PJDS_TYPE *pjds = NULL;
 	int  i,j,st;
@@ -140,8 +141,6 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow ) {
 		colHeight[curCol] = pjds->padding;
 		curCol--;
 	}
-
-	//	printf("### nEnts: %d\n",pjds->nEnts);
 
 
 	pjds->val = (double*) allocateMemory(sizeof(double)*pjds->nEnts,"pjds->val"); 

@@ -120,8 +120,6 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
    (1000.0*1000.0*(double)(stopTime-startTime)/ (N_MULTS)) ));
    */
 
-#ifdef NLDD
-
 #define NUMA_CHECK(identifier)                                                 \
          {                                                                     \
          double naccmem;                                                       \
@@ -170,11 +168,5 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
          } 
 
 
-#else
-
-#define NUMA_CHECK(identifier)                                             
-#define NUMA_CHECK_SERIAL(identifier)                                             
-
-#endif
 
 #endif // _MY_MACROS_H_

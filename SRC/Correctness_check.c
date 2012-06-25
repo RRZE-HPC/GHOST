@@ -3,7 +3,7 @@
 #include <math.h>
 
 
-void Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
+int Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
 
 	/****************************************************************************
 	 *****         Perform correctness-check against serial result          *****
@@ -51,7 +51,6 @@ void Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out)
 	ierr = MPI_Reduce ( &error_count, &acc_error_count, 1, MPI_INTEGER, 
 			MPI_SUM, 0, MPI_COMM_WORLD);
 
-	if (me==0) if (acc_error_count == 0) successful++;
 
 	IF_DEBUG(1) if (me==0){
 		printf("-------------------------------------------------------\n");
@@ -62,6 +61,8 @@ void Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out)
 		printf("-------------------------------------------------------\n");
 	}
 
-	return;
+	if (acc_error_count == 0) 
+		return 1;
+	return 0;
 
 }

@@ -72,16 +72,13 @@ kernel void pJDSkernelAdd (global double *resVec, global double *rhsVec, int nRo
 	int row = get_global_id(0);
 	double svalue = 0.0, value;
 	int i, idcol;
+
 	if (row < nRows) {
-
-
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[colStart[i]+row];
 			idcol = col[colStart[i]+row];
 			svalue += value * rhsVec[idcol];
-
 		}
-	
 		resVec[row] += svalue;
 	}
 }

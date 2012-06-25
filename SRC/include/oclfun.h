@@ -39,7 +39,7 @@
 #define KERNEL_PJDS16 18
 #define KERNEL_PJDS16_ADD 19*/
 
-void CL_init( int, int, const char*, MATRIX_FORMATS );
+void CL_init( int, int, const char*, MATRIX_FORMATS *);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
 cl_mem CL_allocDeviceMemory( size_t );

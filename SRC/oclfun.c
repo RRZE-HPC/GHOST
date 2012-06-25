@@ -11,7 +11,7 @@ void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
 }
 
-void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS matrixFormats) {
+void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFormats) {
 	cl_uint numPlatforms;
 	cl_uint numDevices;
 	cl_platform_id *platformIDs;
@@ -97,42 +97,27 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS matrixFor
 		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
 		char opt[7];
 		strcpy(opt,"-DT=");
-		sprintf(opt+4,"%d",matrixFormats.T[i]);
+		sprintf(opt+4,"%d",matrixFormats->T[i]);
 		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
+		
 		IF_DEBUG(1) {
 			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
 			build_log = (char *)allocateMemory(log_size+1,"build log");
 			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
 			printf("Build log: %s",build_log);
 		}
-		if (matrixFormats.T[i] == 1) {
 
-			switch(matrixFormats.format[i]) {
-				case SPM_FORMAT_ELR:
-					kernel[i] = clCreateKernel(program[i],i==2?"ELRkernelAdd":"ELRkernel",&err);
-					CL_checkerror(err);
-					break;
-				case SPM_FORMAT_PJDS:
-					kernel[i] = clCreateKernel(program[i],i==2?"pJDSkernelAdd":"pJDSkernel",&err);
-					CL_checkerror(err);
-					break;
-			}
-		} else {
+		char kernelName[50]="";
+	   	strcat(kernelName, matrixFormats->format[i]==SPM_FORMAT_ELR?"ELR":"pJDS");
+		if (matrixFormats->T[i] > 1)
+			strcat(kernelName,"T");
+		strcat(kernelName,"kernel");
+		if (i==2)
+			strcat(kernelName,"Add");
 
-			switch(matrixFormats.format[i]) {
-				case SPM_FORMAT_ELR:
-					kernel[i] = clCreateKernel(program[i],i==2?"ELRTkernelAdd":"ELRTkernel",&err);
-					CL_checkerror(err);
-					break;
-				case SPM_FORMAT_PJDS:
-					kernel[i] = clCreateKernel(program[i],i==2?"pJDSTkernelAdd":"pJDSTkernel",&err);
-					CL_checkerror(err);
-					break;
-			}
-		}
+		kernel[i] = clCreateKernel(program[i],kernelName,&err);
+		CL_checkerror(err);
 	}
-
-
 
 
 	free(deviceIDs);

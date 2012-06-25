@@ -17,6 +17,7 @@
 
 #include "my_ellpack.h"
 #include <string.h>
+#include <libgen.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -32,12 +33,13 @@ static int size1 = 0;
 static int now0  = 0;
 static int now1  = 0;
 
-void getMatrixPath(char *given, char *complete) {
+void getMatrixPathAndName(char *given, char *path, char *name) {
 	FILE *file;
 
-	strcpy(complete,given);
-	file = fopen(complete,"r");
+	strcpy(path,given);
+	file = fopen(path,"r");
 	if (file) { // given complete is already a full path
+		name = basename(path);
 		return;
 	}
 
@@ -45,32 +47,34 @@ void getMatrixPath(char *given, char *complete) {
 	if (mathome == NULL)
 		myabort("$MATHOME not set! Can't find matrix!");
 
+	strcpy(name,path);
 
-	strcpy(complete,mathome);
-	strcat(complete,"/");
-	strcat(complete,given);
-	strcat(complete,"/");
-	strcat(complete,given);
-	strcat(complete,"_CRS_bin.dat");
+	strcpy(path,mathome);
+	strcat(path,"/");
+	strcat(path,given);
+	strcat(path,"/");
+	strcat(path,given);
+	strcat(path,"_CRS_bin.dat");
 
-	file = fopen(complete,"r");
+	file = fopen(path,"r");
 	if (file) {
 		return;
 	}
 
-	strcpy(complete,mathome);
-	strcat(complete,"/");
-	strcat(complete,given);
-	strcat(complete,"/");
-	strcat(complete,given);
-	strcat(complete,".mtx");
+	strcpy(path,mathome);
+	strcat(path,"/");
+	strcat(path,given);
+	strcat(path,"/");
+	strcat(path,given);
+	strcat(path,".mtx");
 
-	file = fopen(complete,"r");
+	file = fopen(path,"r");
 	if (file) {
 		return;
 	}
 
-	complete = NULL;
+	path = NULL;
+	name = NULL;
 	return;
 }
 
@@ -1127,9 +1131,11 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
+#ifdef OCLKERNEL
 		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
 		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
 		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
+#endif
 		free( lcrp );
 	}
 }

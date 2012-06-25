@@ -170,18 +170,15 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
 
    NUMA_CHECK_SERIAL("after placement zusteller");
 
-#ifndef NO_PLACEMENT
    IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
 #pragma omp parallel for schedule(runtime)
    for( i = 0; i < cr->nRows+1; i++ ) {
       cr->rowOffset[i] = 0;
    }
-#endif
 
    sucr = fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
 
 
-#ifndef NO_PLACEMENT
    IF_DEBUG(1){
       printf("Doing NUMA-placement for cr->col (restart-version)\n");
       printf("Doing NUMA-placement for cr->val (restart-version)\n");
@@ -193,7 +190,6 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
 	 cr->col[j] = 0;
       }
    }
-#endif 
 
    sucr = fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
    sucr = fread(&cr->val[0],              sizeof(double), cr->nEnts,   RESTFILE);
@@ -283,7 +279,6 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
    sucr = fread(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
    sucr = fread(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
 
-#ifndef NO_PLACEMENT
    printf("NUMA-placement of jd->col[] and jd->val[]\n");
 #pragma omp parallel for schedule(runtime) private (i, diag, diagLen, offset, block_start, block_end) 
    for(ib = 0 ; ib < jd->nRows ; ib += blocklen) {
@@ -306,7 +301,6 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
       }
    } 
    /* GH: then fill matrix */
-#endif   // placement of matrix in JDS format
 
 
    sucr = fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);

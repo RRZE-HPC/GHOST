@@ -10,7 +10,7 @@
  * entsprechenden Daten dann an diejenigen PEs verteilen die es betrifft.
  *****************************************************************************/
 
-LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrixFormats){
+LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matrixFormats){
 
 	/* Counting and auxilliary variables */
 	int i, j, hlpi;
@@ -85,7 +85,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrix
 	CL_PJDS_TYPE* lcpjds = NULL;
 #endif
 
-
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
 	 ***************************************************************************/
@@ -102,6 +101,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrix
 
 	lcrp->nEnts = cr->nEnts;
 	lcrp->nRows = cr->nRows;
+#pragma omp parallel
+	lcrp->threads = omp_get_num_threads(); 
 
 	ierr = MPI_Comm_size(MPI_COMM_WORLD, &(lcrp->nodes));
 
@@ -306,8 +307,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrix
 
 	NUMA_CHECK("before placing of lcrp main arrays");
 
-#ifdef PLACE
-
 	//#pragma omp parallel for schedule(runtime)
 #pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = 0.0;
@@ -319,8 +318,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrix
 	//#pragma omp parallel for schedule(runtime)
 #pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
-
-#endif
 
 	NUMA_CHECK("after placing of lcrp main arrays");
 
@@ -486,18 +483,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS matrix
 	freeMemory ( size_revc, "revcol",         revcol);
 	freeMemory ( size_pval, "present_values", present_values ); 
 
-	/* sollte hier auch nicht Not tun
-#ifdef CMEM
-sweepMemory(GLOBAL);
-#endif
-	 */
-
 	/****************************************************************************
 	 *******               Finally setup compressed wishlist              *******
 	 ***************************************************************************/
 
 	size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
 	size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
+
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	lcrp->wishlist      = (int**) allocateMemory( size_nptr, "lcrp->wishlist" ); 
 	lcrp->duelist       = (int**) allocateMemory( size_nptr, "lcrp->duelist" ); 
@@ -573,8 +566,6 @@ sweepMemory(GLOBAL);
 		lcrp->lval       = (double*) allocateMemory( size_lval, "lcrp->lval" ); 
 		lcrp->rval       = (double*) allocateMemory( size_rval, "lcrp->rval" ); 
 
-#ifdef PLACE
-
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) lcrp->lval[i] = 0.0;
 
@@ -586,8 +577,6 @@ sweepMemory(GLOBAL);
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_r; i++) lcrp->rcol[i] = 0.0;
-
-#endif
 
 
 		lcrp->lrow_ptr_l[0] = 0;
@@ -672,12 +661,12 @@ sweepMemory(GLOBAL);
 	if( jobmask & 503 ) { // only if jobtype requires combined computation
 
 
-		switch (matrixFormats.format[0]) {
+		switch (matrixFormats->format[0]) {
 			case SPM_FORMAT_PJDS:
 				{
 					IF_DEBUG(1) printf("PE%i: FULL pjds:\n", me);
 
-					pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me],matrixFormats.T[0] );
+					pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me],matrixFormats->T[0] );
 					lcrp->fullRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
 					lcrp->fullInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
 					memcpy(lcrp->fullRowPerm, pjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
@@ -700,9 +689,9 @@ sweepMemory(GLOBAL);
 			case SPM_FORMAT_ELR:
 				{
 
-					IF_DEBUG(1) printf("PE%i: FULL elr-%d:\n", me,matrixFormats.T[0]);
+					IF_DEBUG(1) printf("PE%i: FULL elr-%d:\n", me,matrixFormats->T[0]);
 
-					elr = CRStoELRT( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me],matrixFormats.T[0] );
+					elr = CRStoELRT( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me],matrixFormats->T[0] );
 					celr = CL_initELR( elr );
 					CL_uploadELR(celr, elr);
 					lcrp->fullMatrix = celr;
@@ -723,10 +712,10 @@ sweepMemory(GLOBAL);
 
 	if( jobmask & 261640 ) { // only if jobtype requires split computation
 
-		if (matrixFormats.format[1] == SPM_FORMAT_PJDS) {
+		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
 					IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
 
-					lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats.T[1] );
+					lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
 
 					lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
 					lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
@@ -745,15 +734,17 @@ sweepMemory(GLOBAL);
 							}*/
 					freePJDS( lpjds );
 		}
-		if (matrixFormats.format[2] == SPM_FORMAT_PJDS) {
+		if (matrixFormats->format[2] == SPM_FORMAT_PJDS) {
 					IF_DEBUG(1) printf("PE%i: REMOTE pjds:\n", me);
 
-					rpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats.T[2] );
+					rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
 
 					lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
 					lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
 					memcpy(lcrp->splitRowPerm, rpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
 					memcpy(lcrp->splitInvRowPerm, rpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
+
+					printf("PE%d, local rows: %d\n",me,lcrp->lnRows[me]);
 
 					rcpjds = CL_initPJDS( rpjds );
 					CL_uploadPJDS(rcpjds, rpjds);
@@ -769,13 +760,13 @@ sweepMemory(GLOBAL);
 
 
 		}
-		if (matrixFormats.format[1] == SPM_FORMAT_ELR) {
+		if (matrixFormats->format[1] == SPM_FORMAT_ELR) {
 					IF_DEBUG(1) printf("PE%i: LOCAL elr:\n", me);
 
-					if (matrixFormats.format[2] == SPM_FORMAT_PJDS)
-						lelr = CRStoELRTP( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats.T[1] );
+					if (matrixFormats->format[2] == SPM_FORMAT_PJDS)
+						lelr = CRStoELRTP( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[1] );
 					else
-						lelr = CRStoELRT( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats.T[1] );
+						lelr = CRStoELRT( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
 
 					lcelr = CL_initELR( lelr );
 					CL_uploadELR(lcelr, lelr);
@@ -789,13 +780,13 @@ sweepMemory(GLOBAL);
 					}*/
 					freeELR( lelr );
 		}
-		if (matrixFormats.format[2] == SPM_FORMAT_ELR) {
+		if (matrixFormats->format[2] == SPM_FORMAT_ELR) {
 					IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
 
-					if (matrixFormats.format[1] == SPM_FORMAT_PJDS)
-						relr = CRStoELRTP( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats.T[2] );
+					if (matrixFormats->format[1] == SPM_FORMAT_PJDS)
+						relr = CRStoELRTP( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[2] );
 					else
-						relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats.T[2] );
+						relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
 
 
 					rcelr = CL_initELR( relr );

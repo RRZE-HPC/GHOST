@@ -38,6 +38,7 @@ typedef struct {
 	int T[3];
 } MATRIX_FORMATS;
 
+
 typedef struct {
 	int row, col, nThEntryInRow;
 	double val;
@@ -254,7 +255,8 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
-void getMatrixPath(char *given, char *complete);
+void SpMVM_init (int argc, char **argv, char *matrixPath, MATRIX_FORMATS *matrixFormats, int jobmask);
+void getMatrixPathAndName(char *given, char *path, char *name);
 int isMMfile(const char *filename);
 
 void* allocateMemory( const size_t size, const char* desc );
@@ -302,7 +304,7 @@ void bin_write_jd(const JD_TYPE*, const char*);
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);
 
-LCRP_TYPE* setup_communication(CR_TYPE* const, int, MATRIX_FORMATS);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int, MATRIX_FORMATS *);
 LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);
@@ -327,7 +329,7 @@ REVBUF_TYPE* revolvingBuffer(const uint64, const int, const int);
 /* ########################################################################## */
 void sweepMemory(int);
 float myCpuClockFrequency();
-void Correctness_check( VECTOR_TYPE*, LCRP_TYPE*, double* );
+int Correctness_check( VECTOR_TYPE*, LCRP_TYPE*, double* );
 unsigned long thishost(char*); 
 double my_amount_of_mem(void);
 unsigned long machname(char* );

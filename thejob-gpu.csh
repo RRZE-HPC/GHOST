@@ -20,7 +20,7 @@ set distscheme = ( NZE LNZ ROW ) # MPI distribution of matrix: equal_NZE equal_N
 set mymasks    = ( 4096 502 261640 262142 5124 4 5120 512 2 4096 ) # kernel selector: full_only split_only all
 set mults      = "100"
 set work_dist  = "1" # 1 approx eq NZE / 2 fancy NZE / else eq NRows
-set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_OCLKERNEL_PLACE_CYCLES_INT_gpu.x"
+set thisexe    = "./HybridSpMVM_OCLKERNEL_gpu.x"
 #set thisexe    = "./HybridSpMVM_TUNE_SETUP_REVBUF_NLDD_OCLKERNEL_PLACE_CYCLES_INT_gpu.x"
 set thismpi    = "/apps/rrze/bin/mpirun_rrze-intelmpd" 
 #set thismpi    = "mpirun"
@@ -45,7 +45,7 @@ foreach nodes ( 2 3 )
       set jobmask      = $mymasks[$jobtype]
 
       set realmults    = `echo ${nodes} | awk '{print $0*'${mults}'}'` 
-      set fixed        = "${thisexe} ${realmults} 1 ${mat} ${io_format} ${work_dist} ${jobmask} ${outerit}"
+      set fixed        = "${thisexe} -i 10 -f ELR-1,ELR-1,ELR-1 ${mat}"
       set kernelparam  = "${gridDim} ${blockDim}"
       set threadsperPE = `echo $pinlist[$jobtype] | sed -e 's/_/ /' | awk '{print $1}' | sed -e 's/,/ /g' | awk '{print NF}'`
       set lastthread   = `echo $threadsperPE | awk '{print $0-1}'`
