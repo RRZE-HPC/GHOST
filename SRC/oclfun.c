@@ -3,9 +3,9 @@
 
 static cl_command_queue queue;
 static cl_context context;
-static cl_kernel kernel[6];
-static size_t localSize[6] = {256,256,256,256,256,256};
-static size_t globalSize[6];
+static cl_kernel kernel[3];
+static size_t localSize[3] = {256,256,256};//,256,256,256};
+static size_t globalSize[3];
 
 void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
@@ -112,7 +112,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		if (matrixFormats->T[i] > 1)
 			strcat(kernelName,"T");
 		strcat(kernelName,"kernel");
-		if (i==SPM_KERNEL_REMOTE)
+		if (i==2)
 			strcat(kernelName,"Add");
 
 		kernel[i] = clCreateKernel(program[i],kernelName,&err);
