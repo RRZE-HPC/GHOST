@@ -28,13 +28,9 @@ typedef struct {
 	//int dev;
 } PROPS;
 
-int error_count, acc_error_count;
-
-int coreId=2;
 
 void usage() {
 }
-
 
 
 void getOptions(int argc,  char * const *argv, PROPS *p) {
@@ -109,36 +105,26 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 }
 
 
-
 int main( int argc, char* argv[] ) {
-
-	double acc_cycles, acc_time;
-
-	int i,j; 
-	size_t ws;
-	int kernels[] = {5,10,12};
-
-
-	VECTOR_TYPE* hlpvec_out = NULL;
-	VECTOR_TYPE* hlpvec_in  = NULL;
-
-
-	int iteration;
-
-	double time_it_took;
-	int version;
-	int numthreads;
 
 	int ierr;
 	int me;
 
-
-	int job_flag;
-	int this_one;
-	jobmask = 5152;
-
 	int required_threading_level;
 	int provided_threading_level;
+
+	int i,j; 
+	int kernels[] = {5,10,12};
+
+	VECTOR_TYPE* hlpvec_out;    // lhs vector
+	VECTOR_TYPE* hlpvec_in;     // rhs vector
+	VECTOR_TYPE* resCR  = NULL; // reference result
+
+	int iteration;
+	
+	double start, end, dummy, time_it_took;
+	int numKernels = sizeof(kernels)/sizeof(int);
+	int kernelIdx, kernel;
 
 
 	PROPS props;
@@ -167,146 +153,13 @@ int main( int argc, char* argv[] ) {
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
-	MM_TYPE* mm = NULL;
-	CR_TYPE* cr = NULL;
 
-	VECTOR_TYPE* rhsVec = NULL;
-	VECTOR_TYPE* resCR  = NULL;
-
-
-	SpMVM_init (argc,argv, props.matrixPath, &props.matrixFormats, jobmask);
-	if (me == 0){
-
-		if (!isMMfile(props.matrixPath)){
-			/* binary format *************************************/
-			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-			bin_read_cr(cr, props.matrixPath);
-		} else{
-			/* ascii format *************************************/
-			mm = readMMFile( props.matrixPath, 0.0 );
-			cr = convertMMToCRMatrix( mm );
-			bin_write_cr(cr, props.matrixName);
-			freeMMMatrix(mm);
-		}
-
-
-		/* convert column indices in CRS format to FORTRAN-numbering, required for CPU kernel */
-		crColIdToFortran(cr);
-
-
-		rhsVec = newVector( cr->nCols );
-		resCR = newVector( cr->nCols );
-
-		/* Initialisiere invec */
-		for (i=0; i<cr->nCols; i++) rhsVec->val[i] = i+1;
-
-		/* Serial CRS-multiplication to get reference result */
-		fortrancrs_(&(cr->nRows), &(cr->nEnts), 
-				resCR->val, rhsVec->val, cr->val , cr->col, cr->rowOffset);
-
-
-	} else{
-
-		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
-		mm            = (MM_TYPE*) allocateMemory( sizeof(MM_TYPE), "mm" );
-		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr" );
-		cr->nRows     = 0;
-		cr->nEnts     = 1;
-		cr->rowOffset = (int*)     allocateMemory( sizeof(int),     "rowOffset" );
-		cr->col       = (int*)     allocateMemory( sizeof(int),     "col" );
-		cr->val       = (double*)  allocateMemory( sizeof(double),  "val" );
-		rhsVec = newVector( 1 );
-		resCR  = newVector( 1 );
-	}
-
-
-	LCRP_TYPE *lcrp = setup_communication(cr, 1,&props.matrixFormats);
-	MPI_Barrier(MPI_COMM_WORLD);
-
-#ifdef OCLKERNEL
-	if( jobmask & 503 ) { 
-		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,props.matrixFormats.T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
-	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
-		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,props.matrixFormats.T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
-		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,props.matrixFormats.T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
-	}
-#endif
-
-
-	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
-
-
-	hlpvec_out = newVector( lcrp->lnRows[me] );
-	hlpvec_in = newVector( pseudo_ldim );  
-
-#pragma omp parallel for schedule(static)
-	for (i=0; i<lcrp->lnRows[me]; i++) 
-		hlpvec_out->val[i] = -63.5;
-
-
-	/* Placement of RHS Vector */
-#pragma omp parallel for schedule(runtime)
-	for( i = 0; i < pseudo_ldim; i++ ) hlpvec_in->val[i] = 0.0;
-	
-		/* Fill up halo with some markers */
-	for (i=lcrp->lnRows[me]; i< pseudo_ldim; i++) 
-		hlpvec_in->val[i] = 77.0;
-
-	/* Scatter the input vector from the master node to all others */
-	ierr = MPI_Scatterv ( rhsVec->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
-			hlpvec_in->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
-
-
-#ifdef OCLKERNEL	
-	size_t fullMemSize, localMemSize, remoteMemSize, 
-		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
-	if( jobmask & 503 ) { 
-		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
-		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-
-	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
-		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
-		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
-		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-	}
-#endif	
-
-	if(me==0){
-		ws = ((lcrp->nRows+1)*sizeof(int) + lcrp->nEnts*(sizeof(double)+sizeof(int)))/(1024*1024);
-		printf("-----------------------------------------------------\n");
-		printf("-------         Statistics about matrix       -------\n");
-		printf("-----------------------------------------------------\n");
-		printf("Investigated matrix         : %12s\n", props.matrixName); 
-		printf("Dimension of matrix         : %12.0f\n", (float)lcrp->nRows); 
-		printf("Non-zero elements           : %12.0f\n", (float)lcrp->nEnts); 
-		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
-		printf("Working set             [MB]: %12lu\n", ws);
-#ifdef OCLKERNEL	
-		if( jobmask & 503 ) 
-			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
-		if( jobmask & 261640 ) {
-			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
-			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
-			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
-		}
-#endif
-		printf("-----------------------------------------------------\n");
-		fflush(stdout);
-	}
-
-
+	LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_out, &hlpvec_in, &resCR);
+	printMatrixInfo(lcrp,props.matrixName);
 
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	double start, end, dummy;
-
-
-	int numKernels = sizeof(kernels)/sizeof(int);
-	int kernelIdx, kernel;
 	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
 		kernel = kernels[kernelIdx];
 
@@ -341,15 +194,11 @@ int main( int argc, char* argv[] ) {
 
 	}
 
-
-
-
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	freeVector( hlpvec_out );
 	freeVector( hlpvec_in );
 	freeLcrpType( lcrp );
-	freeVector( rhsVec );
 	freeVector( resCR );
 
 	MPI_Finalize();
@@ -358,6 +207,6 @@ int main( int argc, char* argv[] ) {
 	CL_finish();
 #endif
 
-	return 0;
+	return EXIT_SUCCESS;
 
 }

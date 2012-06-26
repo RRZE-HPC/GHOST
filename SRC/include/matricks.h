@@ -255,7 +255,8 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
-void SpMVM_init (int argc, char **argv, char *matrixPath, MATRIX_FORMATS *matrixFormats, int jobmask);
+LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_out, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR);
+void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 void getMatrixPathAndName(char *given, char *path, char *name);
 int isMMfile(const char *filename);
 

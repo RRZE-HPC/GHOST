@@ -744,7 +744,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 					memcpy(lcrp->splitRowPerm, rpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
 					memcpy(lcrp->splitInvRowPerm, rpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
 
-					printf("PE%d, local rows: %d\n",me,lcrp->lnRows[me]);
 
 					rcpjds = CL_initPJDS( rpjds );
 					CL_uploadPJDS(rcpjds, rpjds);
