@@ -37,14 +37,14 @@ kernel void ELRkernelAdd (global double *resVec, global double *rhsVec, int nRow
 	int row = get_global_id(0);
 	double svalue = 0.0, value;
 	int i, idcol;
-	
+
 	if (row < nRows) {
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];
 			svalue += value * rhsVec[idcol];
 		}
-	
+
 		resVec[row] += svalue;
 	}
 }
@@ -258,9 +258,34 @@ kernel void ELRTkernelAdd ( global double *resVec, global double *rhsVec,int nRo
 		}
 	}
 }
-
+/*
 kernel void axpyKernel(global real *a, global real *b, real s, int nRows){
 	int i = get_global_id(0); 
 	if (i<nRows)
 		a[i] = a[i] + s*b[i]; 
+}
+
+kernel void vecscalKernel(global real *a, real scal, int nRows){
+	int i = get_global_id(0);
+	if (i<nRows)	
+		a[i] = scal * a[i]; 
 } 
+
+kernel void dotprodKernel(global real *a, global real *b, global real *out, unsigned int n, local volatile real *shared) {
+
+	unsigned int tid = get_local_id(0);
+	unsigned int i = get_global_id(0);
+	shared[tid] = (i < n) ? a[i]*b[i] : 0;
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	for (unsigned int s = 1; s < get_local_size(0); s *= 2) {
+		if ((tid % (2*s)) == 0) {
+
+			shared[tid] += shared[tid + s];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	if (tid == 0)
+		out[get_group_id(0)] = shared[0];
+}*/

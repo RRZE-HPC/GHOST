@@ -3,9 +3,9 @@
 
 static cl_command_queue queue;
 static cl_context context;
-static cl_kernel kernel[3];
-static size_t localSize[3] = {256,256,256};
-static size_t globalSize[3];
+static cl_kernel kernel[6];
+static size_t localSize[6] = {256,256,256,256,256,256};
+static size_t globalSize[6];
 
 void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
@@ -112,13 +112,18 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		if (matrixFormats->T[i] > 1)
 			strcat(kernelName,"T");
 		strcat(kernelName,"kernel");
-		if (i==2)
+		if (i==SPM_KERNEL_REMOTE)
 			strcat(kernelName,"Add");
 
 		kernel[i] = clCreateKernel(program[i],kernelName,&err);
 		CL_checkerror(err);
 	}
 
+/*	kernel[AXPY_KERNEL] = clCreateKernel(program[0],"axpyKernel",&err);
+	kernel[DOTPROD_KERNEL] = clCreateKernel(program[0],"dotprodKernel",&err);
+	kernel[VECSCAL_KERNEL] = clCreateKernel(program[0],"vecscalKernel",&err);
+
+*/
 
 	free(deviceIDs);
 	free(platformIDs);
@@ -199,7 +204,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) {
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 }
-
+/*
 void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) {
 	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&a));
 	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&b));
@@ -208,7 +213,7 @@ void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) {
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 
-}
+}*/
 
 
 void CL_finish() {
