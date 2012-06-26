@@ -126,6 +126,7 @@ int main( int argc, char* argv[] ) {
 	int numKernels = sizeof(kernels)/sizeof(int);
 	int kernelIdx, kernel;
 
+	jobmask = 5152;
 
 	PROPS props;
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
