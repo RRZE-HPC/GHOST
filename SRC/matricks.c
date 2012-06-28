@@ -1028,6 +1028,19 @@ void crColIdToC( CR_TYPE* cr ) {
 
 /* ########################################################################## */
 
+HOSTVECTOR_TYPE* newHostVector( const int nRows ) {
+	HOSTVECTOR_TYPE* vec;
+	size_t size_val;
+
+	size_val = (size_t)( nRows * sizeof(double) );
+	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
+
+
+	vec->val = (double*) allocateMemory( size_val, "vec->val");
+	vec->nRows = nRows;
+
+	return vec;
+}
 
 VECTOR_TYPE* newVector( const int nRows ) {
 	VECTOR_TYPE* vec;
@@ -1046,6 +1059,19 @@ VECTOR_TYPE* newVector( const int nRows ) {
 	return vec;
 }
 
+void normalize( double *vec, int nRows)
+{
+	int i;
+	double sum = 0;
+
+	for (i=0; i<nRows; i++)	
+		sum += vec[i]*vec[i];
+
+	double f = 1./sqrt(sum);
+
+	for (i=0; i<nRows; i++)	
+		vec[i] *= f;
+}
 
 /* ########################################################################## */
 

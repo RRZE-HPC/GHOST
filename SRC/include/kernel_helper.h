@@ -67,7 +67,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+	//CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 #endif
 
 #ifdef OCLKERNEL 
@@ -182,7 +182,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #ifdef OCLKERNEL
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+//	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 
 	IF_DEBUG(1){
 		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -236,7 +236,6 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	 * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
 	 *   copy from device of result */
 
-	
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 	CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double),lcrp->lnRows[*me]*sizeof(double));
@@ -257,7 +256,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+	//CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 
 	IF_DEBUG(1){
 		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);

@@ -27,7 +27,7 @@ kernel void ELRkernel (global double *resVec, global double *rhsVec, int nRows, 
 
 
 		}
-		resVec[row] = svalue;
+		resVec[row] += svalue;
 
 	}
 }
@@ -258,24 +258,27 @@ kernel void ELRTkernelAdd ( global double *resVec, global double *rhsVec,int nRo
 		}
 	}
 }
-/*
-kernel void axpyKernel(global real *a, global real *b, real s, int nRows){
+
+kernel void axpyKernel(global double *a, global double *b, double s, int nRows)
+{
 	int i = get_global_id(0); 
 	if (i<nRows)
 		a[i] = a[i] + s*b[i]; 
 }
 
-kernel void vecscalKernel(global real *a, real scal, int nRows){
+kernel void vecscalKernel(global double *a, double scal, int nRows)
+{
 	int i = get_global_id(0);
 	if (i<nRows)	
 		a[i] = scal * a[i]; 
 } 
 
-kernel void dotprodKernel(global real *a, global real *b, global real *out, unsigned int n, local volatile real *shared) {
+kernel void dotprodKernel(global double *a, global double *b, global double *out, unsigned int nRows, local volatile double *shared) 
+{
 
 	unsigned int tid = get_local_id(0);
 	unsigned int i = get_global_id(0);
-	shared[tid] = (i < n) ? a[i]*b[i] : 0;
+	shared[tid] = (i < nRows) ? a[i]*b[i] : 0;
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -288,4 +291,4 @@ kernel void dotprodKernel(global real *a, global real *b, global real *out, unsi
 	}
 	if (tid == 0)
 		out[get_group_id(0)] = shared[0];
-}*/
+}

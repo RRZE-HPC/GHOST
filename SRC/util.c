@@ -4,7 +4,7 @@
 #include "oclfun.h"
 
 
-LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_out, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR) {
+LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR) {
 
 	int ierr;
 	int me;
@@ -71,9 +71,10 @@ LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_
 	LCRP_TYPE *lcrp = setup_communication(cr, 1,matrixFormats);
 
 #ifdef OCLKERNEL
-	if( jobmask & 503 ) { 
+	if( jobmask & 503 ) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
-	} 
+	}
+	
 	if( jobmask & 261640 ) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
@@ -83,12 +84,8 @@ LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_
 	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 
 
-	*hlpvec_out = newVector( lcrp->lnRows[me] );
 	*hlpvec_in = newVector( pseudo_ldim );  
 
-#pragma omp parallel for schedule(static)
-	for (i=0; i<lcrp->lnRows[me]; i++) 
-		(*hlpvec_out)->val[i] = -63.5;
 
 
 	/* Placement of RHS Vector */

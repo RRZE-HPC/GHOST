@@ -3,9 +3,9 @@
 
 static cl_command_queue queue;
 static cl_context context;
-static cl_kernel kernel[3];
-static size_t localSize[3] = {256,256,256};//,256,256,256};
-static size_t globalSize[3];
+static cl_kernel kernel[6];
+static size_t localSize[6] = {256,256,256,256,256,256};
+static size_t globalSize[6];
 
 void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
@@ -99,7 +99,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		strcpy(opt,"-DT=");
 		sprintf(opt+4,"%d",matrixFormats->T[i]);
 		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
-		
+
 		IF_DEBUG(1) {
 			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
 			build_log = (char *)allocateMemory(log_size+1,"build log");
@@ -108,7 +108,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		}
 
 		char kernelName[50]="";
-	   	strcat(kernelName, matrixFormats->format[i]==SPM_FORMAT_ELR?"ELR":"pJDS");
+		strcat(kernelName, matrixFormats->format[i]==SPM_FORMAT_ELR?"ELR":"pJDS");
 		if (matrixFormats->T[i] > 1)
 			strcat(kernelName,"T");
 		strcat(kernelName,"kernel");
@@ -119,11 +119,11 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		CL_checkerror(err);
 	}
 
-/*	kernel[AXPY_KERNEL] = clCreateKernel(program[0],"axpyKernel",&err);
+	kernel[AXPY_KERNEL] = clCreateKernel(program[0],"axpyKernel",&err);
 	kernel[DOTPROD_KERNEL] = clCreateKernel(program[0],"dotprodKernel",&err);
 	kernel[VECSCAL_KERNEL] = clCreateKernel(program[0],"vecscalKernel",&err);
 
-*/
+
 
 	free(deviceIDs);
 	free(platformIDs);
@@ -169,7 +169,11 @@ void freeHostMemory( void *mem ) {
 	free(mem);
 }
 
-void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) {
+void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) 
+{
+	if (mat == NULL)
+		return;
+
 	if (format == SPM_FORMAT_ELR) {
 		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
@@ -181,6 +185,9 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) {
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->rowLen));
 		if (T>1)
 			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+		globalSize[AXPY_KERNEL] = matrix->padding;
+		globalSize[VECSCAL_KERNEL] = matrix->padding;
+		globalSize[DOTPROD_KERNEL] = matrix->padding;
 	} else {
 		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
@@ -192,35 +199,73 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) {
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->colStart));
 		if (T>1)
 			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+		globalSize[AXPY_KERNEL] = matrix->padding;
+		globalSize[VECSCAL_KERNEL] = matrix->padding;
+		globalSize[DOTPROD_KERNEL] = matrix->padding;
 	}
 }
 
 
 
 
-void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) {
+void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) 
+{
 	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
 	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 }
-/*
-void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) {
-	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&a));
-	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&b));
-	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(double),&si));
-	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(int),&nRows));
 
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
+void CL_vecscal(cl_mem a, double s, int nRows) 
+{
+	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],0,sizeof(cl_mem),&a));
+	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],1,sizeof(double),&s));
+	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],2,sizeof(int),&nRows));
 
-}*/
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[VECSCAL_KERNEL],1,NULL,&globalSize[VECSCAL_KERNEL],&localSize[VECSCAL_KERNEL],0,NULL,NULL));
+}
+
+void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) 
+{
+	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],0,sizeof(cl_mem),&a));
+	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],1,sizeof(cl_mem),&b));
+	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],2,sizeof(double),&s));
+	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],3,sizeof(int),&nRows));
+
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[AXPY_KERNEL],1,NULL,&globalSize[AXPY_KERNEL],&localSize[AXPY_KERNEL],0,NULL,NULL));
+}
+
+void CL_dotprod(cl_mem a, cl_mem b, double *out, int nRows) 
+{
+	int resVecSize = globalSize[DOTPROD_KERNEL]/localSize[DOTPROD_KERNEL]; 
+	int i;
+	*out = 0.0;
+
+	VECTOR_TYPE *tmp = newVector(resVecSize*sizeof(double));
+
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],0,sizeof(cl_mem),&a));
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],1,sizeof(cl_mem),&b));
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],2,sizeof(cl_mem),&tmp->CL_val_gpu));
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],3,sizeof(int),&nRows));
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],4,sizeof(double)*localSize[DOTPROD_KERNEL],NULL));
+
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[DOTPROD_KERNEL],1,NULL,&globalSize[DOTPROD_KERNEL],&localSize[DOTPROD_KERNEL],0,NULL,NULL));
+
+	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(double));
+
+	for(i = 0; i < resVecSize; ++i) {
+		*out += tmp->val[i];
+	}
+	freeVector(tmp);
+}
 
 
-void CL_finish() {
+void CL_finish() 
+{
 
 	int i;
-
-	for (i=0; i<3; i++) 
+	
+	for (i=0; i<6; i++) 
 		CL_safecall(clReleaseKernel(kernel[i]));
 
 	CL_safecall(clReleaseCommandQueue(queue));

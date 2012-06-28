@@ -26,6 +26,11 @@ typedef struct {
 
 typedef struct {
 	int nRows;
+	double* val;
+} HOSTVECTOR_TYPE;
+
+typedef struct {
+	int nRows;
 	int* val;
 #ifdef OCLKERNEL
   cl_mem CL_val_gpu;
@@ -255,7 +260,7 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
-LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_out, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR);
+LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR);
 void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 void getMatrixPathAndName(char *given, char *path, char *name);
 int isMMfile(const char *filename);
@@ -263,6 +268,8 @@ int isMMfile(const char *filename);
 void* allocateMemory( const size_t size, const char* desc );
 
 VECTOR_TYPE* newVector( const int nRows );
+HOSTVECTOR_TYPE* newHostVector( const int nRows );
+void normalize( double *vec, int nRows);
 #ifdef CUDAKERNEL
 void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
 #endif
