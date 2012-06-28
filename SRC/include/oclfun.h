@@ -54,6 +54,9 @@ void CL_freeDeviceMemory( cl_mem );
 void freeHostMemory( void* );
 void CL_finish();
 
-void CL_spMVM(void *,  cl_mem, cl_mem, bool, int);
+void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
+void CL_vecscal(cl_mem a, double s, int nRows);
+void CL_axpy(cl_mem a, cl_mem b, double s, int nRows);
+void CL_dotprod(cl_mem a, cl_mem b, double *out, int nRows);
 
 #endif
