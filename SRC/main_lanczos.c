@@ -16,6 +16,7 @@
 
 /* Global variables */
 const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
+int SPMVM_OPTIONS = 0;
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -115,26 +116,18 @@ int main( int argc, char* argv[] ) {
 
 	int i,j; 
 
-	VECTOR_TYPE* hlpvec_out;    // lhs vector
-	VECTOR_TYPE* hlpvec_in;     // rhs vector
-	VECTOR_TYPE* resCR  = NULL; // reference result
-
 	VECTOR_TYPE *vold;
 	VECTOR_TYPE *vnew;
 	VECTOR_TYPE *evec;
 
 	HOSTVECTOR_TYPE *r0;
 
-
-
-	
-
 	int iteration;
 	
 	double start, end, dummy, time_it_took;
 	int kernelIdx, kernel;
 
-	int kernels[] = {12};
+	int kernels[] = {0};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	jobmask = 0;
 
@@ -167,26 +160,29 @@ int main( int argc, char* argv[] ) {
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
+	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT;
+	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
 
-	LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_in, &resCR);
-	printMatrixInfo(lcrp,props.matrixName);
-
-	hlpvec_out = newVector( lcrp->lnRows[me] );
+	//LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_in, &resCR);
+	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
 
 	if (me == 0) {
-		r0 = newHostVector(lcrp->nRows);
+		r0 = newHostVector(cr->nCols);
 
-		for (i=0; i<lcrp->nRows; i++) {
-			r0->val[i] = (double)rand()/RAND_MAX;
+		for (i=0; i<cr->nCols; i++) {
+			r0->val[i] = i;//(double)rand()/RAND_MAX;
 		}
 
 		normalize(r0->val,r0->nRows);
 	} else {
-		r0 = newHostVector(1);
+		r0 = newHostVector(0);
 	}
+
+	LCRP_TYPE *lcrp = SpMVM_init ( cr, &props.matrixFormats);
+
 	double *zero = (double *)allocateMemory(lcrp->lnRows[me]*sizeof(double),"zero");
 	for (i=0; i<lcrp->lnRows[me]; i++)
-		zero[i] = 0;
+		zero[i] = 0.;
 
 	vnew = newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = 0
 	vold = newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = r0
@@ -194,6 +190,8 @@ int main( int argc, char* argv[] ) {
 
 	memcpy(vnew->val,zero,sizeof(double)*lcrp->lnRows[me]);
 
+//	vold = SpMVM_distributeVector(lcrp,r0);
+//	evec = SpMVM_distributeVector(lcrp,r0);
 	ierr = MPI_Scatterv ( r0->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
 			vold->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
 	ierr = MPI_Scatterv ( r0->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
@@ -203,16 +201,14 @@ int main( int argc, char* argv[] ) {
 	CL_copyHostToDevice(vold->CL_val_gpu,vold->val,lcrp->lnRows[me]*sizeof(double));
 	CL_copyHostToDevice(evec->CL_val_gpu,evec->val,lcrp->lnRows[me]*sizeof(double));
 
-	double res=0.,totalRes=0.;
+	double res=0.;
 	CL_dotprod(vold->CL_val_gpu,vold->CL_val_gpu,&res,lcrp->lnRows[me]);
-
-	MPI_Reduce(&res, &totalRes,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+	MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
 
 	if (me==0)
-		printf("should be 1: %f\n",totalRes);
-
-
-	double alpha=0., beta=0.;
+		printf("should be 1: %f\n",res);
+	
+	printMatrixInfo(lcrp,props.matrixName);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
@@ -222,52 +218,70 @@ int main( int argc, char* argv[] ) {
 		if (kernel==0 && lcrp->nodes>1) continue;      /* no MPI available */
 		if (kernel>10 && kernel < 17 && lcrp->threads==1) continue; /* not enough threads */
 
-	/*vecScalOCL(bufs.vnew, -(*beta), bufs.vnew, CLmatrix.nRows, CLinfo);
-	SpMVOCL(CLmatrix, bufs.vold, bufs.vnew, CLinfo);
-	scalarProdOCL(bufs.vold, bufs.vnew, alpha, CLmatrix.nRows,CLmatrix.nRowsPadded,CLinfo);
-	axpyOCL(bufs.vnew, bufs.vold, -(*alpha), CLmatrix.nRows, CLinfo);
-	scalarProdOCL(bufs.vnew, bufs.vnew, beta, CLmatrix.nRows, CLmatrix.nRowsPadded,CLinfo);
-	*beta = sqrt(*beta);
-	vecScalOCL(bufs.vnew, ((real)1.0/(*beta)), bufs.vnew, CLmatrix.nRows, CLinfo);*/
 
 		//double *z = (double *)allocateMemory(sizeof(double)*props.nIter*props.nIter,"z");
-		double *alphas = (double *)allocateMemory(sizeof(double)*props.nIter,"alphas");
-		double *betas = (double *)allocateMemory(sizeof(double)*props.nIter,"betas");
+		double *alphas  = (double *)allocateMemory(sizeof(double)*props.nIter,"alphas");
+		double *betas   = (double *)allocateMemory(sizeof(double)*props.nIter,"betas");
 		double *falphas = (double *)allocateMemory(sizeof(double)*props.nIter,"falphas");
-		double *fbetas = (double *)allocateMemory(sizeof(double)*props.nIter,"fbetas");
+		double *fbetas  = (double *)allocateMemory(sizeof(double)*props.nIter,"fbetas");
 		
 		cl_mem tmp;
 		double *dtmp;
 		int ferr;
 
+		double alpha=0., beta=0.;
 		betas[0] = beta;	
 		for( iteration = 0; iteration < props.nIter; iteration++ ) {
 			if (me == 0)
 				timing(&start,&dummy);
 
-			CL_vecscal(vnew->CL_val_gpu,-beta,lcrp->lnRows[me]);	
+			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
+			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+			if (me==0)
+				printf("should be 0: %f\n",res);
+			
+			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
+			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+			if (me==0)
+				printf("should be 1: %f\n",res);
+			
+			CL_vecscal(vnew->CL_val_gpu,-beta,lcrp->lnRows[me]);
+
+			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
+			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+			if (me==0)
+				printf("should be %f: %f\n",-beta,res);
+		
 			HyK[kernel].kernel( iteration, vnew, lcrp, vold);
 
 			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&alpha,lcrp->lnRows[me]);
-
 			MPI_Allreduce(MPI_IN_PLACE, &alpha,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
 			CL_axpy(vnew->CL_val_gpu,vold->CL_val_gpu,-alpha,lcrp->lnRows[me]);
-			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&beta,lcrp->lnRows[me]);
 			
+			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&beta,lcrp->lnRows[me]);
 			MPI_Allreduce(MPI_IN_PLACE, &beta,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-
 			beta=sqrt(beta);
+			
 			CL_vecscal(vnew->CL_val_gpu,1./beta,lcrp->lnRows[me]);
-			CL_copyDeviceToHost(vnew->val,vnew->CL_val_gpu,vnew->nRows*sizeof(double));
+			downloadVector(vnew); //TODO overlap
 
+			dtmp = vnew->val;
+			vnew->val = vold->val;
+			vold->val = dtmp;
+			tmp = vnew->CL_val_gpu;
+			vnew->CL_val_gpu = vold->CL_val_gpu;
+			vold->CL_val_gpu = tmp;
+
+			
 			alphas[iteration] = alpha;
 			betas[iteration+1] = beta;
 
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("\rlanczos: %f ms, ",time_it_took*1e3);
+				//printf("\rlanczos: %4.2f ms, a: %f, b: %f ",time_it_took*1e3,alpha,beta);
+				printf("a: %f b: %e, e: ",alpha,beta);
 			}
 			if (me == 0)
 				timing(&start,&dummy);
@@ -277,42 +291,30 @@ int main( int argc, char* argv[] ) {
 
 			int n = iteration+1;
 			imtql1_(&n,falphas,fbetas,&ferr);
+			if (me==0)
+				printf("%f\n",falphas[0]);
+
 			if(ferr != 0)
-				fprintf(stderr,"> Error: the %d. eigenvalue could not be determined\n",ferr);
+				printf("> Error: the %d. eigenvalue could not be determined\n",ferr);
+
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("imtql: %f ms, evmin: %f",time_it_took*1e3,falphas[0]);
+				//printf("imtql: %f ms, evmin: %f",time_it_took*1e3,falphas[0]);
 			}
 
-			dtmp = vnew->val;
-			vnew->val = vold->val;
-			vold->val = dtmp;
-			tmp = vnew->CL_val_gpu;
-			vnew->CL_val_gpu = vold->CL_val_gpu;
-			vold->CL_val_gpu = tmp;
 		}
 		printf("\n");
-
-		/*if ( ((0x1<<kernel) & 503) ) {
-			permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( ((0x1<<kernel) & 261640) ) {
-			permuteVector(hlpvec_out->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
-		}
-
-		int correct = Correctness_check( resCR, lcrp, hlpvec_out->val );
-		if (me==0){
-			printf("Kernel %2d: result is %s, %7.2f GF/s\n",kernel,correct?"CORRECT":"WRONG",2.0e-6*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
-		}*/
 
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	freeVector( hlpvec_out );
-	freeVector( hlpvec_in );
+	freeHostVector( r0 );
+	freeVector( vold );
+	freeVector( vnew );
+	freeVector( evec );
 	freeLcrpType( lcrp );
-	freeVector( resCR );
 
 	MPI_Finalize();
 

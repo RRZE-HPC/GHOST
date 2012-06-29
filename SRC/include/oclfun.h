@@ -16,6 +16,7 @@
 #define DOTPROD_KERNEL 4
 #define VECSCAL_KERNEL 5
 
+
 /*#define NUM_KERNELS 20
 #define KERNEL_ELR 0
 #define KERNEL_ELR_ADD 1

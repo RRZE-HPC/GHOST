@@ -16,6 +16,7 @@
 
 /* Global variables */
 const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
+int SPMVM_OPTIONS = 0;
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -114,19 +115,27 @@ int main( int argc, char* argv[] ) {
 	int provided_threading_level;
 
 	int i,j; 
-	int kernels[] = {5,10,12};
 
-	VECTOR_TYPE* hlpvec_out;    // lhs vector
-	VECTOR_TYPE* hlpvec_in;     // rhs vector
-	VECTOR_TYPE* resCR  = NULL; // reference result
+	int kernels[] = {5,10,12};
+	int numKernels = sizeof(kernels)/sizeof(int);
+	jobmask = 0;
+
+	for (i=0; i<numKernels; i++)
+		jobmask |= 0x1<<kernels[i];
+
+	VECTOR_TYPE*     nodeLHS;    // lhs vector
+	VECTOR_TYPE*     nodeRHS;     // rhs vector
+	HOSTVECTOR_TYPE *goldLHS; // reference result
+	HOSTVECTOR_TYPE *globRHS;
+	HOSTVECTOR_TYPE *globLHS;
 
 	int iteration;
-	
-	double start, end, dummy, time_it_took;
-	int numKernels = sizeof(kernels)/sizeof(int);
-	int kernelIdx, kernel;
 
-	jobmask = 5152;
+	double start, end, dummy, time_it_took;
+	int kernelIdx, kernel;
+	int errcount = 0;
+	double mytol;
+
 
 	PROPS props;
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
@@ -154,10 +163,35 @@ int main( int argc, char* argv[] ) {
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
+	SPMVM_OPTIONS = 0;
 
-	LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_out, &hlpvec_in, &resCR);
+
+	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
+
+
+
+	if (me==0) {
+		globRHS = newHostVector( cr->nCols );
+		goldLHS = newHostVector( cr->nCols );
+		globLHS = newHostVector( cr->nCols );
+
+		for (i=0; i<cr->nCols; i++) 
+			globRHS->val[i] = i+1;
+
+		crColIdToFortran(cr);
+		fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+	} else {
+		goldLHS = newHostVector(0);
+		globRHS = newHostVector(0);
+		globLHS = newHostVector(0);
+	}
+
+	LCRP_TYPE *lcrp = SpMVM_init ( cr, &props.matrixFormats);
+
+	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
+	nodeLHS = newVector( lcrp->lnRows[me] );
+
 	printMatrixInfo(lcrp,props.matrixName);
-
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -172,7 +206,7 @@ int main( int argc, char* argv[] ) {
 			timing(&start,&dummy);
 
 		for( iteration = 0; iteration < props.nIter; iteration++ ) {
-			HyK[kernel].kernel( iteration, hlpvec_out, lcrp, hlpvec_in);
+			HyK[kernel].kernel( iteration, nodeLHS, lcrp, nodeRHS);
 
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
@@ -183,24 +217,37 @@ int main( int argc, char* argv[] ) {
 		}
 
 		if ( ((0x1<<kernel) & 503) ) {
-			permuteVector(hlpvec_out->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+			permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
 		} else if ( ((0x1<<kernel) & 261640) ) {
-			permuteVector(hlpvec_out->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
+			permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 		}
 
-		int correct = Correctness_check( resCR, lcrp, hlpvec_out->val );
-		if (me==0){
-			printf("Kernel %2d: result is %s, %7.2f GF/s\n",kernel,correct?"CORRECT":"WRONG",2.0e-6*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
+
+		MPI_Gatherv(nodeLHS->val,lcrp->lnRows[me],MPI_DOUBLE,globLHS->val,lcrp->lnRows,lcrp->lfRow,MPI_DOUBLE,0,MPI_COMM_WORLD);
+
+		if (me==0) {
+			for (i=0; i<lcrp->lnRows[me]; i++){
+				mytol = EPSILON * (1.0 + fabs(goldLHS->val[i]) ) ;
+				if (fabs(goldLHS->val[i]-globLHS->val[i]) > mytol){
+					printf( "Correctness-check Hybrid:  PE%d: error in row %i:", me, i);
+					printf(" Differences: %e   Value ser: %25.16e Value par: %25.16e\n",
+							goldLHS->val[i]-globLHS->val[i], goldLHS->val[i], globLHS->val[i]);
+					errcount++;
+				}
+			}
+			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
 		}
 
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	freeVector( hlpvec_out );
-	freeVector( hlpvec_in );
+	freeVector( nodeLHS );
+	freeVector( nodeRHS );
+	freeHostVector( goldLHS );
+	freeHostVector( globLHS );
+	freeHostVector( globRHS );
 	freeLcrpType( lcrp );
-	freeVector( resCR );
 
 	MPI_Finalize();
 

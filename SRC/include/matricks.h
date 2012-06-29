@@ -260,7 +260,9 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
-LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR);
+CR_TYPE * SpMVM_createCRS (char *matrixPath);
+LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats);
+VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
 void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 void getMatrixPathAndName(char *given, char *path, char *name);
 int isMMfile(const char *filename);
@@ -337,7 +339,7 @@ REVBUF_TYPE* revolvingBuffer(const uint64, const int, const int);
 /* ########################################################################## */
 void sweepMemory(int);
 float myCpuClockFrequency();
-int Correctness_check( VECTOR_TYPE*, LCRP_TYPE*, double* );
+int Correctness_check( double*, LCRP_TYPE*, double* );
 unsigned long thishost(char*); 
 double my_amount_of_mem(void);
 unsigned long machname(char* );

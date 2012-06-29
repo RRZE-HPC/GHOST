@@ -321,6 +321,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 
 	NUMA_CHECK("after placing of lcrp main arrays");
 
+	NUMA_CHECK("before scattering");
+
 	ierr = MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_DOUBLE, 
 			lcrp->val, lcrp->lnEnts[me],  MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -329,6 +331,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 
 	ierr = MPI_Scatterv ( cr->rowOffset, lcrp->lnRows, lcrp->lfRow, MPI_INTEGER,
 			lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
+	NUMA_CHECK("after scattering");
 
 	/****************************************************************************
 	 *******        Adapt row pointer to local numbering on this PE       *******         
@@ -654,6 +657,9 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	lcrp->fullInvRowPerm = NULL;
 	lcrp->splitRowPerm = NULL;
 	lcrp->splitInvRowPerm = NULL;
+	lcrp->fullMatrix = NULL;
+	lcrp->localMatrix = NULL;
+	lcrp->remoteMatrix = NULL;
 
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 

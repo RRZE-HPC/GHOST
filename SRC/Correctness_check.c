@@ -3,7 +3,7 @@
 #include <math.h>
 
 
-int Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
+int Correctness_check( double* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
 
 	/****************************************************************************
 	 *****         Perform correctness-check against serial result          *****
@@ -13,7 +13,7 @@ int Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
 	double mytol;
 	static int me;
 	static int init_check=1;
-	static double* hlpres_serial;
+	static double *hlpres_serial; 
 
 	/*****************************************************************************
 	 *******            ........ Executable statements ........           ********
@@ -23,12 +23,9 @@ int Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
 
 		ierr = MPI_Comm_rank (MPI_COMM_WORLD, &me);
 
-		hlpres_serial =  (double*) allocateMemory( 
-				lcrp->lnRows[me] * sizeof( double ), "hlpres_serial" );
-
-		/* Scatter the serial result-vector */
-		ierr = MPI_Scatterv ( resCR->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
-				hlpres_serial, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
+		hlpres_serial = (double *)allocateMemory(lcrp->lnRows[me]*sizeof(double),"hlpres_serial");
+	
+		ierr = MPI_Scatterv ( resCR, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE,	hlpres_serial, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
 
 		init_check = 0;
 		successful = 0;
@@ -43,7 +40,6 @@ int Correctness_check( VECTOR_TYPE* resCR, LCRP_TYPE* lcrp, double* hlpvec_out){
 			printf( "Correctness-check Hybrid:  PE%d: error in row %i:", me, i);
 			printf(" Differences: %e   Value ser: %25.16e Value par: %25.16e\n",
 					hlpres_serial[i]-hlpvec_out[i], hlpres_serial[i], hlpvec_out[i]);
-			//	 MPI_ABORT(999, MPI_COMM_WORLD);
 			error_count++;
 		}
 	}

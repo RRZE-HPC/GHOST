@@ -1,34 +1,21 @@
 #include "matricks.h"
 #include <sys/param.h>
-#include <libgen.h>
 #include "oclfun.h"
+#include <libgen.h>
 
 
-LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_TYPE **hlpvec_in, VECTOR_TYPE **resCR) {
+CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
 	int ierr;
 	int me;
-	int me_node;
-	char hostname[MAXHOSTNAMELEN];
 	int i;
 
-	VECTOR_TYPE* rhsVec = NULL;
-	thishost(hostname);
 	CR_TYPE *cr;
 	MM_TYPE *mm;
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
-
-	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
-#ifdef OCLKERNEL
-	int node_rank, node_size;
-
-	ierr = MPI_Comm_size( single_node_comm, &node_size);
-	ierr = MPI_Comm_rank( single_node_comm, &node_rank);
-	CL_init( node_rank, node_size, hostname, matrixFormats);
-#endif
 	
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
@@ -40,34 +27,71 @@ LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_
 			bin_write_cr(cr, basename(matrixPath));
 			freeMMMatrix(mm);
 		}
-		/* convert column indices in CRS format to FORTRAN-numbering, required for CPU kernel */
-		crColIdToFortran(cr);
-
-
-		rhsVec = newVector( cr->nCols );
-		*resCR = newVector( cr->nCols );
-
-		for (i=0; i<cr->nCols; i++) 
-			rhsVec->val[i] = i+1;
-
-		/* Serial CRS-multiplication to get reference result */
-		fortrancrs_(&(cr->nRows), &(cr->nEnts), 
-				(*resCR)->val, rhsVec->val, cr->val , cr->col, cr->rowOffset);
 
 	} else{
 
 		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
-		mm            = (MM_TYPE*) allocateMemory( sizeof(MM_TYPE), "mm" );
 		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr" );
 		cr->nRows     = 0;
 		cr->nEnts     = 1;
 		cr->rowOffset = (int*)     allocateMemory( sizeof(int),     "rowOffset" );
 		cr->col       = (int*)     allocateMemory( sizeof(int),     "col" );
 		cr->val       = (double*)  allocateMemory( sizeof(double),  "val" );
-		rhsVec = newVector( 1 );
-		*resCR  = newVector( 1 );
 	}
+	return cr;
 	
+}
+
+VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
+	int ierr;
+	int me;
+	int i;
+
+
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
+
+
+	VECTOR_TYPE *nodeVec = newVector( pseudo_ldim ); 
+
+	/* Placement of RHS Vector */
+#pragma omp parallel for schedule(runtime)
+	for( i = 0; i < pseudo_ldim; i++ ) 
+		nodeVec->val[i] = 0.0;
+	
+		/* Fill up halo with some markers */
+	for (i=lcrp->lnRows[me]; i< pseudo_ldim; i++) 
+		nodeVec->val[i] = 77.0;
+
+	/* Scatter the input vector from the master node to all others */
+	ierr = MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE,nodeVec->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
+
+	return nodeVec;
+}
+
+
+LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats) {
+
+	int ierr;
+	int me;
+	int i;
+	char hostname[MAXHOSTNAMELEN];
+	int me_node;
+
+
+
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
+	thishost(hostname);
+
+#ifdef OCLKERNEL
+	int node_rank, node_size;
+
+	ierr = MPI_Comm_size( single_node_comm, &node_size);
+	ierr = MPI_Comm_rank( single_node_comm, &node_rank);
+	CL_init( node_rank, node_size, hostname, matrixFormats);
+#endif
+
 	LCRP_TYPE *lcrp = setup_communication(cr, 1,matrixFormats);
 
 #ifdef OCLKERNEL
@@ -81,27 +105,6 @@ LCRP_TYPE * SpMVM_init (char *matrixPath, MATRIX_FORMATS *matrixFormats, VECTOR_
 	}
 #endif
 
-	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
-
-
-	*hlpvec_in = newVector( pseudo_ldim );  
-
-
-
-	/* Placement of RHS Vector */
-#pragma omp parallel for schedule(runtime)
-	for( i = 0; i < pseudo_ldim; i++ ) 
-		(*hlpvec_in)->val[i] = 0.0;
-	
-		/* Fill up halo with some markers */
-	for (i=lcrp->lnRows[me]; i< pseudo_ldim; i++) 
-		(*hlpvec_in)->val[i] = 77.0;
-
-	/* Scatter the input vector from the master node to all others */
-	ierr = MPI_Scatterv ( rhsVec->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
-			(*hlpvec_in)->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
-
-	freeVector(rhsVec);
 	return lcrp;
 
 }

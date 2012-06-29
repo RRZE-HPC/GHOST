@@ -25,6 +25,9 @@
 #define TRUE  (1==1)
 #define FALSE (1==0)
 
+#define SPMVM_OPTION_AXPY (0x1<<0)
+#define SPMVM_OPTION_KEEPRESULT (0x1<<1)
+
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #endif

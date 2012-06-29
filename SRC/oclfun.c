@@ -1,6 +1,8 @@
 #include "oclfun.h"
 #include <string.h>
 
+extern int SPMVM_OPTIONS;
+
 static cl_command_queue queue;
 static cl_context context;
 static cl_kernel kernel[6];
@@ -95,9 +97,14 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 
 
 		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
-		char opt[7];
-		strcpy(opt,"-DT=");
-		sprintf(opt+4,"%d",matrixFormats->T[i]);
+		char opt[50] = "";
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
+			sprintf(opt+strlen(opt),"-DAXPY ");
+
+		sprintf(opt+strlen(opt),"-DT=");
+		sprintf(opt+strlen(opt),"%d",matrixFormats->T[i]);
+
+		printf("build options: %s\n",opt);
 		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
 
 		IF_DEBUG(1) {

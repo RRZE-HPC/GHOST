@@ -27,7 +27,11 @@ kernel void ELRkernel (global double *resVec, global double *rhsVec, int nRows, 
 
 
 		}
+#ifdef AXPY
 		resVec[row] += svalue;
+#else
+		resVec[row] = svalue;
+#endif
 
 	}
 }
@@ -62,7 +66,11 @@ kernel void pJDSkernel (global double *resVec, global double *rhsVec, int nRows,
 			idcol = col[colStart[i]+row];
 			svalue += value * rhsVec[idcol];
 		}
+#ifdef AXPY
+		resVec[row] += svalue;
+#else
 		resVec[row] = svalue;
+#endif
 	}
 
 }
@@ -123,7 +131,11 @@ kernel void pJDSTkernel (global double *resVec, global double *rhsVec, int nRows
 #endif
 
 		if (idb==0) {
+#ifdef AXPY
+			resVec[row] += shared[get_local_id(0)]+shared[get_local_id(0)+1];
+#else
 			resVec[row] = shared[get_local_id(0)]+shared[get_local_id(0)+1];
+#endif
 		}
 	}
 } 
@@ -211,7 +223,11 @@ kernel void ELRTkernel (global double *resVec, global double *rhsVec, int nRows,
 #endif
 
 		if (idb==0) {
+#ifdef AXPY
+			resVec[row] += shared[get_local_id(0)]+shared[get_local_id(0)+1];
+#else
 			resVec[row] = shared[get_local_id(0)]+shared[get_local_id(0)+1];
+#endif
 		}
 	}
 }
@@ -263,14 +279,14 @@ kernel void axpyKernel(global double *a, global double *b, double s, int nRows)
 {
 	int i = get_global_id(0); 
 	if (i<nRows)
-		a[i] = a[i] + s*b[i]; 
+		a[i] += s*b[i]; 
 }
 
 kernel void vecscalKernel(global double *a, double scal, int nRows)
 {
 	int i = get_global_id(0);
 	if (i<nRows)	
-		a[i] = scal * a[i]; 
+		a[i] *= scal; 
 } 
 
 kernel void dotprodKernel(global double *a, global double *b, global double *out, unsigned int nRows, local volatile double *shared) 

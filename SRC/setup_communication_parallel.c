@@ -109,6 +109,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, int work_dist, const char* 
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
+	
 	lcrp->nEnts = cr->nEnts;
 	lcrp->nRows = cr->nRows;
 

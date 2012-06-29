@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 
+extern int SPMVM_OPTIONS;
 
 /*********** kernel for all entries *********************/
 
@@ -25,7 +26,6 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 	int i, j;
 	double hlp1;
-
 
 #ifdef OCLKERNEL
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
@@ -64,16 +64,15 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	}
 
 #ifdef OCLKERNEL
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-	//CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
-#endif
-
-#ifdef OCLKERNEL 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 #endif
 
@@ -180,13 +179,15 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	}
 
 #ifdef OCLKERNEL
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-//	CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 #endif
 }
@@ -254,13 +255,15 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 		*nl_cycles = *asm_cycles - *cycles4measurement; 
 	}
 
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	//CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 
 } 

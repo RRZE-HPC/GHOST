@@ -1059,6 +1059,15 @@ VECTOR_TYPE* newVector( const int nRows ) {
 	return vec;
 }
 
+#ifdef OCLKERNEL
+void uploadVector( VECTOR_TYPE *vec ) {
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(double));
+}
+void downloadVector( VECTOR_TYPE *vec ) {
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(double));
+}
+#endif
+
 void normalize( double *vec, int nRows)
 {
 	int i;
@@ -1075,6 +1084,12 @@ void normalize( double *vec, int nRows)
 
 /* ########################################################################## */
 
+void freeHostVector( HOSTVECTOR_TYPE* const vec ) {
+	if( vec ) {
+		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
+		free( vec );
+	}
+}
 
 void freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
