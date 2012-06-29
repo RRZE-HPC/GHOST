@@ -235,23 +235,9 @@ int main( int argc, char* argv[] ) {
 			if (me == 0)
 				timing(&start,&dummy);
 
-			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
-			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-			if (me==0)
-				printf("should be 0: %f\n",res);
-			
-			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
-			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-			if (me==0)
-				printf("should be 1: %f\n",res);
 			
 			CL_vecscal(vnew->CL_val_gpu,-beta,lcrp->lnRows[me]);
 
-			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&res,lcrp->lnRows[me]);
-			MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-			if (me==0)
-				printf("should be %f: %f\n",-beta,res);
-		
 			HyK[kernel].kernel( iteration, vnew, lcrp, vold);
 
 			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&alpha,lcrp->lnRows[me]);
@@ -280,8 +266,7 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				//printf("\rlanczos: %4.2f ms, a: %f, b: %f ",time_it_took*1e3,alpha,beta);
-				printf("a: %f b: %e, e: ",alpha,beta);
+				printf("\rlanczos: %4.2f ms, ",time_it_took*1e3);
 			}
 			if (me == 0)
 				timing(&start,&dummy);
@@ -291,8 +276,6 @@ int main( int argc, char* argv[] ) {
 
 			int n = iteration+1;
 			imtql1_(&n,falphas,fbetas,&ferr);
-			if (me==0)
-				printf("%f\n",falphas[0]);
 
 			if(ferr != 0)
 				printf("> Error: the %d. eigenvalue could not be determined\n",ferr);
@@ -300,7 +283,7 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				//printf("imtql: %f ms, evmin: %f",time_it_took*1e3,falphas[0]);
+				printf("imtql: %f ms, evmin: %f",time_it_took*1e3,falphas[0]);
 			}
 
 		}

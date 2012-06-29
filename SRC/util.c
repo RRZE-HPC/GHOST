@@ -27,6 +27,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 			bin_write_cr(cr, basename(matrixPath));
 			freeMMMatrix(mm);
 		}
+		crColIdToFortran(cr);
 
 	} else{
 
