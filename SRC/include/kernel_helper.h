@@ -28,15 +28,14 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	double hlp1;
 
 #ifdef OCLKERNEL
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(double));
-#endif
-
-#ifdef OCLKERNEL
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_in_cycles = *asm_cycles - *cycles4measurement; 
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(double));
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_in_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 #endif
 
@@ -93,13 +92,15 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 	double hlp1;
 
 #ifdef OCLKERNEL
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 
 #endif
@@ -144,15 +145,17 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	double hlp1;
 
 #ifdef OCLKERNEL
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-	CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double), lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double), lcrp->lnRows[*me]*sizeof(double));
 
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 #endif
 
@@ -205,13 +208,15 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 	 * lc_cycles: timing measurement for computation of local entries
 	 * cp_lin_cycles: timing for copy to device of local elements in input (rhs) vector */
 
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
@@ -237,13 +242,15 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	 * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
 	 *   copy from device of result */
 
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-	CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double),lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double),lcrp->lnRows[*me]*sizeof(double));
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
+		IF_DEBUG(1){
+			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
+			*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
+		}
 	}
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);

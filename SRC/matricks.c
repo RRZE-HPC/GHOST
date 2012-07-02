@@ -1049,12 +1049,16 @@ VECTOR_TYPE* newVector( const int nRows ) {
 	size_val = (size_t)( nRows * sizeof(double) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
-#ifdef OCLKERNEL
-	vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
-#endif
 
 	vec->val = (double*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
+#ifdef OCLKERNEL
+	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
+	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
+	//printf("before: %p\n",vec->val);
+	//vec->val = CL_mapBuffer(vec->CL_val_gpu,size_val);
+	//printf("after: %p\n",vec->val);
+#endif
 
 	return vec;
 }

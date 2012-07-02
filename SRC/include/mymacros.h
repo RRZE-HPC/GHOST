@@ -1,12 +1,12 @@
 #ifndef _MY_MACROS_H_
 #define _MY_MACROS_H_
 
-#define DEBUG 0
+#define DEBUG 0 
 #define xMAIN_DIAGONAL_FIRST
 
 #define PJDS_CHUNK_HEIGHT 32
 
-#define SINGLE 1
+#define SINGLE 0
 #define GLOBAL 0
 
 #define IS_DAXPY 1
@@ -27,6 +27,7 @@
 
 #define SPMVM_OPTION_AXPY (0x1<<0)
 #define SPMVM_OPTION_KEEPRESULT (0x1<<1)
+#define SPMVM_OPTION_RHSPRESENT (0x1<<2)
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))

@@ -178,7 +178,7 @@ int main( int argc, char* argv[] ) {
 		for (i=0; i<cr->nCols; i++) 
 			globRHS->val[i] = i+1;
 
-		crColIdToFortran(cr);
+		//crColIdToFortran(cr);
 		fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 	} else {
 		goldLHS = newHostVector(0);

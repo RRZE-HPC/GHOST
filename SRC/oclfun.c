@@ -57,7 +57,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		}
 	}
 
-	takedevice = rank%numDevices;
+	takedevice = 0;//rank%numDevices;
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 	printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", rank, size-1, hostname, takedevice, devicename);
 
@@ -104,7 +104,6 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		sprintf(opt+strlen(opt),"-DT=");
 		sprintf(opt+strlen(opt),"%d",matrixFormats->T[i]);
 
-		printf("build options: %s\n",opt);
 		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
 
 		IF_DEBUG(1) {
@@ -139,6 +138,16 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 
 /* *********** CUDA MEMORY **************************** */
 
+cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr ) {
+	cl_mem mem;
+	cl_int err;
+
+	mem = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,bytesize,hostPtr,&err);
+
+	CL_checkerror(err);
+
+	return mem;
+}
 cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 	cl_mem mem;
 	cl_int err;
@@ -150,19 +159,34 @@ cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 	return mem;
 }
 
+void * CL_mapBuffer(cl_mem devmem, size_t bytesize) {
+	cl_int err;
+	void * ret = clEnqueueMapBuffer(queue,devmem,CL_TRUE,CL_MAP_WRITE,0,bytesize,0,NULL,NULL,&err);
+	CL_checkerror(err);
+	return ret;
+
+
+}
+
 void* allocHostMemory( size_t sz) {
 	return allocateMemory(sz,"allocHostMemory");
 }
 
-void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
+inline void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,NULL,NULL));
 }
+inline cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem, size_t bytesize ) {
+	cl_event event;
+	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_FALSE,0,bytesize,hostmem,0,NULL,&event));
+	return event;
 
-void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
+}
+
+inline void CL_copyHostToDeviceOffset( cl_mem devmem, void *hostmem, size_t bytesize, size_t offset ) {
 	CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,hostmem,0,NULL,NULL));
 }
 
-void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
+inline void CL_copyHostToDevice( cl_mem devmem, void *hostmem, size_t bytesize ) {
 	CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
 }
 

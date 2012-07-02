@@ -124,10 +124,10 @@ int main( int argc, char* argv[] ) {
 
 	int iteration;
 	
-	double start, end, dummy, time_it_took;
+	double start, end, dummy, tstart, tend, time_it_took;
 	int kernelIdx, kernel;
 
-	int kernels[] = {0};
+	int kernels[] = {5,10,12};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	jobmask = 0;
 
@@ -157,14 +157,19 @@ int main( int argc, char* argv[] ) {
 	required_threading_level = MPI_THREAD_MULTIPLE;
 	ierr = MPI_Init_thread(&argc, &argv, required_threading_level, 
 			&provided_threading_level );
-
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
-	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT;
-	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
+	if (me==0)
+		printf("req: %d, prov: %d\n",required_threading_level, provided_threading_level);
+
+
+	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device after spmvm
+	//SPMVM_OPTIONS |= SPMVM_OPTION_RHSPRESENT; // assume that the rhs vector is present at spmvm
+	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // performa y <- y + A*x
 
 	//LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_in, &resCR);
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
+	int nnz = cr->nEnts;
 
 	if (me == 0) {
 		r0 = newHostVector(cr->nCols);
@@ -190,24 +195,9 @@ int main( int argc, char* argv[] ) {
 
 	memcpy(vnew->val,zero,sizeof(double)*lcrp->lnRows[me]);
 
-//	vold = SpMVM_distributeVector(lcrp,r0);
-//	evec = SpMVM_distributeVector(lcrp,r0);
-	ierr = MPI_Scatterv ( r0->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
-			vold->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
-	ierr = MPI_Scatterv ( r0->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE, 
-			evec->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
+	vold = SpMVM_distributeVector(lcrp,r0);
+	evec = SpMVM_distributeVector(lcrp,r0);
 
-	CL_copyHostToDevice(vnew->CL_val_gpu,vnew->val,lcrp->lnRows[me]*sizeof(double));
-	CL_copyHostToDevice(vold->CL_val_gpu,vold->val,lcrp->lnRows[me]*sizeof(double));
-	CL_copyHostToDevice(evec->CL_val_gpu,evec->val,lcrp->lnRows[me]*sizeof(double));
-
-	double res=0.;
-	CL_dotprod(vold->CL_val_gpu,vold->CL_val_gpu,&res,lcrp->lnRows[me]);
-	MPI_Reduce(MPI_IN_PLACE, &res,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-
-	if (me==0)
-		printf("should be 1: %f\n",res);
-	
 	printMatrixInfo(lcrp,props.matrixName);
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -230,15 +220,36 @@ int main( int argc, char* argv[] ) {
 		int ferr;
 
 		double alpha=0., beta=0.;
-		betas[0] = beta;	
-		for( iteration = 0; iteration < props.nIter; iteration++ ) {
-			if (me == 0)
+		betas[0] = beta;
+		cl_event event = NULL;	
+		int n;
+		for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
+			if (me == 0) {
+				printf("\r");
 				timing(&start,&dummy);
+				timing(&tstart,&dummy);
+			}
 
 			
 			CL_vecscal(vnew->CL_val_gpu,-beta,lcrp->lnRows[me]);
+			if (me == 0) {
+				timing(&end,&dummy);
+				time_it_took = end-start;
+				//printf("vecscal: %6.2f ms, ",time_it_took*1e3);
+			}
+
+			//if (event)
+			//	clWaitForEvents(1,&event);
+
+			if (me == 0)
+				timing(&start,&dummy);
 
 			HyK[kernel].kernel( iteration, vnew, lcrp, vold);
+			if (me == 0) {
+				timing(&end,&dummy);
+				time_it_took = end-start;
+				printf("spmvm: %6.2f ms, %6.2f GF/s, ",time_it_took*1e3,2*nnz/(1.e9*time_it_took));
+			}
 
 			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&alpha,lcrp->lnRows[me]);
 			MPI_Allreduce(MPI_IN_PLACE, &alpha,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
@@ -250,23 +261,17 @@ int main( int argc, char* argv[] ) {
 			beta=sqrt(beta);
 			
 			CL_vecscal(vnew->CL_val_gpu,1./beta,lcrp->lnRows[me]);
+			
+		//	event = CL_copyDeviceToHostNonBlocking(vnew->val,vnew->CL_val_gpu,sizeof(double)*lcrp->lnRows[me]);
 			downloadVector(vnew); //TODO overlap
 
-			dtmp = vnew->val;
-			vnew->val = vold->val;
-			vold->val = dtmp;
-			tmp = vnew->CL_val_gpu;
-			vnew->CL_val_gpu = vold->CL_val_gpu;
-			vold->CL_val_gpu = tmp;
-
-			
 			alphas[iteration] = alpha;
 			betas[iteration+1] = beta;
 
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("\rlanczos: %4.2f ms, ",time_it_took*1e3);
+				//printf("lanczos: %6.2f ms, ",time_it_took*1e3);
 			}
 			if (me == 0)
 				timing(&start,&dummy);
@@ -274,7 +279,6 @@ int main( int argc, char* argv[] ) {
 			memcpy(falphas,alphas,(iteration+1)*sizeof(double));
 			memcpy(fbetas,betas,(iteration+1)*sizeof(double));
 
-			int n = iteration+1;
 			imtql1_(&n,falphas,fbetas,&ferr);
 
 			if(ferr != 0)
@@ -283,11 +287,25 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("imtql: %f ms, evmin: %f",time_it_took*1e3,falphas[0]);
+				//printf("imtql: %6.2f ms ",time_it_took*1e3);
+			}
+
+			dtmp = vnew->val;
+			vnew->val = vold->val;
+			vold->val = dtmp;
+			tmp = vnew->CL_val_gpu;
+			vnew->CL_val_gpu = vold->CL_val_gpu;
+			vold->CL_val_gpu = tmp;
+
+			if (me==0) {
+
+				timing(&tend,&dummy);
+				printf("total: %6.2f ms, evmin: %6.2f",(tend-tstart)*1e3,falphas[0]);
 			}
 
 		}
-		printf("\n");
+		if (me==0)
+			printf("\n");
 
 	}
 

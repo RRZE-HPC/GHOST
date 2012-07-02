@@ -506,6 +506,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	acc_dues = 0;
 	acc_wishes = 0;
 
+
+
 	for (i=0; i<lcrp->nodes; i++){
 
 		lcrp->due_displ[i]  = acc_dues;
@@ -532,9 +534,11 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	/* Alle Source-Variablen sind bei Scatterv nur auf root relevant; d.h. ich
 	 * nehme automatisch _immer_ die richtige (lokale) wishlist zum Verteilen */
 
-	for(i=0; i<lcrp->nodes; i++) ierr = MPI_Scatterv ( 
+	for(i=0; i<lcrp->nodes; i++) {
+		ierr = MPI_Scatterv ( 
 			lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
 			lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD );
+	}
 
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
