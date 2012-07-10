@@ -285,7 +285,6 @@ C========================================
       end
 
 
-
       subroutine FortranCRS(nnp, anznnel, resvec , locvec, 
      $     cmatrx_crs, index_crs, rowoffset )
       implicit none
@@ -323,6 +322,49 @@ C========================================
          enddo
 
          resvec(i)=tmp
+
+      enddo
+      
+      return
+      end
+
+      subroutine FortranCRSAXPY(nnp, anznnel, resvec , locvec, 
+     $     cmatrx_crs, index_crs, rowoffset )
+      implicit none
+
+      integer nnp               ! TOM: res->nRows
+      integer anznnel           ! TOM: cr->nEnts
+
+      double precision resvec(nnp)
+                                ! TOM: res->val[]
+      double precision locvec(nnp)
+                                ! TOM: vec->val[]
+
+      double precision cmatrx_crs(anznnel)
+                                ! cr->val
+      integer index_crs(anznnel)       ! cr->col
+      integer rowoffset(nnp+1)       ! cr->rowOffset
+      
+      integer i,j,start,end
+
+      double precision tmp
+   
+      !write(*,*) 'in Fortran_CRS'
+
+!$OMP PARALLEL DO private(tmp, start, end) schedule(runtime)
+      do i=1, nnp
+
+         tmp   = 0.d0
+         start = rowoffset(i)+1
+         end   = rowoffset(i+1)
+
+!DEC$ VECTOR ALWAYS
+!DEC$ IVDEP
+         do j= start , end
+            tmp = tmp + cmatrx_crs(j) * locvec(index_crs(j))
+         enddo
+
+         resvec(i) = resvec(i) + tmp
 
       enddo
       

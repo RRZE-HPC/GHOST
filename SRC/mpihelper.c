@@ -1,6 +1,7 @@
 #include "mpihelper.h"
 #include "mymacros.h"
 #include <stdio.h>
+#include <sys/param.h>
 
 void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) {
 
@@ -18,7 +19,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
    coreId = likwid_processGetProcessorId();
 
-   size_ahnm = (size_t)( 50*n_nodes * sizeof(char) );
+   size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
    size_nint = (size_t)( n_nodes    * sizeof(int) );
 
@@ -28,13 +29,13 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    all_hostnames = (char**)    malloc( size_ahn );
 
    for (i=0; i<n_nodes; i++){
-      all_hostnames[i] = &all_hn_mem[i*50];
+      all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
       mymate[i] = 0;
    }
 
    /* write local hostname to all_hostnames and share */
-   ierr = MPI_Allgather ( hostname, 50, MPI_CHAR, 
-	 &all_hostnames[0][0], 50, MPI_CHAR, MPI_COMM_WORLD );
+   ierr = MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
+	 &all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD );
 
    /* one process per node writes its global id to all its mates' fields */ 
    if (coreId==0){

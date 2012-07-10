@@ -52,7 +52,10 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
 			hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
 		}
-		res->val[i] = hlp1;
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+			res->val[i] += hlp1;
+		else
+			res->val[i] = hlp1;
 	}
 
 #endif
@@ -117,7 +120,10 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 		for (j=lcrp->lrow_ptr_l[i]; j<lcrp->lrow_ptr_l[i+1]; j++){
 			hlp1 = hlp1 + lcrp->lval[j] * invec->val[lcrp->lcol[j]]; 
 		}
-		res->val[i] = hlp1;
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+			res->val[i] += hlp1;
+		else
+			res->val[i] = hlp1;
 	}
 
 #endif
@@ -275,5 +281,45 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
 } 
 #endif //CUDAKERNEL
+
+inline void vecscal(VECTOR_TYPE *vec, double s) {
+
+#ifdef OCLKERNEL
+	CL_vecscal(vec->CL_val_gpu,s,vec->nRows);
+#else
+	int i;
+#pragma omp parallel for private(i)
+	for (i=0; i<vec->nRows; i++)
+		vec->val[i] = s*vec->val[i];
+#endif
+}
+
+inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
+
+#ifdef OCLKERNEL
+	CL_dotprod(v1->CL_val_gpu,v2->CL_val_gpu,res,n);
+#else
+	int i;
+	double sum = 0;
+#pragma omp parallel for private(i) reduction(+:sum)
+	for (i=0; i<n; i++)
+		sum += v1->val[i]*v2->val[i];
+	*res = sum;
+#endif
+}
+
+inline void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double s) {
+
+#ifdef OCLKERNEL
+	CL_axpy(v1->CL_val_gpu,v2->CL_val_gpu,s,v1->nRows);
+#else
+	int i;
+#pragma omp parallel for private(i)
+	for (i=0; i<v1->nRows; i++)
+		v1->val[i] = v1->val[i] + s*v2->val[i];
+#endif
+}
+
+
 
 #endif

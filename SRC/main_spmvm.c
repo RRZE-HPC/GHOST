@@ -116,18 +116,18 @@ int main( int argc, char* argv[] ) {
 
 	int i,j; 
 
-	int kernels[] = {5,10,12};
+	int kernels[] = {2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	jobmask = 0;
 
 	for (i=0; i<numKernels; i++)
 		jobmask |= 0x1<<kernels[i];
 
-	VECTOR_TYPE*     nodeLHS;    // lhs vector
-	VECTOR_TYPE*     nodeRHS;     // rhs vector
+	VECTOR_TYPE*     nodeLHS; // lhs vector per node
+	VECTOR_TYPE*     nodeRHS; // rhs vector node
 	HOSTVECTOR_TYPE *goldLHS; // reference result
-	HOSTVECTOR_TYPE *globRHS;
-	HOSTVECTOR_TYPE *globLHS;
+	HOSTVECTOR_TYPE *globRHS; // global rhs vector
+	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
 	int iteration;
 
@@ -164,6 +164,7 @@ int main( int argc, char* argv[] ) {
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 	SPMVM_OPTIONS = 0;
+	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
 
 
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
@@ -175,18 +176,28 @@ int main( int argc, char* argv[] ) {
 		goldLHS = newHostVector( cr->nCols );
 		globLHS = newHostVector( cr->nCols );
 
-		for (i=0; i<cr->nCols; i++) 
+		for (i=0; i<cr->nCols; i++) { 
 			globRHS->val[i] = i+1;
+			//globLHS->val[i] = 0.;
+			//goldLHS->val[i] = 0.;
+		}
 
 		//crColIdToFortran(cr);
-		fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
+			for (iteration=0; iteration<props.nIter; iteration++)
+				fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+		else
+			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 	} else {
 		goldLHS = newHostVector(0);
 		globRHS = newHostVector(0);
 		globLHS = newHostVector(0);
 	}
 
-	LCRP_TYPE *lcrp = SpMVM_init ( cr, &props.matrixFormats);
+	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
+#ifdef OCLKERNEL
+	SpMVM_CL_distributeCRS ( lcrp, &props.matrixFormats);
+#endif
 
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
 	nodeLHS = newVector( lcrp->lnRows[me] );
@@ -222,25 +233,24 @@ int main( int argc, char* argv[] ) {
 			permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 		}
 
-
 		MPI_Gatherv(nodeLHS->val,lcrp->lnRows[me],MPI_DOUBLE,globLHS->val,lcrp->lnRows,lcrp->lfRow,MPI_DOUBLE,0,MPI_COMM_WORLD);
 
 		if (me==0) {
 			for (i=0; i<lcrp->lnRows[me]; i++){
 				mytol = EPSILON * (1.0 + fabs(goldLHS->val[i]) ) ;
 				if (fabs(goldLHS->val[i]-globLHS->val[i]) > mytol){
-					printf( "Correctness-check Hybrid:  PE%d: error in row %i:", me, i);
-					printf(" Differences: %e   Value ser: %25.16e Value par: %25.16e\n",
-							goldLHS->val[i]-globLHS->val[i], goldLHS->val[i], globLHS->val[i]);
+					IF_DEBUG(1) {
+						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, goldLHS->val[i], globLHS->val[i],goldLHS->val[i]-globLHS->val[i]);
+					}
 					errcount++;
 				}
 			}
 			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
 		}
+		zeroVector(nodeLHS);
 
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
 
 	freeVector( nodeLHS );
 	freeVector( nodeRHS );

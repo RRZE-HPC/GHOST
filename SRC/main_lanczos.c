@@ -8,7 +8,10 @@
 #include <unistd.h>
 #include <omp.h>
 #include <sched.h>
+
+#ifdef OCLKERNEL
 #include <oclfun.h>
+#endif
 
 #include <likwid.h>
 #include <limits.h>
@@ -21,12 +24,11 @@ int SPMVM_OPTIONS = 0;
 typedef struct {
 	char matrixPath[PATH_MAX];
 	char matrixName[PATH_MAX];
-	MATRIX_FORMATS matrixFormats;
-	//int wgSize;
-	//int nEigs;
 	int nIter;
+#ifdef OCLKERNEL
+	MATRIX_FORMATS matrixFormats;
 	int devType;
-	//int dev;
+#endif
 } PROPS;
 
 
@@ -71,6 +73,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 			case 'f':
 				{
+#ifdef OCLKERNEL
 					char *format;
 					format = strtok(optarg,",");
 					int i=0;
@@ -87,6 +90,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 						format = strtok(NULL,",");
 						i++;
 					}
+#endif
 
 					break;
 				}
@@ -103,6 +107,19 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 				abort ();
 		}
 	}
+}
+
+void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, double *alpha, double *beta, int kernel,  int iteration) {
+	vecscal(vnew,-*beta);
+	HyK[kernel].kernel( iteration, vnew, lcrp, vold);
+	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
+	MPI_Allreduce(MPI_IN_PLACE, alpha,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+	axpy(vnew,vold,-(*alpha));
+	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
+	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+	*beta=sqrt(*beta);
+
+	vecscal(vnew,1./(*beta));
 }
 
 
@@ -123,8 +140,8 @@ int main( int argc, char* argv[] ) {
 	HOSTVECTOR_TYPE *r0;
 
 	int iteration;
-	
-	double start, end, dummy, tstart, tend, time_it_took;
+
+	double start, end, dummy, tstart, tend, time_it_took, tacc = 0;
 	int kernelIdx, kernel;
 
 	int kernels[] = {5,10,12};
@@ -135,14 +152,17 @@ int main( int argc, char* argv[] ) {
 		jobmask |= 0x1<<kernels[i];
 
 	PROPS props;
+	props.nIter = 1;
+#ifdef OCLKERNEL
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
 	props.matrixFormats.T[0] = 2;
 	props.matrixFormats.T[1] = 2;
 	props.matrixFormats.T[2] = 1;
-	props.nIter = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
+	cl_mem tmp;
+#endif
 
 	getOptions(argc,argv,&props);
 	if (argc==optind) {
@@ -183,7 +203,11 @@ int main( int argc, char* argv[] ) {
 		r0 = newHostVector(0);
 	}
 
-	LCRP_TYPE *lcrp = SpMVM_init ( cr, &props.matrixFormats);
+	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
+
+#ifdef OCLKERNEL
+	SpMVM_CL_distributeCRS ( lcrp, &props.matrixFormats);
+#endif
 
 	double *zero = (double *)allocateMemory(lcrp->lnRows[me]*sizeof(double),"zero");
 	for (i=0; i<lcrp->lnRows[me]; i++)
@@ -202,6 +226,7 @@ int main( int argc, char* argv[] ) {
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
+
 		kernel = kernels[kernelIdx];
 
 		/* Skip loop body if kernel does not make sense for used parametes */
@@ -214,100 +239,82 @@ int main( int argc, char* argv[] ) {
 		double *betas   = (double *)allocateMemory(sizeof(double)*props.nIter,"betas");
 		double *falphas = (double *)allocateMemory(sizeof(double)*props.nIter,"falphas");
 		double *fbetas  = (double *)allocateMemory(sizeof(double)*props.nIter,"fbetas");
-		
-		cl_mem tmp;
+
 		double *dtmp;
 		int ferr;
 
+		tacc = 0;
 		double alpha=0., beta=0.;
 		betas[0] = beta;
-		cl_event event = NULL;	
 		int n;
-		for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
+		cl_event event;
+
+
+		lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,0);
+
+#ifdef OCLKERNEL	
+		//downloadVector(vnew); //TODO overlap
+		//event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
+#endif
+		alphas[0] = alpha;
+		betas[1] = beta;
+
+
+		for( iteration = 1, n=1; iteration < props.nIter; iteration++, n++ ) {
 			if (me == 0) {
 				printf("\r");
 				timing(&start,&dummy);
 				timing(&tstart,&dummy);
 			}
-
-			
-			CL_vecscal(vnew->CL_val_gpu,-beta,lcrp->lnRows[me]);
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				//printf("vecscal: %6.2f ms, ",time_it_took*1e3);
+				printf("lanczos: %6.2f ms, ",time_it_took*1e3);
 			}
-
-			//if (event)
-			//	clWaitForEvents(1,&event);
-
-			if (me == 0)
+			if (me == 0) { 
 				timing(&start,&dummy);
+			}
+#ifdef OCLKERNEL	
+			//downloadVector(vnew); //TODO overlap
+			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
+#endif
 
-			HyK[kernel].kernel( iteration, vnew, lcrp, vold);
+			swapVectors(vnew,vold);
+
+
+			memcpy(falphas,alphas,(iteration)*sizeof(double));
+			memcpy(fbetas,betas,(iteration)*sizeof(double));
+			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
+
+			if(ferr != 0) {
+				printf("> Error: the %d. eigenvalue could not be determined\n",ferr);
+			}
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("spmvm: %6.2f ms, %6.2f GF/s, ",time_it_took*1e3,2*nnz/(1.e9*time_it_took));
+				printf("imtql: %6.2f ms ",time_it_took*1e3);
 			}
 
-			CL_dotprod(vold->CL_val_gpu,vnew->CL_val_gpu,&alpha,lcrp->lnRows[me]);
-			MPI_Allreduce(MPI_IN_PLACE, &alpha,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-
-			CL_axpy(vnew->CL_val_gpu,vold->CL_val_gpu,-alpha,lcrp->lnRows[me]);
-			
-			CL_dotprod(vnew->CL_val_gpu,vnew->CL_val_gpu,&beta,lcrp->lnRows[me]);
-			MPI_Allreduce(MPI_IN_PLACE, &beta,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-			beta=sqrt(beta);
-			
-			CL_vecscal(vnew->CL_val_gpu,1./beta,lcrp->lnRows[me]);
-			
-		//	event = CL_copyDeviceToHostNonBlocking(vnew->val,vnew->CL_val_gpu,sizeof(double)*lcrp->lnRows[me]);
-			downloadVector(vnew); //TODO overlap
+			clWaitForEvents(1,&event);
+			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,iteration);
 
 			alphas[iteration] = alpha;
 			betas[iteration+1] = beta;
 
-			if (me == 0) {
-				timing(&end,&dummy);
-				time_it_took = end-start;
-				//printf("lanczos: %6.2f ms, ",time_it_took*1e3);
-			}
-			if (me == 0)
-				timing(&start,&dummy);
-
-			memcpy(falphas,alphas,(iteration+1)*sizeof(double));
-			memcpy(fbetas,betas,(iteration+1)*sizeof(double));
-
-			imtql1_(&n,falphas,fbetas,&ferr);
-
-			if(ferr != 0)
-				printf("> Error: the %d. eigenvalue could not be determined\n",ferr);
-
-			if (me == 0) {
-				timing(&end,&dummy);
-				time_it_took = end-start;
-				//printf("imtql: %6.2f ms ",time_it_took*1e3);
-			}
-
-			dtmp = vnew->val;
-			vnew->val = vold->val;
-			vold->val = dtmp;
-			tmp = vnew->CL_val_gpu;
-			vnew->CL_val_gpu = vold->CL_val_gpu;
-			vold->CL_val_gpu = tmp;
-
 			if (me==0) {
-
 				timing(&tend,&dummy);
-				printf("total: %6.2f ms, evmin: %6.2f",(tend-tstart)*1e3,falphas[0]);
+				tacc += tend-tstart;
+				printf("it: %6.2f ms, evmin: %6.2f, ",(tend-tstart)*1e3,falphas[0]);
+				fflush(stdout);
 			}
 
 		}
-		if (me==0)
-			printf("\n");
+		if (me==0) {
+			printf("total: %.2f ms\n",tacc*1e3);
+		}
 
 	}
+
 
 	MPI_Barrier(MPI_COMM_WORLD);
 

@@ -1,6 +1,8 @@
 #include "matricks.h"
 #include <sys/param.h>
+#ifdef OCLKERNEL
 #include "oclfun.h"
+#endif
 #include <libgen.h>
 
 
@@ -70,9 +72,10 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
 	return nodeVec;
 }
 
+#ifdef OCLKERNEL
+void SpMVM_CL_distributeCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 
-LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats) {
-
+	int node_rank, node_size;
 	int ierr;
 	int me;
 	int i;
@@ -82,20 +85,13 @@ LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats) {
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
 	thishost(hostname);
-
-#ifdef OCLKERNEL
-	int node_rank, node_size;
 
 	ierr = MPI_Comm_size( single_node_comm, &node_size);
 	ierr = MPI_Comm_rank( single_node_comm, &node_rank);
 	CL_init( node_rank, node_size, hostname, matrixFormats);
-#endif
-
-	LCRP_TYPE *lcrp = setup_communication(cr, 1,matrixFormats);
-
-#ifdef OCLKERNEL
+	CL_setup_communication(lcrp,matrixFormats);
+	
 	if( jobmask & 503 ) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
 	}
@@ -104,7 +100,26 @@ LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats) {
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
 	}
+
+
+}
 #endif
+
+
+LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr) {
+
+	int node_rank, node_size;
+	int ierr;
+	int me;
+	int i;
+	char hostname[MAXHOSTNAMELEN];
+	int me_node;
+
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	gethostname(hostname,MAXHOSTNAMELEN);
+	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
+	
+	LCRP_TYPE *lcrp = setup_communication(cr, 1);
 
 	return lcrp;
 

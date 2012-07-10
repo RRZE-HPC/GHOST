@@ -2,6 +2,7 @@
 #define _MY_ELLPACK_H_
 
 #include <stdio.h>
+
 #include <CL/cl.h>
 
 typedef struct {

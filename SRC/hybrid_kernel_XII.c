@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <sys/types.h>
 
+extern int SPMVM_OPTIONS;
 void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	/*****************************************************************************
@@ -31,7 +32,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	uint64 glob_cycles, glob_cyclecounter;
 
 	/* Required cycles for the individual contributions */
-	uint64 ir_cycles, pr_cycles, lc_cycles, nl_cycles;
+	uint64 ir_cycles, pr_cycles, lc_cycles = 0, nl_cycles;
 	uint64 cp_lin_cycles, cp_nlin_cycles, cp_res_cycles;
 
 	double hlp1;
@@ -122,7 +123,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	shared    (ompi_mpi_double, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
 			asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
-			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles)                                                  \
+			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles,SPMVM_OPTIONS)                                                  \
 	reduction (+:send_messages) 
 #else
 #pragma omp parallel                                                            \
@@ -131,7 +132,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	shared    (lcrp, me, work, invec, send_request, res, n_per_thread,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
 			asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
-			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles)                                                  \
+			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles,SPMVM_OPTIONS)                                                  \
 	reduction (+:send_messages)
 #endif 
 	{
@@ -188,7 +189,11 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 				for (j=lcrp->lrow_ptr_l[i]; j<lcrp->lrow_ptr_l[i+1]; j++){
 					hlp1 = hlp1 + lcrp->lval[j] * invec->val[lcrp->lcol[j]]; 
 				}
-				res->val[i] = hlp1;
+
+				if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+					res->val[i] += hlp1;
+				else
+					res->val[i] = hlp1;
 			}
 #endif
 

@@ -1,5 +1,8 @@
 #include "matricks.h"
+#ifdef OCLKERNEL
 #include "oclfun.h"
+#include "my_ellpack.h"
+#endif
 #include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
@@ -15,7 +18,6 @@
 #include <sun_prefetch.h>
 #endif
 
-#include "my_ellpack.h"
 #include <string.h>
 #include <libgen.h>
 
@@ -1028,6 +1030,18 @@ void crColIdToC( CR_TYPE* cr ) {
 
 /* ########################################################################## */
 
+void zeroVector(VECTOR_TYPE *vec) {
+	int i;
+	for (i=0; i<vec->nRows; i++)
+		vec->val[i] = 0;
+
+#ifdef OCLKERNEL
+	uploadVector(vec);
+#endif
+
+
+}
+
 HOSTVECTOR_TYPE* newHostVector( const int nRows ) {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
@@ -1062,6 +1076,23 @@ VECTOR_TYPE* newVector( const int nRows ) {
 
 	return vec;
 }
+
+void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
+	double *dtmp;
+
+			dtmp = v1->val;
+			v1->val = v2->val;
+			v2->val = dtmp;
+#ifdef OCLKERNEL
+	cl_mem tmp;
+			tmp = v1->CL_val_gpu;
+			v1->CL_val_gpu = v2->CL_val_gpu;
+			v2->CL_val_gpu = tmp;
+#endif
+
+}
+
+	
 
 #ifdef OCLKERNEL
 void uploadVector( VECTOR_TYPE *vec ) {

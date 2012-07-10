@@ -57,7 +57,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		}
 	}
 
-	takedevice = 0;//rank%numDevices;
+	takedevice = rank%numDevices;
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 	printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", rank, size-1, hostname, takedevice, devicename);
 
@@ -67,7 +67,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	CL_checkerror(err);
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating command queue\n", rank, size-1, hostname);
-	queue = clCreateCommandQueue(context,deviceIDs[takedevice],CL_QUEUE_PROFILING_ENABLE,&err);
+	queue = clCreateCommandQueue(context,deviceIDs[takedevice],CL_QUEUE_PROFILING_ENABLE|CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,&err);
 	CL_checkerror(err);
 
 

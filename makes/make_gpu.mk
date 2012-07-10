@@ -1,6 +1,3 @@
-#INTEL_F_HOME = /usr/intel-ifort-10.0
-#LIKWID_DIR = /home/woody/unrz/unrz265/likwid-testing
-#LIKWID_DIR = /apps/likwid/stable
 LIKWID_DIR = /apps/likwid/devel/
 
 CC	= mpicc
@@ -22,9 +19,6 @@ NVCCFLAGS = -O3 ${MAKROS} -gencode=arch=compute_13,code=\"sm_13,compute_13\" -ge
  
 AS	= as
 ASFLAGS = -g -gstabs
-
-CUDASWITCH = #DOCUDA
-OCLSWITCH = DOOCL
 
 ENDG    =       $(shell echo ${MAKROS} | sed -e 's/\-D/_/g' | sed -e 's/\ //g')
 SUFX    =      ${ENDG}_${SYSTEM}

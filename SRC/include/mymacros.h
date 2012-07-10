@@ -1,6 +1,14 @@
 #ifndef _MY_MACROS_H_
 #define _MY_MACROS_H_
 
+#define SPM_KERNEL_FULL 0
+#define SPM_KERNEL_LOCAL 1
+#define SPM_KERNEL_REMOTE 2
+#define AXPY_KERNEL 3
+#define DOTPROD_KERNEL 4
+#define VECSCAL_KERNEL 5
+
+
 #define DEBUG 0 
 #define xMAIN_DIAGONAL_FIRST
 

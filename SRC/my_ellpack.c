@@ -2,8 +2,10 @@
 #include "my_ellpack.h"
 #include "matricks.h"
 #include "mymacros.h"
+#ifdef OCLKERNEL
 #include "oclfun.h"
 #include "oclmacros.h"
+#endif
 
 #include <assert.h>
 #include <stdio.h>

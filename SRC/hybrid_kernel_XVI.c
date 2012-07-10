@@ -4,6 +4,8 @@
 #include <omp.h>
 #include <sys/types.h>
 
+extern int SPMVM_OPTIONS;
+
 void hybrid_kernel_XVI(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
    /*****************************************************************************
@@ -169,7 +171,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 send_status, recv_status, recv_request, lc_firstrow, lc_numrows,       \
          nl_firstrow, nl_numrows,                                               \
 	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
-	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles) \
+	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles,SPMVM_OPTIONS) \
    reduction (+ : send_messages, recv_messages) 
 #else
 #pragma omp parallel                                                            \
@@ -180,7 +182,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 send_status, recv_status, recv_request, lc_firstrow, lc_numrows,       \
          nl_firstrow, nl_numrows,                                               \
 	 asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
-	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles) \
+	 cp_cycles, pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles, cp_nlin_cycles, cp_res_cycles,SPMVM_OPTIONS) \
    reduction (+ : send_messages, recv_messages) 
 #endif
    {
@@ -286,7 +288,10 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	    for (j=lcrp->lrow_ptr_l[i]; j<lcrp->lrow_ptr_l[i+1]; j++){
 	       hlp1 = hlp1 + lcrp->lval[j] * invec->val[lcrp->lcol[j]]; 
 	    }
-	    res->val[i] = hlp1;
+				if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+					res->val[i] += hlp1;
+				else
+					res->val[i] = hlp1;
 	 }
 	 
 	 #endif

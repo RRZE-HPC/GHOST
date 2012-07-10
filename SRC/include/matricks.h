@@ -261,7 +261,8 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 typedef unsigned long long uint64;
 
 CR_TYPE * SpMVM_createCRS (char *matrixPath);
-LCRP_TYPE * SpMVM_init (CR_TYPE *cr, MATRIX_FORMATS *matrixFormats);
+LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr);
+void SpMVM_CL_distributeCRS (LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats);
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
 void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 void getMatrixPathAndName(char *given, char *path, char *name);
@@ -269,11 +270,15 @@ int isMMfile(const char *filename);
 
 void* allocateMemory( const size_t size, const char* desc );
 
+void zeroVector(VECTOR_TYPE *vec);
 VECTOR_TYPE* newVector( const int nRows );
+void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 HOSTVECTOR_TYPE* newHostVector( const int nRows );
 void normalize( double *vec, int nRows);
-#ifdef CUDAKERNEL
-void vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
+#ifdef OCLKERNEL
+void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
+void uploadVector( VECTOR_TYPE *vec );
+void downloadVector( VECTOR_TYPE *vec );
 #endif
 
 void permuteVector( double* vec, int* perm, int len);
@@ -314,7 +319,8 @@ void bin_write_jd(const JD_TYPE*, const char*);
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);
 
-LCRP_TYPE* setup_communication(CR_TYPE* const, int, MATRIX_FORMATS *);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int);
+void CL_setup_communication(LCRP_TYPE* const, MATRIX_FORMATS *);
 LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);

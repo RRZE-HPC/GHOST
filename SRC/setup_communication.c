@@ -1,5 +1,8 @@
 #include "matricks.h"
+
+#ifdef OCLKERNEL
 #include "my_ellpack.h"
+#endif
 
 #include <math.h>
 
@@ -10,7 +13,7 @@
  * entsprechenden Daten dann an diejenigen PEs verteilen die es betrifft.
  *****************************************************************************/
 
-LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matrixFormats){
+LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 	/* Counting and auxilliary variables */
 	int i, j, hlpi;
@@ -70,20 +73,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	size_t size_revc, size_a2ai, size_nptr, size_pval;  
 	size_t size_mem, size_wish, size_dues;
 
-#ifdef OCLKERNEL
-	ELR_TYPE* elr 	= NULL;
-	ELR_TYPE* lelr	= NULL;
-	ELR_TYPE* relr	= NULL;
-	CL_ELR_TYPE* celr  = NULL;
-	CL_ELR_TYPE* lcelr = NULL;
-	CL_ELR_TYPE* rcelr = NULL;
-	PJDS_TYPE* pjds	= NULL;
-	PJDS_TYPE* lpjds= NULL;
-	PJDS_TYPE* rpjds= NULL;
-	CL_PJDS_TYPE* rcpjds= NULL;
-	CL_PJDS_TYPE* cpjds  = NULL;
-	CL_PJDS_TYPE* lcpjds = NULL;
-#endif
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -98,6 +87,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	}
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
+	
+	lcrp->fullRowPerm = NULL;
+	lcrp->fullInvRowPerm = NULL;
+	lcrp->splitRowPerm = NULL;
+	lcrp->splitInvRowPerm = NULL;
+	lcrp->fullMatrix = NULL;
+	lcrp->localMatrix = NULL;
+	lcrp->remoteMatrix = NULL;
 
 	lcrp->nEnts = cr->nEnts;
 	lcrp->nRows = cr->nRows;
@@ -656,15 +653,29 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 	freeCRMatrix( cr );
 
 
-#ifdef OCLKERNEL
-	lcrp->fullRowPerm = NULL;
-	lcrp->fullInvRowPerm = NULL;
-	lcrp->splitRowPerm = NULL;
-	lcrp->splitInvRowPerm = NULL;
-	lcrp->fullMatrix = NULL;
-	lcrp->localMatrix = NULL;
-	lcrp->remoteMatrix = NULL;
+	return lcrp;
+}
 
+#ifdef OCLKERNEL
+void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
+
+	ELR_TYPE* elr 	= NULL;
+	ELR_TYPE* lelr	= NULL;
+	ELR_TYPE* relr	= NULL;
+	CL_ELR_TYPE* celr  = NULL;
+	CL_ELR_TYPE* lcelr = NULL;
+	CL_ELR_TYPE* rcelr = NULL;
+	PJDS_TYPE* pjds	= NULL;
+	PJDS_TYPE* lpjds= NULL;
+	PJDS_TYPE* rpjds= NULL;
+	CL_PJDS_TYPE* rcpjds= NULL;
+	CL_PJDS_TYPE* cpjds  = NULL;
+	CL_PJDS_TYPE* lcpjds = NULL;
+
+
+	int ierr, me;
+
+	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
@@ -811,12 +822,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, MATRIX_FORMATS *matri
 					  }*/
 					freeELR( relr ); 
 		}
-	}	
-
-
-			
+	}
+}
 #endif
 
-
-	return lcrp;
-}
