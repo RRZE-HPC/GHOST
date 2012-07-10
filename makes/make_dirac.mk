@@ -23,4 +23,4 @@ ASFLAGS = -g -gstabs
 OCLSWITCH = DOOCL
 
 ENDG    =       $(shell echo ${MAKROS} | sed -e 's/\-D/_/g' | sed -e 's/\ //g')
-SUFX    =      ${ENDG}_${SYSTEM}
+SUFX    =      _${SYSTEM}
