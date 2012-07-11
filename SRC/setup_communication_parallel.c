@@ -477,7 +477,7 @@ sweepMemory(GLOBAL);
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (jobmask>0){
+	if (JOBMASK>0){
 
 		if (me==0) printf("Gerade nicht skippen!\n");
 
@@ -599,7 +599,7 @@ sweepMemory(GLOBAL);
 #ifdef ELR
 	IF_DEBUG(1) printf("PE%i: creating ELR matrices:\n", me);
 
-	if( jobmask & 502 ) { // only if jobtype requires combined computation
+	if( JOBMASK & 502 ) { // only if jobtype requires combined computation
 
 		/* all-entries ELR */
 		IF_DEBUG(1) printf("PE%i: FULL elr:\n", me);
@@ -630,7 +630,7 @@ sweepMemory(GLOBAL);
 
 	}
 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 
 		/* local entries only */
 		IF_DEBUG(1) printf("PE%i: LOCAL elr:\n", me);
@@ -695,7 +695,7 @@ sweepMemory(GLOBAL);
 	}
 
 
-	if( jobmask & 502 ) { // only if jobtype requires combined computation
+	if( JOBMASK & 502 ) { // only if jobtype requires combined computation
 
 		// all-entries ELR
 		IF_DEBUG(1) printf("PE%i: FULL pjds:\n", me);
@@ -722,7 +722,7 @@ sweepMemory(GLOBAL);
 
 	}
 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 
 		// local entries only
 		IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);

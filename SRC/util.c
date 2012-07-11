@@ -5,6 +5,18 @@
 #endif
 #include <libgen.h>
 
+int SpMVM_init(int argc, char **argv) {
+
+	int ierr, me, req, prov;
+	req = MPI_THREAD_MULTIPLE;
+	ierr = MPI_Init_thread(&argc, &argv, req, &prov );
+
+	if (req != prov)
+		fprintf(stderr, "Required MPI threading level (%d) is not provided (%d)!\n",req,prov);
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	
+	return me;
+}
 
 CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
@@ -72,6 +84,18 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
 	return nodeVec;
 }
 
+void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, HOSTVECTOR_TYPE *totalVec) {
+	int ierr;
+	int me;
+
+
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_DOUBLE,totalVec->val,lcrp->lnRows,lcrp->lfRow,MPI_DOUBLE,0,MPI_COMM_WORLD);
+}
+
+
+	
+
 #ifdef OCLKERNEL
 void SpMVM_CL_distributeCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 
@@ -92,11 +116,11 @@ void SpMVM_CL_distributeCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 	CL_init( node_rank, node_size, hostname, matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
 	
-	if( jobmask & 503 ) { // only if jobtype requires combined computation
+	if( JOBMASK & 503 ) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
 	}
 	
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
 	}
@@ -137,12 +161,12 @@ void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
-	if( jobmask & 503 ) { 
+	if( JOBMASK & 503 ) { 
 		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
 		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
 
 	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
 		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
@@ -161,9 +185,9 @@ void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
 		printf("Working set             [MB]: %12lu\n", ws);
 #ifdef OCLKERNEL	
-		if( jobmask & 503 ) 
+		if( JOBMASK & 503 ) 
 			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
-		if( jobmask & 261640 ) {
+		if( JOBMASK & 261640 ) {
 			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
 			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
 			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
@@ -174,5 +198,16 @@ void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 	}
 }
 
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, double (*fp)(int)) {
+	int ierr;
+	int me;
+	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+
+	if (me==0) {
+		return newHostVector( nRows,fp );
+	} else {
+		return newHostVector(0,NULL);
+	}
+}	
 
 	

@@ -244,7 +244,7 @@ int main( int nArgs, char* arg[] ) {
 		place_rhs  = atoi(arg[2]);
 		io_format  = atoi(arg[4]);
 		work_dist  = atoi(arg[5]);
-		jobmask    = atoi(arg[6]);
+		JOBMASK    = atoi(arg[6]);
 		outer_it   = atoi(arg[7]);
 
 		if      (place_rhs == 1) sprintf(pr_flag, "CRS");
@@ -331,8 +331,8 @@ int main( int nArgs, char* arg[] ) {
 		printf("Using LIKWID marker API     : %12s\n", lw_flag); 
 		printf("Type of matrix-file I/O     : %12s\n", io_flag); 
 		printf("Matrix distribution on PEs  : %12s\n", wd_flag); 
-		printf("Jobmask (integer)           : %12d\n", jobmask); 
-		printf("Jobmask (hexadecimal)       : %#12x\n", jobmask); 
+		printf("Jobmask (integer)           : %12d\n", JOBMASK); 
+		printf("Jobmask (hexadecimal)       : %#12x\n", JOBMASK); 
 		printf("Type of benchmark           : %12s\n", benchmark);
 #ifdef OCLKERNEL	
 		printf("Full matrix format          : %9s-%2d\n", SPM_FORMAT_NAME[matrixFormats.format[0]],matrixFormats.T[0]); 
@@ -478,7 +478,7 @@ int main( int nArgs, char* arg[] ) {
 
 	/* Distribute command line parameters to all PEs */
 	ierr = MPI_Bcast(&N_MULTS,   1, MPI_INTEGER, 0, MPI_COMM_WORLD);
-	ierr = MPI_Bcast(&jobmask,   1, MPI_INTEGER, 0, MPI_COMM_WORLD);
+	ierr = MPI_Bcast(&JOBMASK,   1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(&place_rhs, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(&outer_it,  1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(&work_dist, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
@@ -546,11 +546,11 @@ int main( int nArgs, char* arg[] ) {
 
 #ifdef OCLKERNEL
   	MPI_Barrier( MPI_COMM_WORLD );
-	if( jobmask & 503 ) { 
+	if( JOBMASK & 503 ) { 
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats.T[0],0);
 
 	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats.T[1],1);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats.T[2],2);
 	}
@@ -738,12 +738,12 @@ sweepMemory(GLOBAL);
 #ifdef OCLKERNEL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
-	if( jobmask & 503 ) { 
+	if( JOBMASK & 503 ) { 
 		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
 		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
 
 	} 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
 		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
@@ -762,9 +762,9 @@ sweepMemory(GLOBAL);
 		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
 		printf("Working set             [MB]: %12lu\n", ws);
 #ifdef OCLKERNEL	
-		if( jobmask & 503 ) 
+		if( JOBMASK & 503 ) 
 			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
-		if( jobmask & 261640 ) {
+		if( JOBMASK & 261640 ) {
 			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
 			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
 			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
@@ -797,8 +797,8 @@ sweepMemory(GLOBAL);
 		MPI_Barrier(MPI_COMM_WORLD);
 		for (version=0; version<NUMKERNELS; version++){
 
-			/* Skip this version if kernel is not chosen by jobmask */
-			if ( ((0x1<<version) & jobmask) == 0 ) continue; 
+			/* Skip this version if kernel is not chosen by JOBMASK */
+			if ( ((0x1<<version) & JOBMASK) == 0 ) continue; 
 
 			/* Skip loop body if version does not make sense for used parametes */
 			if (version==0 && lcrp->nodes>1) continue;      /* no MPI available */
@@ -895,7 +895,7 @@ sweepMemory(GLOBAL);
 			printf("-------------------------------------------------------\n");
 			printf("Kernel            Cyc/NZE  Time/MVM [ms]        MFlop/s\n"); 
 			for (version=0; version<NUMKERNELS; version++){
-				if ( ((0x1<<version) & jobmask) == 0 ) continue; 
+				if ( ((0x1<<version) & JOBMASK) == 0 ) continue; 
 				acc_cycles = (double) HyK[version].cycles;
 				acc_time   = HyK[version].time;
 				/* Skip loop body if version does not make sense for used parametes */

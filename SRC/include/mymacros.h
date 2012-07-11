@@ -33,6 +33,7 @@
 #define TRUE  (1==1)
 #define FALSE (1==0)
 
+#define SPMVM_OPTION_NONE (0x0)
 #define SPMVM_OPTION_AXPY (0x1<<0)
 #define SPMVM_OPTION_KEEPRESULT (0x1<<1)
 #define SPMVM_OPTION_RHSPRESENT (0x1<<2)

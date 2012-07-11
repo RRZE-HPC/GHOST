@@ -540,7 +540,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (jobmask>0){
+	if (JOBMASK>0){
 
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
@@ -679,7 +679,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
-	if( jobmask & 503 ) { // only if jobtype requires combined computation
+	if( JOBMASK & 503 ) { // only if jobtype requires combined computation
 
 
 		switch (matrixFormats->format[0]) {
@@ -731,7 +731,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 	}
 
-	if( jobmask & 261640 ) { // only if jobtype requires split computation
+	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 
 		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
 					IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);

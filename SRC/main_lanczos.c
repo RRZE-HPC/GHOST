@@ -16,10 +16,10 @@
 #include <likwid.h>
 #include <limits.h>
 #include <getopt.h>
+#include <libgen.h>
 
 /* Global variables */
 const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
-int SPMVM_OPTIONS = 0;
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -122,6 +122,9 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, 
 	vecscal(vnew,1./(*beta));
 }
 
+double rhsVal (int i) {
+	return i+1.0;
+}
 
 int main( int argc, char* argv[] ) {
 
@@ -146,13 +149,13 @@ int main( int argc, char* argv[] ) {
 
 	int kernels[] = {5,10,12};
 	int numKernels = sizeof(kernels)/sizeof(int);
-	jobmask = 0;
+	JOBMASK = 0;
 
 	for (i=0; i<numKernels; i++)
-		jobmask |= 0x1<<kernels[i];
+		JOBMASK |= 0x1<<kernels[i];
 
 	PROPS props;
-	props.nIter = 1;
+	props.nIter = 100;
 #ifdef OCLKERNEL
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
@@ -170,17 +173,12 @@ int main( int argc, char* argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	getMatrixPathAndName(argv[optind],props.matrixPath,props.matrixName);
+	getMatrixPath(argv[optind],props.matrixPath);
 	if (!props.matrixPath)
 		myabort("No correct matrix specified! (no absolute file name and not present in $MATHOME)");
+	strcpy(props.matrixName,basename(props.matrixPath));
 
-	required_threading_level = MPI_THREAD_MULTIPLE;
-	ierr = MPI_Init_thread(&argc, &argv, required_threading_level, 
-			&provided_threading_level );
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-
-	if (me==0)
-		printf("req: %d, prov: %d\n",required_threading_level, provided_threading_level);
+	me      = SpMVM_init(argc,argv);       // basic initialization
 
 
 	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device after spmvm
@@ -191,17 +189,8 @@ int main( int argc, char* argv[] ) {
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
 	int nnz = cr->nEnts;
 
-	if (me == 0) {
-		r0 = newHostVector(cr->nCols);
-
-		for (i=0; i<cr->nCols; i++) {
-			r0->val[i] = i;//(double)rand()/RAND_MAX;
-		}
-
-		normalize(r0->val,r0->nRows);
-	} else {
-		r0 = newHostVector(0);
-	}
+	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
+	normalize(r0->val,r0->nRows);
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 

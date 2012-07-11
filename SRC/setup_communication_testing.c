@@ -523,7 +523,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
    /****************************************************************************
     *******        Setup the variant using local/non-local arrays        *******
     ***************************************************************************/
-   if (jobmask>7){
+   if (JOBMASK>7){
   
       if (me==0) printf("Gerade nicht skippen!\n");
 

@@ -13,10 +13,11 @@
 #include <likwid.h>
 #include <limits.h>
 #include <getopt.h>
+#include <libgen.h>
 
 /* Global variables */
 const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
-int SPMVM_OPTIONS = 0;
+//int SPMVM_OPTIONS = 0;
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -118,10 +119,10 @@ int main( int argc, char* argv[] ) {
 
 	int kernels[] = {2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17};
 	int numKernels = sizeof(kernels)/sizeof(int);
-	jobmask = 0;
+	JOBMASK = 0;
 
 	for (i=0; i<numKernels; i++)
-		jobmask |= 0x1<<kernels[i];
+		JOBMASK |= 0x1<<kernels[i];
 
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
@@ -153,9 +154,10 @@ int main( int argc, char* argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	getMatrixPathAndName(argv[optind],props.matrixPath,props.matrixName);
+	getMatrixPath(argv[optind],props.matrixPath);
 	if (!props.matrixPath)
 		myabort("No correct matrix specified! (no absolute file name and not present in $MATHOME)");
+	strcpy(props.matrixName,basename(props.matrixPath));
 
 	required_threading_level = MPI_THREAD_MULTIPLE;
 	ierr = MPI_Init_thread(&argc, &argv, required_threading_level, 
@@ -178,16 +180,16 @@ int main( int argc, char* argv[] ) {
 
 		for (i=0; i<cr->nCols; i++) { 
 			globRHS->val[i] = i+1;
-			//globLHS->val[i] = 0.;
-			//goldLHS->val[i] = 0.;
+			globLHS->val[i] = 0.;
+			goldLHS->val[i] = 0.;
 		}
 
-		//crColIdToFortran(cr);
 		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
 			for (iteration=0; iteration<props.nIter; iteration++)
 				fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 		else
 			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+
 	} else {
 		goldLHS = newHostVector(0);
 		globRHS = newHostVector(0);
@@ -206,6 +208,7 @@ int main( int argc, char* argv[] ) {
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
+
 	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
 		kernel = kernels[kernelIdx];
 

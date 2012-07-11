@@ -35,13 +35,12 @@ static int size1 = 0;
 static int now0  = 0;
 static int now1  = 0;
 
-void getMatrixPathAndName(char *given, char *path, char *name) {
+void getMatrixPath(char *given, char *path) {
 	FILE *file;
 
 	strcpy(path,given);
 	file = fopen(path,"r");
 	if (file) { // given complete is already a full path
-		name = basename(path);
 		return;
 	}
 
@@ -49,7 +48,6 @@ void getMatrixPathAndName(char *given, char *path, char *name) {
 	if (mathome == NULL)
 		myabort("$MATHOME not set! Can't find matrix!");
 
-	strcpy(name,path);
 
 	strcpy(path,mathome);
 	strcat(path,"/");
@@ -76,7 +74,6 @@ void getMatrixPathAndName(char *given, char *path, char *name) {
 	}
 
 	path = NULL;
-	name = NULL;
 	return;
 }
 
@@ -1042,9 +1039,10 @@ void zeroVector(VECTOR_TYPE *vec) {
 
 }
 
-HOSTVECTOR_TYPE* newHostVector( const int nRows ) {
+HOSTVECTOR_TYPE* newHostVector( const int nRows, double (*fp)(int)) {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
+	int i;
 
 	size_val = (size_t)( nRows * sizeof(double) );
 	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
@@ -1052,6 +1050,11 @@ HOSTVECTOR_TYPE* newHostVector( const int nRows ) {
 
 	vec->val = (double*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
+
+	if (fp)
+		for (i=0; i<nRows; i++) vec->val[i] = fp(i);
+	else
+		for (i=0; i<nRows; i++) vec->val[i] = 0.;
 
 	return vec;
 }

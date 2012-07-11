@@ -80,6 +80,12 @@ spmvm: main_spmvm.o $(OBJS)
 	 -mv *.o OBJ
 	 -mv *genmod* OBJ
 
+minimal: main_minimal.o $(OBJS) 
+	$(CC) $(LDFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
+	 
+
 clean:
 	-rm -f *.o
 	-rm -f OBJ/*.o

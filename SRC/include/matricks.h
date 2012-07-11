@@ -260,12 +260,14 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
 typedef unsigned long long uint64;
 
+int SpMVM_init(int argc, char **argv);
 CR_TYPE * SpMVM_createCRS (char *matrixPath);
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr);
 void SpMVM_CL_distributeCRS (LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats);
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
 void printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
-void getMatrixPathAndName(char *given, char *path, char *name);
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, double (*fp)(int));
+void getMatrixPath(char *given, char *path);
 int isMMfile(const char *filename);
 
 void* allocateMemory( const size_t size, const char* desc );
@@ -273,7 +275,7 @@ void* allocateMemory( const size_t size, const char* desc );
 void zeroVector(VECTOR_TYPE *vec);
 VECTOR_TYPE* newVector( const int nRows );
 void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
-HOSTVECTOR_TYPE* newHostVector( const int nRows );
+HOSTVECTOR_TYPE* newHostVector( const int nRows, double (*fp)(int));
 void normalize( double *vec, int nRows);
 #ifdef OCLKERNEL
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
@@ -361,8 +363,9 @@ int compareNZEPerRow( const void*, const void*);
 int compareNZEForJD( const void*, const void* );
 
 int successful;
-int jobmask;
+int JOBMASK;
 size_t allocatedMem;
 MPI_Comm single_node_comm;
+int SPMVM_OPTIONS;
 
 #endif /* _MATRICKS_H_ */

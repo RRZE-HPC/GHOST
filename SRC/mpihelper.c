@@ -50,7 +50,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    ierr = MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, single_node_comm );
    ierr = MPI_Comm_rank ( *single_node_comm, me_node);
 
-   IF_DEBUG(0) printf("PE%d hat in single_node_comm den rank %d\n", me, *me_node);
+   IF_DEBUG(1) printf("PE%d hat in single_node_comm den rank %d\n", me, *me_node);
 
    free( mymate );
    free( acc_mates );
