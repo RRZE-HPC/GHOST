@@ -1,3 +1,4 @@
+#include "spmvm_util.h"
 #include "matricks.h"
 #include "mpihelper.h"
 #include "timing.h"
@@ -47,7 +48,7 @@ int main( int argc, char* argv[] ) {
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS); // distribute RHS vector
 	nodeLHS = SpMVM_distributeVector(lcrp,globLHS); // distribute LHS vector
 
-	printMatrixInfo(lcrp,basename(matrixPath));     // print matrix information
+	SpMVM_printMatrixInfo(lcrp,basename(matrixPath));     // print matrix information
 
 	if (me == 0) timing(&start,&dummy);
 

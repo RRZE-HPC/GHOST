@@ -1,4 +1,6 @@
 *.x
+*.so
+*.a
 SRC/*.swp
 SRC/include/*.swp
 daten/*

@@ -117,7 +117,7 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    size_t sucr;
 
    size_t size_hlp;
-   double* zusteller;
+   //double* zusteller;
 
    timing( &startTime, &ct );
 
@@ -157,18 +157,18 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
       printf("Reading array with values\n");
    }	
 
-   NUMA_CHECK_SERIAL("before placement zusteller");
+   //NUMA_CHECK_SERIAL("before placement zusteller");
 
    IF_DEBUG(1) printf("gezieltes placement in die falschen LD\n");
    size_hlp = (size_t) ( 450000000*sizeof(double));
-   zusteller = (double*) allocateMemory( size_hlp,  "zusteller" );
+   //zusteller = (double*) allocateMemory( size_hlp,  "zusteller" );
 
-#pragma omp parallel for schedule(runtime)
-   for( i = 0; i < 450000000; i++ )  zusteller[i] = 0;
+//#pragma omp parallel for schedule(runtime)
+//   for( i = 0; i < 450000000; i++ )  zusteller[i] = 0;
 
 
 
-   NUMA_CHECK_SERIAL("after placement zusteller");
+//   NUMA_CHECK_SERIAL("after placement zusteller");
 
    IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
 #pragma omp parallel for schedule(runtime)
@@ -198,20 +198,10 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
 
    NUMA_CHECK_SERIAL("after CR-binary read");
 
-   freeMemory(size_hlp, "zusteller", zusteller);
+//   freeMemory(size_hlp, "zusteller", zusteller);
 
    NUMA_CHECK_SERIAL("after freeing zusteller");
 
-/* lieber ausserhalb der PE=0 Region um Probleme mit oversubscribing zu vermeiden
- * #ifdef CMEM
-   if (allocatedMem > 0.02*total_mem){
-      IF_DEBUG(1) printf("CR setup: Large matrix -- allocated mem=%8.3f MB\n",
-	    (float)(allocatedMem)/(1024.0*1024.0));
-      sweepMemory(SINGLE);
-      IF_DEBUG(1) printf("Nach memsweep\n"); fflush(stdout);
-   }
-#endif
-*/
 
    timing( &stopTime, &ct );
    IF_DEBUG(2) printf("... done\n"); 

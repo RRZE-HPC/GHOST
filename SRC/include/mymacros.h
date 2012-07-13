@@ -21,7 +21,6 @@
 #define IS_AX 0
 
 #define EPSILON 1e-6
-#define NUMKERNELS 18
 
 
 #define EQUAL_NZE  1
@@ -33,10 +32,6 @@
 #define TRUE  (1==1)
 #define FALSE (1==0)
 
-#define SPMVM_OPTION_NONE (0x0)
-#define SPMVM_OPTION_AXPY (0x1<<0)
-#define SPMVM_OPTION_KEEPRESULT (0x1<<1)
-#define SPMVM_OPTION_RHSPRESENT (0x1<<2)
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -147,7 +142,7 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 	 ierr = MPI_Comm_rank ( single_node_comm, &me_node );                  \
 	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_DOUBLE,         \
                              MPI_SUM, 0, single_node_comm);                    \
-         coreId = likwid_processGetProcessorId();                              \
+         coreId = sched_getcpu();                              \
          if (coreId==0){                                                       \
 	    IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \
 	    if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                  \

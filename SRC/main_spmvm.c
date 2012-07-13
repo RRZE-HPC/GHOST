@@ -1,3 +1,4 @@
+#include "spmvm_util.h"
 #include "matricks.h"
 #include "mpihelper.h"
 #include <string.h>
@@ -10,7 +11,6 @@
 #include <sched.h>
 #include <oclfun.h>
 
-#include <likwid.h>
 #include <limits.h>
 #include <getopt.h>
 #include <libgen.h>
@@ -198,13 +198,13 @@ int main( int argc, char* argv[] ) {
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 #ifdef OCLKERNEL
-	SpMVM_CL_distributeCRS ( lcrp, &props.matrixFormats);
+	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
 
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
 	nodeLHS = newVector( lcrp->lnRows[me] );
 
-	printMatrixInfo(lcrp,props.matrixName);
+	SpMVM_printMatrixInfo(lcrp,props.matrixName);
 
 
 	MPI_Barrier(MPI_COMM_WORLD);

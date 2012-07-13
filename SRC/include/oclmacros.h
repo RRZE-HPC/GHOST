@@ -1,7 +1,6 @@
 #ifndef _OCL_MACROS_H_
 #define _OCL_MACROS_H_
 
-#include "gpumacros.h"
 
 #define CL_safecall(call) do{\
   cl_int err = call ;\

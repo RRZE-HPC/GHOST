@@ -7,7 +7,6 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include <likwid.h>
 
 //#define _XOPEN_SOURCE 600
 #include <errno.h>
@@ -224,65 +223,6 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 /* ########################################################################## */
 
-void sweepMemory(int range) {
-
-	int ierr, coreId, me; 
-	size_t elements, memcounter;
-	size_t size;
-	double *tmparray;
-	int me_node;
-	double individual_mem, acc_mem; 
-
-
-	maxMem = (size_t)(total_mem);
-	coreId = likwid_processGetProcessorId();
-
-	if (range == GLOBAL){
-		individual_mem = (double)allocatedMem;
-		ierr = MPI_Comm_rank (MPI_COMM_WORLD, &me);
-		ierr = MPI_Comm_rank ( single_node_comm, &me_node );
-		ierr = MPI_Reduce ( &individual_mem, &acc_mem, 1, MPI_DOUBLE, MPI_SUM, 0, single_node_comm);
-		IF_DEBUG(1){
-			printf("Global memsweep\n");
-			printf("PE%d: allokierter Speicher: %6.3f MB\n", me, individual_mem/(1024.0*1024.0));
-			printf("PE:%d -- single-node-id:%d -- core-id:%d\n", me, me_node, coreId);
-		}   
-	}
-	else{
-		/* serial call: no global MPI-calls permitted!
-		 * assume for this case that the used memory on the other PE is negligble */
-		IF_DEBUG(1) printf("Serial memsweep\n");
-		acc_mem = (double)allocatedMem;
-	}
-
-	NUMA_CHECK("before memsweep");
-
-	if (coreId == 0) {
-
-		/* Beruecksichtigt nicht den allokierten Speicher der anderen PEs */
-		//elements = ( 0.99*( (double)(maxMem) - acc_mem) ) / (sizeof(double));
-		//elements = ( 0.9*( (double)(maxMem) - acc_mem) ) / (sizeof(double));
-		elements = ( 0.8*( (double)(maxMem) - acc_mem) ) / (sizeof(double));
-
-		IF_DEBUG(1) printf("PE%d: Sweeping memory with %llu doubles\n", me, (uint64)elements);
-		size = (size_t)( elements*sizeof(double) );
-		tmparray = (double*) allocateMemory( size, "tmparray" );
-		//tmparray = (double*) malloc( size );
-
-		for (memcounter=0; memcounter<elements; memcounter++) 
-			tmparray[memcounter]=0.0;
-
-		IF_DEBUG(1) printf("Freeing memory again ...\n"); 
-		freeMemory(size, "sweepMemory tmparray", tmparray);
-		//free(tmparray);
-		IF_DEBUG(1) printf("... done\n"); 
-
-	}
-	NUMA_CHECK("after memsweep");
-}
-
-/* ########################################################################## */
-
 
 MM_TYPE* readMMFile( const char* filename, const double epsilon ) {
 
@@ -487,23 +427,12 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	size_t size_rowOffset, size_col, size_val, size_nEntsInRow;
 
 	double total_mem;
-	int coreId;
 
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
 	ierr = MPI_Comm_rank (MPI_COMM_WORLD, &me);
-	coreId = likwid_processGetProcessorId();
 	total_mem = my_amount_of_mem();
-
-#ifdef CMEM
-	if (allocatedMem > 0.02*total_mem){
-		IF_DEBUG(1) printf("CR setup: Large matrix -- allocated mem=%8.3f MB\n",
-				(float)(allocatedMem)/(1024.0*1024.0));
-		sweepMemory(SINGLE);
-		IF_DEBUG(1) printf("Nach memsweep\n"); fflush(stdout);
-	}
-#endif
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );

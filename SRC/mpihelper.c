@@ -2,6 +2,7 @@
 #include "mymacros.h"
 #include <stdio.h>
 #include <sys/param.h>
+#include <sched.h>
 
 void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) {
 
@@ -17,7 +18,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    
    ierr = MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
    ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-   coreId = likwid_processGetProcessorId();
+   coreId = sched_getcpu();
 
    size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
@@ -42,7 +43,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
       for (i=0; i<n_nodes; i++){
     	 if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
       }
-   }   
+   }  
 
    ierr = MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
    /* all processes should now have the rank of their coreId 0 process in their acc_mate field;

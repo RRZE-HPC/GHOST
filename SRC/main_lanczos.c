@@ -1,22 +1,16 @@
-#include "matricks.h"
-#include "mpihelper.h"
-#include <string.h>
-#include "timing.h"
-#include <math.h>
-#include <stdlib.h>
-#include <sys/times.h>
-#include <unistd.h>
-#include <omp.h>
-#include <sched.h>
+#include "spmvm_util.h"
+#include "spmvm_globals.h"
 
 #ifdef OCLKERNEL
-#include <oclfun.h>
+#include "oclfun.h"
 #endif
 
-#include <likwid.h>
+#include <mpi.h>
 #include <limits.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /* Global variables */
 const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
@@ -118,7 +112,6 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, 
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 	*beta=sqrt(*beta);
-
 	vecscal(vnew,1./(*beta));
 }
 
@@ -130,9 +123,6 @@ int main( int argc, char* argv[] ) {
 
 	int ierr;
 	int me;
-
-	int required_threading_level;
-	int provided_threading_level;
 
 	int i,j; 
 
@@ -147,7 +137,7 @@ int main( int argc, char* argv[] ) {
 	double start, end, dummy, tstart, tend, time_it_took, tacc = 0;
 	int kernelIdx, kernel;
 
-	int kernels[] = {5,10,12};
+	int kernels[] = {/*5,10,*/12};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	JOBMASK = 0;
 
@@ -165,6 +155,7 @@ int main( int argc, char* argv[] ) {
 	props.matrixFormats.T[2] = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
 	cl_mem tmp;
+	cl_event event;
 #endif
 
 	getOptions(argc,argv,&props);
@@ -195,10 +186,10 @@ int main( int argc, char* argv[] ) {
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 
 #ifdef OCLKERNEL
-	SpMVM_CL_distributeCRS ( lcrp, &props.matrixFormats);
+	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
 
-	double *zero = (double *)allocateMemory(lcrp->lnRows[me]*sizeof(double),"zero");
+	double *zero = (double *)malloc(lcrp->lnRows[me]*sizeof(double));
 	for (i=0; i<lcrp->lnRows[me]; i++)
 		zero[i] = 0.;
 
@@ -211,7 +202,7 @@ int main( int argc, char* argv[] ) {
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
 
-	printMatrixInfo(lcrp,props.matrixName);
+	SpMVM_printMatrixInfo(lcrp,props.matrixName);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
@@ -223,11 +214,11 @@ int main( int argc, char* argv[] ) {
 		if (kernel>10 && kernel < 17 && lcrp->threads==1) continue; /* not enough threads */
 
 
-		//double *z = (double *)allocateMemory(sizeof(double)*props.nIter*props.nIter,"z");
-		double *alphas  = (double *)allocateMemory(sizeof(double)*props.nIter,"alphas");
-		double *betas   = (double *)allocateMemory(sizeof(double)*props.nIter,"betas");
-		double *falphas = (double *)allocateMemory(sizeof(double)*props.nIter,"falphas");
-		double *fbetas  = (double *)allocateMemory(sizeof(double)*props.nIter,"fbetas");
+		//double *z = (double *)malloc(sizeof(double)*props.nIter*props.nIter,"z");
+		double *alphas  = (double *)malloc(sizeof(double)*props.nIter);
+		double *betas   = (double *)malloc(sizeof(double)*props.nIter);
+		double *falphas = (double *)malloc(sizeof(double)*props.nIter);
+		double *fbetas  = (double *)malloc(sizeof(double)*props.nIter);
 
 		double *dtmp;
 		int ferr;
@@ -236,38 +227,22 @@ int main( int argc, char* argv[] ) {
 		double alpha=0., beta=0.;
 		betas[0] = beta;
 		int n;
-		cl_event event;
 
 
 		lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,0);
 
-#ifdef OCLKERNEL	
-		//downloadVector(vnew); //TODO overlap
-		//event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
-#endif
 		alphas[0] = alpha;
 		betas[1] = beta;
 
 
 		for( iteration = 1, n=1; iteration < props.nIter; iteration++, n++ ) {
-			if (me == 0) {
-				printf("\r");
-				timing(&start,&dummy);
-				timing(&tstart,&dummy);
-			}
-			if (me == 0) {
-				timing(&end,&dummy);
-				time_it_took = end-start;
-				printf("lanczos: %6.2f ms, ",time_it_took*1e3);
-			}
 			if (me == 0) { 
+				printf("\r");
 				timing(&start,&dummy);
 			}
 #ifdef OCLKERNEL	
-			//downloadVector(vnew); //TODO overlap
 			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
 #endif
-
 			swapVectors(vnew,vold);
 
 
@@ -281,11 +256,23 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
-				printf("imtql: %6.2f ms ",time_it_took*1e3);
+				printf("imtql: %6.2f ms, ",time_it_took*1e3);
 			}
 
+#ifdef OCLKERNEL
 			clWaitForEvents(1,&event);
+#endif
+
+			if (me == 0) {
+				timing(&start,&dummy);
+				timing(&tstart,&dummy);
+			}
 			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,iteration);
+			if (me == 0) {
+				timing(&end,&dummy);
+				time_it_took = end-start;
+				printf("lcz: %6.2f ms, ",time_it_took*1e3);
+			}
 
 			alphas[iteration] = alpha;
 			betas[iteration+1] = beta;
@@ -293,13 +280,13 @@ int main( int argc, char* argv[] ) {
 			if (me==0) {
 				timing(&tend,&dummy);
 				tacc += tend-tstart;
-				printf("it: %6.2f ms, evmin: %6.2f, ",(tend-tstart)*1e3,falphas[0]);
+				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,falphas[0]);
 				fflush(stdout);
 			}
 
 		}
 		if (me==0) {
-			printf("total: %.2f ms\n",tacc*1e3);
+			printf("| total: %.2f ms\n",tacc*1e3);
 		}
 
 	}
