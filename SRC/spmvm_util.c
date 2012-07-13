@@ -1,7 +1,7 @@
 #include "spmvm_util.h"
 #include "matricks.h"
 #include <sys/param.h>
-//#ifdef OCLKERNEL
+//#ifdef OPENCL
 //#include "oclfun.h"
 //#endif
 #include <libgen.h>
@@ -123,7 +123,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
-#ifdef OCLKERNEL	
+#ifdef OPENCL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
@@ -150,7 +150,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 		printf("Non-zero elements           : %12.0f\n", (float)lcrp->nEnts); 
 		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
 		printf("Working set             [MB]: %12lu\n", ws);
-#ifdef OCLKERNEL	
+#ifdef OPENCL	
 		if( JOBMASK & 503 ) 
 			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
 		if( JOBMASK & 261640 ) {

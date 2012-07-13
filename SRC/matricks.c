@@ -1,5 +1,5 @@
 #include "matricks.h"
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "oclfun.h"
 #include "my_ellpack.h"
 #endif
@@ -126,7 +126,7 @@ void permuteVector( double* vec, int* perm, int len) {
 }
 
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
 
 	/* copy val to gpuval on device in testvec, copy back to temporary and check for consistency*/
@@ -961,7 +961,7 @@ void zeroVector(VECTOR_TYPE *vec) {
 	for (i=0; i<vec->nRows; i++)
 		vec->val[i] = 0;
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	uploadVector(vec);
 #endif
 
@@ -998,7 +998,7 @@ VECTOR_TYPE* newVector( const int nRows ) {
 
 	vec->val = (double*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
 	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
 	//printf("before: %p\n",vec->val);
@@ -1015,7 +1015,7 @@ void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
 			dtmp = v1->val;
 			v1->val = v2->val;
 			v2->val = dtmp;
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	cl_mem tmp;
 			tmp = v1->CL_val_gpu;
 			v1->CL_val_gpu = v2->CL_val_gpu;
@@ -1026,7 +1026,7 @@ void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
 
 	
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void uploadVector( VECTOR_TYPE *vec ) {
 	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(double));
 }
@@ -1061,7 +1061,7 @@ void freeHostVector( HOSTVECTOR_TYPE* const vec ) {
 void freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
 		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
-#ifdef OCLKERNEL
+#ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
 		free( vec );
@@ -1139,7 +1139,7 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
-#ifdef OCLKERNEL
+#ifdef OPENCL
 		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
 		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
 		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );

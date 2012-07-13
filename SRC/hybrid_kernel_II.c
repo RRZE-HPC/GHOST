@@ -145,7 +145,7 @@ void hybrid_kernel_II(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
     printf(" nnz = %d (@%7.3f GFlop/s)\n", lcrp->lrow_ptr[lcrp->lnRows[me]], 
 	   2e-9*lcrp->lrow_ptr[lcrp->lnRows[me]]/time_it_took);
 
-    #ifdef OCLKERNEL
+    #ifdef OPENCL
     time_it_took = (1.0*cp_in_cycles)/clockfreq;
     printf("HyK_II: PE %d: It %d: Rhs nach Device [ms]              : %8.3f",
 	  me, current_iteration, 1000*time_it_took);

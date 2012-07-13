@@ -264,7 +264,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 /***********************************************************************
 	  *******     Calculation of SpMVM for local entries of invec->val     *******
 	  **********************************************************************/
-	 #ifdef OCLKERNEL
+	 #ifdef OPENCL
 	 
 	 if( tid == lcrp->threads-2 ) {
 		 spmvmKernLocalXThread( lcrp, invec, res, &asm_cyclecounter, 
@@ -312,7 +312,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
        *************************************************************************/
       if (tid < lcrp->threads-1){ /* wieder nur die Rechenthreads */
 
-	 #ifdef OCLKERNEL
+	 #ifdef OPENCL
 	 
 	 if( tid == lcrp->threads-2 ) {
 		 spmvmKernRemoteXThread( lcrp, invec, res, &asm_cyclecounter, &asm_cycles, &cycles4measurement,
@@ -386,7 +386,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
       printf(" nnz_nl= %d (@%7.3f GFlop/s)\n", lcrp->lrow_ptr_r[lcrp->lnRows[me]], 
 	    2e-9*lcrp->lrow_ptr_r[lcrp->lnRows[me]]/time_it_took);
 
-	#ifdef OCLKERNEL
+	#ifdef OPENCL
       time_it_took = (1.0*cp_lin_cycles)/clockfreq;
       printf("HyK_XVI: PE %d: It %d: Rhs (lokal) nach Device [ms]      : %8.3f",
 	    me, current_iteration, 1000*time_it_took);

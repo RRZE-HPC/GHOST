@@ -11,14 +11,14 @@
 #define SPMVM_OPTION_KEEPRESULT (0x1<<1)
 #define SPMVM_OPTION_RHSPRESENT (0x1<<2)
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include <CL/cl.h>
 #endif
 
 typedef struct {
 	int nRows;
 	double* val;
-#ifdef OCLKERNEL
+#ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
 

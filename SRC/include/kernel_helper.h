@@ -3,7 +3,7 @@
 
 #include "mymacros.h"
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "oclmacros.h"
 #include "oclfun.h"
 #endif
@@ -27,7 +27,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	int i, j;
 	double hlp1;
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
@@ -41,7 +41,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
 
 #else
@@ -65,7 +65,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		*ca_cycles = *asm_cycles - *cycles4measurement; 
 	}
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
@@ -94,7 +94,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 	int i, j;
 	double hlp1;
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
@@ -108,7 +108,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 #endif
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
 
 #else
@@ -150,7 +150,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	int i, j;
 	double hlp1;
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
@@ -167,7 +167,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 
 	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 #else
 
@@ -187,7 +187,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 		*nl_cycles = *asm_cycles - *cycles4measurement; 
 	}
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
@@ -204,7 +204,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 
 /*********** kernel for local entries only -- comm thread *********************/
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 
 inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
@@ -284,7 +284,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
 inline void vecscal(VECTOR_TYPE *vec, double s) {
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_vecscal(vec->CL_val_gpu,s,vec->nRows);
 #else
 	int i;
@@ -296,7 +296,7 @@ inline void vecscal(VECTOR_TYPE *vec, double s) {
 
 inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_dotprod(v1->CL_val_gpu,v2->CL_val_gpu,res,n);
 #else
 	int i;
@@ -310,7 +310,7 @@ inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
 
 inline void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double s) {
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_axpy(v1->CL_val_gpu,v2->CL_val_gpu,s,v1->nRows);
 #else
 	int i;

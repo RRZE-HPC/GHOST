@@ -33,12 +33,12 @@ SOBJS	+=	for_timing_start_asm.o for_timing_stop_asm.o
 #####      Consequences:      #####
 ###################################
 
-cllanczos: MAKROS = -DOCLKERNEL 
-cllanczos-static: MAKROS = -DOCLKERNEL 
-cllanczos-dynamic: MAKROS = -DOCLKERNEL 
-clspmvm: MAKROS = -DOCLKERNEL 
-libclspmvm.a: MAKROS = -DOCLKERNEL 
-libspmvm.so: MAKROS = -DOCLKERNEL 
+cllanczos: MAKROS = -DOPENCL 
+cllanczos-static: MAKROS = -DOPENCL 
+cllanczos-dynamic: MAKROS = -DOPENCL 
+clspmvm: MAKROS = -DOPENCL 
+libclspmvm.a: MAKROS = -DOPENCL 
+libspmvm.so: MAKROS = -DOPENCL 
 
 ################################################################################
 
@@ -67,7 +67,7 @@ cllanczos-static: main_lanczos.o libspmvm.a
 
 cllanczos-dynamic: main_lanczos.o libspmvm.so
 #	$(CC) $(CFLAGS) -o $@$(SUFX).x $< -lspmvm -L.  $(LIBS)
-	$(CC) -O3 -DOCLKERNEL -I./SRC/include -L. -lspmvm -openmp -o $@$(SUFX).x $<
+	$(CC) -O3 -DOPENCL -I./SRC/include -L. -lspmvm -openmp -o $@$(SUFX).x $<
 
 cllanczos: main_lanczos.o $(OBJS) $(OCLOBJS)
 	$(CC) $(LDFLAGS) -o $@$(SUFX).x $^  $(LIBS)

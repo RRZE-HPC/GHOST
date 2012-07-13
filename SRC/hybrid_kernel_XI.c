@@ -189,7 +189,7 @@ void hybrid_kernel_XI(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 			/***********************************************************************
 			 *******     Calculation of SpMVM for local entries of invec->val     *******
 			 **********************************************************************/
-#ifdef OCLKERNEL
+#ifdef OPENCL
 
 			if( tid == lcrp->threads-2 ) {
 				spmvmKernLocalXThread( lcrp, invec, res, &asm_cyclecounter, 
@@ -275,7 +275,7 @@ void hybrid_kernel_XI(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 		printf(" nnz_nl= %d (@%7.3f GFlop/s)\n", lcrp->lrow_ptr_r[lcrp->lnRows[me]], 
 				2e-9*lcrp->lrow_ptr_r[lcrp->lnRows[me]]/time_it_took);
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 		time_it_took = (1.0*cp_lin_cycles)/clockfreq;
 		printf("HyK_XI: PE %d: It %d: Rhs (lokal) nach Device [ms]      : %8.3f",
 				me, current_iteration, 1000*time_it_took);

@@ -2,7 +2,7 @@
 #include "my_ellpack.h"
 #include "matricks.h"
 #include "mymacros.h"
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "oclfun.h"
 #include "oclmacros.h"
 #endif
@@ -865,7 +865,7 @@ void elrColIdToC( ELR_TYPE* elr ) {
 	}
 }
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	/* allocate (but do not fill) memory for elr matrix on device */
@@ -922,7 +922,7 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 #endif
 
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	/* allocate (but do not fill) memory for elr matrix on device */
@@ -972,7 +972,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 /* ########################################################################## */
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
@@ -1009,7 +1009,7 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 }
 #endif
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
@@ -1044,7 +1044,7 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 
 	/* copy col, val and rowLen from CPU elr format to device;
@@ -1082,7 +1082,7 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 }
 #endif
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 
 	/* copy col, val and rowLen from device celr to CPU;
@@ -1140,7 +1140,7 @@ void freeELR( ELR_TYPE* const elr ) {
 }
 
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_freePJDS( CL_PJDS_TYPE* const cpjds ) {
 	if( cpjds ) {
 		CL_freeDeviceMemory( cpjds->rowLen );

@@ -8,7 +8,7 @@
 #include <mymacros.h>
 #include <mpi.h>
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "my_ellpack.h"
 #include <CL/cl.h>
 #endif
@@ -19,7 +19,7 @@
 typedef struct {
 	int nRows;
 	int* val;
-#ifdef OCLKERNEL
+#ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
 } INT_VECTOR_TYPE;
@@ -135,7 +135,7 @@ int isMMfile(const char *filename);
 
 void* allocateMemory( const size_t size, const char* desc );
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
 void uploadVector( VECTOR_TYPE *vec );
 void downloadVector( VECTOR_TYPE *vec );

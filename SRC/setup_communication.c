@@ -1,6 +1,6 @@
 #include "matricks.h"
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "my_ellpack.h"
 #endif
 
@@ -656,6 +656,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	return lcrp;
 }
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #endif
 

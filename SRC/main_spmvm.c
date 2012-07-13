@@ -197,7 +197,7 @@ int main( int argc, char* argv[] ) {
 	}
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
 
@@ -264,7 +264,7 @@ int main( int argc, char* argv[] ) {
 
 	MPI_Finalize();
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_finish();
 #endif
 

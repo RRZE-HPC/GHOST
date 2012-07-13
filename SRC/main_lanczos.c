@@ -1,7 +1,7 @@
 #include "spmvm_util.h"
 #include "spmvm_globals.h"
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 #include "oclfun.h"
 #endif
 
@@ -19,7 +19,7 @@ typedef struct {
 	char matrixPath[PATH_MAX];
 	char matrixName[PATH_MAX];
 	int nIter;
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	MATRIX_FORMATS matrixFormats;
 	int devType;
 #endif
@@ -67,7 +67,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 			case 'f':
 				{
-#ifdef OCLKERNEL
+#ifdef OPENCL
 					char *format;
 					format = strtok(optarg,",");
 					int i=0;
@@ -146,7 +146,7 @@ int main( int argc, char* argv[] ) {
 
 	PROPS props;
 	props.nIter = 100;
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
@@ -185,7 +185,7 @@ int main( int argc, char* argv[] ) {
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
 
@@ -240,7 +240,7 @@ int main( int argc, char* argv[] ) {
 				printf("\r");
 				timing(&start,&dummy);
 			}
-#ifdef OCLKERNEL	
+#ifdef OPENCL	
 			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
 #endif
 			swapVectors(vnew,vold);
@@ -259,7 +259,7 @@ int main( int argc, char* argv[] ) {
 				printf("imtql: %6.2f ms, ",time_it_took*1e3);
 			}
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 			clWaitForEvents(1,&event);
 #endif
 
@@ -302,7 +302,7 @@ int main( int argc, char* argv[] ) {
 
 	MPI_Finalize();
 
-#ifdef OCLKERNEL
+#ifdef OPENCL
 	CL_finish();
 #endif
 
