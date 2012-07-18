@@ -1,8 +1,8 @@
       subroutine imtql2(nm,n,d,e,z,ierr)
 c
       integer i,j,k,l,m,n,ii,nm,mml,ierr
-      double precision d(n),e(n),z(n,n)
-      double precision b,c,f,g,p,r,s,tst1,tst2,pythag
+      real precision d(n),e(n),z(n,n)
+      real precision b,c,f,g,p,r,s,tst1,tst2,pythag
 c
 c     this subroutine is a translation of the algol procedure imtql2,
 c     num. math. 12, 377-383(1968) by martin and wilkinson,

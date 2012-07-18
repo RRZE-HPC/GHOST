@@ -15,9 +15,14 @@
 #include <CL/cl.h>
 #endif
 
+#define SINGLE
+typedef float real;
+#define MPI_FLOAT MPI_MYDATATYPE
+
+
 typedef struct {
 	int nRows;
-	double* val;
+	real* val;
 #ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
@@ -30,7 +35,7 @@ typedef struct {
 } MATRIX_FORMATS;
 typedef struct {
 	int nRows;
-	double* val;
+	real* val;
 } HOSTVECTOR_TYPE;
 
 typedef struct {
@@ -49,7 +54,7 @@ typedef struct {
   int* due_displ;
   int* wish_displ;
   int* hput_pos;
-  double* val;
+  real* val;
   int* col;
   int* row_ptr;
   int* lrow_ptr;
@@ -57,8 +62,8 @@ typedef struct {
   int* lrow_ptr_r;
   int* lcol;
   int* rcol;
-  double* lval;
-  double* rval;
+  real* lval;
+  real* rval;
   int fullFormat;
   int localFormat;
   int remoteFormat;
@@ -75,7 +80,7 @@ typedef struct {
 	int nRows, nCols, nEnts;
 	int* rowOffset;
 	int* col;
-	double* val;
+	real* val;
 } CR_TYPE;
 
 extern void hybrid_kernel_0   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
@@ -101,8 +106,8 @@ typedef void (*FuncPrototype)( int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef struct {
     FuncPrototype kernel;
-    double  cycles;
-    double  time;
+    real  cycles;
+    real  time;
     char*   tag;
     char*   name;
 } Hybrid_kernel;
@@ -152,8 +157,8 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 void zeroVector(VECTOR_TYPE *vec);
 VECTOR_TYPE* newVector( const int nRows );
 void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
-HOSTVECTOR_TYPE* newHostVector( const int nRows, double (*fp)(int));
-void normalize( double *vec, int nRows);
+HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int));
+void normalize( real *vec, int nRows);
 
 LCRP_TYPE* setup_communication(CR_TYPE* const, int);
 void CL_setup_communication(LCRP_TYPE* const, MATRIX_FORMATS *);

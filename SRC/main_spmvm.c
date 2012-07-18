@@ -112,7 +112,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 	}
 }
 
-double rhsVal (int i) {
+real rhsVal (int i) {
 	return i+1.0;
 }
 
@@ -144,7 +144,7 @@ int main( int argc, char* argv[] ) {
 	double start, end, dummy, time_it_took;
 	int kernelIdx, kernel;
 	int errcount = 0;
-	double mytol;
+	real mytol;
 
 
 	PROPS props;
@@ -191,11 +191,20 @@ int main( int argc, char* argv[] ) {
 
 	if (me==0) {
 
+#ifdef DOUBLE // TODO
 		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
 			for (iteration=0; iteration<props.nIter; iteration++)
 				fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 		else
 			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#endif
+#ifdef SINGLE
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
+			for (iteration=0; iteration<props.nIter; iteration++)
+				fortrancrsaxpyf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+		else
+			fortrancrsf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#endif
 
 	}
 
@@ -251,7 +260,7 @@ int main( int argc, char* argv[] ) {
 					errcount++;
 				}
 			}
-			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
+			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(real)props.nIter*(real)lcrp->nEnts/time_it_took);
 		}
 		zeroVector(nodeLHS);
 

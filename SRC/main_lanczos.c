@@ -105,7 +105,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 	}
 }
 
-void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, double *alpha, double *beta, int kernel,  int iteration) {
+void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, real *alpha, real *beta, int kernel,  int iteration) {
 	vecscal(vnew,-*beta);
 	HyK[kernel].kernel( iteration, vnew, lcrp, vold);
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
@@ -117,7 +117,7 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, 
 	vecscal(vnew,1./(*beta));
 }
 
-double rhsVal (int i) {
+real rhsVal (int i) {
 	return i+1.0;
 }
 
@@ -136,7 +136,7 @@ int main( int argc, char* argv[] ) {
 
 	int iteration;
 
-	double start, end, dummy, tstart, tend, time_it_took, tacc = 0;
+	real start, end, dummy, tstart, tend, time_it_took, tacc = 0;
 	int kernelIdx, kernel;
 
 	int kernels[] = {5,12/*5,10,12*/};
@@ -198,7 +198,7 @@ int main( int argc, char* argv[] ) {
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
 
-	double *zero = (double *)malloc(lcrp->lnRows[me]*sizeof(double));
+	real *zero = (real *)malloc(lcrp->lnRows[me]*sizeof(real));
 	for (i=0; i<lcrp->lnRows[me]; i++)
 		zero[i] = 0.;
 
@@ -206,7 +206,7 @@ int main( int argc, char* argv[] ) {
 	vold = newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = r0
 	evec = newVector(lcrp->lnRows[me]); // = r0
 
-	memcpy(vnew->val,zero,sizeof(double)*lcrp->lnRows[me]);
+	memcpy(vnew->val,zero,sizeof(real)*lcrp->lnRows[me]);
 
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
@@ -223,17 +223,17 @@ int main( int argc, char* argv[] ) {
 		if (kernel>10 && kernel < 17 && lcrp->threads==1) continue; /* not enough threads */
 
 
-		//double *z = (double *)malloc(sizeof(double)*props.nIter*props.nIter,"z");
-		double *alphas  = (double *)malloc(sizeof(double)*props.nIter);
-		double *betas   = (double *)malloc(sizeof(double)*props.nIter);
-		double *falphas = (double *)malloc(sizeof(double)*props.nIter);
-		double *fbetas  = (double *)malloc(sizeof(double)*props.nIter);
+		//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
+		real *alphas  = (real *)malloc(sizeof(real)*props.nIter);
+		real *betas   = (real *)malloc(sizeof(real)*props.nIter);
+		real *falphas = (real *)malloc(sizeof(real)*props.nIter);
+		real *fbetas  = (real *)malloc(sizeof(real)*props.nIter);
 
-		double *dtmp;
+		real *dtmp;
 		int ferr;
 
 		tacc = 0;
-		double alpha=0., beta=0.;
+		real alpha=0., beta=0.;
 		betas[0] = beta;
 		int n;
 
@@ -250,13 +250,13 @@ int main( int argc, char* argv[] ) {
 				timing(&start,&dummy);
 			}
 #ifdef OPENCL	
-			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(double) );
+			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(real) );
 #endif
 			swapVectors(vnew,vold);
 
 
-			memcpy(falphas,alphas,(iteration)*sizeof(double));
-			memcpy(fbetas,betas,(iteration)*sizeof(double));
+			memcpy(falphas,alphas,(iteration)*sizeof(real));
+			memcpy(fbetas,betas,(iteration)*sizeof(real));
 			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
 
 			if(ferr != 0) {

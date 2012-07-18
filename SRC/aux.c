@@ -6,15 +6,15 @@
 #include <time.h>
 #include <timing.h>
 
-double RecalFrequency(uint64 cycles4measurement, double old_clockfreq)
+real RecalFrequency(uint64 cycles4measurement, real old_clockfreq)
 {
    int i;
 
    uint64 asm_cycles, asm_cyclecounter;
    double startTime, stopTime, ct;
    struct timespec delay = { 0, 800000000 }; /* calibration time: 800 ms */
-   double estimated_time_it_took, true_time_it_took;
-   double recalibrated_CPUFrequency;
+   real estimated_time_it_took, true_time_it_took;
+   real recalibrated_CPUFrequency;
 
    for (i=0; i< 2; i++)
    {
@@ -94,7 +94,7 @@ float myCpuClockFrequency()
    return frequency;
 }
 
-double my_amount_of_mem()
+real my_amount_of_mem()
 {
    static double mem = -1.0;
    int ret; 
@@ -168,7 +168,7 @@ uint64 cachesize()
    return cache_size;
 }
 
-void tmpwrite_d(int filenumber, int number_of_elements, double *datenarray){
+void tmpwrite_d(int filenumber, int number_of_elements, real *datenarray){
 
    FILE *TMPFILE;
    char tmpfilename[50];

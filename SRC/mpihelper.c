@@ -250,7 +250,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 					while (ideal==0){
 
-						trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
+						trial_rows = (int)( (real)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
 
 						/* Check ob die Anzahl der Elemente schon das beste ist das ich erwarten kann */
 						if ( (trial_rows-prev_rows)*(trial_rows-prev_rows)<5.0 ) ideal=1;
@@ -346,11 +346,11 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	 *******   Allocate memory for matrix in distributed CRS storage      *******
 	 ***************************************************************************/
 
-	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( double ) );
+	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( real ) );
 	size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 	size_ptr  = (size_t)( (size_t)(lcrp->lnRows[me]+1) * sizeof( int ) );
 
-	lcrp->val      = (double*)    allocateMemory( size_val,  "lcrp->val" ); 
+	lcrp->val      = (real*)    allocateMemory( size_val,  "lcrp->val" ); 
 	lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
 	lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
 
@@ -611,8 +611,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 		IF_DEBUG(1) printf("PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d\n", 
 				me, lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
-		size_lval = (size_t)( lnEnts_l             * sizeof(double) ); 
-		size_rval = (size_t)( lnEnts_r             * sizeof(double) ); 
+		size_lval = (size_t)( lnEnts_l             * sizeof(real) ); 
+		size_rval = (size_t)( lnEnts_r             * sizeof(real) ); 
 		size_lcol = (size_t)( lnEnts_l             * sizeof(int) ); 
 		size_rcol = (size_t)( lnEnts_r             * sizeof(int) ); 
 		size_lptr = (size_t)( (lcrp->lnRows[me]+1) * sizeof(int) ); 
@@ -623,8 +623,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( size_rptr, "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( size_lcol, "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( size_rcol, "lcrp->rcol" ); 
-		lcrp->lval       = (double*) allocateMemory( size_lval, "lcrp->lval" ); 
-		lcrp->rval       = (double*) allocateMemory( size_rval, "lcrp->rval" ); 
+		lcrp->lval       = (real*) allocateMemory( size_lval, "lcrp->lval" ); 
+		lcrp->rval       = (real*) allocateMemory( size_rval, "lcrp->rval" ); 
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) lcrp->lval[i] = 0.0;
@@ -692,8 +692,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-		lcrp->lval       = (double*) allocateMemory( sizeof(double), "lcrp->lval" ); 
-		lcrp->rval       = (double*) allocateMemory( sizeof(double), "lcrp->rval" ); 
+		lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
+		lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
 	}
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);

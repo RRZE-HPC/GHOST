@@ -14,7 +14,6 @@
 
 #define PJDS_CHUNK_HEIGHT 32
 
-#define SINGLE 0
 #define GLOBAL 0
 
 #define IS_DAXPY 1
@@ -92,10 +91,10 @@ if (me == 0){ \
    time_it_took = (1.0*asm_cycles)/clockfreq; \
    printf("\t\t\t\t Cycles per nze  | Total time per MVM [ms]   |   MFlop/s\n"); \
    printf("%-23s:   %15.3f   %20.5f   %18.3f\n", identifier,		\
-	 (double)asm_cycles/((double)N_MULTS*(double)entries),	\
-	 1000*time_it_took/((double)N_MULTS),			\
-	 2.0e-6*(double)N_MULTS*(double)entries/time_it_took);	\
-   printf("Gesamtzahl Cycles:  %25.13lg %15.3f\n", (double)asm_cycles, time_it_took); } \
+	 (real)asm_cycles/((real)N_MULTS*(real)entries),	\
+	 1000*time_it_took/((real)N_MULTS),			\
+	 2.0e-6*(real)N_MULTS*(real)entries/time_it_took);	\
+   printf("Gesamtzahl Cycles:  %25.13lg %15.3f\n", (real)asm_cycles, time_it_took); } \
 ierr = MPI_Barrier(MPI_COMM_WORLD);
 
 
@@ -108,10 +107,10 @@ ierr = MPI_Barrier(MPI_COMM_WORLD);
 time_it_took = (1.0*asm_cycles)/clockfreq;				\
 printf("\t\t\t\t Cycles per nze  | Total time per MVM [ms]   |   MFlop/s\n"); \
 printf("%-23s:   %15.3f   %20.5f   %18.3f\n", identifier,		\
-      (double)asm_cycles/((double)N_MULTS*(double)entries),		\
-      1000*time_it_took/((double)N_MULTS),				\
-      2.0e-6*(double)N_MULTS*(double)entries/time_it_took);		\
-printf("Gesamtzahl Cycles:  %25.13lg %15.3f\n", (double)asm_cycles, time_it_took);
+      (real)asm_cycles/((real)N_MULTS*(real)entries),		\
+      1000*time_it_took/((real)N_MULTS),				\
+      2.0e-6*(real)N_MULTS*(real)entries/time_it_took);		\
+printf("Gesamtzahl Cycles:  %25.13lg %15.3f\n", (real)asm_cycles, time_it_took);
 
 #define AS_WRITE_TIME(identifier){		 \
    asm_cycles = asm_cycles - cycles4measurement; \
@@ -124,21 +123,21 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 #define diagnose_performance(identifier, entries) 
 /* #define diagnose_performance(identifier, entries) \
    printf( "Average MVM for %-40s : %8.2e s %8.2f MFLOPs\n", \
-   identifier, (double)(stopTime-startTime)/(N_MULTS), \ 
-   ( (double)(2.0*(double)(entries)) / \
-   (1000.0*1000.0*(double)(stopTime-startTime)/ (N_MULTS)) ));
+   identifier, (real)(stopTime-startTime)/(N_MULTS), \ 
+   ( (real)(2.0*(real)(entries)) / \
+   (1000.0*1000.0*(real)(stopTime-startTime)/ (N_MULTS)) ));
    */
 
 #define NUMA_CHECK(identifier)                                                 \
          {                                                                     \
-         double naccmem;                                                       \
+         real naccmem;                                                       \
          int ierr, me, me_node, coreId;                                        \
          int ns0=0;                                                            \
          int ns1=0;                                                            \
          int nf0=0;                                                            \
          int nf1=0;                                                            \
-         double individual_mem;                                                \
-         individual_mem = (double)allocatedMem;                                \
+         real individual_mem;                                                \
+         individual_mem = (real)allocatedMem;                                \
          ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );                         \
 	 ierr = MPI_Comm_rank ( single_node_comm, &me_node );                  \
 	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_DOUBLE,         \
@@ -158,13 +157,13 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 
 #define NUMA_CHECK_SERIAL(identifier)                                          \
          {                                                                     \
-         double naccmem;                                                       \
+         real naccmem;                                                       \
          int ierr, me;                                                         \
          int ns0=0;                                                            \
          int ns1=0;                                                            \
          int nf0=0;                                                            \
          int nf1=0;                                                            \
-         naccmem = (double) allocatedMem;                                      \
+         naccmem = (real) allocatedMem;                                      \
          ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );                         \
 	 IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));         \
 	 if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                     \

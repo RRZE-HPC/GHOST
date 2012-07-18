@@ -18,7 +18,7 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
    sprintf(restartfilename, "./daten/%s_CRS_bin.dat", testcase);
 
    mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-      1.0*(cr->nEnts)*sizeof(double);
+      1.0*(cr->nEnts)*sizeof(real);
 
    IF_DEBUG(1) printf(" \n Schreibe %s (%6.2f MB)\n", restartfilename,
 	 mybytes/1048576.0) ;
@@ -39,16 +39,16 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
    fwrite(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
    fwrite(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
    fwrite(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
-   fwrite(&cr->val[0],              sizeof(double), cr->nEnts,   RESTFILE);
+   fwrite(&cr->val[0],              sizeof(real), cr->nEnts,   RESTFILE);
 
    fflush(RESTFILE);
    fclose(RESTFILE);
 
    timing( &stopTime, &ct );
    IF_DEBUG(1) printf( "Schreiben der Matrix im CRS-Format (binaer): %8.2f s \n", 
-	 (double)(stopTime-startTime) );
+	 (real)(stopTime-startTime) );
    IF_DEBUG(1) printf( "Entspricht: %8.2f MB/s \n",  
-	 (mybytes/1048576.0)/(double)(stopTime-startTime) );
+	 (mybytes/1048576.0)/(real)(stopTime-startTime) );
 
 
    return;
@@ -66,7 +66,7 @@ void bin_write_jd(const JD_TYPE* jd, const char* testcase){
 
    mybytes = 4.0*sizeof(int) 
       + 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-      + 1.0*(jd->nEnts)*sizeof(double);
+      + 1.0*(jd->nEnts)*sizeof(real);
 
    printf(" \n Schreibe %s (%6.2f MB)\n", restartfilename,
 	 mybytes/1048576.0) ;
@@ -91,16 +91,16 @@ void bin_write_jd(const JD_TYPE* jd, const char* testcase){
    fwrite(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
    fwrite(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
    fwrite(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-   fwrite(&jd->val[0],              sizeof(double), jd->nEnts,    RESTFILE);
+   fwrite(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
 
    fflush(RESTFILE);
    fclose(RESTFILE);
 
    timing( &stopTime, &ct );
    printf( "Schreiben der Matrix im JDS-Format (binaer): %8.2f s \n", 
-	 (double)(stopTime-startTime) );
+	 (real)(stopTime-startTime) );
    printf( "Entspricht: %8.2f MB/s \n",  
-	 (mybytes/1048576.0)/(double)(stopTime-startTime) );
+	 (mybytes/1048576.0)/(real)(stopTime-startTime) );
 
    return;
 }
@@ -117,7 +117,7 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    size_t sucr;
 
    size_t size_hlp;
-   //double* zusteller;
+   //real* zusteller;
 
    timing( &startTime, &ct );
 
@@ -133,7 +133,7 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    sucr = fread(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
 
    mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-      1.0*(cr->nEnts)*sizeof(double);
+      1.0*(cr->nEnts)*sizeof(real);
 
    IF_DEBUG(1){ 
       printf("Number of rows in matrix       = %d\n", cr->nRows);
@@ -145,11 +145,11 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
 
    size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
    size_col  = (size_t)( cr->nEnts * sizeof(int) );
-   size_val  = (size_t)( cr->nEnts * sizeof(double) );
+   size_val  = (size_t)( cr->nEnts * sizeof(real) );
 
    cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
    cr->col       = (int*)    allocateMemory( size_col,  "col" );
-   cr->val       = (double*) allocateMemory( size_val,  "val" );
+   cr->val       = (real*) allocateMemory( size_val,  "val" );
 
    IF_DEBUG(2){
       printf("Reading array with row-offsets\n");
@@ -160,8 +160,8 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    //NUMA_CHECK_SERIAL("before placement zusteller");
 
    IF_DEBUG(1) printf("gezieltes placement in die falschen LD\n");
-   size_hlp = (size_t) ( 450000000*sizeof(double));
-   //zusteller = (double*) allocateMemory( size_hlp,  "zusteller" );
+   size_hlp = (size_t) ( 450000000*sizeof(real));
+   //zusteller = (real*) allocateMemory( size_hlp,  "zusteller" );
 
 //#pragma omp parallel for schedule(runtime)
 //   for( i = 0; i < 450000000; i++ )  zusteller[i] = 0;
@@ -191,10 +191,15 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
       }
    }
 
+   double *tmp = (double *)allocateMemory(cr->nEnts*sizeof(double), "tmp");
+
    sucr = fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
-   sucr = fread(&cr->val[0],              sizeof(double), cr->nEnts,   RESTFILE);
+   sucr = fread(tmp,              sizeof(double), cr->nEnts,   RESTFILE);
 
    fclose(RESTFILE);
+
+   for (i = 0; i<cr->nEnts; i++)
+	   cr->val[i] = (real) tmp[i];
 
    NUMA_CHECK_SERIAL("after CR-binary read");
 
@@ -207,9 +212,9 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    IF_DEBUG(2) printf("... done\n"); 
    IF_DEBUG(1){
       printf("Binary read of matrix in CRS-format took %8.2f s \n", 
-	    (double)(stopTime-startTime) );
+	    (real)(stopTime-startTime) );
       printf( "Data transfer rate : %8.2f MB/s \n",  
-	    (mybytes/1048576.0)/(double)(stopTime-startTime) );
+	    (mybytes/1048576.0)/(real)(stopTime-startTime) );
    }
 
    return;
@@ -242,7 +247,7 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
 
    mybytes = 4.0*sizeof(int) 
       + 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-      + 1.0*(jd->nEnts)*sizeof(double);
+      + 1.0*(jd->nEnts)*sizeof(real);
 
    IF_DEBUG(1) {
       printf("Number of rows in matrix       = %d\n", jd->nRows);
@@ -257,7 +262,7 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
    jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
    jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
    jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
-   jd->val        = (double*) allocateMemory( jd->nEnts      * sizeof( double ), "val" );
+   jd->val        = (real*) allocateMemory( jd->nEnts      * sizeof( real ), "val" );
 
    IF_DEBUG(2) {
       printf("Reading array of permutations\n");
@@ -294,7 +299,7 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 
    sucr = fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-   sucr = fread(&jd->val[0],              sizeof(double), jd->nEnts,    RESTFILE);
+   sucr = fread(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
 
    fclose(RESTFILE);
 
@@ -302,9 +307,9 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
    IF_DEBUG(2) printf("... done\n"); 
    IF_DEBUG(1){
       printf("Binary read of matrix in JDS-format took %8.2f s \n", 
-	    (double)(stopTime-startTime) );
+	    (real)(stopTime-startTime) );
       printf( "Data transfer rate : %8.2f MB/s \n\n",  
-	    (mybytes/1048576.0)/(double)(stopTime-startTime) );
+	    (mybytes/1048576.0)/(real)(stopTime-startTime) );
    }
 
    return;

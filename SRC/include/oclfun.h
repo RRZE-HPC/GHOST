@@ -30,9 +30,9 @@ void freeHostMemory( void* );
 void CL_finish();
 
 void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
-void CL_vecscal(cl_mem a, double s, int nRows);
-void CL_axpy(cl_mem a, cl_mem b, double s, int nRows);
-void CL_dotprod(cl_mem a, cl_mem b, double *out, int nRows);
+void CL_vecscal(cl_mem a, real s, int nRows);
+void CL_axpy(cl_mem a, cl_mem b, real s, int nRows);
+void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows);
 void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats);
 
 #endif

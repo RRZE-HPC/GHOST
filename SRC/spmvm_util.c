@@ -52,7 +52,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 		cr->nEnts     = 1;
 		cr->rowOffset = (int*)     allocateMemory( sizeof(int),     "rowOffset" );
 		cr->col       = (int*)     allocateMemory( sizeof(int),     "col" );
-		cr->val       = (double*)  allocateMemory( sizeof(double),  "val" );
+		cr->val       = (real*)  allocateMemory( sizeof(real),  "val" );
 	}
 	return cr;
 	
@@ -141,7 +141,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 #endif	
 
 	if(me==0){
-		ws = ((lcrp->nRows+1)*sizeof(int) + lcrp->nEnts*(sizeof(double)+sizeof(int)))/(1024*1024);
+		ws = ((lcrp->nRows+1)*sizeof(int) + lcrp->nEnts*(sizeof(real)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------------\n");
 		printf("-------         Statistics about matrix       -------\n");
 		printf("-----------------------------------------------------\n");
@@ -164,7 +164,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 	}
 }
 
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, double (*fp)(int)) {
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int)) {
 	int ierr;
 	int me;
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );

@@ -18,9 +18,9 @@ void hybrid_kernel_IX(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 
 	static int init_kernel=1; 
 	static int max_dues;
-	static double *work_mem, **work;
-	static double hlp_sent;
-	static double hlp_recv;
+	static real *work_mem, **work;
+	static real hlp_sent;
+	static real hlp_recv;
 
 	int me; 
 	int i, j, ierr;
@@ -28,14 +28,14 @@ void hybrid_kernel_IX(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 	int send_messages, recv_messages;
 
 	uint64 asm_cycles, asm_cyclecounter, asm_acccyclecounter;
-	double time_it_took;
+	real time_it_took;
 	uint64 glob_cycles, glob_cyclecounter;
 
 	/* Required cycles for the individual contributions */
 	uint64 ir_cycles, cs_cycles, wa_cycles, lc_cycles, nl_cycles;
 	uint64 cp_lin_cycles, cp_nlin_cycles, cp_res_cycles;
 
-	double hlp1;
+	real hlp1;
 	static MPI_Request *send_request, *recv_request;
 	static MPI_Status  *send_status,  *recv_status;
 
@@ -64,13 +64,13 @@ void hybrid_kernel_IX(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 
 		IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
 
-		size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( double  ) );
-		size_work    = (size_t)( lcrp->nodes          * sizeof( double* ) );
+		size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( real  ) );
+		size_work    = (size_t)( lcrp->nodes          * sizeof( real* ) );
 		size_request = (size_t)( lcrp->nodes          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( lcrp->nodes          * sizeof( MPI_Status ) );
 
-		work_mem = (double*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (double**) allocateMemory( size_work, "work" );
+		work_mem = (real*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (real**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<lcrp->nodes; i++) work[i] = &work_mem[lcrp->due_displ[i]];
 

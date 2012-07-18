@@ -27,13 +27,13 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	 *   of result vector, only valid if CUDAKERNEL */
 
 	int i, j;
-	double hlp1;
+	real hlp1;
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(double));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(real));
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
 			*cp_in_cycles = *asm_cycles - *cycles4measurement; 
@@ -78,7 +78,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
 			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
@@ -100,13 +100,13 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 	 *   only valid if CUDAKERNEL */
 
 	int i, j;
-	double hlp1;
+	real hlp1;
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -156,14 +156,14 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	 *   copy from device of result, only valid if CUDAKERNEL */
 
 	int i, j;
-	double hlp1;
+	real hlp1;
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 
-		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double), lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real), lcrp->lnRows[*me]*sizeof(real));
 
 
 		IF_DEBUG(1){
@@ -205,7 +205,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -231,7 +231,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -265,7 +265,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(double),lcrp->lnRows[*me]*sizeof(double));
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real),lcrp->lnRows[*me]*sizeof(real));
 
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -285,7 +285,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
 		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(double) );
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 
 		IF_DEBUG(1){
 			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
@@ -296,7 +296,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 } 
 #endif //CUDAKERNEL
 
-inline void vecscal(VECTOR_TYPE *vec, double s) {
+inline void vecscal(VECTOR_TYPE *vec, real s) {
 
 #ifdef OPENCL
 	CL_vecscal(vec->CL_val_gpu,s,vec->nRows);
@@ -321,13 +321,13 @@ inline void vecscal(VECTOR_TYPE *vec, double s) {
 #endif
 }
 
-inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
+inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n) {
 
 #ifdef OPENCL
 	CL_dotprod(v1->CL_val_gpu,v2->CL_val_gpu,res,n);
 #else
 	int i;
-	double sum = 0;
+	real sum = 0;
 #pragma omp parallel 
 	{
 	
@@ -346,7 +346,7 @@ inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
 #endif
 }
 
-inline void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double s) {
+inline void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s) {
 
 #ifdef OPENCL
 	CL_axpy(v1->CL_val_gpu,v2->CL_val_gpu,s,v1->nRows);

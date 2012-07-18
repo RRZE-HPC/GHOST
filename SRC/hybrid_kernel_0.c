@@ -15,9 +15,9 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
    uint64 asm_cycles, asm_cyclecounter;
    uint64 ca_cycles, glob_cycles, glob_cyclecounter;
    uint64 cp_in_cycles, cp_res_cycles;
-   double time_it_took;
+   real time_it_took;
 
-   double hlp1;
+   real hlp1;
 
   /*****************************************************************************
    *******            ........ Executable statements ........           ********

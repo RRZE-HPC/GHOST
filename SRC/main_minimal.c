@@ -8,7 +8,7 @@
 
 
 /** function to initialize the RHS vector **/
-double rhsVal (int i) {
+real rhsVal (int i) {
 	return i+1.0;
 }
 
@@ -18,7 +18,7 @@ int main( int argc, char* argv[] ) {
 	int nIter = 100;
 	int kernel = 12;
 	char matrixPath[PATH_MAX];
-	double start, end, dummy;
+	real start, end, dummy;
 
 	CR_TYPE         *cr;      // global CRS matrix
 	LCRP_TYPE       *lcrp;    // local CRS portion
@@ -59,7 +59,7 @@ int main( int argc, char* argv[] ) {
 
 	if (me == 0) {
 		timing(&end,&dummy);
-		printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(double)nIter*(double)lcrp->nEnts/(end-start));
+		printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(real)nIter*(real)lcrp->nEnts/(end-start));
 	}
 
 	freeVector( nodeLHS );

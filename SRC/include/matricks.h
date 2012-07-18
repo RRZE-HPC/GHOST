@@ -29,7 +29,7 @@ typedef struct {
 
 typedef struct {
 	int row, col, nThEntryInRow;
-	double val;
+	real val;
 } NZE_TYPE;
 
 typedef struct {
@@ -43,7 +43,7 @@ typedef struct {
 	int* rowPerm;
 	int* diagOffset;
 	int* col;
-	double* val;
+	real* val;
 } JD_TYPE;
 
 typedef struct {
@@ -56,7 +56,7 @@ typedef struct {
         int* blockdim_rows;
         int* blockdim_cols;
         int* resorted_col;
-        double* resorted_val;
+        real* resorted_val;
         int* blockinfo;
         int* tbi;
 } JD_RESORTED_TYPE;
@@ -65,8 +65,8 @@ typedef struct {
 	int pagesize, cachesize;
         int vecdim;
         int ppvec, offset, numvecs, globdim;
-        double* mem;
-        double** vec;
+        real* mem;
+        real** vec;
 } REVBUF_TYPE;
 
 
@@ -78,8 +78,8 @@ typedef struct {
         int* diagOffset;
         int* col;
         int* resorted_col;
-        double* val;
-        double* resorted_val;
+        real* val;
+        real* resorted_val;
         int* blockinfo;
         int* tbi;
 } JD_OFFDIAGONAL_TYPE;
@@ -113,7 +113,7 @@ typedef struct {
 
 typedef struct {
         int row, col, put;
-        double val;
+        real val;
 } BLOCKENTRY_TYPE;
         
 typedef struct {
@@ -139,9 +139,9 @@ void* allocateMemory( const size_t size, const char* desc );
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
 #endif
 
-void permuteVector( double* vec, int* perm, int len);
+void permuteVector( real* vec, int* perm, int len);
 
-MM_TYPE* readMMFile( const char* filename, const double epsilon );
+MM_TYPE* readMMFile( const char* filename, const real epsilon );
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm );
 JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen );
@@ -159,14 +159,14 @@ void crColIdToC( CR_TYPE* cr );
 
 void for_timing_start_asm_(uint64*);
 void for_timing_stop_asm_(uint64*, uint64*);
-void fortrancrs_(int*, int*, double*, double*, double*, int*, int*);
-void fortranjds_(int*, int*, int*, double*, double*, int*, double*, int*, int*, int*);
+void fortrancrs_(int*, int*, real*, real*, real*, int*, int*);
+void fortranjds_(int*, int*, int*, real*, real*, int*, real*, int*, int*, int*);
 
 void freeVector( VECTOR_TYPE* const vec );
 void freeMMMatrix( MM_TYPE* const mm );
 void freeCRMatrix( CR_TYPE* const cr );
 void freeJDMatrix( JD_TYPE* const cr );
-void tmpwrite_d(int, int, double*);
+void tmpwrite_d(int, int, real*);
 void tmpwrite_i(int, int, int*, char*);
 
 void bin_read_cr(CR_TYPE*, const char* );
@@ -192,17 +192,17 @@ void myabortf(char*, float);
 void myaborttf(char*, int, float);
 void mypaborts(const char*, const char*);
 uint64 cycles4measurement, p_cycles4measurement;
-double clockfreq;
-double total_mem;
-double RecalFrequency(uint64, double);
+real clockfreq;
+real total_mem;
+real RecalFrequency(uint64, real);
 void freeRevBuf(REVBUF_TYPE*);
 
 REVBUF_TYPE* revolvingBuffer(const uint64, const int, const int);
 /* ########################################################################## */
 float myCpuClockFrequency();
-int Correctness_check( double*, LCRP_TYPE*, double* );
+int Correctness_check( real*, LCRP_TYPE*, real* );
 unsigned long thishost(char*); 
-double my_amount_of_mem(void);
+real my_amount_of_mem(void);
 unsigned long machname(char* );
 unsigned long kernelversion(char* );
 unsigned long modelname(char* );

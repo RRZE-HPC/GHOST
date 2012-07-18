@@ -13,9 +13,9 @@ void hybrid_kernel_IV(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 
    static int init_kernel=1; 
    static int max_dues;
-   static double *work_mem, **work;
-   static double hlp_sent;
-   static double hlp_recv;
+   static real *work_mem, **work;
+   static real hlp_sent;
+   static real hlp_recv;
    static int *offs_vec;
 
    int me; 
@@ -26,9 +26,9 @@ void hybrid_kernel_IV(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
    uint64 cp_cycles, co_cycles, ca_cycles, glob_cycles, glob_cyclecounter;
    uint64 cp_in_cycles, cp_res_cycles;
 
-   double time_it_took;
+   real time_it_took;
 
-   double hlp1;
+   real hlp1;
 
    size_t size_work, size_mem, size_offs;
 
@@ -55,12 +55,12 @@ void hybrid_kernel_IV(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 
       IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
 
-      size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( double  ) );
-      size_work    = (size_t)( lcrp->nodes          * sizeof( double* ) );
+      size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( real  ) );
+      size_work    = (size_t)( lcrp->nodes          * sizeof( real* ) );
       size_offs    = (size_t)( lcrp->nodes          * sizeof( int ) );
 
-      work_mem = (double*)  allocateMemory( size_mem,  "work_mem" );
-      work     = (double**) allocateMemory( size_work, "work" );
+      work_mem = (real*)  allocateMemory( size_mem,  "work_mem" );
+      work     = (real**) allocateMemory( size_work, "work" );
       offs_vec = (int*)     allocateMemory( size_offs, "work" );
 
       for (i=0; i<lcrp->nodes; i++){

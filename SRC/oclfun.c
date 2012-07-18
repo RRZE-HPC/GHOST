@@ -254,7 +254,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),&matrix->col));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->rowLen));
 		if (T>1)
-			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(real)*localSize[kernelIdx],NULL));
 		globalSize[AXPY_KERNEL] = matrix->padding;
 		globalSize[VECSCAL_KERNEL] = matrix->padding;
 		globalSize[DOTPROD_KERNEL] = matrix->padding;
@@ -268,7 +268,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),&matrix->rowLen));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),&matrix->colStart));
 		if (T>1)
-			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(double)*localSize[kernelIdx],NULL));
+			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,sizeof(real)*localSize[kernelIdx],NULL));
 		globalSize[AXPY_KERNEL] = matrix->padding;
 		globalSize[VECSCAL_KERNEL] = matrix->padding;
 		globalSize[DOTPROD_KERNEL] = matrix->padding;
@@ -286,42 +286,42 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,&globalSize[type],&localSize[type],0,NULL,NULL));
 }
 
-void CL_vecscal(cl_mem a, double s, int nRows) 
+void CL_vecscal(cl_mem a, real s, int nRows) 
 {
 	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],0,sizeof(cl_mem),&a));
-	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],1,sizeof(double),&s));
+	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],1,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(kernel[VECSCAL_KERNEL],2,sizeof(int),&nRows));
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[VECSCAL_KERNEL],1,NULL,&globalSize[VECSCAL_KERNEL],&localSize[VECSCAL_KERNEL],0,NULL,NULL));
 }
 
-void CL_axpy(cl_mem a, cl_mem b, double s, int nRows) 
+void CL_axpy(cl_mem a, cl_mem b, real s, int nRows) 
 {
 	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],0,sizeof(cl_mem),&a));
 	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],1,sizeof(cl_mem),&b));
-	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],2,sizeof(double),&s));
+	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],2,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(kernel[AXPY_KERNEL],3,sizeof(int),&nRows));
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[AXPY_KERNEL],1,NULL,&globalSize[AXPY_KERNEL],&localSize[AXPY_KERNEL],0,NULL,NULL));
 }
 
-void CL_dotprod(cl_mem a, cl_mem b, double *out, int nRows) 
+void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows) 
 {
 	int resVecSize = globalSize[DOTPROD_KERNEL]/localSize[DOTPROD_KERNEL]; 
 	int i;
 	*out = 0.0;
 
-	VECTOR_TYPE *tmp = newVector(resVecSize*sizeof(double));
+	VECTOR_TYPE *tmp = newVector(resVecSize*sizeof(real));
 
 	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],0,sizeof(cl_mem),&a));
 	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],1,sizeof(cl_mem),&b));
 	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],2,sizeof(cl_mem),&tmp->CL_val_gpu));
 	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],3,sizeof(int),&nRows));
-	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],4,sizeof(double)*localSize[DOTPROD_KERNEL],NULL));
+	CL_safecall(clSetKernelArg(kernel[DOTPROD_KERNEL],4,sizeof(real)*localSize[DOTPROD_KERNEL],NULL));
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[DOTPROD_KERNEL],1,NULL,&globalSize[DOTPROD_KERNEL],&localSize[DOTPROD_KERNEL],0,NULL,NULL));
 
-	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(double));
+	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(real));
 
 	for(i = 0; i < resVecSize; ++i) {
 		*out += tmp->val[i];
@@ -544,8 +544,8 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 }
 
 void CL_uploadVector( VECTOR_TYPE *vec ) {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(double));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(real));
 }
 void CL_downloadVector( VECTOR_TYPE *vec ) {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(double));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(real));
 }

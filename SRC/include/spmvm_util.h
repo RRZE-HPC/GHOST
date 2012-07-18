@@ -9,6 +9,6 @@ int               SpMVM_init(int argc, char **argv);
 CR_TYPE *         SpMVM_createCRS (char *matrixPath);
 LCRP_TYPE *       SpMVM_distributeCRS (CR_TYPE *cr);
 VECTOR_TYPE *     SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, double (*fp)(int));
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
 
 #endif

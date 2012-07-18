@@ -372,3 +372,89 @@ C========================================
       
       return
       end
+
+      subroutine FortranCRSf(nnp, anznnel, resvec , locvec, 
+     $     cmatrx_crs, index_crs, rowoffset )
+      implicit none
+
+      integer nnp               ! TOM: res->nRows
+      integer anznnel           ! TOM: cr->nEnts
+
+      real resvec(nnp)
+                                ! TOM: res->val[]
+      real locvec(nnp)
+                                ! TOM: vec->val[]
+
+      real cmatrx_crs(anznnel)
+                                ! cr->val
+      integer index_crs(anznnel)       ! cr->col
+      integer rowoffset(nnp+1)       ! cr->rowOffset
+      
+      integer i,j,start,end
+
+      real tmp
+   
+      !write(*,*) 'in Fortran_CRS'
+
+!$OMP PARALLEL DO private(tmp, start, end) schedule(runtime)
+      do i=1, nnp
+
+         tmp   = 0.d0
+         start = rowoffset(i)+1
+         end   = rowoffset(i+1)
+
+!DEC$ VECTOR ALWAYS
+!DEC$ IVDEP
+         do j= start , end
+            tmp = tmp + cmatrx_crs(j) * locvec(index_crs(j))
+         enddo
+
+         resvec(i)=tmp
+
+      enddo
+      
+      return
+      end
+
+      subroutine FortranCRSAXPYf(nnp, anznnel, resvec , locvec, 
+     $     cmatrx_crs, index_crs, rowoffset )
+      implicit none
+
+      integer nnp               ! TOM: res->nRows
+      integer anznnel           ! TOM: cr->nEnts
+
+      real resvec(nnp)
+                                ! TOM: res->val[]
+      real locvec(nnp)
+                                ! TOM: vec->val[]
+
+      real cmatrx_crs(anznnel)
+                                ! cr->val
+      integer index_crs(anznnel)       ! cr->col
+      integer rowoffset(nnp+1)       ! cr->rowOffset
+      
+      integer i,j,start,end
+
+      real tmp
+   
+      !write(*,*) 'in Fortran_CRS'
+
+!$OMP PARALLEL DO private(tmp, start, end) schedule(runtime)
+      do i=1, nnp
+
+         tmp   = 0.d0
+         start = rowoffset(i)+1
+         end   = rowoffset(i+1)
+
+!DEC$ VECTOR ALWAYS
+!DEC$ IVDEP
+         do j= start , end
+            tmp = tmp + cmatrx_crs(j) * locvec(index_crs(j))
+         enddo
+
+         resvec(i) = resvec(i) + tmp
+
+      enddo
+      
+      return
+      end

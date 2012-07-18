@@ -96,10 +96,10 @@ int isMMfile(const char *filename) {
 }
 
 /* ########################################################################## */
-void permuteVector( double* vec, int* perm, int len) {
+void permuteVector( real* vec, int* perm, int len) {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	int i;
-	double* tmp;
+	real* tmp;
 
 	if (perm == NULL) {
 		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
@@ -108,7 +108,7 @@ void permuteVector( double* vec, int* perm, int len) {
 	}
 
 
-	tmp = (double*)allocateMemory(sizeof(double)*len, "permute tmp");
+	tmp = (real*)allocateMemory(sizeof(real)*len, "permute tmp");
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
@@ -132,10 +132,10 @@ void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
 	/* copy val to gpuval on device in testvec, copy back to temporary and check for consistency*/
 
 	int i;
-	double* tmp = NULL;
-	size_t bytesize = sizeof(double) * testvec->nRows;
+	real* tmp = NULL;
+	size_t bytesize = sizeof(real) * testvec->nRows;
 	printf("PE %d: vectorDeviceCopyCheck: size = %lu (%i)\n", me, bytesize, testvec->nRows);
-	tmp = (double*) allocateMemory( bytesize, "copycheck");
+	tmp = (real*) allocateMemory( bytesize, "copycheck");
 	for( i = 0; i < testvec->nRows; ++i) tmp[i] = -77.3;
 
 	printf("copying to device...");
@@ -224,7 +224,7 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 /* ########################################################################## */
 
 
-MM_TYPE* readMMFile( const char* filename, const double epsilon ) {
+MM_TYPE* readMMFile( const char* filename, const real epsilon ) {
 
 	/* allocate and read matrix-market format ascii file;
 	 * discard values smaller than epsilon;
@@ -372,8 +372,8 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 	rb->pagesize  = pagesize;
 	rb->cachesize = cachesize;
 	rb->vecdim    = vec_dim;
-	rb->ppvec     = (int)( sizeof(double) * rb->vecdim / rb->pagesize) + 1;
-	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(double);
+	rb->ppvec     = (int)( sizeof(real) * rb->vecdim / rb->pagesize) + 1;
+	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(real);
 	rb->numvecs   = (int)( (1024.0*rb->cachesize) / (rb->ppvec*rb->pagesize) ) + 2;
 	rb->globdim   = rb->numvecs*rb->offset;
 
@@ -388,16 +388,16 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 		printf("Memory pages per vector     : %12d\n", rb->ppvec); 
 		printf("Vectors in RevBuf           : %12d\n", rb->numvecs);
 		printf("Elements in RevBuf          : %12d\n", rb->globdim);
-		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(double))/(1024.0*1024.0));
+		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(real))/(1024.0*1024.0));
 		printf("Offset between vectors (el) : %12d\n", rb->offset);
 		printf("-----------------------------------------------------\n");
 	}
 
-	size_mem = (size_t)( rb->globdim * sizeof(double) );
-	size_vec = (size_t)( rb->numvecs * sizeof(double*) );
+	size_mem = (size_t)( rb->globdim * sizeof(real) );
+	size_vec = (size_t)( rb->numvecs * sizeof(real*) );
 
-	rb->mem = (double*)   allocateMemory(size_mem, "rb->mem");
-	rb->vec = (double **) allocateMemory(size_vec, "rb->vec");
+	rb->mem = (real*)   allocateMemory(size_mem, "rb->mem");
+	rb->vec = (real **) allocateMemory(size_vec, "rb->vec");
 
 	for (i=0; i<rb->numvecs; i++){
 		rb->vec[i] = &rb->mem[i*rb->offset];
@@ -426,7 +426,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 
 	size_t size_rowOffset, size_col, size_val, size_nEntsInRow;
 
-	double total_mem;
+	real total_mem;
 
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
@@ -436,7 +436,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( double) );
+	size_val        = (size_t)( mm->nEnts     * sizeof( real) );
 	size_nEntsInRow = (size_t)(  mm->nRows    * sizeof( int ) );
 
 	NUMA_CHECK_SERIAL("before placement of CR");
@@ -444,7 +444,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rowOffset = (int*)     allocateMemory( size_rowOffset,    "rowOffset" );
 	cr->col       = (int*)     allocateMemory( size_col,          "col" );
-	cr->val       = (double*)  allocateMemory( size_val,          "val" );
+	cr->val       = (real*)  allocateMemory( size_val,          "val" );
 	nEntsInRow    = (int*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 	IF_DEBUG(1){
@@ -544,7 +544,7 @@ if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
 for( e = 0; e < mm->nEnts; e++ ) {
 	const int row = mm->nze[e].row,
 		  col = mm->nze[e].col;
-	const double val = mm->nze[e].val;
+	const real val = mm->nze[e].val;
 	pos = cr->rowOffset[row] + nEntsInRow[row];
 	/* GW 
 	   cr->col[pos] = col;
@@ -630,14 +630,14 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen) {
 	/* allocate memory ######################################################## */
 	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts * sizeof( double) );
+	size_val        = (size_t)( mm->nEnts * sizeof( real) );
 	size_invRowPerm = (size_t)( mm->nRows * sizeof( int ) );
 	size_rowSort    = (size_t)( mm->nRows * sizeof( JD_SORT_TYPE ) );
 
 	JD_TYPE* jd = (JD_TYPE*)      allocateMemory( sizeof( JD_TYPE ), "jd" );
 	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
 	jd->col     = (int*)          allocateMemory( size_col,          "col" );
-	jd->val     = (double*)       allocateMemory( size_val,          "val" );
+	jd->val     = (real*)       allocateMemory( size_val,          "val" );
 	invRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
 	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
 
@@ -968,16 +968,16 @@ void zeroVector(VECTOR_TYPE *vec) {
 
 }
 
-HOSTVECTOR_TYPE* newHostVector( const int nRows, double (*fp)(int)) {
+HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int)) {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(double) );
+	size_val = (size_t)( nRows * sizeof(real) );
 	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (double*) allocateMemory( size_val, "vec->val");
+	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 	if (fp)
@@ -993,11 +993,11 @@ VECTOR_TYPE* newVector( const int nRows ) {
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(double) );
+	size_val = (size_t)( nRows * sizeof(real) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (double*) allocateMemory( size_val, "vec->val");
+	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 	
 #pragma omp parallel for
@@ -1016,7 +1016,7 @@ VECTOR_TYPE* newVector( const int nRows ) {
 }
 
 void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
-	double *dtmp;
+	real *dtmp;
 
 			dtmp = v1->val;
 			v1->val = v2->val;
@@ -1033,15 +1033,15 @@ void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
 	
 
 
-void normalize( double *vec, int nRows)
+void normalize( real *vec, int nRows)
 {
 	int i;
-	double sum = 0;
+	real sum = 0;
 
 	for (i=0; i<nRows; i++)	
 		sum += vec[i]*vec[i];
 
-	double f = 1./sqrt(sum);
+	real f = 1./sqrt(sum);
 
 	for (i=0; i<nRows; i++)	
 		vec[i] *= f;
@@ -1051,14 +1051,14 @@ void normalize( double *vec, int nRows)
 
 void freeHostVector( HOSTVECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
 		free( vec );
 	}
 }
 
 void freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(double)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
 #ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
@@ -1087,7 +1087,7 @@ void freeCRMatrix( CR_TYPE* const cr ) {
 
 		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
 		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
-		size_val        = (size_t)( cr->nEnts     * sizeof( double) );
+		size_val        = (size_t)( cr->nEnts     * sizeof( real) );
 
 		freeMemory( size_rowOffset,  "cr->rowOffset", cr->rowOffset );
 		freeMemory( size_col,        "cr->col",       cr->col );
