@@ -137,8 +137,6 @@ void* allocateMemory( const size_t size, const char* desc );
 
 #ifdef OPENCL
 void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
-void uploadVector( VECTOR_TYPE *vec );
-void downloadVector( VECTOR_TYPE *vec );
 #endif
 
 void permuteVector( double* vec, int* perm, int len);

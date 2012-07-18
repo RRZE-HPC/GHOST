@@ -71,7 +71,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
 	VECTOR_TYPE *nodeVec = newVector( pseudo_ldim ); 
 
 	/* Placement of RHS Vector */
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for
 	for( i = 0; i < pseudo_ldim; i++ ) 
 		nodeVec->val[i] = 0.0;
 	

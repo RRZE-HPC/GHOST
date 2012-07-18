@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <omp.h>
 #include <sys/types.h>
+#include <likwid.h>
 
 extern int SPMVM_OPTIONS;
 void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
@@ -143,6 +144,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 
 		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
 
+			likwid_markerStartRegion("k12 communication");
 			/***********************************************************************
 			 *******  Local gather of data in work array & communication    ********
 			 **********************************************************************/
@@ -161,8 +163,10 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 
 			ierr = MPI_Waitall(lcrp->nodes, send_request, send_status);
 			ierr = MPI_Waitall(recv_messages, recv_request, recv_status);
+			likwid_markerStopRegion("k12 communication");
 		}
 		else{ /* Rechen-threads */
+			likwid_markerStartRegion("k12 local spmvm");
 
 			/***********************************************************************
 			 *******     Calculation of SpMVM for local entries of invec->val     *******
@@ -195,6 +199,8 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 				else
 					res->val[i] = hlp1;
 			}
+
+			likwid_markerStopRegion("k12 local spmvm");
 #endif
 
 		}

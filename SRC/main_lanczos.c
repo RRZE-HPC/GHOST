@@ -5,6 +5,8 @@
 #include "oclfun.h"
 #endif
 
+#include <likwid.h>
+
 #include <mpi.h>
 #include <limits.h>
 #include <getopt.h>
@@ -137,7 +139,7 @@ int main( int argc, char* argv[] ) {
 	double start, end, dummy, tstart, tend, time_it_took, tacc = 0;
 	int kernelIdx, kernel;
 
-	int kernels[] = {/*5,10,*/12};
+	int kernels[] = {5,12/*5,10,12*/};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	JOBMASK = 0;
 
@@ -171,9 +173,16 @@ int main( int argc, char* argv[] ) {
 
 	me      = SpMVM_init(argc,argv);       // basic initialization
 
+#ifdef LIKDIW_MARKER
+	likwid_markerInit();
+#endif
+
+#pragma omp parallel
+#pragma omp master
+	printf("Running with %d threads.\n",omp_get_num_threads());
+
 
 	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device after spmvm
-	//SPMVM_OPTIONS |= SPMVM_OPTION_RHSPRESENT; // assume that the rhs vector is present at spmvm
 	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // performa y <- y + A*x
 
 	//LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_in, &resCR);
@@ -266,7 +275,9 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&start,&dummy);
 				timing(&tstart,&dummy);
+			
 			}
+
 			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,iteration);
 			if (me == 0) {
 				timing(&end,&dummy);
@@ -299,6 +310,10 @@ int main( int argc, char* argv[] ) {
 	freeVector( vnew );
 	freeVector( evec );
 	freeLcrpType( lcrp );
+
+#ifdef LIKWID_MARKER
+	likwid_markerClose();
+#endif
 
 	MPI_Finalize();
 

@@ -2,6 +2,7 @@
 #include "oclmacros.h"
 #include "matricks.h"
 #include <string.h>
+#include <stdlib.h>
 
 extern int SPMVM_OPTIONS;
 
@@ -21,7 +22,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	cl_platform_id *platformIDs;
 	cl_device_id *deviceIDs;
 	cl_int err;
-	cl_program program[3];
+	cl_program program;
 	int platform, device, takedevice;
 	char devicename[1024];
 
@@ -78,6 +79,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	size_t source_size;
 	char *build_log;
 	size_t log_size;
+	long filesize;
 
 
 	fp = fopen("SRC/kernel.cl", "r");
@@ -85,51 +87,86 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 		fprintf(stderr, "Failed to load kernel.\n");
 		exit(1);
 	}
-	source_str = (char*)allocateMemory(10000,"source");
-	source_size = fread( source_str, 1, 10000, fp);
+	fseek(fp,0L,SEEK_END);
+	filesize = ftell(fp);
+	fseek(fp,0L,SEEK_SET);
+
+	source_str = (char*)allocateMemory(filesize,"source");
+	source_size = fread( source_str, 1, filesize, fp);
 	fclose( fp );
 
+/*
+	fp=fopen("clkernels.bin","r");
+	if (!fp) {
+		fprintf(stderr, "Failed to load binaries.\n");
+		exit(1);
+	}
+	fseek(fp,0L,SEEK_END);
+	filesize = ftell(fp);
+	fseek(fp,0L,SEEK_SET);
+	unsigned char *binaryRead = (unsigned char *)allocateMemory(filesize,"binaryRead");
 
+	fread(binaryRead,1,filesize,fp);
+	fclose(fp);*/
+
+
+
+
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
+	program = clCreateProgramWithSource(context,1,(const char **)&source_str,&source_size,&err);
+	//program = clCreateProgramWithBinary(context,1,&deviceIDs[takedevice],&(size_t)filesize,&(const unsigned char *)binaryRead,NULL,NULL); //TODO
+	CL_checkerror(err);
+
+
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
+	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],NULL,NULL,NULL));
+
+	/*size_t binarySize;
+	unsigned char * binary;
+	CL_safecall(clGetProgramInfo(program,CL_PROGRAM_BINARY_SIZES,1*sizeof(size_t),&binarySize,NULL));
+	binary = (unsigned char *)allocateMemory(binarySize,"binary");
+	CL_safecall(clGetProgramInfo(program,CL_PROGRAM_BINARIES,binarySize,&binary,NULL));
+	
+	fp = fopen("clkernels.bin", "w");
+	if (!fp) {
+		fprintf(stderr, "Failed to write binary.\n");
+		exit(1);
+	}
+	fwrite(binary,1,binarySize,fp);
+	fclose(fp);*/
+
+
+
+	
+
+	IF_DEBUG(1) {
+		CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
+		build_log = (char *)allocateMemory(log_size+1,"build log");
+		CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
+		printf("Build log: %s",build_log);
+	}
 
 	int i;
 	for (i=0; i<3; i++) {
-		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, size-1, hostname);
-		program[i] = clCreateProgramWithSource(context,1,(const char **)&source_str,&source_size,&err);
-		CL_checkerror(err);
 
-
-		IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
-		char opt[50] = "";
-		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
-			sprintf(opt+strlen(opt),"-DAXPY ");
-
-		sprintf(opt+strlen(opt),"-DT=");
-		sprintf(opt+strlen(opt),"%d",matrixFormats->T[i]);
-
-		CL_safecall(clBuildProgram(program[i],1,&deviceIDs[takedevice],opt,NULL,NULL));
-
-		IF_DEBUG(1) {
-			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
-			build_log = (char *)allocateMemory(log_size+1,"build log");
-			CL_safecall(clGetProgramBuildInfo(program[i],deviceIDs[takedevice],CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-			printf("Build log: %s",build_log);
-		}
-
-		char kernelName[50]="";
+		char kernelName[50] = "";
 		strcat(kernelName, matrixFormats->format[i]==SPM_FORMAT_ELR?"ELR":"pJDS");
-		if (matrixFormats->T[i] > 1)
-			strcat(kernelName,"T");
+		char Tstr[2] = "";
+		snprintf(Tstr,2,"%d",matrixFormats->T[i]);
+
+		strcat(kernelName,Tstr);
 		strcat(kernelName,"kernel");
-		if (i==2)
+		if (i==SPM_KERNEL_REMOTE || SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
 			strcat(kernelName,"Add");
 
-		kernel[i] = clCreateKernel(program[i],kernelName,&err);
+
+		kernel[i] = clCreateKernel(program,kernelName,&err);
 		CL_checkerror(err);
 	}
 
-	kernel[AXPY_KERNEL] = clCreateKernel(program[0],"axpyKernel",&err);
-	kernel[DOTPROD_KERNEL] = clCreateKernel(program[0],"dotprodKernel",&err);
-	kernel[VECSCAL_KERNEL] = clCreateKernel(program[0],"vecscalKernel",&err);
+	kernel[AXPY_KERNEL] = clCreateKernel(program,"axpyKernel",&err);
+	kernel[DOTPROD_KERNEL] = clCreateKernel(program,"dotprodKernel",&err);
+	kernel[VECSCAL_KERNEL] = clCreateKernel(program,"vecscalKernel",&err);
 
 
 
@@ -297,7 +334,7 @@ void CL_finish()
 {
 
 	int i;
-	
+
 	for (i=0; i<6; i++) 
 		CL_safecall(clReleaseKernel(kernel[i]));
 
@@ -325,11 +362,11 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 	ierr = MPI_Comm_rank( single_node_comm, &node_rank);
 	CL_init( node_rank, node_size, hostname, matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
-	
+
 	if( JOBMASK & 503 ) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
 	}
-	
+
 	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
@@ -398,11 +435,11 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 					CL_uploadELR(celr, elr);
 					lcrp->fullMatrix = celr;
 					lcrp->fullFormat = SPM_FORMAT_ELR;
-/*					IF_DEBUG(1) {
-						resetELR( elr );
-						CL_CopyELRBackToHost( elr, celr );
-						checkCRSToELRsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], elr );
-					}*/
+					/*					IF_DEBUG(1) {
+										resetELR( elr );
+										CL_CopyELRBackToHost( elr, celr );
+										checkCRSToELRsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], elr );
+										}*/
 
 					freeELR( elr );
 					break;
@@ -415,93 +452,100 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 
 		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
-					IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
+			IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
 
-					lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
+			lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
 
-					lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
-					lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
-					memcpy(lcrp->splitRowPerm, lpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
-					memcpy(lcrp->splitInvRowPerm, lpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
+			lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
+			lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
+			memcpy(lcrp->splitRowPerm, lpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
+			memcpy(lcrp->splitInvRowPerm, lpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
 
-					lcpjds = CL_initPJDS( lpjds );
-					CL_uploadPJDS(lcpjds, lpjds);
-					lcrp->localMatrix = lcpjds;
-					lcrp->localFormat = SPM_FORMAT_PJDS;
+			lcpjds = CL_initPJDS( lpjds );
+			CL_uploadPJDS(lcpjds, lpjds);
+			lcrp->localMatrix = lcpjds;
+			lcrp->localFormat = SPM_FORMAT_PJDS;
 
-					/*		IF_DEBUG(1) {
-							resetPJDS( lpjds );
-							cudaCopyPJDSBackToHost( lpjds, lcpjds );
-							checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
-							}*/
-					freePJDS( lpjds );
+			/*		IF_DEBUG(1) {
+					resetPJDS( lpjds );
+					cudaCopyPJDSBackToHost( lpjds, lcpjds );
+					checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
+					}*/
+			freePJDS( lpjds );
 		}
 		if (matrixFormats->format[2] == SPM_FORMAT_PJDS) {
-					IF_DEBUG(1) printf("PE%i: REMOTE pjds:\n", me);
+			IF_DEBUG(1) printf("PE%i: REMOTE pjds:\n", me);
 
-					rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
+			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
 
-					lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
-					lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
-					memcpy(lcrp->splitRowPerm, rpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
-					memcpy(lcrp->splitInvRowPerm, rpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
+			lcrp->splitRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"rowPerm");
+			lcrp->splitInvRowPerm = (int *)allocateMemory(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
+			memcpy(lcrp->splitRowPerm, rpjds->rowPerm, lcrp->lnRows[me]*sizeof(int));
+			memcpy(lcrp->splitInvRowPerm, rpjds->invRowPerm, lcrp->lnRows[me]*sizeof(int));
 
 
-					rcpjds = CL_initPJDS( rpjds );
-					CL_uploadPJDS(rcpjds, rpjds);
-					lcrp->remoteMatrix = rcpjds;
-					lcrp->remoteFormat = SPM_FORMAT_PJDS;
+			rcpjds = CL_initPJDS( rpjds );
+			CL_uploadPJDS(rcpjds, rpjds);
+			lcrp->remoteMatrix = rcpjds;
+			lcrp->remoteFormat = SPM_FORMAT_PJDS;
 
-					/*		IF_DEBUG(1) {
-							resetPJDS( lpjds );
-							cudaCopyPJDSBackToHost( lpjds, lcpjds );
-							checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
-							}*/
-					freePJDS( rpjds );
+			/*		IF_DEBUG(1) {
+					resetPJDS( lpjds );
+					cudaCopyPJDSBackToHost( lpjds, lcpjds );
+					checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
+					}*/
+			freePJDS( rpjds );
 
 
 		}
 		if (matrixFormats->format[1] == SPM_FORMAT_ELR) {
-					IF_DEBUG(1) printf("PE%i: LOCAL elr:\n", me);
+			IF_DEBUG(1) printf("PE%i: LOCAL elr:\n", me);
 
-					if (matrixFormats->format[2] == SPM_FORMAT_PJDS)
-						lelr = CRStoELRTP( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[1] );
-					else
-						lelr = CRStoELRT( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
+			if (matrixFormats->format[2] == SPM_FORMAT_PJDS)
+				lelr = CRStoELRTP( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[1] );
+			else
+				lelr = CRStoELRT( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
 
-					lcelr = CL_initELR( lelr );
-					CL_uploadELR(lcelr, lelr);
-					lcrp->localMatrix = lcelr;
-					lcrp->localFormat = SPM_FORMAT_ELR;
+			lcelr = CL_initELR( lelr );
+			CL_uploadELR(lcelr, lelr);
+			lcrp->localMatrix = lcelr;
+			lcrp->localFormat = SPM_FORMAT_ELR;
 
-/*					IF_DEBUG(1) {
-						resetELR( lelr );
-						CL_CopyELRBackToHost( lelr, lcelr );
-						checkCRSToELRsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lelr );
-					}*/
-					freeELR( lelr );
+			/*					IF_DEBUG(1) {
+								resetELR( lelr );
+								CL_CopyELRBackToHost( lelr, lcelr );
+								checkCRSToELRsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lelr );
+								}*/
+			freeELR( lelr );
 		}
 		if (matrixFormats->format[2] == SPM_FORMAT_ELR) {
-					IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
+			IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
 
-					if (matrixFormats->format[1] == SPM_FORMAT_PJDS)
-						relr = CRStoELRTP( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[2] );
-					else
-						relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
+			if (matrixFormats->format[1] == SPM_FORMAT_PJDS)
+				relr = CRStoELRTP( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[2] );
+			else
+				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
 
 
-					rcelr = CL_initELR( relr );
+			rcelr = CL_initELR( relr );
 
-					CL_uploadELR(rcelr, relr);
-					lcrp->remoteMatrix = rcelr;
-					lcrp->remoteFormat = SPM_FORMAT_ELR;
+			CL_uploadELR(rcelr, relr);
+			lcrp->remoteMatrix = rcelr;
+			lcrp->remoteFormat = SPM_FORMAT_ELR;
 
-					/*IF_DEBUG(1) {
-					  resetELR( relr );
-					  cudaCopyELRBackToHost( relr, rcelr );
-					  checkCRSToELRsanity( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me], relr);
-					  }*/
-					freeELR( relr ); 
+			/*IF_DEBUG(1) {
+			  resetELR( relr );
+			  cudaCopyELRBackToHost( relr, rcelr );
+			  checkCRSToELRsanity( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me], relr);
+			  }*/
+			freeELR( relr ); 
 		}
 	}
+}
+
+void CL_uploadVector( VECTOR_TYPE *vec ) {
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(double));
+}
+void CL_downloadVector( VECTOR_TYPE *vec ) {
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(double));
 }

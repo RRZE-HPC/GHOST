@@ -1,24 +1,17 @@
-#INTEL_F_HOME = /usr/intel-ifort-10.0
-#LIKWID_DIR = /apps/likwid/devel/
-LIKWID_DIR = /apps/likwid/stable
+LIKWID_DIR = /apps/likwid/devel/
 
 CC	= mpicc
-CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp #-C -Wall# -DWRITE_RESTART #-parallel
-#CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp-stubs -openmp# -DWRITE_RESTART #-parallel
+CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC #-Wremarks -Wcheck
 
 FC	= mpif90
-FFLAGS  = -g -O3 -132 ${MAKROS} -fno-alias -cpp -warn all -openmp #-vec-report3 -opt-report -unroll0 #-openmp #-C -debug extended -traceback #-parallel
+FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp -fPIC
 
-LDFLAGS = -g -O3 ${RFLAGS} -i_dynamic -openmp #-static #-parallel
+LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic
 
-LIBS = -L$(INTEL_F_HOME)/lib -lifcore -L${LIKWID_DIR}/lib -llikwid -pthread
-IPATH   += -I${LIKWID_DIR}/include
+LIBS = -L$(INTEL_F_HOME)/compiler/lib/intel64 -lifcore -pthread $(LIKWID_LIB) -llikwid 
+IPATH += -I${CUDA_INSTALL_PATH}/include $(LIKWID_INC)
 
-
-#IPATH	+=	-I/$(INTEL_F_HOME)/include
- 
 AS	= as
-ASFLAGS = -g -gstabs
+ASFLAGS = -g -gstabs 
 
-ENDG    =       $(shell echo ${MAKROS} | sed -e 's/\-D/_/g' | sed -e 's/\ //g')
-SUFX    =      ${ENDG}_${SYSTEM}
+SUFX    =      _${SYSTEM}

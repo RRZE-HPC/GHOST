@@ -22,6 +22,7 @@
 
 #define EPSILON 1e-6
 
+#define LIKWID_MARKER
 
 #define EQUAL_NZE  1
 #define EQUAL_LNZE 2
@@ -142,7 +143,7 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 	 ierr = MPI_Comm_rank ( single_node_comm, &me_node );                  \
 	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_DOUBLE,         \
                              MPI_SUM, 0, single_node_comm);                    \
-         coreId = sched_getcpu();                              \
+         coreId = likwid_processGetProcessorId();                              \
          if (coreId==0){                                                       \
 	    IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \
 	    if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                  \

@@ -14,6 +14,8 @@ void CL_init( int, int, const char*, MATRIX_FORMATS *);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
 void CL_uploadCRS (LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats);
+void CL_uploadVector( VECTOR_TYPE *vec );
+void CL_downloadVector( VECTOR_TYPE *vec );
 
 cl_mem CL_allocDeviceMemory( size_t );
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );

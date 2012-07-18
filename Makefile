@@ -38,11 +38,10 @@ cllanczos-static: MAKROS = -DOPENCL
 cllanczos-dynamic: MAKROS = -DOPENCL 
 clspmvm: MAKROS = -DOPENCL 
 libclspmvm.a: MAKROS = -DOPENCL 
-libspmvm.so: MAKROS = -DOPENCL 
+libclspmvm.so: MAKROS = -DOPENCL 
 
 ################################################################################
 
-#$(error $(OBJECT_FILES))
 
 %.o: %.c  
 	$(CC) $(CFLAGS) -o $@ -c $<
@@ -62,12 +61,20 @@ libspmvm.so: MAKROS = -DOPENCL
 
 all: cllanczos lanczos
 
-cllanczos-static: main_lanczos.o libspmvm.a
+spmvm-static: main_spmvm.o libspmvm.a
 	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
 
-cllanczos-dynamic: main_lanczos.o libspmvm.so
-#	$(CC) $(CFLAGS) -o $@$(SUFX).x $< -lspmvm -L.  $(LIBS)
-	$(CC) -O3 -DOPENCL -I./SRC/include -L. -lspmvm -openmp -o $@$(SUFX).x $<
+lanczos-static: main_lanczos.o libspmvm.a
+	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+
+cllanczos-static: main_lanczos.o libclspmvm.a
+	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+
+cllanczos-dynamic: main_lanczos.o libclspmvm.so
+	$(CC) -O3 -DOPENCL -I./SRC/include $(LIKWID_INC) -L. $(LIKWID_LIB) -pthread -lclspmvm -llikwid -openmp -o $@$(SUFX).x $<
+
+lanczos-dynamic: main_lanczos.o libspmvm.so
+	$(CC) -O3 -I./SRC/include -L. -lspmvm -openmp -o $@$(SUFX).x $<
 
 cllanczos: main_lanczos.o $(OBJS) $(OCLOBJS)
 	$(CC) $(LDFLAGS) -o $@$(SUFX).x $^  $(LIBS)
@@ -94,12 +101,17 @@ minimal: main_minimal.o $(OBJS)
 	 -mv *.o OBJ
 	 -mv *genmod* OBJ
 
-libspmvm.so: $(OBJS) $(OCLOBJS)
-	$(CC) $(LDFLAGS) -shared -o libspmvm.so $^ $(LIBS)
+libspmvm.so: $(OBJS)
+	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LIBS)
 
-libspmvm.a: $(OBJS) $(OCLOBJS)
-	ar rcs  libspmvm.a $^ 
+libclspmvm.so: $(OBJS) $(OCLOBJS)
+	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LIBS)
 
+libspmvm.a: $(OBJS)
+	ar rcs  $@ $^ 
+
+libclspmvm.a: $(OBJS) $(OCLOBJS)
+	ar rcs  $@ $^ 
 
 clean:
 	-rm -f *.o

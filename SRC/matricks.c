@@ -962,7 +962,7 @@ void zeroVector(VECTOR_TYPE *vec) {
 		vec->val[i] = 0;
 
 #ifdef OPENCL
-	uploadVector(vec);
+	CL_uploadVector(vec);
 #endif
 
 
@@ -991,6 +991,7 @@ HOSTVECTOR_TYPE* newHostVector( const int nRows, double (*fp)(int)) {
 VECTOR_TYPE* newVector( const int nRows ) {
 	VECTOR_TYPE* vec;
 	size_t size_val;
+	int i;
 
 	size_val = (size_t)( nRows * sizeof(double) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
@@ -998,6 +999,11 @@ VECTOR_TYPE* newVector( const int nRows ) {
 
 	vec->val = (double*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
+	
+#pragma omp parallel for
+	for( i = 0; i < nRows; i++ ) 
+		vec->val[i] = 0.0;
+
 #ifdef OPENCL
 	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
 	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
@@ -1026,14 +1032,6 @@ void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
 
 	
 
-#ifdef OPENCL
-void uploadVector( VECTOR_TYPE *vec ) {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(double));
-}
-void downloadVector( VECTOR_TYPE *vec ) {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(double));
-}
-#endif
 
 void normalize( double *vec, int nRows)
 {

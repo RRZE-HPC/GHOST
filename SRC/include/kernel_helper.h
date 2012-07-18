@@ -8,6 +8,8 @@
 #include "oclfun.h"
 #endif
 
+#include <likwid.h>
+
 #include <stdbool.h>
 
 extern int SPMVM_OPTIONS;
@@ -46,7 +48,10 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #else
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
+#pragma omp parallel
+	{
+   	likwid_markerStartRegion("full spmvm");
+#pragma omp	for schedule(runtime) private (hlp1, j)
 	for (i=0; i<lcrp->lnRows[*me]; i++){
 		hlp1 = 0.0;
 		for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
@@ -56,6 +61,9 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 			res->val[i] += hlp1;
 		else
 			res->val[i] = hlp1;
+	}
+   	likwid_markerStopRegion("full spmvm");
+
 	}
 
 #endif
@@ -171,13 +179,19 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 #else
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
+#pragma omp parallel
+	{
+	//likwid_markerStartRegion("remote spmvm");
+#pragma omp for schedule(runtime) private (hlp1, j)
 	for (i=0; i<lcrp->lnRows[*me]; i++){
 		hlp1 = 0.0;
 		for (j=lcrp->lrow_ptr_r[i]; j<lcrp->lrow_ptr_r[i+1]; j++){
 			hlp1 = hlp1 + lcrp->rval[j] * invec->val[lcrp->rcol[j]]; 
 		}
 		res->val[i] += hlp1;
+	}
+	//likwid_markerStopRegion("remote spmvm");
+
 	}
 
 #endif
@@ -288,9 +302,22 @@ inline void vecscal(VECTOR_TYPE *vec, double s) {
 	CL_vecscal(vec->CL_val_gpu,s,vec->nRows);
 #else
 	int i;
-#pragma omp parallel for private(i)
+#pragma omp parallel
+	{
+	
+//#ifdef LIKWID_MARKER
+	likwid_markerStartRegion("vecscal");
+//#endif
+
+#pragma omp for private(i)
 	for (i=0; i<vec->nRows; i++)
 		vec->val[i] = s*vec->val[i];
+
+//#ifdef LIKWID_MARKER
+	likwid_markerStopRegion("vecscal");
+//#endif
+	}
+
 #endif
 }
 
@@ -301,9 +328,20 @@ inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, double *res, int n) {
 #else
 	int i;
 	double sum = 0;
-#pragma omp parallel for private(i) reduction(+:sum)
+#pragma omp parallel 
+	{
+	
+#ifdef LIKWID_MARKER
+	likwid_markerStartRegion("dotprod");
+#endif
+#pragma omp for private(i) reduction(+:sum)
 	for (i=0; i<n; i++)
 		sum += v1->val[i]*v2->val[i];
+#ifdef LIKWID_MARKER
+	likwid_markerStopRegion("dotprod");
+#endif
+
+	}
 	*res = sum;
 #endif
 }

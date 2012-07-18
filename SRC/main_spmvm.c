@@ -9,7 +9,12 @@
 #include <unistd.h>
 #include <omp.h>
 #include <sched.h>
-#include <oclfun.h>
+
+#ifdef OPENCL
+#include "oclfun.h"
+#endif
+
+#include <likwid.h>
 
 #include <limits.h>
 #include <getopt.h>
@@ -22,12 +27,11 @@ const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
 typedef struct {
 	char matrixPath[PATH_MAX];
 	char matrixName[PATH_MAX];
-	MATRIX_FORMATS matrixFormats;
-	//int wgSize;
-	//int nEigs;
 	int nIter;
+#ifdef OPENCL
+	MATRIX_FORMATS matrixFormats;
 	int devType;
-	//int dev;
+#endif
 } PROPS;
 
 
@@ -72,6 +76,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 			case 'f':
 				{
+#ifdef OPENCL
 					char *format;
 					format = strtok(optarg,",");
 					int i=0;
@@ -88,6 +93,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 						format = strtok(NULL,",");
 						i++;
 					}
+#endif
 
 					break;
 				}
@@ -106,6 +112,9 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 	}
 }
 
+double rhsVal (int i) {
+	return i+1.0;
+}
 
 int main( int argc, char* argv[] ) {
 
@@ -117,7 +126,7 @@ int main( int argc, char* argv[] ) {
 
 	int i,j; 
 
-	int kernels[] = {2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17};
+	int kernels[] = {12/*,10,12*/};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	JOBMASK = 0;
 
@@ -139,14 +148,16 @@ int main( int argc, char* argv[] ) {
 
 
 	PROPS props;
+#ifdef OPENCL
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
 	props.matrixFormats.T[0] = 2;
 	props.matrixFormats.T[1] = 2;
 	props.matrixFormats.T[2] = 1;
-	props.nIter = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
+#endif
+	props.nIter = 100;
 
 	getOptions(argc,argv,&props);
 	if (argc==optind) {
@@ -158,31 +169,27 @@ int main( int argc, char* argv[] ) {
 	if (!props.matrixPath)
 		myabort("No correct matrix specified! (no absolute file name and not present in $MATHOME)");
 	strcpy(props.matrixName,basename(props.matrixPath));
-
-	required_threading_level = MPI_THREAD_MULTIPLE;
-	ierr = MPI_Init_thread(&argc, &argv, required_threading_level, 
-			&provided_threading_level );
-
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-
 	SPMVM_OPTIONS = 0;
 	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
 
+	
+	
+	me      = SpMVM_init(argc,argv);       // basic initialization
 
+
+
+//#ifdef LIKDIW_MARKER
+	likwid_markerInit();
+//#endif
+	
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
 
 
+	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
+	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
+	goldLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 
 	if (me==0) {
-		globRHS = newHostVector( cr->nCols );
-		goldLHS = newHostVector( cr->nCols );
-		globLHS = newHostVector( cr->nCols );
-
-		for (i=0; i<cr->nCols; i++) { 
-			globRHS->val[i] = i+1;
-			globLHS->val[i] = 0.;
-			goldLHS->val[i] = 0.;
-		}
 
 		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
 			for (iteration=0; iteration<props.nIter; iteration++)
@@ -190,10 +197,6 @@ int main( int argc, char* argv[] ) {
 		else
 			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 
-	} else {
-		goldLHS = newHostVector(0);
-		globRHS = newHostVector(0);
-		globLHS = newHostVector(0);
 	}
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
@@ -261,6 +264,10 @@ int main( int argc, char* argv[] ) {
 	freeHostVector( globLHS );
 	freeHostVector( globRHS );
 	freeLcrpType( lcrp );
+
+//#ifdef LIKWID_MARKER
+	likwid_markerClose();
+//#endif
 
 	MPI_Finalize();
 
