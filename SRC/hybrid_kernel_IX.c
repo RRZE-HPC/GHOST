@@ -96,7 +96,7 @@ void hybrid_kernel_IX(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
 			ierr = MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
-					MPI_DOUBLE, from_PE, from_PE, MPI_COMM_WORLD, 
+					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
 					&recv_request[recv_messages] );
 			recv_messages++;
 		}
@@ -117,7 +117,7 @@ void hybrid_kernel_IX(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
 		}
 		if (lcrp->dues[to_PE]>0){
 			ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], 
-					MPI_DOUBLE, to_PE, me, MPI_COMM_WORLD, 
+					MPI_MYDATATYPE, to_PE, me, MPI_COMM_WORLD, 
 					&send_request[send_messages] );
 			send_messages++;
 		}

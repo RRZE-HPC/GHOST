@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "timing.h"
 
+
+
 char restartfilename[50];
 double startTime, stopTime, ct; 
 double mybytes;
@@ -13,9 +15,11 @@ FILE* RESTFILE;
 
 void bin_write_cr(const CR_TYPE* cr, const char* testcase){
 
+	int datatype = DATATYPE_DESIRED;
+
    timing( &startTime, &ct );
 
-   sprintf(restartfilename, "./daten/%s_CRS_bin.dat", testcase);
+   sprintf(restartfilename, "./daten/%s_%s_CRS_bin.dat", testcase,datatypeNames[datatype]);
 
    mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
       1.0*(cr->nEnts)*sizeof(real);
@@ -34,6 +38,7 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
    IF_DEBUG(1) printf("Schreibe: Array mit Spalteneintraegen (%d Eintraege)\n", cr->nEnts);
    IF_DEBUG(1) printf("Schreibe: Array mit Matrixeintraegen (%d Eintraege)\n", cr->nEnts);
 
+   fwrite(&datatype,				sizeof(int),	1,			RESTFILE);
    fwrite(&cr->nRows,               sizeof(int),    1,           RESTFILE);
    fwrite(&cr->nCols,               sizeof(int),    1,           RESTFILE);
    fwrite(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
@@ -46,9 +51,9 @@ void bin_write_cr(const CR_TYPE* cr, const char* testcase){
 
    timing( &stopTime, &ct );
    IF_DEBUG(1) printf( "Schreiben der Matrix im CRS-Format (binaer): %8.2f s \n", 
-	 (real)(stopTime-startTime) );
+	 (double)(stopTime-startTime) );
    IF_DEBUG(1) printf( "Entspricht: %8.2f MB/s \n",  
-	 (mybytes/1048576.0)/(real)(stopTime-startTime) );
+	 (mybytes/1048576.0)/(double)(stopTime-startTime) );
 
 
    return;
@@ -98,9 +103,9 @@ void bin_write_jd(const JD_TYPE* jd, const char* testcase){
 
    timing( &stopTime, &ct );
    printf( "Schreiben der Matrix im JDS-Format (binaer): %8.2f s \n", 
-	 (real)(stopTime-startTime) );
+	 (double)(stopTime-startTime) );
    printf( "Entspricht: %8.2f MB/s \n",  
-	 (mybytes/1048576.0)/(real)(stopTime-startTime) );
+	 (mybytes/1048576.0)/(double)(stopTime-startTime) );
 
    return;
 }
@@ -115,6 +120,7 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    size_t size_offs, size_col, size_val;
    /* Number of successfully read data items */
    size_t sucr;
+   int datatype;
 
    size_t size_hlp;
    //real* zusteller;
@@ -128,9 +134,15 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
       exit(1);
    }
 
+   sucr = fread(&datatype,               sizeof(int),    1,           RESTFILE);
    sucr = fread(&cr->nRows,               sizeof(int),    1,           RESTFILE);
    sucr = fread(&cr->nCols,               sizeof(int),    1,           RESTFILE);
    sucr = fread(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
+
+   if (datatype != DATATYPE_DESIRED) {
+	   fprintf(stderr,"Warning! The library has been built for %s data but the file contains %s data.\nTrying to cast...",
+			   datatypeNames[DATATYPE_DESIRED],datatypeNames[datatype]);
+   }
 
    mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
       1.0*(cr->nEnts)*sizeof(real);
@@ -212,9 +224,9 @@ void bin_read_cr(CR_TYPE* cr, const char* path){
    IF_DEBUG(2) printf("... done\n"); 
    IF_DEBUG(1){
       printf("Binary read of matrix in CRS-format took %8.2f s \n", 
-	    (real)(stopTime-startTime) );
+	    (double)(stopTime-startTime) );
       printf( "Data transfer rate : %8.2f MB/s \n",  
-	    (mybytes/1048576.0)/(real)(stopTime-startTime) );
+	    (mybytes/1048576.0)/(double)(stopTime-startTime) );
    }
 
    return;
@@ -307,9 +319,9 @@ void bin_read_jd(JD_TYPE* jd, const int blocklen, const char* testcase){
    IF_DEBUG(2) printf("... done\n"); 
    IF_DEBUG(1){
       printf("Binary read of matrix in JDS-format took %8.2f s \n", 
-	    (real)(stopTime-startTime) );
+	    (double)(stopTime-startTime) );
       printf( "Data transfer rate : %8.2f MB/s \n\n",  
-	    (mybytes/1048576.0)/(real)(stopTime-startTime) );
+	    (mybytes/1048576.0)/(double)(stopTime-startTime) );
    }
 
    return;

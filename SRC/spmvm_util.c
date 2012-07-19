@@ -5,6 +5,36 @@
 //#include "oclfun.h"
 //#endif
 #include <libgen.h>
+#include <unistd.h>
+#include <mpihelper.h>
+
+typedef struct {
+#ifdef DOUBLE
+	double x;
+	double y;
+#endif
+#ifdef SINGLE
+	float x;
+	float y;
+#endif
+
+} MPI_complex;
+
+#ifdef COMPLEX
+void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len, MPI_Datatype *datatype) {
+	
+	int i;
+	MPI_complex c;
+	
+	for (i=0; i<*len; i++, invec++, inoutvec++){
+		c.x = invec->x + inoutvec->x;
+		c.y = invec->y + inoutvec->y;
+		*inoutvec = c;
+
+	}
+}
+
+#endif
 
 int SpMVM_init(int argc, char **argv) {
 
@@ -15,6 +45,23 @@ int SpMVM_init(int argc, char **argv) {
 	if (req != prov)
 		fprintf(stderr, "Required MPI threading level (%d) is not provided (%d)!\n",req,prov);
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+
+
+#ifdef COMPLEX
+#ifdef DOUBLE
+	MPI_Type_contiguous(2,MPI_DOUBLE,&MPI_MYDATATYPE);
+#endif
+#ifdef SINGLE
+	MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE);
+#endif
+	MPI_Type_commit(&MPI_MYDATATYPE);
+	MPI_Op_create((MPI_User_function *)&complAdd,TRUE,&MPI_MYSUM);
+
+
+#else
+	MPI_MYSUM = MPI_SUM;
+#endif
+
 	
 	return me;
 }
@@ -30,6 +77,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	printf("Creating CRS from %s\n",matrixPath);
 
 	
 	if (me == 0){
@@ -38,8 +86,10 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 			bin_read_cr(cr, matrixPath);
 		} else{
 			mm = readMMFile( matrixPath, 0.0 );
+
 			cr = convertMMToCRMatrix( mm );
-			bin_write_cr(cr, basename(matrixPath));
+			bin_write_cr(cr, strtok(basename(matrixPath),"."));
+			//bin_read_cr(cr,"daten/conf6_cdouble_CRS_bin.dat");
 			freeMMMatrix(mm);
 		}
 		crColIdToFortran(cr);
@@ -80,7 +130,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
 		nodeVec->val[i] = 77.0;
 
 	/* Scatter the input vector from the master node to all others */
-	ierr = MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_DOUBLE,nodeVec->val, lcrp->lnRows[me], MPI_DOUBLE, 0, MPI_COMM_WORLD );
+	ierr = MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD );
 
 	return nodeVec;
 }
@@ -91,7 +141,7 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, HOSTVECTOR_TYPE *to
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_DOUBLE,totalVec->val,lcrp->lnRows,lcrp->lfRow,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD);
 }
 
 
@@ -129,14 +179,14 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 
 	if( JOBMASK & 503 ) { 
 		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
-		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
 
 	} 
 	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
-		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
-		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
 	}
 #endif	
 

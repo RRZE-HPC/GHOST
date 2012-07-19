@@ -19,9 +19,12 @@
 #define IS_DAXPY 1
 #define IS_AX 0
 
-#define EPSILON 1e-6
-
-#define LIKWID_MARKER
+#ifdef DOUBLE
+#define EPSILON 1e-9
+#endif
+#ifdef SINGLE
+#define EPSILON 1e-0
+#endif
 
 #define EQUAL_NZE  1
 #define EQUAL_LNZE 2
@@ -140,8 +143,8 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
          individual_mem = (real)allocatedMem;                                \
          ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );                         \
 	 ierr = MPI_Comm_rank ( single_node_comm, &me_node );                  \
-	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_DOUBLE,         \
-                             MPI_SUM, 0, single_node_comm);                    \
+	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_MYDATATYPE,         \
+                             MPI_MYSUM, 0, single_node_comm);                    \
          coreId = likwid_processGetProcessorId();                              \
          if (coreId==0){                                                       \
 	    IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \

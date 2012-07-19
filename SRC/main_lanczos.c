@@ -109,10 +109,10 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, 
 	vecscal(vnew,-*beta);
 	HyK[kernel].kernel( iteration, vnew, lcrp, vold);
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
-	MPI_Allreduce(MPI_IN_PLACE, alpha,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE, alpha,1,MPI_MYDATATYPE,MPI_SUM,MPI_COMM_WORLD);
 	axpy(vnew,vold,-(*alpha));
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
-	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_SUM,MPI_COMM_WORLD);
 	*beta=sqrt(*beta);
 	vecscal(vnew,1./(*beta));
 }

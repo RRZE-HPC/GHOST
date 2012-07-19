@@ -98,8 +98,8 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	send_tag =  i*lcrp->nodes + me;
 	recv_tag = me*lcrp->nodes + i;
 
-	ierr = MPI_Sendrecv(work[i], lcrp->dues[i], MPI_DOUBLE, i, send_tag, 
-	      &invec->val[hlpi], lcrp->wishes[i], MPI_DOUBLE, i, recv_tag, 
+	ierr = MPI_Sendrecv(work[i], lcrp->dues[i], MPI_MYDATATYPE, i, send_tag, 
+	      &invec->val[hlpi], lcrp->wishes[i], MPI_MYDATATYPE, i, recv_tag, 
 	      MPI_COMM_WORLD, &status);
 
         hlpi += lcrp->wishes[i];

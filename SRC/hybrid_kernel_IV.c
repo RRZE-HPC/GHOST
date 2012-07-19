@@ -95,8 +95,8 @@ void hybrid_kernel_IV(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, 
     ****************************************************************************/
    IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
-   ierr = MPI_Alltoallv(work_mem, lcrp->dues, offs_vec, MPI_DOUBLE, 
-	 &invec->val[lcrp->lnRows[me]], lcrp->wishes, lcrp->wish_displ, MPI_DOUBLE, 
+   ierr = MPI_Alltoallv(work_mem, lcrp->dues, offs_vec, MPI_MYDATATYPE, 
+	 &invec->val[lcrp->lnRows[me]], lcrp->wishes, lcrp->wish_displ, MPI_MYDATATYPE, 
 	 MPI_COMM_WORLD);
 
    send_messages = lcrp->nodes-1;

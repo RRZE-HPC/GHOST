@@ -19,6 +19,7 @@
 
 #include <string.h>
 #include <libgen.h>
+#include <complex.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -40,6 +41,7 @@ void getMatrixPath(char *given, char *path) {
 	strcpy(path,given);
 	file = fopen(path,"r");
 	if (file) { // given complete is already a full path
+		fclose(file);
 		return;
 	}
 
@@ -51,12 +53,22 @@ void getMatrixPath(char *given, char *path) {
 	strcpy(path,mathome);
 	strcat(path,"/");
 	strcat(path,given);
+	
+	file = fopen(path,"r");
+	if (file) {
+		fclose(file);
+		return;
+	}
+	
 	strcat(path,"/");
 	strcat(path,given);
+	strcat(path,"_");
+	strcat(path,datatypeNames[DATATYPE_DESIRED]);
 	strcat(path,"_CRS_bin.dat");
 
 	file = fopen(path,"r");
 	if (file) {
+		fclose(file);
 		return;
 	}
 
@@ -69,6 +81,7 @@ void getMatrixPath(char *given, char *path) {
 
 	file = fopen(path,"r");
 	if (file) {
+		fclose(file);
 		return;
 	}
 
@@ -201,7 +214,6 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	//   if ( get_NUMA_info(&size0, &now0, &size1, &now1) != 0 ) 
 	//      myabort("failed to retrieve NUMA-info");
 
-
 	allocatedMem += size;
 	IF_DEBUG(2) printf("PE%d: Gegenwaerig allokierter Speicher: %8.2f MB in LD 0/1: (%d /  %d) \n", 
 			me, allocatedMem/(1024.0*1024.0), size0-now0, size1-now1);
@@ -285,11 +297,45 @@ MM_TYPE* readMMFile( const char* filename, const real epsilon ) {
 	mm->nze = (NZE_TYPE*) allocateMemory(size, "mm->nze" );
 	IF_DEBUG(1) printf("...finished\n"); fflush(stdout);
 
+#ifdef DOUBLE
+#ifdef COMPLEX
+	char *format = "%i %i %le %le";
+#else
+	char *format = "%i %i %le";
+#endif
+#endif
+#ifdef SINGLE
+#ifdef COMPLEX
+	char *format = "%i %i %e %e";
+#else
+	char *format = "%i %i %e";
+#endif
+#endif
+
+	double r,i;
+
 	/* read entries ########################################################### */
 	for( e = 0; e < mm->nEnts; e++ ) {
 		IF_DEBUG(1) if (e%1000000==0) printf("e=%d\n", e);
 		/* mtx format should be one-based (fortran style) ###################### */
-		if( fscanf( file, "%i %i %le\n", &mm->nze[e].row, &mm->nze[e].col,
+#ifdef COMPLEX
+		if( fscanf( file, format, &mm->nze[e].row, &mm->nze[e].col,
+					&r, &i ) != 4 ||
+				mm->nze[e].row < 1 || mm->nze[e].row > mm->nRows ||
+				mm->nze[e].col < 1 || mm->nze[e].col > mm->nCols ) {
+			fprintf( stderr, "readMMFile: error while reading entries:\n" );
+			fprintf( stderr, " entry %i: row %i/%i, col %i/%i\n", 
+					e, mm->nze[e].row, mm->nRows, mm->nze[e].col, mm->nCols );
+			fclose( file );
+			free( mm->nze );
+			free( mm );
+			return NULL;
+		}
+		mm->nze[e].val = r + I*i;
+		if(e<10)
+		printf("read %f + i* %f\n",r,i);
+#else
+		if( fscanf( file, format, &mm->nze[e].row, &mm->nze[e].col,
 					&mm->nze[e].val ) != 3 ||
 				mm->nze[e].row < 1 || mm->nze[e].row > mm->nRows ||
 				mm->nze[e].col < 1 || mm->nze[e].col > mm->nCols ) {
@@ -301,13 +347,14 @@ MM_TYPE* readMMFile( const char* filename, const real epsilon ) {
 			free( mm );
 			return NULL;
 		}
+#endif
 		/* row and column index should be zero-based ############################ */
 		mm->nze[e].row -= 1;
 		mm->nze[e].col -= 1;
 		IF_DEBUG(2) printf( "%i %i %e\n", mm->nze[e].row, mm->nze[e].col, mm->nze[e].val );
 
 		/* value smaller than threshold epsilon? ################################ */
-		if( fabs( mm->nze[e].val ) < epsilon ) {
+		if( REAL(ABS( mm->nze[e].val )) < REAL(epsilon) ) {
 			IF_DEBUG(1) printf("entry %i: %i %i %e smaller than eps, skipping...\n", 
 					e, mm->nze[e].row, mm->nze[e].col, mm->nze[e].val );
 			e--;
@@ -958,8 +1005,13 @@ void crColIdToC( CR_TYPE* cr ) {
 
 void zeroVector(VECTOR_TYPE *vec) {
 	int i;
-	for (i=0; i<vec->nRows; i++)
+	for (i=0; i<vec->nRows; i++) {
+#ifdef COMPLEX
 		vec->val[i] = 0;
+#else
+		vec->val[i] = 0+I*0;
+#endif
+	}
 
 #ifdef OPENCL
 	CL_uploadVector(vec);
@@ -982,8 +1034,14 @@ HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int)) {
 
 	if (fp)
 		for (i=0; i<nRows; i++) vec->val[i] = fp(i);
-	else
+	else {
+#ifdef COMPLEX
+		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
+#else
 		for (i=0; i<nRows; i++) vec->val[i] = 0.;
+#endif
+	}
+
 
 	return vec;
 }

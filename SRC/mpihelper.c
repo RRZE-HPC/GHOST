@@ -376,8 +376,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 	NUMA_CHECK("before scattering");
 
-	ierr = MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_DOUBLE, 
-			lcrp->val, lcrp->lnEnts[me],  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	ierr = MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_MYDATATYPE, 
+			lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD);
 
 	ierr = MPI_Scatterv ( cr->col, lcrp->lnEnts, lcrp->lfEnt, MPI_INTEGER,
 			lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
@@ -706,7 +706,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 
 	/* Free memory for CR stored matrix and sweep memory */
-	freeCRMatrix( cr );
+	//freeCRMatrix( cr );
 
 
 	return lcrp;

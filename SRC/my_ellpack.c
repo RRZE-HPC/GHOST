@@ -246,8 +246,13 @@ ELR_TYPE *MMtoELR(const char *filename, int threadsPerRow) {
 	entries = (MATRIX_ENTRY *)allocateMemory(nEnts*sizeof(MATRIX_ENTRY),"entries");
 	mat->T = threadsPerRow;
 
-	for (i = 0; i < nEnts; i++) { 
+	for (i = 0; i < nEnts; i++) {
+#ifdef DOUBLE	// TODO
 		if( fscanf( file, "%i %i %le\n", &entries[i].row, &entries[i].col, &entries[i].val ) != 3 ||
+#endif
+#ifdef SINGLE
+		if( fscanf( file, "%i %i %e\n", &entries[i].row, &entries[i].col, &entries[i].val ) != 3 ||
+#endif
 				entries[i].row < 1 || entries[i].row > mat->nRows ||
 				entries[i].col < 1 || entries[i].col > nCols ) 
 

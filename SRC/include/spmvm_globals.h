@@ -15,10 +15,87 @@
 #include <CL/cl.h>
 #endif
 
-#define SINGLE
-typedef float real;
-#define MPI_FLOAT MPI_MYDATATYPE
+#include <complex.h>
+#include <mpi.h>
 
+#define DATATYPE_FLOAT 0
+#define DATATYPE_DOUBLE 1
+#define DATATYPE_COMPLEX_FLOAT 2
+#define DATATYPE_COMPLEX_DOUBLE 3
+
+
+static char *datatypeNames[] = {"float","double","cfloat","cdouble"};
+
+#define DOUBLE
+#define COMPLEX
+
+
+#ifdef DOUBLE
+#ifdef COMPLEX
+
+typedef _Complex double real;
+MPI_Datatype MPI_MYDATATYPE;
+MPI_Op MPI_MYSUM;
+#define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
+
+#else
+
+typedef double real;
+#define MPI_MYDATATYPE MPI_DOUBLE
+#define DATATYPE_DESIRED DATATYPE_DOUBLE
+
+#endif
+#endif
+
+
+#ifdef SINGLE
+#ifdef COMPLEX
+
+typedef _Complex float real;
+MPI_Datatype MPI_MYDATATYPE;
+MPI_Op MPI_MYSUM;
+#define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
+
+#else
+
+typedef float real;
+#define MPI_MYDATATYPE MPI_FLOAT
+#define DATATYPE_DESIRED DATATYPE_FLOAT
+
+
+#endif
+#endif
+
+#ifdef DOUBLE
+#ifdef COMPLEX
+#define ABS(a) cabs(a)
+#define REAL(a) creal(a)
+#define IMAG(a) cimag(a)
+#else
+#define ABS(a) fabs(a)
+#define REAL(a) a
+#define IMAG(a) 0
+#endif
+#endif
+
+
+#ifdef SINGLE
+#ifdef COMPLEX
+#define ABS(a) cabsf(a)
+#define REAL(a) crealf(a)
+#define IMAG(a) cimagf(a)
+#else
+#define ABS(a) fabsf(a)
+#define REAL(a) a
+#define IMAG(a) 0
+#endif
+#endif
+
+
+typedef struct {
+	real x;
+	real y;
+} COMPLEX_TYPE;
 
 typedef struct {
 	int nRows;

@@ -231,7 +231,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 	    if (lcrp->wishes[from_PE]>0){
 	       ierr = MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
-		     MPI_DOUBLE, from_PE, from_PE, MPI_COMM_WORLD, 
+		     MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
 		     &recv_request[recv_messages] );
 	       recv_messages++;
 	    }
@@ -242,7 +242,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 /* erst zu allen mit groesser PE */ 
 	 for (to_PE=me+1 ; to_PE<lcrp->nodes ; to_PE++){
 	    if (lcrp->dues[to_PE]>0){
-	       ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_DOUBLE,
+	       ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
 		     to_PE, me, MPI_COMM_WORLD, &send_request[to_PE] );
 	       send_messages++;
 	    }
@@ -250,7 +250,7 @@ IF_DEBUG(1) 	 printf("PE%d thread:%d: local:  %d / %d : %6.3f <-> non-local: %d 
 	 /* jetzt zu allen mit kleinerer PE */ 
 	 for (to_PE=0; to_PE<me; to_PE++){
 	    if (lcrp->dues[to_PE]>0){
-	       ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_DOUBLE,
+	       ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
 		     to_PE, me, MPI_COMM_WORLD, &send_request[to_PE] );
 	       send_messages++;
 	    }

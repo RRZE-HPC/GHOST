@@ -113,7 +113,11 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 }
 
 real rhsVal (int i) {
-	return i+1.0;
+#ifdef COMPLEX
+	return i+1.0 + I*(i+1.5);
+#else
+	return i+1.0 ;
+#endif
 }
 
 int main( int argc, char* argv[] ) {
@@ -126,7 +130,7 @@ int main( int argc, char* argv[] ) {
 
 	int i,j; 
 
-	int kernels[] = {12/*,10,12*/};
+	int kernels[] = {5};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	JOBMASK = 0;
 
@@ -170,7 +174,7 @@ int main( int argc, char* argv[] ) {
 		myabort("No correct matrix specified! (no absolute file name and not present in $MATHOME)");
 	strcpy(props.matrixName,basename(props.matrixPath));
 	SPMVM_OPTIONS = 0;
-	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
+	//SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;
 
 	
 	
@@ -178,9 +182,9 @@ int main( int argc, char* argv[] ) {
 
 
 
-//#ifdef LIKDIW_MARKER
+#ifdef LIKDIW_MARKER
 	likwid_markerInit();
-//#endif
+#endif
 	
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
 
@@ -191,21 +195,39 @@ int main( int argc, char* argv[] ) {
 
 	if (me==0) {
 
-#ifdef DOUBLE // TODO
-		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
-			for (iteration=0; iteration<props.nIter; iteration++)
+		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) {
+			for (iteration=0; iteration<props.nIter; iteration++) {
+#ifdef DOUBLE
+#ifdef COMPLEX
+				fortrancrsaxpyc_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#else
 				fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
-		else
-			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#endif
 #endif
 #ifdef SINGLE
-		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
-			for (iteration=0; iteration<props.nIter; iteration++)
+#ifdef COMPLEX
+				fortrancrsaxpycf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#else
 				fortrancrsaxpyf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
-		else
+#endif
+#endif
+			}
+		} else {
+#ifdef DOUBLE
+#ifdef COMPLEX
+			fortrancrsc_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#else
+			fortrancrs_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#endif
+#endif
+#ifdef SINGLE
+#ifdef COMPLEX
+			fortrancrscf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
+#else
 			fortrancrsf_(&(cr->nRows), &(cr->nEnts), goldLHS->val, globRHS->val, cr->val , cr->col, cr->rowOffset);
 #endif
-
+#endif
+		}
 	}
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
@@ -248,17 +270,20 @@ int main( int argc, char* argv[] ) {
 			permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 		}
 
-		MPI_Gatherv(nodeLHS->val,lcrp->lnRows[me],MPI_DOUBLE,globLHS->val,lcrp->lnRows,lcrp->lfRow,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		MPI_Gatherv(nodeLHS->val,lcrp->lnRows[me],MPI_MYDATATYPE,globLHS->val,lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD);
 
 		if (me==0) {
-			for (i=0; i<lcrp->lnRows[me]; i++){
-				mytol = EPSILON * (1.0 + fabs(goldLHS->val[i]) ) ;
-				if (fabs(goldLHS->val[i]-globLHS->val[i]) > mytol){
+			for (i=0; i<lcrp->nRows; i++){
+				mytol = EPSILON * ABS(goldLHS->val[i]) * (cr->rowOffset[i+1]-cr->rowOffset[i]);
+				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > REAL(mytol)){
 					IF_DEBUG(1) {
-						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, goldLHS->val[i], globLHS->val[i],goldLHS->val[i]-globLHS->val[i]);
+						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, goldLHS->val[i], globLHS->val[i],ABS(goldLHS->val[i]-globLHS->val[i]));
 					}
 					errcount++;
+					//printf("%d %e %e %e %e\n",i, mytol,ABS(goldLHS->val[i]-globLHS->val[i]),REAL(goldLHS->val[i]),REAL(globLHS->val[i]));
+
 				}
+					printf("%d %.2f + %.2fi   %.2f + %.2fi\n",i,REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
 			}
 			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(real)props.nIter*(real)lcrp->nEnts/time_it_took);
 		}
@@ -273,10 +298,11 @@ int main( int argc, char* argv[] ) {
 	freeHostVector( globLHS );
 	freeHostVector( globRHS );
 	freeLcrpType( lcrp );
+	freeCRMatrix( cr );
 
-//#ifdef LIKWID_MARKER
+#ifdef LIKWID_MARKER
 	likwid_markerClose();
-//#endif
+#endif
 
 	MPI_Finalize();
 

@@ -117,9 +117,16 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	//program = clCreateProgramWithBinary(context,1,&deviceIDs[takedevice],&(size_t)filesize,&(const unsigned char *)binaryRead,NULL,NULL); //TODO
 	CL_checkerror(err);
 
+#ifdef DOUBLE
+	char *opt = " -DDOUBLE ";
+#endif
+#ifdef SINGLE
+	char *opt = " -DSINGLE ";
+#endif
+
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program and creating kernels\n", rank, size-1, hostname);
-	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],NULL,NULL,NULL));
+	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],opt,NULL,NULL));
 
 	/*size_t binarySize;
 	unsigned char * binary;

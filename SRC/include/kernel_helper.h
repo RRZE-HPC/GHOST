@@ -50,7 +50,9 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #pragma omp parallel
 	{
+#ifdef LIKWID_MARKER
    	likwid_markerStartRegion("full spmvm");
+#endif
 #pragma omp	for schedule(runtime) private (hlp1, j)
 	for (i=0; i<lcrp->lnRows[*me]; i++){
 		hlp1 = 0.0;
@@ -62,7 +64,9 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		else
 			res->val[i] = hlp1;
 	}
+#ifdef LIKWID_MARKER
    	likwid_markerStopRegion("full spmvm");
+#endif
 
 	}
 
@@ -305,17 +309,17 @@ inline void vecscal(VECTOR_TYPE *vec, real s) {
 #pragma omp parallel
 	{
 	
-//#ifdef LIKWID_MARKER
+#ifdef LIKWID_MARKER
 	likwid_markerStartRegion("vecscal");
-//#endif
+#endif
 
 #pragma omp for private(i)
 	for (i=0; i<vec->nRows; i++)
 		vec->val[i] = s*vec->val[i];
 
-//#ifdef LIKWID_MARKER
+#ifdef LIKWID_MARKER
 	likwid_markerStopRegion("vecscal");
-//#endif
+#endif
 	}
 
 #endif

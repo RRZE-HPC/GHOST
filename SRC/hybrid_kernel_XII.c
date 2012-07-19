@@ -104,7 +104,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
 			ierr = MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
-					MPI_DOUBLE, from_PE, from_PE, MPI_COMM_WORLD, 
+					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
 					&recv_request[recv_messages] );
 			recv_messages++;
 		}
@@ -121,7 +121,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
 	private   (i, j, ierr, to_PE, hlp1, tid, n_local)                            \
-	shared    (ompi_mpi_real, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	shared    (MPI_MYDATATYPE, ompi_mpi_real, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
 			asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
 			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles,SPMVM_OPTIONS)                                                  \
@@ -130,7 +130,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
 	private   (i, j, ierr, to_PE, hlp1, tid, n_local)                            \
-	shared    (lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	shared    (MPI_MYDATATYPE, lcrp, me, work, invec, send_request, res, n_per_thread,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
 			asm_cycles, asm_cyclecounter, asm_acccyclecounter, cycles4measurement,                   \
 			pr_cycles, lc_cycles, nl_cycles, cp_lin_cycles,SPMVM_OPTIONS)                                                  \
@@ -143,8 +143,9 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 #endif
 
 		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
-
+#ifdef LIKWID_MARKER
 			likwid_markerStartRegion("k12 communication");
+#endif
 			/***********************************************************************
 			 *******  Local gather of data in work array & communication    ********
 			 **********************************************************************/
@@ -155,7 +156,7 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 				}
 
 				if (lcrp->dues[to_PE]>0){
-					ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_DOUBLE,
+					ierr = MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
 							to_PE, me, MPI_COMM_WORLD, &send_request[to_PE] );
 					send_messages++;
 				}
@@ -163,10 +164,14 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 
 			ierr = MPI_Waitall(lcrp->nodes, send_request, send_status);
 			ierr = MPI_Waitall(recv_messages, recv_request, recv_status);
+#ifdef LIKWID_MARKER
 			likwid_markerStopRegion("k12 communication");
+#endif
 		}
 		else{ /* Rechen-threads */
+#ifdef LIKWID_MARKER
 			likwid_markerStartRegion("k12 local spmvm");
+#endif
 
 			/***********************************************************************
 			 *******     Calculation of SpMVM for local entries of invec->val     *******
@@ -200,7 +205,9 @@ void hybrid_kernel_XII(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 					res->val[i] = hlp1;
 			}
 
+#ifdef LIKWID_MARKER
 			likwid_markerStopRegion("k12 local spmvm");
+#endif
 #endif
 
 		}
