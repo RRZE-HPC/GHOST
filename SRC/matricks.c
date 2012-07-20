@@ -235,143 +235,50 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 /* ########################################################################## */
 
+MM_TYPE * readMMfile(char* filename ) {
 
-MM_TYPE* readMMFile( const char* filename, const real epsilon ) {
+	int ret_code;
+	MM_typecode matcode;
+	FILE *f;
+	int i;
+	MM_TYPE* mm = (MM_TYPE*) malloc( sizeof( MM_TYPE ) );
 
-	/* allocate and read matrix-market format ascii file;
-	 * discard values smaller than epsilon;
-	 * row and col index assumed one-based, converted to zero-based */
+	if ((f = fopen(filename, "r")) == NULL) 
+		exit(1);
 
-	BOOL skippingComments = TRUE, readUntilEndOfLine = FALSE;
-	MM_TYPE* mm = (MM_TYPE*) allocateMemory( sizeof( MM_TYPE ), "mm" );
-	int e;
-	FILE* file;
-	size_t size;
-
-	file = fopen( filename, "r" );
-
-	if( ! file ) {
-		fprintf( stderr, "readMMFile: could not open file '%s' for reading\n", filename );
-		free( mm );
-		//mypaborts("readMMFile: could not open file for reading:", filename);
-		return NULL;
+	if (mm_read_banner(f, &matcode) != 0)
+	{
+		printf("Could not process Matrix Market banner.\n");
+		exit(1);
 	}
 
-	/* skip comments ########################################################## */
-	while( skippingComments ) {
-		char c;
-		if( fread( &c, 1, 1, file ) != 1 ) {
-			fprintf( stderr, "readMMFile: error while skipping comments\n" );
-			fclose( file );
-			free( mm );
-			return NULL;
+
+	if ((ret_code = mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
+		exit(1);
+
+
+	mm->nze = (NZE_TYPE *)malloc(mm->nEnts*sizeof(NZE_TYPE));
+
+	if (!mm_is_complex(matcode)) {
+		for (i=0; i<mm->nEnts; i++)
+		{
+			fscanf(f, "%d %d %lg\n", &mm->nze[i].row, &mm->nze[i].col, &mm->nze[i].real);
+			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
+			mm->nze[i].row--;
 		}
-
-		if( readUntilEndOfLine ) {
-			if( c == '\n' ) readUntilEndOfLine = FALSE;
-		}
-		else {
-			if( c == '%' ) readUntilEndOfLine = TRUE;
-			else {
-				ungetc( c, file );
-				skippingComments = FALSE;
-			}
-		}
-	}
-	IF_DEBUG(1) printf( "readMMFile: skipping comments done\n" );
-
-	/* read header ############################################################ */
-	if( fscanf( file, "%i %i %i\n", &mm->nRows, &mm->nCols, &mm->nEnts ) != 3 ) {
-		fprintf( stderr, "readMMFile: error while reading header\n" );
-		fclose( file );
-		free( mm );
-		return NULL;
-	}
-	IF_DEBUG(1) printf( "readMMFile: nRows %i; nCols %i; nEnts: %i\n", mm->nRows, mm->nCols, mm->nEnts );
-
-	NUMA_CHECK_SERIAL("before placement of MM");
-
-	/* allocate memory for entries */
-	size = (size_t)( mm->nEnts * sizeof(NZE_TYPE)  );
-	IF_DEBUG(1) printf("Allocating %llu bytes for mm->nze\n", (uint64)size);
-	mm->nze = (NZE_TYPE*) allocateMemory(size, "mm->nze" );
-	IF_DEBUG(1) printf("...finished\n"); fflush(stdout);
-
-#ifdef DOUBLE
-#ifdef COMPLEX
-	char *format = "%i %i %le %le";
-#else
-	char *format = "%i %i %le";
-#endif
-#endif
-#ifdef SINGLE
-#ifdef COMPLEX
-	char *format = "%i %i %e %e";
-#else
-	char *format = "%i %i %e";
-#endif
-#endif
-
-	double r,i;
-
-	/* read entries ########################################################### */
-	for( e = 0; e < mm->nEnts; e++ ) {
-		IF_DEBUG(1) if (e%1000000==0) printf("e=%d\n", e);
-		/* mtx format should be one-based (fortran style) ###################### */
-#ifdef COMPLEX
-		if( fscanf( file, format, &mm->nze[e].row, &mm->nze[e].col,
-					&r, &i ) != 4 ||
-				mm->nze[e].row < 1 || mm->nze[e].row > mm->nRows ||
-				mm->nze[e].col < 1 || mm->nze[e].col > mm->nCols ) {
-			fprintf( stderr, "readMMFile: error while reading entries:\n" );
-			fprintf( stderr, " entry %i: row %i/%i, col %i/%i\n", 
-					e, mm->nze[e].row, mm->nRows, mm->nze[e].col, mm->nCols );
-			fclose( file );
-			free( mm->nze );
-			free( mm );
-			return NULL;
-		}
-		mm->nze[e].val = r + I*i;
-		if(e<10)
-		printf("read %f + i* %f\n",r,i);
-#else
-		if( fscanf( file, format, &mm->nze[e].row, &mm->nze[e].col,
-					&mm->nze[e].val ) != 3 ||
-				mm->nze[e].row < 1 || mm->nze[e].row > mm->nRows ||
-				mm->nze[e].col < 1 || mm->nze[e].col > mm->nCols ) {
-			fprintf( stderr, "readMMFile: error while reading entries:\n" );
-			fprintf( stderr, " entry %i: row %i/%i, col %i/%i\n", 
-					e, mm->nze[e].row, mm->nRows, mm->nze[e].col, mm->nCols );
-			fclose( file );
-			free( mm->nze );
-			free( mm );
-			return NULL;
-		}
-#endif
-		/* row and column index should be zero-based ############################ */
-		mm->nze[e].row -= 1;
-		mm->nze[e].col -= 1;
-		IF_DEBUG(2) printf( "%i %i %e+%ei\n", mm->nze[e].row, mm->nze[e].col, REAL(mm->nze[e].val),IMAG(mm->nze[e].val) );
-
-		/* value smaller than threshold epsilon? ################################ */
-		if( REAL(ABS( mm->nze[e].val )) < REAL(epsilon) ) {
-			IF_DEBUG(1) printf("entry %i: %i %i %e smaller than eps, skipping...\n", 
-					e, mm->nze[e].row, mm->nze[e].col, REAL(mm->nze[e].val) );
-			e--;
-			mm->nEnts--;
+	} else {
+		for (i=0; i<mm->nEnts; i++)
+		{
+			fscanf(f, "%d %d %lg %lg\n",  &mm->nze[i].row, &mm->nze[i].col, &mm->nze[i].real, &mm->nze[i].imag);
+			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
+			mm->nze[i].row--;
 		}
 	}
-	IF_DEBUG(1) printf( "readMMFile: nEnts (after applying threshold): %i\n", mm->nEnts );fflush(stdout);
 
-	fclose( file );
 
-	IF_DEBUG(1) printf( "readMMFile: done\n" );
-
-	NUMA_CHECK_SERIAL("after placement of MM");
-
+	if (f !=stdin) fclose(f);
 	return mm;
 }
-
 
 /* ########################################################################## */
 

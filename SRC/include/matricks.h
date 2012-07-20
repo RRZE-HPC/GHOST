@@ -141,7 +141,7 @@ void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
 
 void permuteVector( real* vec, int* perm, int len);
 
-MM_TYPE* readMMFile( const char* filename, const real epsilon );
+MM_TYPE* readMMFile( const char* filename );
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm );
 JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen );

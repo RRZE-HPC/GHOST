@@ -79,11 +79,10 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 			bin_read_cr(cr, matrixPath);
 		} else{
-			mm = readMMFile( matrixPath, 0.0 );
+			mm = readMMFile( matrixPath);
 
 			cr = convertMMToCRMatrix( mm );
 			bin_write_cr(cr, strtok(basename(matrixPath),"."));
-			//bin_read_cr(cr,"daten/conf6_cdouble_CRS_bin.dat");
 			freeMMMatrix(mm);
 		}
 		crColIdToFortran(cr);

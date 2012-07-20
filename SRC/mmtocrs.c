@@ -95,7 +95,7 @@ void writeCR(CR_TYPE* cr, char* filename, int datatype){
 	return;
 }
 
-MM_TYPE * readMMfile(char* filename, double epsilon ) {
+MM_TYPE * readMMfile(char* filename ) {
 
 	int ret_code;
 	MM_typecode matcode;
@@ -113,13 +113,9 @@ MM_TYPE * readMMfile(char* filename, double epsilon ) {
 	}
 
 
-	/* find out size of sparse matrix .... */
-
 	if ((ret_code = mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
 		exit(1);
 
-
-	/* reseve memory for matrices */
 
 	mm->nze = (NZE_TYPE *)malloc(mm->nEnts*sizeof(NZE_TYPE));
 
@@ -213,7 +209,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr,"\tformat 3 = complex double\n");
 	}
 
-	MM_TYPE *mm = readMMfile(argv[1],0.0);
+	MM_TYPE *mm = readMMfile(argv[1]);
 	CR_TYPE *cr = convertMMtoCRmatrix(mm);
 	writeCR(cr,argv[2],atoi(argv[3]));
 
