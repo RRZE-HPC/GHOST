@@ -133,7 +133,7 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 
 #define NUMA_CHECK(identifier)                                                 \
          {                                                                     \
-         real naccmem;                                                       \
+         double naccmem;                                                       \
          int ierr, me, me_node, coreId;                                        \
          int ns0=0;                                                            \
          int ns1=0;                                                            \
@@ -160,7 +160,7 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 
 #define NUMA_CHECK_SERIAL(identifier)                                          \
          {                                                                     \
-         real naccmem;                                                       \
+         double naccmem;                                                       \
          int ierr, me;                                                         \
          int ns0=0;                                                            \
          int ns1=0;                                                            \

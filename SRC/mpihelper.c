@@ -250,7 +250,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 					while (ideal==0){
 
-						trial_rows = (int)( (real)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
+						trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
 
 						/* Check ob die Anzahl der Elemente schon das beste ist das ich erwarten kann */
 						if ( (trial_rows-prev_rows)*(trial_rows-prev_rows)<5.0 ) ideal=1;
@@ -596,7 +596,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (JOBMASK>0){
+	//if (JOBMASK>0){
 
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
@@ -686,15 +686,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 		fflush(stdout);
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
 
-	}
-	else{
-		lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
-		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
-		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
-		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-		lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
-		lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
-	}
+	//else{
+	//	lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
+	//	lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
+	//	lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
+	//	lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
+	//	lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
+	//	lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
+	//}
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
 	freeMemory ( size_mem,  "cwishlist_mem",   cwishlist_mem);

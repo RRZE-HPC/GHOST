@@ -118,10 +118,19 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	CL_checkerror(err);
 
 #ifdef DOUBLE
+#ifdef COMPLEX
+	char *opt = " -DDOUBLE -DCOMPLEX";
+#else
 	char *opt = " -DDOUBLE ";
 #endif
+#endif
+
 #ifdef SINGLE
+#ifdef COMPLEX
+	char *opt = " -DSINGLE -DCOMPLEX";
+#else
 	char *opt = " -DSINGLE ";
+#endif
 #endif
 
 
@@ -197,6 +206,8 @@ cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr ) {
 cl_mem CL_allocDeviceMemory( size_t bytesize ) {
 	cl_mem mem;
 	cl_int err;
+
+//	printf("CL: allocating %lu bytes of memory\n",bytesize);
 
 	mem = clCreateBuffer(context,CL_MEM_READ_WRITE,bytesize,NULL,&err);
 
@@ -370,14 +381,14 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 	CL_init( node_rank, node_size, hostname, matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
 
-	if( JOBMASK & 503 ) { // only if jobtype requires combined computation
+	//if( JOBMASK & 503 ) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
-	}
+	//}
 
-	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+	//if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
-	}
+	//}
 
 
 }
@@ -404,7 +415,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
-	if( JOBMASK & 503 ) { // only if jobtype requires combined computation
+	//if( JOBMASK & 503 ) { // only if jobtype requires combined computation
 
 
 		switch (matrixFormats->format[0]) {
@@ -423,12 +434,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 					lcrp->fullMatrix = cpjds;
 					lcrp->fullFormat = SPM_FORMAT_PJDS;
 
-					/*IF_DEBUG(1) {
-					  resetPJDS( pjds );
-					  cudaCopyPJDSBackToHost( pjds, cpjds );
-					  checkCRSToPJDSsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], pjds, lcrp->invRowPerm );
-					  }*/
-
 					freePJDS( pjds );
 					break;
 				}
@@ -442,11 +447,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 					CL_uploadELR(celr, elr);
 					lcrp->fullMatrix = celr;
 					lcrp->fullFormat = SPM_FORMAT_ELR;
-					/*					IF_DEBUG(1) {
-										resetELR( elr );
-										CL_CopyELRBackToHost( elr, celr );
-										checkCRSToELRsanity( lcrp->val, lcrp->col, lcrp->lrow_ptr, lcrp->lnRows[me], elr );
-										}*/
 
 					freeELR( elr );
 					break;
@@ -454,9 +454,9 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 		}
 
-	}
+//	}
 
-	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+//	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 
 		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
 			IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
@@ -473,11 +473,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcrp->localMatrix = lcpjds;
 			lcrp->localFormat = SPM_FORMAT_PJDS;
 
-			/*		IF_DEBUG(1) {
-					resetPJDS( lpjds );
-					cudaCopyPJDSBackToHost( lpjds, lcpjds );
-					checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
-					}*/
 			freePJDS( lpjds );
 		}
 		if (matrixFormats->format[2] == SPM_FORMAT_PJDS) {
@@ -496,11 +491,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcrp->remoteMatrix = rcpjds;
 			lcrp->remoteFormat = SPM_FORMAT_PJDS;
 
-			/*		IF_DEBUG(1) {
-					resetPJDS( lpjds );
-					cudaCopyPJDSBackToHost( lpjds, lcpjds );
-					checkCRSToPJDSsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lpjds, lcrp->invRowPerm->val );
-					}*/
 			freePJDS( rpjds );
 
 
@@ -518,11 +508,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcrp->localMatrix = lcelr;
 			lcrp->localFormat = SPM_FORMAT_ELR;
 
-			/*					IF_DEBUG(1) {
-								resetELR( lelr );
-								CL_CopyELRBackToHost( lelr, lcelr );
-								checkCRSToELRsanity( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me], lelr );
-								}*/
 			freeELR( lelr );
 		}
 		if (matrixFormats->format[2] == SPM_FORMAT_ELR) {
@@ -540,14 +525,9 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcrp->remoteMatrix = rcelr;
 			lcrp->remoteFormat = SPM_FORMAT_ELR;
 
-			/*IF_DEBUG(1) {
-			  resetELR( relr );
-			  cudaCopyELRBackToHost( relr, rcelr );
-			  checkCRSToELRsanity( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me], relr);
-			  }*/
 			freeELR( relr ); 
 		}
-	}
+//	}
 }
 
 void CL_uploadVector( VECTOR_TYPE *vec ) {

@@ -11,6 +11,7 @@
 #include <likwid.h>
 
 #include <stdbool.h>
+#include <complex.h>
 
 extern int SPMVM_OPTIONS;
 
@@ -105,6 +106,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 	int i, j;
 	real hlp1;
+
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {

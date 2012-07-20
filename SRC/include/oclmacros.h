@@ -19,7 +19,6 @@
   }\
   } while(0)
 
-typedef float2 CL_COMPLEX;
 
 #define CL_DEVTYPE CL_DEVICE_TYPE_GPU
 

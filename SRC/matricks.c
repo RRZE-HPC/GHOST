@@ -160,7 +160,7 @@ void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
 
 	for( i=0; i < testvec->nRows; ++i) {
 		if( testvec->val[i] != tmp[i] )
-			printf("PE %d: error: \tcpu %e , \t gpu %e\n", me, testvec->val[i], tmp[i]);
+			printf("PE %d: error: \tcpu %e , \t gpu %e\n", me, REAL(testvec->val[i]), REAL(tmp[i])); // TODO IMAG
 	}
 	free( tmp );
 	printf("PE %d: completed copycheck\n", me);
@@ -351,12 +351,12 @@ MM_TYPE* readMMFile( const char* filename, const real epsilon ) {
 		/* row and column index should be zero-based ############################ */
 		mm->nze[e].row -= 1;
 		mm->nze[e].col -= 1;
-		IF_DEBUG(2) printf( "%i %i %e\n", mm->nze[e].row, mm->nze[e].col, mm->nze[e].val );
+		IF_DEBUG(2) printf( "%i %i %e+%ei\n", mm->nze[e].row, mm->nze[e].col, REAL(mm->nze[e].val),IMAG(mm->nze[e].val) );
 
 		/* value smaller than threshold epsilon? ################################ */
 		if( REAL(ABS( mm->nze[e].val )) < REAL(epsilon) ) {
 			IF_DEBUG(1) printf("entry %i: %i %i %e smaller than eps, skipping...\n", 
-					e, mm->nze[e].row, mm->nze[e].col, mm->nze[e].val );
+					e, mm->nze[e].row, mm->nze[e].col, REAL(mm->nze[e].val) );
 			e--;
 			mm->nEnts--;
 		}
@@ -607,7 +607,7 @@ free( nEntsInRow );
 
 IF_DEBUG(2) {
 	for( i = 0; i < mm->nRows+1; i++ ) printf( "rowOffset[%2i] = %3i\n", i, cr->rowOffset[i] );
-	for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e\n", i, cr->col[i], i, cr->val[i] );
+	for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e+i%e\n", i, cr->col[i], i, ABS(cr->val[i]),IMAG(cr->val[i]) );
 }
 
 IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
@@ -743,7 +743,7 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen) {
 	//qsort( mm->nze, mm->nEnts, sizeof( NZE_TYPE ), compareNZEForJD );
 	IF_DEBUG(2) {
 		for( i = 0; i < mm->nEnts; i++ ) {
-			printf( "%i %i %e\n", mm->nze[i].row, mm->nze[i].col, mm->nze[i].val );
+			printf( "%i %i %e+i%e\n", mm->nze[i].row, mm->nze[i].col, REAL(mm->nze[i].val),IMAG(mm->nze[i].val) );
 		}
 	}
 
@@ -846,7 +846,7 @@ free( invRowPerm );
 IF_DEBUG(1) printf( "convertMMToJDMatrix: done with FORTRAN numbering in jd->col\n" );
 IF_DEBUG(2) {
 	for( i = 0; i < mm->nRows;    i++ ) printf( "rowPerm[%6i] = %3i\n", i, jd->rowPerm[i] );
-	for( i = 0; i < mm->nEnts;    i++ ) printf( "col[%6i] = %6i, val[%6i] = %e\n", i, jd->col[i], i, jd->val[i] );
+	for( i = 0; i < mm->nEnts;    i++ ) printf( "col[%6i] = %6i, val[%6i] = %e+i%e\n", i, jd->col[i], i, REAL(jd->val[i]), IMAG(jd->val[i]) );
 	for( i = 0; i < jd->nDiags+1; i++ ) printf( "diagOffset[%6i] = %6i\n", i, jd->diagOffset[i] );
 }
 

@@ -168,25 +168,6 @@ uint64 cachesize()
    return cache_size;
 }
 
-void tmpwrite_d(int filenumber, int number_of_elements, real *datenarray){
-
-   FILE *TMPFILE;
-   char tmpfilename[50];
-   int i;
-
-   sprintf(tmpfilename, "./quasifort.%i", filenumber);
-   if ((TMPFILE = fopen(tmpfilename, "w"))==NULL){
-      printf("Fehler beim Oeffnen von %s\n", tmpfilename);
-      exit(1);
-   }
-
-   for (i=0; i < number_of_elements ; i++){
-      fprintf(TMPFILE,"%i %lg\n", i, datenarray[i]);
-   } 
-   fclose(TMPFILE);
-
-   return;
-} 
 void tmpwrite_i(int filenumber, int number_of_elements, int *datenarray, char *mystring){
 
    FILE *TMPFILE;

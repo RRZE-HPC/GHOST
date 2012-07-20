@@ -11,33 +11,47 @@
 #endif
 
 #ifdef DOUBLE
-typedef double real;
+#ifdef COMPLEX
+typedef double2 clreal;
+#else
+typedef double clreal;
+#endif
 #endif
 #ifdef SINGLE
-typedef float real;
+#ifdef COMPLEX
+typedef float2 clreal;
+#else
+typedef float clreal;
+#endif
 #endif
 
-kernel void pJDS1kernel (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart) {
+kernel void pJDS1kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart) {
 
 	int row = get_global_id(0);
-	real svalue = 0.0, value;
+	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
 
 	if (row < nRows) {
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[colStart[i]+row];
 			idcol = col[colStart[i]+row];
-			svalue += value * rhsVec[idcol];
+			rhs = rhsVec[idcol];
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 		resVec[row] = svalue;
 	}
 
 }
 
-kernel void ELR1kernel (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen) {
+kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen) {
 
 	int row = get_global_id(0);
-	real svalue = 0.0, value;
+	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
 	if (row < nRows) {
 
@@ -45,21 +59,26 @@ kernel void ELR1kernel (global real *resVec, global real *rhsVec, int nRows, int
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];
-			svalue += value * rhsVec[idcol];
+			rhs = rhsVec[idcol];
 
-
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 		resVec[row] = svalue;
 	}
 }
 
-kernel void pJDS2kernel (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS2kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>1;
 	if (row < nRows) {
-		unsigned int indcol;
+			unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 
@@ -67,8 +86,15 @@ kernel void pJDS2kernel (global real *resVec, global real *rhsVec, int nRows, gl
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*2+idb];
-			indcol = col[colStart[k]+row*2+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*2+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -81,21 +107,28 @@ kernel void pJDS2kernel (global real *resVec, global real *rhsVec, int nRows, gl
 	}
 } 
 
-kernel void ELR2kernel (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR2kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>1;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*2 + 2*row + idb]; 
-			indcol = col[k*pad*2 + 2*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*2 + 2*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -107,13 +140,13 @@ kernel void ELR2kernel (global real *resVec, global real *rhsVec, int nRows, int
 	}
 }
 
-kernel void pJDS4kernel (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS4kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>2;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 
@@ -121,8 +154,15 @@ kernel void pJDS4kernel (global real *resVec, global real *rhsVec, int nRows, gl
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*4+idb];
-			indcol = col[colStart[k]+row*4+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*4+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -138,21 +178,28 @@ kernel void pJDS4kernel (global real *resVec, global real *rhsVec, int nRows, gl
 	}
 } 
 
-kernel void ELR4kernel (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR4kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>2;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*4 + 4*row + idb]; 
-			indcol = col[k*pad*4 + 4*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*4 + 4*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -167,13 +214,13 @@ kernel void ELR4kernel (global real *resVec, global real *rhsVec, int nRows, int
 	}
 }
 
-kernel void pJDS8kernel (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS8kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>3;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 
@@ -181,8 +228,15 @@ kernel void pJDS8kernel (global real *resVec, global real *rhsVec, int nRows, gl
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*8+idb];
-			indcol = col[colStart[k]+row*8+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*8+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -200,21 +254,28 @@ kernel void pJDS8kernel (global real *resVec, global real *rhsVec, int nRows, gl
 	}
 } 
 
-kernel void ELR8kernel (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR8kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>3;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*8 + 8*row + idb]; 
-			indcol = col[k*pad*8 + 8*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*8 + 8*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -231,13 +292,13 @@ kernel void ELR8kernel (global real *resVec, global real *rhsVec, int nRows, int
 	}
 }
 
-kernel void pJDS16kernel (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS16kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>4;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 
@@ -245,8 +306,15 @@ kernel void pJDS16kernel (global real *resVec, global real *rhsVec, int nRows, g
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*16+idb];
-			indcol = col[colStart[k]+row*16+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*16+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -266,21 +334,28 @@ kernel void pJDS16kernel (global real *resVec, global real *rhsVec, int nRows, g
 	}
 } 
 
-kernel void ELR16kernel (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR16kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>4;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*16 + 16*row + idb]; 
-			indcol = col[k*pad*16 + 16*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*16 + 16*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -299,27 +374,34 @@ kernel void ELR16kernel (global real *resVec, global real *rhsVec, int nRows, in
 	}
 }
 
-kernel void pJDS1kernelAdd (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart) {
+kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart) {
 
 	int row = get_global_id(0);
-	real svalue = 0.0, value;
+	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
 
 	if (row < nRows) {
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[colStart[i]+row];
 			idcol = col[colStart[i]+row];
-			svalue += value * rhsVec[idcol];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 		resVec[row] += svalue;
 	}
 
 }
 
-kernel void ELR1kernelAdd (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen) {
+kernel void ELR1kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen) {
 
 	int row = get_global_id(0);
-	real svalue = 0.0, value;
+	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
 	if (row < nRows) {
 
@@ -327,22 +409,27 @@ kernel void ELR1kernelAdd (global real *resVec, global real *rhsVec, int nRows, 
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];
-			svalue += value * rhsVec[idcol];
+			rhs = rhsVec[idcol];
 
-
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 		resVec[row] += svalue;
 
 	}
 }
 
-kernel void pJDS2kernelAdd (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>1;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 
@@ -350,8 +437,15 @@ kernel void pJDS2kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*2+idb];
-			indcol = col[colStart[k]+row*2+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*2+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -364,21 +458,28 @@ kernel void pJDS2kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 	}
 } 
 
-kernel void ELR2kernelAdd (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>1;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*2 + 2*row + idb]; 
-			indcol = col[k*pad*2 + 2*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*2 + 2*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -390,13 +491,13 @@ kernel void ELR2kernelAdd (global real *resVec, global real *rhsVec, int nRows, 
 	}
 }
 
-kernel void pJDS4kernelAdd (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>2;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 
@@ -404,8 +505,15 @@ kernel void pJDS4kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*4+idb];
-			indcol = col[colStart[k]+row*4+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*4+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -421,21 +529,28 @@ kernel void pJDS4kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 	}
 } 
 
-kernel void ELR4kernelAdd (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>2;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*4 + 4*row + idb]; 
-			indcol = col[k*pad*4 + 4*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*4 + 4*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -450,13 +565,13 @@ kernel void ELR4kernelAdd (global real *resVec, global real *rhsVec, int nRows, 
 	}
 }
 
-kernel void pJDS8kernelAdd (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>3;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 
@@ -464,8 +579,15 @@ kernel void pJDS8kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*8+idb];
-			indcol = col[colStart[k]+row*8+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*8+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -483,21 +605,28 @@ kernel void pJDS8kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 	}
 } 
 
-kernel void ELR8kernelAdd (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>3;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*8 + 8*row + idb]; 
-			indcol = col[k*pad*8 + 8*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*8 + 8*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -514,13 +643,13 @@ kernel void ELR8kernelAdd (global real *resVec, global real *rhsVec, int nRows, 
 	}
 }
 
-kernel void pJDS16kernelAdd (global real *resVec, global real *rhsVec, int nRows, global real *val, global int *col, global int *rowLen, global int *colStart, local real *shared) {
+kernel void pJDS16kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
 
 	unsigned int row  = get_global_id(0)>>4;
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 
@@ -528,8 +657,15 @@ kernel void pJDS16kernelAdd (global real *resVec, global real *rhsVec, int nRows
 		for( k = 0; k < rowLen[row]; ++k)
 		{
 			value = val[colStart[k]+row*16+idb];
-			indcol = col[colStart[k]+row*16+idb];
-			svalue += value * rhsVec[indcol];
+			idcol = col[colStart[k]+row*16+idb];
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -549,21 +685,28 @@ kernel void pJDS16kernelAdd (global real *resVec, global real *rhsVec, int nRows
 	}
 } 
 
-kernel void ELR16kernelAdd (global real *resVec, global real *rhsVec, int nRows, int pad, global real *val, global int *col, global int *rowLen, local real *shared) {
+kernel void ELR16kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
 	unsigned int row  = get_global_id(0)>>4;
 
 	if (row < nRows) {
-		unsigned int indcol;
+		unsigned int idcol;
 		unsigned short idb, k;
-		real svalue, value;
+		clreal svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 		svalue = 0.0;
 		for(k=0; k<rowLen[row]; ++k){ 
 
 			value = val[k*pad*16 + 16*row + idb]; 
-			indcol = col[k*pad*16 + 16*row + idb]; 
-			svalue += value * rhsVec[indcol];
+			idcol = col[k*pad*16 + 16*row + idb]; 
+			rhs = rhsVec[idcol];
+
+#ifdef COMPLEX
+			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
+			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);
+#else
+			svalue += value*rhs;
+#endif
 		} 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -582,19 +725,21 @@ kernel void ELR16kernelAdd (global real *resVec, global real *rhsVec, int nRows,
 	}
 }
 
-kernel void axpyKernel(global real *a, global real *b, real s, int nRows){
+kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nRows){
 	int i = get_global_id(0); 
 	if (i<nRows)
 		a[i] += s*b[i]; 
 }
 
-kernel void vecscalKernel(global real *a, real scal, int nRows){
+kernel void vecscalKernel(global clreal *a, clreal scal, int nRows){
 	int i = get_global_id(0);
 	if (i<nRows)	
 		a[i] *= scal; 
 } 
 
-kernel void dotprodKernel(global real *a, global real *b, global real *out, unsigned int nRows, local volatile real *shared) {
+// TODO kernels with complex support
+
+kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nRows, local volatile clreal *shared) {
 
 	unsigned int tid = get_local_id(0);
 	unsigned int i = get_global_id(0);

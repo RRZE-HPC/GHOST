@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <mpihelper.h>
 
+
+#ifdef COMPLEX
 typedef struct {
 #ifdef DOUBLE
 	double x;
@@ -19,8 +21,6 @@ typedef struct {
 #endif
 
 } MPI_complex;
-
-#ifdef COMPLEX
 void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len, MPI_Datatype *datatype) {
 	
 	int i;
@@ -56,10 +56,6 @@ int SpMVM_init(int argc, char **argv) {
 #endif
 	MPI_Type_commit(&MPI_MYDATATYPE);
 	MPI_Op_create((MPI_User_function *)&complAdd,TRUE,&MPI_MYSUM);
-
-
-#else
-	MPI_MYSUM = MPI_SUM;
 #endif
 
 	
@@ -77,8 +73,6 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	printf("Creating CRS from %s\n",matrixPath);
-
 	
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
@@ -177,17 +171,17 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
-	if( JOBMASK & 503 ) { 
+//	if( JOBMASK & 503 ) { 
 		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
 		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
 
-	} 
-	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+//	} 
+//	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
 		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
 		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
-	}
+//	}
 #endif	
 
 	if(me==0){
@@ -201,13 +195,13 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
 		printf("Working set             [MB]: %12lu\n", ws);
 #ifdef OPENCL	
-		if( JOBMASK & 503 ) 
+	//	if( JOBMASK & 503 ) 
 			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
-		if( JOBMASK & 261640 ) {
+//		if( JOBMASK & 261640 ) {
 			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
 			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
 			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
-		}
+//		}
 #endif
 		printf("-----------------------------------------------------\n");
 		fflush(stdout);

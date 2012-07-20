@@ -130,7 +130,7 @@ int main( int argc, char* argv[] ) {
 
 	int i,j; 
 
-	int kernels[] = {5};
+	int kernels[] = {1,2,3};
 	int numKernels = sizeof(kernels)/sizeof(int);
 	JOBMASK = 0;
 
@@ -148,7 +148,7 @@ int main( int argc, char* argv[] ) {
 	double start, end, dummy, time_it_took;
 	int kernelIdx, kernel;
 	int errcount = 0;
-	real mytol;
+	double mytol;
 
 
 	PROPS props;
@@ -156,8 +156,8 @@ int main( int argc, char* argv[] ) {
 	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
-	props.matrixFormats.T[0] = 2;
-	props.matrixFormats.T[1] = 2;
+	props.matrixFormats.T[0] = 1;
+	props.matrixFormats.T[1] = 1;
 	props.matrixFormats.T[2] = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
 #endif
@@ -187,7 +187,6 @@ int main( int argc, char* argv[] ) {
 #endif
 	
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
-
 
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
@@ -231,6 +230,9 @@ int main( int argc, char* argv[] ) {
 	}
 
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
+	//printf("1a: %e+%ei\n",REAL(cr->val[0]),IMAG(cr->val[0]));
+//	printf("1b: %e+%ei\n",REAL(lcrp->val[0]),IMAG(lcrp->val[0]));
+//	printf("1c: %e+%ei\n",REAL(lcrp->lval[0]),IMAG(lcrp->lval[0]));
 #ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
@@ -264,9 +266,9 @@ int main( int argc, char* argv[] ) {
 			time_it_took = end-start;
 		}
 
-		if ( ((0x1<<kernel) & 503) ) {
+		if ( kernel == 1)  {
 			permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( ((0x1<<kernel) & 261640) ) {
+		} else if ( kernel == 2 || kernel == 3 ) {
 			permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 		}
 
@@ -275,17 +277,16 @@ int main( int argc, char* argv[] ) {
 		if (me==0) {
 			for (i=0; i<lcrp->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * (cr->rowOffset[i+1]-cr->rowOffset[i]);
-				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > REAL(mytol)){
+				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					IF_DEBUG(1) {
-						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, goldLHS->val[i], globLHS->val[i],ABS(goldLHS->val[i]-globLHS->val[i]));
+						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, REAL(goldLHS->val[i]), REAL(globLHS->val[i]),REAL(ABS(goldLHS->val[i]-globLHS->val[i])));
 					}
 					errcount++;
-					//printf("%d %e %e %e %e\n",i, mytol,ABS(goldLHS->val[i]-globLHS->val[i]),REAL(goldLHS->val[i]),REAL(globLHS->val[i]));
+					printf("%d %.2f + %.2fi   %.2f + %.2fi\n",i,REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
 
 				}
-					printf("%d %.2f + %.2fi   %.2f + %.2fi\n",i,REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
 			}
-			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",2.0e-9*(real)props.nIter*(real)lcrp->nEnts/time_it_took);
+			printf("Kernel %2d: result is %s @ %7.2f GF/s\n",kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/time_it_took);
 		}
 		zeroVector(nodeLHS);
 

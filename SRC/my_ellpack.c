@@ -187,140 +187,6 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
 	return pjds;
 }
 
-ELR_TYPE *MMtoELR(const char *filename, int threadsPerRow) {
-
-	ELR_TYPE* mat = NULL;
-	FILE *file;
-	int nCols, nEnts;
-	int i,j;
-	MATRIX_ENTRY *entries;
-
-	mat = (ELR_TYPE*) allocateMemory(sizeof(ELR_TYPE),"elr");
-
-	file = fopen( filename, "r" );
-
-	if( ! file ) {
-		fprintf( stderr, "readMatrix: could not open file '%s' for reading\n", filename );
-		free( mat );
-		return NULL;
-	}
-	int skippingComments = 1, readUntilEndOfLine = 0;
-
-
-	while( skippingComments ) {
-		char c;
-		if( fread( &c, 1, 1, file ) != 1 ) {
-			fprintf( stderr, "readMMFile: error while skipping comments\n" );
-			fclose( file );
-			free( mat );
-			return NULL;
-		}
-
-		if( readUntilEndOfLine ) {
-			if( c == '\n' ) readUntilEndOfLine = 0;
-		}
-		else {
-			if( c == '%' ) readUntilEndOfLine = 1;
-			else {
-				ungetc( c, file );
-				skippingComments = 0;
-			}
-		}
-	}
-
-
-	if( fscanf( file, "%i %i %i\n", &mat->nRows, &nCols, &nEnts ) != 3 ) {
-		fprintf( stderr, "readMatrix: error while reading header\n" );
-		fclose( file );
-		free( mat );
-		return NULL;
-	}
-
-	//	mat->nRows--;
-	//	nCols--;
-
-	getPadding(mat->nRows,&mat->padding);
-
-	mat->rowLen = (int *)allocateMemory(mat->nRows*sizeof(int),"mat->rowLen");
-
-	entries = (MATRIX_ENTRY *)allocateMemory(nEnts*sizeof(MATRIX_ENTRY),"entries");
-	mat->T = threadsPerRow;
-
-	for (i = 0; i < nEnts; i++) {
-#ifdef DOUBLE	// TODO
-		if( fscanf( file, "%i %i %le\n", &entries[i].row, &entries[i].col, &entries[i].val ) != 3 ||
-#endif
-#ifdef SINGLE
-		if( fscanf( file, "%i %i %e\n", &entries[i].row, &entries[i].col, &entries[i].val ) != 3 ||
-#endif
-				entries[i].row < 1 || entries[i].row > mat->nRows ||
-				entries[i].col < 1 || entries[i].col > nCols ) 
-
-		{
-			fprintf( stderr, "readMatrix: error while reading entries\n" );
-			fclose( file );
-			free( entries );
-			free( mat );
-			return NULL;
-		}
-
-		entries[i].row--;
-		entries[i].col--;
-	}
-
-
-	// initialize row lengths
-	for (i = 0; i<mat->nRows; i++)
-		mat->rowLen[i] = 0;
-
-	// sort entries (row-major)
-	qsort(entries, nEnts, sizeof(MATRIX_ENTRY), comparePosRowMajor);
-
-	// set row lengths and find maximum row length
-	mat->nMaxRow = 0;
-	for (i = 0; i < nEnts; i++) {
-		mat->rowLen[entries[i].row]++;
-		if (mat->nMaxRow < mat->rowLen[entries[i].row])
-			mat->nMaxRow = mat->rowLen[entries[i].row];
-	}
-	if (mat->nMaxRow%threadsPerRow != 0)
-		mat->nMaxRow += threadsPerRow-mat->nMaxRow%threadsPerRow;
-
-	mat->col = (int *)calloc(mat->nMaxRow*mat->padding,sizeof(int));
-	mat->val = (real *)calloc(mat->nMaxRow*mat->padding,sizeof(real));
-
-	// store values and columns in COLUMN-MAJOR order
-	int rowOffset; // offset to current row
-
-	int* curIdxOfNZE = (int*)allocateMemory(mat->nRows * sizeof(int),"curIdxOfNZE"); // (local) index of current non-zero element in each row
-	for (i=0; i<mat->nRows; i++) 
-		curIdxOfNZE[i]=0;
-
-	int idb,stack;
-	rowOffset=0;
-	for (i=0; i<mat->nRows; i++) {
-		for (j=0; j<mat->rowLen[i]; j++) {
-			idb = j%threadsPerRow;
-			stack = j/threadsPerRow;
-			mat->col[ stack*threadsPerRow*mat->padding + threadsPerRow*i + idb ]   = entries[rowOffset+curIdxOfNZE[i]].col;
-			mat->val[ stack*threadsPerRow*mat->padding + threadsPerRow*i + idb ]   = entries[rowOffset+curIdxOfNZE[i]].val;
-
-			curIdxOfNZE[i]++;
-		}
-		rowOffset+=mat->rowLen[i];
-	}
-	for(i=0; i < mat->nRows; ++i) {
-		if (mat->rowLen[i]%threadsPerRow != 0)
-			mat->rowLen[i] += threadsPerRow-mat->rowLen[i]%threadsPerRow;
-		mat->rowLen[i] /= threadsPerRow; 
-	}
-
-	free(curIdxOfNZE);
-	free(entries);
-
-	return mat;
-}
-
 ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows, int threadsPerRow) {
 
@@ -337,6 +203,8 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 
 	if (elr->nMaxRow%threadsPerRow != 0)
 		elr->nMaxRow += threadsPerRow-elr->nMaxRow%threadsPerRow;
+
+//	printf("2: %e+%ei\n",REAL(crs_val[0]),IMAG(crs_val[0]));
 
 	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
 	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
@@ -664,7 +532,7 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 		for(i=0; i <MIN(10,nRows); ++i) {
 			printf("row %i (len: %d): ",i,rowLen[i]);
 			for(j=0; j<MIN(10,rowMaxEnt) && j< elr->rowLen[i]; ++j) {
-				printf("%d: %f ",elr->col[j*padRows+i],elr->val[j*padRows+i]);
+				printf("%d: %.2f+%.2fi ",elr->col[j*padRows+i],REAL(elr->val[j*padRows+i]),IMAG(elr->val[j*padRows+i]));
 			}
 			printf("\n");
 		}
@@ -729,9 +597,9 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 
-	rowLen = (int*)   allocHostMemory( size_rowlen ); 
-	col   = (int*)    allocHostMemory( size_col ); 
-	val   = (real*) allocHostMemory( size_val ); 
+	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
+	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
+	val   = (real*) allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -790,8 +658,8 @@ void checkCRSToELR(	const real* crs_val, const int* crs_col,
 		hlpi = 0;
 		for (j=crs_row_ptr[i]; j<crs_row_ptr[i+1]; j++){
 			if( crs_val[j] != elr->val[i+hlpi*elr->padding]) 
-				printf("PE%i: value mismatch [%i,%i]:\t%e | %e\n",
-						me, i,hlpi, crs_val[j], elr->val[i+hlpi*elr->padding]);
+				printf("PE%i: value mismatch [%i,%i]:\t%e+%ei | %e+%ei\n",
+						me, i,hlpi, REAL(crs_val[j]), IMAG(crs_val[j]), REAL(elr->val[i+hlpi*elr->padding]),IMAG(elr->val[i+hlpi*elr->padding]));
 			if( crs_col[j] != elr->col[i+hlpi*elr->padding]) 
 				printf("PE%i: index mismatch [%i,%i]:\t%i | %i\n",
 						me, i,hlpi, crs_col[j], elr->col[i+hlpi*elr->padding]);

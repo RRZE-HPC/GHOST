@@ -27,13 +27,23 @@
 static char *datatypeNames[] = {"float","double","cfloat","cdouble"};
 
 #define DOUBLE
-#define COMPLEX
+//#define COMPLEX
+
+
+
+
+
+
+
 
 
 #ifdef DOUBLE
 #ifdef COMPLEX
 
 typedef _Complex double real;
+#ifdef OPENCL
+typedef cl_double2 clreal;
+#endif
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
@@ -41,7 +51,11 @@ MPI_Op MPI_MYSUM;
 #else
 
 typedef double real;
+#ifdef OPENCL
+typedef double clreal;
+#endif
 #define MPI_MYDATATYPE MPI_DOUBLE
+#define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_DOUBLE
 
 #endif
@@ -52,6 +66,9 @@ typedef double real;
 #ifdef COMPLEX
 
 typedef _Complex float real;
+#ifdef OPENCL
+typedef cl_float2 clreal;
+#endif
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
@@ -59,11 +76,21 @@ MPI_Op MPI_MYSUM;
 #else
 
 typedef float real;
+#ifdef OPENCL
+typedef float clreal;
+#endif
 #define MPI_MYDATATYPE MPI_FLOAT
+#define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_FLOAT
 
 
 #endif
+#endif
+
+#ifdef COMPLEX
+#define FLOPS_PER_ENTRY 4.0
+#else
+#define FLOPS_PER_ENTRY 2.0
 #endif
 
 #ifdef DOUBLE
@@ -74,7 +101,7 @@ typedef float real;
 #else
 #define ABS(a) fabs(a)
 #define REAL(a) a
-#define IMAG(a) 0
+#define IMAG(a) 0.0
 #endif
 #endif
 
@@ -87,7 +114,7 @@ typedef float real;
 #else
 #define ABS(a) fabsf(a)
 #define REAL(a) a
-#define IMAG(a) 0
+#define IMAG(a) 0.0
 #endif
 #endif
 
@@ -162,22 +189,8 @@ typedef struct {
 
 extern void hybrid_kernel_0   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 extern void hybrid_kernel_I   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_II  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_II   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 extern void hybrid_kernel_III (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_IV  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_V   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_VI  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_VII (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_VIII(int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_IX  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_X   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XI  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XII (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XIII(int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XIV (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XV  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XVI  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_XVII (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef void (*FuncPrototype)( int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
@@ -193,40 +206,11 @@ static Hybrid_kernel HyK[NUMKERNELS] = {
 
     { &hybrid_kernel_0,    0, 0, "HyK_0", "ca :\npure OpenMP-kernel" },
 
-    { &hybrid_kernel_I,    0, 0, "HyK_I", "cp -- co -- ca :\nSendRecv; serial copy" },
+    { &hybrid_kernel_I,    0, 0, "HyK_I", "ir -- cs -- wa -- ca :\nISend/IRecv; serial copy"},
 
-    { &hybrid_kernel_II,   0, 0, "HyK_II", "cp -- co -- ca :\nSendRecv; parallel copy" },
+    { &hybrid_kernel_II,    0, 0, "HyK_II", "ir -- cs -- cl -- wa -- nl :\nISend/IRecv; good faith hybrid" },
  
-    { &hybrid_kernel_III,  0, 0, "HyK_III", "cp -- co -- ca :\n not true anymore!" },
- 
-    { &hybrid_kernel_IV,   0, 0, "HyK_IV", "cp -- co -- ca :\nAlltoallv" },
- 
-    { &hybrid_kernel_V,    0, 0, "HyK_V", "ir -- cs -- wa -- ca :\nISend/IRecv; serial copy"},
-
-    { &hybrid_kernel_VI,   0, 0, "HyK_VI", "ir -- cs -- wa -- ca :\nISend/IRecv; copy in parallel inner loop" },
- 
-    { &hybrid_kernel_VII,  0, 0, "HyK_VII", "ir -- cs -- wa -- ca :\nISend/IRecv; parallel region, ISend protected by single" },
- 
-    { &hybrid_kernel_VIII, 0, 0, "HyK_VIII", "ir -- cs -- wa -- ca :\nISend/IRecv; parallelisation over to_PE" } ,
- 
-    { &hybrid_kernel_IX,   0, 0, "HyK_IX", "ir -- cs -- wa -- cl -- nl :\nISend/IRecv; overhead LNL compared to HyK_V" },
- 
-    { &hybrid_kernel_X,    0, 0, "HyK_X", "ir -- cs -- cl -- wa -- nl :\nISend/IRecv; good faith hybrid" },
- 
-    { &hybrid_kernel_XI,   0, 0, "HyK_XI", "ir -- cp -- lc|sw -- nl :\ndedicated communication thread " },
-
-    { &hybrid_kernel_XII,  0, 0, "HyK_XII", "ir -- lc|csw -- nl:\ncopy in overlap region; dedicated comm-thread " },
-
-    { &hybrid_kernel_XIII, 0, 0, "HyK_XIII", "ir -- cp|x -- x|sw -- lc|x -- nl|x :\nadditional comm-thread; contributions" },
-
-    { &hybrid_kernel_XIV,  0, 0, "HyK_XIV", "ir -- cp|x -- lc|sw -- nl|x :\nadditional comm-thread" },
-
-    { &hybrid_kernel_XV,   0, 0, "HyK_XV", "cp|x -- lc|cc -- nl|x :\nadditional comm-thread; also IRecv in overlap region" },
-
-    { &hybrid_kernel_XVI,  0, 0, "HyK_XVI", "cp|x -- lc|cc -- nl|x :\nadditional comm-thread; load balancing" },
-
-    { &hybrid_kernel_XVII, 0, 0, "HyK_XVII", "ir -- cs -- cl -- wa -- nl:\ngood faith hybrid; fused request array" },
-  
+    { &hybrid_kernel_III,  0, 0, "HyK_III", "ir -- lc|csw -- nl:\ncopy in overlap region; dedicated comm-thread " },
 
 }; 
 
