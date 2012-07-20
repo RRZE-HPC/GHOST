@@ -80,7 +80,6 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 			bin_read_cr(cr, matrixPath);
 		} else{
 			mm = readMMFile( matrixPath);
-
 			cr = convertMMToCRMatrix( mm );
 			bin_write_cr(cr, strtok(basename(matrixPath),"."));
 			freeMMMatrix(mm);

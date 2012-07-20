@@ -235,7 +235,7 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 /* ########################################################################## */
 
-MM_TYPE * readMMfile(char* filename ) {
+MM_TYPE * readMMFile(char* filename ) {
 
 	int ret_code;
 	MM_typecode matcode;
