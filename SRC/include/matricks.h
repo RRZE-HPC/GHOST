@@ -135,9 +135,11 @@ int isMMfile(const char *filename);
 
 void* allocateMemory( const size_t size, const char* desc );
 
-#ifdef OPENCL
-void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me );
-#endif
+void             zeroVector(VECTOR_TYPE *vec);
+VECTOR_TYPE*     newVector( const int nRows );
+HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int));
+void             swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
+void             normalize( real *vec, int nRows);
 
 void permuteVector( real* vec, int* perm, int len);
 

@@ -21,8 +21,8 @@
 #define SPMVM_KERNELS_ALL (SPMVM_KERNELS_COMBINED | SPMVM_KERNELS_SPLIT)
 
 
-#define SPM_FORMAT_ELR  0
-#define SPM_FORMAT_PJDS 1
+#define SPM_GPUFORMAT_ELR  0
+#define SPM_GPUFORMAT_PJDS 1
 
 #define SPMVM_OPTION_NONE       (0x0)    // no special options applied
 #define SPMVM_OPTION_AXPY       (0x1<<0) // perform y <- y+A*x instead of y <- A*x
@@ -128,7 +128,7 @@ typedef struct {
 typedef struct {
 	int format[3];
 	int T[3];
-} MATRIX_FORMATS;
+} SPM_GPUFORMATS;
 
 typedef struct {
 	int nRows;
@@ -153,7 +153,6 @@ typedef struct {
   int* hput_pos;
   real* val;
   int* col;
-  int* row_ptr;
   int* lrow_ptr;
   int* lrow_ptr_l;
   int* lrow_ptr_r;
@@ -182,7 +181,7 @@ typedef struct {
 
 extern void hybrid_kernel_0   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 extern void hybrid_kernel_I   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_II   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_II  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 extern void hybrid_kernel_III (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef void (*FuncPrototype)( int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
@@ -208,14 +207,7 @@ static Hybrid_kernel HyK[SPMVM_NUMKERNELS] = {
 }; 
 
 
-void zeroVector(VECTOR_TYPE *vec);
-VECTOR_TYPE* newVector( const int nRows );
-void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
-HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int));
-void normalize( real *vec, int nRows);
 
-LCRP_TYPE* setup_communication(CR_TYPE* const, int);
-void CL_setup_communication(LCRP_TYPE* const, MATRIX_FORMATS *);
 
 int SPMVM_OPTIONS;
 int SPMVM_KERNELS;

@@ -64,21 +64,33 @@ all: cllanczos lanczos
 
 spmvm-static: main_spmvm.o libspmvm.a
 	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 clspmvm-static: main_spmvm.o libclspmvm.a
 	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 lanczos-static: main_lanczos.o libspmvm.a
 	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 cllanczos-static: main_lanczos.o libclspmvm.a
 	$(CC) $(CFLAGS) -o $@$(SUFX).x $^  $(LIBS)
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 cllanczos-dynamic: main_lanczos.o libclspmvm.so
 	$(CC) -O3 -DOPENCL -I./SRC/include $(LIKWID_INC) -L. $(LIKWID_LIB) -pthread -lclspmvm -llikwid -openmp -o $@$(SUFX).x $<
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 lanczos-dynamic: main_lanczos.o libspmvm.so
 	$(CC) -O3 -I./SRC/include -L. -lspmvm -openmp -o $@$(SUFX).x $<
+	 -mv *.o OBJ
+	 -mv *genmod* OBJ
 
 cllanczos: main_lanczos.o $(OBJS) $(OCLOBJS)
 	$(CC) $(LDFLAGS) -o $@$(SUFX).x $^  $(LIBS)

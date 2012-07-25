@@ -7,10 +7,10 @@
 
 
 
-void CL_init( int, int, const char*, MATRIX_FORMATS *);
+void CL_init( int, int, const char*, SPM_GPUFORMATS *);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
-void CL_uploadCRS (LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats);
+void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats);
 void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
@@ -29,6 +29,6 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type);
 void CL_vecscal(cl_mem a, real s, int nRows);
 void CL_axpy(cl_mem a, cl_mem b, real s, int nRows);
 void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows);
-void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats);
+void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats);
 
 #endif

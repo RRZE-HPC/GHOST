@@ -20,15 +20,12 @@
 #include <getopt.h>
 #include <libgen.h>
 
-/* Global variables */
-//int SPMVM_OPTIONS = 0;
-
 typedef struct {
 	char matrixPath[PATH_MAX];
 	char matrixName[PATH_MAX];
 	int nIter;
 #ifdef OPENCL
-	MATRIX_FORMATS matrixFormats;
+	SPM_GPUFORMATS matrixFormats;
 	int devType;
 #endif
 } PROPS;
@@ -82,11 +79,11 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 					while(format != NULL) {
 						if (!strncasecmp(format,"ELR",3)) {
-							p->matrixFormats.format[i] = SPM_FORMAT_ELR;
+							p->matrixFormats.format[i] = SPM_GPUFORMAT_ELR;
 							p->matrixFormats.T[i] = atoi(format+4);
 						}
 						if (!strncasecmp(format,"PJDS",4)) {
-							p->matrixFormats.format[i] = SPM_FORMAT_PJDS;
+							p->matrixFormats.format[i] = SPM_GPUFORMAT_PJDS;
 							p->matrixFormats.T[i] = atoi(format+5);
 						}
 						format = strtok(NULL,",");
@@ -131,7 +128,6 @@ int main( int argc, char* argv[] ) {
 
 	
 	SPMVM_KERNELS = 0;	
-//	SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
 	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
 	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
 	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
@@ -145,18 +141,17 @@ int main( int argc, char* argv[] ) {
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
 	int iteration;
-
-	double start, end, dummy, time_it_took;
-	int kernelIdx, kernel;
+	double start, end, dummy;
+	int kernel;
 	int errcount = 0;
 	double mytol;
 
 
 	PROPS props;
 #ifdef OPENCL
-	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
-	props.matrixFormats.format[1] = SPM_FORMAT_ELR;
-	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
+	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.T[0] = 1;
 	props.matrixFormats.T[1] = 1;
 	props.matrixFormats.T[2] = 1;
@@ -199,7 +194,7 @@ int main( int argc, char* argv[] ) {
 
 		/* Skip loop body if kernel does not make sense for used parametes */
 		if (!(0x1<<kernel & SPMVM_KERNELS)) continue;                             // kernel not selected
-		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) continue;       // no MPI available
+		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) continue;       // non-MPI kernel
 		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) continue; // not enough threads
 
 		if (me == 0)
@@ -207,14 +202,11 @@ int main( int argc, char* argv[] ) {
 
 		for( iteration = 0; iteration < props.nIter; iteration++ ) {
 			HyK[kernel].kernel( iteration, nodeLHS, lcrp, nodeRHS);
-
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
 
-		if (me == 0) {
+		if (me == 0)
 			timing(&end,&dummy);
-			time_it_took = end-start;
-		}
 
 		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
 			permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
@@ -229,14 +221,12 @@ int main( int argc, char* argv[] ) {
 				mytol = EPSILON * ABS(goldLHS->val[i]) * (cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					IF_DEBUG(1) {
-						printf( "PE%d: error in row %i: (|%e-%e|=%e)\n", me, i, REAL(goldLHS->val[i]), REAL(globLHS->val[i]),REAL(ABS(goldLHS->val[i]-globLHS->val[i])));
+						printf( "PE%d: error in row %i: %.2f + %.2fi vs.  %.2f + %.2fi\n", me, i, REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
 					}
 					errcount++;
-					printf("%d %.2f + %.2fi   %.2f + %.2fi\n",i,REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
-
 				}
 			}
-			printf("Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/time_it_took,time_it_took*1.e3/props.nIter);
+			printf("Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/(end-start),(end-start)*1.e3/props.nIter);
 		}
 
 		zeroVector(nodeLHS);
@@ -253,7 +243,6 @@ int main( int argc, char* argv[] ) {
 	freeCRMatrix( cr );
 
 	SpMVM_finish();
-
 
 	return EXIT_SUCCESS;
 

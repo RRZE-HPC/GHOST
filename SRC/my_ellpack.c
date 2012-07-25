@@ -15,13 +15,13 @@
 size_t getBytesize(void *mat, int format) {
 	size_t sz;
 	switch (format) {
-		case SPM_FORMAT_PJDS:
+		case SPM_GPUFORMAT_PJDS:
 			{
 				CL_PJDS_TYPE * matrix = (CL_PJDS_TYPE *)mat;
 				sz = matrix->nEnts*(sizeof(real)+sizeof(int)) + matrix->nRows*sizeof(int) + matrix->nMaxRow*sizeof(int);
 				break;
 			}
-		case SPM_FORMAT_ELR:
+		case SPM_GPUFORMAT_ELR:
 			{
 				CL_ELR_TYPE * matrix = (CL_ELR_TYPE *)mat;
 				sz = matrix->nMaxRow * matrix->padding*(sizeof(real)+sizeof(int)) + (matrix->nRows*sizeof(int));
@@ -1035,9 +1035,9 @@ void CL_freeELR( CL_ELR_TYPE* const celr ) {
 
 void CL_freeMatrix(void *matrix, int format) {
 	if (matrix) {
-		if (format == SPM_FORMAT_ELR) {
+		if (format == SPM_GPUFORMAT_ELR) {
 			CL_freeELR((CL_ELR_TYPE *)matrix);
-		} else if (format == SPM_FORMAT_PJDS) {
+		} else if (format == SPM_GPUFORMAT_PJDS) {
 			CL_freePJDS((CL_PJDS_TYPE *)matrix);
 		}
 	}

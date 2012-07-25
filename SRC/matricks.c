@@ -140,34 +140,6 @@ void permuteVector( real* vec, int* perm, int len) {
 }
 
 
-#ifdef OPENCL
-void CL_vectorDeviceCopyCheck( VECTOR_TYPE* testvec, int me ) {
-
-	/* copy val to gpuval on device in testvec, copy back to temporary and check for consistency*/
-
-	int i;
-	real* tmp = NULL;
-	size_t bytesize = sizeof(real) * testvec->nRows;
-	printf("PE %d: vectorDeviceCopyCheck: size = %lu (%i)\n", me, bytesize, testvec->nRows);
-	tmp = (real*) allocateMemory( bytesize, "copycheck");
-	for( i = 0; i < testvec->nRows; ++i) tmp[i] = -77.3;
-
-	printf("copying to device...");
-	CL_copyHostToDevice( testvec->CL_val_gpu, testvec->val, bytesize );
-	printf("done\n");
-	printf("copying back to host...");
-	CL_copyDeviceToHost( tmp, testvec->CL_val_gpu, bytesize );
-	printf("done\n");
-
-	for( i=0; i < testvec->nRows; ++i) {
-		if( testvec->val[i] != tmp[i] )
-			printf("PE %d: error: \tcpu %e , \t gpu %e\n", me, REAL(testvec->val[i]), REAL(tmp[i])); // TODO IMAG
-	}
-	free( tmp );
-	printf("PE %d: completed copycheck\n", me);
-}
-#endif
-
 void* allocateMemory( const size_t size, const char* desc ) {
 
 	/* allocate size bytes of posix-aligned memory;
@@ -1367,7 +1339,6 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->hput_pos );
 		free( lcrp->val );
 		free( lcrp->col );
-		//free( lcrp->row_ptr );
 		free( lcrp->lrow_ptr );
 		free( lcrp->lrow_ptr_l );
 		free( lcrp->lrow_ptr_r );
@@ -1375,11 +1346,13 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
-#ifdef OPENCL
+		free( lcrp->fullRowPerm );
+		free( lcrp->fullInvRowPerm );
+		free( lcrp->splitRowPerm );
+		free( lcrp->splitInvRowPerm );
 		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
 		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
 		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
-#endif
 		free( lcrp );
 	}
 }

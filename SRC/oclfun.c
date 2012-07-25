@@ -16,7 +16,7 @@ void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *
 	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",errinfo);
 }
 
-void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFormats) {
+void CL_init( int rank, int size, const char* hostname, SPM_GPUFORMATS *matrixFormats) {
 	cl_uint numPlatforms;
 	cl_uint numDevices;
 	cl_platform_id *platformIDs;
@@ -166,7 +166,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 	for (i=0; i<3; i++) {
 
 		char kernelName[50] = "";
-		strcat(kernelName, matrixFormats->format[i]==SPM_FORMAT_ELR?"ELR":"pJDS");
+		strcat(kernelName, matrixFormats->format[i]==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
 		char Tstr[2] = "";
 		snprintf(Tstr,2,"%d",matrixFormats->T[i]);
 
@@ -257,7 +257,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 	if (mat == NULL)
 		return;
 
-	if (format == SPM_FORMAT_ELR) {
+	if (format == SPM_GPUFORMAT_ELR) {
 		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
 
@@ -357,7 +357,7 @@ void CL_finish()
 
 }
 
-void CL_uploadCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
+void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats) {
 
 	int node_rank, node_size;
 	int ierr;
@@ -388,7 +388,7 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 
 }
 
-void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
+void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats){
 
 	ELR_TYPE* elr 	= NULL;
 	ELR_TYPE* lelr	= NULL;
@@ -412,7 +412,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // only if jobtype requires combined computation
 		switch (matrixFormats->format[0]) {
-			case SPM_FORMAT_PJDS:
+			case SPM_GPUFORMAT_PJDS:
 				{
 					IF_DEBUG(1) printf("PE%i: FULL pjds:\n", me);
 
@@ -425,12 +425,12 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 					cpjds = CL_initPJDS( pjds );
 					CL_uploadPJDS(cpjds, pjds);
 					lcrp->fullMatrix = cpjds;
-					lcrp->fullFormat = SPM_FORMAT_PJDS;
+					lcrp->fullFormat = SPM_GPUFORMAT_PJDS;
 
 					freePJDS( pjds );
 					break;
 				}
-			case SPM_FORMAT_ELR:
+			case SPM_GPUFORMAT_ELR:
 				{
 
 					IF_DEBUG(1) printf("PE%i: FULL elr-%d:\n", me,matrixFormats->T[0]);
@@ -439,7 +439,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 					celr = CL_initELR( elr );
 					CL_uploadELR(celr, elr);
 					lcrp->fullMatrix = celr;
-					lcrp->fullFormat = SPM_FORMAT_ELR;
+					lcrp->fullFormat = SPM_GPUFORMAT_ELR;
 
 					freeELR( elr );
 					break;
@@ -451,10 +451,10 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // only if jobtype requires split computation
 
-		if (matrixFormats->format[1] == SPM_FORMAT_PJDS && matrixFormats->format[2] == SPM_FORMAT_PJDS)
+		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
 			myabort("The matrix format must _not_ be pJDS for the local and remote part of the matrix.");
 
-		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
+		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) {
 			IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
 
 			lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
@@ -467,11 +467,11 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcpjds = CL_initPJDS( lpjds );
 			CL_uploadPJDS(lcpjds, lpjds);
 			lcrp->localMatrix = lcpjds;
-			lcrp->localFormat = SPM_FORMAT_PJDS;
+			lcrp->localFormat = SPM_GPUFORMAT_PJDS;
 
 			freePJDS( lpjds );
 		}
-		if (matrixFormats->format[2] == SPM_FORMAT_PJDS) {
+		if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) {
 			IF_DEBUG(1) printf("PE%i: REMOTE pjds:\n", me);
 
 			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
@@ -485,16 +485,16 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			rcpjds = CL_initPJDS( rpjds );
 			CL_uploadPJDS(rcpjds, rpjds);
 			lcrp->remoteMatrix = rcpjds;
-			lcrp->remoteFormat = SPM_FORMAT_PJDS;
+			lcrp->remoteFormat = SPM_GPUFORMAT_PJDS;
 
 			freePJDS( rpjds );
 
 
 		}
-		if (matrixFormats->format[1] == SPM_FORMAT_ELR) {
+		if (matrixFormats->format[1] == SPM_GPUFORMAT_ELR) {
 			IF_DEBUG(1) printf("PE%i: LOCAL elr:\n", me);
 
-			if (matrixFormats->format[2] == SPM_FORMAT_PJDS)
+			if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
 				lelr = CRStoELRTP( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[1] );
 			else
 				lelr = CRStoELRT( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, lcrp->lnRows[me],matrixFormats->T[1] );
@@ -502,14 +502,14 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 			lcelr = CL_initELR( lelr );
 			CL_uploadELR(lcelr, lelr);
 			lcrp->localMatrix = lcelr;
-			lcrp->localFormat = SPM_FORMAT_ELR;
+			lcrp->localFormat = SPM_GPUFORMAT_ELR;
 
 			freeELR( lelr );
 		}
-		if (matrixFormats->format[2] == SPM_FORMAT_ELR) {
+		if (matrixFormats->format[2] == SPM_GPUFORMAT_ELR) {
 			IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
 
-			if (matrixFormats->format[1] == SPM_FORMAT_PJDS)
+			if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS)
 				relr = CRStoELRTP( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],lcrp->splitRowPerm,lcrp->splitInvRowPerm,matrixFormats->T[2] );
 			else
 				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, lcrp->lnRows[me],matrixFormats->T[2] );
@@ -519,7 +519,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 			CL_uploadELR(rcelr, relr);
 			lcrp->remoteMatrix = rcelr;
-			lcrp->remoteFormat = SPM_FORMAT_ELR;
+			lcrp->remoteFormat = SPM_GPUFORMAT_ELR;
 
 			freeELR( relr ); 
 		}

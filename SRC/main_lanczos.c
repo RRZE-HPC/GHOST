@@ -22,7 +22,7 @@ typedef struct {
 	char matrixName[PATH_MAX];
 	int nIter;
 #ifdef OPENCL
-	MATRIX_FORMATS matrixFormats;
+	SPM_GPUFORMATS matrixFormats;
 	int devType;
 #endif
 } PROPS;
@@ -76,11 +76,11 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 					while(format != NULL) {
 						if (!strncasecmp(format,"ELR",3)) {
-							p->matrixFormats.format[i] = SPM_FORMAT_ELR;
+							p->matrixFormats.format[i] = SPM_GPUFORMAT_ELR;
 							p->matrixFormats.T[i] = atoi(format+4);
 						}
 						if (!strncasecmp(format,"PJDS",4)) {
-							p->matrixFormats.format[i] = SPM_FORMAT_PJDS;
+							p->matrixFormats.format[i] = SPM_GPUFORMAT_PJDS;
 							p->matrixFormats.T[i] = atoi(format+5);
 						}
 						format = strtok(NULL,",");
@@ -149,9 +149,9 @@ int main( int argc, char* argv[] ) {
 	PROPS props;
 	props.nIter = 100;
 #ifdef OPENCL
-	props.matrixFormats.format[0] = SPM_FORMAT_ELR;
-	props.matrixFormats.format[1] = SPM_FORMAT_PJDS;
-	props.matrixFormats.format[2] = SPM_FORMAT_ELR;
+	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats.format[1] = SPM_GPUFORMAT_PJDS;
+	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.T[0] = 2;
 	props.matrixFormats.T[1] = 2;
 	props.matrixFormats.T[2] = 1;
