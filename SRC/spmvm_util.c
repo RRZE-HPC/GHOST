@@ -22,10 +22,10 @@ typedef struct {
 
 } MPI_complex;
 void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len, MPI_Datatype *datatype) {
-	
+
 	int i;
 	MPI_complex c;
-	
+
 	for (i=0; i<*len; i++, invec++, inoutvec++){
 		c.x = invec->x + inoutvec->x;
 		c.y = invec->y + inoutvec->y;
@@ -58,10 +58,29 @@ int SpMVM_init(int argc, char **argv) {
 	MPI_Op_create((MPI_User_function *)&complAdd,TRUE,&MPI_MYSUM);
 #endif
 
-	
+#ifdef LIKDIW_MARKER
+	likwid_markerInit();
+#endif
+
 	return me;
 }
 
+void SpMVM_finish() {
+
+#ifdef LIKWID_MARKER
+	likwid_markerClose();
+#endif
+
+	MPI_Finalize();
+
+#ifdef OPENCL
+	CL_finish();
+#endif
+
+
+
+
+}
 CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
 	int ierr;
@@ -73,15 +92,14 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 
 
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	
+
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-			bin_read_cr(cr, matrixPath);
+			readCRbinFile(cr, matrixPath);
 		} else{
 			mm = readMMFile( matrixPath);
 			cr = convertMMToCRMatrix( mm );
-			bin_write_cr(cr, strtok(basename(matrixPath),"."));
 			freeMMMatrix(mm);
 		}
 		crColIdToFortran(cr);
@@ -97,7 +115,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath) {
 		cr->val       = (real*)  allocateMemory( sizeof(real),  "val" );
 	}
 	return cr;
-	
+
 }
 
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
@@ -116,8 +134,8 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec) {
 #pragma omp parallel for
 	for( i = 0; i < pseudo_ldim; i++ ) 
 		nodeVec->val[i] = 0.0;
-	
-		/* Fill up halo with some markers */
+
+	/* Fill up halo with some markers */
 	for (i=lcrp->lnRows[me]; i< pseudo_ldim; i++) 
 		nodeVec->val[i] = 77.0;
 
@@ -150,7 +168,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr) {
 	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 	gethostname(hostname,MAXHOSTNAMELEN);
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
-	
+
 	LCRP_TYPE *lcrp = setup_communication(cr, 1);
 
 	return lcrp;
@@ -169,17 +187,17 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
-//	if( JOBMASK & 503 ) { 
+	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // only if jobtype requires combined computation
 		fullMemSize = getBytesize(lcrp->fullMatrix,lcrp->fullFormat)/(1024*1024);
-		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
 
-//	} 
-//	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+	} 
+	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // only if jobtype requires split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/(1024*1024);
-		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
-		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_MYSUM,0,MPI_COMM_WORLD);
-//	}
+		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,MPI_COMM_WORLD);
+	}
 #endif	
 
 	if(me==0){
@@ -188,18 +206,19 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName) {
 		printf("-------         Statistics about matrix       -------\n");
 		printf("-----------------------------------------------------\n");
 		printf("Investigated matrix         : %12s\n", matrixName); 
-		printf("Dimension of matrix         : %12.0f\n", (float)lcrp->nRows); 
-		printf("Non-zero elements           : %12.0f\n", (float)lcrp->nEnts); 
-		printf("Average elements per row    : %12.3f\n", (float)lcrp->nEnts/(float)lcrp->nRows); 
-		printf("Working set             [MB]: %12lu\n", ws);
+		printf("Dimension of matrix         : %12.0f\n", (double)lcrp->nRows); 
+		printf("Non-zero elements           : %12.0f\n", (double)lcrp->nEnts); 
+		printf("Average elements per row    : %12.3f\n", (double)lcrp->nEnts/(double)lcrp->nRows); 
+		printf("CRS matrix              [MB]: %12lu\n", ws);
 #ifdef OPENCL	
-	//	if( JOBMASK & 503 ) 
-			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize); 
-//		if( JOBMASK & 261640 ) {
+		if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // only if jobtype requires combined computation
+			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize);
+		}	
+		if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // only if jobtype requires split computation
 			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
 			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize); 
 			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+totalRemoteMemSize); 
-//		}
+		}
 #endif
 		printf("-----------------------------------------------------\n");
 		fflush(stdout);
@@ -216,6 +235,47 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int)) {
 	} else {
 		return newHostVector(0,NULL);
 	}
-}	
+}
 
-	
+
+void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter) {
+
+	int iteration;
+	if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) {
+
+		for (iteration=0; iteration<nIter; iteration++) {
+#ifdef DOUBLE
+#ifdef COMPLEX
+			fortrancrsaxpyc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#else
+			fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#endif
+#endif
+#ifdef SINGLE
+#ifdef COMPLEX
+			fortrancrsaxpycf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#else
+			fortrancrsaxpyf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#endif
+#endif
+		}
+	} else {
+#ifdef DOUBLE
+#ifdef COMPLEX
+		fortrancrsc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#else
+		fortrancrs_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#endif
+#endif
+#ifdef SINGLE
+#ifdef COMPLEX
+		fortrancrscf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#else
+		fortrancrsf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col, cr->rowOffset);
+#endif
+#endif
+	}
+}
+
+
+

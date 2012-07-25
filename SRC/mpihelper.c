@@ -596,7 +596,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	//if (JOBMASK>0){
+	if (SPMVM_KERNELS > SPMVM_KERNEL_NOMPI){
 
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
@@ -686,14 +686,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 		fflush(stdout);
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
 
-	//else{
-	//	lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
-	//	lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
-	//	lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
-	//	lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-	//	lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
-	//	lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
-	//}
+	} else{
+		lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
+		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
+		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
+		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
+		lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
+		lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
+	}
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
 	freeMemory ( size_mem,  "cwishlist_mem",   cwishlist_mem);

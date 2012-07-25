@@ -353,9 +353,9 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 
-	rowLen = (int*)   allocHostMemory( size_rowlen ); 
-	col   = (int*)    allocHostMemory( size_col ); 
-	val   = (real*)   allocHostMemory( size_val ); 
+	rowLen = (int*)   allocateMemory( size_rowlen, "elrp->rowLen" ); 
+	col   = (int*)    allocateMemory( size_col, "elrp->vol" ); 
+	val   = (real*)   allocateMemory( size_val,"elrp->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -460,8 +460,8 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 	size_rowperm= (size_t) sizeof(int) * nRows;
-	elr->rowPerm = (int *)allocHostMemory(size_rowperm);
-	elr->invRowPerm = (int *)allocHostMemory(size_rowperm);
+	elr->rowPerm = (int *) allocateMemory(size_rowperm,"elr->rowPerm");
+	elr->invRowPerm = (int *)allocateMemory(size_rowperm,"elr->invRowPerm");
 
 	/* get the permutation indices ############################################ */
 	for(i=0; i < nRows; ++i) {
@@ -474,9 +474,9 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 		elr->rowPerm[rowSort[i].row] = i;
 	}
 
-	rowLen = (int*)   allocHostMemory( size_rowlen ); 
-	col   = (int*)    allocHostMemory( size_col ); 
-	val   = (real*)   allocHostMemory( size_val ); 
+	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
+	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
+	val   = (real*)   allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;

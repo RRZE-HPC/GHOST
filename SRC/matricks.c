@@ -20,6 +20,7 @@
 #include <string.h>
 #include <libgen.h>
 #include <complex.h>
+#include <mmio.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -235,7 +236,7 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 /* ########################################################################## */
 
-MM_TYPE * readMMFile(char* filename ) {
+MM_TYPE * readMMFile(const char* filename ) {
 
 	int ret_code;
 	MM_typecode matcode;
@@ -251,6 +252,15 @@ MM_TYPE * readMMFile(char* filename ) {
 		printf("Could not process Matrix Market banner.\n");
 		exit(1);
 	}
+	
+#ifdef COMPLEX
+	if (!mm_is_complex(matcode))
+		fprintf(stderr,"Warning! The library has been built for complex data but the MM file contains real data. Casting...\n");
+#else
+	if (mm_is_complex(matcode))
+		fprintf(stderr,"Warning! The library has been built for real data but the MM file contains complex data. Casting...\n");
+#endif
+
 
 
 	if ((ret_code = mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
@@ -260,19 +270,33 @@ MM_TYPE * readMMFile(char* filename ) {
 	mm->nze = (NZE_TYPE *)malloc(mm->nEnts*sizeof(NZE_TYPE));
 
 	if (!mm_is_complex(matcode)) {
+		double re;
 		for (i=0; i<mm->nEnts; i++)
 		{
-			fscanf(f, "%d %d %lg\n", &mm->nze[i].row, &mm->nze[i].col, &mm->nze[i].real);
+			fscanf(f, "%d %d %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re);
+#ifdef COMPLEX	
+			mm->nze[i].val = re+I*0;
+#else
+			mm->nze[i].val = re;
+#endif
 			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
 			mm->nze[i].row--;
 		}
 	} else {
+	
+		double re,im;
 		for (i=0; i<mm->nEnts; i++)
 		{
-			fscanf(f, "%d %d %lg %lg\n",  &mm->nze[i].row, &mm->nze[i].col, &mm->nze[i].real, &mm->nze[i].imag);
+			fscanf(f, "%d %d %lg %lg\n",  &mm->nze[i].row, &mm->nze[i].col, &re, &im);
+#ifdef COMPLEX	
+			mm->nze[i].val = re+I*im;
+#else
+			mm->nze[i].val = re;
+#endif
 			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
 			mm->nze[i].row--;
 		}
+
 	}
 
 
@@ -282,6 +306,255 @@ MM_TYPE * readMMFile(char* filename ) {
 
 /* ########################################################################## */
 
+void readCRbinFile(CR_TYPE* cr, const char* path){
+
+	int i, j;
+	size_t size_offs, size_col, size_val;
+	/* Number of successfully read data items */
+	size_t sucr;
+	int datatype;
+	FILE* RESTFILE;
+	double startTime, stopTime, ct; 
+	double mybytes;
+
+	size_t size_hlp;
+	//real* zusteller;
+
+	timing( &startTime, &ct );
+
+	IF_DEBUG(1) printf(" \n Lese %s \n", path);
+
+	if ((RESTFILE = fopen(path, "rb"))==NULL){
+		printf("Fehler beim Oeffnen von %s\n", path);
+		exit(1);
+	}
+
+	sucr = fread(&datatype,               sizeof(int),    1,           RESTFILE);
+	sucr = fread(&cr->nRows,               sizeof(int),    1,           RESTFILE);
+	sucr = fread(&cr->nCols,               sizeof(int),    1,           RESTFILE);
+	sucr = fread(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
+
+	if (datatype != DATATYPE_DESIRED) {
+		fprintf(stderr,"Warning! The library has been built for %s data but the file contains %s data. Casting...\n",
+				datatypeNames[DATATYPE_DESIRED],datatypeNames[datatype]);
+	}
+
+	mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
+		1.0*(cr->nEnts)*sizeof(real);
+
+	IF_DEBUG(1){ 
+		printf("Number of rows in matrix       = %d\n", cr->nRows);
+		printf("Number of columns in matrix    = %d\n", cr->nCols);
+		printf("Number of non-zero elements    = %d\n", cr->nEnts);
+		printf(" \n Entries to be read sum up to %6.2f MB\n", mybytes/1048576.0) ;
+	}
+	IF_DEBUG(2) printf("Allocate memory for arrays\n");
+
+	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
+	size_col  = (size_t)( cr->nEnts * sizeof(int) );
+	size_val  = (size_t)( cr->nEnts * sizeof(real) );
+
+	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
+	cr->col       = (int*)    allocateMemory( size_col,  "col" );
+	cr->val       = (real*) allocateMemory( size_val,  "val" );
+
+	IF_DEBUG(2){
+		printf("Reading array with row-offsets\n");
+		printf("Reading array with column indices\n");
+		printf("Reading array with values\n");
+	}	
+
+	//NUMA_CHECK_SERIAL("before placement zusteller");
+
+	IF_DEBUG(1) printf("gezieltes placement in die falschen LD\n");
+	size_hlp = (size_t) ( 450000000*sizeof(real));
+	//zusteller = (real*) allocateMemory( size_hlp,  "zusteller" );
+
+	//#pragma omp parallel for schedule(runtime)
+	//   for( i = 0; i < 450000000; i++ )  zusteller[i] = 0;
+
+
+
+	//   NUMA_CHECK_SERIAL("after placement zusteller");
+
+	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
+#pragma omp parallel for schedule(runtime)
+	for( i = 0; i < cr->nRows+1; i++ ) {
+		cr->rowOffset[i] = 0;
+	}
+
+	sucr = fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
+
+
+	IF_DEBUG(1){
+		printf("Doing NUMA-placement for cr->col (restart-version)\n");
+		printf("Doing NUMA-placement for cr->val (restart-version)\n");
+	}
+#pragma omp parallel for schedule(runtime)
+	for(i = 0 ; i < cr->nRows; ++i) {
+		for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
+			cr->val[j] = 0.0;
+			cr->col[j] = 0;
+		}
+	}
+
+
+	sucr = fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
+
+
+	switch (datatype) {
+		case DATATYPE_FLOAT:
+			{
+				float *tmp = (float *)allocateMemory(cr->nEnts*sizeof(float), "tmp");
+				sucr = fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				free(tmp);
+				break;
+			}
+		case DATATYPE_DOUBLE:
+			{
+				double *tmp = (double *)allocateMemory(cr->nEnts*sizeof(double), "tmp");
+				sucr = fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				free(tmp);
+				break;
+			}
+		case DATATYPE_COMPLEX_FLOAT:
+			{
+				_Complex float *tmp = (_Complex float *)allocateMemory(cr->nEnts*sizeof(_Complex float), "tmp");
+				sucr = fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				free(tmp);
+				break;
+			}
+		case DATATYPE_COMPLEX_DOUBLE:
+			{
+				_Complex double *tmp = (_Complex double *)allocateMemory(cr->nEnts*sizeof(_Complex double), "tmp");
+				sucr = fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				free(tmp);
+				break;
+			}
+	}
+
+	fclose(RESTFILE);
+	NUMA_CHECK_SERIAL("after CR-binary read");
+
+	//   freeMemory(size_hlp, "zusteller", zusteller);
+
+	NUMA_CHECK_SERIAL("after freeing zusteller");
+
+
+	timing( &stopTime, &ct );
+	IF_DEBUG(2) printf("... done\n"); 
+	IF_DEBUG(1){
+		printf("Binary read of matrix in CRS-format took %8.2f s \n", 
+				(double)(stopTime-startTime) );
+		printf( "Data transfer rate : %8.2f MB/s \n",  
+				(mybytes/1048576.0)/(double)(stopTime-startTime) );
+	}
+
+	return;
+}
+
+/***************************************************************
+ *          Einlesen der Matrix in Binaerformat (JDS)           *
+ **************************************************************/
+
+
+void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
+
+	int i, ib, block_start, block_end, diag, diagLen, offset;
+	size_t sucr;
+	char restartfilename[50];
+	FILE* RESTFILE;
+	double startTime, stopTime, ct; 
+	double mybytes;
+
+	timing( &startTime, &ct );
+
+	sprintf(restartfilename, "./daten/%s_JDS_bin.dat", testcase);
+	IF_DEBUG(1) printf(" \n Lese %s \n", restartfilename);
+
+	if ((RESTFILE = fopen(restartfilename, "rb"))==NULL){
+		printf("Fehler beim Oeffnen von %s\n", restartfilename);
+		exit(1);
+	}
+
+	sucr = fread(&jd->nRows,               sizeof(int),    1,            RESTFILE);
+	sucr = fread(&jd->nCols,               sizeof(int),    1,            RESTFILE);
+	sucr = fread(&jd->nEnts,               sizeof(int),    1,            RESTFILE);
+	sucr = fread(&jd->nDiags,              sizeof(int),    1,            RESTFILE);
+
+	mybytes = 4.0*sizeof(int) 
+		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
+		+ 1.0*(jd->nEnts)*sizeof(real);
+
+	IF_DEBUG(1) {
+		printf("Number of rows in matrix       = %d\n", jd->nRows);
+		printf("Number of columns in matrix    = %d\n", jd->nCols);
+		printf("Number of non-zero elements    = %d\n", jd->nEnts);
+		printf("Number of off-diagonals        = %d\n", jd->nDiags);
+		printf(" \n Entries to be read sum up to %6.2f MB\n", mybytes/1048576.0) ;
+	}
+
+	IF_DEBUG(2) printf("Allocate memory for arrays\n");
+
+	jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
+	jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
+	jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
+	jd->val        = (real*) allocateMemory( jd->nEnts      * sizeof( real ), "val" );
+
+	IF_DEBUG(2) {
+		printf("Reading array of permutations\n");
+		printf("Reading array of offsets of off-diagonals\n");
+		printf("Reading array with column indices\n");
+		printf("Reading array with values\n");
+	}	
+
+	sucr = fread(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
+	sucr = fread(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
+
+	printf("NUMA-placement of jd->col[] and jd->val[]\n");
+#pragma omp parallel for schedule(runtime) private (i, diag, diagLen, offset, block_start, block_end) 
+	for(ib = 0 ; ib < jd->nRows ; ib += blocklen) {
+
+		block_start = ib;
+		block_end = MIN(ib+blocklen-2, jd->nRows-1);
+
+		for(diag=0; diag < jd->nDiags ; diag++) {
+
+			diagLen = jd->diagOffset[diag+1]-jd->diagOffset[diag];
+			offset  = jd->diagOffset[diag];
+
+			if(diagLen >= block_start) {
+
+				for(i=block_start; i<= MIN(block_end,diagLen-1); ++i) {
+					jd->val[offset+i]=0.0;
+					jd->col[offset+i]=0.0;
+				}
+			}
+		}
+	} 
+	/* GH: then fill matrix */
+
+
+	sucr = fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
+	sucr = fread(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
+
+	fclose(RESTFILE);
+
+	timing( &stopTime, &ct );
+	IF_DEBUG(2) printf("... done\n"); 
+	IF_DEBUG(1){
+		printf("Binary read of matrix in JDS-format took %8.2f s \n", 
+				(double)(stopTime-startTime) );
+		printf( "Data transfer rate : %8.2f MB/s \n\n",  
+				(mybytes/1048576.0)/(double)(stopTime-startTime) );
+	}
+
+	return;
+}
 
 int compareNZEPos( const void* a, const void* b ) {
 

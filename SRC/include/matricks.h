@@ -169,10 +169,8 @@ void freeJDMatrix( JD_TYPE* const cr );
 void tmpwrite_d(int, int, real*);
 void tmpwrite_i(int, int, int*, char*);
 
-void bin_read_cr(CR_TYPE*, const char* );
-void bin_write_cr(const CR_TYPE*, const char*);
-void bin_read_jd(JD_TYPE*, const int, const char*);
-void bin_write_jd(const JD_TYPE*, const char*);
+void readCRbinFile(CR_TYPE*, const char* );
+void readJDbinFile(JD_TYPE*, const int, const char*);
 
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);

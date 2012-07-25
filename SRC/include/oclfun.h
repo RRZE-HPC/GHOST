@@ -2,10 +2,7 @@
 #define _OCLFUN_H_
 
 #include "spmvm_globals.h"
-//#include <stdlib.h>
-//#include <stdio.h>
 #include <CL/cl.h>
-//#include "my_ellpack.h"
 #include <sys/param.h>
 
 
@@ -20,7 +17,6 @@ void CL_downloadVector( VECTOR_TYPE *vec );
 cl_mem CL_allocDeviceMemory( size_t );
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
-void* allocHostMemory( size_t );
 inline void CL_copyDeviceToHost( void*, cl_mem, size_t );
 inline cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem, size_t bytesize );
 inline void CL_copyHostToDevice( cl_mem, void*, size_t );

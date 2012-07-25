@@ -119,7 +119,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 
 #ifdef DOUBLE
 #ifdef COMPLEX
-	char *opt = " -DDOUBLE -DCOMPLEX";
+	char *opt = " -DDOUBLE -DCOMPLEX ";
 #else
 	char *opt = " -DDOUBLE ";
 #endif
@@ -127,7 +127,7 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 
 #ifdef SINGLE
 #ifdef COMPLEX
-	char *opt = " -DSINGLE -DCOMPLEX";
+	char *opt = " -DSINGLE -DCOMPLEX ";
 #else
 	char *opt = " -DSINGLE ";
 #endif
@@ -191,7 +191,6 @@ void CL_init( int rank, int size, const char* hostname, MATRIX_FORMATS *matrixFo
 }
 
 
-/* *********** CUDA MEMORY **************************** */
 
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr ) {
 	cl_mem mem;
@@ -223,10 +222,6 @@ void * CL_mapBuffer(cl_mem devmem, size_t bytesize) {
 	return ret;
 
 
-}
-
-void* allocHostMemory( size_t sz) {
-	return allocateMemory(sz,"allocHostMemory");
 }
 
 inline void CL_copyDeviceToHost( void* hostmem, cl_mem devmem, size_t bytesize ) {
@@ -381,14 +376,14 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, MATRIX_FORMATS *matrixFormats) {
 	CL_init( node_rank, node_size, hostname, matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
 
-	//if( JOBMASK & 503 ) { // only if jobtype requires combined computation
+	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // only if jobtype requires combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
-	//}
+	}
 
-	//if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // only if jobtype requires split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
-	//}
+	}
 
 
 }
@@ -415,9 +410,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
-	//if( JOBMASK & 503 ) { // only if jobtype requires combined computation
-
-
+	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // only if jobtype requires combined computation
 		switch (matrixFormats->format[0]) {
 			case SPM_FORMAT_PJDS:
 				{
@@ -454,9 +447,12 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 		}
 
-//	}
+	}
 
-//	if( JOBMASK & 261640 ) { // only if jobtype requires split computation
+	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // only if jobtype requires split computation
+
+		if (matrixFormats->format[1] == SPM_FORMAT_PJDS && matrixFormats->format[2] == SPM_FORMAT_PJDS)
+			myabort("The matrix format must _not_ be pJDS for the local and remote part of the matrix.");
 
 		if (matrixFormats->format[1] == SPM_FORMAT_PJDS) {
 			IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
@@ -527,7 +523,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, MATRIX_FORMATS *matrixFormats){
 
 			freeELR( relr ); 
 		}
-//	}
+	}
 }
 
 void CL_uploadVector( VECTOR_TYPE *vec ) {

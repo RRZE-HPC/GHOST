@@ -1,22 +1,34 @@
 #ifndef _SPMVM_GLOBALS_H_
 #define _SPMVM_GLOBALS_H_
 
-#define NUMKERNELS 18
-
-#define SPM_FORMAT_ELR 0
-#define SPM_FORMAT_PJDS 1
-
-#define SPMVM_OPTION_NONE (0x0)
-#define SPMVM_OPTION_AXPY (0x1<<0)
-#define SPMVM_OPTION_KEEPRESULT (0x1<<1)
-#define SPMVM_OPTION_RHSPRESENT (0x1<<2)
+#include <complex.h>
+#include <mpi.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif
 
-#include <complex.h>
-#include <mpi.h>
+
+#define SPMVM_NUMKERNELS 4
+
+#define SPMVM_KERNEL_NOMPI      (0x1<<0)
+#define SPMVM_KERNEL_VECTORMODE (0x1<<1)
+#define SPMVM_KERNEL_GOODFAITH  (0x1<<2)
+#define SPMVM_KERNEL_TASKMODE   (0x1<<3)
+
+#define SPMVM_KERNELS_COMBINED (SPMVM_KERNEL_NOMPI | SPMVM_KERNEL_VECTORMODE)
+#define SPMVM_KERNELS_SPLIT (SPMVM_KERNEL_GOODFAITH | SPMVM_KERNEL_TASKMODE)
+#define SPMVM_KERNELS_ALL (SPMVM_KERNELS_COMBINED | SPMVM_KERNELS_SPLIT)
+
+
+#define SPM_FORMAT_ELR  0
+#define SPM_FORMAT_PJDS 1
+
+#define SPMVM_OPTION_NONE       (0x0)    // no special options applied
+#define SPMVM_OPTION_AXPY       (0x1<<0) // perform y <- y+A*x instead of y <- A*x
+#define SPMVM_OPTION_KEEPRESULT (0x1<<1) // keep result on OpenCL device after SpMVM
+#define SPMVM_OPTION_RHSPRESENT (0x1<<2) // assume that the RHS vector is present for the SpMVM
+
 
 #define DATATYPE_FLOAT 0
 #define DATATYPE_DOUBLE 1
@@ -24,15 +36,13 @@
 #define DATATYPE_COMPLEX_DOUBLE 3
 
 
-static char *datatypeNames[] = {"float","double","cfloat","cdouble"};
+
+
+static char *datatypeNames[] = {"float","double","complex float","complex double"};
+static char *SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
 
 #define DOUBLE
-//#define COMPLEX
-
-
-
-
-
+#define COMPLEX
 
 
 
@@ -41,54 +51,42 @@ static char *datatypeNames[] = {"float","double","cfloat","cdouble"};
 #ifdef COMPLEX
 
 typedef _Complex double real;
-#ifdef OPENCL
-typedef cl_double2 clreal;
-#endif
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
 
-#else
+#else // COMPLEX
 
 typedef double real;
-#ifdef OPENCL
-typedef double clreal;
-#endif
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_DOUBLE
 
-#endif
-#endif
+#endif // COMPLEX
+#endif // DOUBLE
 
 
 #ifdef SINGLE
 #ifdef COMPLEX
 
 typedef _Complex float real;
-#ifdef OPENCL
-typedef cl_float2 clreal;
-#endif
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
 
-#else
+#else // COMPLEX
 
 typedef float real;
-#ifdef OPENCL
-typedef float clreal;
-#endif
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_FLOAT
 
 
-#endif
-#endif
+#endif // COMPLEX
+#endif // SINGLE
 
 #ifdef COMPLEX
-#define FLOPS_PER_ENTRY 4.0
+#define FLOPS_PER_ENTRY 8.0
 #else
 #define FLOPS_PER_ENTRY 2.0
 #endif
@@ -120,23 +118,18 @@ typedef float clreal;
 
 
 typedef struct {
-	real x;
-	real y;
-} COMPLEX_TYPE;
-
-typedef struct {
 	int nRows;
 	real* val;
 #ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
-
 } VECTOR_TYPE;
 
 typedef struct {
 	int format[3];
 	int T[3];
 } MATRIX_FORMATS;
+
 typedef struct {
 	int nRows;
 	real* val;
@@ -202,7 +195,7 @@ typedef struct {
     char*   name;
 } Hybrid_kernel;
 
-static Hybrid_kernel HyK[NUMKERNELS] = {
+static Hybrid_kernel HyK[SPMVM_NUMKERNELS] = {
 
     { &hybrid_kernel_0,    0, 0, "HyK_0", "ca :\npure OpenMP-kernel" },
 
@@ -225,7 +218,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* const, int);
 void CL_setup_communication(LCRP_TYPE* const, MATRIX_FORMATS *);
 
 int SPMVM_OPTIONS;
-int JOBMASK;
+int SPMVM_KERNELS;
 
 #endif
 

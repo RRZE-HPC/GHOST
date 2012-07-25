@@ -15,7 +15,7 @@ IPATH	+=	-I./SRC/include
 OBJS	=	$(COBJS) $(FOBJS) $(F90OBJS) $(SOBJS) $(LINREG)
 
 COBJS	 +=  aux.o spmvm_util.o matricks.o mpihelper.o setup_communication.o \
-             timing.o restartfile.o \
+             timing.o mmio.o \
 			 hybrid_kernel_0.o hybrid_kernel_I.o hybrid_kernel_II.o hybrid_kernel_III.o
 
 OCLOBJS = oclfun.o my_ellpack.o 
@@ -29,11 +29,14 @@ SOBJS	+=	for_timing_start_asm.o for_timing_stop_asm.o
 #####      Consequences:      #####
 ###################################
 
+clspmvm: MAKROS = -DOPENCL 
 clspmvm-static: MAKROS = -DOPENCL
+clspmvm-dynamic: MAKROS = -DOPENCL
+
 cllanczos: MAKROS = -DOPENCL 
 cllanczos-static: MAKROS = -DOPENCL 
 cllanczos-dynamic: MAKROS = -DOPENCL 
-clspmvm: MAKROS = -DOPENCL 
+
 libclspmvm.a: MAKROS = -DOPENCL 
 libclspmvm.so: MAKROS = -DOPENCL 
 
