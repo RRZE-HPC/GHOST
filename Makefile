@@ -1,6 +1,7 @@
 SYSTEM=default
 include makes/make_$(SYSTEM).mk
 
+.PHONY: examples utils clean distclean 
 
 ################################################################################
 
@@ -45,10 +46,13 @@ LIBSPMVM=lib$(PREFIX)spmvm.a
 	$(AS) $(ASFLAGS) -o $@  $<
 
 
-all: $(LIBSPMVM) examples
+all: $(LIBSPMVM) examples utils
 
 examples: $(LIBSPMVM)
 	$(MAKE) -C examples/ 
+
+utils: 
+	$(MAKE) -C utils/
 
 
 libspmvm.so: $(OBJS)
@@ -67,17 +71,16 @@ libclspmvm.a: $(OBJS) $(OCLOBJS)
 	-mv *.o OBJ
 	-mv *genmod* OBJ
 
-MMtoCRS: mmtocrs.o mmio.o
-	$(CC) $(CFLAGS) -o $@ $^
-
 clean:
 	-rm -f *.o
 	-rm -f OBJ/*
 	-rm -f core
 	-rm -f examples/*/*.o
+	-rm -f utils/*.o
 
 distclean: clean
 	-rm -f *.x
 	-rm -f examples/*/*.x
+	-rm -f utils/*.x
 	-rm -f *.so
 	-rm -f *.a

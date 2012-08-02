@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mmio.h"
+#include <mmio.h>
+#include <spmvm_constants.h>
 
-#define DATATYPE_FLOAT 0
-#define DATATYPE_DOUBLE 1
-#define DATATYPE_COMPLEX_FLOAT 2
-#define DATATYPE_COMPLEX_DOUBLE 3
 
 typedef struct {
 	int row, col, nThEntryInRow;
