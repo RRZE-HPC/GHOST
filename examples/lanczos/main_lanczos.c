@@ -261,10 +261,12 @@ int main( int argc, char* argv[] )
 
 
 	SPMVM_KERNELS = 0;	
-	//SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
+	
+	
+	SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
+	//SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
+	//SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
+	//SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
 
 	PROPS props;
 	props.nIter = 100;
@@ -323,7 +325,7 @@ int main( int argc, char* argv[] )
 	char *opt = " -DSINGLE ";
 #endif
 #endif
-	cl_program program = CL_registerProgram("SRC/lanczoskernels.cl",opt);
+	cl_program program = CL_registerProgram("/home/hpc/unrz/unrza317/proj/SpMVM/Hybrid-stripped/examples/lanczos/lanczoskernels.cl",opt);
 
 	int err;
 	axpyKernel = clCreateKernel(program,"axpyKernel",&err);

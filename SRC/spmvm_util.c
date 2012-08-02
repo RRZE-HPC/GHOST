@@ -66,7 +66,8 @@ int SpMVM_init(int argc, char **argv)
 	return me;
 }
 
-void SpMVM_finish() {
+void SpMVM_finish()
+{
 
 #ifdef LIKWID_MARKER
 	likwid_markerClose();
@@ -82,6 +83,7 @@ void SpMVM_finish() {
 
 
 }
+
 CR_TYPE * SpMVM_createCRS (char *matrixPath)
 {
 

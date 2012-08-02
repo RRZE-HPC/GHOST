@@ -1,8 +1,8 @@
-#include "spmvm_util.h"
-#include "matricks.h"
-#include "mpihelper.h"
+#include <spmvm_util.h>
+#include <matricks.h>
+#include <mpihelper.h>
 #include <string.h>
-#include "timing.h"
+#include <timing.h>
 #include <math.h>
 #include <stdlib.h>
 #include <sys/times.h>
@@ -11,7 +11,7 @@
 #include <sched.h>
 
 #ifdef OPENCL
-#include "oclfun.h"
+#include <oclfun.h>
 #endif
 
 #include <likwid.h>
