@@ -1,7 +1,7 @@
 CC=icc
 
-MMtoCRS: mmtocrs.c ../SRC/mmio.c
-	$(CC) -I../SRC/include -o $@.x $^
+MMtoCRS: mmtocrs.c ../src/mmio.c
+	$(CC) -I../src/include -o $@.x $^
 
 clean:
 	-rm -f *.o

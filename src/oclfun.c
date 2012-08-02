@@ -112,7 +112,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	long filesize;
 
 
-	fp = fopen("SRC/kernel.cl", "r");
+	fp = fopen("src/kernel.cl", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to load kernel.\n");
 		exit(1);

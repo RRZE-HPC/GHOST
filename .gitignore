@@ -2,9 +2,9 @@
 *.so
 *.a
 *.bin
-SRC/*.swp
-SRC/include/*.swp
-SRC/tags
-OBJ/
+src/*.swp
+src/include/*.swp
+src/tags
+obj/
 jobscripts/*
 
