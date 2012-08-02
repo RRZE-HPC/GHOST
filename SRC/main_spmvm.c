@@ -121,18 +121,12 @@ int main( int argc, char* argv[] ) {
 	int ierr;
 	int me;
 
-	int required_threading_level;
-	int provided_threading_level;
-
+	int iteration;
+	double start, end, dummy;
+	int kernel;
+	int errcount = 0;
+	double mytol;
 	int i,j; 
-
-	
-	SPMVM_KERNELS = 0;	
-	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
-	
-	SPMVM_OPTIONS = 0;
 
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
@@ -140,12 +134,15 @@ int main( int argc, char* argv[] ) {
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
-	int iteration;
-	double start, end, dummy;
-	int kernel;
-	int errcount = 0;
-	double mytol;
+	CR_TYPE *cr;
+	LCRP_TYPE *lcrp;
 
+	SPMVM_KERNELS = 0;	
+	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
+	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
+	
+	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
 
 	PROPS props;
 #ifdef OPENCL
@@ -165,28 +162,25 @@ int main( int argc, char* argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	me      = SpMVM_init(argc,argv);       // basic initialization
-	
-	CR_TYPE *cr = SpMVM_createCRS (argv[optind]);
-	LCRP_TYPE *lcrp = SpMVM_distributeCRS (cr);
-
-	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
-	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
-	goldLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
-
-	if (me==0)
-	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
+	me   = SpMVM_init(argc,argv);       // basic initialization
+	cr   = SpMVM_createCRS (argv[optind]);
+	lcrp = SpMVM_distributeCRS (cr);
 
 
 #ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
-
+	
+	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
+	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
+	goldLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
 	nodeLHS = newVector( lcrp->lnRows[me] );
 
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"."));
+	if (me==0)
+	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
 
+	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"."));
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -197,13 +191,25 @@ int main( int argc, char* argv[] ) {
 		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) continue;       // non-MPI kernel
 		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) continue; // not enough threads
 
+		MPI_Barrier(MPI_COMM_WORLD);
 		if (me == 0)
 			timing(&start,&dummy);
+
+#ifdef LIKWID_MARKER
+		char regionName[9];
+		sprintf(regionName,"kernel %d",kernel);
+#pragma omp parallel
+		likwid_markerStartRegion(regionName);
+#endif
 
 		for( iteration = 0; iteration < props.nIter; iteration++ ) {
 			HyK[kernel].kernel( iteration, nodeLHS, lcrp, nodeRHS);
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+		likwid_markerStopRegion(regionName);
+#endif
 
 		if (me == 0)
 			timing(&end,&dummy);

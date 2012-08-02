@@ -155,10 +155,10 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 		tid = omp_get_thread_num();
 #endif
 
-		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
-#ifdef LIKWID_MARKER
-			likwid_markerStartRegion("k12 communication");
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("task mode comm (= last core) + local comp");
 #endif
+		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
 			/***********************************************************************
 			 *******  Local gather of data in work array & communication    ********
 			 **********************************************************************/
@@ -177,14 +177,7 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 
 			ierr = MPI_Waitall(lcrp->nodes, send_request, send_status);
 			ierr = MPI_Waitall(recv_messages, recv_request, recv_status);
-#ifdef LIKWID_MARKER
-			likwid_markerStopRegion("k12 communication");
-#endif
-		}
-		else{ /* Rechen-threads */
-#ifdef LIKWID_MARKER
-			likwid_markerStartRegion("k12 local spmvm");
-#endif
+		} else { /* Rechen-threads */
 
 			/***********************************************************************
 			 *******     Calculation of SpMVM for local entries of invec->val     *******
@@ -218,12 +211,13 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 					res->val[i] = hlp1;
 			}
 
-#ifdef LIKWID_MARKER
-			likwid_markerStopRegion("k12 local spmvm");
-#endif
 #endif
 
 		}
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("task mode comm (= last core) + local comp");
+#endif
 	}
 	IF_DEBUG(1){
 		for_timing_stop_asm_( &asm_acccyclecounter, &asm_cycles);

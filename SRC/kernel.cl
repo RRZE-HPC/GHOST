@@ -725,35 +725,3 @@ kernel void ELR16kernelAdd (global clreal *resVec, global clreal *rhsVec, int nR
 	}
 }
 
-kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nRows){
-	int i = get_global_id(0); 
-	if (i<nRows)
-		a[i] += s*b[i]; 
-}
-
-kernel void vecscalKernel(global clreal *a, clreal scal, int nRows){
-	int i = get_global_id(0);
-	if (i<nRows)	
-		a[i] *= scal; 
-} 
-
-// TODO kernels with complex support
-
-kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nRows, local volatile clreal *shared) {
-
-	unsigned int tid = get_local_id(0);
-	unsigned int i = get_global_id(0);
-	shared[tid] = (i < nRows) ? a[i]*b[i] : 0;
-
-	barrier(CLK_LOCAL_MEM_FENCE);
-
-	for (unsigned int s = 1; s < get_local_size(0); s *= 2) {
-		if ((tid % (2*s)) == 0) {
-
-			shared[tid] += shared[tid + s];
-		}
-		barrier(CLK_LOCAL_MEM_FENCE);
-	}
-	if (tid == 0)
-		out[get_group_id(0)] = shared[0];
-}

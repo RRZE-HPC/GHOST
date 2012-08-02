@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 600
 #include "matricks.h"
 #ifdef OPENCL
 #include "oclfun.h"
@@ -8,7 +9,6 @@
 #include <omp.h>
 #endif
 
-//#define _XOPEN_SOURCE 600
 #include <errno.h>
 
 #ifdef __sun
@@ -21,6 +21,8 @@
 #include <libgen.h>
 #include <complex.h>
 #include <mmio.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -64,7 +66,7 @@ void getMatrixPath(char *given, char *path) {
 	strcat(path,"/");
 	strcat(path,given);
 	strcat(path,"_");
-	strcat(path,datatypeNames[DATATYPE_DESIRED]);
+	strcat(path,DATATYPE_NAMES[DATATYPE_DESIRED]);
 	strcat(path,"_CRS_bin.dat");
 
 	file = fopen(path,"r");
@@ -301,14 +303,15 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		exit(1);
 	}
 
-	sucr = fread(&datatype,               sizeof(int),    1,           RESTFILE);
-	sucr = fread(&cr->nRows,               sizeof(int),    1,           RESTFILE);
-	sucr = fread(&cr->nCols,               sizeof(int),    1,           RESTFILE);
-	sucr = fread(&cr->nEnts,               sizeof(int),    1,           RESTFILE);
+	sucr = fread(&datatype, sizeof(int), 1, RESTFILE);
+	sucr = fread(&cr->nRows, sizeof(int), 1, RESTFILE);
+	sucr = fread(&cr->nCols, sizeof(int), 1, RESTFILE);
+	sucr = fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		fprintf(stderr,"Warning! The library has been built for %s data but the file contains %s data. Casting...\n",
-				datatypeNames[DATATYPE_DESIRED],datatypeNames[datatype]);
+		fprintf(stderr,"Warning! The library has been built for %s data but the\
+			   	file contains %s data. Casting...\n",
+				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
 	mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
@@ -1350,9 +1353,11 @@ void freeLcrpType( LCRP_TYPE* const lcrp ) {
 		free( lcrp->fullInvRowPerm );
 		free( lcrp->splitRowPerm );
 		free( lcrp->splitInvRowPerm );
+#ifdef OPENCL
 		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
 		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
 		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
+#endif
 		free( lcrp );
 	}
 }

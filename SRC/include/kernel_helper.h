@@ -31,64 +31,36 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 	real hlp1;
 
 #ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(real));
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_in_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-#endif
-
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
-#ifdef OPENCL
+	
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
-
+	
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 #else
 
 #pragma omp parallel
 	{
-#ifdef LIKWID_MARKER
-   	likwid_markerStartRegion("full spmvm");
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("full spmvm");
 #endif
 #pragma omp	for schedule(runtime) private (hlp1, j)
-	for (i=0; i<lcrp->lnRows[*me]; i++){
-		hlp1 = 0.0;
-		for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
-			hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
+		for (i=0; i<lcrp->lnRows[*me]; i++){
+			hlp1 = 0.0;
+			for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
+				hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
+			}
+			if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+				res->val[i] += hlp1;
+			else
+				res->val[i] = hlp1;
 		}
-		if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
-			res->val[i] += hlp1;
-		else
-			res->val[i] = hlp1;
-	}
-#ifdef LIKWID_MARKER
-   	likwid_markerStopRegion("full spmvm");
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("full spmvm");
 #endif
-
 	}
 
-#endif
-
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*ca_cycles = *asm_cycles - *cycles4measurement; 
-	}
-
-#ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
-
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
 #endif
 
 }
@@ -109,26 +81,19 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 
 #ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-
-#endif
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-#ifdef OPENCL
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
-
 #else
 
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
+#pragma omp parallel
+	{
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("local spmvm");
+#endif
+#pragma omp for schedule(runtime) private (hlp1, j)
 	for (i=0; i<lcrp->lnRows[*me]; i++){
 		hlp1 = 0.0;
 		for (j=lcrp->lrow_ptr_l[i]; j<lcrp->lrow_ptr_l[i+1]; j++){
@@ -139,14 +104,13 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 		else
 			res->val[i] = hlp1;
 	}
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("local spmvm");
+#endif
+	}
 
 #endif
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*lc_cycles = *asm_cycles - *cycles4measurement;
-
-	}
 }
 
 /*********** kernel for remote entries only *********************/
@@ -165,60 +129,36 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	real hlp1;
 
 #ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real), lcrp->lnRows[*me]*sizeof(real));
-
-
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-#endif
-
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
-#ifdef OPENCL
+	
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
+	
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
+		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 #else
 
 #pragma omp parallel
 	{
-	//likwid_markerStartRegion("remote spmvm");
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("remote spmvm");
+#endif
 #pragma omp for schedule(runtime) private (hlp1, j)
-	for (i=0; i<lcrp->lnRows[*me]; i++){
-		hlp1 = 0.0;
-		for (j=lcrp->lrow_ptr_r[i]; j<lcrp->lrow_ptr_r[i+1]; j++){
-			hlp1 = hlp1 + lcrp->rval[j] * invec->val[lcrp->rcol[j]]; 
+		for (i=0; i<lcrp->lnRows[*me]; i++){
+			hlp1 = 0.0;
+			for (j=lcrp->lrow_ptr_r[i]; j<lcrp->lrow_ptr_r[i+1]; j++){
+				hlp1 = hlp1 + lcrp->rval[j] * invec->val[lcrp->rcol[j]]; 
+			}
+			res->val[i] += hlp1;
 		}
-		res->val[i] += hlp1;
-	}
-	//likwid_markerStopRegion("remote spmvm");
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("remote spmvm");
+#endif
 
 	}
 
 #endif
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*nl_cycles = *asm_cycles - *cycles4measurement; 
-	}
-
-#ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
-
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-#endif
 }
 
 
@@ -234,25 +174,10 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 	 * lc_cycles: timing measurement for computation of local entries
 	 * cp_lin_cycles: timing for copy to device of local elements in input (rhs) vector */
 
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_lin_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
-
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*lc_cycles = *asm_cycles - *cycles4measurement; 
-	}
 }
 
 
@@ -268,102 +193,14 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	 * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
 	 *   copy from device of result */
 
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real),lcrp->lnRows[*me]*sizeof(real));
-
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_nlin_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-
-	IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 
-	IF_DEBUG(1){
-		for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-		*nl_cycles = *asm_cycles - *cycles4measurement; 
-	}
-
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
-		IF_DEBUG(1) for_timing_start_asm_( asm_cyclecounter);
-
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
 		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
-
-		IF_DEBUG(1){
-			for_timing_stop_asm_( asm_cyclecounter, asm_cycles);
-			*cp_res_cycles = *asm_cycles - *cycles4measurement; 
-		}
-	}
-
 } 
 #endif //CUDAKERNEL
-
-inline void vecscal(VECTOR_TYPE *vec, real s) {
-
-#ifdef OPENCL
-	CL_vecscal(vec->CL_val_gpu,s,vec->nRows);
-#else
-	int i;
-#pragma omp parallel
-	{
-	
-#ifdef LIKWID_MARKER
-	likwid_markerStartRegion("vecscal");
-#endif
-
-#pragma omp for private(i)
-	for (i=0; i<vec->nRows; i++)
-		vec->val[i] = s*vec->val[i];
-
-#ifdef LIKWID_MARKER
-	likwid_markerStopRegion("vecscal");
-#endif
-	}
-
-#endif
-}
-
-inline void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n) {
-
-#ifdef OPENCL
-	CL_dotprod(v1->CL_val_gpu,v2->CL_val_gpu,res,n);
-#else
-	int i;
-	real sum = 0;
-#pragma omp parallel 
-	{
-	
-#ifdef LIKWID_MARKER
-	likwid_markerStartRegion("dotprod");
-#endif
-#pragma omp for private(i) reduction(+:sum)
-	for (i=0; i<n; i++)
-		sum += v1->val[i]*v2->val[i];
-#ifdef LIKWID_MARKER
-	likwid_markerStopRegion("dotprod");
-#endif
-
-	}
-	*res = sum;
-#endif
-}
-
-inline void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s) {
-
-#ifdef OPENCL
-	CL_axpy(v1->CL_val_gpu,v2->CL_val_gpu,s,v1->nRows);
-#else
-	int i;
-#pragma omp parallel for private(i)
-	for (i=0; i<v1->nRows; i++)
-		v1->val[i] = v1->val[i] + s*v2->val[i];
-#endif
-}
-
-
 
 #endif

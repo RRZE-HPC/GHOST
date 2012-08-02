@@ -7,7 +7,8 @@
 
 
 
-void CL_init( int, int, const char*, SPM_GPUFORMATS *);
+void CL_init(SPM_GPUFORMATS *);
+cl_program CL_registerProgram(const char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
 void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats);
@@ -17,10 +18,11 @@ void CL_downloadVector( VECTOR_TYPE *vec );
 cl_mem CL_allocDeviceMemory( size_t );
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
-inline void CL_copyDeviceToHost( void*, cl_mem, size_t );
-inline cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem, size_t bytesize );
-inline void CL_copyHostToDevice( cl_mem, void*, size_t );
-inline void CL_copyHostToDeviceOffset( cl_mem, void*, size_t, size_t);
+void CL_copyDeviceToHost( void*, cl_mem, size_t );
+cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem,
+	   	size_t bytesize );
+void CL_copyHostToDevice( cl_mem, void*, size_t );
+void CL_copyHostToDeviceOffset( cl_mem, void*, size_t, size_t);
 void CL_freeDeviceMemory( cl_mem );
 void freeHostMemory( void* );
 void CL_finish();

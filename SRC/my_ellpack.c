@@ -991,23 +991,19 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 
 void freePJDS( PJDS_TYPE* const pjds ) {
 	if( pjds ) {
-		freeHostMemory( pjds->rowLen );
-		freeHostMemory( pjds->col );
-		freeHostMemory( pjds->colStart );
-		freeHostMemory( pjds->val );
-		//	freeHostMemory( pjds->invRowPerm );
-		//	freeHostMemory( pjds->rowPerm );
+		free( pjds->rowLen );
+		free( pjds->col );
+		free( pjds->colStart );
+		free( pjds->val );
 		free( pjds );
 	}
 }
 
 void freeELR( ELR_TYPE* const elr ) {
 	if( elr ) {
-		freeHostMemory( elr->rowLen );
-		freeHostMemory( elr->col );
-		freeHostMemory( elr->val );
-		//freeHostMemory( elr->invRowPerm );
-		//freeHostMemory( elr->rowPerm );
+		free( elr->rowLen );
+		free( elr->col );
+		free( elr->val );
 		free( elr );
 	}
 }

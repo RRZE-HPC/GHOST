@@ -1,8 +1,11 @@
 #include "spmvm_util.h"
 #include "spmvm_globals.h"
+#include "matricks.h"
+#include "mpihelper.h"
 
 #ifdef OPENCL
 #include "oclfun.h"
+#include "oclmacros.h"
 #endif
 
 #include <likwid.h>
@@ -14,8 +17,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-/* Global variables */
-const char* SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
+#ifdef OPENCL
+static cl_kernel axpyKernel;
+static cl_kernel vecscalKernel;
+static cl_kernel dotprodKernel;
+static int localSz = 256;
+#endif
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -27,12 +34,12 @@ typedef struct {
 #endif
 } PROPS;
 
-
-void usage() {
+void usage()
+{
 }
 
-
-void getOptions(int argc,  char * const *argv, PROPS *p) {
+void getOptions(int argc,  char * const *argv, PROPS *p)
+{
 
 	while (1) {
 		static struct option long_options[] =
@@ -105,23 +112,136 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 	}
 }
 
-void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold, real *alpha, real *beta, int kernel,  int iteration) {
+void vecscal(VECTOR_TYPE *vec, real s)
+{
+	
+#ifdef OPENCL
+	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
+				&vec->CL_val_gpu));
+	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
+	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
+
+	CL_enqueueKernel(vecscalKernel,256);	
+#else
+	int i;
+#pragma omp parallel
+	{
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("vecscal");
+#endif
+
+#pragma omp for private(i)
+		for (i=0; i<vec->nRows; i++)
+			vec->val[i] = s*vec->val[i];
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("vecscal");
+#endif
+	}
+
+#endif
+}
+
+void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
+{
+
+#ifdef OPENCL
+	int localSize = 256;
+	int resVecSize = v1->nRows/localSize; 
+	int i;
+	*res = 0.0;
+
+	VECTOR_TYPE *tmp = newVector(resVecSize*sizeof(real));
+
+	CL_safecall(clSetKernelArg(dotprodKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
+	CL_safecall(clSetKernelArg(dotprodKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
+	CL_safecall(clSetKernelArg(dotprodKernel,2,sizeof(cl_mem),
+				&tmp->CL_val_gpu));
+	CL_safecall(clSetKernelArg(dotprodKernel,3,sizeof(int),&n));
+	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(real)*localSize,NULL));
+
+	CL_enqueueKernel(dotprodKernel,localSize);
+
+	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(real));
+
+	for(i = 0; i < resVecSize; ++i) {
+		*res += tmp->val[i];
+	}
+	freeVector(tmp);
+#else
+	int i;
+	real sum = 0;
+#pragma omp parallel 
+	{
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("dotprod");
+#endif
+#pragma omp for private(i) reduction(+:sum)
+		for (i=0; i<n; i++)
+			sum += v1->val[i]*v2->val[i];
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("dotprod");
+#endif
+
+	}
+	*res = sum;
+#endif
+}
+
+void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
+{
+
+#ifdef OPENCL
+	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
+	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
+	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(real),&s));
+	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&v1->nRows));
+
+	CL_enqueueKernel(axpyKernel,256);
+#else
+	int i;
+#pragma omp parallel
+	{
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("axpy");
+#endif
+
+   
+#pragma omp for private(i)
+	for (i=0; i<v1->nRows; i++)
+		v1->val[i] = v1->val[i] + s*v2->val[i];
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("axpy");
+#endif
+
+	}
+#endif
+}
+
+void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
+	   	real *alpha, real *beta, int kernel,  int iteration)
+{
 	vecscal(vnew,-*beta);
 	HyK[kernel].kernel( iteration, vnew, lcrp, vold);
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
-	MPI_Allreduce(MPI_IN_PLACE, alpha,1,MPI_MYDATATYPE,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	axpy(vnew,vold,-(*alpha));
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
-	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=sqrt(*beta);
 	vecscal(vnew,1./(*beta));
 }
 
-real rhsVal (int i) {
+real rhsVal (int i)
+{
 	return i+1.0;
 }
 
-int main( int argc, char* argv[] ) {
+int main( int argc, char* argv[] )
+{
 
 	int ierr;
 	int me;
@@ -136,15 +256,15 @@ int main( int argc, char* argv[] ) {
 
 	int iteration;
 
-	real start, end, dummy, tstart, tend, time_it_took, tacc = 0;
-	int kernelIdx, kernel;
+	double start, end, dummy, tstart, tend, time_it_took, tacc = 0;
+	int kernel;
 
-	int kernels[] = {5,12/*5,10,12*/};
-	int numKernels = sizeof(kernels)/sizeof(int);
-	JOBMASK = 0;
 
-	for (i=0; i<numKernels; i++)
-		JOBMASK |= 0x1<<kernels[i];
+	SPMVM_KERNELS = 0;	
+	//SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
+	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
+	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
 
 	PROPS props;
 	props.nIter = 100;
@@ -152,7 +272,7 @@ int main( int argc, char* argv[] ) {
 	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_GPUFORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.T[0] = 2;
+	props.matrixFormats.T[0] = 1;
 	props.matrixFormats.T[1] = 2;
 	props.matrixFormats.T[2] = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
@@ -168,34 +288,47 @@ int main( int argc, char* argv[] ) {
 
 	getMatrixPath(argv[optind],props.matrixPath);
 	if (!props.matrixPath)
-		myabort("No correct matrix specified! (no absolute file name and not present in $MATHOME)");
+		myabort("No correct matrix specified! \
+				(no absolute file name and not present in $MATHOME)");
 	strcpy(props.matrixName,basename(props.matrixPath));
 
 	me      = SpMVM_init(argc,argv);       // basic initialization
-
-#ifdef LIKDIW_MARKER
-	likwid_markerInit();
-#endif
-
-#pragma omp parallel
-#pragma omp master
-	printf("Running with %d threads.\n",omp_get_num_threads());
-
-
-	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device after spmvm
-	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // performa y <- y + A*x
-
-	//LCRP_TYPE *lcrp = SpMVM_init ( props.matrixPath, &props.matrixFormats, &hlpvec_in, &resCR);
 	CR_TYPE *cr = SpMVM_createCRS ( props.matrixPath);
-	int nnz = cr->nEnts;
+	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
+
+
+	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
+	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device
+	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // perform y <- y + A*x
 
 	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	normalize(r0->val,r0->nRows);
 
-	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 
 #ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
+
+#ifdef DOUBLE
+#ifdef COMPLEX
+	char *opt = " -DDOUBLE -DCOMPLEX ";
+#else
+	char *opt = " -DDOUBLE ";
+#endif
+#endif
+
+#ifdef SINGLE
+#ifdef COMPLEX
+	char *opt = " -DSINGLE -DCOMPLEX ";
+#else
+	char *opt = " -DSINGLE ";
+#endif
+#endif
+	cl_program program = CL_registerProgram("SRC/lanczoskernels.cl",opt);
+
+	int err;
+	axpyKernel = clCreateKernel(program,"axpyKernel",&err);
+	dotprodKernel = clCreateKernel(program,"dotprodKernel",&err);
+	vecscalKernel = clCreateKernel(program,"vecscalKernel",&err);
 #endif
 
 	real *zero = (real *)malloc(lcrp->lnRows[me]*sizeof(real));
@@ -214,14 +347,18 @@ int main( int argc, char* argv[] ) {
 	SpMVM_printMatrixInfo(lcrp,props.matrixName);
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	for (kernelIdx=0; kernelIdx<numKernels; kernelIdx++){
-
-		kernel = kernels[kernelIdx];
+	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
 
 		/* Skip loop body if kernel does not make sense for used parametes */
-		if (kernel==0 && lcrp->nodes>1) continue;      /* no MPI available */
-		if (kernel>10 && kernel < 17 && lcrp->threads==1) continue; /* not enough threads */
-
+		if (!(0x1<<kernel & SPMVM_KERNELS)) {
+			continue; // kernel not selected
+		}
+		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) {
+			continue; // non-MPI kernel
+		}
+		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) {
+			continue; // not enough threads
+		}
 
 		//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
 		real *alphas  = (real *)malloc(sizeof(real)*props.nIter);
@@ -250,7 +387,8 @@ int main( int argc, char* argv[] ) {
 				timing(&start,&dummy);
 			}
 #ifdef OPENCL	
-			event = CL_copyDeviceToHostNonBlocking( vnew->val, vnew->CL_val_gpu, lcrp->lnRows[me]*sizeof(real) );
+			event = CL_copyDeviceToHostNonBlocking(vnew->val, vnew->CL_val_gpu,
+				   	lcrp->lnRows[me]*sizeof(real));
 #endif
 			swapVectors(vnew,vold);
 
@@ -260,7 +398,7 @@ int main( int argc, char* argv[] ) {
 			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
 
 			if(ferr != 0) {
-				printf("> Error: the %d. eigenvalue could not be determined\n",ferr);
+				printf("Error: the %d. ev could not be determined\n",ferr);
 			}
 			if (me == 0) {
 				timing(&end,&dummy);
@@ -275,10 +413,19 @@ int main( int argc, char* argv[] ) {
 			if (me == 0) {
 				timing(&start,&dummy);
 				timing(&tstart,&dummy);
-			
+
 			}
 
+#ifdef LIKWID_MARKER
+			char regionName[] = "lanczosStep";
+#pragma omp parallel
+			likwid_markerStartRegion(regionName);
+#endif
 			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,iteration);
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+			likwid_markerStopRegion(regionName);
+#endif
 			if (me == 0) {
 				timing(&end,&dummy);
 				time_it_took = end-start;
@@ -291,7 +438,8 @@ int main( int argc, char* argv[] ) {
 			if (me==0) {
 				timing(&tend,&dummy);
 				tacc += tend-tstart;
-				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,falphas[0]);
+				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,
+						REAL(falphas[0]));
 				fflush(stdout);
 			}
 
@@ -303,23 +451,14 @@ int main( int argc, char* argv[] ) {
 	}
 
 
-	MPI_Barrier(MPI_COMM_WORLD);
-
 	freeHostVector( r0 );
 	freeVector( vold );
 	freeVector( vnew );
 	freeVector( evec );
 	freeLcrpType( lcrp );
+	freeCRMatrix( cr );
 
-#ifdef LIKWID_MARKER
-	likwid_markerClose();
-#endif
-
-	MPI_Finalize();
-
-#ifdef OPENCL
-	CL_finish();
-#endif
+	SpMVM_finish();
 
 	return EXIT_SUCCESS;
 
