@@ -35,7 +35,6 @@ void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len,
 		c.x = invec->x + inoutvec->x;
 		c.y = invec->y + inoutvec->y;
 		*inoutvec = c;
-
 	}
 }
 #endif

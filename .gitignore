@@ -4,6 +4,7 @@
 *.bin
 src/*.swp
 examples/*/*.swp
+examples/*/*.o
 src/include/*.swp
 src/tags
 obj/

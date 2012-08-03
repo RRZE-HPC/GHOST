@@ -9,7 +9,7 @@
 #define VECSCAL_KERNEL 5
 
 
-#define DEBUG 1 
+#define DEBUG 0 
 #define xMAIN_DIAGONAL_FIRST
 
 #define PJDS_CHUNK_HEIGHT 32

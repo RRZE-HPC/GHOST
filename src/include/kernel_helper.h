@@ -178,8 +178,10 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 	 * lc_cycles: timing measurement for computation of local entries
 	 * cp_lin_cycles: timing for copy to device of local elements in input (rhs) vector */
 
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, 
+				lcrp->lnRows[*me]*sizeof(real));
+	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
 }

@@ -48,18 +48,18 @@ kernel void pJDS1kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 
 }
 
-kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen) {
-
+kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
+	   	int pad, global clreal *val, global int *col, global int *rowLen) 
+{
 	int row = get_global_id(0);
 	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
+	
 	if (row < nRows) {
-
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];
 			rhs = rhsVec[idcol];
-
 #ifdef COMPLEX
 			svalue.s0 += (value.s0*rhs.s0 - value.s1*rhs.s1);
 			svalue.s1 += (value.s0*rhs.s1 + value.s1*rhs.s0);

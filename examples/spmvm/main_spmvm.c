@@ -139,7 +139,7 @@ int main( int argc, char* argv[] ) {
 
 	SPMVM_KERNELS = 0;	
 //	SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-//	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
 	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
 	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
 	
@@ -177,7 +177,7 @@ int main( int argc, char* argv[] ) {
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 	goldLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
-	nodeLHS = newVector( lcrp->lnRows[me] );
+	nodeLHS = newVector(lcrp->lnRows[me]);
 
 	if (me==0)
 	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
@@ -189,9 +189,12 @@ int main( int argc, char* argv[] ) {
 	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
 
 		/* Skip loop body if kernel does not make sense for used parametes */
-		if (!(0x1<<kernel & SPMVM_KERNELS)) continue;                             // kernel not selected
-		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) continue;       // non-MPI kernel
-		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) continue; // not enough threads
+		if (!(0x1<<kernel & SPMVM_KERNELS)) 
+			continue; // kernel not selected
+		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
+			continue; // non-MPI kernel
+		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
+			continue; // not enough threads
 
 		MPI_Barrier(MPI_COMM_WORLD);
 		if (me == 0)
@@ -234,7 +237,7 @@ int main( int argc, char* argv[] ) {
 					errcount++;
 				}
 			}
-			printf("Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/(end-start),(end-start)*1.e3/props.nIter);
+			printf("It: %3d, Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",iteration,kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/(end-start),(end-start)*1.e3/props.nIter);
 		}
 
 		zeroVector(nodeLHS);
