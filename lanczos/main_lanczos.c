@@ -121,7 +121,7 @@ void vecscal(VECTOR_TYPE *vec, real s)
 	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
 
-	CL_enqueueKernel(vecscalKernel,256);	
+	CL_enqueueKernel(vecscalKernel,localSz);	
 #else
 	int i;
 #pragma omp parallel
@@ -199,7 +199,7 @@ void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
 	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&v1->nRows));
 
-	CL_enqueueKernel(axpyKernel,256);
+	CL_enqueueKernel(axpyKernel,localSz);
 #else
 	int i;
 #pragma omp parallel
@@ -233,6 +233,7 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=sqrt(*beta);
 	vecscal(vnew,1./(*beta));
+	printf("%f\n",*beta);
 }
 
 real rhsVal (int i)
@@ -261,10 +262,8 @@ int main( int argc, char* argv[] )
 
 
 	SPMVM_KERNELS = 0;	
-	
-	
-	SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-	//SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
+	//SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
+	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
 	//SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
 	//SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
 
@@ -272,10 +271,10 @@ int main( int argc, char* argv[] )
 	props.nIter = 100;
 #ifdef OPENCL
 	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.format[1] = SPM_GPUFORMAT_PJDS;
+	props.matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.T[0] = 1;
-	props.matrixFormats.T[1] = 2;
+	props.matrixFormats.T[1] = 1;
 	props.matrixFormats.T[2] = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
 	cl_mem tmp;
@@ -302,6 +301,7 @@ int main( int argc, char* argv[] )
 	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
 	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device
 	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // perform y <- y + A*x
+	SPMVM_OPTIONS |= SPMVM_OPTION_PERMCOLS;   // permute columns of matrix
 
 	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	normalize(r0->val,r0->nRows);
@@ -325,7 +325,7 @@ int main( int argc, char* argv[] )
 	char *opt = " -DSINGLE ";
 #endif
 #endif
-	cl_program program = CL_registerProgram("/home/hpc/unrz/unrza317/proj/SpMVM/Hybrid-stripped/examples/lanczos/lanczoskernels.cl",opt);
+	cl_program program = CL_registerProgram("/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm/examples/lanczos/lanczoskernels.cl",opt);
 
 	int err;
 	axpyKernel = clCreateKernel(program,"axpyKernel",&err);
