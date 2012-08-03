@@ -1,5 +1,5 @@
 CC=mpicc
-CFLAGS=-O3 -openmp $(MAKROS) $(IPATH)
+CFLAGS=-g -openmp $(MAKROS) $(IPATH)
 IPATH=$(LIKWID_INC) -I../src/include 
 LPATH=$(LIKWID_LIB) -L..
 LIBS=-l$(PREFIX)spmvm -llikwid
