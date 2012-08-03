@@ -129,13 +129,17 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	real hlp1;
 
 #ifdef OPENCL
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real), lcrp->lnRows[*me]*sizeof(real));
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
+				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real), 
+				lcrp->lnRows[*me]*sizeof(real));
+	}
 	
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 	
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT)) {
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, res->nRows*sizeof(real));
+	}
 #else
 
 #pragma omp parallel
@@ -193,13 +197,17 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	 * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
 	 *   copy from device of result */
 
-	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDeviceOffset(invec->CL_val_gpu, invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real),lcrp->lnRows[*me]*sizeof(real));
+	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
+		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
+				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real),
+				lcrp->lnRows[*me]*sizeof(real));
+	}
+
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, res->nRows*sizeof(real));
 } 
 #endif //CUDAKERNEL
 

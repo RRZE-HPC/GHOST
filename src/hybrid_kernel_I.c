@@ -37,7 +37,7 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
    /*****************************************************************************
     *******            ........ Executable statements ........           ********
     ****************************************************************************/
-   IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
+   //IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
 
    ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
@@ -55,7 +55,7 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
 	 hlp_recv += lcrp->wishes[i];
       }
 
-      IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
+      //IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
 
 
       size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( real  ) );
@@ -84,7 +84,7 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
    /*****************************************************************************
     *******                Initiate MPI_IRecv calls                       *******
     ****************************************************************************/
-   IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
+   //IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
    for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
       if (lcrp->wishes[from_PE]>0){
@@ -95,14 +95,14 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
       }
    }
 
-   IF_DEBUG(1){
+   /*IF_DEBUG(1){
       for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles);
       ir_cycles = asm_cycles - cycles4measurement; 
-   }
+   }*/
    /*****************************************************************************
     *******       Local assembly of halo-elements  & Communication       ********
     ****************************************************************************/
-   IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
+  // IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
    for (to_PE=0 ; to_PE<lcrp->nodes ; to_PE++){
       for (j=0; j<lcrp->dues[to_PE]; j++){
@@ -116,22 +116,22 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
       }
    }
 
-   IF_DEBUG(1){
+  /* IF_DEBUG(1){
       for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles);
       cs_cycles = asm_cycles - cycles4measurement; 
-   }
+   }*/
    /*****************************************************************************
     *******       Finishing communication MPI_Waitall                     *******
     ****************************************************************************/
-   IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
+  // IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
    ierr = MPI_Waitall(send_messages, send_request, send_status);
    ierr = MPI_Waitall(recv_messages, recv_request, recv_status);
 
-   IF_DEBUG(1){
+  /* IF_DEBUG(1){
       for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles);
       wa_cycles = asm_cycles - cycles4measurement; 
-   }
+   }*/
    /*****************************************************************************
     *******         Calculation of SpMVM for all entries of invec->val         *******
     ****************************************************************************/
@@ -143,7 +143,7 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
     *******    Writeout of timing res->valults for individual contributions    *******
     ****************************************************************************/
 
-   IF_DEBUG(1){
+  /* IF_DEBUG(1){
 
       for_timing_stop_asm_( &glob_cyclecounter, &glob_cycles);
       glob_cycles = glob_cycles - cycles4measurement; 
@@ -186,7 +186,7 @@ void hybrid_kernel_I(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
       printf("HyK_V: PE %d: It %d: Kompletter Hybrid-kernel [ms]     : %8.3f\n", 
 	    me, current_iteration, 1000*time_it_took); fflush(stdout); 
 
-   }
+   }*/
 
 }
 

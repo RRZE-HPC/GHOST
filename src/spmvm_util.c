@@ -4,6 +4,11 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <mpihelper.h>
+#ifdef OPENCL
+#include "oclfun.h"
+#include "my_ellpack.h"
+#endif
+
 
 
 #ifdef COMPLEX
@@ -38,14 +43,14 @@ void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len,
 int SpMVM_init(int argc, char **argv)
 {
 
-	int ierr, me, req, prov;
+	int me, req, prov;
 	req = MPI_THREAD_MULTIPLE;
-	ierr = MPI_Init_thread(&argc, &argv, req, &prov );
+	MPI_Init_thread(&argc, &argv, req, &prov );
 
 	if (req != prov)
 		fprintf(stderr, "Required MPI threading level (%d) is not \
 				provided (%d)!\n",req,prov);
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 
 #ifdef COMPLEX
@@ -87,15 +92,12 @@ void SpMVM_finish()
 CR_TYPE * SpMVM_createCRS (char *matrixPath)
 {
 
-	int ierr;
+	
 	int me;
-	int i;
-
 	CR_TYPE *cr;
 	MM_TYPE *mm;
 
-
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
@@ -124,12 +126,12 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath)
 
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
-	int ierr;
+	
 	int me;
 	int i;
 
 
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 
 
@@ -145,7 +147,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 		nodeVec->val[i] = 77.0;
 
 	/* Scatter the input vector from the master node to all others */
-	ierr = MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
+	MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
 			nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD );
 
 	return nodeVec;
@@ -153,26 +155,22 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec) {
-	int ierr;
+	
 	int me;
 
 
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 	MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 			lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD);
 }
 
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr)
 {
-
-	int node_rank, node_size;
-	int ierr;
 	int me;
-	int i;
 	char hostname[MAXHOSTNAMELEN];
 	int me_node;
 
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 	gethostname(hostname,MAXHOSTNAMELEN);
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
 
@@ -187,9 +185,9 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 
 	int me;
 	size_t ws;
-	int ierr;
+	
 
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 #ifdef OPENCL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
@@ -243,9 +241,9 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
 {
-	int ierr;
+	
 	int me;
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 	if (me==0) {
 		return newHostVector( nRows,fp );

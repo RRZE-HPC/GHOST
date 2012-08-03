@@ -1,5 +1,5 @@
 CC	= mpicc
-CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -Wall -Werror-all -fPIC #-Wremarks -Wcheck
+CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC #-Wall -Werror-all -Wremarks -Wcheck 
 
 FC	= mpif90
 FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp -fPIC

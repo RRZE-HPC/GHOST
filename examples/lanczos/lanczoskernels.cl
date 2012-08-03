@@ -25,20 +25,22 @@ typedef float clreal;
 #endif
 #endif
 
-kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nRows){
+kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nRows)
+{
 	int i = get_global_id(0); 
 	if (i<nRows)
 		a[i] += s*b[i]; 
 }
 
-kernel void vecscalKernel(global clreal *a, clreal scal, int nRows){
+kernel void vecscalKernel(global clreal *a, clreal scal, int nRows)
+{
 	int i = get_global_id(0);
 	if (i<nRows)	
 		a[i] *= scal; 
 } 
 
-
-kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nRows, local volatile clreal *shared) {
+kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nRows, local volatile clreal *shared) 
+{
 
 	unsigned int tid = get_local_id(0);
 	unsigned int i = get_global_id(0);

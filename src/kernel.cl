@@ -55,7 +55,6 @@ kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
 	int i, idcol;
 	if (row < nRows) {
 
-
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];
@@ -374,7 +373,9 @@ kernel void ELR16kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 	}
 }
 
-kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart) {
+kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec, 
+		int nRows, global clreal *val, global int *col, global int *rowLen, 
+		global int *colStart) {
 
 	int row = get_global_id(0);
 	clreal svalue = 0.0, value, rhs;
@@ -398,14 +399,14 @@ kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec, int nR
 
 }
 
-kernel void ELR1kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen) {
+kernel void ELR1kernelAdd (global clreal *resVec, global clreal *rhsVec, 
+		int nRows, int pad, global clreal *val, global int *col, 
+		global int *rowLen) {
 
 	int row = get_global_id(0);
 	clreal svalue = 0.0, value, rhs;
 	int i, idcol;
 	if (row < nRows) {
-
-
 		for( i = 0; i < rowLen[row]; ++i) {
 			value = val[i*pad+row];
 			idcol = col[i*pad+row];

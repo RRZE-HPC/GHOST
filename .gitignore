@@ -3,6 +3,7 @@
 *.a
 *.bin
 src/*.swp
+examples/*/*.swp
 src/include/*.swp
 src/tags
 obj/

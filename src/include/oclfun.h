@@ -8,7 +8,7 @@
 
 
 void CL_init(SPM_GPUFORMATS *);
-cl_program CL_registerProgram(const char *filename, const char *options);
+cl_program CL_registerProgram(char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
 
 void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats);

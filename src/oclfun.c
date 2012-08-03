@@ -3,6 +3,8 @@
 #include "matricks.h"
 #include <string.h>
 #include <stdlib.h>
+#include <libgen.h>
+#include <unistd.h>
 
 extern int SPMVM_OPTIONS;
 
@@ -14,6 +16,10 @@ static size_t localSize[3] = {256,256,256};
 static size_t globalSize[3];
 static size_t globalSz;
 static size_t localSz = 256;
+
+static int rank;
+static int size;
+static char hostname[MAXHOSTNAMELEN];
 
 void pfn_notify(const char *err, const void *priv, size_t cb, void *user_data) 
 {
@@ -29,8 +35,6 @@ void pfn_notify(const char *err, const void *priv, size_t cb, void *user_data)
    ------------------------------------------------------------------------- */
 void CL_init(SPM_GPUFORMATS *matFormats)
 {
-	int rank, size;
-	char hostname[MAXHOSTNAMELEN];
 	cl_uint numPlatforms;
 	cl_platform_id *platformIDs;
 	cl_int err;
@@ -104,53 +108,6 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	CL_checkerror(err);
 
 
-	FILE *fp;
-	char *source_str;
-	size_t source_size;
-	char *build_log;
-	size_t log_size;
-	long filesize;
-
-
-	fp = fopen("src/kernel.cl", "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to load kernel.\n");
-		exit(1);
-	}
-	fseek(fp,0L,SEEK_END);
-	filesize = ftell(fp);
-	fseek(fp,0L,SEEK_SET);
-
-	source_str = (char*)allocateMemory(filesize,"source");
-	source_size = fread( source_str, 1, filesize, fp);
-	fclose( fp );
-
-	/*
-	   fp=fopen("clkernels.bin","r");
-	   if (!fp) {
-	   fprintf(stderr, "Failed to load binaries.\n");
-	   exit(1);
-	   }
-	   fseek(fp,0L,SEEK_END);
-	   filesize = ftell(fp);
-	   fseek(fp,0L,SEEK_SET);
-	   unsigned char *binaryRead = (unsigned char *)allocateMemory(filesize,
-	   "binaryRead");
-
-	   fread(binaryRead,1,filesize,fp);
-	   fclose(fp);*/
-
-
-
-
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program\n", rank, 
-			size-1, hostname);
-	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
-			&source_size,&err);
-	//program = clCreateProgramWithBinary(context,1,&deviceIDs[takedevice],
-	//&(size_t)filesize,&(const unsigned char *)binaryRead,NULL,NULL); //TODO
-	CL_checkerror(err);
-
 #ifdef DOUBLE
 #ifdef COMPLEX
 	char *opt = " -DDOUBLE -DCOMPLEX ";
@@ -167,40 +124,8 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 #endif
 #endif
 
-
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program with \"%s\" \
-			and creating kernels\n", rank, size-1, hostname,opt);
-	CL_safecall(clBuildProgram(program,1,&deviceIDs[takedevice],opt,NULL,NULL));
-
-	/*size_t binarySize;
-	  unsigned char * binary;
-	  CL_safecall(clGetProgramInfo(program,CL_PROGRAM_BINARY_SIZES,
-	  1*sizeof(size_t),&binarySize,NULL));
-	  binary = (unsigned char *)allocateMemory(binarySize,"binary");
-	  CL_safecall(clGetProgramInfo(program,CL_PROGRAM_BINARIES,binarySize,
-	  &binary,NULL));
-
-	  fp = fopen("clkernels.bin", "w");
-	  if (!fp) {
-	  fprintf(stderr, "Failed to write binary.\n");
-	  exit(1);
-	  }
-	  fwrite(binary,1,binarySize,fp);
-	  fclose(fp);*/
-
-
-
-
-
-	IF_DEBUG(1) {
-		CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],
-					CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
-		build_log = (char *)allocateMemory(log_size+1,"build log");
-		CL_safecall(clGetProgramBuildInfo(program,deviceIDs[takedevice],
-					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-		printf("Build log: %s",build_log);
-	}
-
+	program = CL_registerProgram("src/kernel.cl",opt);
+	
 	int i;
 	for (i=0; i<3; i++) {
 
@@ -212,11 +137,13 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 
 		strcat(kernelName,Tstr);
 		strcat(kernelName,"kernel");
-		if (i==SPM_KERNEL_REMOTE || SPMVM_OPTIONS & SPMVM_OPTION_AXPY)
+		if (i==SPM_KERNEL_REMOTE || (SPMVM_OPTIONS & SPMVM_OPTION_AXPY))
 			strcat(kernelName,"Add");
 
 
 		kernel[i] = clCreateKernel(program,kernelName,&err);
+
+		IF_DEBUG(1) printf("creating kernel %s\n",kernelName);
 		CL_checkerror(err);
 	}
 
@@ -225,7 +152,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 }
 
 // create program inside previously created context and build it
-cl_program CL_registerProgram(const char *filename, const char *opt)
+cl_program CL_registerProgram(char *filename, const char *opt)
 {
 	cl_program program;
 	cl_int err;
@@ -241,7 +168,13 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 				sizeof(cl_device_id),&deviceID,NULL));
 
 	fp = fopen(filename, "r");
-	if (!fp) myabort("Failed to load kernel.");
+	if (!fp) {
+		char err[] = "Failed to load kernel file: ";
+		char msg[strlen(err)+strlen(filename)];
+		strcpy(err,msg);
+		strcat(msg,filename);
+		myabort(msg);
+	}
 
 	fseek(fp,0L,SEEK_END);
 	filesize = ftell(fp);
@@ -250,12 +183,27 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 	source_str = (char*)allocateMemory(filesize,"source");
 	source_size = fread( source_str, 1, filesize, fp);
 	fclose( fp );
+	
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
+			size-1, hostname,basename(filename));
 
 	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
 			&source_size,&err);
 	CL_checkerror(err);
+	
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program with \"%s\""
+			"and creating kernels\n", rank, size-1, hostname,opt);
 
 	CL_safecall(clBuildProgram(program,1,&deviceID,opt,NULL,NULL));
+
+	IF_DEBUG(1) {
+		CL_safecall(clGetProgramBuildInfo(program,deviceID,
+					CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
+		build_log = (char *)allocateMemory(log_size+1,"build log");
+		CL_safecall(clGetProgramBuildInfo(program,deviceID,
+					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
+		printf("Build log: %s",build_log);
+	}
 
 	return program;
 }
@@ -343,9 +291,10 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 					&matrix->col));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
 					&matrix->rowLen));
-		if (T>1)
+		if (T>1) {
 			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,
 						sizeof(real)*localSize[kernelIdx],NULL));
+		}
 		globalSz = matrix->padding;
 	} else {
 		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
@@ -361,9 +310,10 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 					&matrix->rowLen));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
 					&matrix->colStart));
-		if (T>1)
+		if (T>1) {
 			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,
 						sizeof(real)*localSize[kernelIdx],NULL));
+		}
 		globalSz = matrix->padding;
 	}
 }
@@ -400,18 +350,6 @@ void CL_finish()
 void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats)
 {
 
-	int node_rank, node_size;
-	int ierr;
-	int me;
-	int i;
-	char hostname[MAXHOSTNAMELEN];
-	int me_node;
-
-	ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	gethostname(hostname,MAXHOSTNAMELEN);
-
-	ierr = MPI_Comm_size( single_node_comm, &node_size);
-	ierr = MPI_Comm_rank( single_node_comm, &node_rank);
 	CL_init(matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
 
@@ -590,7 +528,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 
 			rcelr = CL_initELR( relr );
-
 			CL_uploadELR(rcelr, relr);
 			lcrp->remoteMatrix = rcelr;
 			lcrp->remoteFormat = SPM_GPUFORMAT_ELR;

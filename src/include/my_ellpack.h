@@ -81,4 +81,5 @@ void CL_freeMatrix(void *matrix, int format);
 
 void elrColIdToFortran( ELR_TYPE* elr );
 void elrColIdToC( ELR_TYPE* elr );
+size_t getBytesize(void *mat, int format); 
 #endif

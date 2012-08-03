@@ -9,7 +9,7 @@
 #define VECSCAL_KERNEL 5
 
 
-#define DEBUG 0 
+#define DEBUG 1 
 #define xMAIN_DIAGONAL_FIRST
 
 #define PJDS_CHUNK_HEIGHT 32
@@ -145,7 +145,7 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 	 ierr = MPI_Comm_rank ( single_node_comm, &me_node );                  \
 	 ierr = MPI_Reduce ( &individual_mem, &naccmem, 1, MPI_MYDATATYPE,         \
                              MPI_MYSUM, 0, single_node_comm);                    \
-         coreId = likwid_processGetProcessorId();                              \
+         coreId = likwid_getProcessorId();                              \
          if (coreId==0){                                                       \
 	    IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));      \
 	    if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                  \
@@ -161,20 +161,20 @@ printf("%-23s [s] : %12.3f\n", identifier, time_it_took );}
 #define NUMA_CHECK_SERIAL(identifier)                                          \
          {                                                                     \
          double naccmem;                                                       \
-         int ierr, me;                                                         \
+         int mee;                                                         \
          int ns0=0;                                                            \
          int ns1=0;                                                            \
          int nf0=0;                                                            \
          int nf1=0;                                                            \
          naccmem = (real) allocatedMem;                                      \
-         ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );                         \
-	 IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", me, naccmem/(1024.0*1024.0));         \
+         MPI_Comm_rank ( MPI_COMM_WORLD, &mee );                         \
+	 IF_DEBUG(1) printf("PE:%d acc_mem=%6.3f\n", mee, naccmem/(1024.0*1024.0));         \
 	 if ( get_NUMA_info(&ns0, &nf0, &ns1, &nf1) != 0 )                     \
 	    mypabort("failed to retrieve NUMA-info");                          \
 	 IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-0: %5d (%5d )MB free\n",                  \
-                 me, identifier, nf0, ns0);                                    \
+                 mee, identifier, nf0, ns0);                                    \
 	 IF_DEBUG(1) printf("PE%d: %23s: NUMA-LD-1: %5d (%5d )MB free\n",                  \
-                 me, identifier, nf1, ns1);                                    \
+                 mee, identifier, nf1, ns1);                                    \
          fflush(stdout);                                                       \
          } 
 

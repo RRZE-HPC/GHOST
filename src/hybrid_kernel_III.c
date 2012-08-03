@@ -3,8 +3,9 @@
 #include <omp.h>
 #include <sys/types.h>
 #include <likwid.h>
+#include "kernel_helper.h"
 
-extern int SPMVM_OPTIONS;
+//extern int SPMVM_OPTIONS;
 void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	/*****************************************************************************
@@ -50,7 +51,7 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	/*****************************************************************************
 	 *******            ........ Executable statements ........           ********
 	 ****************************************************************************/
-	IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
+//	IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
 
 	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
@@ -68,7 +69,7 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 			hlp_recv += lcrp->wishes[i];
 		}
 
-		IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
+	//	IF_DEBUG(2) printf("Hybrid_kernel: PE %d: max_dues= %d\n", me, max_dues);
 
 
 
@@ -99,7 +100,7 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	/*****************************************************************************
 	 *******        Post of Irecv to ensure that we are prepared...       ********
 	 ****************************************************************************/
-	IF_DEBUG(1) for_timing_start_asm_( &asm_acccyclecounter);
+//	IF_DEBUG(1) for_timing_start_asm_( &asm_acccyclecounter);
 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
@@ -110,10 +111,10 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 		}
 	}
 
-	IF_DEBUG(1){
+/*	IF_DEBUG(1){
 		for_timing_stop_asm_( &asm_acccyclecounter, &asm_cycles);
 		ir_cycles = asm_cycles - cycles4measurement; 
-	} 
+	} */
 	/*****************************************************************************
 	 *******                          Overlap region                       *******
 	 ****************************************************************************/
@@ -195,8 +196,8 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 			if (tid < lcrp->threads-2)  n_local = n_per_thread;
 			else                        n_local = lcrp->lnRows[me]-(lcrp->threads-2)*n_per_thread;
 
-			IF_DEBUG(2) printf("HyK_XII: PE%d thread%d: von %d bis %d\n", 
-					me, tid, tid*n_per_thread, tid*n_per_thread+n_local-1);
+		//	IF_DEBUG(2) printf("HyK_XII: PE%d thread%d: von %d bis %d\n", 
+					//me, tid, tid*n_per_thread, tid*n_per_thread+n_local-1);
 
 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
@@ -219,10 +220,10 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 		likwid_markerStopRegion("task mode comm (= last core) + local comp");
 #endif
 	}
-	IF_DEBUG(1){
+/*	IF_DEBUG(1){
 		for_timing_stop_asm_( &asm_acccyclecounter, &asm_cycles);
 		pr_cycles = asm_cycles - cycles4measurement; 
-	}
+	}*/
 	/**************************************************************************
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
@@ -233,7 +234,7 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 	/*****************************************************************************
 	 *******    Writeout of timing res->valults for individual contributions    *******
 	 ****************************************************************************/
-	IF_DEBUG(1){
+/*	IF_DEBUG(1){
 
 		for_timing_stop_asm_( &glob_cyclecounter, &glob_cycles);
 		glob_cycles = glob_cycles - cycles4measurement; 
@@ -285,6 +286,6 @@ void hybrid_kernel_III(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp,
 		printf("HyK_XII: PE %d: It %d: Kompletter Hybrid-kernel [ms]     : %8.3f\n", 
 				me, current_iteration, 1000*time_it_took); fflush(stdout); 
 
-	}
+	}*/
 
 }

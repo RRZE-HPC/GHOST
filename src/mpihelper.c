@@ -2,10 +2,13 @@
 #include "matricks.h"
 //#include "mymacros.h"
 #include <stdio.h>
+#include <string.h>
 #include <sys/param.h>
 #define _GNU_SOURCE
 #include <sched.h>
 #include <likwid.h>
+#include <math.h>
+#include <omp.h>
 
 void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) {
 
@@ -21,7 +24,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    
    ierr = MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
    ierr = MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-   coreId = likwid_processGetProcessorId();//sched_getcpu();
+   coreId = likwid_getProcessorId();//sched_getcpu();
 
    size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );

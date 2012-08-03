@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 size_t getBytesize(void *mat, int format) {
@@ -191,6 +192,7 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 		const int* crs_row_ptr, const int nRows, int threadsPerRow) {
 
 	int i, j;
+	int idb,stack;
 	ELR_TYPE* elr = NULL;
 
 	elr = (ELR_TYPE *) allocateMemory(sizeof(ELR_TYPE ),"elr");
@@ -198,20 +200,23 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 	getPadding(nRows,&elr->padding);
 
 	elr->nMaxRow   = 0;
-	for (i=0; i<nRows; ++i) 
-		elr->nMaxRow = (elr->nMaxRow > crs_row_ptr[i+1]-crs_row_ptr[i])?elr->nMaxRow:crs_row_ptr[i+1]-crs_row_ptr[i];
+	for (i=0; i<nRows; ++i) { 
+		elr->nMaxRow = (elr->nMaxRow > crs_row_ptr[i+1]-crs_row_ptr[i])?
+			elr->nMaxRow:crs_row_ptr[i+1]-crs_row_ptr[i];
+	}
 
 	if (elr->nMaxRow%threadsPerRow != 0)
 		elr->nMaxRow += threadsPerRow-elr->nMaxRow%threadsPerRow;
 
-//	printf("2: %e+%ei\n",REAL(crs_val[0]),IMAG(crs_val[0]));
+	elr->rowLen = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
+	elr->col = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,
+			"elr->col"); 
+	elr->val = (real*)allocateMemory(sizeof(real)*elr->padding*elr->nMaxRow,
+			"elr->val"); 
+	elr->T = threadsPerRow;
 
-	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
-	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
-	elr->val         = (real*)allocateMemory(sizeof(real)*elr->padding*elr->nMaxRow,"elr->val"); 
-	elr->T			 = threadsPerRow;
 
-
+	// initialize
 	for( j=0; j < elr->nMaxRow; ++j) {
 		for( i=0; i < elr->padding; ++i) {
 			elr->col[i+j*elr->padding] = 0;
@@ -219,23 +224,25 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 		}
 	}
 
+	// copy row lenghts
 	for( i=0; i < elr->nRows; ++i) {
 		elr->rowLen[i] = crs_row_ptr[i+1]-crs_row_ptr[i];
 	}
 
-	int idb,stack;
-
-
+	// copy values and column indices
 	for( i = 0; i < elr->nRows; ++i) {
 		for( j = 0; j < elr->rowLen[i]; ++j) {
-
 			idb = j%threadsPerRow;
 			stack = j/threadsPerRow;
-			elr->col[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_col[ crs_row_ptr[i]+j ];
-			elr->val[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_val[ crs_row_ptr[i]+j ];
+			elr->col[stack*threadsPerRow*elr->padding + threadsPerRow*i + idb] =
+			   	crs_col[ crs_row_ptr[i]+j ];
+			elr->val[stack*threadsPerRow*elr->padding + threadsPerRow*i + idb] =
+			   	crs_val[ crs_row_ptr[i]+j ];
 		}
 	}
 
+
+	// pad row lenghts
 	for( i=0; i < elr->nRows; ++i) {
 		if (elr->rowLen[i]%threadsPerRow != 0)
 			elr->rowLen[i] += threadsPerRow-elr->rowLen[i]%threadsPerRow;
@@ -383,9 +390,6 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 	return elr;
 
 }
-
-
-/**********************  sorted ELR MATRIX TYPE *********************************/
 
 ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
@@ -551,8 +555,6 @@ void checkCRStToPJDS(const real* crs_val, const int* crs_col,
 
 }
 
-/**********************  ELR MATRIX TYPE *********************************/
-
 ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
 
@@ -633,9 +635,6 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 
 	return elr;
 }
-
-
-/* ########################################################################## */
 
 
 void checkCRSToELR(	const real* crs_val, const int* crs_col, 

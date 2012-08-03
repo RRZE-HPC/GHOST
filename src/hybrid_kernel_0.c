@@ -1,5 +1,6 @@
 #include <matricks.h>
 #include <mpi.h>
+#include "kernel_helper.h"
 
 void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
@@ -22,13 +23,13 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
   /*****************************************************************************
    *******            ........ Executable statements ........           ********
    ****************************************************************************/
-  IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
+  //IF_DEBUG(1) for_timing_start_asm_( &glob_cyclecounter);
 
    
   /*****************************************************************************
    *******         Calculation of SpMVM for all entries of invec->val         *******
    ****************************************************************************/
-  IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
+  //IF_DEBUG(1) for_timing_start_asm_( &asm_cyclecounter);
 
   spmvmKernAll( lcrp, invec, res, &asm_cyclecounter, &asm_cycles, &cycles4measurement,
               &ca_cycles, &cp_in_cycles, &cp_res_cycles, &me);
@@ -45,15 +46,15 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
      res->val[i] = hlp1;
   }
 */
-  IF_DEBUG(1){
+ /* IF_DEBUG(1){
      for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles);
      ca_cycles = asm_cycles - cycles4measurement; 
-  }
+  }*/
   /*****************************************************************************
    *******    Writeout of timing res->valults for individual contributions    *******
    ****************************************************************************/
 
-  IF_DEBUG(1){
+  /*IF_DEBUG(1){
 
      for_timing_stop_asm_( &glob_cyclecounter, &glob_cycles);
      glob_cycles = glob_cycles - cycles4measurement; 
@@ -82,6 +83,6 @@ void hybrid_kernel_0(int current_iteration, VECTOR_TYPE* res, LCRP_TYPE* lcrp, V
     printf("HyK_I: PE %d: It %d: Kompletter Hybrid-kernel [ms]     : %8.3f\n", 
 	   me, current_iteration, 1000*time_it_took); fflush(stdout); 
 
-  }
+  }*/
 
 }

@@ -3,6 +3,14 @@
 
 #include "spmvm_globals.h"
 
+void fortrancrsaxpyc_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrsaxpy_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrsaxpycf_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrsaxpyf_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrsc_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrs_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrscf_(int *, int *, real *, real *, real *, int *, int *);
+void fortrancrsf_(int *, int *, real *, real *, real *, int *, int *);
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 int               SpMVM_init(int argc, char **argv);

@@ -34,6 +34,7 @@ static char *SPM_FORMAT_NAME[]= {"ELR", "pJDS"};
 #define SPMVM_OPTION_AXPY       (0x1<<0) // perform y = y+A*x instead of y = A*x
 #define SPMVM_OPTION_KEEPRESULT (0x1<<1) // keep result on OpenCL device 
 #define SPMVM_OPTION_RHSPRESENT (0x1<<2) // assume that RHS vector is present
+#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // also permute columns of matrix (if applicable)
 /**********************************************/
 
 

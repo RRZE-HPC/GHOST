@@ -23,6 +23,7 @@
 #include <mmio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <timing.h>
 
 
 #define min(A,B) ((A)<(B) ? (A) : (B))
@@ -212,7 +213,6 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 MM_TYPE * readMMFile(const char* filename ) {
 
-	int ret_code;
 	MM_typecode matcode;
 	FILE *f;
 	int i;
@@ -237,7 +237,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 
 
 
-	if ((ret_code = mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
+	if ((mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
 		exit(1);
 
 
@@ -285,14 +285,11 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	int i, j;
 	size_t size_offs, size_col, size_val;
 	/* Number of successfully read data items */
-	size_t sucr;
 	int datatype;
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
 	double mybytes;
 
-	size_t size_hlp;
-	//real* zusteller;
 
 	timing( &startTime, &ct );
 
@@ -303,10 +300,10 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		exit(1);
 	}
 
-	sucr = fread(&datatype, sizeof(int), 1, RESTFILE);
-	sucr = fread(&cr->nRows, sizeof(int), 1, RESTFILE);
-	sucr = fread(&cr->nCols, sizeof(int), 1, RESTFILE);
-	sucr = fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
+	fread(&datatype, sizeof(int), 1, RESTFILE);
+	fread(&cr->nRows, sizeof(int), 1, RESTFILE);
+	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
+	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
 		fprintf(stderr,"Warning! The library has been built for %s data but the\
@@ -339,26 +336,13 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		printf("Reading array with values\n");
 	}	
 
-	//NUMA_CHECK_SERIAL("before placement zusteller");
-
-	IF_DEBUG(1) printf("gezieltes placement in die falschen LD\n");
-	size_hlp = (size_t) ( 450000000*sizeof(real));
-	//zusteller = (real*) allocateMemory( size_hlp,  "zusteller" );
-
-	//#pragma omp parallel for schedule(runtime)
-	//   for( i = 0; i < 450000000; i++ )  zusteller[i] = 0;
-
-
-
-	//   NUMA_CHECK_SERIAL("after placement zusteller");
-
 	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < cr->nRows+1; i++ ) {
 		cr->rowOffset[i] = 0;
 	}
 
-	sucr = fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
+	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
 
 
 	IF_DEBUG(1){
@@ -374,14 +358,14 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	}
 
 
-	sucr = fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
+	fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
 
 
 	switch (datatype) {
 		case DATATYPE_FLOAT:
 			{
 				float *tmp = (float *)allocateMemory(cr->nEnts*sizeof(float), "tmp");
-				sucr = fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
+				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
 				break;
@@ -389,7 +373,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		case DATATYPE_DOUBLE:
 			{
 				double *tmp = (double *)allocateMemory(cr->nEnts*sizeof(double), "tmp");
-				sucr = fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
+				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
 				break;
@@ -397,7 +381,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		case DATATYPE_COMPLEX_FLOAT:
 			{
 				_Complex float *tmp = (_Complex float *)allocateMemory(cr->nEnts*sizeof(_Complex float), "tmp");
-				sucr = fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
+				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
 				break;
@@ -405,7 +389,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		case DATATYPE_COMPLEX_DOUBLE:
 			{
 				_Complex double *tmp = (_Complex double *)allocateMemory(cr->nEnts*sizeof(_Complex double), "tmp");
-				sucr = fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
+				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
 				break;
@@ -414,8 +398,6 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 
 	fclose(RESTFILE);
 	NUMA_CHECK_SERIAL("after CR-binary read");
-
-	//   freeMemory(size_hlp, "zusteller", zusteller);
 
 	NUMA_CHECK_SERIAL("after freeing zusteller");
 
@@ -440,7 +422,6 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 	int i, ib, block_start, block_end, diag, diagLen, offset;
-	size_t sucr;
 	char restartfilename[50];
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
@@ -456,10 +437,10 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 		exit(1);
 	}
 
-	sucr = fread(&jd->nRows,               sizeof(int),    1,            RESTFILE);
-	sucr = fread(&jd->nCols,               sizeof(int),    1,            RESTFILE);
-	sucr = fread(&jd->nEnts,               sizeof(int),    1,            RESTFILE);
-	sucr = fread(&jd->nDiags,              sizeof(int),    1,            RESTFILE);
+	fread(&jd->nRows,               sizeof(int),    1,            RESTFILE);
+	fread(&jd->nCols,               sizeof(int),    1,            RESTFILE);
+	fread(&jd->nEnts,               sizeof(int),    1,            RESTFILE);
+	fread(&jd->nDiags,              sizeof(int),    1,            RESTFILE);
 
 	mybytes = 4.0*sizeof(int) 
 		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
@@ -487,8 +468,8 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 		printf("Reading array with values\n");
 	}	
 
-	sucr = fread(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
-	sucr = fread(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
+	fread(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
+	fread(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
 
 	printf("NUMA-placement of jd->col[] and jd->val[]\n");
 #pragma omp parallel for schedule(runtime) private (i, diag, diagLen, offset, block_start, block_end) 
@@ -514,8 +495,8 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 	/* GH: then fill matrix */
 
 
-	sucr = fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-	sucr = fread(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
+	fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
+	fread(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
 
 	fclose(RESTFILE);
 
@@ -563,11 +544,11 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 	 * buffer can hold at least as many (numvecs) copies of vector as required to fill cachesize;
 	 * starting index (i*offset, i<numvecs) of each copy of vector in buffer is aligned to pagesize*/
 
-	int i, me, ierr;
+	int i, me;
 	REVBUF_TYPE* rb;
 	size_t size_mem, size_vec;
 
-	ierr = MPI_Comm_rank( MPI_COMM_WORLD, &me );
+	MPI_Comm_rank( MPI_COMM_WORLD, &me );
 
 	rb = (REVBUF_TYPE*) allocateMemory( sizeof( REVBUF_TYPE ), "rb");
 
@@ -622,7 +603,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	 * elements in row are sorted according to column*/
 
 	int* nEntsInRow;
-	int ierr, i, e, pos, nthr=1;
+	int i, e, pos, nthr=1;
 	uint64 hlpaddr;
 	int me;
 
@@ -633,7 +614,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
-	ierr = MPI_Comm_rank (MPI_COMM_WORLD, &me);
+	MPI_Comm_rank (MPI_COMM_WORLD, &me);
 	total_mem = my_amount_of_mem();
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
@@ -692,16 +673,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* set offsets for each row ############################################### */
 	pos = 0;
 	cr->rowOffset[0] = pos;
-	/*  !!! SUN
-#ifdef _OPENMP
-omp_set_num_threads(128);
-	// bind to lower 64
-#pragma omp parallel
-{
-if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
-}
-#endif
-	 */
 #ifdef PLACE_CRS
 	// NUMA placement for rowOffset
 #pragma omp parallel for schedule(runtime)
@@ -731,16 +702,6 @@ for(i=0; i<cr->nRows; ++i) {
 	}
 }
 #endif //PLACE_CRS
-/* !!! SUN
-#ifdef _OPENMP
-omp_set_num_threads(128);
-// bind to lower 64
-#pragma omp parallel
-{
-if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
-}
-#endif
- */
 
 /* store values in compressed row data structure ########################## */
 for( e = 0; e < mm->nEnts; e++ ) {
