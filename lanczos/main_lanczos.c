@@ -8,7 +8,9 @@
 #include "oclmacros.h"
 #endif
 
+#ifdef LIKWID
 #include <likwid.h>
+#endif
 
 #include <mpi.h>
 #include <limits.h>
