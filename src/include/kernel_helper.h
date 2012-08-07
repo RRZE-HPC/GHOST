@@ -1,7 +1,7 @@
 #ifndef __KERNEL_HELPER_H__
 #define __KERNEL_HELPER_H__
 
-#include "mymacros.h"
+
 
 #ifdef OPENCL
 #include "oclmacros.h"

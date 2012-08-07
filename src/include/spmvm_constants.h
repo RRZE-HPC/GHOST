@@ -56,6 +56,8 @@ extern const char *DATATYPE_NAMES[];
 
 #define xMAIN_DIAGONAL_FIRST
 
+#define EQUAL_NZE  1
+#define EQUAL_LNZE 2
 
 #define IF_DEBUG(level) if( DEBUG >= level )
 

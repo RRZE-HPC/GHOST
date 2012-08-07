@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <mymacros.h>
+
 #include <mpi.h>
 
 #ifdef OPENCL
