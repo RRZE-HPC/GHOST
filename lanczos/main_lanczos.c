@@ -225,7 +225,7 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	   	real *alpha, real *beta, int kernel,  int iteration)
 {
 	vecscal(vnew,-*beta);
-	HyK[kernel].kernel( iteration, vnew, lcrp, vold);
+	SPMVM_KERNELS[kernel].kernel(vnew, lcrp, vold);
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	axpy(vnew,vold,-(*alpha));
@@ -233,7 +233,6 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=sqrt(*beta);
 	vecscal(vnew,1./(*beta));
-	printf("%f\n",*beta);
 }
 
 real rhsVal (int i)
@@ -261,16 +260,16 @@ int main( int argc, char* argv[] )
 	int kernel;
 
 
-	SPMVM_KERNELS = 0;	
+	SPMVM_KERNELS_SELECTED = 0;	
 	//SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
-	//SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
-	//SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
 
 	PROPS props;
 	props.nIter = 100;
 #ifdef OPENCL
-	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR; 
 	props.matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.T[0] = 1;
@@ -298,10 +297,8 @@ int main( int argc, char* argv[] )
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr);
 
 
-	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
-	SPMVM_OPTIONS |= SPMVM_OPTION_KEEPRESULT; // keep result vector on device
+	SPMVM_OPTIONS  = SPMVM_OPTION_KEEPRESULT; // keep result vector on device
 	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // perform y <- y + A*x
-	SPMVM_OPTIONS |= SPMVM_OPTION_PERMCOLS;   // permute columns of matrix
 
 	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	normalize(r0->val,r0->nRows);
@@ -325,7 +322,8 @@ int main( int argc, char* argv[] )
 	char *opt = " -DSINGLE ";
 #endif
 #endif
-	cl_program program = CL_registerProgram("/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm/examples/lanczos/lanczoskernels.cl",opt);
+	cl_program program = CL_registerProgram("/home/hpc/unrz/unrza317/proj/SpMVM"
+			"/libspmvm/examples/lanczos/lanczoskernels.cl",opt);
 
 	int err;
 	axpyKernel = clCreateKernel(program,"axpyKernel",&err);
@@ -351,16 +349,8 @@ int main( int argc, char* argv[] )
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
 
-		/* Skip loop body if kernel does not make sense for used parametes */
-		if (!(0x1<<kernel & SPMVM_KERNELS)) {
-			continue; // kernel not selected
-		}
-		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) {
-			continue; // non-MPI kernel
-		}
-		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) {
-			continue; // not enough threads
-		}
+		if (!SpMVM_kernelValid(kernel,lcrp)) 
+			continue;
 
 		//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
 		real *alphas  = (real *)malloc(sizeof(real)*props.nIter);
@@ -397,6 +387,8 @@ int main( int argc, char* argv[] )
 
 			memcpy(falphas,alphas,(iteration)*sizeof(real));
 			memcpy(fbetas,betas,(iteration)*sizeof(real));
+
+			
 			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
 
 			if(ferr != 0) {
@@ -423,7 +415,9 @@ int main( int argc, char* argv[] )
 #pragma omp parallel
 			likwid_markerStartRegion(regionName);
 #endif
+
 			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel,iteration);
+
 #ifdef LIKWID_MARKER
 #pragma omp parallel
 			likwid_markerStopRegion(regionName);
@@ -440,7 +434,7 @@ int main( int argc, char* argv[] )
 			if (me==0) {
 				timing(&tend,&dummy);
 				tacc += tend-tstart;
-				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,
+				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",alpha,(tend-tstart)*1e3,
 						REAL(falphas[0]));
 				fflush(stdout);
 			}
