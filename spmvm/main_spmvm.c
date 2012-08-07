@@ -152,9 +152,9 @@ int main( int argc, char* argv[] ) {
 	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
 	props.matrixFormats.format[1] = SPM_GPUFORMAT_PJDS;
 	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.T[0] = 1;
-	props.matrixFormats.T[1] = 1;
-	props.matrixFormats.T[2] = 1;
+	props.matrixFormats.T[0] = 2;
+	props.matrixFormats.T[1] = 2;
+	props.matrixFormats.T[2] = 2;
 	props.devType = CL_DEVICE_TYPE_GPU;
 #endif
 	props.nIter = 100;

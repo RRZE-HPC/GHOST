@@ -1,3 +1,5 @@
+.PHONY:clean distclean all
+
 CC=mpicc
 CFLAGS=-g -O3 -openmp $(MAKROS) $(IPATH)
 IPATH= -I../src/include 
@@ -33,3 +35,8 @@ lanczos: lanczos/main_lanczos.o
 minimal: minimal/main_minimal.o
 	$(CC) $(CFLAGS) $(LPATH) -o minimal/$(PREFIX)$@.x $^  $(LIBS)
 
+clean:
+	-rm -f */*.o
+
+distclean: clean
+	-rm -f */*.x

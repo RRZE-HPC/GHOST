@@ -23,7 +23,6 @@
 static cl_kernel axpyKernel;
 static cl_kernel vecscalKernel;
 static cl_kernel dotprodKernel;
-static int localSz = 256;
 #endif
 
 typedef struct {
@@ -123,7 +122,7 @@ void vecscal(VECTOR_TYPE *vec, real s)
 	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
 
-	CL_enqueueKernel(vecscalKernel,localSz);	
+	CL_enqueueKernel(vecscalKernel);	
 #else
 	int i;
 #pragma omp parallel
@@ -149,7 +148,7 @@ void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 {
 
 #ifdef OPENCL
-	int localSize = 256;
+	size_t localSize = CL_getLocalSize(dotprodKernel);
 	int resVecSize = v1->nRows/localSize; 
 	int i;
 	*res = 0.0;
@@ -163,7 +162,7 @@ void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 	CL_safecall(clSetKernelArg(dotprodKernel,3,sizeof(int),&n));
 	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(real)*localSize,NULL));
 
-	CL_enqueueKernel(dotprodKernel,localSize);
+	CL_enqueueKernel(dotprodKernel);
 
 	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(real));
 
@@ -201,7 +200,7 @@ void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
 	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(real),&s));
 	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&v1->nRows));
 
-	CL_enqueueKernel(axpyKernel,localSz);
+	CL_enqueueKernel(axpyKernel);
 #else
 	int i;
 #pragma omp parallel
