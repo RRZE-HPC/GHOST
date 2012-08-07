@@ -2,7 +2,11 @@
 #include <mpi.h>
 #include <omp.h>
 #include <sys/types.h>
+
+#ifdef LIKWID
 #include <likwid.h>
+#endif
+
 #include "kernel_helper.h"
 
 void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){

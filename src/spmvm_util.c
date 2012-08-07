@@ -4,9 +4,14 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <mpihelper.h>
+
 #ifdef OPENCL
 #include "oclfun.h"
 #include "my_ellpack.h"
+#endif
+
+#ifdef LIKWID
+#include <likwid.h>
 #endif
 
 #include <omp.h>

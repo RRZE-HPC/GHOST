@@ -24,6 +24,10 @@
 #define LIKWID_MARKER
 #endif
 
+#ifdef LIKWID_MARKER
+#define LIKWID
+#endif
+
 
 /**********************************************/
 /****** Definitions depending on datatype *****/

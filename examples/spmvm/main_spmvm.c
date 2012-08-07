@@ -14,7 +14,9 @@
 #include <oclfun.h>
 #endif
 
+#ifdef LIKWID
 #include <likwid.h>
+#endif
 
 #include <limits.h>
 #include <getopt.h>

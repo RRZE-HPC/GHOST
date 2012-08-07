@@ -11,18 +11,23 @@ IPATH	+=	-I./src/include
 ################################################################################
 
 
-objS	=	$(CobjS) $(FobjS) $(F90objS) $(SobjS) 
+OBJS	=	$(COBJS) $(FOBJS) $(F90OBJS) $(SOBJS) 
 
-CobjS	=  aux.o spmvm_util.o matricks.o mpihelper.o  \
+COBJS	=  aux.o spmvm_util.o matricks.o mpihelper.o  \
 		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
 		   hybrid_kernel_II.o hybrid_kernel_III.o spmvm_globals.o
-OCLobjS = oclfun.o my_ellpack.o 
-FobjS	= 	matricks_GW.o imtql1.o pythag.o 
-SobjS	=	for_timing_start_asm.o for_timing_stop_asm.o
+OCLOBJS = oclfun.o my_ellpack.o 
+FOBJS	= 	matricks_GW.o imtql1.o pythag.o 
+SOBJS	=	for_timing_start_asm.o for_timing_stop_asm.o
 
+MAKROS=
+
+ifdef LIKWID
+MAKROS=-DLIKWID
+endif
 
 ifdef OPENCL
-MAKROS=-DOPENCL 
+MAKROS+= -DOPENCL 
 PREFIX=cl
 else
 PREFIX=
@@ -56,18 +61,18 @@ utils:
 	$(MAKE) -C utils/
 
 
-libspmvm.so: $(objS)
+libspmvm.so: $(OBJS)
 	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LPATH) $(LIBS)
 
-libclspmvm.so: $(objS) $(OCLobjS)
+libclspmvm.so: $(OBJS) $(OCLOBJS)
 	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LPATH) $(LIBS)
 
-libspmvm.a: $(objS)
+libspmvm.a: $(OBJS)
 	ar rcs  $@ $^
 	-mv *.o obj
 	-mv *genmod* obj
 
-libclspmvm.a: $(objS) $(OCLobjS)
+libclspmvm.a: $(OBJS) $(OCLOBJS)
 	ar rcs  $@ $^ 
 	-mv *.o obj
 	-mv *genmod* obj

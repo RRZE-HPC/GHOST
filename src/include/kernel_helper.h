@@ -8,7 +8,9 @@
 #include "oclfun.h"
 #endif
 
+#ifdef LIKWID
 #include <likwid.h>
+#endif
 
 #include <stdbool.h>
 #include <complex.h>

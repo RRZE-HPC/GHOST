@@ -5,8 +5,13 @@
 #include <string.h>
 #include <sys/param.h>
 #define _GNU_SOURCE
-#include <sched.h>
+
+#ifdef LIKWID
 #include <likwid.h>
+#else
+#include <sched.h>
+#endif
+
 #include <math.h>
 #include <omp.h>
 
@@ -24,7 +29,12 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
    
    MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
    MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-   coreId = likwid_getProcessorId();//sched_getcpu();
+
+#ifdef LIKWID
+   coreId = likwid_getProcessorId();
+#else
+   coreId = sched_getcpu();
+#endif
 
    size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
@@ -135,7 +145,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
 	 ***************************************************************************/
-	NUMA_CHECK("entry of setup_comm");
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
@@ -360,7 +369,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	 *******   Fill all fields with their corresponding values            *******
 	 ***************************************************************************/
 
-	NUMA_CHECK("before placing of lcrp main arrays");
 
 	//#pragma omp parallel for schedule(runtime)
 #pragma omp parallel for schedule(static)
@@ -374,9 +382,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 #pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
-	NUMA_CHECK("after placing of lcrp main arrays");
-
-	NUMA_CHECK("before scattering");
 
 	MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_MYDATATYPE, 
 			lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD);
@@ -386,7 +391,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 	MPI_Scatterv ( cr->rowOffset, lcrp->lnRows, lcrp->lfRow, MPI_INTEGER,
 			lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
-	NUMA_CHECK("after scattering");
 
 	/****************************************************************************
 	 *******        Adapt row pointer to local numbering on this PE       *******         

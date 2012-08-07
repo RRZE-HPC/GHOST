@@ -1,8 +1,8 @@
 CC=mpicc
 CFLAGS=-g -O3 -openmp $(MAKROS) $(IPATH)
-IPATH=$(LIKWID_INC) -I../src/include 
-LPATH=$(LIKWID_LIB) -L..
-LIBS=-l$(PREFIX)spmvm -llikwid
+IPATH= -I../src/include 
+LPATH= -L..
+LIBS=-l$(PREFIX)spmvm
 
 ifdef OPENCL
 MAKROS+= -DOPENCL
@@ -12,6 +12,11 @@ LPATH += -L${CUDA_INSTALL_PATH}/lib64 -L${CUDA_DRIVERDIR}/lib
 LIBS  += -lOpenCL
 endif
 
+ifdef LIKWID
+IPATH += $(LIKWID_INC)
+LIPATH += $(LIKWID_LIB)
+LIBS  += -llikwid
+endif
 
 %.o: %.c  
 	$(CC) $(CFLAGS) -o $@ -c $< 

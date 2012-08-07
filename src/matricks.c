@@ -402,9 +402,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	}
 
 	fclose(RESTFILE);
-	NUMA_CHECK_SERIAL("after CR-binary read");
 
-	NUMA_CHECK_SERIAL("after freeing zusteller");
 
 
 	timing( &stopTime, &ct );
@@ -625,7 +623,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	size_val        = (size_t)( mm->nEnts     * sizeof( real) );
 	size_nEntsInRow = (size_t)(  mm->nRows    * sizeof( int ) );
 
-	NUMA_CHECK_SERIAL("before placement of CR");
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rowOffset = (int*)     allocateMemory( size_rowOffset,    "rowOffset" );
@@ -731,7 +728,6 @@ IF_DEBUG(2) {
 
 IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
 
-NUMA_CHECK_SERIAL("after placement of CR");
 
 return cr;
 }
