@@ -1,6 +1,6 @@
 CC=icc
 
-.PHONY:clean all
+.PHONY:clean distclean all
 
 all: MMtoCRS.x
 
@@ -9,3 +9,6 @@ MMtoCRS.x: mmtocrs.c ../src/mmio.c
 
 clean:
 	-rm -f *.o
+
+distclean: clean
+	-rm -f *.x
