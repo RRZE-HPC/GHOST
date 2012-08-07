@@ -78,15 +78,12 @@ libclspmvm.a: $(OBJS) $(OCLOBJS)
 	-mv *genmod* obj
 
 clean:
-	-rm -f *.o
 	-rm -f obj/*
-	-rm -f core
-	-rm -f examples/*/*.o
-	-rm -f utils/*.o
+	$(MAKE) -C examples clean
+	$(MAKE) -C utils clean
 
 distclean: clean
-	-rm -f *.x
-	-rm -f examples/*/*.x
-	-rm -f utils/*.x
 	-rm -f *.so
 	-rm -f *.a
+	$(MAKE) -C examples distclean
+	$(MAKE) -C utils distclean

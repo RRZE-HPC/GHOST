@@ -10,10 +10,8 @@ static cl_command_queue queue;
 static cl_context context;
 static int takedevice;
 static cl_kernel kernel[3];
-static size_t localSize[3] = {256,256,256};
 static size_t globalSize[3];
 static size_t globalSz;
-//static size_t localSz = 256;
 
 static int rank;
 static int size;
@@ -118,7 +116,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 #endif
 
 	program = CL_registerProgram("src/kernel.cl",opt);
-	
+
 	int i;
 	for (i=0; i<3; i++) {
 
@@ -176,14 +174,14 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	source_str = (char*)allocateMemory(filesize,"source");
 	source_size = fread( source_str, 1, filesize, fp);
 	fclose( fp );
-	
+
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
 			size-1, hostname,basename(filename));
 
 	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
 			&source_size,&err);
 	CL_checkerror(err);
-	
+
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program with \"%s\""
 			"and creating kernels\n", rank, size-1, hostname,opt);
 
@@ -284,10 +282,6 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 					&matrix->col));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
 					&matrix->rowLen));
-		if (T>1) {
-			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,
-						sizeof(real)*localSize[kernelIdx],NULL));
-		}
 		globalSz = matrix->padding;
 	} else {
 		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
@@ -303,17 +297,17 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 					&matrix->rowLen));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
 					&matrix->colStart));
-		if (T>1) {
-			CL_safecall(clSetKernelArg(kernel[kernelIdx],7,
-						sizeof(real)*localSize[kernelIdx],NULL));
-		}
 		globalSz = matrix->padding;
+	}
+	if (T>1) {
+
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(real)*CL_getLocalSize(kernel[kernelIdx]),NULL));
 	}
 }
 
-void CL_enqueueKernel(cl_kernel kernel, size_t ls)
+void CL_enqueueKernel(cl_kernel kernel)
 {
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&globalSz,&ls,0,NULL
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&globalSz,NULL,0,NULL
 				,NULL));
 }
 
@@ -324,7 +318,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,
-				&globalSize[type],&localSize[type],0,NULL,NULL));
+				&globalSize[type],NULL,0,NULL,NULL));
 }
 
 void CL_finish() 
@@ -539,4 +533,18 @@ void CL_uploadVector( VECTOR_TYPE *vec )
 void CL_downloadVector( VECTOR_TYPE *vec )
 {
 	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(real));
+}
+
+
+size_t CL_getLocalSize(cl_kernel kernel) {
+
+	cl_device_id deviceID;
+	size_t wgSize;
+
+	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
+				sizeof(cl_device_id),&deviceID,NULL));
+	CL_safecall(clGetKernelWorkGroupInfo(kernel,deviceID,CL_KERNEL_WORK_GROUP_SIZE,sizeof(size_t),&wgSize,NULL));
+
+	return wgSize;
+
 }
