@@ -14,7 +14,7 @@ endif
 
 ifdef LIKWID
 IPATH += $(LIKWID_INC)
-LIPATH += $(LIKWID_LIB)
+LPATH += $(LIKWID_LIB)
 LIBS  += -llikwid
 endif
 

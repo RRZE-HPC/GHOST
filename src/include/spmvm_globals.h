@@ -17,6 +17,7 @@
 //#define LIKWID_MARKER_FINE
 #define DOUBLE
 //#define COMPLEX
+#define DEBUG 0 
 /**********************************************/
 
 
@@ -88,6 +89,20 @@ typedef float real;
 #define REAL(a) a
 #define IMAG(a) 0.0
 #endif
+#endif
+
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef MAX
+#define MAX(x,y) ((x)<(y)?(y):(x))
+#endif
+
+#ifdef DOUBLE
+#define EPSILON 1e-9
+#endif
+#ifdef SINGLE
+#define EPSILON 1e-0
 #endif
 /**********************************************/
 

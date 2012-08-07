@@ -1,7 +1,8 @@
 #include <mpi.h>
 #include "my_ellpack.h"
 #include "matricks.h"
-#include "mymacros.h"
+#include "spmvm_globals.h"
+
 #ifdef OPENCL
 #include "oclfun.h"
 #include "oclmacros.h"

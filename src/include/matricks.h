@@ -152,10 +152,6 @@ JD_RESORTED_TYPE* resort_JDS(const JD_TYPE*, const int);
 VIP_TYPE* check_divide(MM_TYPE*, float);
 JD_OFFDIAGONAL_TYPE* convertMMToODJDMatrix(const MM_TYPE*, const int);
 
-BOOL multiplyMMWithVector( VECTOR_TYPE* res, const MM_TYPE* mm, const VECTOR_TYPE* vec );
-BOOL multiplyCRWithVector( VECTOR_TYPE* res, const CR_TYPE* cr, const VECTOR_TYPE* vec );
-BOOL multiplyJDWithVector( VECTOR_TYPE* res, const JD_TYPE* jd, const VECTOR_TYPE* vec );
-
 void crColIdToFortran( CR_TYPE* cr );
 void crColIdToC( CR_TYPE* cr );
 

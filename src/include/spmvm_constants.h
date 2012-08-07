@@ -15,6 +15,10 @@
 #define SPMVM_KERNELS_COMBINED (SPMVM_KERNEL_NOMPI | SPMVM_KERNEL_VECTORMODE)
 #define SPMVM_KERNELS_SPLIT    (SPMVM_KERNEL_GOODFAITH | SPMVM_KERNEL_TASKMODE)
 #define SPMVM_KERNELS_ALL      (SPMVM_KERNELS_COMBINED | SPMVM_KERNELS_SPLIT)
+
+#define SPM_KERNEL_FULL 0
+#define SPM_KERNEL_LOCAL 1
+#define SPM_KERNEL_REMOTE 2
 /**********************************************/
 
 
@@ -23,6 +27,7 @@
 /**********************************************/
 #define SPM_GPUFORMAT_ELR  0
 #define SPM_GPUFORMAT_PJDS 1
+#define PJDS_CHUNK_HEIGHT 32
 extern const char *SPM_FORMAT_NAMES[];
 /**********************************************/
 
@@ -47,5 +52,11 @@ extern const char *SPM_FORMAT_NAMES[];
 #define DATATYPE_COMPLEX_DOUBLE 3
 extern const char *DATATYPE_NAMES[];
 /**********************************************/
+
+
+#define xMAIN_DIAGONAL_FIRST
+
+
+#define IF_DEBUG(level) if( DEBUG >= level )
 
 #endif
