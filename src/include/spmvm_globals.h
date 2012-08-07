@@ -16,7 +16,7 @@
 //#define LIKWID_MARKER
 //#define LIKWID_MARKER_FINE
 #define DOUBLE
-//#define COMPLEX
+#define COMPLEX
 #define DEBUG 0 
 /**********************************************/
 
@@ -72,10 +72,12 @@ typedef float real;
 #define ABS(a) cabs(a)
 #define REAL(a) creal(a)
 #define IMAG(a) cimag(a)
+#define SQRT(a) csqrt(a)
 #else
 #define ABS(a) fabs(a)
 #define REAL(a) a
 #define IMAG(a) 0.0
+#define SQRT(a) sqrt(a)
 #endif
 #endif
 
@@ -84,10 +86,12 @@ typedef float real;
 #define ABS(a) cabsf(a)
 #define REAL(a) crealf(a)
 #define IMAG(a) cimagf(a)
+#define SQRT(a) csqrtf(a)
 #else
 #define ABS(a) fabsf(a)
 #define REAL(a) a
 #define IMAG(a) 0.0
+#define SQRT(a) sqrtf(a)
 #endif
 #endif
 

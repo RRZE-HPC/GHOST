@@ -15,7 +15,7 @@ real rhsVal (int i) {
 int main( int argc, char* argv[] ) {
 
 	int ierr, me, it, nIter = 100, kernel;
-	real start, end, dummy;
+	double start, end, dummy;
 
 	CR_TYPE         *cr;      // global CRS matrix
 	LCRP_TYPE       *lcrp;    // local CRS portion
@@ -56,7 +56,7 @@ int main( int argc, char* argv[] ) {
 
 		if (me == 0) {
 			timing(&end,&dummy);
-			printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(real)nIter*(real)lcrp->nEnts/(end-start));
+			printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(double)nIter*(double)lcrp->nEnts/(end-start));
 		}
 	}
 

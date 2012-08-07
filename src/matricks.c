@@ -723,7 +723,7 @@ free( nEntsInRow );
 
 IF_DEBUG(2) {
 	for( i = 0; i < mm->nRows+1; i++ ) printf( "rowOffset[%2i] = %3i\n", i, cr->rowOffset[i] );
-	for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e+i%e\n", i, cr->col[i], i, ABS(cr->val[i]),IMAG(cr->val[i]) );
+	for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e+i%e\n", i, cr->col[i], i, REAL(cr->val[i]),IMAG(cr->val[i]) );
 }
 
 IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
@@ -1120,7 +1120,7 @@ void normalize( real *vec, int nRows)
 	for (i=0; i<nRows; i++)	
 		sum += vec[i]*vec[i];
 
-	real f = 1./sqrt(sum);
+	real f = 1./SQRT(sum);
 
 	for (i=0; i<nRows; i++)	
 		vec[i] *= f;

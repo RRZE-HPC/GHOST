@@ -31,8 +31,7 @@ typedef struct {
 
 } MPI_complex;
 
-void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len, 
-		MPI_Datatype *datatype)
+static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 {
 
 	int i;
@@ -53,9 +52,10 @@ int SpMVM_init(int argc, char **argv)
 	req = MPI_THREAD_MULTIPLE;
 	MPI_Init_thread(&argc, &argv, req, &prov );
 
-	if (req != prov)
-		fprintf(stderr, "Required MPI threading level (%d) is not \
-				provided (%d)!\n",req,prov);
+	if (req != prov) {
+		fprintf(stderr, "Required MPI threading level (%d) is not"
+				"provided (%d)!\n",req,prov);
+	}
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 
@@ -67,7 +67,7 @@ int SpMVM_init(int argc, char **argv)
 	MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE);
 #endif
 	MPI_Type_commit(&MPI_MYDATATYPE);
-	MPI_Op_create((MPI_User_function *)&complAdd,TRUE,&MPI_MYSUM);
+	MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM);
 #endif
 
 #ifdef LIKWID_MARKER
@@ -221,32 +221,33 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 	if(me==0){
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
 				lcrp->nEnts*(sizeof(real)+sizeof(int)))/(1024*1024);
-		printf("-----------------------------------------------------\n");
-		printf("-------         Statistics about matrix       -------\n");
-		printf("-----------------------------------------------------\n");
-		printf("Investigated matrix         : %12s\n", matrixName); 
-		printf("Dimension of matrix         : %12.0f\n", (double)lcrp->nRows); 
-		printf("Non-zero elements           : %12.0f\n", (double)lcrp->nEnts); 
-		printf("Average elements per row    : %12.3f\n", (double)lcrp->nEnts/
+		printf("-----------------------------------------------\n");
+		printf("-------        Matrix information       -------\n");
+		printf("-----------------------------------------------\n");
+		printf("Investigated matrix              : %12s\n", matrixName); 
+		printf("Dimension of matrix              : %12.0f\n", (double)lcrp->nRows); 
+		printf("Non-zero elements                : %12.0f\n", (double)lcrp->nEnts); 
+		printf("Average elements per row         : %12.3f\n", (double)lcrp->nEnts/
 				(double)lcrp->nRows); 
-		printf("CRS matrix              [MB]: %12lu\n", ws);
+		printf("Host matrix (CRS)            [MB]: %12lu\n", ws);
 #ifdef OPENCL	
 		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
-			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize);
+			printf("Device matrix (combin. %4s) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->fullFormat], totalFullMemSize);
 		}	
 		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
-			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
-			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize);
-			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+
+			printf("Device matrix (local   %4s) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->localFormat],totalLocalMemSize); 
+			printf("Device matrix (remote  %4s) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->remoteFormat],totalRemoteMemSize);
+			printf("Device matrix (local+remote) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
 #endif
-		printf("-----------------------------------------------------\n\n");
+		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 	}
 }
 
-void SpMVM_printEnvInfo() {
+void SpMVM_printEnvInfo() 
+{
 
 	int me;
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
@@ -260,18 +261,32 @@ void SpMVM_printEnvInfo() {
 #pragma omp master
 	nthreads = omp_get_num_threads();
 
-		printf("-----------------------------------------------------\n");
-		printf("-------       Statistics about environment    -------\n");
-		printf("-----------------------------------------------------\n");
-		printf("MPI processes               : %12d\n", nproc); 
-		printf("OpenMP threads per process  : %12d\n", nthreads);
-		printf("Data type                   : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+		printf("-----------------------------------------------\n");
+		printf("-------       System information        -------\n");
+		printf("-----------------------------------------------\n");
+		printf("MPI processes                    : %12d\n", nproc); 
+		printf("OpenMP threads per process       : %12d\n", nthreads);
+		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
 #ifdef OPENCL
-		printf("OpenCL                      :      enabled\n");
+		printf("OpenCL                           :      enabled\n");
+	   //TODO gpu info
+#else
 
+		printf("OpenCL                           :     disabled\n");
 #endif
-	   //TODO gpu info	
-		printf("-----------------------------------------------------\n\n");
+#ifdef LIKWID
+		printf("Likwid                           :      enabled\n");
+#else
+		printf("Likwid                           :     disabled\n");
+#endif
+#ifdef LIKWID_MARKER_FINE
+		printf("Likwid Marker API (high res)     :      enabled\n");
+#else
+#ifdef LIKWID_MARKER
+		printf("Likwid Marker API                :      enabled\n");
+#endif
+#endif
+		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 
 	}

@@ -1,7 +1,7 @@
 SYSTEM=default
 include makes/make_$(SYSTEM).mk
 
-.PHONY: examples utils clean distclean 
+.PHONY: examples utils clean distclean all 
 
 ################################################################################
 

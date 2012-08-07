@@ -115,7 +115,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 #ifdef COMPLEX // MPI_MYDATATYPE is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
-	private   (i, j, ierr, to_PE, tid)                            \
+	private   (i, j, to_PE, tid)                            \
 	shared    (MPI_MYDATATYPE, \
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \

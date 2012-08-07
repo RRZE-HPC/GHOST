@@ -163,8 +163,7 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	fp = fopen(filename, "r");
 	if (!fp) {
 		char cerr[] = "Failed to load kernel file: ";
-		size_t errlen = strlen(cerr);
-		char msg[errlen+strlen(filename)];
+		char msg[strlen(cerr)+strlen(filename)];
 		strcpy(cerr,msg);
 		strcat(msg,filename);
 		myabort(msg);
