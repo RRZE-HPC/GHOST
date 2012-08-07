@@ -495,7 +495,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 			if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) { // remote pJDS
 				lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
-						lcrp->lnRows[me],lcrp->splitRowPerm,
+						lcrp->lnRows[me],lcrp->splitInvRowPerm,
 						matrixFormats->T[1]);
 			} else { // remote ELR
 				lelr = CRStoELRT(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
@@ -514,7 +514,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 			if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) { // local pJDS
 				relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
-						lcrp->lnRows[me],lcrp->splitRowPerm,
+						lcrp->lnRows[me],lcrp->splitInvRowPerm,
 						matrixFormats->T[2]);
 			} else { // local ELR
 				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
