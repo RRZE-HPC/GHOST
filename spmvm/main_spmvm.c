@@ -242,8 +242,8 @@ int main( int argc, char* argv[] ) {
 					errcount++;
 				}
 			}
-			printf("Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",
-					kernel,errcount?"WRONG  ":"CORRECT",
+			printf("Kernel %d %s @ %6.2f GF/s | %6.2f ms/it\n",
+					kernel,errcount?"FAILED   ":"SUCCEEDED",
 					FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*
 					(double)lcrp->nEnts/(end-start),(end-start)*1.e3/
 					props.nIter);
@@ -267,3 +267,4 @@ int main( int argc, char* argv[] ) {
 	return EXIT_SUCCESS;
 
 }
+

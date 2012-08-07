@@ -436,7 +436,7 @@ int main( int argc, char* argv[] )
 			if (me==0) {
 				timing(&tend,&dummy);
 				tacc += tend-tstart;
-				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",alpha,(tend-tstart)*1e3,
+				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,
 						REAL(falphas[0]));
 				fflush(stdout);
 			}
