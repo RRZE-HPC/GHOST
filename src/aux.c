@@ -44,40 +44,6 @@ double RecalFrequency(uint64 cycles4measurement, double old_clockfreq)
    return recalibrated_CPUFrequency;
 }
 
-int get_NUMA_info(int *size0, int *free0, int *size1, int *free1){
-
-   FILE *output;
-
-   static int init_get_NUMA_info = 1; 
-
-   if (init_get_NUMA_info==1){
-
-      /* Abfragen, ob ich ueberhaupt auf einer Maschine mit NUMA-Architektur bin */
-
-      init_get_NUMA_info = 0;
-   }
-//#define HAVE_NUMA
-/*#ifdef HAVE_NUMA
-
-   output = popen("numactl --hardware | grep 'node 0 size' | awk '{print $4}'", "r");
-   if ( fscanf(output, "%d\n", size0) == 0 ) printf("MYERROR retrieving NUMA-size node 0");
-   pclose(output);
-   output = popen("numactl --hardware | grep 'node 1 size' | awk '{print $4}'", "r");
-   if ( fscanf(output, "%d\n", size1) == 0 ) printf("MYERROR retrieving NUMA-size node 0");
-   pclose(output);
-   output = popen("numactl --hardware | grep 'node 0 free' | awk '{print $4}'", "r");
-   if ( fscanf(output, "%d\n", free0) == 0 ) printf("MYERROR retrieving NUMA-size node 0");
-   pclose(output);
-   output = popen("numactl --hardware | grep 'node 1 free' | awk '{print $4}'", "r");
-   if ( fscanf(output, "%d\n", free1) == 0 ) printf("MYERROR retrieving NUMA-size node 0");
-   pclose(output);
-#endif
-*/
-   //printf("%d %d %d %d\n", *size0, *size1, *free0, *free1);
-
-   return(0);
-}
-
 float myCpuClockFrequency()
 {
    static float frequency = -1.;
@@ -197,8 +163,8 @@ void mypabort(char *s) {
 }
 
 void mypaborts(const char *s1, const char *s2) {
-   int ierr, me;
-   ierr= MPI_Comm_rank(MPI_COMM_WORLD, &me);
+   int me;
+   MPI_Comm_rank(MPI_COMM_WORLD, &me);
    printf("PE%d: MYPABORT - %s %s\n", me, s1, s2);
 #ifdef PROFILE
    vmon_done();

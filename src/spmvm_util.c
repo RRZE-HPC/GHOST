@@ -9,6 +9,8 @@
 #include "my_ellpack.h"
 #endif
 
+#include <omp.h>
+
 
 
 #ifdef COMPLEX
@@ -175,6 +177,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr)
 
 	LCRP_TYPE *lcrp = setup_communication(cr, 1);
 
+
 	return lcrp;
 
 }
@@ -192,13 +195,13 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // combined computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
 		fullMemSize = getBytesize(lcrp->fullMatrix, lcrp->fullFormat)/
 			(1024*1024);
 		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
 				MPI_COMM_WORLD);
 	} 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // split computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/
 			(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/
@@ -223,19 +226,51 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 				(double)lcrp->nRows); 
 		printf("CRS matrix              [MB]: %12lu\n", ws);
 #ifdef OPENCL	
-		if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // combined computation
+		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
 			printf("Device matrix (combin.) [MB]: %12lu\n", totalFullMemSize);
 		}	
-		if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // split computation
+		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
 			printf("Device matrix (local)   [MB]: %12lu\n", totalLocalMemSize); 
 			printf("Device matrix (remote)  [MB]: %12lu\n", totalRemoteMemSize);
 			printf("Device matrix (loc+rem) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
 #endif
-		printf("-----------------------------------------------------\n");
+		printf("-----------------------------------------------------\n\n");
 		fflush(stdout);
 	}
+}
+
+void SpMVM_printEnvInfo() {
+
+	int me;
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+
+	if (me==0) {
+	int nproc;
+	int nthreads;
+	MPI_Comm_size ( MPI_COMM_WORLD, &nproc );
+
+#pragma omp parallel
+#pragma omp master
+	nthreads = omp_get_num_threads();
+
+		printf("-----------------------------------------------------\n");
+		printf("-------       Statistics about environment    -------\n");
+		printf("-----------------------------------------------------\n");
+		printf("MPI processes               : %12d\n", nproc); 
+		printf("OpenMP threads per process  : %12d\n", nthreads);
+		printf("Data type                   : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+#ifdef OPENCL
+		printf("OpenCL                      :      enabled\n");
+
+#endif
+	   //TODO gpu info	
+		printf("-----------------------------------------------------\n\n");
+		fflush(stdout);
+
+	}
+
 }
 
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
@@ -299,5 +334,14 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter)
 	}
 }
 
+int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp) {
+	
+		if (!(0x1<<kernel & SPMVM_KERNELS_SELECTED)) 
+			return 0; // kernel not selected
+		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
+			return 0; // non-MPI kernel
+		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
+			return 0; // not enough threads
 
-
+		return 1;
+}

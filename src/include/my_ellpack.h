@@ -50,10 +50,12 @@ typedef struct {
 ELR_TYPE* CRStoELR( const real*, const int*, const int*, const int ); 
 ELR_TYPE* CRStoELRT(const real*, const int*, const int*, const int, int);
 ELR_TYPE* CRStoELRS(  const real* , const int* , const int*,  const int);
-ELR_TYPE* CRStoELRP(  const real* , const int* , const int*,  const int,	const int*, const int*);
-ELR_TYPE* CRStoELRTP(  const real* , const int* , const int*,  const int,	const int*, const int*, int);
+ELR_TYPE* CRStoELRP(  const real* , const int* , const int*,  const int, const int*);
+ELR_TYPE* CRStoELRTP(  const real* , const int* , const int*,  const int, const int*, int);
 ELR_TYPE* MMtoELR(const char *, int);
-void checkCRStoELR( const real*, const int*, const int*, const int, const ELR_TYPE* );
+void checkCRSToELR(	const real* crs_val, const int* crs_col, const int* crs_row_ptr, const int nRows, const ELR_TYPE* elr);
+
+//void checkCRStToPJDS(const real* crs_val, const int* crs_col,const int* crs_row_ptr, const int nRow,	const PJDS_TYPE* pjds);
 void resetELR( ELR_TYPE* elr );
 void freeELR( ELR_TYPE* const elr );
 
@@ -79,6 +81,7 @@ void CL_freeELR( CL_ELR_TYPE* const celr );
 void CL_freeMatrix(void *matrix, int format);
 
 
+void getPadding(int nRows, int* paddedRows);
 void elrColIdToFortran( ELR_TYPE* elr );
 void elrColIdToC( ELR_TYPE* elr );
 size_t getBytesize(void *mat, int format); 

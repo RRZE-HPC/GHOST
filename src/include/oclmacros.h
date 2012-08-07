@@ -3,10 +3,10 @@
 
 
 #define CL_safecall(call) do{\
-  cl_int err = call ;\
-  if( CL_SUCCESS != err ){\
+  cl_int ierr = call ;\
+  if( CL_SUCCESS != ierr ){\
     fprintf(stdout, "OpenCL error at %s:%d, %d\n",\
-      __FILE__, __LINE__, err);\
+      __FILE__, __LINE__, ierr);\
     fflush(stdout);\
   }\
   } while(0)

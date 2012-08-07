@@ -13,6 +13,7 @@ void fortrancrscf_(int *, int *, real *, real *, real *, int *, int *);
 void fortrancrsf_(int *, int *, real *, real *, real *, int *, int *);
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
+void              SpMVM_printEnvInfo();
 int               SpMVM_init(int argc, char **argv);
 void              SpMVM_finish();
 CR_TYPE *         SpMVM_createCRS (char *matrixPath);
@@ -21,5 +22,6 @@ VECTOR_TYPE *     SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
 void              SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, HOSTVECTOR_TYPE *totalVec);
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
 void              SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter);
+int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp);
 
 #endif

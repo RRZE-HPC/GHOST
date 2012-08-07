@@ -146,7 +146,7 @@ void permuteVector( real* vec, int* perm, int len);
 MM_TYPE* readMMFile( const char* filename );
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm );
-JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen );
+JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm );
 
 JD_RESORTED_TYPE* resort_JDS(const JD_TYPE*, const int);
 VIP_TYPE* check_divide(MM_TYPE*, float);
@@ -165,6 +165,7 @@ void fortrancrs_(int*, int*, real*, real*, real*, int*, int*);
 void fortranjds_(int*, int*, int*, real*, real*, int*, real*, int*, int*, int*);
 
 void freeVector( VECTOR_TYPE* const vec );
+void freeHostVector( HOSTVECTOR_TYPE* const vec );
 void freeMMMatrix( MM_TYPE* const mm );
 void freeCRMatrix( CR_TYPE* const cr );
 void freeJDMatrix( JD_TYPE* const cr );
@@ -206,7 +207,6 @@ double my_amount_of_mem(void);
 unsigned long machname(char* );
 unsigned long kernelversion(char* );
 unsigned long modelname(char* );
-int get_NUMA_info(int*, int*, int*, int*);
 uint64 cachesize(void);
 
 void freeMemory(size_t, const char*, void*);

@@ -137,11 +137,10 @@ int main( int argc, char* argv[] ) {
 	CR_TYPE *cr;
 	LCRP_TYPE *lcrp;
 
-	SPMVM_KERNELS = 0;	
-//	SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS |= SPMVM_KERNEL_TASKMODE;
+	SPMVM_KERNELS_SELECTED= 0;	
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
 	
 	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
 
@@ -168,10 +167,10 @@ int main( int argc, char* argv[] ) {
 	cr   = SpMVM_createCRS (argv[optind]);
 	lcrp = SpMVM_distributeCRS (cr);
 
-
 #ifdef OPENCL
 	CL_uploadCRS ( lcrp, &props.matrixFormats);
 #endif
+
 	
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
@@ -182,23 +181,21 @@ int main( int argc, char* argv[] ) {
 	if (me==0)
 	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
 
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"."));
+	SpMVM_printEnvInfo();
+	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."));
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
+
 	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
 
-		/* Skip loop body if kernel does not make sense for used parametes */
-		if (!(0x1<<kernel & SPMVM_KERNELS)) 
-			continue; // kernel not selected
-		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
-			continue; // non-MPI kernel
-		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
-			continue; // not enough threads
+		if (!SpMVM_kernelValid(kernel,lcrp)) 
+			continue; // Skip loop body if kernel does not make sense for used parametes
 
 		MPI_Barrier(MPI_COMM_WORLD);
 		if (me == 0)
 			timing(&start,&dummy);
+
 
 #ifdef LIKWID_MARKER
 		char regionName[9];
@@ -208,7 +205,7 @@ int main( int argc, char* argv[] ) {
 #endif
 
 		for( iteration = 0; iteration < props.nIter; iteration++ ) {
-			HyK[kernel].kernel( iteration, nodeLHS, lcrp, nodeRHS);
+			SPMVM_KERNELS[kernel].kernel(nodeLHS, lcrp, nodeRHS);
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
 #ifdef LIKWID_MARKER
@@ -229,15 +226,25 @@ int main( int argc, char* argv[] ) {
 
 		if (me==0) {
 			for (i=0; i<lcrp->nRows; i++){
-				mytol = EPSILON * ABS(goldLHS->val[i]) * (cr->rowOffset[i+1]-cr->rowOffset[i]);
-				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
+				mytol = EPSILON * ABS(goldLHS->val[i]) * 
+					(cr->rowOffset[i+1]-cr->rowOffset[i]);
+				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
+						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					IF_DEBUG(1) {
-						printf( "PE%d: error in row %i: %.2f + %.2fi vs.  %.2f + %.2fi\n", me, i, REAL(goldLHS->val[i]),IMAG(goldLHS->val[i]),REAL(globLHS->val[i]),IMAG(globLHS->val[i]));
+						printf( "PE%d: error in row %i: %.2f + %.2fi vs. %.2f +"
+							   "%.2fi\n", me, i, REAL(goldLHS->val[i]),
+							   IMAG(goldLHS->val[i]),
+							   REAL(globLHS->val[i]),
+							   IMAG(globLHS->val[i]));
 					}
 					errcount++;
 				}
 			}
-			printf("It: %3d, Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",iteration,kernel,errcount?"WRONG":"CORRECT",FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*(double)lcrp->nEnts/(end-start),(end-start)*1.e3/props.nIter);
+			printf("Kernel %2d: result is %s @ %7.2f GF/s | %7.2f ms/it\n",
+					kernel,errcount?"WRONG  ":"CORRECT",
+					FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*
+					(double)lcrp->nEnts/(end-start),(end-start)*1.e3/
+					props.nIter);
 		}
 
 		zeroVector(nodeLHS);

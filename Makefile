@@ -13,8 +13,9 @@ IPATH	+=	-I./src/include
 
 objS	=	$(CobjS) $(FobjS) $(F90objS) $(SobjS) 
 
-CobjS	=  aux.o spmvm_util.o matricks.o mpihelper.o setup_communication.o timing.o \
-		   mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o hybrid_kernel_II.o hybrid_kernel_III.o
+CobjS	=  aux.o spmvm_util.o matricks.o mpihelper.o  \
+		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
+		   hybrid_kernel_II.o hybrid_kernel_III.o spmvm_globals.o
 OCLobjS = oclfun.o my_ellpack.o 
 FobjS	= 	matricks_GW.o imtql1.o pythag.o 
 SobjS	=	for_timing_start_asm.o for_timing_stop_asm.o

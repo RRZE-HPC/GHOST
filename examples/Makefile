@@ -1,5 +1,5 @@
 CC=mpicc
-CFLAGS=-g -openmp $(MAKROS) $(IPATH)
+CFLAGS=-g -O3 -openmp $(MAKROS) $(IPATH)
 IPATH=$(LIKWID_INC) -I../src/include 
 LPATH=$(LIKWID_LIB) -L..
 LIBS=-l$(PREFIX)spmvm -llikwid
@@ -16,7 +16,7 @@ endif
 %.o: %.c  
 	$(CC) $(CFLAGS) -o $@ -c $< 
 
-all: spmvm lanczos 
+all: spmvm lanczos minimal 
 
 
 spmvm: spmvm/main_spmvm.o

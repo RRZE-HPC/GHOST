@@ -31,9 +31,6 @@
 /* ########################################################################## */
 
 
-static size_t maxMem=0;
-static int free0 = 0;
-static int free1 = 0;
 static int size0 = 0;
 static int size1 = 0;
 static int now0  = 0;
@@ -129,7 +126,7 @@ void permuteVector( real* vec, int* perm, int len) {
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
-			fprintf(stderr, "ERROR: permutation index out of bounds\n");
+			fprintf(stderr, "ERROR: permutation index out of bounds: %d > %d\n",perm[i],len);
 			free(tmp);
 			exit(-1);
 		}
@@ -151,7 +148,6 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	size_t boundary = 4096;
 	int me, ierr; 
 
-	maxMem = (size_t)(total_mem);
 	//printf("Gesamtspeicher [bytes]: %llu\n", maxMem); 
 
 	void* mem;
@@ -168,31 +164,33 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	IF_DEBUG(2){
 		//if (size>1024.0*1024.0){  
 		printf("PE%d: Allocating %8.2f MB of memory for %-18s  -- %6.3f\n ", 
-				me, size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0) );
+				me, size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
 		fflush(stdout);
 		//}
 	}
 
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		printf("PE%d: Fehler beim Speicherallokieren using posix_memalign\n", me);
+		printf("PE%d: Error while allocating using posix_memalign\n", me);
 		printf("Array to be allocated: %s\n", desc);
-		printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/(1024.0*1024.0));
+		printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
+				(1024.0*1024.0));
 		printf("Errorcode: %s\n", strerror(ierr));
 		exit(1);
 	}
 
 	if( ! mem ) {
-		fprintf( stderr, "allocateMemory: could not allocate %lu bytes of memory "
-				"for %s\n", size, desc );
+		fprintf(stderr, "allocateMemory: could not allocate %lu bytes of memory"
+				" for %s\n", size, desc );
 		abort();
 	}
 	//   if ( get_NUMA_info(&size0, &now0, &size1, &now1) != 0 ) 
 	//      myabort("failed to retrieve NUMA-info");
 
 	allocatedMem += size;
-	IF_DEBUG(2) printf("PE%d: Gegenwaerig allokierter Speicher: %8.2f MB in LD 0/1: (%d /  %d) \n", 
-			me, allocatedMem/(1024.0*1024.0), size0-now0, size1-now1);
+	IF_DEBUG(2) printf("PE%d: Gegenwaerig allokierter Speicher: %8.2f MB in "
+		   "LD 0/1: (%d /  %d) \n", me, allocatedMem/(1024.0*1024.0), 
+		   size0-now0, size1-now1);
 	return mem;
 }
 
@@ -201,8 +199,8 @@ void* allocateMemory( const size_t size, const char* desc ) {
 
 void freeMemory( size_t size, const char* desc, void* this_array ) {
 
-	IF_DEBUG(1) if (size>1024.0*1024.0) printf("Freeing %8.2f MB of memory for %s -- \n", 
-			size/(1024.0*1024.0), desc);
+	IF_DEBUG(1) if (size>1024.0*1024.0) printf("Freeing %8.2f MB of memory for "
+			"%s -- \n", size/(1024.0*1024.0), desc);
 
 	allocatedMem -= size;
 	free (this_array);
@@ -229,10 +227,12 @@ MM_TYPE * readMMFile(const char* filename ) {
 	
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for complex data but the MM file contains real data. Casting...\n");
+		fprintf(stderr,"Warning! The library has been built for complex data "
+				"but the MM file contains real data. Casting...\n");
 #else
 	if (mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for real data but the MM file contains complex data. Casting...\n");
+		fprintf(stderr,"Warning! The library has been built for real data "
+				"but the MM file contains complex data. Casting...\n");
 #endif
 
 
@@ -261,7 +261,8 @@ MM_TYPE * readMMFile(const char* filename ) {
 		double re,im;
 		for (i=0; i<mm->nEnts; i++)
 		{
-			fscanf(f, "%d %d %lg %lg\n",  &mm->nze[i].row, &mm->nze[i].col, &re, &im);
+			fscanf(f, "%d %d %lg %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re,
+				   	&im);
 #ifdef COMPLEX	
 			mm->nze[i].val = re+I*im;
 #else
@@ -306,8 +307,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		fprintf(stderr,"Warning! The library has been built for %s data but the\
-			   	file contains %s data. Casting...\n",
+		fprintf(stderr,"Warning! The library has been built for %s data but the"
+			   	"file contains %s data. Casting...\n",
 				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
@@ -318,7 +319,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 		printf("Number of rows in matrix       = %d\n", cr->nRows);
 		printf("Number of columns in matrix    = %d\n", cr->nCols);
 		printf("Number of non-zero elements    = %d\n", cr->nEnts);
-		printf(" \n Entries to be read sum up to %6.2f MB\n", mybytes/1048576.0) ;
+		printf(" \nEntries to be read sum up to %6.2f MB\n", mybytes/1048576.0);
 	}
 	IF_DEBUG(2) printf("Allocate memory for arrays\n");
 
@@ -364,7 +365,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	switch (datatype) {
 		case DATATYPE_FLOAT:
 			{
-				float *tmp = (float *)allocateMemory(cr->nEnts*sizeof(float), "tmp");
+				float *tmp = (float *)allocateMemory(
+						cr->nEnts*sizeof(float), "tmp");
 				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
@@ -372,7 +374,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 			}
 		case DATATYPE_DOUBLE:
 			{
-				double *tmp = (double *)allocateMemory(cr->nEnts*sizeof(double), "tmp");
+				double *tmp = (double *)allocateMemory(
+						cr->nEnts*sizeof(double), "tmp");
 				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
@@ -380,7 +383,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 			}
 		case DATATYPE_COMPLEX_FLOAT:
 			{
-				_Complex float *tmp = (_Complex float *)allocateMemory(cr->nEnts*sizeof(_Complex float), "tmp");
+				_Complex float *tmp = (_Complex float *)allocateMemory(
+						cr->nEnts*sizeof(_Complex float), "tmp");
 				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
@@ -388,7 +392,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 			}
 		case DATATYPE_COMPLEX_DOUBLE:
 			{
-				_Complex double *tmp = (_Complex double *)allocateMemory(cr->nEnts*sizeof(_Complex double), "tmp");
+				_Complex double *tmp = (_Complex double *)allocateMemory(
+						cr->nEnts*sizeof(_Complex double), "tmp");
 				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
 				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
 				free(tmp);
@@ -603,19 +608,17 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	 * elements in row are sorted according to column*/
 
 	int* nEntsInRow;
-	int i, e, pos, nthr=1;
+	int i, e, pos;
 	uint64 hlpaddr;
 	int me;
 
 	size_t size_rowOffset, size_col, size_val, size_nEntsInRow;
 
-	real total_mem;
 
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
 	MPI_Comm_rank (MPI_COMM_WORLD, &me);
-	total_mem = my_amount_of_mem();
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );
@@ -775,20 +778,16 @@ int compareNZEForJD( const void* a, const void* b ) {
 /* ########################################################################## */
 
 
-JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm, int blocklen) {
+JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 	/* convert matrix-market format to blocked jagged-diagonal format*/
 
 	JD_SORT_TYPE* rowSort;
-	int i, e, pos, oldRow, nThEntryInRow,ib;
+	int i, e, pos, oldRow, nThEntryInRow;
 	uint64 hlpaddr;
 
-	int block_start, block_end; 
-	int diag,diagLen,offset;
 	size_t size_rowPerm, size_col, size_val, size_invRowPerm, size_rowSort;
 	size_t size_diagOffset;
 
-	FILE *STATFILE;
-	char statfilename[50];
 
 	/* allocate memory ######################################################## */
 	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );

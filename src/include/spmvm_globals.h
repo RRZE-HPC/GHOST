@@ -150,12 +150,12 @@ typedef struct {
 	real* val;
 } CR_TYPE;
 
-extern void hybrid_kernel_0   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_I   (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_II  (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_III (int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_0   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_I   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_II  (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+extern void hybrid_kernel_III (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
-typedef void (*FuncPrototype)( int, VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef struct {
     FuncPrototype kernel;
@@ -165,27 +165,13 @@ typedef struct {
     char*   name;
 } Hybrid_kernel;
 
-static Hybrid_kernel HyK[SPMVM_NUMKERNELS] = {
-
-    { &hybrid_kernel_0,    0, 0, "HyK_0", "ca :\npure OpenMP-kernel" },
-
-    { &hybrid_kernel_I,    0, 0, "HyK_I", "ir -- cs -- wa -- ca :\nISend/IRecv; \
-		serial copy"},
-
-    { &hybrid_kernel_II,    0, 0, "HyK_II", "ir -- cs -- cl -- wa -- nl :\
-		\nISend/IRecv; good faith hybrid" },
- 
-    { &hybrid_kernel_III,  0, 0, "HyK_III", "ir -- lc|csw -- nl:\ncopy in \
-		overlap region; dedicated comm-thread " },
-
-}; 
-
+extern Hybrid_kernel SPMVM_KERNELS[SPMVM_NUMKERNELS];
 
 /**********************************************/
 /****** global variables **********************/
 /**********************************************/
 int SPMVM_OPTIONS;
-int SPMVM_KERNELS;
+int SPMVM_KERNELS_SELECTED;
 
 #endif
 

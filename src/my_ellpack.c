@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 
 size_t getBytesize(void *mat, int format) {
@@ -31,18 +32,6 @@ size_t getBytesize(void *mat, int format) {
 	}
 
 	return sz;
-}
-
-int comparePosRowMajor( const void* a, const void* b ) {
-	int aRow = ((MATRIX_ENTRY*)a)->row,
-		bRow = ((MATRIX_ENTRY*)b)->row,
-		aCol = ((MATRIX_ENTRY*)a)->col,
-		bCol = ((MATRIX_ENTRY*)b)->col;
-
-	if( aRow == bRow ) {
-		return aCol - bCol;
-	}
-	else return aRow - bRow;
 }
 
 void getPadding(int nRows, int* paddedRows) {
@@ -253,7 +242,9 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 }
 
 ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col, 
-		const int* crs_row_ptr, const int nRows, const int* rowPerm, const int* invRowPerm, int threadsPerRow) {
+		const int* crs_row_ptr, const int nRows,  
+		const int* invRowPerm, int threadsPerRow) 
+{
 
 	int i, j;
 	ELR_TYPE* elr = NULL;
@@ -283,7 +274,7 @@ ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col,
 	}
 
 
-	int idb,stack;
+	int idb,stack,idx;
 
 	for( i = 0; i < elr->nRows; ++i) {
 		elr->rowLen[i] = crs_row_ptr[invRowPerm[i]+1]-crs_row_ptr[invRowPerm[i]];
@@ -291,8 +282,12 @@ ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col,
 
 			idb = j%threadsPerRow;
 			stack = j/threadsPerRow;
-			elr->col[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
-			elr->val[ stack*threadsPerRow*elr->padding + threadsPerRow*i + idb ]   = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
+			idx = stack*threadsPerRow*elr->padding + threadsPerRow*i + idb;
+//			if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+//				elr->col[idx] = rowPerm[crs_col[crs_row_ptr[invRowPerm[i]]+j]];
+//			else
+				elr->col[idx] = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
+			elr->val[idx] = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
 		}
 	}
 
@@ -306,7 +301,7 @@ ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col,
 }
 
 ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col, 
-		const int* crs_row_ptr, const int nRows, const int* rowPerm, const int* invRowPerm) {
+		const int* crs_row_ptr, const int nRows, const int* invRowPerm) {
 
 
 	JD_SORT_TYPE* rowSort;
@@ -382,7 +377,10 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 				printf("error: in i=%i, j=%i\n",i,j);
 
 			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]]; //PERMCOLS
-			elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
+	//		if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+	//			elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
+	//		else
+				elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
 			elr->val[ j*padRows+i ]   = crs_val[ crs_row_ptr[invRowPerm[i]]+j ];
 		}
 	}
@@ -515,7 +513,11 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 
 			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
 			// XXX: columns are NOT being permuted!
-			elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[elr->invRowPerm[i]]+j ];
+
+		//	if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+		//		elr->col[ j*padRows+i ]   = elr->rowPerm[crs_col[ crs_row_ptr[elr->invRowPerm[i]]+j ]];
+		//	else
+				elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[elr->invRowPerm[i]]+j ];
 			elr->val[ j*padRows+i ]   = crs_val[ crs_row_ptr[elr->invRowPerm[i]]+j ];
 		}
 	}
@@ -548,12 +550,12 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 }
 
 
-void checkCRStToPJDS(const real* crs_val, const int* crs_col, 
+/*void checkCRStToPJDS(const real* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,
 		const PJDS_TYPE* pjds) {
 
 
-}
+}*/
 
 ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
@@ -562,7 +564,7 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 	 * elements in row retain CRS order (usually sorted by column);*/
 
 	JD_SORT_TYPE* rowSort;
-	int i, j, e, pos, rowMaxEnt, padRows;
+	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen;
 	int *rowLen, *col;
 	real* val;
@@ -644,9 +646,9 @@ void checkCRSToELR(	const real* crs_val, const int* crs_col,
 	 * assume FORTRAN numbering in crs, C numbering in ELR */
 
 	int i,j, hlpi;
-	int me, ierr;
+	int me;
 
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	printf("PE%i: -- ELRcopy sanity check:\n", me);
 	for (i=0; i<nRows; i++){
@@ -656,7 +658,7 @@ void checkCRSToELR(	const real* crs_val, const int* crs_col,
 
 		hlpi = 0;
 		for (j=crs_row_ptr[i]; j<crs_row_ptr[i+1]; j++){
-			if( crs_val[j] != elr->val[i+hlpi*elr->padding]) 
+			if( ABS(crs_val[j]-elr->val[i+hlpi*elr->padding])>EPSILON) 
 				printf("PE%i: value mismatch [%i,%i]:\t%e+%ei | %e+%ei\n",
 						me, i,hlpi, REAL(crs_val[j]), IMAG(crs_val[j]), REAL(elr->val[i+hlpi*elr->padding]),IMAG(elr->val[i+hlpi*elr->padding]));
 			if( crs_col[j] != elr->col[i+hlpi*elr->padding]) 
@@ -744,7 +746,7 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	cl_mem col, rowLen, colStart, val;
 
-	int me, ierr;
+	int me;
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
@@ -754,14 +756,14 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 	/* allocate */
 
 	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_Comm_rank(MPI_COMM_WORLD, &me);
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
 	}
 
 	col = CL_allocDeviceMemory(colMemSize);
 
 	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_Comm_rank(MPI_COMM_WORLD, &me);
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colStartMemSize/(1024*1024));	
 	}
 	colStart = CL_allocDeviceMemory(colStartMemSize);
@@ -801,7 +803,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	cl_mem col, rowLen, val;
 
-	int me, ierr;
+	int me;
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
@@ -811,7 +813,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 	/* allocate */
 
 	IF_DEBUG(1) { 
-		ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_Comm_rank(MPI_COMM_WORLD, &me);
 		printf("PE%i: CELRinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
 	}
 	col = CL_allocDeviceMemory(colMemSize);
@@ -855,8 +857,8 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	assert( cpjds->padding == pjds->padding );
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	int me;
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
@@ -892,8 +894,8 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 	assert( celr->nMaxRow == elr->nMaxRow );
 
 
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	int me;
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
@@ -928,8 +930,8 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
 
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	int me;
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) pjds->nMaxRow * sizeof( int );
@@ -964,8 +966,8 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 	assert( celr->padding == elr->padding );
 	assert( celr->nMaxRow == elr->nMaxRow );
 
-	int me, ierr;
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	int me;
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );

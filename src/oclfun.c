@@ -6,8 +6,6 @@
 #include <libgen.h>
 #include <unistd.h>
 
-extern int SPMVM_OPTIONS;
-
 static cl_command_queue queue;
 static cl_context context;
 static int takedevice;
@@ -15,16 +13,11 @@ static cl_kernel kernel[3];
 static size_t localSize[3] = {256,256,256};
 static size_t globalSize[3];
 static size_t globalSz;
-static size_t localSz = 256;
+//static size_t localSz = 256;
 
 static int rank;
 static int size;
 static char hostname[MAXHOSTNAMELEN];
-
-void pfn_notify(const char *err, const void *priv, size_t cb, void *user_data) 
-{
-	fprintf(stderr,"OpenCL error (via pfn_notify): %s\n",err);
-}
 
 /* ----------------------------------------------------------------------------
    Initiliaze OpenCL for the SpMVM, i.e., 
@@ -39,7 +32,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	cl_platform_id *platformIDs;
 	cl_int err;
 	cl_program program;
-	int platform, device;
+	unsigned int platform, device;
 	char devicename[1024];
 	cl_uint numDevices;
 	cl_device_id *deviceIDs;
@@ -71,14 +64,14 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 
 	IF_DEBUG(1) {
 		if ( 0 == rank ) {
-			printf("## rank %i/%i on %s --\t Platform: %d, \
-					No. devices of desired type: %d\n", 
+			printf("## rank %i/%i on %s --\t Platform: %u, \
+					No. devices of desired type: %u\n", 
 					rank, size-1, hostname, platform, numDevices);
 
 			for( device = 0; device < numDevices; ++device) {
 				CL_safecall(clGetDeviceInfo(deviceIDs[device],CL_DEVICE_NAME,
 							sizeof(devicename),devicename,NULL));
-				printf("## rank %i/%i on %s --\t Device %d: %s\n", 
+				printf("## rank %i/%i on %s --\t Device %u: %s\n", 
 						rank, size-1, hostname, device, devicename);
 			}
 		}
@@ -87,15 +80,15 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	takedevice = rank%numDevices;
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,
 				sizeof(devicename),devicename,NULL));
-	printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", rank, size-1,
-			hostname, takedevice, devicename);
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", 
+			rank, size-1,hostname, takedevice, devicename);
 
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating context \n", rank,
 			size-1, hostname);
 	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,
 		(cl_context_properties)platformIDs[platform],0};
-	context = clCreateContext(cprops,1,&deviceIDs[takedevice],pfn_notify,NULL,
+	context = clCreateContext(cprops,1,&deviceIDs[takedevice],NULL,NULL,
 			&err);
 	CL_checkerror(err);
 
@@ -169,9 +162,10 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		char err[] = "Failed to load kernel file: ";
-		char msg[strlen(err)+strlen(filename)];
-		strcpy(err,msg);
+		char cerr[] = "Failed to load kernel file: ";
+		size_t errlen = strlen(cerr);
+		char msg[errlen+strlen(filename)];
+		strcpy(cerr,msg);
 		strcat(msg,filename);
 		myabort(msg);
 	}
@@ -329,6 +323,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
 	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
+
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,
 				&globalSize[type],&localSize[type],0,NULL,NULL));
 }
@@ -353,12 +348,12 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats)
 	CL_init(matrixFormats);
 	CL_setup_communication(lcrp,matrixFormats);
 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // combined computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) {
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,
 				matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
 	}
 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // split computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) {
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,
 				matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,
@@ -385,13 +380,13 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 	CL_PJDS_TYPE* lcpjds = NULL;
 
 
-	int ierr, me;
+	int me;
 
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_Comm_rank(MPI_COMM_WORLD, &me);
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_COMBINED) { // combined computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
 		switch (matrixFormats->format[0]) {
 			case SPM_GPUFORMAT_PJDS:
 				{
@@ -437,12 +432,12 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 	}
 
-	if (SPMVM_KERNELS & SPMVM_KERNELS_SPLIT) { // split computation
+	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && 
 				matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
-			myabort("The matrix format must _not_ be pJDS for the \
-					local and remote part of the matrix.");
+			myabort("The matrix format must _not_ be pJDS for the"
+					"local and remote part of the matrix.");
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) {
 			IF_DEBUG(1) printf("PE%i: LOCAL pjds:\n", me);
@@ -501,7 +496,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 			if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) { // remote pJDS
 				lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
 						lcrp->lnRows[me],lcrp->splitRowPerm,
-						lcrp->splitInvRowPerm,matrixFormats->T[1]);
+						matrixFormats->T[1]);
 			} else { // remote ELR
 				lelr = CRStoELRT(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
 						lcrp->lnRows[me],matrixFormats->T[1]);
@@ -520,7 +515,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 			if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) { // local pJDS
 				relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
 						lcrp->lnRows[me],lcrp->splitRowPerm,
-						lcrp->splitInvRowPerm,matrixFormats->T[2]);
+						matrixFormats->T[2]);
 			} else { // local ELR
 				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
 						lcrp->lnRows[me],matrixFormats->T[2] );

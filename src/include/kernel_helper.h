@@ -17,28 +17,27 @@ extern int SPMVM_OPTIONS;
 
 /*********** kernel for all entries *********************/
 
-inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, 
-		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
-		uint64* ca_cycles, uint64* cp_in_cycles, uint64* cp_res_cycles, 
-		int* me) {
+inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
+		int* me) 
+{
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
 	 * ca_cycles: timing measurement for computation of all entries
 	 * cp_in_cycles/cp_res_cycles: timing for copy to device of input (rhs) vector / copy from device
 	 *   of result vector, only valid if CUDAKERNEL */
 
-	int i, j;
-	real hlp1;
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, invec->nRows*sizeof(real));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 	
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
 	
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_KEEPRESULT))
 		CL_copyDeviceToHost( res->val, res->CL_val_gpu, res->nRows*sizeof(real) );
 #else
+	int i, j;
+	real hlp1;
 
 #pragma omp parallel
 	{
@@ -68,16 +67,13 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 /*********** kernel for local entries only *********************/
 
 inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
-		uint64* lc_cycles, uint64* cp_lin_cycles, int* me) {
+		int* me) {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
 	 * lc_cycles: timing measurement for computation of local entries
 	 * cp_lin_cycles: timing for copy to device of local elements in input (rhs) vector, 
 	 *   only valid if CUDAKERNEL */
 
-	int i, j;
-	real hlp1;
 
 
 #ifdef OPENCL
@@ -86,6 +82,8 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
 #else
+	int i, j;
+	real hlp1;
 
 
 #pragma omp parallel
@@ -116,8 +114,6 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 /*********** kernel for remote entries only *********************/
 
 inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
-		uint64* nl_cycles, uint64* cp_nlin_cycles, uint64* cp_res_cycles, 
 		int* me) {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
@@ -125,8 +121,6 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	 * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
 	 *   copy from device of result, only valid if CUDAKERNEL */
 
-	int i, j;
-	real hlp1;
 
 #ifdef OPENCL
 	if (!(SPMVM_OPTIONS & SPMVM_OPTION_RHSPRESENT)) {
@@ -141,6 +135,8 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 		CL_copyDeviceToHost(res->val, res->CL_val_gpu, res->nRows*sizeof(real));
 	}
 #else
+	int i, j;
+	real hlp1;
 
 #pragma omp parallel
 	{
@@ -170,9 +166,8 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 
 #ifdef OPENCL
 
-inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
-		uint64* lc_cycles, uint64* cp_lin_cycles, int* me) {
+inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me) 
+{
 	/* helper function to call SpMVM kernel only on device with device data transfer;
 	 * due to communication thread, OMP version must be called separately;
 	 * lc_cycles: timing measurement for computation of local entries
@@ -189,10 +184,8 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 
 /*********** kernel for remote entries only -- comm thread *********************/
 
-inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		uint64* asm_cyclecounter, uint64* asm_cycles, uint64* cycles4measurement, 
-		uint64* nl_cycles, uint64* cp_nlin_cycles, uint64* cp_res_cycles, 
-		int* me) {
+inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me) 
+{
 	/* helper function to call SpMVM kernel only on device with device data transfer;
 	 * due to communication thread, OMP version must be called separately;
 	 * nl_cycles: timing measurement for computation of non-local entries
