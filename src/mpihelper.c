@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
+#include <stdlib.h>
 #define _GNU_SOURCE
 
 #ifdef LIKWID
@@ -15,64 +16,65 @@
 #include <math.h>
 #include <omp.h>
 
-void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) {
+void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) 
+{
 
-   /* return MPI communicator between nodal MPI processes single_node_comm
-    * and process rank me_node on local node */
+	/* return MPI communicator between nodal MPI processes single_node_comm
+	 * and process rank me_node on local node */
 
-   int i, coreId, me, n_nodes;
-   char **all_hostnames;
-   char *all_hn_mem;
+	int i, coreId, me, n_nodes;
+	char **all_hostnames;
+	char *all_hn_mem;
 
-   size_t size_ahnm, size_ahn, size_nint;
-   int *mymate, *acc_mates;
-   
-   MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
-   MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	size_t size_ahnm, size_ahn, size_nint;
+	int *mymate, *acc_mates;
+
+	MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
+	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 #ifdef LIKWID
-   coreId = likwid_getProcessorId();
+	coreId = likwid_getProcessorId();
 #else
-   coreId = sched_getcpu();
+	coreId = sched_getcpu();
 #endif
 
-   size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
-   size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
-   size_nint = (size_t)( n_nodes    * sizeof(int) );
+	size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
+	size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
+	size_nint = (size_t)( n_nodes    * sizeof(int) );
 
-   mymate        = (int*)      malloc( size_nint);
-   acc_mates     = (int*)      malloc( size_nint );
-   all_hn_mem    = (char*)     malloc( size_ahnm );
-   all_hostnames = (char**)    malloc( size_ahn );
+	mymate        = (int*)      malloc( size_nint);
+	acc_mates     = (int*)      malloc( size_nint );
+	all_hn_mem    = (char*)     malloc( size_ahnm );
+	all_hostnames = (char**)    malloc( size_ahn );
 
-   for (i=0; i<n_nodes; i++){
-      all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
-      mymate[i] = 0;
-   }
+	for (i=0; i<n_nodes; i++){
+		all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
+		mymate[i] = 0;
+	}
 
-   /* write local hostname to all_hostnames and share */
-   MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-	 &all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD );
+	/* write local hostname to all_hostnames and share */
+	MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
+			&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD );
 
-   /* one process per node writes its global id to all its mates' fields */ 
-   if (coreId==0){
-      for (i=0; i<n_nodes; i++){
-    	 if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
-      }
-   }  
+	/* one process per node writes its global id to all its mates' fields */ 
+	if (coreId==0){
+		for (i=0; i<n_nodes; i++){
+			if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
+		}
+	}  
 
-   MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
-   /* all processes should now have the rank of their coreId 0 process in their acc_mate field;
-    * split into comm groups with this rank as communicator ID */
-   MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, single_node_comm );
-   MPI_Comm_rank ( *single_node_comm, me_node);
+	MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+	/* all processes should now have the rank of their coreId 0 process in their acc_mate field;
+	 * split into comm groups with this rank as communicator ID */
+	MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, single_node_comm );
+	MPI_Comm_rank ( *single_node_comm, me_node);
 
-   IF_DEBUG(1) printf("PE%d hat in single_node_comm den rank %d\n", me, *me_node);
+	IF_DEBUG(1) printf("PE%d hat in single_node_comm den rank %d\n", me, *me_node);
 
-   free( mymate );
-   free( acc_mates );
-   free( all_hn_mem );
-   free( all_hostnames );
+	free( mymate );
+	free( acc_mates );
+	free( all_hn_mem );
+	free( all_hostnames );
 }
 
 /******************************************************************************
@@ -82,7 +84,8 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
  * entsprechenden Daten dann an diejenigen PEs verteilen die es betrifft.
  *****************************************************************************/
 
-LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
+LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
+{
 
 	/* Counting and auxilliary variables */
 	int i, j, hlpi;
@@ -154,7 +157,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 	}
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
-	
+
 	lcrp->fullRowPerm = NULL;
 	lcrp->fullInvRowPerm = NULL;
 	lcrp->splitRowPerm = NULL;
@@ -595,8 +598,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 	for(i=0; i<lcrp->nodes; i++) {
 		MPI_Scatterv ( 
-			lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
-			lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD );
+				lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
+				lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD );
 	}
 
 	/****************************************************************************
@@ -716,3 +719,46 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist){
 
 	return lcrp;
 }
+
+static int stringcmp(const void *x, const void *y)
+{
+	return (strcmp((char *)x, (char *)y));
+}
+
+
+int getNumberOfNodes() 
+{
+	int nameLen,me,size,i,distinctNames = 1;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	char *names;
+
+	MPI_Comm_rank(MPI_COMM_WORLD,&me);
+	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	MPI_Get_processor_name(name,&nameLen);
+
+
+	if (me==0) {
+		names = (char *)allocateMemory(size*MPI_MAX_PROCESSOR_NAME*sizeof(char),
+				"names");
+	}
+
+	
+	MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
+			MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD);
+
+	if (me==0) {
+		qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
+		for (i=1; i<size; i++) {
+			if (strcmp(names+(i-1)*MPI_MAX_PROCESSOR_NAME,names+
+						i*MPI_MAX_PROCESSOR_NAME)) {
+					distinctNames++;
+			}
+		}
+		free(names);
+	}
+
+	MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD);
+	
+	return distinctNames;
+}
+

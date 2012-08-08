@@ -98,7 +98,7 @@ void SpMVM_finish()
 CR_TYPE * SpMVM_createCRS (char *matrixPath)
 {
 
-	
+
 	int me;
 	CR_TYPE *cr;
 	MM_TYPE *mm;
@@ -132,7 +132,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath)
 
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
-	
+
 	int me;
 	int i;
 
@@ -161,7 +161,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec) {
-	
+
 	int me;
 
 
@@ -192,7 +192,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 
 	int me;
 	size_t ws;
-	
+
 
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
@@ -252,24 +252,27 @@ void SpMVM_printEnvInfo()
 	int me;
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
+	int nnodes = getNumberOfNodes();
+
 	if (me==0) {
-	int nproc;
-	int nthreads;
-	MPI_Comm_size ( MPI_COMM_WORLD, &nproc );
+		int nproc;
+		int nthreads;
+		MPI_Comm_size ( MPI_COMM_WORLD, &nproc );
 
 #pragma omp parallel
 #pragma omp master
-	nthreads = omp_get_num_threads();
+		nthreads = omp_get_num_threads();
 
 		printf("-----------------------------------------------\n");
 		printf("-------       System information        -------\n");
 		printf("-----------------------------------------------\n");
 		printf("MPI processes                    : %12d\n", nproc); 
+		printf("Nodes                            : %12d\n", nnodes); 
 		printf("OpenMP threads per process       : %12d\n", nthreads);
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
 #ifdef OPENCL
 		printf("OpenCL                           :      enabled\n");
-	   //TODO gpu info
+		//TODO gpu info
 #else
 
 		printf("OpenCL                           :     disabled\n");
@@ -295,7 +298,7 @@ void SpMVM_printEnvInfo()
 
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
 {
-	
+
 	int me;
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
@@ -316,19 +319,19 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter)
 #ifdef DOUBLE
 #ifdef COMPLEX
 			fortrancrsaxpyc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val ,
-				   	cr->col, cr->rowOffset);
+					cr->col, cr->rowOffset);
 #else
 			fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val ,
-				   	cr->col, cr->rowOffset);
+					cr->col, cr->rowOffset);
 #endif
 #endif
 #ifdef SINGLE
 #ifdef COMPLEX
 			fortrancrsaxpycf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val,
-				   	cr->col, cr->rowOffset);
+					cr->col, cr->rowOffset);
 #else
 			fortrancrsaxpyf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val,
-				   	cr->col, cr->rowOffset);
+					cr->col, cr->rowOffset);
 #endif
 #endif
 		}
@@ -336,32 +339,32 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter)
 #ifdef DOUBLE
 #ifdef COMPLEX
 		fortrancrsc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-			   	cr->rowOffset);
+				cr->rowOffset);
 #else
 		fortrancrs_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-			   	cr->rowOffset);
+				cr->rowOffset);
 #endif
 #endif
 #ifdef SINGLE
 #ifdef COMPLEX
 		fortrancrscf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-			   	cr->rowOffset);
+				cr->rowOffset);
 #else
 		fortrancrsf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col,
-			   	cr->rowOffset);
+				cr->rowOffset);
 #endif
 #endif
 	}
 }
 
 int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp) {
-	
-		if (!(0x1<<kernel & SPMVM_KERNELS_SELECTED)) 
-			return 0; // kernel not selected
-		if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
-			return 0; // non-MPI kernel
-		if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
-			return 0; // not enough threads
 
-		return 1;
+	if (!(0x1<<kernel & SPMVM_KERNELS_SELECTED)) 
+		return 0; // kernel not selected
+	if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
+		return 0; // non-MPI kernel
+	if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
+		return 0; // not enough threads
+
+	return 1;
 }

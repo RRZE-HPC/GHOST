@@ -8,22 +8,18 @@
 
 static cl_command_queue queue;
 static cl_context context;
-static int takedevice;
 static cl_kernel kernel[3];
 static size_t globalSize[3];
 static size_t globalSz;
 
-static int rank;
-static int size;
-static char hostname[MAXHOSTNAMELEN];
 
-/* ----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
    Initiliaze OpenCL for the SpMVM, i.e., 
    - find platform for defined device type, 
    - select a device (there is only _ONE_ device per MPI process),
    - build program containing SpMVM kernels,
    - create SpMVM kernels
-   ------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 void CL_init(SPM_GPUFORMATS *matFormats)
 {
 	cl_uint numPlatforms;
@@ -32,11 +28,14 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	cl_program program;
 	unsigned int platform, device;
 	char devicename[1024];
+	int takedevice;
+	int rank;
+	int size;
+	char hostname[MAXHOSTNAMELEN];
 	cl_uint numDevices;
 	cl_device_id *deviceIDs;
 
 	gethostname(hostname,MAXHOSTNAMELEN);
-
 	MPI_Comm_size( single_node_comm, &size);
 	MPI_Comm_rank( single_node_comm, &rank);
 
@@ -142,7 +141,10 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	free(platformIDs);
 }
 
-// create program inside previously created context and build it
+/* -----------------------------------------------------------------------------
+   Create program inside previously created context (global variable) and 
+   build it
+   -------------------------------------------------------------------------- */
 cl_program CL_registerProgram(char *filename, const char *opt)
 {
 	cl_program program;
@@ -154,7 +156,12 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	size_t log_size;
 	long filesize;
 	cl_device_id deviceID;
+	int size, rank;
+	char hostname[MAXHOSTNAMELEN];
 
+	gethostname(hostname,MAXHOSTNAMELEN);
+	MPI_Comm_size( single_node_comm, &size);
+	MPI_Comm_rank( single_node_comm, &rank);
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
@@ -300,8 +307,8 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 		globalSz = matrix->padding;
 	}
 	if (T>1) {
-
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(real)*CL_getLocalSize(kernel[kernelIdx]),NULL));
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(real)*
+			CL_getLocalSize(kernel[kernelIdx]),NULL));
 	}
 }
 
@@ -371,7 +378,6 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 	CL_PJDS_TYPE* rcpjds= NULL;
 	CL_PJDS_TYPE* cpjds  = NULL;
 	CL_PJDS_TYPE* lcpjds = NULL;
-
 
 	int me;
 
@@ -535,16 +541,18 @@ void CL_downloadVector( VECTOR_TYPE *vec )
 	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(real));
 }
 
-
-size_t CL_getLocalSize(cl_kernel kernel) {
+size_t CL_getLocalSize(cl_kernel kernel) 
+{
 
 	cl_device_id deviceID;
 	size_t wgSize;
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
-	CL_safecall(clGetKernelWorkGroupInfo(kernel,deviceID,CL_KERNEL_WORK_GROUP_SIZE,sizeof(size_t),&wgSize,NULL));
+	CL_safecall(clGetKernelWorkGroupInfo(kernel,deviceID,
+		CL_KERNEL_WORK_GROUP_SIZE,sizeof(size_t),&wgSize,NULL));
 
 	return wgSize;
-
 }
+
+

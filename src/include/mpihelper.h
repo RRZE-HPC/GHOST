@@ -6,5 +6,6 @@
 
 void       setupSingleNodeComm( char*, MPI_Comm*, int* );
 LCRP_TYPE* setup_communication(CR_TYPE* const, int);
+int getNumberOfNodes();
 
 #endif
