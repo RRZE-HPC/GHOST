@@ -4,9 +4,9 @@ CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC -Wall -Werror-all -
 FC	= mpif90
 FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp -fPIC
 
-LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic -fPIC
+LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic -fPIC -mt_mpi
 
-LIBS = -L$(INTEL_F_HOME)/compiler/lib/intel64 -lifcore -pthread 
+LIBS = -L$(INTEL_F_HOME)/compiler/lib/intel64 -lifcore -pthread  
 	
 ifdef LIKWID
 LIBS += $(LIKWID_LIB) -llikwid 

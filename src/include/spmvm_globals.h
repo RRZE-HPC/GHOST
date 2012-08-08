@@ -16,7 +16,7 @@
 //#define LIKWID_MARKER
 //#define LIKWID_MARKER_FINE
 #define DOUBLE
-#define COMPLEX
+//#define COMPLEX
 #define DEBUG 0 
 /**********************************************/
 

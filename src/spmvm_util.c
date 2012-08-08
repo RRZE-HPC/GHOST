@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "spmvm_util.h"
 #include "matricks.h"
 #include <sys/param.h>
@@ -14,7 +15,10 @@
 #include <likwid.h>
 #endif
 
+#include <sched.h>
+#include <errno.h>
 #include <omp.h>
+#include <string.h>
 
 
 
@@ -69,6 +73,24 @@ int SpMVM_init(int argc, char **argv)
 	MPI_Type_commit(&MPI_MYDATATYPE);
 	MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM);
 #endif
+
+#ifdef PIN
+#pragma omp parallel
+	{
+	cpu_set_t cpu_set;
+	CPU_ZERO(&cpu_set);
+	CPU_SET(coreNumber, &cpu_set);
+
+	error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
+
+	if (error != 0) {
+		printf("pinning thread to core %d failed (%d): %s\n", 
+				coreNumber, error, strerror(error));
+	}
+	}
+#endif
+
+
 
 #ifdef LIKWID_MARKER
 	likwid_markerInit();
@@ -249,11 +271,15 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 void SpMVM_printEnvInfo() 
 {
 
-	int me,i;
+	int me;
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 	int nnodes = getNumberOfNodes();
+
+#ifdef OPENCL
 	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
+#endif
+
 
 	if (me==0) {
 		int nproc;
@@ -270,13 +296,23 @@ void SpMVM_printEnvInfo()
 		printf("MPI processes                    : %12d\n", nproc); 
 		printf("Nodes                            : %12d\n", nnodes); 
 		printf("OpenMP threads per process       : %12d\n", nthreads);
-		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
 #ifdef OPENCL
-		printf("OpenCL                           :      enabled\n");
 		printf("OpenCL devices                   :\n");
+		int i;
 		for (i=0; i<devInfo->nDistinctDevices; i++) {
 			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
 		}
+#endif
+		printf("-----------------------------------------------\n\n");
+		
+		printf("-----------------------------------------------\n");
+		printf("-------      LibSpMVM information       -------\n");
+		printf("-----------------------------------------------\n");
+		printf("Build date                       : %12s\n", __DATE__); 
+		printf("Build time                       : %12s\n", __TIME__); 
+		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+#ifdef OPENCL
+		printf("OpenCL                           :      enabled\n");
 #else
 		printf("OpenCL                           :     disabled\n");
 #endif
@@ -297,7 +333,9 @@ void SpMVM_printEnvInfo()
 
 	}
 
+#ifdef OPENCL
 	destroyCLdeviceInfo(devInfo);
+#endif
 
 }
 

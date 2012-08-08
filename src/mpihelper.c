@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "mpihelper.h"
 #include "matricks.h"
 //
@@ -5,7 +6,6 @@
 #include <string.h>
 #include <sys/param.h>
 #include <stdlib.h>
-#define _GNU_SOURCE
 
 #ifdef LIKWID
 #include <likwid.h>

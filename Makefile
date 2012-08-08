@@ -20,10 +20,10 @@ OCLOBJS = oclfun.o my_ellpack.o
 FOBJS	= 	matricks_GW.o imtql1.o pythag.o 
 SOBJS	=	for_timing_start_asm.o for_timing_stop_asm.o
 
-MAKROS=
+MAKROS=#-DPIN
 
 ifdef LIKWID
-MAKROS=-DLIKWID
+MAKROS+= -DLIKWID
 endif
 
 ifdef OPENCL
