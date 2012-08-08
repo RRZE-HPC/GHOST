@@ -196,6 +196,15 @@ extern Hybrid_kernel SPMVM_KERNELS[SPMVM_NUMKERNELS];
 int SPMVM_OPTIONS;
 int SPMVM_KERNELS_SELECTED;
 
+
+#ifdef OPENCL
+typedef struct{
+	int nDistinctDevices;
+	int *nDevices;
+	char **names;
+} CL_DEVICE_INFO;
+#endif
+
 #endif
 
 

@@ -34,4 +34,6 @@ void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows);
 void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats);
 void CL_enqueueKernel(cl_kernel kernel);
 size_t CL_getLocalSize(cl_kernel kernel);
+CL_DEVICE_INFO * CL_getDeviceInfo();
+void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif

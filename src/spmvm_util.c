@@ -249,10 +249,11 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 void SpMVM_printEnvInfo() 
 {
 
-	int me;
+	int me,i;
 	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
 
 	int nnodes = getNumberOfNodes();
+	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
 
 	if (me==0) {
 		int nproc;
@@ -272,16 +273,15 @@ void SpMVM_printEnvInfo()
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
 #ifdef OPENCL
 		printf("OpenCL                           :      enabled\n");
-		//TODO gpu info
+		printf("OpenCL devices                   :\n");
+		for (i=0; i<devInfo->nDistinctDevices; i++) {
+			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
+		}
 #else
-
 		printf("OpenCL                           :     disabled\n");
 #endif
 #ifdef LIKWID
 		printf("Likwid                           :      enabled\n");
-#else
-		printf("Likwid                           :     disabled\n");
-#endif
 #ifdef LIKWID_MARKER_FINE
 		printf("Likwid Marker API (high res)     :      enabled\n");
 #else
@@ -289,10 +289,15 @@ void SpMVM_printEnvInfo()
 		printf("Likwid Marker API                :      enabled\n");
 #endif
 #endif
+#else
+		printf("Likwid                           :     disabled\n");
+#endif
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 
 	}
+
+	destroyCLdeviceInfo(devInfo);
 
 }
 

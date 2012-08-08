@@ -6,6 +6,8 @@
 #include <libgen.h>
 #include <unistd.h>
 
+#define CL_MAX_DEVICE_NAME_LEN 500
+
 static cl_command_queue queue;
 static cl_context context;
 static cl_kernel kernel[3];
@@ -27,7 +29,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	cl_int err;
 	cl_program program;
 	unsigned int platform, device;
-	char devicename[1024];
+	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
 	int rank;
 	int size;
@@ -308,7 +310,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx)
 	}
 	if (T>1) {
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(real)*
-			CL_getLocalSize(kernel[kernelIdx]),NULL));
+					CL_getLocalSize(kernel[kernelIdx]),NULL));
 	}
 }
 
@@ -550,9 +552,101 @@ size_t CL_getLocalSize(cl_kernel kernel)
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 	CL_safecall(clGetKernelWorkGroupInfo(kernel,deviceID,
-		CL_KERNEL_WORK_GROUP_SIZE,sizeof(size_t),&wgSize,NULL));
+				CL_KERNEL_WORK_GROUP_SIZE,sizeof(size_t),&wgSize,NULL));
 
 	return wgSize;
 }
 
+static int stringcmp(const void *x, const void *y)
+{
+	return (strcmp((char *)x, (char *)y));
+}
 
+CL_DEVICE_INFO *CL_getDeviceInfo() 
+{
+	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
+	devInfo->nDistinctDevices = 1;
+
+	int me,size,i;
+	cl_device_id deviceID;
+	char name[CL_MAX_DEVICE_NAME_LEN];
+	char *names;
+
+	MPI_Comm_rank(MPI_COMM_WORLD,&me);
+	MPI_Comm_size(MPI_COMM_WORLD,&size);
+
+
+	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
+				sizeof(cl_device_id),&deviceID,NULL));
+	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,
+				CL_MAX_DEVICE_NAME_LEN*sizeof(char),name,NULL));
+
+	if (me==0) {
+		names = (char *)allocateMemory(size*CL_MAX_DEVICE_NAME_LEN*sizeof(char),
+				"names");
+	}
+
+
+	MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+			CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD);
+
+	if (me==0) {
+		qsort(names,size,CL_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
+		for (i=1; i<size; i++) {
+			if (strcmp(names+(i-1)*CL_MAX_DEVICE_NAME_LEN,
+						names+i*CL_MAX_DEVICE_NAME_LEN)) {
+				devInfo->nDistinctDevices++;
+			}
+		}
+	}
+
+	MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD);
+
+	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
+	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
+	for (i=0; i<devInfo->nDistinctDevices; i++)
+		devInfo->names[i] = allocateMemory(sizeof(char)*CL_MAX_DEVICE_NAME_LEN,"device names");
+
+	if (me==0) {
+		strncpy(devInfo->names[0],names,CL_MAX_DEVICE_NAME_LEN);
+		devInfo->nDevices[0] = 1;
+
+
+		int distIdx = 0;
+		for (i=1; i<size; i++) {
+			devInfo->nDevices[distIdx]++;
+			if (strcmp(names+(i-1)*CL_MAX_DEVICE_NAME_LEN,
+						names+i*CL_MAX_DEVICE_NAME_LEN)) {
+				strncpy(devInfo->names[distIdx],names+i*CL_MAX_DEVICE_NAME_LEN,CL_MAX_DEVICE_NAME_LEN);
+				distIdx++;
+			}
+		}
+
+		free(names);
+	}
+
+
+	MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD);
+
+	for (i=0; i<devInfo->nDistinctDevices; i++)
+		MPI_Bcast(devInfo->names[i],CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD);
+
+
+	return devInfo;
+}
+
+
+void destroyCLdeviceInfo(CL_DEVICE_INFO * di) 
+{
+
+	if (di) {	
+		int i;
+		for (i=0; i<di->nDistinctDevices; i++) {
+			free(di->names[i]);
+		}
+		free(di->names);
+		free(di->nDevices);
+		free(di);
+	}
+
+}
