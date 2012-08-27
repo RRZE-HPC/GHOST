@@ -85,6 +85,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	send_messages=0;
 	recv_messages = 0;
+	
 	for (i=0;i<lcrp->nodes;i++) send_request[i] = MPI_REQUEST_NULL;
 
 	/*****************************************************************************
@@ -179,8 +180,6 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 			/* Alle threads gleichviel; letzter evtl. mehr */
 			if (tid < lcrp->threads-2)  n_local = n_per_thread;
 			else                        n_local = lcrp->lnRows[me]-(lcrp->threads-2)*n_per_thread;
-
-
 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
 				hlp1 = 0.0;

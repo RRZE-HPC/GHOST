@@ -166,7 +166,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	VECTOR_TYPE *nodeVec = newVector( pseudo_ldim ); 
 
 	/* Placement of RHS Vector */
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
 	for( i = 0; i < pseudo_ldim; i++ ) 
 		nodeVec->val[i] = 0.0;
 
@@ -202,7 +202,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr)
 	gethostname(hostname,MAXHOSTNAMELEN);
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
 
-	LCRP_TYPE *lcrp = setup_communication(cr, 1);
+	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED);
 
 
 	return lcrp;
@@ -311,6 +311,7 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+		printf("Work distribution                : %12s\n", WORKDIST_NAMES[WORKDIST_DESIRED]);
 #ifdef OPENCL
 		printf("OpenCL                           :      enabled\n");
 #else
@@ -400,7 +401,8 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter)
 	}
 }
 
-int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp) {
+int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp) 
+{
 
 	if (!(0x1<<kernel & SPMVM_KERNELS_SELECTED)) 
 		return 0; // kernel not selected

@@ -191,7 +191,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	 ***************************************************************************/
 	if (me==0){
 
-		if (work_dist == EQUAL_NZE){
+		if (work_dist == WORKDIST_EQUAL_NZE){
 			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_NZE on each PE\n");
 			target_nnz = (cr->nEnts/lcrp->nodes)+1; /* sonst bleiben welche uebrig! */
 
@@ -208,7 +208,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 			}
 
 		}
-		else if (work_dist == EQUAL_LNZE){
+		else if (work_dist == WORKDIST_EQUAL_LNZE){
 			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_LNZE on each PE\n");
 
 			/* A first attempt should be blocks of equal size */
@@ -244,17 +244,17 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 			hlpi = 0;
 			for (i=0; i<lcrp->nodes; i++){
 				hlpi += loc_count[i];
-				printf("Block %3d %8d %12d\n", i, loc_count[i], lcrp->lnEnts[i]);
+				IF_DEBUG(1) printf("Block %3d %8d %12d\n", i, loc_count[i], lcrp->lnEnts[i]);
 			}
 			target_lnze = hlpi/lcrp->nodes;
-			printf("insgesamt lokale Elemente: %d bzw pro PE: %d\n", hlpi, target_lnze);
+			IF_DEBUG(1) printf("insgesamt lokale Elemente: %d bzw pro PE: %d\n", hlpi, target_lnze);
 
 			outer_convergence = 0; 
 			outer_iter = 0;
 
 			while(outer_convergence==0){ 
 
-				printf("Convergence Iteration %d\n", outer_iter); fflush(stdout);
+				IF_DEBUG(1) printf("Convergence Iteration %d\n", outer_iter);
 
 				for (i=0; i<lcrp->nodes-1; i++){
 
@@ -317,9 +317,11 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 
 			}
 
-			for (i=0; i<lcrp->nodes; i++)  
+			IF_DEBUG(1) {
+				for (i=0; i<lcrp->nodes; i++)  
 				printf("PE%3d: lfRow=%8d lfEnt=%12d lnRows=%8d lnEnts=%12d\n", i, lcrp->lfRow[i], 
 						lcrp->lfEnt[i], lcrp->lnRows[i], lcrp->lnEnts[i]);
+			}
 
 
 		}

@@ -1,7 +1,7 @@
 .PHONY:clean distclean all
 
 CC=mpicc
-CFLAGS=-g -O3 -openmp $(MAKROS) $(IPATH)
+CFLAGS=-g -O3 -openmp -mt_mpi $(MAKROS) $(IPATH)
 IPATH= -I../src/include 
 LPATH= -L..
 LIBS=-l$(PREFIX)spmvm

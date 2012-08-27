@@ -12,6 +12,14 @@
 #include <likwid.h>
 #endif
 
+#ifdef OPENCL
+#include "oclfun.h"
+#include "oclmacros.h"
+#endif
+
+#ifdef LIKWID
+#include <likwid.h>
+#endif
 #include <mpi.h>
 #include <limits.h>
 #include <getopt.h>
@@ -113,36 +121,6 @@ void getOptions(int argc,  char * const *argv, PROPS *p)
 	}
 }
 
-void vecscal(VECTOR_TYPE *vec, real s)
-{
-	
-#ifdef OPENCL
-	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
-				&vec->CL_val_gpu));
-	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
-	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
-
-	CL_enqueueKernel(vecscalKernel);	
-#else
-	int i;
-#pragma omp parallel
-	{
-
-#ifdef LIKWID_MARKER_FINE
-		likwid_markerStartRegion("vecscal");
-#endif
-
-#pragma omp for private(i)
-		for (i=0; i<vec->nRows; i++)
-			vec->val[i] = s*vec->val[i];
-
-#ifdef LIKWID_MARKER_FINE
-		likwid_markerStopRegion("vecscal");
-#endif
-	}
-
-#endif
-}
 
 void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 {
@@ -222,6 +200,38 @@ void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
 #endif
 }
 
+void vecscal(VECTOR_TYPE *vec, real s)
+{
+	
+#ifdef OPENCL
+	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
+				&vec->CL_val_gpu));
+	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
+	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
+
+	CL_enqueueKernel(vecscalKernel);	
+#else
+	int i;
+#pragma omp parallel
+	{
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStartRegion("vecscal");
+#endif
+
+#pragma omp for private(i)
+		for (i=0; i<vec->nRows; i++)
+			vec->val[i] = s*vec->val[i];
+
+#ifdef LIKWID_MARKER_FINE
+		likwid_markerStopRegion("vecscal");
+#endif
+	}
+
+#endif
+}
+
+
 void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	   	real *alpha, real *beta, int kernel,  int iteration)
 {
@@ -232,7 +242,7 @@ void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	axpy(vnew,vold,-(*alpha));
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-	*beta=sqrt(*beta);
+	*beta=SQRT(*beta);
 	vecscal(vnew,1./(*beta));
 }
 
@@ -289,8 +299,8 @@ int main( int argc, char* argv[] )
 
 	getMatrixPath(argv[optind],props.matrixPath);
 	if (!props.matrixPath)
-		myabort("No correct matrix specified! \
-				(no absolute file name and not present in $MATHOME)");
+		myabort("No correct matrix specified! "
+				"(no absolute file name and not present in $MATHOME)");
 	strcpy(props.matrixName,basename(props.matrixPath));
 
 	me      = SpMVM_init(argc,argv);       // basic initialization
@@ -345,6 +355,7 @@ int main( int argc, char* argv[] )
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
 
+	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,props.matrixName);
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -435,7 +446,7 @@ int main( int argc, char* argv[] )
 			if (me==0) {
 				timing(&tend,&dummy);
 				tacc += tend-tstart;
-				printf("it: %6.2f ms, e: %6.2f ",(tend-tstart)*1e3,
+				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",alpha,(tend-tstart)*1e3,
 						REAL(falphas[0]));
 				fflush(stdout);
 			}

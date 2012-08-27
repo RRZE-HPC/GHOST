@@ -17,7 +17,8 @@
 //#define LIKWID_MARKER_FINE
 #define DOUBLE
 //#define COMPLEX
-#define DEBUG 0 
+#define DEBUG 0
+#define WORKDIST_DESIRED WORKDIST_EQUAL_ROWS
 /**********************************************/
 
 

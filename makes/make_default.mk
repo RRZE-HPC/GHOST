@@ -1,10 +1,10 @@
 CC	= mpicc
-CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC -mt_mpi #-Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
 FC	= mpif90
 FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp -fPIC
 
-LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic -fPIC -mt_mpi
+LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic -fPIC #-mt_mpi
 
 LIBS = -L$(INTEL_F_HOME)/compiler/lib/intel64 -lifcore -pthread  
 	

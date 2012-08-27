@@ -53,11 +53,17 @@ extern const char *SPM_FORMAT_NAMES[];
 extern const char *DATATYPE_NAMES[];
 /**********************************************/
 
+/**********************************************/
+/****** Available work distributions **********/
+/**********************************************/
+#define WORKDIST_EQUAL_ROWS 0
+#define WORKDIST_EQUAL_NZE  1
+#define WORKDIST_EQUAL_LNZE 2
+extern const char *WORKDIST_NAMES[];
+/**********************************************/
 
 #define xMAIN_DIAGONAL_FIRST
 
-#define EQUAL_NZE  1
-#define EQUAL_LNZE 2
 
 #define IF_DEBUG(level) if( DEBUG >= level )
 

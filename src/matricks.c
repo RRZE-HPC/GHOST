@@ -1053,12 +1053,17 @@ HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int)) {
 	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
-	if (fp)
-		for (i=0; i<nRows; i++) vec->val[i] = fp(i);
-	else {
+	if (fp) {
+#pragma omp parallel for schedule(runtime)
+		for (i=0; i<nRows; i++) 
+			vec->val[i] = fp(i);
+
+	}else {
 #ifdef COMPLEX
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
 #else
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.;
 #endif
 	}
@@ -1079,7 +1084,7 @@ VECTOR_TYPE* newVector( const int nRows ) {
 	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 	
-#pragma omp parallel for
+#pragma omp parallel for schedule(static)
 	for( i = 0; i < nRows; i++ ) 
 		vec->val[i] = 0.0;
 
