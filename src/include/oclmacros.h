@@ -2,12 +2,13 @@
 #define _OCL_MACROS_H_
 
 
-#define CL_safecall(call) \
-  cl_int ierr = call ;\
-  if( CL_SUCCESS != ierr ){\
+#define CL_safecall(call) {\
+  cl_int clerr = call ;\
+  if( CL_SUCCESS != clerr ){\
     fprintf(stderr, "OpenCL error at %s:%d, %d\n",\
-      __FILE__, __LINE__, ierr);\
+      __FILE__, __LINE__, clerr);\
     fflush(stderr);\
+  }\
   }
 
 #define CL_checkerror(err) do{\
@@ -18,8 +19,12 @@
   }\
   } while(0)
 
+typedef struct{
+	int nDistinctDevices;
+	int *nDevices;
+	char **names;
+} CL_DEVICE_INFO;
 
-#define CL_DEVTYPE CL_DEVICE_TYPE_GPU
 
 
 #endif

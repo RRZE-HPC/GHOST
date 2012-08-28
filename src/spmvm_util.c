@@ -311,14 +311,14 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
-		printf("Work distribution                : %12s\n", WORKDIST_NAMES[WORKDIST_DESIRED]);
+		printf("Work distribution scheme         : %12s\n", WORKDIST_NAMES[WORKDIST_DESIRED]);
 #ifdef OPENCL
-		printf("OpenCL                           :      enabled\n");
+		printf("OpenCL support                   :      enabled\n");
 #else
-		printf("OpenCL                           :     disabled\n");
+		printf("OpenCL support                   :     disabled\n");
 #endif
 #ifdef LIKWID
-		printf("Likwid                           :      enabled\n");
+		printf("Likwid support                   :      enabled\n");
 #ifdef LIKWID_MARKER_FINE
 		printf("Likwid Marker API (high res)     :      enabled\n");
 #else
@@ -327,7 +327,7 @@ void SpMVM_printEnvInfo()
 #endif
 #endif
 #else
-		printf("Likwid                           :     disabled\n");
+		printf("Likwid support                   :     disabled\n");
 #endif
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);

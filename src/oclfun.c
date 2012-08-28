@@ -48,7 +48,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, NULL));
 
 	for (platform=0; platform<numPlatforms; platform++) {
-		CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_DEVTYPE, 0, NULL,
+		CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, 0, NULL,
 					&numDevices));
 
 		if (numDevices > 0) { // correct platform has been found
@@ -58,7 +58,7 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 
 	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,
 			"deviceIDs");
-	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_DEVTYPE, numDevices,
+	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, numDevices,
 				deviceIDs, &numDevices));
 
 	IF_DEBUG(1) {

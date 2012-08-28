@@ -2,6 +2,7 @@
 #define _OCLFUN_H_
 
 #include "spmvm_globals.h"
+#include "oclmacros.h"
 #include <CL/cl.h>
 #include <sys/param.h>
 
