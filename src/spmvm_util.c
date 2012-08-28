@@ -54,24 +54,24 @@ int SpMVM_init(int argc, char **argv)
 
 	int me, req, prov;
 	req = MPI_THREAD_MULTIPLE;
-	MPI_Init_thread(&argc, &argv, req, &prov );
+	MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
 	if (req != prov) {
 		fprintf(stderr, "Required MPI threading level (%d) is not"
 				"provided (%d)!\n",req,prov);
 	}
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 
 #ifdef COMPLEX
 #ifdef DOUBLE
-	MPI_Type_contiguous(2,MPI_DOUBLE,&MPI_MYDATATYPE);
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&MPI_MYDATATYPE));
 #endif
 #ifdef SINGLE
-	MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE);
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE));
 #endif
-	MPI_Type_commit(&MPI_MYDATATYPE);
-	MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM);
+	MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM));
 #endif
 
 #ifdef PIN
@@ -106,7 +106,7 @@ void SpMVM_finish()
 	likwid_markerClose();
 #endif
 
-	MPI_Finalize();
+	MPI_safecall(MPI_Finalize());
 
 #ifdef OPENCL
 	CL_finish();
@@ -125,7 +125,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath)
 	CR_TYPE *cr;
 	MM_TYPE *mm;
 
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
@@ -159,7 +159,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	int i;
 
 
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 
 
@@ -175,8 +175,8 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 		nodeVec->val[i] = 77.0;
 
 	/* Scatter the input vector from the master node to all others */
-	MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
-			nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD );
+	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
+			nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
 
 	return nodeVec;
 }
@@ -187,9 +187,9 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 	int me;
 
 
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
-	MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
-			lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
+			lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 }
 
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr)
@@ -198,7 +198,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr)
 	char hostname[MAXHOSTNAMELEN];
 	int me_node;
 
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 	gethostname(hostname,MAXHOSTNAMELEN);
 	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
 
@@ -216,7 +216,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 	size_t ws;
 
 
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 #ifdef OPENCL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
@@ -225,18 +225,18 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
 		fullMemSize = getBytesize(lcrp->fullMatrix, lcrp->fullFormat)/
 			(1024*1024);
-		MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
-				MPI_COMM_WORLD);
+		MPI_safecall(MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
+				MPI_COMM_WORLD));
 	} 
 	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/
 			(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/
 			(1024*1024);
-		MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,
-				MPI_COMM_WORLD);
-		MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,
-				MPI_COMM_WORLD);
+		MPI_safecall(MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,
+				MPI_COMM_WORLD));
+		MPI_safecall(MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,
+				MPI_COMM_WORLD));
 	}
 #endif	
 
@@ -272,7 +272,7 @@ void SpMVM_printEnvInfo()
 {
 
 	int me;
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	int nnodes = getNumberOfNodes();
 
@@ -284,7 +284,7 @@ void SpMVM_printEnvInfo()
 	if (me==0) {
 		int nproc;
 		int nthreads;
-		MPI_Comm_size ( MPI_COMM_WORLD, &nproc );
+		MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
 
 #pragma omp parallel
 #pragma omp master
@@ -344,7 +344,7 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
 {
 
 	int me;
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if (me==0) {
 		return newHostVector( nRows,fp );
