@@ -4,14 +4,6 @@
 #include "spmvm_globals.h"
 
 
-#define MPI_safecall(call) {\
-  int ierr = call ;\
-  if( MPI_SUCCESS != ierr ){\
-    fprintf(stdout, "MPI error at %s:%d, %d\n",\
-      __FILE__, __LINE__, ierr);\
-    fflush(stdout);\
-  }\
-  }
 
 
 void fortrancrsaxpyc_(int *, int *, real *, real *, real *, int *, int *);

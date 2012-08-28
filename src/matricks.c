@@ -152,7 +152,7 @@ void* allocateMemory( const size_t size, const char* desc ) {
 
 	void* mem;
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	/*if( allocatedMem + size > maxMem ) {
 	  fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
@@ -551,7 +551,7 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 	REVBUF_TYPE* rb;
 	size_t size_mem, size_vec;
 
-	MPI_Comm_rank( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
 
 	rb = (REVBUF_TYPE*) allocateMemory( sizeof( REVBUF_TYPE ), "rb");
 
@@ -616,7 +616,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
-	MPI_Comm_rank (MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank (MPI_COMM_WORLD, &me));
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );

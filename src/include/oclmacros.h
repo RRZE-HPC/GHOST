@@ -5,9 +5,9 @@
 #define CL_safecall(call) \
   cl_int ierr = call ;\
   if( CL_SUCCESS != ierr ){\
-    fprintf(stdout, "OpenCL error at %s:%d, %d\n",\
+    fprintf(stderr, "OpenCL error at %s:%d, %d\n",\
       __FILE__, __LINE__, ierr);\
-    fflush(stdout);\
+    fflush(stderr);\
   }
 
 #define CL_checkerror(err) do{\

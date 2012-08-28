@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include "mpihelper.h"
 #include "matricks.h"
-//
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
@@ -29,8 +29,8 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
 	size_t size_ahnm, size_ahn, size_nint;
 	int *mymate, *acc_mates;
 
-	MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes );
-	MPI_Comm_rank ( MPI_COMM_WORLD, &me );
+	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes ));
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 #ifdef LIKWID
 	coreId = likwid_getProcessorId();
@@ -53,8 +53,8 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
 	}
 
 	/* write local hostname to all_hostnames and share */
-	MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-			&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD );
+	MPI_safecall(MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
+			&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD ));
 
 	/* one process per node writes its global id to all its mates' fields */ 
 	if (coreId==0){
@@ -63,11 +63,11 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
 		}
 	}  
 
-	MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+	MPI_safecall(MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD)); 
 	/* all processes should now have the rank of their coreId 0 process in their acc_mate field;
 	 * split into comm groups with this rank as communicator ID */
-	MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, single_node_comm );
-	MPI_Comm_rank ( *single_node_comm, me_node);
+	MPI_safecall(MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, single_node_comm ));
+	MPI_safecall(MPI_Comm_rank ( *single_node_comm, me_node));
 
 	IF_DEBUG(1) printf("PE%d hat in single_node_comm den rank %d\n", me, *me_node);
 
@@ -149,10 +149,10 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	 *******            ........ Executable statements ........           *******
 	 ***************************************************************************/
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	IF_DEBUG(1){
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 		if (me==0) printf("Entering setup_communication\n");
 	}
 
@@ -171,7 +171,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 #pragma omp parallel
 	lcrp->threads = omp_get_num_threads(); 
 
-	MPI_Comm_size(MPI_COMM_WORLD, &(lcrp->nodes));
+	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD, &(lcrp->nodes)));
 
 	size_nint = (size_t)( (size_t)(lcrp->nodes)   * sizeof(int)  );
 	size_nptr = (size_t)( lcrp->nodes             * sizeof(int*) );
@@ -353,10 +353,10 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	 *******            Distribute correct share to all PEs               *******
 	 ***************************************************************************/
 
-	MPI_Bcast(lcrp->lfRow,  lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
-	MPI_Bcast(lcrp->lfEnt,  lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
-	MPI_Bcast(lcrp->lnRows, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
-	MPI_Bcast(lcrp->lnEnts, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
+	MPI_safecall(MPI_Bcast(lcrp->lfRow,  lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lnRows, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lnEnts, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 	/****************************************************************************
 	 *******   Allocate memory for matrix in distributed CRS storage      *******
@@ -388,14 +388,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 
-	MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_MYDATATYPE, 
-			lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD);
+	MPI_safecall(MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_MYDATATYPE, 
+			lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD));
 
-	MPI_Scatterv ( cr->col, lcrp->lnEnts, lcrp->lfEnt, MPI_INTEGER,
-			lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
+	MPI_safecall(MPI_Scatterv ( cr->col, lcrp->lnEnts, lcrp->lfEnt, MPI_INTEGER,
+			lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
-	MPI_Scatterv ( cr->rowOffset, lcrp->lnRows, lcrp->lfRow, MPI_INTEGER,
-			lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
+	MPI_safecall(MPI_Scatterv ( cr->rowOffset, lcrp->lnRows, lcrp->lfRow, MPI_INTEGER,
+			lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 	/****************************************************************************
 	 *******        Adapt row pointer to local numbering on this PE       *******         
@@ -503,8 +503,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	 *******       Allgather of wishes & transpose to get dues            *******
 	 ***************************************************************************/
 
-	MPI_Allgather ( lcrp->wishes, lcrp->nodes, MPI_INTEGER, tmp_transfers, 
-			lcrp->nodes, MPI_INTEGER, MPI_COMM_WORLD ) ;
+	MPI_safecall(MPI_Allgather ( lcrp->wishes, lcrp->nodes, MPI_INTEGER, tmp_transfers, 
+			lcrp->nodes, MPI_INTEGER, MPI_COMM_WORLD )) ;
 
 	for (i=0; i<lcrp->nodes; i++) lcrp->dues[i] = tmp_transfers[i*lcrp->nodes+me];
 
@@ -557,7 +557,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
 	size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	lcrp->wishlist      = (int**) allocateMemory( size_nptr, "lcrp->wishlist" ); 
 	lcrp->duelist       = (int**) allocateMemory( size_nptr, "lcrp->duelist" ); 
@@ -599,9 +599,9 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	 * nehme automatisch _immer_ die richtige (lokale) wishlist zum Verteilen */
 
 	for(i=0; i<lcrp->nodes; i++) {
-		MPI_Scatterv ( 
+		MPI_safecall(MPI_Scatterv ( 
 				lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
-				lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD );
+				lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
 	}
 
 	/****************************************************************************
@@ -653,11 +653,11 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 		lcrp->lrow_ptr_l[0] = 0;
 		lcrp->lrow_ptr_r[0] = 0;
 
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 		IF_DEBUG(1) printf("PE%d: lnRows=%d row_ptr=%d..%d\n", 
 				me, lcrp->lnRows[me], lcrp->lrow_ptr[0], lcrp->lrow_ptr[lcrp->lnRows[me]]);
 		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 		for (i=0; i<lcrp->lnRows[me]; i++){
 
@@ -695,7 +695,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 				printf("-- remote -- PE%d: lcrp->rcol[%d]=%d\n", me, i, lcrp->rcol[i]);
 		}
 		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	} else{
 		lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
@@ -734,9 +734,9 @@ int getNumberOfNodes()
 	char name[MPI_MAX_PROCESSOR_NAME];
 	char *names;
 
-	MPI_Comm_rank(MPI_COMM_WORLD,&me);
-	MPI_Comm_size(MPI_COMM_WORLD,&size);
-	MPI_Get_processor_name(name,&nameLen);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
+	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));
+	MPI_safecall(MPI_Get_processor_name(name,&nameLen));
 
 
 	if (me==0) {
@@ -745,8 +745,8 @@ int getNumberOfNodes()
 	}
 
 	
-	MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
-			MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
+			MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD));
 
 	if (me==0) {
 		qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
@@ -759,7 +759,7 @@ int getNumberOfNodes()
 		free(names);
 	}
 
-	MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD));
 	
 	return distinctNames;
 }

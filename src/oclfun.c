@@ -38,8 +38,8 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 	cl_device_id *deviceIDs;
 
 	gethostname(hostname,MAXHOSTNAMELEN);
-	MPI_Comm_size( single_node_comm, &size);
-	MPI_Comm_rank( single_node_comm, &rank);
+	MPI_safecall(MPI_Comm_size( single_node_comm, &size));
+	MPI_safecall(MPI_Comm_rank( single_node_comm, &rank));
 
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
@@ -162,8 +162,8 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	char hostname[MAXHOSTNAMELEN];
 
 	gethostname(hostname,MAXHOSTNAMELEN);
-	MPI_Comm_size( single_node_comm, &size);
-	MPI_Comm_rank( single_node_comm, &rank);
+	MPI_safecall(MPI_Comm_size( single_node_comm, &size));
+	MPI_safecall(MPI_Comm_rank( single_node_comm, &rank));
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
@@ -383,7 +383,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 	int me;
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
@@ -572,8 +572,8 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	char name[CL_MAX_DEVICE_NAME_LEN];
 	char *names;
 
-	MPI_Comm_rank(MPI_COMM_WORLD,&me);
-	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
+	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));
 
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
@@ -587,8 +587,8 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	}
 
 
-	MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-			CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+			CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 
 	if (me==0) {
 		qsort(names,size,CL_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
@@ -600,7 +600,7 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 		}
 	}
 
-	MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
 
 	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
 	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
@@ -626,10 +626,10 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	}
 
 
-	MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
 	for (i=0; i<devInfo->nDistinctDevices; i++)
-		MPI_Bcast(devInfo->names[i],CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD);
+		MPI_safecall(MPI_Bcast(devInfo->names[i],CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 
 
 	return devInfo;

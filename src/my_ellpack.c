@@ -649,7 +649,7 @@ void checkCRSToELR(	const real* crs_val, const int* crs_col,
 	int i,j, hlpi;
 	int me;
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	printf("PE%i: -- ELRcopy sanity check:\n", me);
 	for (i=0; i<nRows; i++){
@@ -757,14 +757,14 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 	/* allocate */
 
 	IF_DEBUG(1) { 
-		MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
 	}
 
 	col = CL_allocDeviceMemory(colMemSize);
 
 	IF_DEBUG(1) { 
-		MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colStartMemSize/(1024*1024));	
 	}
 	colStart = CL_allocDeviceMemory(colStartMemSize);
@@ -814,7 +814,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 	/* allocate */
 
 	IF_DEBUG(1) { 
-		MPI_Comm_rank(MPI_COMM_WORLD, &me);
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CELRinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
 	}
 	col = CL_allocDeviceMemory(colMemSize);
@@ -859,7 +859,7 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
 	int me;
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
@@ -896,7 +896,7 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 
 
 	int me;
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
@@ -932,7 +932,7 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 
 
 	int me;
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) pjds->nMaxRow * sizeof( int );
@@ -968,7 +968,7 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 	assert( celr->nMaxRow == elr->nMaxRow );
 
 	int me;
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );

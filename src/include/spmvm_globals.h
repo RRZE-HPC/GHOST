@@ -22,6 +22,9 @@
 /**********************************************/
 
 
+/**********************************************/
+/****** consequences **************************/
+/**********************************************/
 #ifdef LIKWID_MARKER_FINE
 #define LIKWID_MARKER
 #endif
@@ -29,6 +32,7 @@
 #ifdef LIKWID_MARKER
 #define LIKWID
 #endif
+/**********************************************/
 
 
 /**********************************************/
@@ -197,6 +201,14 @@ extern Hybrid_kernel SPMVM_KERNELS[SPMVM_NUMKERNELS];
 int SPMVM_OPTIONS;
 int SPMVM_KERNELS_SELECTED;
 
+#define MPI_safecall(call) {\
+  int ierr = call ;\
+  if( MPI_SUCCESS != ierr ){\
+    fprintf(stderr, "MPI error at %s:%d, %d\n",\
+      __FILE__, __LINE__, ierr);\
+    fflush(stderr);\
+  }\
+  }
 
 #ifdef OPENCL
 typedef struct{

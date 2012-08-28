@@ -29,7 +29,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	size_t size_request, size_status, size_work, size_mem;
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	if (init_kernel==1){
 
@@ -72,9 +72,9 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
-			MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
+			MPI_safecall(MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
 					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
-					&recv_request[recv_messages] );
+					&recv_request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -88,9 +88,9 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 			work[to_PE][j] = invec->val[lcrp->duelist[to_PE][j]];
 		}
 		if (lcrp->dues[to_PE]>0){
-			MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], 
+			MPI_safecall(MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], 
 					MPI_MYDATATYPE, to_PE, me, MPI_COMM_WORLD, 
-					&send_request[send_messages] );
+					&send_request[send_messages] ));
 			send_messages++;
 		}
 	}
@@ -105,8 +105,8 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******       Finishing communication: MPI_Waitall                   *******
 	 ***************************************************************************/
 
-	MPI_Waitall(send_messages, send_request, send_status);
-	MPI_Waitall(recv_messages, recv_request, recv_status);
+	MPI_safecall(MPI_Waitall(send_messages, send_request, send_status));
+	MPI_safecall(MPI_Waitall(recv_messages, recv_request, recv_status));
 
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******

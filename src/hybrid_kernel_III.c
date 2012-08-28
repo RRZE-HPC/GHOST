@@ -45,7 +45,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******            ........ Executable statements ........           ********
 	 ****************************************************************************/
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &me);
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	if (init_kernel==1){
 
@@ -94,9 +94,9 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
-			MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
+			MPI_safecall(MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
 					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
-					&recv_request[recv_messages] );
+					&recv_request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -110,7 +110,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	private   (i, j, to_PE, hlp1, tid, n_local)                            \
 	shared    (MPI_MYDATATYPE, ompi_mpi_real, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS)                                                  \
+			SPMVM_OPTIONS,stderr)                                                  \
 	reduction (+:send_messages) 
 #else
 #ifdef COMPLEX // MPI_MYDATATYPE is _only_ a variable in the complex case (otherwise it's a #define) 
@@ -120,7 +120,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (MPI_MYDATATYPE, \
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS)                                                  \
+			SPMVM_OPTIONS,stderr)                                                  \
 	reduction (+:send_messages)
 #else
 #pragma omp parallel                                                            \
@@ -129,7 +129,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (\
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS)                                                  \
+			SPMVM_OPTIONS,stderr)                                                  \
 	reduction (+:send_messages)
 #endif
 #endif 
@@ -153,14 +153,14 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 				}
 
 				if (lcrp->dues[to_PE]>0){
-					MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
-							to_PE, me, MPI_COMM_WORLD, &send_request[to_PE] );
+					MPI_safecall(MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
+							to_PE, me, MPI_COMM_WORLD, &send_request[to_PE] ));
 					send_messages++;
 				}
 			}
 
-			MPI_Waitall(lcrp->nodes, send_request, send_status);
-			MPI_Waitall(recv_messages, recv_request, recv_status);
+			MPI_safecall(MPI_Waitall(lcrp->nodes, send_request, send_status));
+			MPI_safecall(MPI_Waitall(recv_messages, recv_request, recv_status));
 		} else { /* Rechen-threads */
 
 			/***********************************************************************

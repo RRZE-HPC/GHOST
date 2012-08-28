@@ -159,17 +159,17 @@ void mypabort(char *s) {
 #ifdef PROFILE
    vmon_done();
 #endif
-   MPI_Abort(MPI_COMM_WORLD, 999);
+   MPI_safecall(MPI_Abort(MPI_COMM_WORLD, 999));
 }
 
 void mypaborts(const char *s1, const char *s2) {
    int me;
-   MPI_Comm_rank(MPI_COMM_WORLD, &me);
+   MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
    printf("PE%d: MYPABORT - %s %s\n", me, s1, s2);
 #ifdef PROFILE
    vmon_done();
 #endif
-   MPI_Abort(MPI_COMM_WORLD, 999);
+   MPI_safecall(MPI_Abort(MPI_COMM_WORLD, 999));
 }
 
 void myabort(char *s) {
@@ -177,7 +177,7 @@ void myabort(char *s) {
 #ifdef PROFILE
    vmon_done();
 #endif
-   MPI_Abort(MPI_COMM_WORLD,999);
+   MPI_safecall(MPI_Abort(MPI_COMM_WORLD,999));
 }
 
 void myaborti(char *s, int num) {
