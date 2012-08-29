@@ -61,7 +61,7 @@ distclean: clean
 	$(MAKE) -C examples distclean
 	$(MAKE) -C utils distclean
 
-install:
+install: $(LIBSPMVM)
 	@mkdir -p $(INSTDIR)/lib
 	@mkdir -p $(INSTDIR)/include
 	@cp -f $(LIBSPMVM) $(INSTDIR)/lib
