@@ -3,6 +3,7 @@
 *.a
 *.bin
 src/*.swp
+*.swp
 examples/*/*.swp
 examples/*/*.o
 src/include/*.swp
@@ -10,5 +11,6 @@ src/tags
 tags
 obj/
 bench/
-jobscripts/*
+makes/
+jobscripts/
 
