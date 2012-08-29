@@ -141,7 +141,6 @@ HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int));
 void             swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void             normalize( real *vec, int nRows);
 
-void permuteVector( real* vec, int* perm, int len);
 
 MM_TYPE* readMMFile( const char* filename );
 
@@ -160,10 +159,7 @@ void for_timing_stop_asm_(uint64*, uint64*);
 void fortrancrs_(int*, int*, real*, real*, real*, int*, int*);
 void fortranjds_(int*, int*, int*, real*, real*, int*, real*, int*, int*, int*);
 
-void freeVector( VECTOR_TYPE* const vec );
-void freeHostVector( HOSTVECTOR_TYPE* const vec );
 void freeMMMatrix( MM_TYPE* const mm );
-void freeCRMatrix( CR_TYPE* const cr );
 void freeJDMatrix( JD_TYPE* const cr );
 void tmpwrite_d(int, int, real*);
 void tmpwrite_i(int, int, int*, char*);
@@ -178,7 +174,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);
 LCRP_TYPE* setup_communication_parRead(LMMP_TYPE* const);
-void freeLcrpType( LCRP_TYPE* const );
 
 void check_lcrp(int, LCRP_TYPE* const);
 void pio_write_cr(const CR_TYPE*, const char*);

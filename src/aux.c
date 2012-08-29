@@ -6,43 +6,6 @@
 #include <time.h>
 #include <timing.h>
 
-double RecalFrequency(uint64 cycles4measurement, double old_clockfreq)
-{
-   int i;
-
-   uint64 asm_cycles, asm_cyclecounter;
-   double startTime, stopTime, ct;
-   struct timespec delay = { 0, 800000000 }; /* calibration time: 800 ms */
-   double estimated_time_it_took, true_time_it_took;
-   double recalibrated_CPUFrequency;
-
-   for (i=0; i< 2; i++)
-   {
-      for_timing_start_asm_( &asm_cyclecounter);
-      timing( &startTime, &ct);
-
-      nanosleep( &delay, NULL);
-
-      for_timing_stop_asm_( &asm_cyclecounter, &asm_cycles );
-      timing( &stopTime, &ct);
-
-      asm_cycles = asm_cycles - cycles4measurement; 
-      estimated_time_it_took = (1.0*asm_cycles)/old_clockfreq; 
-      true_time_it_took = stopTime-startTime;
-      recalibrated_CPUFrequency = (1.0*asm_cycles)/true_time_it_took;
-
-      IF_DEBUG(1){
-	 printf("Recalibrating CPU-Frequency: \n");
-	 printf("target time                  [s]  : %g\n", 0.8);
-	 printf("estimated by rtdsci          [s]  : %g\n", estimated_time_it_took);
-	 printf("measured by get_time_of_day  [s]  : %g\n", true_time_it_took);
-	 printf("recalibrated CPUfrequency   [GHz] : %g\n", recalibrated_CPUFrequency);
-	 printf("-------------------------------------\n");
-      }
-   }
-
-   return recalibrated_CPUFrequency;
-}
 
 float myCpuClockFrequency()
 {

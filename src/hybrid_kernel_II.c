@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <sys/types.h>
 #include "kernel_helper.h"
+#include "kernel.h"
 
 void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 

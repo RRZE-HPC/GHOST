@@ -4,8 +4,7 @@
 #include "spmvm_globals.h"
 
 #ifdef OPENCL
-#include "oclfun.h"
-#include "oclmacros.h"
+#include "spmvm_cl_util.h"
 #endif
 
 #include <assert.h>

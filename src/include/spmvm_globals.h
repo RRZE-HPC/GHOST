@@ -1,23 +1,115 @@
 #ifndef _SPMVM_GLOBALS_H_
 #define _SPMVM_GLOBALS_H_
 
-#include <spmvm_constants.h>
 #include <complex.h>
 #include <mpi.h>
+#include <math.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif
 
+/**********************************************/
+/****** SpMVM kernels *************************/
+/**********************************************/
+#define SPMVM_NUMKERNELS 4
+
+#define SPMVM_KERNEL_NOMPI      (0x1<<0)
+#define SPMVM_KERNEL_VECTORMODE (0x1<<1)
+#define SPMVM_KERNEL_GOODFAITH  (0x1<<2)
+#define SPMVM_KERNEL_TASKMODE   (0x1<<3)
+
+#define SPMVM_KERNELS_COMBINED (SPMVM_KERNEL_NOMPI | SPMVM_KERNEL_VECTORMODE)
+#define SPMVM_KERNELS_SPLIT    (SPMVM_KERNEL_GOODFAITH | SPMVM_KERNEL_TASKMODE)
+#define SPMVM_KERNELS_ALL      (SPMVM_KERNELS_COMBINED | SPMVM_KERNELS_SPLIT)
+
+#define SPM_KERNEL_FULL 0
+#define SPM_KERNEL_LOCAL 1
+#define SPM_KERNEL_REMOTE 2
+/**********************************************/
+
+
+/**********************************************/
+/****** GPU matrix formats ********************/
+/**********************************************/
+#define SPM_GPUFORMAT_ELR  0
+#define SPM_GPUFORMAT_PJDS 1
+#define PJDS_CHUNK_HEIGHT 32
+extern const char *SPM_FORMAT_NAMES[];
+/**********************************************/
+
+
+/**********************************************/
+/****** Options for the SpMVM *****************/
+/**********************************************/
+#define SPMVM_OPTION_NONE       (0x0)    // no special options applied
+#define SPMVM_OPTION_AXPY       (0x1<<0) // perform y = y+A*x instead of y = A*x
+#define SPMVM_OPTION_KEEPRESULT (0x1<<1) // keep result on OpenCL device 
+#define SPMVM_OPTION_RHSPRESENT (0x1<<2) // assume that RHS vector is present
+//#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
+/**********************************************/
+
+
+/**********************************************/
+/****** Available datatypes *******************/
+/**********************************************/
+#define DATATYPE_FLOAT 0
+#define DATATYPE_DOUBLE 1
+#define DATATYPE_COMPLEX_FLOAT 2
+#define DATATYPE_COMPLEX_DOUBLE 3
+extern const char *DATATYPE_NAMES[];
+/**********************************************/
+
+/**********************************************/
+/****** Available work distributions **********/
+/**********************************************/
+#define WORKDIST_EQUAL_ROWS 0
+#define WORKDIST_EQUAL_NZE  1
+#define WORKDIST_EQUAL_LNZE 2
+extern const char *WORKDIST_NAMES[];
+/**********************************************/
+
+#define IF_DEBUG(level) if( DEBUG >= level )
+
+/******************************************************************************/
+/****** makros ****************************************************************/
+/******************************************************************************/
+#define MPI_safecall(call) {\
+  int mpierr = call ;\
+  if( MPI_SUCCESS != mpierr ){\
+    fprintf(stderr, "MPI error at %s:%d, %d\n",\
+      __FILE__, __LINE__, mpierr);\
+    fflush(stderr);\
+  }\
+  }
+#define CL_safecall(call) {\
+  cl_int clerr = call ;\
+  if( CL_SUCCESS != clerr ){\
+    fprintf(stderr, "OpenCL error at %s:%d, %d\n",\
+      __FILE__, __LINE__, clerr);\
+    fflush(stderr);\
+  }\
+  }
+
+#define CL_checkerror(err) do{\
+  if( CL_SUCCESS != err ){\
+    fprintf(stdout, "OpenCL error at %s:%d, %d\n",\
+      __FILE__, __LINE__, err);\
+    fflush(stdout);\
+  }\
+  } while(0)
+/******************************************************************************/
+
+
+typedef struct{
+	int nDistinctDevices;
+	int *nDevices;
+	char **names;
+} CL_DEVICE_INFO;
 
 /******************************************************************************/
 /****** global definitions ****************************************************/
 /******************************************************************************/
-//#define LIKWID_MARKER
-//#define LIKWID_MARKER_FINE
-#define DOUBLE
-//#define COMPLEX
-#define DEBUG 0
 #define WORKDIST_DESIRED WORKDIST_EQUAL_ROWS
 #define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
 /******************************************************************************/
@@ -163,6 +255,9 @@ typedef struct {
   int fullFormat;
   int localFormat;
   int remoteFormat;
+  int fullT;
+  int localT;
+  int remoteT;
   void *fullMatrix;
   void *localMatrix;
   void *remoteMatrix;
@@ -179,19 +274,11 @@ typedef struct {
 	real* val;
 } CR_TYPE;
 
-extern void hybrid_kernel_0   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_I   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_II  (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
-extern void hybrid_kernel_III (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
 
 typedef struct {
     FuncPrototype kernel;
-    real  cycles;
-    real  time;
-    char*   tag;
-    char*   name;
 } Hybrid_kernel;
 
 
@@ -203,14 +290,6 @@ int SPMVM_OPTIONS;
 int SPMVM_KERNELS_SELECTED;
 /******************************************************************************/
 
-#define MPI_safecall(call) {\
-  int ierr = call ;\
-  if( MPI_SUCCESS != ierr ){\
-    fprintf(stderr, "MPI error at %s:%d, %d\n",\
-      __FILE__, __LINE__, ierr);\
-    fflush(stderr);\
-  }\
-  }
 
 
 #endif

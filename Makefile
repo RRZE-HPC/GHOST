@@ -1,40 +1,24 @@
 include config.mk
-include makes/make_$(SYSTEM).mk
 
-.PHONY: examples utils clean distclean all 
+.PHONY: examples utils clean distclean all install 
 
-################################################################################
-
-VPATH	=	./src/ ./obj/ ./src/lib/
+VPATH	=	./src/
 IPATH	+=	-I./src/include
 
-################################################################################
+OBJS	=	$(COBJS) $(FOBJS)
 
-
-OBJS	=	$(COBJS) $(FOBJS) $(F90OBJS) $(SOBJS) 
-
-COBJS	=  aux.o spmvm_util.o matricks.o mpihelper.o  \
+COBJS	=  aux.o spmvm_util.o spmvm.o matricks.o mpihelper.o  \
 		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
 		   hybrid_kernel_II.o hybrid_kernel_III.o spmvm_globals.o
-OCLOBJS = oclfun.o my_ellpack.o 
-FOBJS	= 	matricks_GW.o imtql1.o pythag.o 
-SOBJS	=	for_timing_start_asm.o for_timing_stop_asm.o
-
-#MAKROS=#-DPIN
+OCLOBJS =  spmvm_cl_util.o my_ellpack.o 
+FOBJS	=  matricks_GW.o imtql1.o pythag.o 
 
 LIBSPMVM=lib$(PREFIX)spmvm.a
-
 
 %.o: %.c  
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.f 
-	$(FC) $(FFLAGS) -o $@ -c $<
-
-%.o: %.F 
-	$(FC) $(FFLAGS) -o $@ -c $<
-
-%.o: %.f90
 	$(FC) $(FFLAGS) -o $@ -c $<
 
 %.o: %.s
@@ -44,17 +28,17 @@ LIBSPMVM=lib$(PREFIX)spmvm.a
 all: $(LIBSPMVM) examples utils
 
 examples: $(LIBSPMVM)
-	$(MAKE) -C examples/ 
+	$(MAKE) -C examples/  
 
 utils: 
 	$(MAKE) -C utils/
 
 
 libspmvm.so: $(OBJS)
-	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LPATH) $(LIBS)
+	$(CC) -shared -o $@ $^ $(LPATH) $(LIBS)
 
 libclspmvm.so: $(OBJS) $(OCLOBJS)
-	$(CC) $(LDFLAGS) -shared -o $@ $^ $(LPATH) $(LIBS)
+	$(CC) -shared -o $@ $^ $(LPATH) $(LIBS)
 
 libspmvm.a: $(OBJS)
 	ar rcs  $@ $^
@@ -76,3 +60,12 @@ distclean: clean
 	-rm -f *.a
 	$(MAKE) -C examples distclean
 	$(MAKE) -C utils distclean
+
+install:
+	@mkdir -p $(INSTDIR)/lib
+	@mkdir -p $(INSTDIR)/include
+	@cp -f $(LIBSPMVM) $(INSTDIR)/lib
+	@cp -f src/include/spmvm*.h $(INSTDIR)/include
+
+
+	

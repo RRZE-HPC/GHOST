@@ -4,8 +4,7 @@
 
 
 #ifdef OPENCL
-#include "oclmacros.h"
-#include "oclfun.h"
+#include "spmvm_cl_util.h"
 #endif
 
 #ifdef LIKWID

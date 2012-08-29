@@ -1,8 +1,8 @@
+#include <spmvm.h>
 #include <spmvm_util.h>
-#include <matricks.h>
-#include <mpihelper.h>
+
+#include <stdio.h>
 #include <string.h>
-#include <timing.h>
 #include <math.h>
 #include <stdlib.h>
 #include <sys/times.h>
@@ -10,9 +10,6 @@
 #include <omp.h>
 #include <sched.h>
 
-#ifdef OPENCL
-#include <oclfun.h>
-#endif
 
 #ifdef LIKWID
 #include <likwid.h>
@@ -33,11 +30,11 @@ typedef struct {
 } PROPS;
 
 
-void usage() {
+static void usage() {
 }
 
 
-void getOptions(int argc,  char * const *argv, PROPS *p) {
+static void getOptions(int argc,  char * const *argv, PROPS *p) {
 
 	while (1) {
 		static struct option long_options[] =
@@ -110,7 +107,7 @@ void getOptions(int argc,  char * const *argv, PROPS *p) {
 	}
 }
 
-real rhsVal (int i) {
+static real rhsVal (int i) {
 #ifdef COMPLEX
 	return i+1.0 + I*(i+1.5);
 #else
@@ -120,15 +117,14 @@ real rhsVal (int i) {
 
 int main( int argc, char* argv[] ) {
 
-	int ierr;
 	int me;
 
 	int iteration;
-	double start, end, dummy;
+	double start, end;
 	int kernel;
 	int errcount = 0;
 	double mytol;
-	int i,j; 
+	int i; 
 
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
@@ -158,6 +154,8 @@ int main( int argc, char* argv[] ) {
 	props.matrixFormats.T[1] = 1;
 	props.matrixFormats.T[2] = 1;
 	props.devType = CL_DEVICE_TYPE_GPU;
+#else
+	props.matrixFormats = NULL;
 #endif
 	props.nIter = 100;
 
@@ -169,18 +167,13 @@ int main( int argc, char* argv[] ) {
 
 	me   = SpMVM_init(argc,argv);       // basic initialization
 	cr   = SpMVM_createCRS (argv[optind]);
-	lcrp = SpMVM_distributeCRS (cr);
+	lcrp = SpMVM_distributeCRS (cr,&props.matrixFormats);
 
-#ifdef OPENCL
-	CL_uploadCRS ( lcrp, &props.matrixFormats);
-#endif
-
-	
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 	goldLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
-	nodeLHS = newVector(lcrp->lnRows[me]);
+	nodeLHS = SpMVM_newVector(lcrp->lnRows[me]);
 
 	if (me==0)
 	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
@@ -198,7 +191,7 @@ int main( int argc, char* argv[] ) {
 
 		MPI_Barrier(MPI_COMM_WORLD);
 		if (me == 0)
-			timing(&start,&dummy);
+			start = omp_get_wtime();
 
 
 #ifdef LIKWID_MARKER
@@ -218,12 +211,12 @@ int main( int argc, char* argv[] ) {
 #endif
 
 		if (me == 0)
-			timing(&end,&dummy);
+			end = omp_get_wtime();
 
 		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-			permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+			SpMVM_permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
 		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-			permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
+			SpMVM_permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 		}
 
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS);
@@ -251,18 +244,18 @@ int main( int argc, char* argv[] ) {
 					props.nIter);
 		}
 
-		zeroVector(nodeLHS);
+		SpMVM_zeroVector(nodeLHS);
 
 	}
 
 
-	freeVector( nodeLHS );
-	freeVector( nodeRHS );
-	freeHostVector( goldLHS );
-	freeHostVector( globLHS );
-	freeHostVector( globRHS );
-	freeLcrpType( lcrp );
-	freeCRMatrix( cr );
+	SpMVM_freeVector( nodeLHS );
+	SpMVM_freeVector( nodeRHS );
+	SpMVM_freeHostVector( goldLHS );
+	SpMVM_freeHostVector( globLHS );
+	SpMVM_freeHostVector( globRHS );
+	SpMVM_freeLCRP( lcrp );
+	SpMVM_freeCRS( cr );
 
 	SpMVM_finish();
 

@@ -8,6 +8,7 @@
 #endif
 
 #include "kernel_helper.h"
+#include "kernel.h"
 
 void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 

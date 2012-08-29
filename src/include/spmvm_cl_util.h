@@ -1,8 +1,7 @@
-#ifndef _OCLFUN_H_
-#define _OCLFUN_H_
+#ifndef _SPMVM_CL_UTIL_H_
+#define _SPMVM_CL_UTIL_H_
 
 #include "spmvm_globals.h"
-#include "oclmacros.h"
 #include <CL/cl.h>
 #include <sys/param.h>
 

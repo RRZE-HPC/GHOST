@@ -1,5 +1,4 @@
-#include "oclfun.h"
-#include "oclmacros.h"
+#include "spmvm_cl_util.h"
 #include "matricks.h"
 #include <string.h>
 #include <stdlib.h>
@@ -388,6 +387,8 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 
 	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
+		lcrp->fullT = matrixFormats->T[0];
+		
 		switch (matrixFormats->format[0]) {
 			case SPM_GPUFORMAT_PJDS:
 				{
@@ -434,6 +435,8 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 	}
 
 	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
+		lcrp->localT = matrixFormats->T[1];
+		lcrp->remoteT = matrixFormats->T[2];
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && 
 				matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
@@ -634,7 +637,6 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 
 	return devInfo;
 }
-
 
 void destroyCLdeviceInfo(CL_DEVICE_INFO * di) 
 {

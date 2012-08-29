@@ -1,7 +1,7 @@
 #define _XOPEN_SOURCE 600
 #include "matricks.h"
 #ifdef OPENCL
-#include "oclfun.h"
+#include "spmvm_cl_util.h"
 #include "my_ellpack.h"
 #endif
 #include <math.h>
@@ -110,34 +110,6 @@ int isMMfile(const char *filename) {
 }
 
 /* ########################################################################## */
-void permuteVector( real* vec, int* perm, int len) {
-	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
-	int i;
-	real* tmp;
-
-	if (perm == NULL) {
-		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
-		return;
-
-	}
-
-
-	tmp = (real*)allocateMemory(sizeof(real)*len, "permute tmp");
-
-	for(i = 0; i < len; ++i) {
-		if( perm[i] >= len ) {
-			fprintf(stderr, "ERROR: permutation index out of bounds: %d > %d\n",perm[i],len);
-			free(tmp);
-			exit(-1);
-		}
-		tmp[perm[i]] = vec[i];
-	}
-	for(i=0; i < len; ++i) {
-		vec[i] = tmp[i];
-	}
-
-	free(tmp);
-}
 
 
 void* allocateMemory( const size_t size, const char* desc ) {
@@ -1024,131 +996,10 @@ void crColIdToC( CR_TYPE* cr ) {
 
 /* ########################################################################## */
 
-void zeroVector(VECTOR_TYPE *vec) {
-	int i;
-	for (i=0; i<vec->nRows; i++) {
-#ifdef COMPLEX
-		vec->val[i] = 0;
-#else
-		vec->val[i] = 0+I*0;
-#endif
-	}
-
-#ifdef OPENCL
-	CL_uploadVector(vec);
-#endif
-
-
-}
-
-HOSTVECTOR_TYPE* newHostVector( const int nRows, real (*fp)(int)) {
-	HOSTVECTOR_TYPE* vec;
-	size_t size_val;
-	int i;
-
-	size_val = (size_t)( nRows * sizeof(real) );
-	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
-
-
-	vec->val = (real*) allocateMemory( size_val, "vec->val");
-	vec->nRows = nRows;
-
-	if (fp) {
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) 
-			vec->val[i] = fp(i);
-
-	}else {
-#ifdef COMPLEX
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
-#else
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.;
-#endif
-	}
-
-
-	return vec;
-}
-
-VECTOR_TYPE* newVector( const int nRows ) {
-	VECTOR_TYPE* vec;
-	size_t size_val;
-	int i;
-
-	size_val = (size_t)( nRows * sizeof(real) );
-	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
-
-
-	vec->val = (real*) allocateMemory( size_val, "vec->val");
-	vec->nRows = nRows;
-	
-#pragma omp parallel for schedule(static)
-	for( i = 0; i < nRows; i++ ) 
-		vec->val[i] = 0.0;
-
-#ifdef OPENCL
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
-	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
-	//printf("before: %p\n",vec->val);
-	//vec->val = CL_mapBuffer(vec->CL_val_gpu,size_val);
-	//printf("after: %p\n",vec->val);
-#endif
-
-	return vec;
-}
-
-void swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) {
-	real *dtmp;
-
-			dtmp = v1->val;
-			v1->val = v2->val;
-			v2->val = dtmp;
-#ifdef OPENCL
-	cl_mem tmp;
-			tmp = v1->CL_val_gpu;
-			v1->CL_val_gpu = v2->CL_val_gpu;
-			v2->CL_val_gpu = tmp;
-#endif
-
-}
-
-	
-
-
-void normalize( real *vec, int nRows)
-{
-	int i;
-	real sum = 0;
-
-	for (i=0; i<nRows; i++)	
-		sum += vec[i]*vec[i];
-
-	real f = 1./SQRT(sum);
-
-	for (i=0; i<nRows; i++)	
-		vec[i] *= f;
-}
 
 /* ########################################################################## */
 
-void freeHostVector( HOSTVECTOR_TYPE* const vec ) {
-	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
-		free( vec );
-	}
-}
 
-void freeVector( VECTOR_TYPE* const vec ) {
-	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
-#ifdef OPENCL
-		CL_freeDeviceMemory( vec->CL_val_gpu );
-#endif
-		free( vec );
-	}
-}
 
 
 /* ########################################################################## */
@@ -1163,23 +1014,6 @@ void freeMMMatrix( MM_TYPE* const mm ) {
 /* ########################################################################## */
 
 
-void freeCRMatrix( CR_TYPE* const cr ) {
-
-	size_t size_rowOffset, size_col, size_val;
-
-	if( cr ) {
-
-		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
-		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
-		size_val        = (size_t)( cr->nEnts     * sizeof( real) );
-
-		freeMemory( size_rowOffset,  "cr->rowOffset", cr->rowOffset );
-		freeMemory( size_col,        "cr->col",       cr->col );
-		freeMemory( size_val,        "cr->val",       cr->val );
-		freeMemory( sizeof(CR_TYPE), "cr",            cr );
-
-	}
-}
 
 
 /* ########################################################################## */
@@ -1196,39 +1030,3 @@ void freeJDMatrix( JD_TYPE* const jd ) {
 }
 
 
-void freeLcrpType( LCRP_TYPE* const lcrp ) {
-	if( lcrp ) {
-		free( lcrp->lnEnts );
-		free( lcrp->lnRows );
-		free( lcrp->lfEnt );
-		free( lcrp->lfRow );
-		free( lcrp->wishes );
-		free( lcrp->wishlist_mem );
-		free( lcrp->wishlist );
-		free( lcrp->dues );
-		free( lcrp->duelist_mem );
-		free( lcrp->duelist );
-		free( lcrp->due_displ );
-		free( lcrp->wish_displ );
-		free( lcrp->hput_pos );
-		free( lcrp->val );
-		free( lcrp->col );
-		free( lcrp->lrow_ptr );
-		free( lcrp->lrow_ptr_l );
-		free( lcrp->lrow_ptr_r );
-		free( lcrp->lcol );
-		free( lcrp->rcol );
-		free( lcrp->lval );
-		free( lcrp->rval );
-		free( lcrp->fullRowPerm );
-		free( lcrp->fullInvRowPerm );
-		free( lcrp->splitRowPerm );
-		free( lcrp->splitInvRowPerm );
-#ifdef OPENCL
-		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
-		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
-		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
-#endif
-		free( lcrp );
-	}
-}

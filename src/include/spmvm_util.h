@@ -3,28 +3,24 @@
 
 #include "spmvm_globals.h"
 
-
-
-
-void fortrancrsaxpyc_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrsaxpy_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrsaxpycf_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrsaxpyf_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrsc_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrs_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrscf_(int *, int *, real *, real *, real *, int *, int *);
-void fortrancrsf_(int *, int *, real *, real *, real *, int *, int *);
+#ifdef OPENCL
+#include "spmvm_cl_util.h"
+#endif
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
 void              SpMVM_printEnvInfo();
-int               SpMVM_init(int argc, char **argv);
-void              SpMVM_finish();
-CR_TYPE *         SpMVM_createCRS (char *matrixPath);
-LCRP_TYPE *       SpMVM_distributeCRS (CR_TYPE *cr);
-VECTOR_TYPE *     SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-void              SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, HOSTVECTOR_TYPE *totalVec);
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
 void              SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter);
-int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp);
+int               SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp);
+void              SpMVM_zeroVector(VECTOR_TYPE *vec);
+HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
+VECTOR_TYPE*      SpMVM_newVector( const int nRows );
+void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
+void              SpMVM_normalize( real *vec, int nRows);
 
+void SpMVM_freeVector( VECTOR_TYPE* const vec );
+void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
+void SpMVM_freeCRS( CR_TYPE* const cr );
+void SpMVM_freeLCRP( LCRP_TYPE* const );
+void SpMVM_permuteVector( real* vec, int* perm, int len);
 #endif
