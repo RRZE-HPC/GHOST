@@ -1,7 +1,7 @@
+#include <spmvm_globals.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <mmio.h>
-#include <spmvm_constants.h>
 
 
 typedef struct {
@@ -16,10 +16,10 @@ typedef struct {
 	int nRows, nCols, nEnts;
 	int* rowOffset;
 	int* col;
-	double* real, *imag;
-} CR_TYPE;
+	double *real, *imag;
+} MY_CR_TYPE;
 
-int compareNZEPos( const void* a, const void* b ) {
+static int compareNZEPos( const void* a, const void* b ) {
 
 	int aRow = ((NZE_TYPE*)a)->row,
 		bRow = ((NZE_TYPE*)b)->row,
@@ -31,7 +31,7 @@ int compareNZEPos( const void* a, const void* b ) {
 	}
 	else return aRow - bRow;
 }
-void writeCR(CR_TYPE* cr, char* filename, int datatype){
+static void writeCR(MY_CR_TYPE* cr, char* filename, int datatype){
 
 	FILE *file;
 	int i;
@@ -92,9 +92,8 @@ void writeCR(CR_TYPE* cr, char* filename, int datatype){
 	return;
 }
 
-MM_TYPE * readMMfile(char* filename ) {
+static MM_TYPE * readMMfile(char* filename ) {
 
-	int ret_code;
 	MM_typecode matcode;
 	FILE *f;
 	int i;
@@ -110,7 +109,7 @@ MM_TYPE * readMMfile(char* filename ) {
 	}
 
 
-	if ((ret_code = mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
+	if ((mm_read_mtx_crd_size(f, &mm->nRows, &mm->nCols, &mm->nEnts)) !=0)
 		exit(1);
 
 
@@ -137,12 +136,12 @@ MM_TYPE * readMMfile(char* filename ) {
 	return mm;
 }
 
-CR_TYPE* convertMMtoCRmatrix( MM_TYPE* mm ) {
+static MY_CR_TYPE* convertMMtoCRmatrix( MM_TYPE* mm ) {
 
 	int* nEntsInRow;
-	int ierr, i, e, pos, nthr=1;
+	int i, e, pos;
 
-	CR_TYPE* cr   = (CR_TYPE*) malloc( sizeof( CR_TYPE ));
+	MY_CR_TYPE* cr   = (MY_CR_TYPE*) malloc( sizeof( MY_CR_TYPE ));
 	cr->rowOffset = (int*)     malloc((mm->nRows+1) * sizeof(int));
 	cr->col       = (int*)     malloc(mm->nEnts * sizeof(int));
 	cr->real       = (double*)  malloc(mm->nEnts * sizeof(double));
@@ -207,7 +206,7 @@ int main(int argc, char **argv) {
 	}
 
 	MM_TYPE *mm = readMMfile(argv[1]);
-	CR_TYPE *cr = convertMMtoCRmatrix(mm);
+	MY_CR_TYPE *cr = convertMMtoCRmatrix(mm);
 	writeCR(cr,argv[2],atoi(argv[3]));
 
 
