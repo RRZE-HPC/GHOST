@@ -105,13 +105,25 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******                          Overlap region                       *******
 	 ****************************************************************************/
 #ifdef OPEN_MPI
+#ifdef COMPLEX // MPI_MYDATATYPE is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
-	private   (i, j, to_PE, hlp1, tid, n_local)                            \
-	shared    (MPI_MYDATATYPE, ompi_mpi_real, ompi_mpi_comm_world, lcrp, me, work, invec, send_request, res, n_per_thread,           \
+	private   (i, j, to_PE, tid)                            \
+	shared    (MPI_MYDATATYPE, ompi_mpi_double, ompi_mpi_comm_world,\
+			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
 			SPMVM_OPTIONS,stderr)                                                  \
-	reduction (+:send_messages) 
+	reduction (+:send_messages)
+#else
+#pragma omp parallel                                                            \
+	default   (none)                                                             \
+	private   (i, j, to_PE, tid)                            \
+	shared    (ompi_mpi_double, ompi_mpi_comm_world,\
+			lcrp, me, work, invec, send_request, res,           \
+			send_status, recv_status, recv_request, recv_messages,                 \
+			SPMVM_OPTIONS,stderr)                                                  \
+	reduction (+:send_messages)
+#endif
 #else
 #ifdef COMPLEX // MPI_MYDATATYPE is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \

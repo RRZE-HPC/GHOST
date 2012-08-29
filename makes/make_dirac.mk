@@ -1,26 +1,30 @@
-#INTEL_F_HOME = /usr/intel-ifort-10.0
-#LIKWID_DIR = /home/woody/unrz/unrz265/likwid-testing
-#LIKWID_DIR = /apps/likwid/stable
 LIKWID_DIR = /global/homes/w/wellein/MK/likwid
 
 CC	= mpicc
-CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp #-C -Wall# -DWRITE_RESTART #-parallel
-#CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp-stubs -openmp# -DWRITE_RESTART #-parallel
+CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp
 
 FC	= mpif90
-FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp #-vec-report3 -opt-report -unroll0 #-openmp #-C -debug extended -traceback #-parallel
+FFLAGS  = -g -O3 ${MAKROS} -fno-alias -cpp -warn all -openmp
 
-LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic #-openmp -static #-parallel
+LDFLAGS = -g -O3 ${RFLAGS} -openmp  -i_dynamic
 
-LIBS = -L$(INTEL_F_HOME)/lib -lifcore -L${LIKWID_DIR}/lib -llikwid -pthread ${CUDA_LIB64} -L/usr/syscom/gpu/usrx/lib64 -lOpenCL
-IPATH   += -I${LIKWID_DIR}/include ${CUDA_INCLUDE}
+LPATH = -L$(INTEL_F_HOME)/lib 
+LIBS = -lifcore -pthread
 
-#IPATH	+=	-I/$(INTEL_F_HOME)/include
- 
+ifdef OPENCL
+MAKROS+= -DOPENCL
+PREFIX+= cl
+IPATH += ${CUDA_INCLUDE}
+LPATH += ${CUDA_LIB64} -L/usr/syscom/gpu/usrx/lib64
+LIBS  += -lOpenCL
+endif
+
+ifdef LIKWID
+MAKROS+= -DLIKWID
+IPATH += -I${LIKWID_DIR}/include
+LPATH += -L${LIKWID_DIR}/lib
+LIBS  += -llikwid
+endif
+
 AS	= as
 ASFLAGS = -g -gstabs
-
-OCLSWITCH = DOOCL
-
-ENDG    =       $(shell echo ${MAKROS} | sed -e 's/\-D/_/g' | sed -e 's/\ //g')
-SUFX    =      _${SYSTEM}

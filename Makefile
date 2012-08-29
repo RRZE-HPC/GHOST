@@ -1,4 +1,4 @@
-SYSTEM=default
+include config.mk
 include makes/make_$(SYSTEM).mk
 
 .PHONY: examples utils clean distclean all 
@@ -20,18 +20,7 @@ OCLOBJS = oclfun.o my_ellpack.o
 FOBJS	= 	matricks_GW.o imtql1.o pythag.o 
 SOBJS	=	for_timing_start_asm.o for_timing_stop_asm.o
 
-MAKROS=#-DPIN
-
-ifdef LIKWID
-MAKROS+= -DLIKWID
-endif
-
-ifdef OPENCL
-MAKROS+= -DOPENCL 
-PREFIX=cl
-else
-PREFIX=
-endif
+#MAKROS=#-DPIN
 
 LIBSPMVM=lib$(PREFIX)spmvm.a
 
