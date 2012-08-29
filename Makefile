@@ -1,4 +1,5 @@
-CC=icc
+include ../config.mk
+include ../makes/make_$(SYSTEM).mk
 
 .PHONY:clean distclean all
 
