@@ -1,4 +1,4 @@
-#include "spmvm_globals.h"
+
 #include "kernel.h"
 
 

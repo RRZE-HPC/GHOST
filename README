@@ -1,0 +1,22 @@
+== HEADERS ==
+  There are 2 headers which you may need in your programs:
+  1) spmvm.h
+     This header includes the most basic data structures, prototypes and macros 
+	 you will need in any case.
+  2) spmvm_util.h
+     This header includes utility functions and macros that may be helpful
+	 when using LibSpMVM in certain cases. 
+	 This includes, e.g., functions for setting up and using vector types, 
+	 printing information about the matrix, plugging in user-defined kernels,
+	 and many more.
+	  
+      
+
+== ROUTINES ==
+  
+
+
+== INPUT DATA ==
+
+
+== PLUG-IN KERNELS ==

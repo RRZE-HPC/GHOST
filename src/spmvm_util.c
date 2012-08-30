@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "spmvm_util.h"
+#include "spmvm.h"
 #include "fortranfunctions.h"
 #include "matricks.h"
 #include <sys/param.h>
@@ -8,7 +9,6 @@
 #include <mpihelper.h>
 
 #ifdef OPENCL
-#include "spmvm_cl_util.h"
 #include "my_ellpack.h"
 #endif
 

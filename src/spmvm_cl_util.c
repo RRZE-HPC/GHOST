@@ -1,9 +1,10 @@
-#include "spmvm_cl_util.h"
+#include "spmvm_util.h"
 #include "matricks.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <sys/param.h>
 
 #define CL_MAX_DEVICE_NAME_LEN 500
 

@@ -1,4 +1,3 @@
-SYSTEM=rrze
 OPENCL=1
 LIKWID=1
 LIKWID_MARKER=0
@@ -30,14 +29,12 @@ ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
 IPATH += -I${CUDA_INC}
-LPATH += -L${CUDA_LIB}
 LIBS  += -lOpenCL
 endif
 
 ifeq ($(LIKWID),1)
 MAKROS+= -DLIKWID
 IPATH += -I${LIKWID_INC}
-LPATH += -L${LIKWID_LIB}
 LIBS  += -llikwid
 endif
 

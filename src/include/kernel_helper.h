@@ -2,10 +2,8 @@
 #define __KERNEL_HELPER_H__
 
 
-
-#ifdef OPENCL
-#include "spmvm_cl_util.h"
-#endif
+#include "spmvm.h"
+#include "spmvm_util.h"
 
 #ifdef LIKWID
 #include <likwid.h>

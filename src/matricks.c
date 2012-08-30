@@ -1,7 +1,7 @@
 #define _XOPEN_SOURCE 600
 #include "matricks.h"
+#include "spmvm_util.h"
 #ifdef OPENCL
-#include "spmvm_cl_util.h"
 #include "my_ellpack.h"
 #endif
 #include <math.h>

@@ -3,109 +3,27 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 #include <stdlib.h>
-#include <sys/times.h>
 #include <unistd.h>
-#include <omp.h>
-#include <sched.h>
+#include <sys/time.h>
+#include <libgen.h>
 
 
 #ifdef LIKWID
 #include <likwid.h>
 #endif
 
-#include <limits.h>
-#include <getopt.h>
-#include <libgen.h>
+static double wctime()
+{
+	struct timeval tp;
+	double wctime;
 
-typedef struct {
-	char matrixPath[PATH_MAX];
-	char matrixName[PATH_MAX];
-	int nIter;
-#ifdef OPENCL
-	SPM_GPUFORMATS matrixFormats;
-	int devType;
-#endif
-} PROPS;
+	gettimeofday(&tp, NULL);
+	wctime=(double) (tp.tv_sec + tp.tv_usec/1000000.0);
 
-
-static void usage() {
+	return wctime; 
 }
 
-
-static void getOptions(int argc,  char * const *argv, PROPS *p) {
-
-	while (1) {
-		static struct option long_options[] =
-		{
-			{"help", no_argument, 0, 'h'},
-			{"matrixFormat",    required_argument, 0, 'f'},
-			//{"workGroupSize",  required_argument, 0, 'w'},
-			//{"nEigs",  required_argument, 0, 'e'},
-			{"nIter",  required_argument, 0, 'i'},
-			//{"dev",  required_argument, 0, 'd'},
-			//{"nThreads",  required_argument, 0, 'T'},
-			{0, 0, 0, 0}
-		};
-		/* getopt_long stores the option index here. */
-		int option_index = 0;
-
-		int c = getopt_long (argc, argv, "hf:w:e:i:d:T:",
-				long_options, &option_index);
-
-		/* Detect the end of the options. */
-		if (c == -1)
-			break;
-
-		switch (c) {
-			case 0:
-				if (long_options[option_index].flag != 0)
-					break;
-
-			case 'h':
-				usage();
-				exit(0);
-				break;
-
-
-			case 'f':
-				{
-#ifdef OPENCL
-					char *format;
-					format = strtok(optarg,",");
-					int i=0;
-
-					while(format != NULL) {
-						if (!strncasecmp(format,"ELR",3)) {
-							p->matrixFormats.format[i] = SPM_GPUFORMAT_ELR;
-							p->matrixFormats.T[i] = atoi(format+4);
-						}
-						if (!strncasecmp(format,"PJDS",4)) {
-							p->matrixFormats.format[i] = SPM_GPUFORMAT_PJDS;
-							p->matrixFormats.T[i] = atoi(format+5);
-						}
-						format = strtok(NULL,",");
-						i++;
-					}
-#endif
-
-					break;
-				}
-
-			case 'i':
-				p->nIter = atoi(optarg);
-				break;
-
-			case '?':
-				/* getopt_long already printed an error message. */
-				break;
-
-			default:
-				abort ();
-		}
-	}
-}
 
 static real rhsVal (int i) {
 #ifdef COMPLEX
@@ -136,7 +54,7 @@ int main( int argc, char* argv[] ) {
 	LCRP_TYPE *lcrp;
 
 	SPMVM_KERNELS_SELECTED= 0;
-		
+
 	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
 	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
 	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
@@ -144,30 +62,30 @@ int main( int argc, char* argv[] ) {
 
 	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
 
-
-	PROPS props;
-#ifdef OPENCL
-	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.T[0] = 1;
-	props.matrixFormats.T[1] = 1;
-	props.matrixFormats.T[2] = 1;
-	props.devType = CL_DEVICE_TYPE_GPU;
-#else
-	props.matrixFormats = NULL;
-#endif
-	props.nIter = 100;
-
-	getOptions(argc,argv,&props);
-	if (argc==optind) {
-		usage();
+	if (argc!=2) {
+		fprintf(stderr,"Usage: spmvm.x <matrixPath>\n");
 		exit(EXIT_FAILURE);
 	}
 
+	char *matrixPath = argv[1];
+	int nIter = 100;
+	SPM_GPUFORMATS matrixFormats;
+
+#ifdef OPENCL
+	matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
+	matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
+	matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
+	matrixFormats.T[0] = 1;
+	matrixFormats.T[1] = 1;
+	matrixFormats.T[2] = 1;
+#else
+	matrixFormats = NULL;
+#endif
+
+
 	me   = SpMVM_init(argc,argv);       // basic initialization
-	cr   = SpMVM_createCRS (argv[optind]);
-	lcrp = SpMVM_distributeCRS (cr,&props.matrixFormats);
+	cr   = SpMVM_createCRS (matrixPath);
+	lcrp = SpMVM_distributeCRS (cr,&matrixFormats);
 
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);
@@ -176,7 +94,7 @@ int main( int argc, char* argv[] ) {
 	nodeLHS = SpMVM_newVector(lcrp->lnRows[me]);
 
 	if (me==0)
-	   SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,props.nIter);	
+		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter);	
 
 	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."));
@@ -191,7 +109,7 @@ int main( int argc, char* argv[] ) {
 
 		MPI_Barrier(MPI_COMM_WORLD);
 		if (me == 0)
-			start = omp_get_wtime();
+			start = wctime();
 
 
 #ifdef LIKWID_MARKER
@@ -201,7 +119,7 @@ int main( int argc, char* argv[] ) {
 		likwid_markerStartRegion(regionName);
 #endif
 
-		for( iteration = 0; iteration < props.nIter; iteration++ ) {
+		for( iteration = 0; iteration < nIter; iteration++ ) {
 			SPMVM_KERNELS[kernel].kernel(nodeLHS, lcrp, nodeRHS);
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
@@ -211,7 +129,7 @@ int main( int argc, char* argv[] ) {
 #endif
 
 		if (me == 0)
-			end = omp_get_wtime();
+			end = wctime();
 
 		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
 			SpMVM_permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
@@ -227,21 +145,19 @@ int main( int argc, char* argv[] ) {
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					IF_DEBUG(1) {
-						printf( "PE%d: error in row %i: %.2f + %.2fi vs. %.2f +"
-							   "%.2fi\n", me, i, REAL(goldLHS->val[i]),
-							   IMAG(goldLHS->val[i]),
-							   REAL(globLHS->val[i]),
-							   IMAG(globLHS->val[i]));
-					}
+					printf( "PE%d: error in row %i: %.2f + %.2fi vs. %.2f +"
+							"%.2fi\n", me, i, REAL(goldLHS->val[i]),
+							IMAG(goldLHS->val[i]),
+							REAL(globLHS->val[i]),
+							IMAG(globLHS->val[i]));
 					errcount++;
 				}
 			}
 			printf("Kernel %d %s @ %6.2f GF/s | %6.2f ms/it\n",
 					kernel,errcount?"FAILED   ":"SUCCEEDED",
-					FLOPS_PER_ENTRY*1.e-9*(double)props.nIter*
+					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
 					(double)lcrp->nEnts/(end-start),(end-start)*1.e3/
-					props.nIter);
+					nIter);
 		}
 
 		SpMVM_zeroVector(nodeLHS);

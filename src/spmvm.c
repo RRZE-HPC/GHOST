@@ -5,6 +5,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/param.h>
 
 int SpMVM_init(int argc, char **argv)
 {
@@ -161,10 +162,12 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats)
 
 	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED);
 
-#ifdef OPENCL
 	if (deviceFormats == NULL) {
+#ifdef OPENCL
 		myabort("Device matrix formats have to be passed to SPMVM_distributeCRS");
+#endif
 	}
+#ifdef OPENCL
 	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
 	CL_uploadCRS ( lcrp, formats);
 #endif

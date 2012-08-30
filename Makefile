@@ -1,11 +1,15 @@
 include config.mk
 
-.PHONY: examples utils clean distclean all install 
+.PHONY: examples utils clean distclean all install libspmvm
 
 VPATH	=	./src/
 IPATH	+=	-I./src/include
 
 OBJS	=	$(COBJS) $(FOBJS)
+
+ifeq ($(OPENCL),1)
+OBJS	+=	$(OCLOBJS)
+endif
 
 COBJS	=  aux.o spmvm_util.o spmvm.o matricks.o mpihelper.o  \
 		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
@@ -21,51 +25,37 @@ LIBSPMVM=lib$(PREFIX)spmvm.a
 %.o: %.f 
 	$(FC) $(FFLAGS) -o $@ -c $<
 
-%.o: %.s
-	$(AS) $(ASFLAGS) -o $@  $<
+libspmvm: $(OBJS)
+	@ar rcs  $(LIBSPMVM) $^
+	@mv *.o obj
+	@mv *genmod* obj
 
-
-all: $(LIBSPMVM) examples utils
-
-examples: $(LIBSPMVM)
+examples: 
 	$(MAKE) -C examples/  
 
 utils: 
 	$(MAKE) -C utils/
 
-
-libspmvm.so: $(OBJS)
-	$(CC) -shared -o $@ $^ $(LPATH) $(LIBS)
-
-libclspmvm.so: $(OBJS) $(OCLOBJS)
-	$(CC) -shared -o $@ $^ $(LPATH) $(LIBS)
-
-libspmvm.a: $(OBJS)
-	ar rcs  $@ $^
-	-mv *.o obj
-	-mv *genmod* obj
-
-libclspmvm.a: $(OBJS) $(OCLOBJS)
-	ar rcs  $@ $^ 
-	-mv *.o obj
-	-mv *genmod* obj
+all: libspmvm examples utils
 
 clean:
-	-rm -f obj/*
+	@rm -f obj/*
 	$(MAKE) -C examples clean
 	$(MAKE) -C utils clean
 
 distclean: clean
-	-rm -f *.so
-	-rm -f *.a
+	@rm -f *.a
 	$(MAKE) -C examples distclean
 	$(MAKE) -C utils distclean
 
-install: $(LIBSPMVM)
+install: libspmvm
 	@mkdir -p $(INSTDIR)/lib
 	@mkdir -p $(INSTDIR)/include
 	@cp -f $(LIBSPMVM) $(INSTDIR)/lib
 	@cp -f src/include/spmvm*.h $(INSTDIR)/include
 
+uninstall: 
+	@rm -f $(INSTDIR)/lib/lib*spmvm.a
+	@rm -f $(INSTDIR)/include/spmvm*.h 
 
 	

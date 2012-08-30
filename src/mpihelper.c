@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "mpihelper.h"
 #include "matricks.h"
+#include "spmvm.h"
 
 #include <stdio.h>
 #include <string.h>

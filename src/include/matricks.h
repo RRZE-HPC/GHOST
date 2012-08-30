@@ -1,7 +1,8 @@
 #ifndef _MATRICKS_H_
 #define _MATRICKS_H_
 
-#include "spmvm_globals.h"
+#include "spmvm.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>

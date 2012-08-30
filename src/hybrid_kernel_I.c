@@ -1,7 +1,7 @@
 #include <matricks.h>
+#include <mpi.h>
 #include "kernel_helper.h"
 #include "kernel.h"
-#include <mpi.h>
 
 void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 {

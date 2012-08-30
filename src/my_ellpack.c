@@ -1,11 +1,8 @@
 #include <mpi.h>
 #include "my_ellpack.h"
 #include "matricks.h"
-#include "spmvm_globals.h"
 
-#ifdef OPENCL
-#include "spmvm_cl_util.h"
-#endif
+
 
 #include <assert.h>
 #include <stdio.h>
