@@ -3,9 +3,6 @@
 #include "lanczos.h"
 #include <omp.h>
 
-#ifdef OPENCL
-#include "spmvm_cl_util.h"
-#endif
 
 #ifdef LIKWID
 #include <likwid.h>
@@ -428,7 +425,7 @@ int main( int argc, char* argv[] )
 			if (me==0) {
 				tend = omp_get_wtime();
 				tacc += tend-tstart;
-				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",alpha,(tend-tstart)*1e3,
+				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",REAL(alpha),(tend-tstart)*1e3,
 						REAL(falphas[0]));
 				fflush(stdout);
 			}
