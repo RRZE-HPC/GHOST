@@ -83,11 +83,10 @@ extern const char *WORKDIST_NAMES[];
 /******************************************************************************/
 /****** Consequences **********************************************************/
 /******************************************************************************/
-#ifdef LIKWID_MARKER_FINE
-#define LIKWID_MARKER
-#endif
-
 #ifdef LIKWID_MARKER
+#define LIKWID
+#endif
+#ifdef LIKWID_MARKER_FINE
 #define LIKWID
 #endif
 /******************************************************************************/
@@ -275,7 +274,7 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath);
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats);
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
-		HOSTVECTOR_TYPE *totalVec);
+		HOSTVECTOR_TYPE *totalVec, int kernel);
 /******************************************************************************/
 
 #endif

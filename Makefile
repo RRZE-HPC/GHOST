@@ -20,7 +20,7 @@ FOBJS	=  matricks_GW.o imtql1.o pythag.o
 LIBSPMVM=lib$(PREFIX)spmvm.a
 
 %.o: %.c  
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 %.o: %.f 
 	$(FC) $(FFLAGS) -o $@ -c $<

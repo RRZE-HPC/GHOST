@@ -70,6 +70,14 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	recv_messages = 0;
 	for (i=0;i<lcrp->nodes;i++) send_request[i] = MPI_REQUEST_NULL;
 
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 2");
+#endif
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 2 -- communication");
+#endif
 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
@@ -100,7 +108,17 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******       Calculation of SpMVM for local entries of invec->val        *******
 	 ***************************************************************************/
 
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 2 -- local computation");
+#endif
+
 	spmvmKernLocal( lcrp, invec, res, &me );
+
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStopRegion("Kernel 2 -- local computation");
+#endif
 
 	/****************************************************************************
 	 *******       Finishing communication: MPI_Waitall                   *******
@@ -109,11 +127,29 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	MPI_safecall(MPI_Waitall(send_messages, send_request, send_status));
 	MPI_safecall(MPI_Waitall(recv_messages, recv_request, recv_status));
 
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	{
+	likwid_markerStopRegion("Kernel 2 -- communication");
+	likwid_markerStartRegion("Kernel 2 -- remote computation");
+	}
+#endif
+
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
 	spmvmKernRemote( lcrp, invec, res, &me );
+
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStopRegion("Kernel 2 -- remote computation");
+#endif
+
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStopRegion("Kernel 2");
+#endif
 
 
 }

@@ -5,17 +5,35 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/param.h>
+#include <sys/syscall.h>
 #include <stdlib.h>
-
-#ifdef LIKWID
-#include <likwid.h>
-#else
 #include <sched.h>
-#endif
 
 #include <math.h>
 #include <omp.h>
+
+#define MAX_NUM_THREADS 128
+#define gettid() syscall(SYS_gettid)
+
+static int getProcessorId() {
+
+    cpu_set_t  cpu_set;
+    int processorId;
+    
+	CPU_ZERO(&cpu_set);
+    sched_getaffinity(gettid(),sizeof(cpu_set_t), &cpu_set);
+
+    for (processorId=0;processorId<MAX_NUM_THREADS;processorId++){
+        if (CPU_ISSET(processorId,&cpu_set))
+        {  
+            break;
+        }
+    }
+    return processorId;
+
+}
 
 void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_node) 
 {
@@ -33,11 +51,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
 	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes ));
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-#ifdef LIKWID
-	coreId = likwid_getProcessorId();
-#else
-	coreId = sched_getcpu();
-#endif
+	coreId = getProcessorId();
 
 	size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
 	size_ahn  = (size_t)( n_nodes    * sizeof(char*) );

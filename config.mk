@@ -1,5 +1,4 @@
 OPENCL=1
-LIKWID=1
 LIKWID_MARKER=0
 LIKWID_MARKER_FINE=0
 DOUBLE=1
@@ -12,12 +11,12 @@ CUDA_LIB=$(CUDA_HOME)/lib64
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
 LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 
+
 CC	= mpicc
-CFLAGS  = -g -O3 ${MAKROS} ${IPATH} -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+CFLAGS  = -g -O3 -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
 FC	= mpif90
 FFLAGS  = -g -O3 -fno-alias -cpp -warn all -openmp -fPIC
-
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -25,25 +24,21 @@ FFLAGS  = -g -O3 -fno-alias -cpp -warn all -openmp -fPIC
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
+
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
 IPATH += -I${CUDA_INC}
-LIBS  += -lOpenCL
-endif
-
-ifeq ($(LIKWID),1)
-MAKROS+= -DLIKWID
-IPATH += -I${LIKWID_INC}
-LIBS  += -llikwid
 endif
 
 ifeq ($(LIKWID_MARKER),1)
 MAKROS+= -DLIKWID_MARKER
+IPATH += -I${LIKWID_INC}
 endif
 
 ifeq ($(LIKWID_MARKER_FINE),1)
 MAKROS+= -DLIKWID_MARKER_FINE
+IPATH += -I${LIKWID_INC}
 endif
 
 ifeq ($(DOUBLE),1)

@@ -9,7 +9,10 @@
 	 This includes, e.g., functions for setting up and using vector types, 
 	 printing information about the matrix, plugging in user-defined kernels,
 	 and many more.
-	  
+	 
+
+== CONFIGURATION ==
+
       
 
 == ROUTINES ==

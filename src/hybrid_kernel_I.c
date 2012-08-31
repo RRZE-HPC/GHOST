@@ -30,6 +30,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
+
 	if (init_kernel==1){
 
 		max_dues = 0;
@@ -67,6 +68,14 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 	send_messages = 0;
 	recv_messages = 0;
 
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 1");
+#endif
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 1 -- communication");
+#endif
 
 	for (from_PE=0; from_PE<lcrp->nodes; from_PE++){
 		if (lcrp->wishes[from_PE]>0){
@@ -92,7 +101,24 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 	MPI_safecall(MPI_Waitall(send_messages, send_request, send_status));
 	MPI_safecall(MPI_Waitall(recv_messages, recv_request, recv_status));
 
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	{
+	likwid_markerStopRegion("Kernel 1 -- communication");
+	likwid_markerStartRegion("Kernel 1 -- computation");
+	}
+#endif
+	
 	spmvmKernAll(lcrp, invec, res, &me);
+
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 1 -- computation");
+#endif
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 1");
+#endif
 
 }
 

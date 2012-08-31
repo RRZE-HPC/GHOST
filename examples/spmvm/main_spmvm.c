@@ -9,9 +9,6 @@
 #include <libgen.h>
 
 
-#ifdef LIKWID
-#include <likwid.h>
-#endif
 
 static double wctime()
 {
@@ -24,8 +21,8 @@ static double wctime()
 	return wctime; 
 }
 
-
-static real rhsVal (int i) {
+static real rhsVal (int i) 
+{
 #ifdef COMPLEX
 	return i+1.0 + I*(i+1.5);
 #else
@@ -33,7 +30,8 @@ static real rhsVal (int i) {
 #endif
 }
 
-int main( int argc, char* argv[] ) {
+int main( int argc, char* argv[] ) 
+{
 
 	int me;
 
@@ -72,7 +70,7 @@ int main( int argc, char* argv[] ) {
 	SPM_GPUFORMATS matrixFormats;
 
 #ifdef OPENCL
-	matrixFormats.format[0] = SPM_GPUFORMAT_ELR;
+	matrixFormats.format[0] = SPM_GPUFORMAT_PJDS;
 	matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
 	matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
 	matrixFormats.T[0] = 1;
@@ -107,37 +105,19 @@ int main( int argc, char* argv[] ) {
 		if (!SpMVM_kernelValid(kernel,lcrp)) 
 			continue; // Skip loop body if kernel does not make sense for used parametes
 
+
 		MPI_Barrier(MPI_COMM_WORLD);
-		if (me == 0)
-			start = wctime();
-
-
-#ifdef LIKWID_MARKER
-		char regionName[9];
-		sprintf(regionName,"kernel %d",kernel);
-#pragma omp parallel
-		likwid_markerStartRegion(regionName);
-#endif
+		if (me == 0) start = wctime();
 
 		for( iteration = 0; iteration < nIter; iteration++ ) {
 			SPMVM_KERNELS[kernel].kernel(nodeLHS, lcrp, nodeRHS);
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-		likwid_markerStopRegion(regionName);
-#endif
 
-		if (me == 0)
-			end = wctime();
+		if (me == 0) end = wctime();
 
-		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-			SpMVM_permuteVector(nodeLHS->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-			SpMVM_permuteVector(nodeLHS->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
-		}
 
-		SpMVM_collectVectors(lcrp,nodeLHS,globLHS);
+		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
 		if (me==0) {
 			for (i=0; i<lcrp->nRows; i++){

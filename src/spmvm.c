@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <sys/param.h>
 
+#ifdef LIKWID
+#include <likwid.h>
+#endif
+
 int SpMVM_init(int argc, char **argv)
 {
 
@@ -140,12 +144,19 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 }
 
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
-		HOSTVECTOR_TYPE *totalVec) {
+		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
 	int me;
 
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+		
+	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+			SpMVM_permuteVector(vec->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+			SpMVM_permuteVector(vec->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
+		}
+
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 }

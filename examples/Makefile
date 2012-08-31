@@ -6,9 +6,10 @@ CC=mpicc
 CFLAGS=-O3 -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 CUDA_INC=$(CUDA_HOME)/include
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
+LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 DOUBLE=1
 OPENCL=1
-LIKWID=1
+LIKWID_MARKER=1
 LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
@@ -17,23 +18,22 @@ LIBS+=-l$(PREFIX)spmvm
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
 PREFIX= cl
-IPATH += -I${CUDA_INC}
 LIBS  += -lOpenCL
-endif
-
-ifeq ($(LIKWID),1)
-MAKROS+= -DLIKWID
-IPATH += -I${LIKWID_INC}
-LPATH += -L${LIKWID_LIB}
-LIBS  += -llikwid
+IPATH += -I${CUDA_INC}
 endif
 
 ifeq ($(LIKWID_MARKER),1)
 MAKROS+= -DLIKWID_MARKER
+LPATH += -L${LIKWID_LIB}
+IPATH += -I${LIKWID_INC}
+LIBS  += -llikwid
 endif
 
 ifeq ($(LIKWID_MARKER_FINE),1)
 MAKROS+= -DLIKWID_MARKER_FINE
+LPATH += -L${LIKWID_LIB}
+IPATH += -I${LIKWID_INC}
+LIBS  += -llikwid
 endif
 
 ifeq ($(DOUBLE),1)

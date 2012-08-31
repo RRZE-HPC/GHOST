@@ -89,6 +89,15 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	
 	for (i=0;i<lcrp->nodes;i++) send_request[i] = MPI_REQUEST_NULL;
 
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 3");
+#endif
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStartRegion("Kernel 3 -- communication (last thread) & local computation (others)");
+#endif
+
 	/*****************************************************************************
 	 *******        Post of Irecv to ensure that we are prepared...       ********
 	 ****************************************************************************/
@@ -152,9 +161,6 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 		tid = omp_get_thread_num();
 #endif
 
-#ifdef LIKWID_MARKER_FINE
-		likwid_markerStartRegion("task mode comm (= last core) + local comp");
-#endif
 		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
 			/***********************************************************************
 			 *******  Local gather of data in work array & communication    ********
@@ -210,15 +216,29 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 
 		}
 
-#ifdef LIKWID_MARKER_FINE
-		likwid_markerStopRegion("task mode comm (= last core) + local comp");
-#endif
 	}
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	{
+	likwid_markerStopRegion("Kernel 3 -- communication (last thread) & local computation (others)");
+	likwid_markerStartRegion("Kernel 3 -- remote computation");
+	}
+#endif
 	/**************************************************************************
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
 	spmvmKernRemote( lcrp, invec, res, &me );
+
+#ifdef LIKWID_MARKER_FINE
+#pragma omp parallel
+	likwid_markerStopRegion("Kernel 3 -- remote computation");
+#endif
+
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+	likwid_markerStopRegion("Kernel 3");
+#endif
 
 
 }
