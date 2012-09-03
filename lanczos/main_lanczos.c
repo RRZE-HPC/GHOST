@@ -26,10 +26,7 @@ typedef struct {
 	char matrixPath[PATH_MAX];
 	char matrixName[PATH_MAX];
 	int nIter;
-#ifdef OPENCL
-	SPM_GPUFORMATS matrixFormats;
-	int devType;
-#endif
+	SPM_GPUFORMATS *matrixFormats;
 } PROPS;
 
 static void usage()
@@ -81,12 +78,12 @@ static void getOptions(int argc,  char * const *argv, PROPS *p)
 
 					while(format != NULL) {
 						if (!strncasecmp(format,"ELR",3)) {
-							p->matrixFormats.format[i] = SPM_GPUFORMAT_ELR;
-							p->matrixFormats.T[i] = atoi(format+4);
+							p->matrixFormats->format[i] = SPM_GPUFORMAT_ELR;
+							p->matrixFormats->T[i] = atoi(format+4);
 						}
 						if (!strncasecmp(format,"PJDS",4)) {
-							p->matrixFormats.format[i] = SPM_GPUFORMAT_PJDS;
-							p->matrixFormats.T[i] = atoi(format+5);
+							p->matrixFormats->format[i] = SPM_GPUFORMAT_PJDS;
+							p->matrixFormats->T[i] = atoi(format+5);
 						}
 						format = strtok(NULL,",");
 						i++;
@@ -116,7 +113,7 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 
 #ifdef OPENCL
 	size_t localSize = CL_getLocalSize(dotprodKernel);
-	int resVecSize = v1->nRows/localSize; 
+	int resVecSize = (n/localSize)+1;
 	int i;
 	*res = 0.0;
 
@@ -131,7 +128,7 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 
 	CL_enqueueKernel(dotprodKernel);
 
-	CL_copyDeviceToHost(tmp->val,tmp->CL_val_gpu,resVecSize*sizeof(real));
+	CL_downloadVector(tmp);
 
 	for(i = 0; i < resVecSize; ++i) {
 		*res += tmp->val[i];
@@ -158,14 +155,14 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real *res, int n)
 #endif
 }
 
-static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
+static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s, int n)
 {
 
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
 	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(real),&s));
-	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&v1->nRows));
+	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&n));
 
 	CL_enqueueKernel(axpyKernel);
 #else
@@ -178,7 +175,7 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
 
    
 #pragma omp for private(i)
-	for (i=0; i<v1->nRows; i++)
+	for (i=0; i<n; i++)
 		v1->val[i] = v1->val[i] + s*v2->val[i];
 
 #ifdef LIKWID_MARKER_FINE
@@ -189,14 +186,14 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s)
 #endif
 }
 
-static void vecscal(VECTOR_TYPE *vec, real s)
+static void vecscal(VECTOR_TYPE *vec, real s, int n)
 {
 	
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
 				&vec->CL_val_gpu));
 	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(real),&s));
-	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&vec->nRows));
+	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&n));
 
 	CL_enqueueKernel(vecscalKernel);	
 #else
@@ -209,7 +206,7 @@ static void vecscal(VECTOR_TYPE *vec, real s)
 #endif
 
 #pragma omp for private(i)
-		for (i=0; i<vec->nRows; i++)
+		for (i=0; i<n; i++)
 			vec->val[i] = s*vec->val[i];
 
 #ifdef LIKWID_MARKER_FINE
@@ -221,18 +218,25 @@ static void vecscal(VECTOR_TYPE *vec, real s)
 }
 
 
-static void lanczosStep(LCRP_TYPE *lcrp, int me, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
-	   	real *alpha, real *beta, int kernel)
+static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
+	   	real *alpha, real *beta, int kernel, int me)
 {
-	vecscal(vnew,-*beta);
+	vecscal(vnew,-*beta,lcrp->lnRows[me]);
+
 	SPMVM_KERNELS[kernel].kernel(vnew, lcrp, vold);
+
+
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
+	
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-	axpy(vnew,vold,-(*alpha));
+
+	axpy(vnew,vold,-(*alpha),lcrp->lnRows[me]);
+
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
+
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=SQRT(*beta);
-	vecscal(vnew,1./(*beta));
+	vecscal(vnew,1./(*beta),lcrp->lnRows[me]);
 }
 
 static real rhsVal (int i)
@@ -245,7 +249,6 @@ int main( int argc, char* argv[] )
 
 	int me;
 
-	int i; 
 
 	VECTOR_TYPE *vold;
 	VECTOR_TYPE *vnew;
@@ -255,27 +258,28 @@ int main( int argc, char* argv[] )
 
 	int iteration;
 
-	double start, end, tstart, tend, time_it_took, tacc = 0;
 	int kernel;
+	double start, end, tstart, tend, tacc, time_it_took;
 
 
 	SPMVM_KERNELS_SELECTED = 0;	
-	//SPMVM_KERNELS |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
+	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
+	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
+	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
 
 	PROPS props;
 	props.nIter = 100;
+	props.matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));
 #ifdef OPENCL
-	props.matrixFormats.format[0] = SPM_GPUFORMAT_ELR; 
-	props.matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats.T[0] = 1;
-	props.matrixFormats.T[1] = 1;
-	props.matrixFormats.T[2] = 1;
-	props.devType = CL_DEVICE_TYPE_GPU;
-	cl_event event;
+	props.matrixFormats->format[0] = SPM_GPUFORMAT_ELR; 
+	props.matrixFormats->format[1] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats->format[2] = SPM_GPUFORMAT_ELR;
+	props.matrixFormats->T[0] = 1;
+	props.matrixFormats->T[1] = 1;
+	props.matrixFormats->T[2] = 1;
+#else
+	props.matrixFormats = NULL;
 #endif
 
 	getOptions(argc,argv,&props);
@@ -284,13 +288,13 @@ int main( int argc, char* argv[] )
 		exit(EXIT_FAILURE);
 	}
 
-	me      = SpMVM_init(argc,argv);       // basic initialization
-	CR_TYPE *cr = SpMVM_createCRS ( argv[optind] );
-	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr,&props.matrixFormats);
-
-
 	SPMVM_OPTIONS  = SPMVM_OPTION_KEEPRESULT; // keep result vector on device
 	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // perform y <- y + A*x
+	me      = SpMVM_init(argc,argv);       // basic initialization
+	CR_TYPE *cr = SpMVM_createCRS ( argv[optind] );
+	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr,props.matrixFormats);
+
+
 
 	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	SpMVM_normalize(r0->val,r0->nRows);
@@ -322,15 +326,9 @@ int main( int argc, char* argv[] )
 	vecscalKernel = clCreateKernel(program,"vecscalKernel",&err);
 #endif
 
-	real *zero = (real *)malloc(lcrp->lnRows[me]*sizeof(real));
-	for (i=0; i<lcrp->lnRows[me]; i++)
-		zero[i] = 0.;
-
 	vnew = SpMVM_newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = 0
 	vold = SpMVM_newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = r0
 	evec = SpMVM_newVector(lcrp->lnRows[me]); // = r0
-
-	memcpy(vnew->val,zero,sizeof(real)*lcrp->lnRows[me]);
 
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
@@ -352,83 +350,72 @@ int main( int argc, char* argv[] )
 
 		int ferr;
 
-		tacc = 0;
 		real alpha=0., beta=0.;
 		betas[0] = beta;
 		int n;
 
 
-		lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel);
+		//lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel);
 
-		alphas[0] = alpha;
-		betas[1] = beta;
+//		alphas[0] = alpha;
+//		betas[1] = beta;
 
 
-		for( iteration = 1, n=1; iteration < props.nIter; iteration++, n++ ) {
+		for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
 			if (me == 0) { 
 				printf("\r");
+				tstart = omp_get_wtime();
 				start = omp_get_wtime();
 			}
-#ifdef OPENCL	
-			event = CL_copyDeviceToHostNonBlocking(vnew->val, vnew->CL_val_gpu,
-				   	lcrp->lnRows[me]*sizeof(real));
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+			likwid_markerStartRegion("Lanczos step");
+#endif
+
+			lanczosStep(lcrp,vnew,vold,&alpha,&beta,kernel,me);
+#ifdef OPENCL
+			CL_downloadVector(vnew);
+#endif
+
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+			likwid_markerStopRegion("Lanczos step");
 #endif
 			SpMVM_swapVectors(vnew,vold);
 
 
+			alphas[iteration] = alpha;
+			betas[iteration+1] = beta;
 			memcpy(falphas,alphas,(iteration)*sizeof(real));
 			memcpy(fbetas,betas,(iteration)*sizeof(real));
 
-			
+			if (me == 0) {
+				end = omp_get_wtime();
+				time_it_took = end-start;
+				start = omp_get_wtime();
+				printf("Lanczos: %6.2f ms, ",time_it_took*1e3);
+			}
+		
 			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
+
 
 			if(ferr != 0) {
 				printf("Error: the %d. ev could not be determined\n",ferr);
 			}
+
+
 			if (me == 0) {
 				end = omp_get_wtime();
 				time_it_took = end-start;
 				printf("imtql: %6.2f ms, ",time_it_took*1e3);
-			}
-
-#ifdef OPENCL
-			clWaitForEvents(1,&event);
-#endif
-
-			if (me == 0) {
-				start = omp_get_wtime();
-				tstart = omp_get_wtime();
-
-			}
-
-#ifdef LIKWID_MARKER
-			char regionName[] = "lanczosStep";
-#pragma omp parallel
-			likwid_markerStartRegion(regionName);
-#endif
-
-			lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel);
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-			likwid_markerStopRegion(regionName);
-#endif
-			if (me == 0) {
-				end = omp_get_wtime();
-				time_it_took = end-start;
-				printf("lcz: %6.2f ms, ",time_it_took*1e3);
-			}
-
-			alphas[iteration] = alpha;
-			betas[iteration+1] = beta;
-
-			if (me==0) {
 				tend = omp_get_wtime();
 				tacc += tend-tstart;
 				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",REAL(alpha),(tend-tstart)*1e3,
 						REAL(falphas[0]));
 				fflush(stdout);
 			}
+
+
 
 		}
 		if (me==0) {

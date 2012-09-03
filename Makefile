@@ -1,19 +1,23 @@
-#include ../config.mk
+DOUBLE=1
+OPENCL=1
+LIKWID_MARKER=0
+
+CUDA_INC=$(CUDA_HOME)/include
+LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
+LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
+LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
+LPATH+= -L$(LIBSPMVMPATH)/lib
+IPATH+= -I$(LIBSPMVMPATH)/include
+LIBS+=-l$(PREFIX)spmvm
+
 
 .PHONY:clean distclean all
 
 CC=mpicc
 CFLAGS=-O3 -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
-CUDA_INC=$(CUDA_HOME)/include
-LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
-LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
-DOUBLE=1
-OPENCL=1
-LIKWID_MARKER=1
-LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
-LPATH+= -L$(LIBSPMVMPATH)/lib
-IPATH+= -I$(LIBSPMVMPATH)/include
-LIBS+=-l$(PREFIX)spmvm
+
+FC	= mpif90
+FFLAGS  = -g -O3 -fno-alias -cpp -warn all -openmp -fPIC
 
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
@@ -48,12 +52,15 @@ endif
 %.o: %.c  
 	$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
+%.o: %.f 
+	$(FC) $(FFLAGS) -o $@ -c $<
+
 all: spmvm lanczos minimal 
 
 spmvm: spmvm/main_spmvm.o
 	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o spmvm/$(PREFIX)$@.x $^  $(LIBS)
 
-lanczos: lanczos/main_lanczos.o
+lanczos: lanczos/main_lanczos.o lanczos/imtql1.o lanczos/pythag.o
 	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o lanczos/$(PREFIX)$@.x $^  $(LIBS)
 
 minimal: minimal/main_minimal.o
