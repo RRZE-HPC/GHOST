@@ -67,15 +67,15 @@ int main( int argc, char* argv[] )
 
 	char *matrixPath = argv[1];
 	int nIter = 100;
-	SPM_GPUFORMATS matrixFormats;
+	SPM_GPUFORMATS *matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));;
 
 #ifdef OPENCL
-	matrixFormats.format[0] = SPM_GPUFORMAT_PJDS;
-	matrixFormats.format[1] = SPM_GPUFORMAT_ELR;
-	matrixFormats.format[2] = SPM_GPUFORMAT_ELR;
-	matrixFormats.T[0] = 1;
-	matrixFormats.T[1] = 1;
-	matrixFormats.T[2] = 1;
+	matrixFormats->format[0] = SPM_GPUFORMAT_PJDS;
+	matrixFormats->format[1] = SPM_GPUFORMAT_ELR;
+	matrixFormats->format[2] = SPM_GPUFORMAT_ELR;
+	matrixFormats->T[0] = 1;
+	matrixFormats->T[1] = 1;
+	matrixFormats->T[2] = 1;
 #else
 	matrixFormats = NULL;
 #endif
@@ -83,7 +83,7 @@ int main( int argc, char* argv[] )
 
 	me   = SpMVM_init(argc,argv);       // basic initialization
 	cr   = SpMVM_createCRS (matrixPath);
-	lcrp = SpMVM_distributeCRS (cr,&matrixFormats);
+	lcrp = SpMVM_distributeCRS (cr,matrixFormats);
 
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nCols,NULL);

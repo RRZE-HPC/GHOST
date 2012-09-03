@@ -129,7 +129,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 
 	/* Placement of RHS Vector */
 #pragma omp parallel for schedule(runtime)
-	for( i = 0; i < pseudo_ldim; i++ ) 
+	for( i = 0; i < lcrp->lnRows[me]; i++ ) 
 		nodeVec->val[i] = 0.0;
 
 	/* Fill up halo with some markers */
@@ -139,6 +139,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	/* Scatter the input vector from the master node to all others */
 	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
 				nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
+
 
 	return nodeVec;
 }

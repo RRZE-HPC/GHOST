@@ -15,7 +15,7 @@ COBJS	=  aux.o spmvm_util.o spmvm.o matricks.o mpihelper.o  \
 		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
 		   hybrid_kernel_II.o hybrid_kernel_III.o spmvm_globals.o
 OCLOBJS =  spmvm_cl_util.o my_ellpack.o 
-FOBJS	=  matricks_GW.o imtql1.o pythag.o 
+FOBJS	=  matricks_GW.o  
 
 LIBSPMVM=lib$(PREFIX)spmvm.a
 

@@ -331,6 +331,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 	//printf("before: %p\n",vec->val);
 	//vec->val = CL_mapBuffer(vec->CL_val_gpu,size_val);
 	//printf("after: %p\n",vec->val);
+	CL_uploadVector(vec);
 #endif
 
 	return vec;
@@ -364,6 +365,7 @@ void SpMVM_normalize( real *vec, int nRows)
 
 	for (i=0; i<nRows; i++)	
 		vec[i] *= f;
+
 }
 
 

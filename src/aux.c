@@ -5,6 +5,7 @@
 #include <matricks.h>
 #include <time.h>
 #include <timing.h>
+#include "spmvm_util.h"
 
 
 float myCpuClockFrequency()

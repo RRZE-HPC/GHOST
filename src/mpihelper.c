@@ -2,6 +2,7 @@
 #include "mpihelper.h"
 #include "matricks.h"
 #include "spmvm.h"
+#include "spmvm_util.h"
 
 #include <stdio.h>
 #include <string.h>
