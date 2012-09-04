@@ -3,7 +3,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
+void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
 {
 
 	/*****************************************************************************
@@ -109,7 +109,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 	}
 #endif
 	
-	spmvmKernAll(lcrp, invec, res, &me);
+	spmvmKernAll(lcrp, invec, res, &me, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

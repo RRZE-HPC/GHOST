@@ -5,7 +5,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 #include <string.h>
 
 
@@ -16,8 +16,8 @@ static real rhsVal (int i) {
 
 int main( int argc, char* argv[] ) {
 
-	int me, it, nIter = 100, kernel;
-	time_t start, end;
+	int me, nIter = 100;
+	double time;
 
 	CR_TYPE         *cr;      // global CRS matrix
 	LCRP_TYPE       *lcrp;    // local CRS portion
@@ -26,11 +26,10 @@ int main( int argc, char* argv[] ) {
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
-	SPMVM_OPTIONS = SPMVM_OPTION_NONE; // performan standard spmvm
-	SPMVM_KERNELS_SELECTED = SPMVM_KERNEL_VECTORMODE;            // setup kernels to execute
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
+	int options = SPMVM_OPTION_NONE; // performan standard spmvm
+	int kernel = SPMVM_KERNEL_VECTORMODE;
 
-	me      = SpMVM_init(argc,argv);    // basic initialization
+	me      = SpMVM_init(argc,argv,options);    // basic initialization
 	cr      = SpMVM_createCRS(argv[1]); // create CRS matrix from given matrix path
 
 	globRHS = SpMVM_createGlobalHostVector(cr->nCols, rhsVal); // create global RHS vector & initialize with function pointer
@@ -42,25 +41,12 @@ int main( int argc, char* argv[] ) {
 	nodeLHS = SpMVM_distributeVector(lcrp,globLHS); // distribute LHS vector
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[1]),"_."));
+	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[1]),"_."),options);
 
-	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
+	time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernel,nIter);
 
-		if (!SpMVM_kernelValid(kernel,lcrp)) 
-			continue; // Skip loop body if kernel does not make sense for used parametes
-		
-		if (me == 0) 
-			start = time(NULL);
-
-		for( it = 0; it < nIter; it++ ) {
-			SPMVM_KERNELS[kernel].kernel(nodeLHS, lcrp, nodeRHS); // execute kernel
-			MPI_Barrier(MPI_COMM_WORLD);
-		}
-
-		if (me == 0) {
-			end = time(NULL);
-			printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(double)nIter*(double)lcrp->nEnts/difftime(end,start));
-		}
+	if (me == 0) {
+		printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(double)nIter*(double)lcrp->nEnts/(time));
 	}
 
 	SpMVM_freeVector( nodeLHS );

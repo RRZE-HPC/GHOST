@@ -10,16 +10,6 @@
 
 
 
-static double wctime()
-{
-	struct timeval tp;
-	double wctime;
-
-	gettimeofday(&tp, NULL);
-	wctime=(double) (tp.tv_sec + tp.tv_usec/1000000.0);
-
-	return wctime; 
-}
 
 static real rhsVal (int i) 
 {
@@ -35,11 +25,9 @@ int main( int argc, char* argv[] )
 
 	int me;
 
-	int iteration;
-	double start, end;
 	int kernel;
 	int errcount = 0;
-	double mytol;
+	double mytol, time;
 	int i; 
 
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
@@ -51,14 +39,9 @@ int main( int argc, char* argv[] )
 	CR_TYPE *cr;
 	LCRP_TYPE *lcrp;
 
-	SPMVM_KERNELS_SELECTED= 0;
-
-	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
-
-	SPMVM_OPTIONS = SPMVM_OPTION_NONE;
+	int options = SPMVM_OPTION_NONE;
+	int kernels[] = {SPMVM_KERNEL_VECTORMODE,SPMVM_KERNEL_GOODFAITH,SPMVM_KERNEL_TASKMODE};
+	int nKernels = sizeof(kernels)/sizeof(int);
 
 	if (argc!=2) {
 		fprintf(stderr,"Usage: spmvm.x <matrixPath>\n");
@@ -70,7 +53,7 @@ int main( int argc, char* argv[] )
 	SPM_GPUFORMATS *matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));;
 
 #ifdef OPENCL
-	matrixFormats->format[0] = SPM_GPUFORMAT_PJDS;
+	matrixFormats->format[0] = SPM_GPUFORMAT_ELR;
 	matrixFormats->format[1] = SPM_GPUFORMAT_ELR;
 	matrixFormats->format[2] = SPM_GPUFORMAT_ELR;
 	matrixFormats->T[0] = 1;
@@ -81,7 +64,7 @@ int main( int argc, char* argv[] )
 #endif
 
 
-	me   = SpMVM_init(argc,argv);       // basic initialization
+	me   = SpMVM_init(argc,argv,options);       // basic initialization
 	cr   = SpMVM_createCRS (matrixPath);
 	lcrp = SpMVM_distributeCRS (cr,matrixFormats);
 
@@ -92,30 +75,18 @@ int main( int argc, char* argv[] )
 	nodeLHS = SpMVM_newVector(lcrp->lnRows[me]);
 
 	if (me==0)
-		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter);	
+		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter,options);	
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."));
+	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
 
-	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
-
-		if (!SpMVM_kernelValid(kernel,lcrp)) 
-			continue; // Skip loop body if kernel does not make sense for used parametes
+	for (kernel=0; kernel < nKernels; kernel++){
 
 
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (me == 0) start = wctime();
-
-		for( iteration = 0; iteration < nIter; iteration++ ) {
-			SPMVM_KERNELS[kernel].kernel(nodeLHS, lcrp, nodeRHS);
-			MPI_Barrier(MPI_COMM_WORLD);
-		}
-
-		if (me == 0) end = wctime();
-
+		time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernels[kernel],nIter);
 
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
@@ -136,7 +107,7 @@ int main( int argc, char* argv[] )
 			printf("Kernel %d %s @ %6.2f GF/s | %6.2f ms/it\n",
 					kernel,errcount?"FAILED   ":"SUCCEEDED",
 					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(end-start),(end-start)*1.e3/
+					(double)lcrp->nEnts/(time),(time)*1.e3/
 					nIter);
 		}
 

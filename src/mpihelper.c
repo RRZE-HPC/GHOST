@@ -100,7 +100,7 @@ void setupSingleNodeComm( char* hostname, MPI_Comm* single_node_comm, int* me_no
  * entsprechenden Daten dann an diejenigen PEs verteilen die es betrifft.
  *****************************************************************************/
 
-LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
+LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 {
 
 	/* Counting and auxilliary variables */
@@ -623,7 +623,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (SPMVM_KERNELS_SELECTED > SPMVM_KERNEL_NOMPI){
+	if (!(options & SPMVM_OPTION_NO_TASKMODE_KERNEL)) { // split computation
 
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
@@ -733,8 +733,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist)
 
 	/* Free memory for CR stored matrix and sweep memory */
 	//freeCRMatrix( cr );
-
-
+	
 	return lcrp;
 }
 

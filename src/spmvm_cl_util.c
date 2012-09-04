@@ -10,6 +10,7 @@
 
 static cl_command_queue queue;
 static cl_context context;
+static cl_program program;
 static cl_kernel kernel[3];
 static size_t globalSize[3];
 static size_t globalSz;
@@ -22,12 +23,11 @@ static size_t globalSz;
    - build program containing SpMVM kernels,
    - create SpMVM kernels
    -------------------------------------------------------------------------- */
-void CL_init(SPM_GPUFORMATS *matFormats)
+void CL_init()
 {
 	cl_uint numPlatforms;
 	cl_platform_id *platformIDs;
 	cl_int err;
-	cl_program program;
 	unsigned int platform, device;
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
@@ -118,26 +118,6 @@ void CL_init(SPM_GPUFORMATS *matFormats)
 
 	program = CL_registerProgram("src/kernel.cl",opt);
 
-	int i;
-	for (i=0; i<3; i++) {
-
-		char kernelName[50] = "";
-		strcat(kernelName, 
-				matFormats->format[i]==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
-		char Tstr[2] = "";
-		snprintf(Tstr,2,"%d",matFormats->T[i]);
-
-		strcat(kernelName,Tstr);
-		strcat(kernelName,"kernel");
-		if (i==SPM_KERNEL_REMOTE || (SPMVM_OPTIONS & SPMVM_OPTION_AXPY))
-			strcat(kernelName,"Add");
-
-
-		kernel[i] = clCreateKernel(program,kernelName,&err);
-
-		IF_DEBUG(1) printf("creating kernel %s\n",kernelName);
-		CL_checkerror(err);
-	}
 
 	free(deviceIDs);
 	free(platformIDs);
@@ -272,10 +252,30 @@ void CL_freeDeviceMemory(cl_mem mem)
 	CL_safecall(clReleaseMemObject(mem));
 }
 
-void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx) 
+void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions) 
 {
+	cl_int err;
+
 	if (mat == NULL)
 		return;
+
+
+	char kernelName[50] = "";
+	strcat(kernelName, 
+			format==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
+	char Tstr[2] = "";
+	snprintf(Tstr,2,"%d",T);
+
+	strcat(kernelName,Tstr);
+	strcat(kernelName,"kernel");
+	if (kernelIdx == SPM_KERNEL_REMOTE || (spmvmOptions & SPMVM_OPTION_AXPY))
+		strcat(kernelName,"Add");
+
+
+	printf("creating kernel %s\n",kernelName);
+	kernel[kernelIdx] = clCreateKernel(program,kernelName,&err);
+
+	CL_checkerror(err);
 
 	if (format == SPM_GPUFORMAT_ELR) {
 		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
@@ -344,28 +344,27 @@ void CL_finish()
 
 }
 
-void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats)
+void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 
-	CL_init(matrixFormats);
-	CL_setup_communication(lcrp,matrixFormats);
+	CL_setup_communication(lcrp,matrixFormats,spmvmOptions);
 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) {
+	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,
-				matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL);
+				matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL, spmvmOptions);
 	}
 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) {
+	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,
-				matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL);
+				matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL, spmvmOptions);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,
-				matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE);
+				matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE, spmvmOptions);
 	}
 
 
 }
 
-void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
+void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 
 	ELR_TYPE* elr 	= NULL;
@@ -387,9 +386,9 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
 
 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
-		lcrp->fullT = matrixFormats->T[0];
-		
+	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+		lcrp->fullT = matrixFormats->T[SPM_KERNEL_FULL];
+
 		switch (matrixFormats->format[0]) {
 			case SPM_GPUFORMAT_PJDS:
 				{
@@ -435,7 +434,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats)
 
 	}
 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
+	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 		lcrp->localT = matrixFormats->T[1];
 		lcrp->remoteT = matrixFormats->T[2];
 
@@ -592,7 +591,7 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 
 
 	MPI_safecall(MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-			CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+				CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 
 	if (me==0) {
 		qsort(names,size,CL_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);

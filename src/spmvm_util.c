@@ -53,7 +53,7 @@ static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 
 
 
-void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
+void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 {
 
 	int me;
@@ -66,13 +66,13 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
+	if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 		fullMemSize = getBytesize(lcrp->fullMatrix, lcrp->fullFormat)/
 			(1024*1024);
 		MPI_safecall(MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
 	} 
-	if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
+	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/
 			(1024*1024);
 		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/
@@ -97,16 +97,21 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName)
 				(double)lcrp->nRows); 
 		printf("Host matrix (CRS)            [MB]: %12lu\n", ws);
 #ifdef OPENCL	
-		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_COMBINED) { // combined computation
+	if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->fullFormat],lcrp->fullT,totalFullMemSize);
 		}	
-		if (SPMVM_KERNELS_SELECTED & SPMVM_KERNELS_SPLIT) { // split computation
+	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->localFormat],lcrp->localT,totalLocalMemSize); 
 			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->remoteFormat],lcrp->remoteT,totalRemoteMemSize);
 			printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
 #endif
+		printf("-----------------------------------------------\n\n");
+		printf("-----------------------------------------------\n");
+		printf("-------        Setup information        -------\n");
+		printf("-----------------------------------------------\n");
+		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y<-y+A*x":"y=A*x"); 
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 	}
@@ -197,11 +202,11 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
 	}
 }
 
-void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter) 
+void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spmvmOptions) 
 {
 
 	int iteration;
-	if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) {
+	if (spmvmOptions & SPMVM_OPTION_AXPY) {
 
 		for (iteration=0; iteration<nIter; iteration++) {
 #ifdef DOUBLE
@@ -245,18 +250,6 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter)
 	}
 }
 
-int SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp) 
-{
-
-	if (!(0x1<<kernel & SPMVM_KERNELS_SELECTED)) 
-		return 0; // kernel not selected
-	if ((0x1<<kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) 
-		return 0; // non-MPI kernel
-	if ((0x1<<kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) 
-		return 0; // not enough threads
-
-	return 1;
-}
 
 void SpMVM_zeroVector(VECTOR_TYPE *vec) 
 {

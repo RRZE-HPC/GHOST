@@ -36,11 +36,11 @@
 #ifdef OPENCL
 
 
-void CL_init(SPM_GPUFORMATS *);
+void CL_init();
 cl_program CL_registerProgram(char *filename, const char *options);
-void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx);
+void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
 
-void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats);
+void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
@@ -69,11 +69,10 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif
 
 
-void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName);
+void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
-void              SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter);
-int               SpMVM_kernelValid(int kernel, LCRP_TYPE *lcrp);
+void              SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
 HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );

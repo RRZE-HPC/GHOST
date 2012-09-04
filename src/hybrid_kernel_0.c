@@ -6,7 +6,7 @@
 #ifdef LIKWID
 #include <likwid.h>
 #endif
-void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
+void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
 {
 
 
@@ -22,7 +22,7 @@ void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec)
 	likwid_markerStartRegion("Kernel 0");
 #endif
 
-	spmvmKernAll(lcrp, invec, res, &me);
+	spmvmKernAll(lcrp, invec, res, &me, spmvmOptions);
 
 #ifdef LIKWID_MARKER
 #pragma omp parallel

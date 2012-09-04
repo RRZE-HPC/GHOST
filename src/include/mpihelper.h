@@ -6,7 +6,7 @@
 #include <mpi.h>
 
 void       setupSingleNodeComm( char*, MPI_Comm*, int* );
-LCRP_TYPE* setup_communication(CR_TYPE* const, int);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int, int);
 int getNumberOfNodes();
 
 #endif

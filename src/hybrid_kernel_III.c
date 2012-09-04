@@ -10,7 +10,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
+void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********               Kernel ir -- lc|csw  -- nl                    ********
@@ -122,7 +122,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (MPI_MYDATATYPE, ompi_mpi_double, ompi_mpi_comm_world,\
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS,stderr)                                                  \
+			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #else
 #pragma omp parallel                                                            \
@@ -131,7 +131,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (ompi_mpi_double, ompi_mpi_comm_world,\
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS,stderr)                                                  \
+			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #endif
 #else
@@ -142,7 +142,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (MPI_MYDATATYPE, \
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS,stderr)                                                  \
+			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #else
 #pragma omp parallel                                                            \
@@ -151,7 +151,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	shared    (\
 			lcrp, me, work, invec, send_request, res,           \
 			send_status, recv_status, recv_request, recv_messages,                 \
-			SPMVM_OPTIONS,stderr)                                                  \
+			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #endif
 #endif 
@@ -188,7 +188,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 #ifdef OPENCL
 
 			if( tid == lcrp->threads-2 ) {
-				spmvmKernLocalXThread( lcrp, invec, res, &me);
+				spmvmKernLocalXThread( lcrp, invec, res, &me, spmvmOptions);
 			}
 
 #else
@@ -206,7 +206,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 					hlp1 = hlp1 + lcrp->lval[j] * invec->val[lcrp->lcol[j]]; 
 				}
 
-				if (SPMVM_OPTIONS & SPMVM_OPTION_AXPY) 
+				if (spmvmOptions & SPMVM_OPTION_AXPY) 
 					res->val[i] += hlp1;
 				else
 					res->val[i] = hlp1;
@@ -228,7 +228,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
-	spmvmKernRemote( lcrp, invec, res, &me );
+	spmvmKernRemote( lcrp, invec, res, &me, spmvmOptions );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

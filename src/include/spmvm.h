@@ -42,10 +42,13 @@ extern const char *SPM_FORMAT_NAMES[];
 /**********************************************/
 /****** Options for the SpMVM *****************/
 /**********************************************/
-#define SPMVM_OPTION_NONE       (0x0)    // no special options applied
-#define SPMVM_OPTION_AXPY       (0x1<<0) // perform y = y+A*x instead of y = A*x
-#define SPMVM_OPTION_KEEPRESULT (0x1<<1) // keep result on OpenCL device 
-#define SPMVM_OPTION_RHSPRESENT (0x1<<2) // assume that RHS vector is present
+#define SPMVM_OPTION_NONE       (0x1<<0)    // no special options applied
+#define SPMVM_OPTION_AXPY       (0x1<<1) // perform y = y+A*x instead of y = A*x
+#define SPMVM_OPTION_KEEPRESULT (0x1<<2) // keep result on OpenCL device 
+#define SPMVM_OPTION_RHSPRESENT (0x1<<3) // assume that RHS vector is present
+#define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<4) 
+#define SPMVM_OPTION_NO_SPLIT_KERNELS (0x1<<5)
+#define SPMVM_OPTION_NO_TASKMODE_KERNEL (0x1<<6)
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /**********************************************/
 
@@ -247,7 +250,7 @@ typedef struct {
 	real* val;
 } CR_TYPE;
 
-typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*);
+typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
 
 typedef struct {
     FuncPrototype kernel;
@@ -259,7 +262,6 @@ typedef struct {
 /****** Global variables ******************************************************/
 /******************************************************************************/
 extern Hybrid_kernel SPMVM_KERNELS[SPMVM_NUMKERNELS];
-int SPMVM_OPTIONS;
 int SPMVM_KERNELS_SELECTED;
 /******************************************************************************/
 
@@ -268,11 +270,12 @@ int SPMVM_KERNELS_SELECTED;
 /******************************************************************************/
 /****** Function prototypes ***************************************************/
 /******************************************************************************/
-int SpMVM_init(int argc, char **argv);
+int SpMVM_init(int argc, char **argv, int options);
 void SpMVM_finish();
 CR_TYPE * SpMVM_createCRS (char *matrixPath);
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats);
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
+double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int kernel, int nIter);
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel);
 /******************************************************************************/

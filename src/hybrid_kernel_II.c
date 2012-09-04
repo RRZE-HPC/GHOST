@@ -5,7 +5,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
+void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********              Kernel ir -- cs -- lc -- wa -- nl              ********
@@ -113,7 +113,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	likwid_markerStartRegion("Kernel 2 -- local computation");
 #endif
 
-	spmvmKernLocal( lcrp, invec, res, &me );
+	spmvmKernLocal( lcrp, invec, res, &me, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
@@ -139,7 +139,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec){
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
-	spmvmKernRemote( lcrp, invec, res, &me );
+	spmvmKernRemote( lcrp, invec, res, &me, spmvmOptions );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

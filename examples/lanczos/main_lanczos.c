@@ -21,6 +21,8 @@ static cl_kernel vecscalKernel;
 static cl_kernel dotprodKernel;
 #endif
 
+#define KERNEL SPMVM_KERNEL_VECTORMODE
+
 
 typedef struct {
 	char matrixPath[PATH_MAX];
@@ -173,10 +175,10 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s, int n)
 		likwid_markerStartRegion("axpy");
 #endif
 
-   
+
 #pragma omp for private(i)
-	for (i=0; i<n; i++)
-		v1->val[i] = v1->val[i] + s*v2->val[i];
+		for (i=0; i<n; i++)
+			v1->val[i] = v1->val[i] + s*v2->val[i];
 
 #ifdef LIKWID_MARKER_FINE
 		likwid_markerStopRegion("axpy");
@@ -188,7 +190,7 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, real s, int n)
 
 static void vecscal(VECTOR_TYPE *vec, real s, int n)
 {
-	
+
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
 				&vec->CL_val_gpu));
@@ -219,21 +221,14 @@ static void vecscal(VECTOR_TYPE *vec, real s, int n)
 
 
 static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
-	   	real *alpha, real *beta, int kernel, int me)
+		real *alpha, real *beta, int me)
 {
 	vecscal(vnew,-*beta,lcrp->lnRows[me]);
-
-	SPMVM_KERNELS[kernel].kernel(vnew, lcrp, vold);
-
-
+	SpMVM_solve(vnew, lcrp, vold, KERNEL, 1);
 	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
-	
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-
 	axpy(vnew,vold,-(*alpha),lcrp->lnRows[me]);
-
 	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
-
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=SQRT(*beta);
 	vecscal(vnew,1./(*beta),lcrp->lnRows[me]);
@@ -258,15 +253,14 @@ int main( int argc, char* argv[] )
 
 	int iteration;
 
-	int kernel;
 	double start, end, tstart, tend, tacc, time_it_took;
 
 
 	SPMVM_KERNELS_SELECTED = 0;	
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
-	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
-	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
-	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
+	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
+	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
 
 	PROPS props;
 	props.nIter = 100;
@@ -287,10 +281,10 @@ int main( int argc, char* argv[] )
 		usage();
 		exit(EXIT_FAILURE);
 	}
+	// keep result vector on devic and eperform y <- y + A*x
+	int options = SPMVM_OPTION_KEEPRESULT | SPMVM_OPTION_AXPY;
 
-	SPMVM_OPTIONS  = SPMVM_OPTION_KEEPRESULT; // keep result vector on device
-	SPMVM_OPTIONS |= SPMVM_OPTION_AXPY;       // perform y <- y + A*x
-	me      = SpMVM_init(argc,argv);       // basic initialization
+	me      = SpMVM_init(argc,argv,options);       // basic initialization
 	CR_TYPE *cr = SpMVM_createCRS ( argv[optind] );
 	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr,props.matrixFormats);
 
@@ -334,95 +328,85 @@ int main( int argc, char* argv[] )
 	evec = SpMVM_distributeVector(lcrp,r0);
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,props.matrixName);
+	SpMVM_printMatrixInfo(lcrp,props.matrixName,options);
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	for (kernel=0; kernel < SPMVM_NUMKERNELS; kernel++){
-
-		if (!SpMVM_kernelValid(kernel,lcrp)) 
-			continue;
-
-		//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
-		real *alphas  = (real *)malloc(sizeof(real)*props.nIter);
-		real *betas   = (real *)malloc(sizeof(real)*props.nIter);
-		real *falphas = (real *)malloc(sizeof(real)*props.nIter);
-		real *fbetas  = (real *)malloc(sizeof(real)*props.nIter);
-
-		int ferr;
-
-		real alpha=0., beta=0.;
-		betas[0] = beta;
-		int n;
 
 
-		//lanczosStep(lcrp,me,vnew,vold,&alpha,&beta,kernel);
+	//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
+	real *alphas  = (real *)malloc(sizeof(real)*props.nIter);
+	real *betas   = (real *)malloc(sizeof(real)*props.nIter);
+	real *falphas = (real *)malloc(sizeof(real)*props.nIter);
+	real *fbetas  = (real *)malloc(sizeof(real)*props.nIter);
 
-//		alphas[0] = alpha;
-//		betas[1] = beta;
+	int ferr;
+
+	real alpha=0., beta=0.;
+	betas[0] = beta;
+	int n;
 
 
-		for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
-			if (me == 0) { 
-				printf("\r");
-				tstart = omp_get_wtime();
-				start = omp_get_wtime();
-			}
+	for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
+		if (me == 0) { 
+			printf("\r");
+			tstart = omp_get_wtime();
+			start = omp_get_wtime();
+		}
 #ifdef LIKWID_MARKER
 #pragma omp parallel
-			likwid_markerStartRegion("Lanczos step");
+		likwid_markerStartRegion("Lanczos step");
 #endif
 
-			lanczosStep(lcrp,vnew,vold,&alpha,&beta,kernel,me);
+		lanczosStep(lcrp,vnew,vold,&alpha,&beta,me);
 #ifdef OPENCL
-			CL_downloadVector(vnew);
+		CL_downloadVector(vnew);
 #endif
 
 #ifdef LIKWID_MARKER
 #pragma omp parallel
-			likwid_markerStopRegion("Lanczos step");
+		likwid_markerStopRegion("Lanczos step");
 #endif
-			SpMVM_swapVectors(vnew,vold);
+		SpMVM_swapVectors(vnew,vold);
 
 
-			alphas[iteration] = alpha;
-			betas[iteration+1] = beta;
-			memcpy(falphas,alphas,(iteration)*sizeof(real));
-			memcpy(fbetas,betas,(iteration)*sizeof(real));
+		alphas[iteration] = alpha;
+		betas[iteration+1] = beta;
+		memcpy(falphas,alphas,(iteration)*sizeof(real));
+		memcpy(fbetas,betas,(iteration)*sizeof(real));
 
-			if (me == 0) {
-				end = omp_get_wtime();
-				time_it_took = end-start;
-				start = omp_get_wtime();
-				printf("Lanczos: %6.2f ms, ",time_it_took*1e3);
-			}
-		
-			imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
-
-
-			if(ferr != 0) {
-				printf("Error: the %d. ev could not be determined\n",ferr);
-			}
-
-
-			if (me == 0) {
-				end = omp_get_wtime();
-				time_it_took = end-start;
-				printf("imtql: %6.2f ms, ",time_it_took*1e3);
-				tend = omp_get_wtime();
-				tacc += tend-tstart;
-				printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",REAL(alpha),(tend-tstart)*1e3,
-						REAL(falphas[0]));
-				fflush(stdout);
-			}
-
-
-
+		if (me == 0) {
+			end = omp_get_wtime();
+			time_it_took = end-start;
+			start = omp_get_wtime();
+			printf("Lanczos: %6.2f ms, ",time_it_took*1e3);
 		}
-		if (me==0) {
-			printf("| total: %.2f ms\n",tacc*1e3);
+
+		imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
+
+
+		if(ferr != 0) {
+			printf("Error: the %d. ev could not be determined\n",ferr);
 		}
+
+
+		if (me == 0) {
+			end = omp_get_wtime();
+			time_it_took = end-start;
+			printf("imtql: %6.2f ms, ",time_it_took*1e3);
+			tend = omp_get_wtime();
+			tacc += tend-tstart;
+			printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",REAL(alpha),(tend-tstart)*1e3,
+					REAL(falphas[0]));
+			fflush(stdout);
+		}
+
+
 
 	}
+	if (me==0) {
+		printf("| total: %.2f ms\n",tacc*1e3);
+	}
+
 
 
 	SpMVM_freeHostVector( r0 );
