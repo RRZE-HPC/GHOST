@@ -255,13 +255,6 @@ int main( int argc, char* argv[] )
 
 	double start, end, tstart, tend, tacc, time_it_took;
 
-
-	SPMVM_KERNELS_SELECTED = 0;	
-	//SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_NOMPI;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_VECTORMODE;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_GOODFAITH;
-	SPMVM_KERNELS_SELECTED |= SPMVM_KERNEL_TASKMODE;
-
 	PROPS props;
 	props.nIter = 100;
 	props.matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));
@@ -395,8 +388,7 @@ int main( int argc, char* argv[] )
 			printf("imtql: %6.2f ms, ",time_it_took*1e3);
 			tend = omp_get_wtime();
 			tacc += tend-tstart;
-			printf("a: %6.2f, it: %6.2f ms, e: %6.2f ",REAL(alpha),(tend-tstart)*1e3,
-					REAL(falphas[0]));
+			printf("e: %6.2f ",	REAL(falphas[0]));
 			fflush(stdout);
 		}
 

@@ -23,7 +23,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT))
-		CL_uploadVector(invec);
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
 	
@@ -110,7 +110,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 	
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT)) {
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, res->nRows*sizeof(real));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
 	}
 #else
 	int i, j;
@@ -171,7 +171,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
 
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, res->nRows*sizeof(real));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
 } 
 #endif //CUDAKERNEL
 

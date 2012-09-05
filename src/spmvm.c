@@ -225,23 +225,31 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if ((kernel & SPMVM_KERNELS_SPLIT) && (options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		if (me==0)
-			fprintf(stderr,"Skipping the kernel because split kernels have not been configured.\n");
+		IF_DEBUG(1) {
+			if (me==0)
+			fprintf(stderr,"Skipping the %s kernel because split kernels have not been configured.\n",SpMVM_kernelName(kernel));
+		}
 		return 0.; // kernel not selected
 	}
 	if ((kernel & SPMVM_KERNELS_COMBINED) && (options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
+		IF_DEBUG(1) {
 		if (me==0)
-			fprintf(stderr,"Skipping kernel because combined kernels have not been configured.\n");
+			fprintf(stderr,"Skipping the %s kernel because combined kernels have not been configured.\n",SpMVM_kernelName(kernel));
+		}
 		return 0.; // kernel not selected
 	}
 	if ((kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) {
+		IF_DEBUG(1) {
 		if (me==0)
-			fprintf(stderr,"Skipping the non-MPI kernel because there are multiple MPI processes.\n");
+			fprintf(stderr,"Skipping the %s kernel because there are multiple MPI processes.\n",SpMVM_kernelName(kernel));
+		}
 		return 0.; // non-MPI kernel
 	} 
 	if ((kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) {
+		IF_DEBUG(1) {
 		if (me==0)
-			fprintf(stderr,"Skipping the task-mode kernel because there is only one thread.\n");
+			fprintf(stderr,"Skipping the %s kernel because there is only one thread.\n",SpMVM_kernelName(kernel));
+		}
 		return 0.; // not enough threads
 	}
 
@@ -266,7 +274,7 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 	
 	for( it = 0; it < nIter; it++ ) {
 		kernelFunc(res, lcrp, invec, options);
-		MPI_Barrier(MPI_COMM_WORLD);
+		//MPI_Barrier(MPI_COMM_WORLD);
 	}
 	time = wctime()-time;
 

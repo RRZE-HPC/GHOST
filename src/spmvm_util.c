@@ -111,7 +111,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 		printf("-----------------------------------------------\n");
 		printf("-------        Setup information        -------\n");
 		printf("-----------------------------------------------\n");
-		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y<-y+A*x":"y=A*x"); 
+		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x"); 
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 	}
@@ -462,5 +462,26 @@ void SpMVM_permuteVector( real* vec, int* perm, int len) {
 	}
 
 	free(tmp);
+}
+
+char * SpMVM_kernelName(int kernel) {
+
+	switch (kernel) {
+		case SPMVM_KERNEL_NOMPI:
+			return "non-MPI";
+			break;
+		case SPMVM_KERNEL_VECTORMODE:
+			return "vector mode";
+			break;
+		case SPMVM_KERNEL_GOODFAITH:
+			return "g/f hybrid";
+			break;
+		case SPMVM_KERNEL_TASKMODE:
+			return "task mode";
+			break;
+		default:
+			return "invalid";
+			break;
+	}
 }
 

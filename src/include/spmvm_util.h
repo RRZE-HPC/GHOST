@@ -78,6 +78,7 @@ HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalize( real *vec, int nRows);
+char * SpMVM_kernelName(int kernel);
 
 void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
