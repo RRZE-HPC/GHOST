@@ -1,8 +1,9 @@
 DOUBLE=1
-OPENCL=0
+OPENCL=1
 LIKWID_MARKER=0
 
-CUDA_INC=$(CUDA_HOME)/include
+CUDA_INC=-I$(CUDA_HOME)/include
+CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
 LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
@@ -23,7 +24,8 @@ ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
 PREFIX= cl
 LIBS  += -lOpenCL
-IPATH += -I${CUDA_INC}
+IPATH += ${CUDA_INC}
+LPATH += ${CUDA_LIB}
 endif
 
 ifeq ($(LIKWID_MARKER),1)

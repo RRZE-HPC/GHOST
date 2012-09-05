@@ -23,7 +23,7 @@ static real rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int i, me, kernel, errcount = 0, nIter = 1000;
+	int i, me, kernel, errcount = 0, nIter = 100;
 	double mytol, time;
 
 	int options = SPMVM_OPTION_NONE;

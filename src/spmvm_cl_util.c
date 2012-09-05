@@ -272,7 +272,6 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 		strcat(kernelName,"Add");
 
 
-	printf("creating kernel %s\n",kernelName);
 	kernel[kernelIdx] = clCreateKernel(program,kernelName,&err);
 
 	CL_checkerror(err);

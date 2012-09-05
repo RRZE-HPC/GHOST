@@ -60,7 +60,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type);
 void CL_vecscal(cl_mem a, real s, int nRows);
 void CL_axpy(cl_mem a, cl_mem b, real s, int nRows);
 void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows);
-void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats);
+void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
 void CL_enqueueKernel(cl_kernel kernel);
  
 size_t CL_getLocalSize(cl_kernel kernel);

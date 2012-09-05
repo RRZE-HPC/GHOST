@@ -271,7 +271,7 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	time = wctime();
-	
+
 	for( it = 0; it < nIter; it++ ) {
 		kernelFunc(res, lcrp, invec, options);
 		//MPI_Barrier(MPI_COMM_WORLD);
