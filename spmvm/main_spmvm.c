@@ -23,13 +23,16 @@ static real rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me;
-
-	int kernel;
-	int errcount = 0;
+	int i, me, kernel, errcount = 0, nIter = 1000;
 	double mytol, time;
-	int i; 
 
+	int options = SPMVM_OPTION_NONE;
+	int kernels[] = {SPMVM_KERNEL_NOMPI,
+		SPMVM_KERNEL_VECTORMODE,
+		SPMVM_KERNEL_GOODFAITH,
+		SPMVM_KERNEL_TASKMODE};
+	int nKernels = sizeof(kernels)/sizeof(int);
+	
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
 	HOSTVECTOR_TYPE *goldLHS; // reference result
@@ -39,17 +42,12 @@ int main( int argc, char* argv[] )
 	CR_TYPE *cr;
 	LCRP_TYPE *lcrp;
 
-	int options = SPMVM_OPTION_NONE;
-	int kernels[] = {SPMVM_KERNEL_VECTORMODE,SPMVM_KERNEL_GOODFAITH,SPMVM_KERNEL_TASKMODE};
-	int nKernels = sizeof(kernels)/sizeof(int);
-
 	if (argc!=2) {
 		fprintf(stderr,"Usage: spmvm.x <matrixPath>\n");
 		exit(EXIT_FAILURE);
 	}
 
 	char *matrixPath = argv[1];
-	int nIter = 100;
 	SPM_GPUFORMATS *matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));;
 
 #ifdef OPENCL
@@ -62,7 +60,6 @@ int main( int argc, char* argv[] )
 #else
 	matrixFormats = NULL;
 #endif
-
 
 	me   = SpMVM_init(argc,argv,options);       // basic initialization
 	cr   = SpMVM_createCRS (matrixPath);
@@ -80,35 +77,33 @@ int main( int argc, char* argv[] )
 	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
-	MPI_Barrier(MPI_COMM_WORLD);
-
-
 	for (kernel=0; kernel < nKernels; kernel++){
-
+		errcount=0;
 
 		time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernels[kernel],nIter);
 
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
-		if (me==0) {
+		if (me==0 && ABS(time)>1e-16) {
 			for (i=0; i<lcrp->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf( "PE%d: error in row %i: %.2f + %.2fi vs. %.2f +"
+					/*printf( "PE%d: error in row %i: %.2f + %.2fi vs. %.2f +"
 							"%.2fi\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
-							IMAG(globLHS->val[i]));
+							IMAG(globLHS->val[i]));*/
 					errcount++;
 				}
 			}
-			printf("Kernel %d %s @ %6.2f GF/s | %6.2f ms/it\n",
-					kernel,errcount?"FAILED   ":"SUCCEEDED",
+			printf("%11s: %s @ %5.2f GF/s | %5.2f ms/it\n",
+					SpMVM_kernelName(kernels[kernel]),
+					errcount?"FAILURE":"SUCCESS",
 					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(time),(time)*1.e3/
-					nIter);
+					(double)lcrp->nEnts/(time),
+					(time)*1.e3/nIter);
 		}
 
 		SpMVM_zeroVector(nodeLHS);
