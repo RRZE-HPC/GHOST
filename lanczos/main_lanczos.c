@@ -290,12 +290,11 @@ int main( int argc, char* argv[] )
 	int options = SPMVM_OPTION_KEEPRESULT | SPMVM_OPTION_AXPY;
 
 	me      = SpMVM_init(argc,argv,options);       // basic initialization
-	CR_TYPE *cr = SpMVM_createCRS ( argv[optind] );
-	LCRP_TYPE *lcrp = SpMVM_distributeCRS ( cr,props.matrixFormats);
+	LCRP_TYPE *lcrp = SpMVM_createCRS ( argv[optind],props.matrixFormats);
 
 
 
-	r0 = SpMVM_createGlobalHostVector(cr->nCols,rhsVal);
+	r0 = SpMVM_createGlobalHostVector(lcrp->nRows,rhsVal);
 	SpMVM_normalize(r0->val,r0->nRows);
 
 
@@ -426,7 +425,6 @@ int main( int argc, char* argv[] )
 	SpMVM_freeVector( vnew );
 	SpMVM_freeVector( evec );
 	SpMVM_freeLCRP( lcrp );
-	SpMVM_freeCRS( cr );
 
 	SpMVM_finish();
 

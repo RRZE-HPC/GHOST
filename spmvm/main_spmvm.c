@@ -8,7 +8,7 @@
 #include <sys/time.h>
 #include <libgen.h>
 
-#define REFSOL // compare with reference solution
+//#define REFSOL // compare with reference solution
 
 
 static real rhsVal (int i) 
@@ -23,7 +23,7 @@ static real rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 1;
+	int me, kernel, nIter = 100;
 	double time;
 
 #ifdef REFSOL
@@ -40,9 +40,7 @@ int main( int argc, char* argv[] )
 	
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
-	HOSTVECTOR_TYPE *globRHS; // global rhs vector
 
-	CR_TYPE *crs;
 	LCRP_TYPE *lcrp;
 
 	if (argc!=2) {
@@ -63,24 +61,19 @@ int main( int argc, char* argv[] )
 	matrixFormats->T[2] = 1;
 #endif
 
-	// setup on master node
 	me   = SpMVM_init(argc,argv,options);       // basic initialization
-	crs   = SpMVM_createCRSstub (matrixPath);
-
-	globRHS = SpMVM_createGlobalHostVector(crs->nRows,rhsVal);
-	
-	// basic communication
-	lcrp = SpMVM_distributeCRS (crs,matrixFormats);
-	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
-	nodeLHS = SpMVM_newVector(lcrp->lnRows[me]);
-
+	lcrp    = SpMVM_createCRS (matrixPath,matrixFormats);
+	nodeLHS = SpMVM_createVector(lcrp,VECTOR_TYPE_LHS,NULL);
+	nodeRHS = SpMVM_createVector(lcrp,VECTOR_TYPE_RHS,rhsVal);
 
 #ifdef REFSOL	
 	CR_TYPE *cr;
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
-	cr   = SpMVM_createCRS (matrixPath);
+	HOSTVECTOR_TYPE *globRHS; // global rhs vector
+	cr   = SpMVM_createGlobalCRS (matrixPath);
 	goldLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
+	globRHS = SpMVM_createGlobalHostVector(lcrp->nRows,rhsVal);
 	globLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
 	if (me==0)
 		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter,options);	
@@ -136,10 +129,10 @@ int main( int argc, char* argv[] )
 
 	SpMVM_freeVector( nodeLHS );
 	SpMVM_freeVector( nodeRHS );
-	SpMVM_freeHostVector( globRHS );
 	SpMVM_freeLCRP( lcrp );
 	
 #ifdef REFSOL
+	SpMVM_freeHostVector( globRHS );
 	SpMVM_freeHostVector( goldLHS );
 	SpMVM_freeHostVector( globLHS );
 	SpMVM_freeCRS( cr );
