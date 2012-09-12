@@ -1,0 +1,16 @@
+*.x
+*.so
+*.a
+*.bin
+src/*.swp
+*.swp
+examples/*/*.swp
+examples/*/*.o
+src/include/*.swp
+src/tags
+tags
+obj/
+bench/
+makes/
+jobscripts/
+
