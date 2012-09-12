@@ -27,18 +27,15 @@ LIBSPMVM=lib$(PREFIX)spmvm.a
 
 libspmvm: $(OBJS)
 	@ar rcs  $(LIBSPMVM) $^
-	@mv *.o obj
-	@mv *genmod* obj
+	@mkdir -p obj/
+	@mv *.o obj/
+	@mv *genmod* obj/
 
 clean:
-	@rm -f obj/*
-	$(MAKE) -C examples clean
-	$(MAKE) -C utils clean
+	@rm -rf obj/
 
 distclean: clean
 	@rm -f *.a
-	$(MAKE) -C examples distclean
-	$(MAKE) -C utils distclean
 
 install: libspmvm
 	@mkdir -p $(INSTDIR)/lib
