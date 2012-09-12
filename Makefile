@@ -1,5 +1,5 @@
+OPENCL=0
 DOUBLE=1
-OPENCL=1
 LIKWID_MARKER=0
 
 CUDA_INC=-I$(CUDA_HOME)/include
@@ -15,10 +15,10 @@ LIBS+=-l$(PREFIX)spmvm
 .PHONY:clean distclean all
 
 CC=mpicc
-CFLAGS=-O3 -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
-FC	= mpif90
-FFLAGS  = -g -O3 -fno-alias -cpp -warn all -openmp -fPIC
+FC	= ifort
+FFLAGS  =-O3 -fno-alias -cpp -warn all -openmp
 
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
