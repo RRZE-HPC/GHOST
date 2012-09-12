@@ -1,6 +1,6 @@
 include config.mk
 
-.PHONY: examples utils clean distclean all install libspmvm
+.PHONY: clean distclean install libspmvm
 
 VPATH	=	./src/
 IPATH	+=	-I./src/include
@@ -29,14 +29,6 @@ libspmvm: $(OBJS)
 	@ar rcs  $(LIBSPMVM) $^
 	@mv *.o obj
 	@mv *genmod* obj
-
-examples: 
-	$(MAKE) -C examples/  
-
-utils: 
-	$(MAKE) -C utils/
-
-all: libspmvm examples utils
 
 clean:
 	@rm -f obj/*
