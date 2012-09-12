@@ -1,0 +1,3 @@
+[submodule "libspmvm"]
+	path = libspmvm
+	url = /home/hpc/unrz/unrza317/proj/_SpMVM/SpMVM/libspmvm/
