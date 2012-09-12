@@ -937,8 +937,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	 ***************************************************************************/
 
 
-#ifdef PLACE
-
 	//#pragma omp parallel for schedule(runtime)
 #pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = 0.0;
@@ -950,8 +948,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	//#pragma omp parallel for schedule(runtime)
 #pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
-
-#endif
 
 	/* replace scattering with read-in */
 	/*
@@ -1197,8 +1193,6 @@ sweepMemory(GLOBAL);
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
 	if (!(options & SPMVM_OPTION_NO_TASKMODE_KERNEL)) { // split computation
-
-		if (me==0) printf("Gerade nicht skippen!\n");
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 

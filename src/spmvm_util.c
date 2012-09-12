@@ -313,6 +313,7 @@ HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, real (*fp)(int))
 	return vec;
 }
 
+
 VECTOR_TYPE* SpMVM_newVector( const int nRows ) 
 {
 	VECTOR_TYPE* vec;
@@ -344,6 +345,96 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 #endif
 
 	return vec;
+}
+VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
+{
+	int me;
+
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
+
+
+	VECTOR_TYPE *nodeVec = SpMVM_newVector( pseudo_ldim ); 
+
+	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
+				nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
+
+	return nodeVec;
+}
+
+void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
+		HOSTVECTOR_TYPE *totalVec, int kernel) {
+
+	int me;
+
+
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+
+	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+		SpMVM_permuteVector(vec->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
+	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+		SpMVM_permuteVector(vec->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
+	}
+
+	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
+				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+}
+
+LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
+{
+	int me;
+
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+
+	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+
+	if (deviceFormats == NULL) {
+#ifdef OPENCL
+		myabort("Device matrix formats have to be passed to SPMVM_distributeCRS");
+#endif
+	}
+#ifdef OPENCL
+	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
+	CL_uploadCRS ( lcrp, formats, options);
+#endif
+	return lcrp;
+}
+CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
+{
+
+
+	int me;
+	CR_TYPE *cr;
+	MM_TYPE *mm;
+
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+
+	if (me == 0){
+		if (!isMMfile(matrixPath)){
+
+			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
+
+				readCRbinFile(cr, matrixPath);
+
+		} else{
+			mm = readMMFile( matrixPath);
+			cr = convertMMToCRMatrix( mm );
+			freeMMMatrix(mm);
+		}
+
+		crColIdToFortran(cr);
+	} else{
+
+		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
+		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr");
+		cr->nRows     = 0;
+		cr->nEnts     = 1;
+		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
+		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
+		cr->val       = (real*)  allocateMemory(sizeof(real), "val");
+	}
+	return cr;
+
 }
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 

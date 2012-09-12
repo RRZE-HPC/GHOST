@@ -81,6 +81,41 @@ void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalize( real *vec, int nRows);
 char * SpMVM_kernelName(int kernel);
 
+/******************************************************************************
+  * Distribute a CRS matrix from the master node to all worker nodes.
+  *
+  * Arguments:
+  *   - CR_TYPE *cr
+  *     The CRS matrix data which are present on the master node.
+  *   - void *deviceFormats
+  *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
+  *     data structure, holding information about the desired GPU matrix format.
+  *     In the non-OpenCL case, this argument is NULL.
+  *****************************************************************************/
+LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options);
+
+/******************************************************************************
+  * Create a CRS matrix on the master node from a given path.
+  *
+  * Arguments:
+  *   - char *matrixPath
+  *     The full path to the matrix file. The matrix may either be present in
+  *     MatrixMarket format or a binary CRS format which is explained in the
+  *     README file.
+  *
+  * Returns:
+  *   a pointer to a CR_TYPE which holds the data of the CRS matrix on the
+  *   master node. On the other nodes, a dummy CRS matrix is created.
+  *
+  * Note that the CR_TYPE created by this functions has to be freed manually by
+  * calling SpMVM_freeCRS(CR_TYPE *).
+  *****************************************************************************/
+CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath);
+
+
+VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
+void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
+		HOSTVECTOR_TYPE *totalVec, int kernel);
 void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );

@@ -33,6 +33,10 @@
 /**********************************************/
 
 
+#define VECTOR_TYPE_RHS 0
+#define VECTOR_TYPE_LHS 1
+#define VECTOR_TYPE_BOTH 2
+
 /**********************************************/
 /****** GPU matrix formats ********************/
 /**********************************************/
@@ -53,6 +57,7 @@ extern const char *SPM_FORMAT_NAMES[];
 #define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<4) 
 #define SPMVM_OPTION_NO_SPLIT_KERNELS (0x1<<5)
 #define SPMVM_OPTION_NO_TASKMODE_KERNEL (0x1<<6)
+#define SPMVM_OPTION_SERIAL_IO (0x1<<7)
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /**********************************************/
 
@@ -303,49 +308,13 @@ int SpMVM_init(int argc, char **argv, int options);
   *****************************************************************************/
 void SpMVM_finish();
 
-/******************************************************************************
-  * Create a CRS matrix on the master node from a given path.
-  *
-  * Arguments:
-  *   - char *matrixPath
-  *     The full path to the matrix file. The matrix may either be present in
-  *     MatrixMarket format or a binary CRS format which is explained in the
-  *     README file.
-  *
-  * Returns:
-  *   a pointer to a CR_TYPE which holds the data of the CRS matrix on the
-  *   master node. On the other nodes, a dummy CRS matrix is created.
-  *
-  * Note that the CR_TYPE created by this functions has to be freed manually by
-  * calling SpMVM_freeCRS(CR_TYPE *).
-  *****************************************************************************/
-CR_TYPE * SpMVM_createCRS (char *matrixPath);
-CR_TYPE * SpMVM_createCRSstub (char *matrixPath);
-
-
-/******************************************************************************
-  * Distribute a CRS matrix from the master node to all worker nodes.
-  *
-  * Arguments:
-  *   - CR_TYPE *cr
-  *     The CRS matrix data which are present on the master node.
-  *   - void *deviceFormats
-  *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
-  *     data structure, holding information about the desired GPU matrix format.
-  *     In the non-OpenCL case, this argument is NULL.
-  *****************************************************************************/
-LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats);
-
-
-VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-
+LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
+VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int));
 
 double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 
 
-void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
-		HOSTVECTOR_TYPE *totalVec, int kernel);
 /******************************************************************************/
 
 #endif
