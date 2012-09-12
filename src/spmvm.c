@@ -32,6 +32,7 @@ static double wctime()
 }
 
 static int options;
+static char *_matrixPath;
 
 int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
@@ -77,10 +78,8 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 #ifdef LIKWID_MARKER
 	likwid_markerInit();
 #endif
-	int me_node;
-	char hostname[MAXHOSTNAMELEN];
-	gethostname(hostname,MAXHOSTNAMELEN);
-	setupSingleNodeComm( hostname, &single_node_comm, &me_node);
+
+	setupSingleNodeComm();
 
 #ifdef OPENCL
 	CL_init();
@@ -103,7 +102,7 @@ void SpMVM_finish()
 	MPI_safecall(MPI_Finalize());
 
 #ifdef OPENCL
-	CL_finish();
+	CL_finish(options);
 #endif
 
 
@@ -119,10 +118,12 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath)
 	CR_TYPE *cr;
 	MM_TYPE *mm;
 
+	_matrixPath = matrixPath;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
+
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 			readCRbinFile(cr, matrixPath);
 		} else{
@@ -130,7 +131,43 @@ CR_TYPE * SpMVM_createCRS (char *matrixPath)
 			cr = convertMMToCRMatrix( mm );
 			freeMMMatrix(mm);
 		}
+
 		crColIdToFortran(cr);
+	} else{
+
+		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
+		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr");
+		cr->nRows     = 0;
+		cr->nEnts     = 1;
+		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
+		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
+		cr->val       = (real*)  allocateMemory(sizeof(real), "val");
+	}
+	return cr;
+
+}
+
+CR_TYPE * SpMVM_createCRSstub (char *matrixPath)
+{
+
+
+	int me;
+	CR_TYPE *cr;
+	MM_TYPE *mm;
+
+	_matrixPath = matrixPath;
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+
+	if (me == 0){
+		if (!isMMfile(matrixPath)){
+
+			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
+			readCRrowsBinFile(cr, matrixPath);
+		} else{
+			mm = readMMFile( matrixPath);
+			cr = convertMMToCRMatrix( mm );
+			freeMMMatrix(mm);
+		}
 
 	} else{
 
@@ -150,7 +187,6 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
 
 	int me;
-	int i;
 
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
@@ -160,19 +196,22 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	VECTOR_TYPE *nodeVec = SpMVM_newVector( pseudo_ldim ); 
 
 	/* Placement of RHS Vector */
-#pragma omp parallel for schedule(runtime)
-	for( i = 0; i < lcrp->lnRows[me]; i++ ) 
+/*#pragma omp parallel for 
+	for( i = 0; i < pseudo_ldim; i++ ) 
 		nodeVec->val[i] = 0.0;
 
-	/* Fill up halo with some markers */
+	// Fill up halo with some markers
 	for (i=lcrp->lnRows[me]; i< pseudo_ldim; i++) 
 		nodeVec->val[i] = 77.0;
-
+*/
 	/* Scatter the input vector from the master node to all others */
 	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
 				nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
 
-
+	/*int i;
+	for (i=0; i<nodeVec->nRows; i++)
+	printf("PE%d: rhs[%d] = %f\n",me, i,nodeVec->val[i]);
+*/
 	return nodeVec;
 }
 
@@ -200,7 +239,9 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats)
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+	printf("%s\n",_matrixPath);
+//	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+	LCRP_TYPE *lcrp = setup_communication_parallel(cr, _matrixPath, WORKDIST_DESIRED, options);
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
@@ -274,7 +315,7 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 
 	for( it = 0; it < nIter; it++ ) {
 		kernelFunc(res, lcrp, invec, options);
-		//MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
 	}
 	time = wctime()-time;
 

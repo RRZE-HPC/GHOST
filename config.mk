@@ -1,4 +1,4 @@
-OPENCL=1
+OPENCL=0
 LIKWID_MARKER=0
 LIKWID_MARKER_FINE=0
 DOUBLE=1
@@ -13,10 +13,10 @@ LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 
 
 CC	= mpicc
-CFLAGS  = -g -O3 -fno-alias -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+CFLAGS  = -g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
-FC	= mpif90
-FFLAGS  = -g -O3 -fno-alias -cpp -warn all -openmp -fPIC
+FC	= ifort
+FFLAGS  = -O3 -fno-alias -cpp -warn all -openmp 
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#

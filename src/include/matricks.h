@@ -166,12 +166,12 @@ void tmpwrite_d(int, int, real*);
 void tmpwrite_i(int, int, int*, char*);
 
 void readCRbinFile(CR_TYPE*, const char* );
+void readCRrowsBinFile(CR_TYPE* cr, const char* path);
 void readJDbinFile(JD_TYPE*, const int, const char*);
 
 void pio_write_cr_rownumbers(const CR_TYPE*, const char*);
 void pio_read_cr_rownumbers(CR_TYPE*, const char*);
 
-LCRP_TYPE* setup_communication_parallel(CR_TYPE* const, int, const char* );
 LCRP_TYPE* new_pio_read(char*, int);
 LCRP_TYPE* parallel_MatRead(char*, int);
 LCRP_TYPE* setup_communication_parRead(LMMP_TYPE* const);
@@ -207,8 +207,5 @@ int compareNZEPos(const void*, const void*);
 int compareNZEPerRow( const void*, const void*);
 int compareNZEForJD( const void*, const void* );
 
-int successful;
-size_t allocatedMem;
-MPI_Comm single_node_comm;
 
 #endif /* _MATRICKS_H_ */

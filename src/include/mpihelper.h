@@ -5,8 +5,11 @@
 
 #include <mpi.h>
 
-void       setupSingleNodeComm( char*, MPI_Comm*, int* );
+void       setupSingleNodeComm();
 LCRP_TYPE* setup_communication(CR_TYPE* const, int, int);
+LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_dist, int options);
 int getNumberOfNodes();
+int getLocalRank();
+int getNumberOfRanksOnNode();
 
 #endif

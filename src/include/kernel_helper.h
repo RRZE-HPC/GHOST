@@ -22,8 +22,10 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 
 #ifdef OPENCL
-	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(real));
+	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
+//		invec->val = CL_mapBuffer(invec->CL_val_gpu
+		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(real));
+	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
 	
@@ -38,6 +40,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		for (i=0; i<lcrp->lnRows[*me]; i++){
 			hlp1 = 0.0;
 			for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
+				printf("PE%d, r %d: %f = %f + %f*%f ([%d])\n",*me,i,hlp1,hlp1,lcrp->val[j],invec->val[lcrp->col[j]],lcrp->col[j]);
 				hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
 			}
 			if (spmvmOptions & SPMVM_OPTION_AXPY) 

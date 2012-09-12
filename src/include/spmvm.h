@@ -9,6 +9,10 @@
 #include <CL/cl.h>
 #endif
 
+//#define CL_IMAGE
+
+
+
 /**********************************************/
 /****** SpMVM kernels *************************/
 /**********************************************/
@@ -66,9 +70,9 @@ extern const char *DATATYPE_NAMES[];
 /**********************************************/
 /****** Available work distributions **********/
 /**********************************************/
-#define WORKDIST_EQUAL_ROWS 0
-#define WORKDIST_EQUAL_NZE  1
-#define WORKDIST_EQUAL_LNZE 2
+#define WORKDIST_EQUAL_ROWS 0 // equal number of rows for each process
+#define WORKDIST_EQUAL_NZE  1 // equal number of nonzeros for each process 
+#define WORKDIST_EQUAL_LNZE 2 // equal number of local nonzeros for each process
 extern const char *WORKDIST_NAMES[];
 /**********************************************/
 
@@ -255,25 +259,91 @@ typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
 typedef struct {
     FuncPrototype kernel;
 } Hybrid_kernel;
-/******************************************************************************/
-
-
-/******************************************************************************/
-/****** Global variables ******************************************************/
-/******************************************************************************/
-/******************************************************************************/
 
 
 
-/******************************************************************************/
 /****** Function prototypes ***************************************************/
-/******************************************************************************/
+
+/******************************************************************************
+  * Initialize the basic functionality of the library. This includes:
+  *   - initialize MPI
+  *   - create and commit custom MPI datatypes (if necessary)
+  *   - pin threads to CPU cores (if defined)
+  *   - setup the MPI communicator for the node
+  *   - initialize the OpenCL functionality of the library (if enabled)
+  *   - initialize the Likwid Marker API (if defined)
+  *
+  * Arguments:
+  *   - int argc
+  *     The number of arguments of the main function (will be passed to
+  *     MPI_init_thread())
+  *   - char ** argv
+  *     The arguments of the main functions (will be passed to 
+  *     MPI_init_thread())
+  *   - int options
+  *     This argument contains the options for the sparse matrix-vector product.
+  *     It can be assembled by OR-ing several of the available options which
+  *     are defined as SPMVM_OPTION_* (explained above).
+  *
+  * Returns:
+  *   an integer which holds the rank of the calling MPI process within
+  *   MPI_COMM_WORLD
+  *
+  * The call to SpMVM_init() has to be done before any other SpMVM_*() call.
+  *****************************************************************************/
 int SpMVM_init(int argc, char **argv, int options);
+
+/******************************************************************************
+  * Clean up and finalize before termination. This includes:
+  *   - call MPI_Finalize()
+  *   - finish the OpenCL functionality
+  *   - close the Likwid Marker API
+  *
+  * The SpMVM_finish() call is usually the last call of the main program. 
+  *****************************************************************************/
 void SpMVM_finish();
+
+/******************************************************************************
+  * Create a CRS matrix on the master node from a given path.
+  *
+  * Arguments:
+  *   - char *matrixPath
+  *     The full path to the matrix file. The matrix may either be present in
+  *     MatrixMarket format or a binary CRS format which is explained in the
+  *     README file.
+  *
+  * Returns:
+  *   a pointer to a CR_TYPE which holds the data of the CRS matrix on the
+  *   master node. On the other nodes, a dummy CRS matrix is created.
+  *
+  * Note that the CR_TYPE created by this functions has to be freed manually by
+  * calling SpMVM_freeCRS(CR_TYPE *).
+  *****************************************************************************/
 CR_TYPE * SpMVM_createCRS (char *matrixPath);
+CR_TYPE * SpMVM_createCRSstub (char *matrixPath);
+
+
+/******************************************************************************
+  * Distribute a CRS matrix from the master node to all worker nodes.
+  *
+  * Arguments:
+  *   - CR_TYPE *cr
+  *     The CRS matrix data which are present on the master node.
+  *   - void *deviceFormats
+  *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
+  *     data structure, holding information about the desired GPU matrix format.
+  *     In the non-OpenCL case, this argument is NULL.
+  *****************************************************************************/
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats);
+
+
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int kernel, int nIter);
+
+
+double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+		int kernel, int nIter);
+
+
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel);
 /******************************************************************************/

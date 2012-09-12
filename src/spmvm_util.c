@@ -206,6 +206,15 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spm
 {
 
 	int iteration;
+	int me;
+
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+
+
+/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+		cr->col[i] += 1;
+	}	*/
+
 	if (spmvmOptions & SPMVM_OPTION_AXPY) {
 
 		for (iteration=0; iteration<nIter; iteration++) {
@@ -248,6 +257,9 @@ void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spm
 #endif
 #endif
 	}
+/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+		cr->col[i] -= 1;
+	}*/
 }
 
 
@@ -283,16 +295,16 @@ HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, real (*fp)(int))
 	vec->nRows = nRows;
 
 	if (fp) {
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(static)
 		for (i=0; i<nRows; i++) 
 			vec->val[i] = fp(i);
 
 	}else {
 #ifdef COMPLEX
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(static)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
 #else
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(static)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.;
 #endif
 	}
@@ -314,17 +326,21 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) 
 	for( i = 0; i < nRows; i++ ) 
 		vec->val[i] = 0.0;
 
 #ifdef OPENCL
+#ifdef CL_IMAGE
+	vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,vec->val );
+#else
 	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
+#endif
 	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
 	//printf("before: %p\n",vec->val);
 	//vec->val = CL_mapBuffer(vec->CL_val_gpu,size_val);
 	//printf("after: %p\n",vec->val);
-	CL_uploadVector(vec);
+	//CL_uploadVector(vec);
 #endif
 
 	return vec;

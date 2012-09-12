@@ -31,10 +31,7 @@
 /* ########################################################################## */
 
 
-static int size0 = 0;
-static int size1 = 0;
-static int now0  = 0;
-static int now1  = 0;
+static int allocatedMem;
 
 void getMatrixPath(char *given, char *path) {
 	FILE *file;
@@ -156,13 +153,8 @@ void* allocateMemory( const size_t size, const char* desc ) {
 				" for %s\n", size, desc );
 		abort();
 	}
-	//   if ( get_NUMA_info(&size0, &now0, &size1, &now1) != 0 ) 
-	//      myabort("failed to retrieve NUMA-info");
 
 	allocatedMem += size;
-	IF_DEBUG(2) printf("PE%d: Gegenwaerig allokierter Speicher: %8.2f MB in "
-		   "LD 0/1: (%d /  %d) \n", me, allocatedMem/(1024.0*1024.0), 
-		   size0-now0, size1-now1);
 	return mem;
 }
 
@@ -253,6 +245,63 @@ MM_TYPE * readMMFile(const char* filename ) {
 
 /* ########################################################################## */
 
+void readCRrowsBinFile(CR_TYPE* cr, const char* path){
+
+	int i;
+	size_t size_offs, size_col, size_val;
+	/* Number of successfully read data items */
+	int datatype;
+	FILE* RESTFILE;
+
+
+	IF_DEBUG(1) printf(" \n Lese %s \n", path);
+
+	if ((RESTFILE = fopen(path, "rb"))==NULL){
+		printf("Fehler beim Oeffnen von %s\n", path);
+		exit(1);
+	}
+
+	fread(&datatype, sizeof(int), 1, RESTFILE);
+	fread(&cr->nRows, sizeof(int), 1, RESTFILE);
+	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
+	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
+
+	if (datatype != DATATYPE_DESIRED) {
+		fprintf(stderr,"Warning! The library has been built for %s data but the"
+			   	"file contains %s data. Casting...\n",
+				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+	}
+
+	IF_DEBUG(2) printf("Allocate memory for arrays\n");
+
+	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
+	size_col  = (size_t)( sizeof(int) );
+	size_val  = (size_t)( sizeof(real) );
+
+	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
+	cr->col       = (int*)    allocateMemory( size_col,  "col" );
+	cr->val       = (real*) allocateMemory( size_val,  "val" );
+
+	IF_DEBUG(2){
+		printf("Reading array with row-offsets\n");
+		printf("Reading array with column indices\n");
+		printf("Reading array with values\n");
+	}	
+
+	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
+#pragma omp parallel for schedule(runtime)
+	for( i = 0; i < cr->nRows+1; i++ ) {
+		cr->rowOffset[i] = 0;
+	}
+
+	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
+
+
+
+	fclose(RESTFILE);
+
+	return;
+}
 void readCRbinFile(CR_TYPE* cr, const char* path){
 
 	int i, j;

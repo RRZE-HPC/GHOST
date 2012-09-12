@@ -27,7 +27,7 @@ int main( int argc, char* argv[] ) {
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
 	int options = SPMVM_OPTION_NONE; // performan standard spmvm
-	int kernel = SPMVM_KERNEL_VECTORMODE;
+	int kernel = SPMVM_KERNEL_NOMPI;
 
 	me      = SpMVM_init(argc,argv,options);    // basic initialization
 	cr      = SpMVM_createCRS(argv[1]); // create CRS matrix from given matrix path
@@ -46,7 +46,7 @@ int main( int argc, char* argv[] ) {
 	time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernel,nIter);
 
 	if (me == 0) {
-		printf("Kernel %2d @ %7.2f GF/s\n",kernel,2.0e-9*(double)nIter*(double)lcrp->nEnts/(time));
+		printf("%s kernel @ %7.2f GF/s\n",SpMVM_kernelName(kernel),2.0e-9*(double)nIter*(double)lcrp->nEnts/(time));
 	}
 
 	SpMVM_freeVector( nodeLHS );

@@ -1,5 +1,6 @@
 #include "spmvm_util.h"
 #include "matricks.h"
+#include "mpihelper.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -31,15 +32,13 @@ void CL_init()
 	unsigned int platform, device;
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
-	int rank;
-	int size;
+	int rank = getLocalRank();
+	int size = getNumberOfRanksOnNode();
 	char hostname[MAXHOSTNAMELEN];
 	cl_uint numDevices;
 	cl_device_id *deviceIDs;
 
 	gethostname(hostname,MAXHOSTNAMELEN);
-	MPI_safecall(MPI_Comm_size( single_node_comm, &size));
-	MPI_safecall(MPI_Comm_rank( single_node_comm, &rank));
 
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
@@ -81,6 +80,12 @@ void CL_init()
 				sizeof(devicename),devicename,NULL));
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", 
 			rank, size-1,hostname, takedevice, devicename);
+
+	size_t maxImgWidth;
+	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_IMAGE2D_MAX_WIDTH,
+				sizeof(maxImgWidth),&maxImgWidth,NULL));
+	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Max image2d width: %lu\n", 
+			rank, size-1,hostname, maxImgWidth);
 
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating context \n", rank,
@@ -138,12 +143,11 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	size_t log_size;
 	long filesize;
 	cl_device_id deviceID;
-	int size, rank;
+	int size = getNumberOfRanksOnNode();
+	int rank = getLocalRank();
 	char hostname[MAXHOSTNAMELEN];
 
 	gethostname(hostname,MAXHOSTNAMELEN);
-	MPI_safecall(MPI_Comm_size( single_node_comm, &size));
-	MPI_safecall(MPI_Comm_rank( single_node_comm, &rank));
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
@@ -211,6 +215,24 @@ cl_mem CL_allocDeviceMemory( size_t bytesize )
 	return mem;
 }
 
+cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
+{
+	cl_mem mem;
+	cl_int err;
+	cl_image_format image_format;
+
+	image_format.image_channel_order = CL_RG;
+	image_format.image_channel_data_type = CL_FLOAT;
+
+	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(real),1,0,hostPtr,&err);
+
+printf("image width: %lu\n",bytesize/sizeof(real));	
+
+	CL_checkerror(err);
+
+	return mem;
+}
+
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize)
 {
 	cl_int err;
@@ -222,8 +244,15 @@ void * CL_mapBuffer(cl_mem devmem, size_t bytesize)
 
 void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize) 
 {
+#ifdef CL_IMAGE
+	const size_t origin[3] = {0,0,0};
+	const size_t region[3] = {bytesize/sizeof(real),0,0};
+	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
+				hostmem,0,NULL,NULL));
+#else
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
+#endif
 }
 
 cl_event CL_copyDeviceToHostNonBlocking(void* hostmem, cl_mem devmem,
@@ -238,13 +267,40 @@ cl_event CL_copyDeviceToHostNonBlocking(void* hostmem, cl_mem devmem,
 void CL_copyHostToDeviceOffset(cl_mem devmem, void *hostmem,
 		size_t bytesize, size_t offset)
 {
+#ifdef CL_IMAGE
+	cl_mem_object_type type;
+	CL_safecall(clGetMemObjectInfo(devmem,CL_MEM_TYPE,sizeof(cl_mem_object_type),&type,NULL));
+	if (type == CL_MEM_OBJECT_BUFFER) {
+		CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,
+					hostmem,0,NULL,NULL));
+	} else {
+		const size_t origin[3] = {offset,0,0};
+		const size_t region[3] = {bytesize/sizeof(real),0,0};
+		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
+					hostmem,0,NULL,NULL));
+	}
+#else
 	CL_safecall(clEnqueueWriteBuffer(queue,devmem,CL_TRUE,offset,bytesize,
 				hostmem,0,NULL,NULL));
+#endif
 }
 
 void CL_copyHostToDevice(cl_mem devmem, void *hostmem, size_t bytesize)
 {
+#ifdef CL_IMAGE
+	cl_mem_object_type type;
+	CL_safecall(clGetMemObjectInfo(devmem,CL_MEM_TYPE,sizeof(cl_mem_object_type),&type,NULL));
+	if (type == CL_MEM_OBJECT_BUFFER) {
+		CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
+	} else {
+		const size_t origin[3] = {0,0,0};
+		const size_t region[3] = {bytesize/sizeof(real),0,0};
+		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
+					hostmem,0,NULL,NULL));
+	}
+#else
 	CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
+#endif
 }
 
 void CL_freeDeviceMemory(cl_mem mem)
@@ -329,13 +385,17 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 				&globalSize[type],NULL,0,NULL,NULL));
 }
 
-void CL_finish() 
+void CL_finish(int spmvmOptions) 
 {
 
-	int i;
+	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
+		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_FULL]));
+	}
+	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
+		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_LOCAL]));
+		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_REMOTE]));
 
-	for (i=0; i<3; i++) 
-		CL_safecall(clReleaseKernel(kernel[i]));
+	}
 
 	CL_safecall(clReleaseCommandQueue(queue));
 	CL_safecall(clReleaseContext(context));

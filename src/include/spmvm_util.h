@@ -46,6 +46,7 @@ void CL_downloadVector( VECTOR_TYPE *vec );
 
 cl_mem CL_allocDeviceMemory( size_t );
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );
+cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
 void CL_copyDeviceToHost( void*, cl_mem, size_t );
 cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem,
@@ -54,7 +55,7 @@ void CL_copyHostToDevice( cl_mem, void*, size_t );
 void CL_copyHostToDeviceOffset( cl_mem, void*, size_t, size_t);
 void CL_freeDeviceMemory( cl_mem );
 void freeHostMemory( void* );
-void CL_finish();
+void CL_finish(int);
 
 void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
 void CL_vecscal(cl_mem a, real s, int nRows);
@@ -72,7 +73,7 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
-void              SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spmvmOptions);
+void              SpMVM_referenceSolver(CR_TYPE *lcrp, real *rhs, real *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
 HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );

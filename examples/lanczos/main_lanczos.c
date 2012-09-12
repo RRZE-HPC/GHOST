@@ -31,6 +31,18 @@ typedef struct {
 	SPM_GPUFORMATS *matrixFormats;
 } PROPS;
 
+static int converged(real evmin)
+{
+	static real oldevmin = -1e9;
+
+	int converged = ABS(evmin-oldevmin) < 1e-9;
+	//printf("%f %f %d\n",evmin,oldevmin,converged);
+
+	oldevmin = evmin;
+
+	return converged;
+}
+
 static void usage()
 {
 }
@@ -256,7 +268,7 @@ int main( int argc, char* argv[] )
 	double start, end, tstart, tend, tacc, time_it_took;
 
 	PROPS props;
-	props.nIter = 100;
+	props.nIter = 1000;
 	props.matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));
 #ifdef OPENCL
 	props.matrixFormats->format[0] = SPM_GPUFORMAT_ELR; 
@@ -321,9 +333,7 @@ int main( int argc, char* argv[] )
 	evec = SpMVM_distributeVector(lcrp,r0);
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,props.matrixName,options);
-
-	MPI_Barrier(MPI_COMM_WORLD);
+	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 
 	//real *z = (real *)malloc(sizeof(real)*props.nIter*props.nIter,"z");
@@ -339,7 +349,10 @@ int main( int argc, char* argv[] )
 	int n;
 
 
-	for( iteration = 0, n=1; iteration < props.nIter; iteration++, n++ ) {
+	for( iteration = 0, n=1; 
+			iteration < props.nIter && !converged(REAL(falphas[0])); 
+			iteration++, n++ ) {
+
 		if (me == 0) { 
 			printf("\r");
 			tstart = omp_get_wtime();
@@ -352,20 +365,23 @@ int main( int argc, char* argv[] )
 
 		lanczosStep(lcrp,vnew,vold,&alpha,&beta,me);
 #ifdef OPENCL
-		CL_downloadVector(vnew);
+		CL_copyHostToDevice(vnew->CL_val_gpu,vnew->val,lcrp->lnRows[me]);
 #endif
 
 #ifdef LIKWID_MARKER
-#pragma omp parallel
+#pragma omp parallel 
+		{
 		likwid_markerStopRegion("Lanczos step");
+		likwid_markerStartRegion("Housekeeping");
+		}
 #endif
 		SpMVM_swapVectors(vnew,vold);
 
 
 		alphas[iteration] = alpha;
 		betas[iteration+1] = beta;
-		memcpy(falphas,alphas,(iteration)*sizeof(real));
-		memcpy(fbetas,betas,(iteration)*sizeof(real));
+		memcpy(falphas,alphas,n*sizeof(real));
+		memcpy(fbetas,betas,n*sizeof(real));
 
 		if (me == 0) {
 			end = omp_get_wtime();
@@ -373,14 +389,20 @@ int main( int argc, char* argv[] )
 			start = omp_get_wtime();
 			printf("Lanczos: %6.2f ms, ",time_it_took*1e3);
 		}
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+		{
+		likwid_markerStopRegion("Housekeeping");
+		likwid_markerStartRegion("Imtql");
+		}
+#endif
 
 		imtql1_(&n,falphas,fbetas,&ferr); // TODO overlap
-
-
-		if(ferr != 0) {
-			printf("Error: the %d. ev could not be determined\n",ferr);
-		}
-
+#ifdef LIKWID_MARKER
+#pragma omp parallel
+		likwid_markerStopRegion("Imtql");
+#endif
+		if(ferr != 0) printf("Error: the %d. ev could not be determined\n",ferr);
 
 		if (me == 0) {
 			end = omp_get_wtime();
@@ -392,11 +414,9 @@ int main( int argc, char* argv[] )
 			fflush(stdout);
 		}
 
-
-
 	}
 	if (me==0) {
-		printf("| total: %.2f ms\n",tacc*1e3);
+		printf("| total: %.2f ms, %d iterations\n",tacc*1e3,iteration);
 	}
 
 
