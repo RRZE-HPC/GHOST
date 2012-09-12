@@ -8,6 +8,9 @@
 #include <sys/time.h>
 #include <libgen.h>
 
+#define REFSOL // compare with reference solution
+
+
 static real rhsVal (int i) 
 {
 #ifdef COMPLEX
@@ -20,23 +23,25 @@ static real rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int i, me, kernel, errcount = 0, nIter = 1;
-	double mytol, time;
+	int me, kernel, nIter = 1;
+	double time;
+
+#ifdef REFSOL
+	int i, errcount = 0;
+	double mytol;
+#endif
 
 	int options = SPMVM_OPTION_NONE;
 	int kernels[] = {/*SPMVM_KERNEL_NOMPI,*/
-		SPMVM_KERNEL_VECTORMODE/*,
+		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
-		SPMVM_KERNEL_TASKMODE*/};
+		SPMVM_KERNEL_TASKMODE};
 	int nKernels = sizeof(kernels)/sizeof(int);
 	
 	VECTOR_TYPE*     nodeLHS; // lhs vector per node
 	VECTOR_TYPE*     nodeRHS; // rhs vector node
-	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 
-	CR_TYPE *cr;
 	CR_TYPE *crs;
 	LCRP_TYPE *lcrp;
 
@@ -60,35 +65,40 @@ int main( int argc, char* argv[] )
 
 	// setup on master node
 	me   = SpMVM_init(argc,argv,options);       // basic initialization
-	cr   = SpMVM_createCRS (matrixPath);
 	crs   = SpMVM_createCRSstub (matrixPath);
 
-	globRHS = SpMVM_createGlobalHostVector(cr->nRows,rhsVal);
-	globLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
-	goldLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
+	globRHS = SpMVM_createGlobalHostVector(crs->nRows,rhsVal);
 	
 	// basic communication
 	lcrp = SpMVM_distributeCRS (crs,matrixFormats);
 	nodeRHS = SpMVM_distributeVector(lcrp,globRHS);
-//	goldLHS = SpMVM_newVector(lcrp->lnRows[me]); // TODO Hostvector
 	nodeLHS = SpMVM_newVector(lcrp->lnRows[me]);
 
+
+#ifdef REFSOL	
+	CR_TYPE *cr;
+	HOSTVECTOR_TYPE *goldLHS; // reference result
+	HOSTVECTOR_TYPE *globLHS; // global lhs vector
+	cr   = SpMVM_createCRS (matrixPath);
+	goldLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
+	globLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
 	if (me==0)
 		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter,options);	
-	
+#endif	
 
 
 	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 	for (kernel=0; kernel < nKernels; kernel++){
-		errcount=0;
 
 		time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernels[kernel],nIter);
 
+#ifdef REFSOL
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
 		if (me==0 && ABS(time)>1e-16) {
+			errcount=0;
 			for (i=0; i<cr->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
@@ -109,6 +119,15 @@ int main( int argc, char* argv[] )
 					(double)lcrp->nEnts/(time),
 					(time)*1.e3/nIter);
 		}
+#else
+		if (me==0) {
+			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
+					SpMVM_kernelName(kernels[kernel]),
+					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
+					(double)lcrp->nEnts/(time),
+					(time)*1.e3/nIter);
+		}
+#endif
 
 		SpMVM_zeroVector(nodeLHS);
 
@@ -117,11 +136,14 @@ int main( int argc, char* argv[] )
 
 	SpMVM_freeVector( nodeLHS );
 	SpMVM_freeVector( nodeRHS );
-	SpMVM_freeHostVector( goldLHS );
-	SpMVM_freeHostVector( globLHS );
 	SpMVM_freeHostVector( globRHS );
 	SpMVM_freeLCRP( lcrp );
+	
+#ifdef REFSOL
+	SpMVM_freeHostVector( goldLHS );
+	SpMVM_freeHostVector( globLHS );
 	SpMVM_freeCRS( cr );
+#endif
 
 	SpMVM_finish();
 
