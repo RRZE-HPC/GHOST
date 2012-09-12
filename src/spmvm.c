@@ -239,8 +239,8 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats)
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	printf("%s\n",_matrixPath);
-//	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+	//printf("%s\n",_matrixPath);
+	//LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
 	LCRP_TYPE *lcrp = setup_communication_parallel(cr, _matrixPath, WORKDIST_DESIRED, options);
 
 	if (deviceFormats == NULL) {

@@ -40,7 +40,6 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		for (i=0; i<lcrp->lnRows[*me]; i++){
 			hlp1 = 0.0;
 			for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
-				printf("PE%d, r %d: %f = %f + %f*%f ([%d])\n",*me,i,hlp1,hlp1,lcrp->val[j],invec->val[lcrp->col[j]],lcrp->col[j]);
 				hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
 			}
 			if (spmvmOptions & SPMVM_OPTION_AXPY) 
@@ -118,7 +117,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #else
 	int i, j;
 	real hlp1;
-	if (spmvmOptions == 777) printf("dummy\n");
+	if (spmvmOptions == 777) printf("dummy\n"); //TODO
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<lcrp->lnRows[*me]; i++){

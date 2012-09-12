@@ -832,6 +832,8 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 
 	lcrp->nEnts = cr->nEnts;
 	lcrp->nRows = cr->nRows;
+#pragma omp parallel
+	lcrp->threads = omp_get_num_threads(); 
 
 	ierr = MPI_Comm_size(MPI_COMM_WORLD, &(lcrp->nodes));
 
@@ -1025,7 +1027,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	revcol          = (int*) allocateMemory( size_revc, "revcol" );
 
 
-	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i]++;
+	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i]++; // setup has to be done with fortran numbering
 	for (i=0; i<lcrp->nodes; i++) wishlist_counts[i] = 0;
 
 	/* Transform global column index into 2d-local/non-local index */
@@ -1225,8 +1227,6 @@ sweepMemory(GLOBAL);
 		lcrp->lval       = (double*) allocateMemory( size_lval, "lcrp->lval" ); 
 		lcrp->rval       = (double*) allocateMemory( size_rval, "lcrp->rval" ); 
 
-#ifdef PLACE
-
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) lcrp->lval[i] = 0.0;
 
@@ -1238,8 +1238,6 @@ sweepMemory(GLOBAL);
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_r; i++) lcrp->rcol[i] = 0.0;
-
-#endif
 
 
 		lcrp->lrow_ptr_l[0] = 0;

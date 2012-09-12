@@ -108,8 +108,6 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 	likwid_markerStartRegion("Kernel 1 -- computation");
 	}
 #endif
-	for (i=0; i<invec->nRows; i++)
-	printf("PE%d: rhs[%d] = %f\n",me, i,invec->val[i]);
 	
 	spmvmKernAll(lcrp, invec, res, &me, spmvmOptions);
 
