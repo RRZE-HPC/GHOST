@@ -21,6 +21,20 @@
 
 
 == INPUT DATA ==
+  There are two matrix file formats which are supported:
+    1) Matrix Market
+	   This is an ASCII format for matrices which is documented here:
+	   http://math.nist.gov/MatrixMarket/formats.html
+    2) binary CRS
+	   This format stores the matrix as CRS (binary) and looks as 
+	   follows:
+	     4 bytes: an integer defining the datatype for the matrix entries
+		 4 bytes: an integer telling the number of rows (N) of the matrix
+		 4 bytes: an integer telling the number of columns (M) of the matrix
+		 4 bytes: an integer telling the number of non-zero entries of the matrix
+	   
+
+	  
   
 
 
