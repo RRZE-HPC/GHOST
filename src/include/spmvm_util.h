@@ -78,8 +78,10 @@ void              SpMVM_zeroVector(VECTOR_TYPE *vec);
 HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
-void              SpMVM_normalize( real *vec, int nRows);
+void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
+void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
 char * SpMVM_kernelName(int kernel);
+void SpMVM_abort(char *s);
 
 /******************************************************************************
   * Distribute a CRS matrix from the master node to all worker nodes.

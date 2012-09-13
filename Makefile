@@ -1,49 +1,60 @@
 include config.mk
 
-.PHONY: clean distclean install libspmvm
+.PHONY: clean distclean install uninstall all
 
 VPATH	=	./src/
+OBJDIR   =   ./obj
 IPATH	+=	-I./src/include
 
 OBJS	=	$(COBJS) $(FOBJS)
 
 ifeq ($(OPENCL),1)
-OBJS	+=	$(OCLOBJS)
+OBJS	+=	$(CLOBJS)
 endif
 
-COBJS	=  aux.o spmvm_util.o spmvm.o matricks.o mpihelper.o  \
-		   timing.o mmio.o  hybrid_kernel_0.o hybrid_kernel_I.o \
-		   hybrid_kernel_II.o hybrid_kernel_III.o spmvm_globals.o
-OCLOBJS =  spmvm_cl_util.o my_ellpack.o 
-FOBJS	=  matricks_GW.o  
+
+COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(filter-out $(wildcard src/cl_*.c), $(wildcard src/*.c)))))
+CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
+FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
+
 
 LIBSPMVM=lib$(PREFIX)spmvm.a
 
-%.o: %.c  
-	$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+$(OBJDIR)/%.o: %.c 
+	@echo "==> Compile $< -> $@"
+	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-%.o: %.f 
-	$(FC) $(FFLAGS) -o $@ -c $<
+$(OBJDIR)/%.o: %.f 
+	@echo "==> Compile $< -> $@"
+	@$(FC) $(FFLAGS) -o $@ -c $<
 
-libspmvm: $(OBJS)
+all: $(OBJDIR) $(LIBSPMVM)
+
+$(OBJDIR):
+	@mkdir $(OBJDIR)
+
+$(LIBSPMVM): $(OBJS)
+	@echo "==> Create library $(LIBSPMVM)"
 	@ar rcs  $(LIBSPMVM) $^
-	@mkdir -p obj/
-	@mv *.o obj/
-	@mv *genmod* obj/
 
 clean:
+	@echo "==> Clean"
 	@rm -rf obj/
 
 distclean: clean
+	@echo "==> Distclean"
 	@rm -f *.a
 
-install: libspmvm
+install: all
 	@mkdir -p $(INSTDIR)/lib
 	@mkdir -p $(INSTDIR)/include
+	@echo "==> Install library to $(INSTDIR)/lib"
 	@cp -f $(LIBSPMVM) $(INSTDIR)/lib
+	@echo "==> Install headers to $(INSTDIR)/include"
 	@cp -f src/include/spmvm*.h $(INSTDIR)/include
 
 uninstall: 
+	@echo "==> Uninstall from $(INSTDIR)"
 	@rm -f $(INSTDIR)/lib/lib*spmvm.a
 	@rm -f $(INSTDIR)/include/spmvm*.h 
 

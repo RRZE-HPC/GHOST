@@ -129,12 +129,11 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int))
 			nRows = lcrp->lnRows[me]+lcrp->halo_elements;
 			break;
 		default:
-			myabort("No valid type for distributed vector");
+			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 	}
 
 	size_val = (size_t)( nRows * sizeof(real) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
-
 
 	vec->val = (real*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
@@ -203,7 +202,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
-		myabort("Device matrix formats have to be passed to SPMVM_distributeCRS");
+		SpMVM_abort("Device matrix formats have to be passed to SPMVM_distributeCRS");
 #endif
 	}
 #ifdef OPENCL

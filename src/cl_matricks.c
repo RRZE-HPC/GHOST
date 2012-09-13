@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include "my_ellpack.h"
+#include "cl_matricks.h"
 #include "matricks.h"
 
 

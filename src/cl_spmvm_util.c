@@ -1,4 +1,5 @@
 #include "spmvm_util.h"
+#include "cl_matricks.h"
 #include "matricks.h"
 #include "mpihelper.h"
 #include <string.h>
@@ -157,7 +158,7 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 		char msg[strlen(cerr)+strlen(filename)];
 		strcpy(cerr,msg);
 		strcat(msg,filename);
-		myabort(msg);
+		SpMVM_abort(msg);
 	}
 
 	fseek(fp,0L,SEEK_END);
@@ -399,8 +400,6 @@ void CL_finish(int spmvmOptions)
 
 	CL_safecall(clReleaseCommandQueue(queue));
 	CL_safecall(clReleaseContext(context));
-
-
 }
 
 void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
@@ -499,7 +498,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && 
 				matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
-			myabort("The matrix format must _not_ be pJDS for the"
+			SpMVM_abort("The matrix format must _not_ be pJDS for the"
 					"local and remote part of the matrix.");
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) {

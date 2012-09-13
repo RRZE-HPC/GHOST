@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include "spmvm_util.h"
 #include "spmvm.h"
-#include "fortranfunctions.h"
+#include "referencesolvers.h"
 #include "matricks.h"
 #include <sys/param.h>
 #include <libgen.h>
@@ -9,7 +9,7 @@
 #include <mpihelper.h>
 
 #ifdef OPENCL
-#include "my_ellpack.h"
+#include "cl_matricks.h"
 #endif
 
 #ifdef LIKWID
@@ -390,7 +390,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
-		myabort("Device matrix formats have to be passed to SPMVM_distributeCRS");
+		SpMVM_abort("Device matrix formats have to be passed to SPMVM_distributeCRS");
 #endif
 	}
 #ifdef OPENCL
@@ -453,19 +453,35 @@ void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2)
 
 }
 
-void SpMVM_normalize( real *vec, int nRows)
+void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 {
 	int i;
 	real sum = 0;
 
-	for (i=0; i<nRows; i++)	
-		sum += vec[i]*vec[i];
+	for (i=0; i<vec->nRows; i++)	
+		sum += vec->val[i]*vec->val[i];
 
 	real f = 1./SQRT(sum);
 
-	for (i=0; i<nRows; i++)	
-		vec[i] *= f;
+	for (i=0; i<vec->nRows; i++)	
+		vec->val[i] *= f;
 
+#ifdef OPENCL
+	CL_uploadVector(vec);
+#endif
+}
+void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
+{
+	int i;
+	real sum = 0;
+
+	for (i=0; i<vec->nRows; i++)	
+		sum += vec->val[i]*vec->val[i];
+
+	real f = 1./SQRT(sum);
+
+	for (i=0; i<vec->nRows; i++)	
+		vec->val[i] *= f;
 }
 
 
@@ -590,5 +606,11 @@ char * SpMVM_kernelName(int kernel) {
 			return "invalid";
 			break;
 	}
+}
+
+void SpMVM_abort(char *s) {
+	fprintf(stderr,"ABORT -- %s\n",s);
+	SpMVM_finish();
+	exit(EXIT_FAILURE);
 }
 

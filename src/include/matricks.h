@@ -9,24 +9,6 @@
 
 #include <mpi.h>
 
-#ifdef OPENCL
-#include "my_ellpack.h"
-#include <CL/cl.h>
-#endif
-
-
-
-
-typedef struct {
-	int nRows;
-	int* val;
-#ifdef OPENCL
-  cl_mem CL_val_gpu;
-#endif
-} INT_VECTOR_TYPE;
-
-
-
 
 typedef struct {
 	int row, col, nThEntryInRow;
@@ -120,12 +102,6 @@ typedef struct {
 typedef struct {
         int offset, entries;
 } TARGET_TYPE;
-
-
-
-
-
-
  
 /* ########################################################################## */
 
