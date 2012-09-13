@@ -9,13 +9,9 @@
 #include <CL/cl.h>
 #endif
 
-//#define CL_IMAGE
-
-
-
-/**********************************************/
-/****** SpMVM kernels *************************/
-/**********************************************/
+/******************************************************************************/
+/*----  SpMVM kernels  -------------------------------------------------------*/
+/******************************************************************************/
 #define SPMVM_NUMKERNELS 4
 
 #define SPMVM_KERNEL_NOMPI      (0x1<<0)
@@ -27,29 +23,34 @@
 #define SPMVM_KERNELS_SPLIT    (SPMVM_KERNEL_GOODFAITH | SPMVM_KERNEL_TASKMODE)
 #define SPMVM_KERNELS_ALL      (SPMVM_KERNELS_COMBINED | SPMVM_KERNELS_SPLIT)
 
-#define SPM_KERNEL_FULL 0
-#define SPM_KERNEL_LOCAL 1
-#define SPM_KERNEL_REMOTE 2
-/**********************************************/
+#define SPMVM_KERNEL_IDX_FULL 0
+#define SPMVM_KERNEL_IDX_LOCAL 1
+#define SPMVM_KERNEL_IDX_REMOTE 2
+/******************************************************************************/
 
 
+/******************************************************************************/
+/*----  Vector type  --------------------------------------------------------**/
+/******************************************************************************/
 #define VECTOR_TYPE_RHS 0
 #define VECTOR_TYPE_LHS 1
 #define VECTOR_TYPE_BOTH 2
+/******************************************************************************/
 
-/**********************************************/
-/****** GPU matrix formats ********************/
-/**********************************************/
+
+/******************************************************************************/
+/*----  GPU matrix formats  --------------------------------------------------*/
+/******************************************************************************/
 #define SPM_GPUFORMAT_ELR  0
 #define SPM_GPUFORMAT_PJDS 1
 #define PJDS_CHUNK_HEIGHT 32
 extern const char *SPM_FORMAT_NAMES[];
-/**********************************************/
+/******************************************************************************/
 
 
-/**********************************************/
-/****** Options for the SpMVM *****************/
-/**********************************************/
+/******************************************************************************/
+/*----  Options for the SpMVM  -----------------------------------------------*/
+/******************************************************************************/
 #define SPMVM_OPTION_NONE       (0x1<<0)    // no special options applied
 #define SPMVM_OPTION_AXPY       (0x1<<1) // perform y = y+A*x instead of y = A*x
 #define SPMVM_OPTION_KEEPRESULT (0x1<<2) // keep result on OpenCL device 
@@ -59,33 +60,33 @@ extern const char *SPM_FORMAT_NAMES[];
 #define SPMVM_OPTION_NO_TASKMODE_KERNEL (0x1<<6)
 #define SPMVM_OPTION_SERIAL_IO (0x1<<7)
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
-/**********************************************/
+/******************************************************************************/
 
 
-/**********************************************/
-/****** Available datatypes *******************/
-/**********************************************/
+/******************************************************************************/
+/*----  Available datatypes  -------------------------------------------------*/
+/******************************************************************************/
 #define DATATYPE_FLOAT 0
 #define DATATYPE_DOUBLE 1
 #define DATATYPE_COMPLEX_FLOAT 2
 #define DATATYPE_COMPLEX_DOUBLE 3
 extern const char *DATATYPE_NAMES[];
-/**********************************************/
+/******************************************************************************/
 
-/**********************************************/
-/****** Available work distributions **********/
-/**********************************************/
+/******************************************************************************/
+/*----  Available work distributions  ----------------------------------------*/
+/******************************************************************************/
 #define WORKDIST_EQUAL_ROWS 0 // equal number of rows for each process
 #define WORKDIST_EQUAL_NZE  1 // equal number of nonzeros for each process 
 #define WORKDIST_EQUAL_LNZE 2 // equal number of local nonzeros for each process
 extern const char *WORKDIST_NAMES[];
-/**********************************************/
+/******************************************************************************/
 
 #define IF_DEBUG(level) if( DEBUG >= level )
 
 
 /******************************************************************************/
-/****** Global definitions ****************************************************/
+/*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
 #define WORKDIST_DESIRED WORKDIST_EQUAL_ROWS
 #define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
@@ -93,7 +94,7 @@ extern const char *WORKDIST_NAMES[];
 
 
 /******************************************************************************/
-/****** Consequences **********************************************************/
+/*----  Consequences  --------------------------------------------------------*/
 /******************************************************************************/
 #ifdef LIKWID_MARKER
 #define LIKWID
@@ -105,7 +106,7 @@ extern const char *WORKDIST_NAMES[];
 
 
 /******************************************************************************/
-/****** Definitions depending on datatype *************************************/
+/*----  Definitions depending on datatype  -----------------------------------*/
 /******************************************************************************/
 #ifdef DOUBLE
 #ifdef COMPLEX
@@ -186,7 +187,7 @@ typedef float real;
 
 
 /******************************************************************************/
-/****** Type definitions ******************************************************/
+/*----  Type definitions  ----------------------------------------------------*/
 /******************************************************************************/
 typedef struct{
 	int nDistinctDevices;
@@ -264,10 +265,13 @@ typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
 typedef struct {
     FuncPrototype kernel;
 } Hybrid_kernel;
+/******************************************************************************/
 
 
 
-/****** Function prototypes ***************************************************/
+/******************************************************************************/
+/*----  Function prototypes  -------------------------------------------------*/
+/******************************************************************************/
 
 /******************************************************************************
   * Initialize the basic functionality of the library. This includes:
@@ -308,13 +312,83 @@ int SpMVM_init(int argc, char **argv, int options);
   *****************************************************************************/
 void SpMVM_finish();
 
+/******************************************************************************
+  * Create a distributed CRS matrix from a given path. The matrix is read-in
+  * from the processes in a parallel way (unless defined differently via
+  * SPMVM_OPTION_SERIAL_IO) and necessary data structures for communication are
+  * created. 
+  * If OpenCL is enabled, the matrices are also converted into a GPU-friendly
+  * format (as defined by the second argument) and uploaded to the device.
+  *
+  * Arguments:
+  *   - char *matrixPath
+  *     The full path to the matrix which is to be read. The matrix may either
+  *     be present in the ASCII Matrix Market format as explained in
+  *       http://math.nist.gov/MatrixMarket/formats.html
+  *     or in a binary CRS format as explained in the README file.
+  *   - void *deviceFormats
+  *     If OpenCL is disabled, this argument has to be NULL.
+  *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
+  *     structure as defined above.
+  *
+  * Returns:
+  *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+  *   well as the necessary data structures for communication.
+  *****************************************************************************/
 LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
+
+/******************************************************************************
+  * Create a distributed vector with specified values in order to use it for 
+  * SpMVM. Depending on the type, the length of the vector may differ.
+  * If OpenCL is enabled, the vector is also being created and initialized on
+  * the device.
+  *
+  * Arguments:
+  *   - LCRP_TYPE *lcrp
+  *     The local CRS matrix portion to use with the vector.
+  *   - int type
+  *     Specifies whether the vector is a right hand side vector 
+  *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
+  *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
+  *     The length of the vector depends on this argument.
+  *   - real (*fp)(int)
+  *     A function pointer to a function taking an integer value and returning
+  *     a real. This function returns the initial value for the i-th (globally)
+  *     element of the vector.
+  *     If NULL, the vector is initialized to zero.
+  *
+  * Returns:
+  *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+  *   well as the necessary data structures for communication.
+  *****************************************************************************/
 VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int));
 
+/******************************************************************************
+  * Perform the sparse matrix vector product using a specified kernel with a
+  * fixed number of iterations.
+  *
+  * Arguments:
+  *   - VECTOR_TYPE *res 
+  *     The result vector. Its values are being accumulated if SPMVM_OPTION_AXPY
+  *     is defined.  
+  *   - LCRP_TYPE *lcrp
+  *     The local CRS matrix part.
+  *   - VECTOR_TYPE *invec
+  *     The left hand side vector.
+  *   - int kernel
+  *     The kernel which should be used. This has to be one out of
+  *       + SPMVM_KERNEL_NOMPI
+  *       + SPMVM_KERNEL_VECTORMODE
+  *       + SPMVM_KERNEL_GOODFAITH
+  *       + SPMVM_KERNEL_TASKMODE
+  *   - int nIter
+  *     The number of iterations to run.
+  *     
+  * Returns:
+  *   the wallclock time (in seconds) the kernel execution took. 
+  *****************************************************************************/
 double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
-
-
 /******************************************************************************/
 
 #endif

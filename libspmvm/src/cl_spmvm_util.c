@@ -325,7 +325,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 
 	strcat(kernelName,Tstr);
 	strcat(kernelName,"kernel");
-	if (kernelIdx == SPM_KERNEL_REMOTE || (spmvmOptions & SPMVM_OPTION_AXPY))
+	if (kernelIdx == SPMVM_KERNEL_IDX_REMOTE || (spmvmOptions & SPMVM_OPTION_AXPY))
 		strcat(kernelName,"Add");
 
 
@@ -390,11 +390,11 @@ void CL_finish(int spmvmOptions)
 {
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
-		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_FULL]));
+		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_FULL]));
 	}
 	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_LOCAL]));
-		CL_safecall(clReleaseKernel(kernel[SPM_KERNEL_REMOTE]));
+		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_LOCAL]));
+		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_REMOTE]));
 
 	}
 
@@ -409,14 +409,14 @@ void CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptio
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 		CL_bindMatrixToKernel(lcrp->fullMatrix,lcrp->fullFormat,
-				matrixFormats->T[SPM_KERNEL_FULL],SPM_KERNEL_FULL, spmvmOptions);
+				matrixFormats->T[SPMVM_KERNEL_IDX_FULL],SPMVM_KERNEL_IDX_FULL, spmvmOptions);
 	}
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 		CL_bindMatrixToKernel(lcrp->localMatrix,lcrp->localFormat,
-				matrixFormats->T[SPM_KERNEL_LOCAL],SPM_KERNEL_LOCAL, spmvmOptions);
+				matrixFormats->T[SPMVM_KERNEL_IDX_LOCAL],SPMVM_KERNEL_IDX_LOCAL, spmvmOptions);
 		CL_bindMatrixToKernel(lcrp->remoteMatrix,lcrp->remoteFormat,
-				matrixFormats->T[SPM_KERNEL_REMOTE],SPM_KERNEL_REMOTE, spmvmOptions);
+				matrixFormats->T[SPMVM_KERNEL_IDX_REMOTE],SPMVM_KERNEL_IDX_REMOTE, spmvmOptions);
 	}
 
 
@@ -445,7 +445,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		lcrp->fullT = matrixFormats->T[SPM_KERNEL_FULL];
+		lcrp->fullT = matrixFormats->T[SPMVM_KERNEL_IDX_FULL];
 
 		switch (matrixFormats->format[0]) {
 			case SPM_GPUFORMAT_PJDS:

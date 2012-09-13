@@ -27,7 +27,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(real));
 	}
 
-	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_FULL);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_FULL);
 	
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
 		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
@@ -69,7 +69,7 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT))
 		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
 
-	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
 #else
 	int i, j;
 	real hlp1;
@@ -109,7 +109,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 				lcrp->lnRows[*me]*sizeof(real));
 	}
 	
-	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
 	
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT)) {
 		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
@@ -149,7 +149,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 				lcrp->lnRows[*me]*sizeof(real));
 	}
 
-	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_LOCAL);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
 }
 
 
@@ -170,7 +170,7 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	}
 
 
-	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPM_KERNEL_REMOTE);
+	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
 
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
 		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
