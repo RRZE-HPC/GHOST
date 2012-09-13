@@ -8,7 +8,7 @@
 #include <sys/time.h>
 #include <libgen.h>
 
-//#define REFSOL // compare with reference solution
+//#define CHECK // compare with reference solution
 
 
 static real rhsVal (int i) 
@@ -26,7 +26,7 @@ int main( int argc, char* argv[] )
 	int me, kernel, nIter = 100;
 	double time;
 
-#ifdef REFSOL
+#ifdef CHECK
 	int i, errcount = 0;
 	double mytol;
 #endif
@@ -66,7 +66,7 @@ int main( int argc, char* argv[] )
 	nodeLHS = SpMVM_createVector(lcrp,VECTOR_TYPE_LHS,NULL);
 	nodeRHS = SpMVM_createVector(lcrp,VECTOR_TYPE_RHS,rhsVal);
 
-#ifdef REFSOL	
+#ifdef CHECK	
 	CR_TYPE *cr;
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
@@ -87,7 +87,7 @@ int main( int argc, char* argv[] )
 
 		time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernels[kernel],nIter);
 
-#ifdef REFSOL
+#ifdef CHECK
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
 		if (me==0 && ABS(time)>1e-16) {
@@ -131,7 +131,7 @@ int main( int argc, char* argv[] )
 	SpMVM_freeVector( nodeRHS );
 	SpMVM_freeLCRP( lcrp );
 	
-#ifdef REFSOL
+#ifdef CHECK
 	SpMVM_freeHostVector( globRHS );
 	SpMVM_freeHostVector( goldLHS );
 	SpMVM_freeHostVector( globLHS );

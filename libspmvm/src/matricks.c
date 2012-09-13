@@ -2,7 +2,7 @@
 #include "matricks.h"
 #include "spmvm_util.h"
 #ifdef OPENCL
-#include "my_ellpack.h"
+#include "cl_matricks.h"
 #endif
 #include <math.h>
 #ifdef _OPENMP
@@ -26,6 +26,7 @@
 #include <timing.h>
 
 
+
 #define min(A,B) ((A)<(B) ? (A) : (B))
 
 /* ########################################################################## */
@@ -45,7 +46,7 @@ void getMatrixPath(char *given, char *path) {
 
 	char *mathome = getenv("MATHOME");
 	if (mathome == NULL)
-		myabort("$MATHOME not set! Can't find matrix!");
+		SpMVM_abort("$MATHOME not set! Can't find matrix!");
 
 
 	strcpy(path,mathome);
@@ -92,7 +93,7 @@ int isMMfile(const char *filename) {
 	FILE *file = fopen( filename, "r" );
 
 	if( ! file ) {
-		myabort("Could not open file in isMMfile!");
+		SpMVM_abort("Could not open file in isMMfile!");
 	}
 
 	const char *keyword="%%MatrixMarket";
@@ -149,9 +150,9 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	}
 
 	if( ! mem ) {
-		fprintf(stderr, "allocateMemory: could not allocate %lu bytes of memory"
-				" for %s\n", size, desc );
-		abort();
+		fprintf(stderr,"allocateMemory: could not allocate %lu bytes of memory"
+				" for %s\n", size, desc);
+		SpMVM_abort("Error in memory allocation");
 	}
 
 	allocatedMem += size;

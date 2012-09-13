@@ -1,15 +1,13 @@
-include ../config.mk
+include config.mk
 
 .PHONY:clean distclean all
 
-IPATH+= -I../src/include 
-all: MMtoCRS.x
-
-MMtoCRS.x: mmtocrs.c ../src/mmio.c
+mm2binCrs.x: src/mmtocrs.c src/mmio.c
 	$(CC) $(CFLAGS) $(LPATH) -o $@ $^
+	@mv $@ bin/
 
 clean:
 	-rm -f *.o
 
 distclean: clean
-	-rm -f *.x
+	-rm -f bin/*.x

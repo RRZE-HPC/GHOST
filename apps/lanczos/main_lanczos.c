@@ -295,7 +295,7 @@ int main( int argc, char* argv[] )
 
 
 	r0 = SpMVM_createGlobalHostVector(lcrp->nRows,rhsVal);
-	SpMVM_normalize(r0->val,r0->nRows);
+	SpMVM_normalizeHostVector(r0);
 
 
 #ifdef OPENCL
