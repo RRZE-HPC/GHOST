@@ -96,7 +96,7 @@ int main( int argc, char* argv[] )
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
-						IMAG(ABS(goldLHS->val[i]-globHS->val[i])) > mytol){
+						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					printf( "PE%d: error in row %i: %.2e + %.2ei vs. %.2e +"
 							"%.2ei\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),

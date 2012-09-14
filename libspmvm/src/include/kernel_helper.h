@@ -1,7 +1,6 @@
 #ifndef __KERNEL_HELPER_H__
 #define __KERNEL_HELPER_H__
 
-
 #include "spmvm.h"
 #include "spmvm_util.h"
 
@@ -175,6 +174,6 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
 		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
 } 
-#endif //CUDAKERNEL
+#endif //OPENCL
 
 #endif

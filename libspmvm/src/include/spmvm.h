@@ -9,6 +9,8 @@
 #include <CL/cl.h>
 #endif
 
+#include "spmvm_type.h"
+
 /******************************************************************************/
 /*----  SpMVM kernels  -------------------------------------------------------*/
 /******************************************************************************/
@@ -51,14 +53,14 @@ extern const char *SPM_FORMAT_NAMES[];
 /******************************************************************************/
 /*----  Options for the SpMVM  -----------------------------------------------*/
 /******************************************************************************/
-#define SPMVM_OPTION_NONE       (0x1<<0)    // no special options applied
+#define SPMVM_OPTION_NONE       (0x1<<0) // no special options applied
 #define SPMVM_OPTION_AXPY       (0x1<<1) // perform y = y+A*x instead of y = A*x
 #define SPMVM_OPTION_KEEPRESULT (0x1<<2) // keep result on OpenCL device 
 #define SPMVM_OPTION_RHSPRESENT (0x1<<3) // assume that RHS vector is present
-#define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<4) 
-#define SPMVM_OPTION_NO_SPLIT_KERNELS (0x1<<5)
-#define SPMVM_OPTION_NO_TASKMODE_KERNEL (0x1<<6)
-#define SPMVM_OPTION_SERIAL_IO (0x1<<7)
+#define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<4) // not configure comb. kernels
+#define SPMVM_OPTION_NO_SPLIT_KERNELS    (0x1<<5) // not configure split kernels
+#define SPMVM_OPTION_NO_TASKMODE_KERNEL  (0x1<<6) // not configure task mode
+#define SPMVM_OPTION_SERIAL_IO   (0x1<<7) // read matrix with one process only
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /******************************************************************************/
 
@@ -267,8 +269,6 @@ typedef struct {
 } Hybrid_kernel;
 /******************************************************************************/
 
-
-
 /******************************************************************************/
 /*----  Function prototypes  -------------------------------------------------*/
 /******************************************************************************/
@@ -390,5 +390,7 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int));
 double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 /******************************************************************************/
+
+#define DATA_T real
 
 #endif

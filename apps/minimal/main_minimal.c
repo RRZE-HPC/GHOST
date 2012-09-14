@@ -8,7 +8,6 @@
 #include <sys/time.h>
 #include <string.h>
 
-
 /** function to initialize the RHS vector **/
 static real rhsVal (int i) {
 	return i+1.0;

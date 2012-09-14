@@ -24,32 +24,6 @@
 
 
 
-#ifdef COMPLEX
-typedef struct {
-#ifdef DOUBLE
-	double x;
-	double y;
-#endif
-#ifdef SINGLE
-	float x;
-	float y;
-#endif
-
-} MPI_complex;
-
-static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
-{
-
-	int i;
-	MPI_complex c;
-
-	for (i=0; i<*len; i++, invec++, inoutvec++){
-		c.x = invec->x + inoutvec->x;
-		c.y = invec->y + inoutvec->y;
-		*inoutvec = c;
-	}
-}
-#endif
 
 
 

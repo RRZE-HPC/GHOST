@@ -1,8 +1,8 @@
+DOUBLE=1
+COMPLEX=0
 OPENCL=0
 LIKWID_MARKER=0
 LIKWID_MARKER_FINE=0
-DOUBLE=1
-COMPLEX=1
 DEBUG=0
 
 INSTDIR=~/app/libspmvm
@@ -17,4 +17,5 @@ CFLAGS  = -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disab
 
 FC	= ifort
 FFLAGS  = -O3 -nogen-interface -fno-alias -cpp -warn all -openmp 
+
 
