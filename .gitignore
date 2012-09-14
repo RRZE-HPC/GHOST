@@ -1,1 +1,5 @@
 *.swp
+spmvm_type.h
+*.o
+*.a
+obj/
