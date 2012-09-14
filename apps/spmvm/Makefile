@@ -1,5 +1,4 @@
 OPENCL=0
-DOUBLE=1
 
 CUDA_INC=-I$(CUDA_HOME)/include
 CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
@@ -23,25 +22,20 @@ IPATH += ${CUDA_INC}
 LPATH += ${CUDA_LIB}
 endif
 
-ifeq ($(DOUBLE),1)
-MAKROS+= -DDOUBLE
-endif
-
-ifeq ($(COMPLEX),1)
-MAKROS+= -DCOMPLEX
-endif
-
-
 %.o: %.c  
-	$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+	@echo "==> Compile $< -> $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-spmvm: main_spmvm.o
-	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $(PREFIX)$@.x $^  $(LIBS)
+$(PREFIX)spmvm.x: main_spmvm.o
+	@echo "==> Link $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
 
 clean:
-	-rm -f *.o
-	-rm -f *genmod*
+	@echo "==> Clean"
+	@rm -f *.o
 
 distclean: clean
-	-rm -f *.x
+	@echo "==> Distclean"
+	@rm -f *.x
+
