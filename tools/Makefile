@@ -2,7 +2,7 @@ include config.mk
 
 .PHONY:clean distclean all
 
-mm2binCrs.x: src/mmtocrs.c src/mmio.c
+mm2binCRS.x: src/mmtocrs.c src/mmio.c
 	$(CC) $(CFLAGS) $(LPATH) -o $@ $^
 	@mv $@ bin/
 
