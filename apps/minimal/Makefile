@@ -1,36 +1,28 @@
-OPENCL=0
-DOUBLE=1
-
 LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
-LIBS+=-l$(PREFIX)spmvm
+LIBS+=  -lspmvm
 
-.PHONY:clean distclean all
+.PHONY:clean distclean
 
 CC=mpicc
 CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
-ifeq ($(DOUBLE),1)
-MAKROS+= -DDOUBLE
-endif
-
-ifeq ($(COMPLEX),1)
-MAKROS+= -DCOMPLEX
-endif
-
-
 %.o: %.c  
-	$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+	@echo "==> Compile $< -> $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-minimal: main_minimal.o
-	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $(PREFIX)$@.x $^  $(LIBS)
+$(PREFIX)minimal.x: main_minimal.o
+	@echo "==> Link $@"
+	@$(CC) $(CFLAGS) $(LPATH) -o $@ $^  $(LIBS)
 
 clean:
-	-rm -f *.o
-	-rm -f *genmod*
+	@echo "==> Clean"
+	@rm -f *.o
 
 distclean: clean
-	-rm -f *.x
+	@echo "==> Distclean"
+	@rm -f *.x
+
