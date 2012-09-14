@@ -1,17 +1,43 @@
 include config.mk
 
-.PHONY: clean distclean install uninstall all
+.PHONY: clean distclean install uninstall all header
 
 VPATH	=	./src/
-OBJDIR   =   ./obj
+OBJDIR  =   ./obj/
+TYPEHEADER  =   ./src/include/spmvm_type.h
 IPATH	+=	-I./src/include
 
 OBJS	=	$(COBJS) $(FOBJS)
 
 ifeq ($(OPENCL),1)
-OBJS	+=	$(CLOBJS)
+MAKROS+= -DOPENCL
+PREFIX+= cl
+IPATH += -I${CUDA_INC}
 endif
 
+ifeq ($(LIKWID_MARKER),1)
+MAKROS+= -DLIKWID_MARKER
+IPATH += -I${LIKWID_INC}
+endif
+
+ifeq ($(LIKWID_MARKER_FINE),1)
+MAKROS+= -DLIKWID_MARKER_FINE
+IPATH += -I${LIKWID_INC}
+endif
+
+ifeq ($(DOUBLE),1)
+TYPES:= $(TYPES)"\#define DOUBLE \n"
+endif
+
+ifeq ($(COMPLEX),1)
+TYPES:= $(TYPES)"\#define COMPLEX \n"
+endif
+
+MAKROS+= -DDEBUG=$(DEBUG)
+
+ifeq ($(OPENCL),1)
+OBJS	+=	$(CLOBJS)
+endif
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(filter-out $(wildcard src/cl_*.c), $(wildcard src/*.c)))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
@@ -28,7 +54,14 @@ $(OBJDIR)/%.o: %.f
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-all: $(OBJDIR) $(LIBSPMVM)
+all: header $(OBJDIR) $(LIBSPMVM)
+
+header:
+	@echo "==> Generate type header"
+	@echo "#ifndef _SPMVM_TYPES_H_" > $(TYPEHEADER)
+	@echo -e "#define _SPMVM_TYPES_H_\n" >> $(TYPEHEADER)
+	@echo -e $(TYPES) >> $(TYPEHEADER)
+	@echo -e "\n#endif" >> $(TYPEHEADER)
 
 $(OBJDIR):
 	@mkdir $(OBJDIR)
