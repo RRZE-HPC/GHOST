@@ -5,11 +5,10 @@ LIKWID_MARKER=0        # 0 = no calls              | 1 = Likwid Marker API calls
 LIKWID_MARKER_FINE=0   # 0 = few calls             | 1 = many calls 
 DEBUG=0                # 0 = no DEBUG output       | >0 = level of DEBUG output
 
-INSTDIR=~/app/libspmvm        # where to install LibSpMVM
+INSTDIR=/home/hpc/unrz/unrza317/app/libspmvm        # where to install LibSpMVM
 
 CL_INC=$(CUDA_HOME)/include   # where to find OpenCL headers (necessary if enabled)
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
-LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 
 CC	= mpicc           # the C compiler
 CFLAGS  = -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
