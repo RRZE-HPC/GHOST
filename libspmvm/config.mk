@@ -1,21 +1,20 @@
-DOUBLE=1
-COMPLEX=0
-OPENCL=0
-LIKWID_MARKER=0
-LIKWID_MARKER_FINE=0
-DEBUG=0
+DOUBLE=1               # 0 = single precision data | 1 = double precision data
+COMPLEX=0              # 0 = real data             | 1 = complex data
+OPENCL=0               # 0 = standard CPU kernels  | 1 = OpenCL (GPU) kernels
+LIKWID_MARKER=0        # 0 = no calls              | 1 = Likwid Marker API calls
+LIKWID_MARKER_FINE=0   # 0 = few calls             | 1 = many calls 
+DEBUG=0                # 0 = no DEBUG output       | >0 = level of DEBUG output
 
-INSTDIR=~/app/libspmvm
-CUDA_INC=$(CUDA_HOME)/include
-CUDA_LIB=$(CUDA_HOME)/lib64
+INSTDIR=~/app/libspmvm        # where to install LibSpMVM
+
+CL_INC=$(CUDA_HOME)/include   # where to find OpenCL headers
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
 LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 
-
-CC	= mpicc
+CC	= mpicc           # the C compiler
 CFLAGS  = -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
-FC	= ifort
+FC	= ifort           # the Fortran compiler
 FFLAGS  = -O3 -nogen-interface -fno-alias -cpp -warn all -openmp 
 
 
