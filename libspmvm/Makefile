@@ -3,7 +3,7 @@ include config.mk
 .PHONY: clean distclean install uninstall all header
 
 VPATH	=	./src/
-OBJDIR  =   ./obj/
+OBJDIR  =   ./obj
 TYPEHEADER  =   ./src/include/spmvm_type.h
 IPATH	+=	-I./src/include
 
@@ -54,9 +54,9 @@ $(OBJDIR)/%.o: %.f
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-all: header $(OBJDIR) $(LIBSPMVM)
+all: $(TYPEHEADER) $(OBJDIR) $(LIBSPMVM)
 
-header:
+$(TYPEHEADER):  
 	@echo "==> Generate type header"
 	@echo "#ifndef _SPMVM_TYPES_H_" > $(TYPEHEADER)
 	@echo -e "#define _SPMVM_TYPES_H_\n" >> $(TYPEHEADER)
@@ -73,6 +73,7 @@ $(LIBSPMVM): $(OBJS)
 clean:
 	@echo "==> Clean"
 	@rm -rf obj/
+	@rm -rf $(TYPEHEADER)
 
 distclean: clean
 	@echo "==> Distclean"
