@@ -7,7 +7,7 @@ src/*.swp
 examples/*/*.swp
 examples/*/*.o
 src/include/*.swp
-src/include/spmvm_types.h
+src/include/spmvm_type.h
 src/tags
 tags
 obj/
