@@ -334,7 +334,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
-	mybytes = 3.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
+	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
 		1.0*(cr->nEnts)*sizeof(real);
 
 	IF_DEBUG(1){ 
