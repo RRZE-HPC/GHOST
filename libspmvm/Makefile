@@ -2,42 +2,39 @@ include config.mk
 
 .PHONY: clean distclean install uninstall all header
 
-VPATH	=	./src/
-OBJDIR  =   ./obj
-TYPEHEADER  =   ./src/include/spmvm_type.h
-IPATH	+=	-I./src/include
+VPATH      = ./src/
+OBJDIR     = ./obj
+TYPEHEADER = ./src/include/spmvm_type.h
+IPATH     += -I./src/include
 
 OBJS	=	$(COBJS) $(FOBJS)
 
-ifeq ($(OPENCL),1)
+ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
-IPATH += -I${CUDA_INC}
+IPATH += -I${CL_INC}
+OBJS  += $(CLOBJS)
 endif
 
-ifeq ($(LIKWID_MARKER),1)
+ifeq ($(strip $(LIKWID_MARKER)),1)
 MAKROS+= -DLIKWID_MARKER
 IPATH += -I${LIKWID_INC}
 endif
 
-ifeq ($(LIKWID_MARKER_FINE),1)
+ifeq ($(strip $(LIKWID_MARKER_FINE)),1)
 MAKROS+= -DLIKWID_MARKER_FINE
 IPATH += -I${LIKWID_INC}
 endif
 
-ifeq ($(DOUBLE),1)
+ifeq ($(strip $(DOUBLE)),1)
 TYPES:= $(TYPES)"\#define DOUBLE \n"
 endif
 
-ifeq ($(COMPLEX),1)
+ifeq ($(strip $(COMPLEX)),1)
 TYPES:= $(TYPES)"\#define COMPLEX \n"
 endif
 
 MAKROS+= -DDEBUG=$(DEBUG)
-
-ifeq ($(OPENCL),1)
-OBJS	+=	$(CLOBJS)
-endif
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(filter-out $(wildcard src/cl_*.c), $(wildcard src/*.c)))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
