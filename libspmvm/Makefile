@@ -12,18 +12,18 @@ OBJS	=	$(COBJS) $(FOBJS)
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
-IPATH += -I${CL_INC}
+IPATH += -I$(strip $(CL_INC))
 OBJS  += $(CLOBJS)
 endif
 
 ifeq ($(strip $(LIKWID_MARKER)),1)
 MAKROS+= -DLIKWID_MARKER
-IPATH += -I${LIKWID_INC}
+IPATH += -I$(strip $(LIKWID_INC))
 endif
 
 ifeq ($(strip $(LIKWID_MARKER_FINE)),1)
 MAKROS+= -DLIKWID_MARKER_FINE
-IPATH += -I${LIKWID_INC}
+IPATH += -I$(strip $(LIKWID_INC))
 endif
 
 ifeq ($(strip $(DOUBLE)),1)
@@ -77,16 +77,16 @@ distclean: clean
 	@rm -f *.a
 
 install: all
-	@mkdir -p $(INSTDIR)/lib
-	@mkdir -p $(INSTDIR)/include
-	@echo "==> Install library to $(INSTDIR)/lib"
-	@cp -f $(LIBSPMVM) $(INSTDIR)/lib
-	@echo "==> Install headers to $(INSTDIR)/include"
-	@cp -f src/include/spmvm*.h $(INSTDIR)/include
+	@mkdir -p $(strip $(INSTDIR))/lib
+	@mkdir -p $(strip $(INSTDIR))/include
+	@echo "==> Install library to $(strip $(INSTDIR))/lib"
+	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
+	@echo "==> Install headers to $(strip $(INSTDIR))/include"
+	@cp -f src/include/spmvm*.h $(strip $(INSTDIR))/include
 
 uninstall: 
-	@echo "==> Uninstall from $(INSTDIR)"
-	@rm -f $(INSTDIR)/lib/lib*spmvm.a
-	@rm -f $(INSTDIR)/include/spmvm*.h 
+	@echo "==> Uninstall from $(strip $(INSTDIR))"
+	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a
+	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
 
 	
