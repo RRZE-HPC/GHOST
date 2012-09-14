@@ -1,5 +1,6 @@
 *.swp
 spmvm_type.h
+pbshosts*
 *.o
 *.a
 obj/
