@@ -7,7 +7,7 @@ DEBUG=0                # 0 = no DEBUG output       | >0 = level of DEBUG output
 
 INSTDIR=~/app/libspmvm        # where to install LibSpMVM
 
-CL_INC=$(CUDA_HOME)/include   # where to find OpenCL headers
+CL_INC=$(CUDA_HOME)/include   # where to find OpenCL headers (necessary if enabled)
 LIKWID_INC=/home/hpc/unrz/unrza317/app/likwid/include
 LIKWID_LIB=/home/hpc/unrz/unrza317/app/likwid/lib
 
