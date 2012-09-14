@@ -1,4 +1,10 @@
-== HEADERS ==
+== INTRODUCTION ==
+
+
+== CONFIGURATION ==
+
+
+== HEADER FILES ==
   There are 2 headers which you may need in your programs:
   1) spmvm.h
      This header includes the most basic data structures, prototypes and macros 
@@ -9,15 +15,10 @@
 	 This includes, e.g., functions for setting up and using vector types, 
 	 printing information about the matrix, plugging in user-defined kernels,
 	 and many more.
-	 
 
-== CONFIGURATION ==
-
-      
 
 == FUNCTIONS ==
-  
-  
+  The functions are documented in the according header file.
 
 
 == INPUT DATA ==
@@ -28,14 +29,17 @@
     2) binary CRS
 	   This format stores the matrix as CRS (binary) and looks as 
 	   follows:
-	     4 bytes: an integer defining the datatype for the matrix entries
-		 4 bytes: an integer telling the number of rows (N) of the matrix
-		 4 bytes: an integer telling the number of columns (M) of the matrix
-		 4 bytes: an integer telling the number of non-zero entries of the matrix
-	   
+	     1) 4 bytes: an integer defining the datatype for the matrix entries.
+		      Available datatypes:
+		       0: float (4 bytes per entry)
+		       1: double (8 bytes per entry)
+		       2: complex float (8 bytes per entry)
+		       3: complex double (16 bytes per entry)
+		 2) 4 bytes: an integer telling the number of rows (N) of the matrix
+		 3) 4 bytes: an integer telling the number of columns (M) of the matrix
+		 4) 4 bytes: an integer telling the number of nonzero entries (E) of the
+		      matrix
+		 5) (N+1)*4 bytes: the row pointers (integer) of the CRS matrix
+		 6) E*4 bytes: the columns indices of the matrix entries
+		 7) E*sizeof(datatype) bytes: the values of the matrix entries
 
-	  
-  
-
-
-== PLUG-IN KERNELS ==
