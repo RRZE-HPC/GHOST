@@ -1,7 +1,10 @@
 == INTRODUCTION ==
 
 
-== CONFIGURATION ==
+== INSTALLATION ==
+  Edit config.mk in order to fit your system and requirements.
+  Then, run make install in order to install the library and headers to the
+  specified location.
 
 
 == HEADER FILES ==
