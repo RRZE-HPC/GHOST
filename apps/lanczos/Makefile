@@ -44,29 +44,24 @@ IPATH += -I${LIKWID_INC}
 LIBS  += -llikwid
 endif
 
-ifeq ($(DOUBLE),1)
-MAKROS+= -DDOUBLE
-endif
-
-ifeq ($(COMPLEX),1)
-MAKROS+= -DCOMPLEX
-endif
-
-
 %.o: %.c  
-	$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+	@echo "==> Compile $< -> $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 %.o: %.f 
-	$(FC) $(FFLAGS) -o $@ -c $<
+	@echo "==> Compile $< -> $@"
+	@$(FC) $(FFLAGS) -o $@ -c $<
 
 
-lanczos: main_lanczos.o imtql1.o pythag.o
-	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $(PREFIX)$@.x $^  $(LIBS)
+$(PREFIX)lanczos.x: main_lanczos.o imtql1.o pythag.o
+	@echo "==> Link $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
 
 
 clean:
-	-rm -f *.o
-	-rm -f *genmod*
+	@echo "==> Clean"
+	@rm -f *.o
 
 distclean: clean
-	-rm -f *.x
+	@echo "==> Distclean"
+	@rm -f *.x
