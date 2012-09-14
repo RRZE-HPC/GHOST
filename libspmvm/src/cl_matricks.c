@@ -17,13 +17,13 @@ size_t getBytesize(void *mat, int format) {
 		case SPM_GPUFORMAT_PJDS:
 			{
 				CL_PJDS_TYPE * matrix = (CL_PJDS_TYPE *)mat;
-				sz = matrix->nEnts*(sizeof(real)+sizeof(int)) + matrix->nRows*sizeof(int) + matrix->nMaxRow*sizeof(int);
+				sz = matrix->nEnts*(sizeof(data_t)+sizeof(int)) + matrix->nRows*sizeof(int) + matrix->nMaxRow*sizeof(int);
 				break;
 			}
 		case SPM_GPUFORMAT_ELR:
 			{
 				CL_ELR_TYPE * matrix = (CL_ELR_TYPE *)mat;
-				sz = matrix->nMaxRow * matrix->padding*(sizeof(real)+sizeof(int)) + (matrix->nRows*sizeof(int));
+				sz = matrix->nMaxRow * matrix->padding*(sizeof(data_t)+sizeof(int)) + (matrix->nRows*sizeof(int));
 				break;
 			}
 	}
@@ -46,7 +46,7 @@ void getPadding(int nRows, int* paddedRows) {
 
 /**********************  pJDS MATRIX TYPE *********************************/
 
-PJDS_TYPE* CRStoPJDST(  const real* crs_val, const int* crs_col, 
+PJDS_TYPE* CRStoPJDST(  const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows, const int threadsPerRow) 
 {
 	ELR_TYPE * elrs;
@@ -58,7 +58,7 @@ PJDS_TYPE* CRStoPJDST(  const real* crs_val, const int* crs_col,
 	return pjds;
 }
 
-PJDS_TYPE* CRStoPJDS(  const real* crs_val, const int* crs_col, 
+PJDS_TYPE* CRStoPJDS(  const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) 
 {
 	return CRStoPJDST( crs_val, crs_col, crs_row_ptr, nRows, 1); 
@@ -132,7 +132,7 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
 	}
 
 
-	pjds->val = (real*) allocateMemory(sizeof(real)*pjds->nEnts,"pjds->val"); 
+	pjds->val = (data_t*) allocateMemory(sizeof(data_t)*pjds->nEnts,"pjds->val"); 
 	pjds->colStart = (int*) allocateMemory(sizeof(int)*(chunkLen[0]),"pjds->colStart");
 	pjds->col = (int*) allocateMemory(sizeof(int)*pjds->nEnts,"pjds->col");
 
@@ -174,7 +174,7 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
 	return pjds;
 }
 
-ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRT(const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows, int threadsPerRow) {
 
 	int i, j;
@@ -197,7 +197,7 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 	elr->rowLen = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
 	elr->col = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,
 			"elr->col"); 
-	elr->val = (real*)allocateMemory(sizeof(real)*elr->padding*elr->nMaxRow,
+	elr->val = (data_t*)allocateMemory(sizeof(data_t)*elr->padding*elr->nMaxRow,
 			"elr->val"); 
 	elr->T = threadsPerRow;
 
@@ -238,7 +238,7 @@ ELR_TYPE* CRStoELRT(const real* crs_val, const int* crs_col,
 	return elr;
 }
 
-ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRTP(const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,  
 		const int* invRowPerm, int threadsPerRow) 
 {
@@ -259,7 +259,7 @@ ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col,
 
 	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nRows,"elr->rowLen"); 
 	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
-	elr->val         = (real*)allocateMemory(sizeof(real)*elr->padding*elr->nMaxRow,"elr->val"); 
+	elr->val         = (data_t*)allocateMemory(sizeof(data_t)*elr->padding*elr->nMaxRow,"elr->val"); 
 	elr->T			 = threadsPerRow;
 
 
@@ -297,7 +297,7 @@ ELR_TYPE* CRStoELRTP(const real* crs_val, const int* crs_col,
 	return elr;
 }
 
-ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRP(  const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows, const int* invRowPerm) {
 
 
@@ -305,7 +305,7 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen;
 	int *rowLen, *col;
-	real* val;
+	data_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -348,13 +348,13 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(real) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(data_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 
 	rowLen = (int*)   allocateMemory( size_rowlen, "elrp->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col, "elrp->vol" ); 
-	val   = (real*)   allocateMemory( size_val,"elrp->val" ); 
+	val   = (data_t*)   allocateMemory( size_val,"elrp->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -386,14 +386,14 @@ ELR_TYPE* CRStoELRP(  const real* crs_val, const int* crs_col,
 
 }
 
-ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRS(  const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
 
 	JD_SORT_TYPE* rowSort;
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen, size_rowperm;
 	int *rowLen, *col;
-	real* val;
+	data_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -455,7 +455,7 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(real) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(data_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 	size_rowperm= (size_t) sizeof(int) * nRows;
@@ -475,7 +475,7 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 
 	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
-	val   = (real*)   allocateMemory( size_val,"elr->val" ); 
+	val   = (data_t*)   allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -547,14 +547,14 @@ ELR_TYPE* CRStoELRS(  const real* crs_val, const int* crs_col,
 }
 
 
-/*void checkCRStToPJDS(const real* crs_val, const int* crs_col, 
+/*void checkCRStToPJDS(const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,
 		const PJDS_TYPE* pjds) {
 
 
 }*/
 
-ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELR(  const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows) {
 
 	/* allocate and fill ELR-format matrix from CRS format data;
@@ -564,7 +564,7 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen;
 	int *rowLen, *col;
-	real* val;
+	data_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -594,13 +594,13 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(real) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(data_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nRows;
 
 	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
-	val   = (real*) allocateMemory( size_val,"elr->val" ); 
+	val   = (data_t*) allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -636,7 +636,7 @@ ELR_TYPE* CRStoELR(  const real* crs_val, const int* crs_col,
 }
 
 
-void checkCRSToELR(	const real* crs_val, const int* crs_col, 
+void checkCRSToELR(	const data_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nRows,
 		const ELR_TYPE* elr) {
 	/* check if matrix in elr is consistent with CRS;
@@ -747,7 +747,7 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( real );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( data_t );
 	size_t rowMemSize = (size_t) pjds->nRows * sizeof( int );
 
 	/* allocate */
@@ -803,7 +803,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 	int me;
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( data_t );
 	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
 
 
@@ -859,7 +859,7 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( real );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( data_t );
 	size_t rowMemSize = (size_t) pjds->nRows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
@@ -895,7 +895,7 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( data_t );
 	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: ELRtoDevice: col %lu \t(%lu MB)\n", me,
@@ -932,7 +932,7 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) pjds->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( real );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( data_t );
 	size_t rowMemSize = (size_t) pjds->nRows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
@@ -967,7 +967,7 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( real );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( data_t );
 	size_t rowMemSize = (size_t) elr->nRows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: ELRtoHost: col %lu \t(%lu MB)\n", me,

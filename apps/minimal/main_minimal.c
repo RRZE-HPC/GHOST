@@ -9,7 +9,7 @@
 #include <string.h>
 
 /** function to initialize the RHS vector **/
-static real rhsVal (int i) {
+static data_t rhsVal (int i) {
 	return i+1.0;
 }
 

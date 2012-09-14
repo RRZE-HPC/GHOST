@@ -12,23 +12,23 @@
 
 #ifdef DOUBLE
 #ifdef COMPLEX
-typedef double2 clreal;
+typedef double2 cl_data_t;
 #else
-typedef double clreal;
+typedef double cl_data_t;
 #endif
 #endif
 #ifdef SINGLE
 #ifdef COMPLEX
-typedef float2 clreal;
+typedef float2 cl_data_t;
 #else
-typedef float clreal;
+typedef float cl_data_t;
 #endif
 #endif
 
-kernel void pJDS1kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart) {
+kernel void pJDS1kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart) {
 
 	int row = get_global_id(0);
-	clreal svalue = 0.0, value, rhs;
+	cl_data_t svalue = 0.0, value, rhs;
 	int i, idcol;
 
 	if (row < nRows) {
@@ -48,11 +48,11 @@ kernel void pJDS1kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 
 }
 
-kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
-	   	int pad, global clreal *val, global int *col, global int *rowLen) 
+kernel void ELR1kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows,
+	   	int pad, global cl_data_t *val, global int *col, global int *rowLen) 
 {
 	int row = get_global_id(0);
-	clreal svalue = 0.0, value, rhs;
+	cl_data_t svalue = 0.0, value, rhs;
 	int i, idcol;
 	
 	if (row < nRows) {
@@ -71,13 +71,13 @@ kernel void ELR1kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
 	}
 }
 
-kernel void pJDS2kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS2kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>1;
 	if (row < nRows) {
 			unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 
@@ -106,13 +106,13 @@ kernel void pJDS2kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 	}
 } 
 
-kernel void ELR2kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR2kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>1;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 		svalue = 0.0;
@@ -139,13 +139,13 @@ kernel void ELR2kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
 	}
 }
 
-kernel void pJDS4kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS4kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>2;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 
@@ -177,13 +177,13 @@ kernel void pJDS4kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 	}
 } 
 
-kernel void ELR4kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR4kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>2;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 		svalue = 0.0;
@@ -213,13 +213,13 @@ kernel void ELR4kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
 	}
 }
 
-kernel void pJDS8kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS8kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>3;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 
@@ -253,13 +253,13 @@ kernel void pJDS8kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 	}
 } 
 
-kernel void ELR8kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR8kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>3;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 		svalue = 0.0;
@@ -291,13 +291,13 @@ kernel void ELR8kernel (global clreal *resVec, global clreal *rhsVec, int nRows,
 	}
 }
 
-kernel void pJDS16kernel (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS16kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>4;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 
@@ -333,13 +333,13 @@ kernel void pJDS16kernel (global clreal *resVec, global clreal *rhsVec, int nRow
 	}
 } 
 
-kernel void ELR16kernel (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR16kernel (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>4;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 		svalue = 0.0;
@@ -373,12 +373,12 @@ kernel void ELR16kernel (global clreal *resVec, global clreal *rhsVec, int nRows
 	}
 }
 
-kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec, 
-		int nRows, global clreal *val, global int *col, global int *rowLen, 
+kernel void pJDS1kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, 
+		int nRows, global cl_data_t *val, global int *col, global int *rowLen, 
 		global int *colStart) {
 
 	int row = get_global_id(0);
-	clreal svalue = 0.0, value, rhs;
+	cl_data_t svalue = 0.0, value, rhs;
 	int i, idcol;
 
 	if (row < nRows) {
@@ -399,12 +399,12 @@ kernel void pJDS1kernelAdd (global clreal *resVec, global clreal *rhsVec,
 
 }
 
-kernel void ELR1kernelAdd (global clreal *resVec, global clreal *rhsVec, 
-		int nRows, int pad, global clreal *val, global int *col, 
+kernel void ELR1kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, 
+		int nRows, int pad, global cl_data_t *val, global int *col, 
 		global int *rowLen) {
 
 	int row = get_global_id(0);
-	clreal svalue = 0.0, value, rhs;
+	cl_data_t svalue = 0.0, value, rhs;
 	int i, idcol;
 	if (row < nRows) {
 		for( i = 0; i < rowLen[row]; ++i) {
@@ -424,13 +424,13 @@ kernel void ELR1kernelAdd (global clreal *resVec, global clreal *rhsVec,
 	}
 }
 
-kernel void pJDS2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS2kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>1;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 
@@ -459,13 +459,13 @@ kernel void pJDS2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nR
 	}
 } 
 
-kernel void ELR2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR2kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>1;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%2;
 		svalue = 0.0;
@@ -492,13 +492,13 @@ kernel void ELR2kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRo
 	}
 }
 
-kernel void pJDS4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS4kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>2;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 
@@ -530,13 +530,13 @@ kernel void pJDS4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nR
 	}
 } 
 
-kernel void ELR4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR4kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>2;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%4;
 		svalue = 0.0;
@@ -566,13 +566,13 @@ kernel void ELR4kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRo
 	}
 }
 
-kernel void pJDS8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS8kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>3;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 
@@ -606,13 +606,13 @@ kernel void pJDS8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nR
 	}
 } 
 
-kernel void ELR8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR8kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>3;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%8;
 		svalue = 0.0;
@@ -644,13 +644,13 @@ kernel void ELR8kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRo
 	}
 }
 
-kernel void pJDS16kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, global clreal *val, global int *col, global int *rowLen, global int *colStart, local clreal *shared) {
+kernel void pJDS16kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, global cl_data_t *val, global int *col, global int *rowLen, global int *colStart, local cl_data_t *shared) {
 
 	unsigned int row  = get_global_id(0)>>4;
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 
@@ -686,13 +686,13 @@ kernel void pJDS16kernelAdd (global clreal *resVec, global clreal *rhsVec, int n
 	}
 } 
 
-kernel void ELR16kernelAdd (global clreal *resVec, global clreal *rhsVec, int nRows, int pad, global clreal *val, global int *col, global int *rowLen, local clreal *shared) {
+kernel void ELR16kernelAdd (global cl_data_t *resVec, global cl_data_t *rhsVec, int nRows, int pad, global cl_data_t *val, global int *col, global int *rowLen, local cl_data_t *shared) {
 	unsigned int row  = get_global_id(0)>>4;
 
 	if (row < nRows) {
 		unsigned int idcol;
 		unsigned short idb, k;
-		clreal svalue, value, rhs;
+		cl_data_t svalue, value, rhs;
 
 		idb  = get_local_id(0)%16;
 		svalue = 0.0;

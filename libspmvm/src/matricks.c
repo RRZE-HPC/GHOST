@@ -193,10 +193,10 @@ MM_TYPE * readMMFile(const char* filename ) {
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for complex data "
-				"but the MM file contains real data. Casting...\n");
+				"but the MM file contains data_t data. Casting...\n");
 #else
 	if (mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for real data "
+		fprintf(stderr,"Warning! The library has been built for data_t data "
 				"but the MM file contains complex data. Casting...\n");
 #endif
 
@@ -277,11 +277,11 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	size_col  = (size_t)( sizeof(int) );
-	size_val  = (size_t)( sizeof(real) );
+	size_val  = (size_t)( sizeof(data_t) );
 
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (real*) allocateMemory( size_val,  "val" );
+	cr->val       = (data_t*) allocateMemory( size_val,  "val" );
 
 	IF_DEBUG(2){
 		printf("Reading array with row-offsets\n");
@@ -335,7 +335,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 	}
 
 	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-		1.0*(cr->nEnts)*sizeof(real);
+		1.0*(cr->nEnts)*sizeof(data_t);
 
 	IF_DEBUG(1){ 
 		printf("Number of rows in matrix       = %d\n", cr->nRows);
@@ -347,11 +347,11 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	size_col  = (size_t)( cr->nEnts * sizeof(int) );
-	size_val  = (size_t)( cr->nEnts * sizeof(real) );
+	size_val  = (size_t)( cr->nEnts * sizeof(data_t) );
 
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (real*) allocateMemory( size_val,  "val" );
+	cr->val       = (data_t*) allocateMemory( size_val,  "val" );
 
 	IF_DEBUG(2){
 		printf("Reading array with row-offsets\n");
@@ -390,7 +390,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 				float *tmp = (float *)allocateMemory(
 						cr->nEnts*sizeof(float), "tmp");
 				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -399,7 +399,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 				double *tmp = (double *)allocateMemory(
 						cr->nEnts*sizeof(double), "tmp");
 				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -408,7 +408,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 				_Complex float *tmp = (_Complex float *)allocateMemory(
 						cr->nEnts*sizeof(_Complex float), "tmp");
 				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -417,7 +417,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path){
 				_Complex double *tmp = (_Complex double *)allocateMemory(
 						cr->nEnts*sizeof(_Complex double), "tmp");
 				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (real) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -469,7 +469,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 	mybytes = 4.0*sizeof(int) 
 		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-		+ 1.0*(jd->nEnts)*sizeof(real);
+		+ 1.0*(jd->nEnts)*sizeof(data_t);
 
 	IF_DEBUG(1) {
 		printf("Number of rows in matrix       = %d\n", jd->nRows);
@@ -484,7 +484,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 	jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
 	jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
 	jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
-	jd->val        = (real*) allocateMemory( jd->nEnts      * sizeof( real ), "val" );
+	jd->val        = (data_t*) allocateMemory( jd->nEnts      * sizeof( data_t ), "val" );
 
 	IF_DEBUG(2) {
 		printf("Reading array of permutations\n");
@@ -521,7 +521,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 
 	fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-	fread(&jd->val[0],              sizeof(real), jd->nEnts,    RESTFILE);
+	fread(&jd->val[0],              sizeof(data_t), jd->nEnts,    RESTFILE);
 
 	fclose(RESTFILE);
 
@@ -565,7 +565,7 @@ int compareNZEPos( const void* a, const void* b ) {
 
 REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const int vec_dim ) {
 
-	/* set up buffer for vector of length vec_dim to avoid unrealistic loads from cache;
+	/* set up buffer for vector of length vec_dim to avoid undata_tistic loads from cache;
 	 * buffer can hold at least as many (numvecs) copies of vector as required to fill cachesize;
 	 * starting index (i*offset, i<numvecs) of each copy of vector in buffer is aligned to pagesize*/
 
@@ -580,8 +580,8 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 	rb->pagesize  = pagesize;
 	rb->cachesize = cachesize;
 	rb->vecdim    = vec_dim;
-	rb->ppvec     = (int)( sizeof(real) * rb->vecdim / rb->pagesize) + 1;
-	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(real);
+	rb->ppvec     = (int)( sizeof(data_t) * rb->vecdim / rb->pagesize) + 1;
+	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(data_t);
 	rb->numvecs   = (int)( (1024.0*rb->cachesize) / (rb->ppvec*rb->pagesize) ) + 2;
 	rb->globdim   = rb->numvecs*rb->offset;
 
@@ -596,16 +596,16 @@ REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const 
 		printf("Memory pages per vector     : %12d\n", rb->ppvec); 
 		printf("Vectors in RevBuf           : %12d\n", rb->numvecs);
 		printf("Elements in RevBuf          : %12d\n", rb->globdim);
-		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(real))/(1024.0*1024.0));
+		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(data_t))/(1024.0*1024.0));
 		printf("Offset between vectors (el) : %12d\n", rb->offset);
 		printf("-----------------------------------------------------\n");
 	}
 
-	size_mem = (size_t)( rb->globdim * sizeof(real) );
-	size_vec = (size_t)( rb->numvecs * sizeof(real*) );
+	size_mem = (size_t)( rb->globdim * sizeof(data_t) );
+	size_vec = (size_t)( rb->numvecs * sizeof(data_t*) );
 
-	rb->mem = (real*)   allocateMemory(size_mem, "rb->mem");
-	rb->vec = (real **) allocateMemory(size_vec, "rb->vec");
+	rb->mem = (data_t*)   allocateMemory(size_mem, "rb->mem");
+	rb->vec = (data_t **) allocateMemory(size_vec, "rb->vec");
 
 	for (i=0; i<rb->numvecs; i++){
 		rb->vec[i] = &rb->mem[i*rb->offset];
@@ -642,14 +642,14 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( real) );
+	size_val        = (size_t)( mm->nEnts     * sizeof( data_t) );
 	size_nEntsInRow = (size_t)(  mm->nRows    * sizeof( int ) );
 
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rowOffset = (int*)     allocateMemory( size_rowOffset,    "rowOffset" );
 	cr->col       = (int*)     allocateMemory( size_col,          "col" );
-	cr->val       = (real*)  allocateMemory( size_val,          "val" );
+	cr->val       = (data_t*)  allocateMemory( size_val,          "val" );
 	nEntsInRow    = (int*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 	IF_DEBUG(1){
@@ -729,7 +729,7 @@ for(i=0; i<cr->nRows; ++i) {
 for( e = 0; e < mm->nEnts; e++ ) {
 	const int row = mm->nze[e].row,
 		  col = mm->nze[e].col;
-	const real val = mm->nze[e].val;
+	const data_t val = mm->nze[e].val;
 	pos = cr->rowOffset[row] + nEntsInRow[row];
 	/* GW 
 	   cr->col[pos] = col;
@@ -810,14 +810,14 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 	/* allocate memory ######################################################## */
 	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts * sizeof( real) );
+	size_val        = (size_t)( mm->nEnts * sizeof( data_t) );
 	size_invRowPerm = (size_t)( mm->nRows * sizeof( int ) );
 	size_rowSort    = (size_t)( mm->nRows * sizeof( JD_SORT_TYPE ) );
 
 	JD_TYPE* jd = (JD_TYPE*)      allocateMemory( sizeof( JD_TYPE ), "jd" );
 	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
 	jd->col     = (int*)          allocateMemory( size_col,          "col" );
-	jd->val     = (real*)       allocateMemory( size_val,          "val" );
+	jd->val     = (data_t*)       allocateMemory( size_val,          "val" );
 	invRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
 	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
 

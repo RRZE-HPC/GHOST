@@ -135,7 +135,7 @@ void SpMVM_finish()
 
 }
 
-VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int))
+VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 {
 	VECTOR_TYPE* vec;
 	size_t size_val;
@@ -158,10 +158,10 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int))
 			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 	}
 
-	size_val = (size_t)( nRows * sizeof(real) );
+	size_val = (size_t)( nRows * sizeof(data_t) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
-	vec->val = (real*) allocateMemory( size_val, "vec->val");
+	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 	if (fp) {
@@ -219,7 +219,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 		cr->nEnts     = 1;
 		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
 		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
-		cr->val       = (real*)  allocateMemory(sizeof(real), "val");
+		cr->val       = (data_t*)  allocateMemory(sizeof(data_t), "val");
 	}
 	if (options & SPMVM_OPTION_SERIAL_IO)
 		lcrp = setup_communication(cr, WORKDIST_DESIRED, options);

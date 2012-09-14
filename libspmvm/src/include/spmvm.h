@@ -112,12 +112,12 @@ extern const char *WORKDIST_NAMES[];
 /******************************************************************************/
 #ifdef DOUBLE
 #ifdef COMPLEX
-typedef _Complex double real;
+typedef _Complex double data_t;
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
 #else // COMPLEX
-typedef double real;
+typedef double data_t;
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_DOUBLE
@@ -126,12 +126,12 @@ typedef double real;
 
 #ifdef SINGLE
 #ifdef COMPLEX
-typedef _Complex float real;
+typedef _Complex float data_t;
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
 #else // COMPLEX
-typedef float real;
+typedef float data_t;
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
 #define DATATYPE_DESIRED DATATYPE_FLOAT
@@ -147,7 +147,7 @@ typedef float real;
 #ifdef DOUBLE
 #ifdef COMPLEX
 #define ABS(a) cabs(a)
-#define REAL(a) creal(a)
+#define REAL(a) cdata_t(a)
 #define IMAG(a) cimag(a)
 #define SQRT(a) csqrt(a)
 #else
@@ -161,7 +161,7 @@ typedef float real;
 #ifdef SINGLE
 #ifdef COMPLEX
 #define ABS(a) cabsf(a)
-#define REAL(a) crealf(a)
+#define REAL(a) cdata_tf(a)
 #define IMAG(a) cimagf(a)
 #define SQRT(a) csqrtf(a)
 #else
@@ -199,7 +199,7 @@ typedef struct{
 
 typedef struct {
 	int nRows;
-	real* val;
+	data_t* val;
 #ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
@@ -212,7 +212,7 @@ typedef struct {
 
 typedef struct {
 	int nRows;
-	real* val;
+	data_t* val;
 } HOSTVECTOR_TYPE;
 
 typedef struct {
@@ -231,15 +231,15 @@ typedef struct {
   int* due_displ;
   int* wish_displ;
   int* hput_pos;
-  real* val;
+  data_t* val;
   int* col;
   int* lrow_ptr;
   int* lrow_ptr_l;
   int* lrow_ptr_r;
   int* lcol;
   int* rcol;
-  real* lval;
-  real* rval;
+  data_t* lval;
+  data_t* rval;
   int fullFormat;
   int localFormat;
   int remoteFormat;
@@ -259,7 +259,7 @@ typedef struct {
 	int nRows, nCols, nEnts;
 	int* rowOffset;
 	int* col;
-	real* val;
+	data_t* val;
 } CR_TYPE;
 
 typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
@@ -351,9 +351,9 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
   *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
   *     The length of the vector depends on this argument.
-  *   - real (*fp)(int)
+  *   - data_t (*fp)(int)
   *     A function pointer to a function taking an integer value and returning
-  *     a real. This function returns the initial value for the i-th (globally)
+  *     a data_t. This function returns the initial value for the i-th (globally)
   *     element of the vector.
   *     If NULL, the vector is initialized to zero.
   *
@@ -361,7 +361,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
   *   well as the necessary data structures for communication.
   *****************************************************************************/
-VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, real (*fp)(int));
+VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
 
 /******************************************************************************
   * Perform the sparse matrix vector product using a specified kernel with a
@@ -391,6 +391,6 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 		int kernel, int nIter);
 /******************************************************************************/
 
-#define DATA_T real
+#define DATA_T data_t
 
 #endif

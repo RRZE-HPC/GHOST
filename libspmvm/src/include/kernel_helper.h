@@ -23,17 +23,17 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 //		invec->val = CL_mapBuffer(invec->CL_val_gpu
-		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(real));
+		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(data_t));
 	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_FULL);
 	
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(data_t));
 #else
 
 	int i, j;
-	real hlp1;
+	data_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<lcrp->lnRows[*me]; i++){
@@ -66,12 +66,12 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT))
-		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(real));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(data_t));
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
 #else
 	int i, j;
-	real hlp1;
+	data_t hlp1;
 
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
@@ -104,18 +104,18 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real), 
-				lcrp->lnRows[*me]*sizeof(real));
+				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(data_t), 
+				lcrp->lnRows[*me]*sizeof(data_t));
 	}
 	
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
 	
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT)) {
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(data_t));
 	}
 #else
 	int i, j;
-	real hlp1;
+	data_t hlp1;
 	if (spmvmOptions == 777) printf("dummy\n"); //TODO
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
@@ -145,7 +145,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, 
-				lcrp->lnRows[*me]*sizeof(real));
+				lcrp->lnRows[*me]*sizeof(data_t));
 	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
@@ -164,15 +164,15 @@ inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_
 
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(real),
-				lcrp->lnRows[*me]*sizeof(real));
+				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(data_t),
+				lcrp->lnRows[*me]*sizeof(data_t));
 	}
 
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
 
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(real));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(data_t));
 } 
 #endif //OPENCL
 

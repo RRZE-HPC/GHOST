@@ -58,9 +58,9 @@ void freeHostMemory( void* );
 void CL_finish(int);
 
 void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
-void CL_vecscal(cl_mem a, real s, int nRows);
-void CL_axpy(cl_mem a, cl_mem b, real s, int nRows);
-void CL_dotprod(cl_mem a, cl_mem b, real *out, int nRows);
+void CL_vecscal(cl_mem a, data_t s, int nRows);
+void CL_axpy(cl_mem a, cl_mem b, data_t s, int nRows);
+void CL_dotprod(cl_mem a, cl_mem b, data_t *out, int nRows);
 void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
 void CL_enqueueKernel(cl_kernel kernel);
  
@@ -72,10 +72,10 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int));
-void              SpMVM_referenceSolver(CR_TYPE *lcrp, real *rhs, real *lhs, int nIter, int spmvmOptions);
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int));
+void              SpMVM_referenceSolver(CR_TYPE *lcrp, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
-HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, real (*fp)(int));
+HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, data_t (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
@@ -122,5 +122,5 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );
 void SpMVM_freeLCRP( LCRP_TYPE* const );
-void SpMVM_permuteVector( real* vec, int* perm, int len);
+void SpMVM_permuteVector( data_t* vec, int* perm, int len);
 #endif

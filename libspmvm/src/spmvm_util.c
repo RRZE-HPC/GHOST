@@ -60,7 +60,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 
 	if(me==0){
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
-				lcrp->nEnts*(sizeof(real)+sizeof(int)))/(1024*1024);
+				lcrp->nEnts*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
 		printf("-------        Matrix information       -------\n");
 		printf("-----------------------------------------------\n");
@@ -163,7 +163,7 @@ void SpMVM_printEnvInfo()
 
 }
 
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int))
 {
 
 	int me;
@@ -176,7 +176,7 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, real (*fp)(int))
 	}
 }
 
-void SpMVM_referenceSolver(CR_TYPE *cr, real *rhs, real *lhs, int nIter, int spmvmOptions) 
+void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions) 
 {
 
 	int iteration;
@@ -255,17 +255,17 @@ void SpMVM_zeroVector(VECTOR_TYPE *vec)
 
 }
 
-HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, real (*fp)(int)) 
+HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, data_t (*fp)(int)) 
 {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(real) );
+	size_val = (size_t)( nRows * sizeof(data_t) );
 	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (real*) allocateMemory( size_val, "vec->val");
+	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 	if (fp) {
@@ -294,11 +294,11 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(real) );
+	size_val = (size_t)( nRows * sizeof(data_t) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (real*) allocateMemory( size_val, "vec->val");
+	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 #pragma omp parallel for schedule(static) 
@@ -405,7 +405,7 @@ CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
 		cr->nEnts     = 1;
 		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
 		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
-		cr->val       = (real*)  allocateMemory(sizeof(real), "val");
+		cr->val       = (data_t*)  allocateMemory(sizeof(data_t), "val");
 	}
 	return cr;
 
@@ -413,7 +413,7 @@ CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
-	real *dtmp;
+	data_t *dtmp;
 
 	dtmp = v1->val;
 	v1->val = v2->val;
@@ -430,12 +430,12 @@ void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2)
 void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 {
 	int i;
-	real sum = 0;
+	data_t sum = 0;
 
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	real f = 1./SQRT(sum);
+	data_t f = 1./SQRT(sum);
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -447,12 +447,12 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 {
 	int i;
-	real sum = 0;
+	data_t sum = 0;
 
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	real f = 1./SQRT(sum);
+	data_t f = 1./SQRT(sum);
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -461,14 +461,14 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(data_t)), "vec->val",  vec->val );
 		free( vec );
 	}
 }
 
 void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(real)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(data_t)), "vec->val",  vec->val );
 #ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
@@ -485,7 +485,7 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 
 		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
 		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
-		size_val        = (size_t)( cr->nEnts     * sizeof( real) );
+		size_val        = (size_t)( cr->nEnts     * sizeof( data_t) );
 
 		freeMemory( size_rowOffset,  "cr->rowOffset", cr->rowOffset );
 		freeMemory( size_col,        "cr->col",       cr->col );
@@ -532,10 +532,10 @@ void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {
 	}
 }
 
-void SpMVM_permuteVector( real* vec, int* perm, int len) {
+void SpMVM_permuteVector( data_t* vec, int* perm, int len) {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	int i;
-	real* tmp;
+	data_t* tmp;
 
 	if (perm == NULL) {
 		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
@@ -544,7 +544,7 @@ void SpMVM_permuteVector( real* vec, int* perm, int len) {
 	}
 
 
-	tmp = (real*)allocateMemory(sizeof(real)*len, "permute tmp");
+	tmp = (data_t*)allocateMemory(sizeof(data_t)*len, "permute tmp");
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {

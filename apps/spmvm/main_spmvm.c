@@ -11,7 +11,7 @@
 //#define CHECK // compare with reference solution
 
 
-static real rhsVal (int i) 
+static data_t rhsVal (int i) 
 {
 #ifdef COMPLEX
 	return i+1.0 + I*(i+1.5);

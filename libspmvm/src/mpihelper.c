@@ -398,11 +398,11 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 	 *******   Allocate memory for matrix in distributed CRS storage      *******
 	 ***************************************************************************/
 
-	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( real ) );
+	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( data_t ) );
 	size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 	size_ptr  = (size_t)( (size_t)(lcrp->lnRows[me]+1) * sizeof( int ) );
 
-	lcrp->val      = (real*)    allocateMemory( size_val,  "lcrp->val" ); 
+	lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
 	lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
 	lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
 
@@ -658,8 +658,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 		IF_DEBUG(1) printf("PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d\n", 
 				me, lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
-		size_lval = (size_t)( lnEnts_l             * sizeof(real) ); 
-		size_rval = (size_t)( lnEnts_r             * sizeof(real) ); 
+		size_lval = (size_t)( lnEnts_l             * sizeof(data_t) ); 
+		size_rval = (size_t)( lnEnts_r             * sizeof(data_t) ); 
 		size_lcol = (size_t)( lnEnts_l             * sizeof(int) ); 
 		size_rcol = (size_t)( lnEnts_r             * sizeof(int) ); 
 		size_lptr = (size_t)( (lcrp->lnRows[me]+1) * sizeof(int) ); 
@@ -670,8 +670,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( size_rptr, "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( size_lcol, "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( size_rcol, "lcrp->rcol" ); 
-		lcrp->lval       = (real*) allocateMemory( size_lval, "lcrp->lval" ); 
-		lcrp->rval       = (real*) allocateMemory( size_rval, "lcrp->rval" ); 
+		lcrp->lval       = (data_t*) allocateMemory( size_lval, "lcrp->lval" ); 
+		lcrp->rval       = (data_t*) allocateMemory( size_rval, "lcrp->rval" ); 
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) lcrp->lval[i] = 0.0;
@@ -738,8 +738,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-		lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
-		lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
+		lcrp->lval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->lval" ); 
+		lcrp->rval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->rval" ); 
 	}
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
@@ -924,11 +924,11 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	 *******   Allocate memory for matrix in distributed CRS storage      *******
 	 ***************************************************************************/
 
-	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( real ) );
+	size_val  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( data_t ) );
 	size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 	size_ptr  = (size_t)( (size_t)(lcrp->lnRows[me]+1) * sizeof( int ) );
 
-	lcrp->val      = (real*)    allocateMemory( size_val,  "lcrp->val" ); 
+	lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
 	lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
 	lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
 
@@ -973,7 +973,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	ierr = MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, status);
 
 	/* read val */
-	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(real);
+	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
 	IF_DEBUG(1) printf("PE%i: read val -- offset=%i\n",me,(int)offset_in_file);
 	ierr = MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET);
 	ierr = MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, status);
@@ -1206,8 +1206,8 @@ sweepMemory(GLOBAL);
 		IF_DEBUG(1) printf("PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d\n", 
 				me, lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
-		size_lval = (size_t)( lnEnts_l             * sizeof(real) ); 
-		size_rval = (size_t)( lnEnts_r             * sizeof(real) ); 
+		size_lval = (size_t)( lnEnts_l             * sizeof(data_t) ); 
+		size_rval = (size_t)( lnEnts_r             * sizeof(data_t) ); 
 		size_lcol = (size_t)( lnEnts_l             * sizeof(int) ); 
 		size_rcol = (size_t)( lnEnts_r             * sizeof(int) ); 
 		size_lptr = (size_t)( (lcrp->lnRows[me]+1) * sizeof(int) ); 
@@ -1218,8 +1218,8 @@ sweepMemory(GLOBAL);
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( size_rptr, "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( size_lcol, "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( size_rcol, "lcrp->rcol" ); 
-		lcrp->lval       = (real*) allocateMemory( size_lval, "lcrp->lval" ); 
-		lcrp->rval       = (real*) allocateMemory( size_rval, "lcrp->rval" ); 
+		lcrp->lval       = (data_t*) allocateMemory( size_lval, "lcrp->lval" ); 
+		lcrp->rval       = (data_t*) allocateMemory( size_rval, "lcrp->rval" ); 
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) lcrp->lval[i] = 0.0;
@@ -1287,8 +1287,8 @@ sweepMemory(GLOBAL);
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-		lcrp->lval       = (real*) allocateMemory( sizeof(real), "lcrp->lval" ); 
-		lcrp->rval       = (real*) allocateMemory( sizeof(real), "lcrp->rval" ); 
+		lcrp->lval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->lval" ); 
+		lcrp->rval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->rval" ); 
 	}
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);

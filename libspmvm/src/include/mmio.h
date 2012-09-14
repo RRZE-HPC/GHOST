@@ -38,7 +38,7 @@ int mm_write_mtx_crd(char fname[], int M, int N, int nz, int II[], int J[],
 #define mm_is_array(typecode)	((typecode)[1]=='A')
 
 #define mm_is_complex(typecode)	((typecode)[2]=='C')
-#define mm_is_real(typecode)		((typecode)[2]=='R')
+#define mm_is_data_t(typecode)		((typecode)[2]=='R')
 #define mm_is_pattern(typecode)	((typecode)[2]=='P')
 #define mm_is_integer(typecode) ((typecode)[2]=='I')
 
@@ -59,7 +59,7 @@ int mm_is_valid(MM_typecode matcode);		/* too complex for a macro */
 #define mm_set_sparse(typecode)	mm_set_coordinate(typecode)
 
 #define mm_set_complex(typecode)((*typecode)[2]='C')
-#define mm_set_real(typecode)	((*typecode)[2]='R')
+#define mm_set_data_t(typecode)	((*typecode)[2]='R')
 #define mm_set_pattern(typecode)((*typecode)[2]='P')
 #define mm_set_integer(typecode)((*typecode)[2]='I')
 
@@ -109,7 +109,7 @@ int mm_is_valid(MM_typecode matcode);		/* too complex for a macro */
 #define MM_COORDINATE_STR "coordinate" 
 #define MM_SPARSE_STR	"coordinate"
 #define MM_COMPLEX_STR	"complex"
-#define MM_REAL_STR		"real"
+#define MM_REAL_STR		"data_t"
 #define MM_INT_STR		"integer"
 #define MM_GENERAL_STR  "general"
 #define MM_SYMM_STR		"symmetric"
@@ -124,7 +124,7 @@ int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J,
         double **val, MM_typecode *matcode);
 int mm_read_mtx_crd_data(FILE *f, int nz, int II[], int J[],
 		double val[], MM_typecode matcode);
-int mm_read_mtx_crd_entry(FILE *f, int *II, int *J, double *real, double *img,
+int mm_read_mtx_crd_entry(FILE *f, int *II, int *J, double *data_t, double *img,
 			MM_typecode matcode);
 
 int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
