@@ -147,7 +147,7 @@ typedef float data_t;
 #ifdef DOUBLE
 #ifdef COMPLEX
 #define ABS(a) cabs(a)
-#define REAL(a) cdata_t(a)
+#define REAL(a) creal(a)
 #define IMAG(a) cimag(a)
 #define SQRT(a) csqrt(a)
 #else
@@ -161,7 +161,7 @@ typedef float data_t;
 #ifdef SINGLE
 #ifdef COMPLEX
 #define ABS(a) cabsf(a)
-#define REAL(a) cdata_tf(a)
+#define REAL(a) crealf(a)
 #define IMAG(a) cimagf(a)
 #define SQRT(a) csqrtf(a)
 #else
@@ -390,7 +390,5 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
 double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 /******************************************************************************/
-
-#define DATA_T data_t
 
 #endif
