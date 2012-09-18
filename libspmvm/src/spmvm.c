@@ -124,14 +124,12 @@ void SpMVM_finish()
 	likwid_markerClose();
 #endif
 
-	MPI_safecall(MPI_Finalize());
 
 #ifdef OPENCL
 	CL_finish(options);
 #endif
 
-
-
+	MPI_Finalize();
 
 }
 
@@ -166,16 +164,22 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 
 	if (fp) {
 #pragma omp parallel for schedule(static)
-		for (i=0; i<nRows; i++) 
+		for (i=0; i<lcrp->lnRows[me]; i++) 
 			vec->val[i] = fp(lcrp->lfRow[me]+i);
-
+#pragma omp parallel for schedule(static)
+		for (i=lcrp->lnRows[me]; i<nRows; i++) 
+			vec->val[i] = fp(lcrp->lfRow[me]+i);
 	}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(static)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
+		for (i=0; i<lcrp->lnRows[me]; i++) vec->val[i] = 0.+I*0.;
+#pragma omp parallel for schedule(static)
+		for (i=lcrp->lnRows[me]; i<nRows; i++) vec->val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(static)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.;
+		for (i=0; i<lcrp->lnRows[me]; i++) vec->val[i] = 0.;
+#pragma omp parallel for schedule(static)
+		for (i=lcrp->lnRows[me]; i<nRows; i++) vec->val[i] = 0.;
 #endif
 	}
 	
@@ -195,12 +199,11 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 	LCRP_TYPE *lcrp;
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
-	if (me == 0){
+	if (me == 0) { 
+		// root process reads row pointers (parallel IO) oder entire matrix
 		if (!isMMfile(matrixPath)){
-
-			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-
 			if (options & SPMVM_OPTION_SERIAL_IO)
 				readCRbinFile(cr, matrixPath);
 			else
@@ -210,16 +213,6 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 			cr = convertMMToCRMatrix( mm );
 			freeMMMatrix(mm);
 		}
-
-	} else{
-
-		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
-		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr");
-		cr->nRows     = 0;
-		cr->nEnts     = 1;
-		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
-		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
-		cr->val       = (data_t*)  allocateMemory(sizeof(data_t), "val");
 	}
 	if (options & SPMVM_OPTION_SERIAL_IO)
 		lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
@@ -235,6 +228,9 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
 	CL_uploadCRS ( lcrp, formats, options);
 #endif
+
+	SpMVM_freeCRS(cr);
+
 	return lcrp;
 
 }
