@@ -1,4 +1,5 @@
 OPENCL=0
+DDT=0
 
 CUDA_INC=-I$(CUDA_HOME)/include
 CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
@@ -13,6 +14,11 @@ LIBS+=-l$(PREFIX)spmvm
 
 CC=mpicc
 CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+
+ifeq ($(DDT),1)
+LIBS+=/apps/ddt/ddt3.1-Redhat-5.2-x86_64/lib/64/libdmallocth.a
+endif
+
 
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
@@ -29,7 +35,7 @@ endif
 
 $(PREFIX)spmvm.x: main_spmvm.o
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
+	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
 
 clean:
 	@echo "==> Clean"
