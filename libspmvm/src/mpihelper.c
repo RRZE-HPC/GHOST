@@ -982,6 +982,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
 	IF_DEBUG(1) printf("PE%i: read col -- offset=%i | %d\n",me,(int)offset_in_file,lcrp->lfEnt[me]);
 	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+	MPI_safecall(MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
 
 	/* read val */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
