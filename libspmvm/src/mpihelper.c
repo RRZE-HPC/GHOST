@@ -202,8 +202,13 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 	lcrp->localMatrix = NULL;
 	lcrp->remoteMatrix = NULL;
 
-	lcrp->nEnts = cr->nEnts;
-	lcrp->nRows = cr->nRows;
+	if (me==0) {
+		lcrp->nEnts = cr->nEnts;
+		lcrp->nRows = cr->nRows;
+	}
+
+	MPI_safecall(MPI_Bcast(&lcrp->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&lcrp->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
 #pragma omp parallel
 	lcrp->threads = omp_get_num_threads(); 
 
@@ -360,6 +365,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 			}
 
 
+			free(loc_count);
 		}
 		else {
 
@@ -830,8 +836,22 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
-	lcrp->nEnts = cr->nEnts;
-	lcrp->nRows = cr->nRows;
+	lcrp->fullRowPerm = NULL;
+	lcrp->fullInvRowPerm = NULL;
+	lcrp->splitRowPerm = NULL;
+	lcrp->splitInvRowPerm = NULL;
+	lcrp->fullMatrix = NULL;
+	lcrp->localMatrix = NULL;
+	lcrp->remoteMatrix = NULL;
+	
+	if (me==0) {
+		lcrp->nEnts = cr->nEnts;
+		lcrp->nRows = cr->nRows;
+	}
+
+	MPI_safecall(MPI_Bcast(&lcrp->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&lcrp->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
+
 #pragma omp parallel
 	lcrp->threads = omp_get_num_threads(); 
 
@@ -950,14 +970,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 	/* replace scattering with read-in */
-	/*
-	   ierr = MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_DOUBLE, 
-	   lcrp->val, lcrp->lnEnts[me],  MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-	   ierr = MPI_Scatterv ( cr->col, lcrp->lnEnts, lcrp->lfEnt, MPI_INTEGER,
-	   lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD);
-	 */
-
 	IF_DEBUG(1) printf("PE%i: opening file %s for parallel read-in\n",me,matrixPath);
 	ierr = MPI_File_open(MPI_COMM_WORLD, matrixPath, MPI_MODE_RDONLY, info, &file_handle);
 
@@ -1134,12 +1146,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	freeMemory ( size_col,  "globcol",        globcol);
 	freeMemory ( size_revc, "revcol",         revcol);
 	freeMemory ( size_pval, "present_values", present_values ); 
-
-	/* sollte hier auch nicht Not tun
-#ifdef CMEM
-sweepMemory(GLOBAL);
-#endif
-	 */
 
 	/****************************************************************************
 	 *******               Finally setup compressed wishlist              *******
