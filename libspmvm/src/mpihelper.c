@@ -821,7 +821,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	MPI_Info info = MPI_INFO_NULL;
 	MPI_File file_handle;
 	MPI_Offset offset_in_file;
-	MPI_Status *status=NULL;
+	MPI_Status status;
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -981,14 +981,13 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	/* read col */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
 	IF_DEBUG(1) printf("PE%i: read col -- offset=%i | %d\n",me,(int)offset_in_file,lcrp->lfEnt[me]);
-	ierr = MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET);
-	ierr = MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, status);
+	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 
 	/* read val */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
 	IF_DEBUG(1) printf("PE%i: read val -- offset=%i\n",me,(int)offset_in_file);
-	ierr = MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET);
-	ierr = MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, status);
+	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+	MPI_safecall(MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
 
 	ierr = MPI_File_close(&file_handle);
 
