@@ -479,7 +479,17 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
 
 void SpMVM_freeCRS( CR_TYPE* const cr ) {
 
-	size_t size_rowOffset, size_col, size_val;
+	if (cr) {
+		if (cr->rowOffset)
+			free(cr->rowOffset);
+		if (cr->col)
+			free(cr->col);
+		if (cr->val)
+			free(cr->val);
+		free(cr);
+	}
+	//TODO
+/*	size_t size_rowOffset, size_col, size_val;
 
 	if( cr ) {
 
@@ -492,7 +502,7 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 		freeMemory( size_val,        "cr->val",       cr->val );
 		freeMemory( sizeof(CR_TYPE), "cr",            cr );
 
-	}
+	}*/
 }
 
 void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {

@@ -229,7 +229,8 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 	CL_uploadCRS ( lcrp, formats, options);
 #endif
 
-	SpMVM_freeCRS(cr);
+//	if (me==0)
+//	SpMVM_freeCRS(cr); FIXME
 
 	return lcrp;
 
