@@ -1,10 +1,10 @@
 APPS=$(wildcard */)
 
 all: $(APPS)
-	for i in $(APPS); do make -C $$i; done
+	@(for i in $(APPS); do echo "==> Enter $$i"; make -s -C $$i; done)
 
 clean:
-	for i in $(APPS); do make -C $$i clean; done
+	@(for i in $(APPS); do echo "==> Enter $$i"; make -s -C $$i clean; done)
 
 distclean:
-	for i in $(APPS); do make -C $$i distclean; done
+	@(for i in $(APPS); do echo "==> Enter $$i"; make -s -C $$i distclean; done)
