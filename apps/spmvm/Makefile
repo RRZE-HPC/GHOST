@@ -1,10 +1,7 @@
 OPENCL=0
 DDT=0
 
-CUDA_INC=-I$(CUDA_HOME)/include
-CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
-
-LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
+LIBSPMVMPATH=/home/hpc/h021z/di56xuq2/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
@@ -35,7 +32,7 @@ endif
 
 $(PREFIX)spmvm.x: main_spmvm.o
 	@echo "==> Link $@"
-	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
+	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
 
 clean:
 	@echo "==> Clean"
