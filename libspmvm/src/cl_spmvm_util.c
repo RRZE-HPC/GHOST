@@ -1,5 +1,6 @@
 #include "spmvm_util.h"
 #include "cl_matricks.h"
+#include "cl_kernel.h"
 #include "matricks.h"
 #include "mpihelper.h"
 #include <string.h>
@@ -63,8 +64,8 @@ void CL_init()
 
 	IF_DEBUG(1) {
 		if ( 0 == rank ) {
-			printf("## rank %i/%i on %s --\t Platform: %u, \
-					No. devices of desired type: %u\n", 
+			printf("## rank %i/%i on %s --\t Platform: %u, "
+					"No. devices of desired type: %u\n", 
 					rank, size-1, hostname, platform, numDevices);
 
 			for( device = 0; device < numDevices; ++device) {
@@ -137,12 +138,8 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 {
 	cl_program program;
 	cl_int err;
-	FILE *fp;
-	char *source_str;
-	size_t source_size;
 	char *build_log;
 	size_t log_size;
-	long filesize;
 	cl_device_id deviceID;
 	int size = getNumberOfRanksOnNode();
 	int rank = getLocalRank();
@@ -152,28 +149,11 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
-	fp = fopen(filename, "r");
-	if (!fp) {
-		char cerr[] = "Failed to load kernel file: ";
-		char msg[strlen(cerr)+strlen(filename)];
-		strcpy(cerr,msg);
-		strcat(msg,filename);
-		SpMVM_abort(msg);
-	}
-
-	fseek(fp,0L,SEEK_END);
-	filesize = ftell(fp);
-	fseek(fp,0L,SEEK_SET);
-
-	source_str = (char*)allocateMemory(filesize,"source");
-	source_size = fread( source_str, 1, filesize, fp);
-	fclose( fp );
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
 			size-1, hostname,basename(filename));
-
-	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
-			&source_size,&err);
+	program = clCreateProgramWithSource(context,1,(const char **)&kernelSource,
+			NULL,&err);
 	CL_checkerror(err);
 
 	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program with \"%s\""
@@ -193,12 +173,12 @@ cl_program CL_registerProgram(char *filename, const char *opt)
 	return program;
 }
 
-cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr )
+cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag )
 {
 	cl_mem mem;
 	cl_int err;
 
-	mem = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,bytesize,
+	mem = clCreateBuffer(context,flag|CL_MEM_USE_HOST_PTR,bytesize,
 			hostPtr,&err);
 	CL_checkerror(err);
 

@@ -45,7 +45,7 @@ void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
 cl_mem CL_allocDeviceMemory( size_t );
-cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );
+cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag );
 cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
 void CL_copyDeviceToHost( void*, cl_mem, size_t );

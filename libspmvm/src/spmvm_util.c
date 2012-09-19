@@ -309,7 +309,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 #ifdef CL_IMAGE
 	vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,vec->val );
 #else
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
+	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,CL_MEM_READ_WRITE );
 #endif
 	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
 	//printf("before: %p\n",vec->val);

@@ -141,7 +141,6 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 	int nRows;
 	int me;
 
-	//TODO OpenCL flags depending on type
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	switch (type) {
@@ -184,7 +183,21 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 	}
 	
 #ifdef OPENCL
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
+	int flag;
+	switch (type) {
+		case VECTOR_TYPE_LHS:
+			if (options & SPMVM_OPTION_AXPY)
+				flag = CL_MEM_READ_WRITE;
+			else
+				flag = CL_MEM_WRITE_ONLY;
+			break;
+		case VECTOR_TYPE_RHS:
+			flag = CL_MEM_READ_ONLY;
+			break;
+		case VECTOR_TYPE_BOTH:
+			flag = CL_MEM_READ_WRITE;
+	}
+	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 	CL_uploadVector(vec);
 #endif
 
