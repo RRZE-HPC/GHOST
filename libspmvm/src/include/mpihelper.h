@@ -6,10 +6,12 @@
 #include <mpi.h>
 
 void       setupSingleNodeComm();
-LCRP_TYPE* setup_communication(CR_TYPE* const, int, int);
-LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_dist, int options);
+LCRP_TYPE* setup_communication(CR_TYPE* const, int);
+LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int options);
 int getNumberOfNodes();
 int getLocalRank();
 int getNumberOfRanksOnNode();
+int getNumberOfPhysicalCores();
+int getNumberOfHwThreads();
 
 #endif

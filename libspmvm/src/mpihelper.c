@@ -35,10 +35,36 @@ static int getProcessorId() {
         }
     }
     return processorId;
+}
+
+
+int getNumberOfPhysicalCores()
+{
+	FILE *fp;
+	char nCoresS[4];
+	int nCores;
+
+	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
+	if (!fp) {
+		printf("Failed to get number of physical cores\n");
+	}
+
+	fgets(nCoresS,sizeof(nCoresS)-1,fp);
+	nCores = atoi(nCoresS);
+
+	pclose(fp);
+
+	return nCores;
 
 }
 
-int getLocalRank() {
+int getNumberOfHwThreads()
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+int getLocalRank() 
+{
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( single_node_comm, &rank));
 	
@@ -120,7 +146,7 @@ void setupSingleNodeComm()
  * entsprechenden Daten dann an diejenigen PEs verteilen die es betrifft.
  *****************************************************************************/
 
-LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
+LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 {
 
 	/* Counting and auxilliary variables */
@@ -227,7 +253,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 	 ***************************************************************************/
 	if (me==0){
 
-		if (work_dist == WORKDIST_EQUAL_NZE){
+		if (options & SPMVM_OPTION_WORKDIST_NZE){
 			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_NZE on each PE\n");
 			target_nnz = (cr->nEnts/lcrp->nodes)+1; /* sonst bleiben welche uebrig! */
 
@@ -244,7 +270,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 			}
 
 		}
-		else if (work_dist == WORKDIST_EQUAL_LNZE){
+		else if (options & SPMVM_OPTION_WORKDIST_LNZE){
 			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_LNZE on each PE\n");
 
 			/* A first attempt should be blocks of equal size */
@@ -757,7 +783,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int work_dist, int options)
 	return lcrp;
 }
 
-LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_dist, int options)
+LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int options)
 {
 
 	/* Counting and auxilliary variables */
@@ -859,8 +885,13 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	 *******  Calculate a fair partitioning of NZE and ROWS on master PE  *******
 	 ***************************************************************************/
 	if (me==0){
+		if (options & SPMVM_OPTION_WORKDIST_LNZE){
+			printf("SPMVM_OPTION_WORKDIST_LNZE has not (yet) been implemented"
+					"for parallel IO! Switching to SPMVM_OPTION_WORKDIST_NZE\n");
+			options |= SPMVM_OPTION_WORKDIST_NZE;
+		}
 
-		if (work_dist == WORKDIST_EQUAL_NZE){
+		if (options & SPMVM_OPTION_WORKDIST_NZE){
 			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_NZE on each PE\n");
 			target_nnz = (cr->nEnts/lcrp->nodes)+1; /* sonst bleiben welche uebrig! */
 
@@ -970,6 +1001,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int work_
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
 	IF_DEBUG(1) printf("PE%i: read col -- offset=%i | %d\n",me,(int)offset_in_file,lcrp->lfEnt[me]);
 	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+	MPI_safecall(MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
 
 	/* read val */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);

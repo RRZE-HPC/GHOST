@@ -91,13 +91,15 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 	}
 }
 
-void SpMVM_printEnvInfo() 
+void SpMVM_printEnvInfo(int options) 
 {
 
 	int me;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	int nnodes = getNumberOfNodes();
+	int nphyscores = getNumberOfPhysicalCores();
+	int ncores = getNumberOfHwThreads();
 
 #ifdef OPENCL
 	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
@@ -116,8 +118,12 @@ void SpMVM_printEnvInfo()
 		printf("-----------------------------------------------\n");
 		printf("-------       System information        -------\n");
 		printf("-----------------------------------------------\n");
-		printf("MPI processes                    : %12d\n", nproc); 
 		printf("Nodes                            : %12d\n", nnodes); 
+		//printf("MPI processes                    : %12d\n", nproc); 
+		printf("MPI processes  per node          : %12d\n", nproc/nnodes); 
+		printf("Physical cores per node          : %12d\n", nphyscores); 
+		printf("HW threads     per node          : %12d\n", ncores); 
+		printf("OpenMP threads per node          : %12d\n", nproc*nthreads);
 		printf("OpenMP threads per process       : %12d\n", nthreads);
 #ifdef OPENCL
 		printf("OpenCL devices                   :\n");
@@ -134,7 +140,7 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
-		printf("Work distribution scheme         : %12s\n", WORKDIST_NAMES[WORKDIST_DESIRED]);
+		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
 #ifdef OPENCL
 		printf("OpenCL support                   :      enabled\n");
 #else
@@ -309,7 +315,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 #ifdef CL_IMAGE
 	vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,vec->val );
 #else
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val );
+	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,CL_MEM_READ_WRITE );
 #endif
 	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
 	//printf("before: %p\n",vec->val);
@@ -360,7 +366,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+	LCRP_TYPE *lcrp = setup_communication(cr, options);
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
@@ -479,7 +485,17 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
 
 void SpMVM_freeCRS( CR_TYPE* const cr ) {
 
-	size_t size_rowOffset, size_col, size_val;
+	if (cr) {
+		if (cr->rowOffset)
+			free(cr->rowOffset);
+		if (cr->col)
+			free(cr->col);
+		if (cr->val)
+			free(cr->val);
+		free(cr);
+	}
+	//TODO
+/*	size_t size_rowOffset, size_col, size_val;
 
 	if( cr ) {
 
@@ -492,7 +508,7 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 		freeMemory( size_val,        "cr->val",       cr->val );
 		freeMemory( sizeof(CR_TYPE), "cr",            cr );
 
-	}
+	}*/
 }
 
 void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {
@@ -580,6 +596,16 @@ char * SpMVM_kernelName(int kernel) {
 			return "invalid";
 			break;
 	}
+}
+
+char *SpMVM_workdistName(int options)
+{
+	if (options & SPMVM_OPTION_WORKDIST_NZE)
+		return "equal nze";
+	else if (options & SPMVM_OPTION_WORKDIST_LNZE)
+		return "equal lnze";
+	else
+		return "equal rows";
 }
 
 void SpMVM_abort(char *s) {

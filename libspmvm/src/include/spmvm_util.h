@@ -45,7 +45,7 @@ void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
 cl_mem CL_allocDeviceMemory( size_t );
-cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr );
+cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag );
 cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
 void CL_copyDeviceToHost( void*, cl_mem, size_t );
@@ -71,7 +71,7 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
-void              SpMVM_printEnvInfo();
+void              SpMVM_printEnvInfo(int options);
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int));
 void              SpMVM_referenceSolver(CR_TYPE *lcrp, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
@@ -80,6 +80,7 @@ VECTOR_TYPE*      SpMVM_newVector( const int nRows );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
 void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
+char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
 void SpMVM_abort(char *s);
 

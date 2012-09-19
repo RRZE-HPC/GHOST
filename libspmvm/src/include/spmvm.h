@@ -61,6 +61,10 @@ extern const char *SPM_FORMAT_NAMES[];
 #define SPMVM_OPTION_NO_SPLIT_KERNELS    (0x1<<5) // not configure split kernels
 #define SPMVM_OPTION_NO_TASKMODE_KERNEL  (0x1<<6) // not configure task mode
 #define SPMVM_OPTION_SERIAL_IO   (0x1<<7) // read matrix with one process only
+#define SPMVM_OPTION_PINNING   (0x1<<8)   // pin threads to physical cores
+#define SPMVM_OPTION_PINNING_SMT   (0x1<<9) // pin threads to _all_ cores
+#define SPMVM_OPTION_WORKDIST_NZE   (0x1<<10) // distribute by # of nonzeros
+#define SPMVM_OPTION_WORKDIST_LNZE   (0x1<<11) // distribute by # of loc nonzeros
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /******************************************************************************/
 
@@ -75,22 +79,12 @@ extern const char *SPM_FORMAT_NAMES[];
 extern const char *DATATYPE_NAMES[];
 /******************************************************************************/
 
-/******************************************************************************/
-/*----  Available work distributions  ----------------------------------------*/
-/******************************************************************************/
-#define WORKDIST_EQUAL_ROWS 0 // equal number of rows for each process
-#define WORKDIST_EQUAL_NZE  1 // equal number of nonzeros for each process 
-#define WORKDIST_EQUAL_LNZE 2 // equal number of local nonzeros for each process
-extern const char *WORKDIST_NAMES[];
-/******************************************************************************/
-
 #define IF_DEBUG(level) if( DEBUG >= level )
 
 
 /******************************************************************************/
 /*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
-#define WORKDIST_DESIRED WORKDIST_EQUAL_ROWS
 #define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
 /******************************************************************************/
 
