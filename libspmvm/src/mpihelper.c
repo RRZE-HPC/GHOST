@@ -56,10 +56,11 @@ int getNumberOfPhysicalCores()
 
 	return nCores;
 
+}
 
-
-
-
+int getNumberOfHwThreads()
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
 int getLocalRank() 

@@ -98,6 +98,8 @@ void SpMVM_printEnvInfo()
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	int nnodes = getNumberOfNodes();
+	int nphyscores = getNumberOfPhysicalCores();
+	int ncores = getNumberOfHwThreads();
 
 #ifdef OPENCL
 	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
@@ -116,8 +118,11 @@ void SpMVM_printEnvInfo()
 		printf("-----------------------------------------------\n");
 		printf("-------       System information        -------\n");
 		printf("-----------------------------------------------\n");
-		printf("MPI processes                    : %12d\n", nproc); 
 		printf("Nodes                            : %12d\n", nnodes); 
+		//printf("MPI processes                    : %12d\n", nproc); 
+		printf("MPI processes  per node          : %12d\n", nproc/nnodes); 
+		printf("Physical cores per node          : %12d\n", nphyscores); 
+		printf("HW threads     per node          : %12d\n", ncores); 
 		printf("OpenMP threads per process       : %12d\n", nthreads);
 #ifdef OPENCL
 		printf("OpenCL devices                   :\n");

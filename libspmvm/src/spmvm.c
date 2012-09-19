@@ -12,7 +12,6 @@
 #include <sys/time.h>
 
 
-#include <unistd.h>
 #include <string.h>
 #include <sched.h>
 #include <omp.h>
@@ -99,7 +98,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 		if (spmvmOptions & SPMVM_OPTION_PINNING)
 			nCores = nPhysCores;
 		else
-			nCores = sysconf(_SC_NPROCESSORS_CONF);
+			nCores = getNumberOfHwThreads();
 
 		int offset = nPhysCores/getNumberOfRanksOnNode();
 		omp_set_num_threads(nCores/getNumberOfRanksOnNode());

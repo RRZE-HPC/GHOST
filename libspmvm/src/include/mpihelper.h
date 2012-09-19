@@ -12,5 +12,6 @@ int getNumberOfNodes();
 int getLocalRank();
 int getNumberOfRanksOnNode();
 int getNumberOfPhysicalCores();
+int getNumberOfHwThreads();
 
 #endif
