@@ -35,10 +35,35 @@ static int getProcessorId() {
         }
     }
     return processorId;
+}
+
+
+int getNumberOfPhysicalCores()
+{
+	FILE *fp;
+	char nCoresS[4];
+	int nCores;
+
+	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
+	if (!fp) {
+		printf("Failed to get number of physical cores\n");
+	}
+
+	fgets(nCoresS,sizeof(nCoresS)-1,fp);
+	nCores = atoi(nCoresS);
+
+	pclose(fp);
+
+	return nCores;
+
+
+
+
 
 }
 
-int getLocalRank() {
+int getLocalRank() 
+{
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( single_node_comm, &rank));
 	

@@ -61,6 +61,8 @@ extern const char *SPM_FORMAT_NAMES[];
 #define SPMVM_OPTION_NO_SPLIT_KERNELS    (0x1<<5) // not configure split kernels
 #define SPMVM_OPTION_NO_TASKMODE_KERNEL  (0x1<<6) // not configure task mode
 #define SPMVM_OPTION_SERIAL_IO   (0x1<<7) // read matrix with one process only
+#define SPMVM_OPTION_PINNING   (0x1<<8)   // pin threads to physical cores
+#define SPMVM_OPTION_PINNING_SMT   (0x1<<9) // pin threads to _all_ cores
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /******************************************************************************/
 
