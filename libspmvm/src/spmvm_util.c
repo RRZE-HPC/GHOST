@@ -123,6 +123,7 @@ void SpMVM_printEnvInfo()
 		printf("MPI processes  per node          : %12d\n", nproc/nnodes); 
 		printf("Physical cores per node          : %12d\n", nphyscores); 
 		printf("HW threads     per node          : %12d\n", ncores); 
+		printf("OpenMP threads per node          : %12d\n", nproc*nthreads);
 		printf("OpenMP threads per process       : %12d\n", nthreads);
 #ifdef OPENCL
 		printf("OpenCL devices                   :\n");
