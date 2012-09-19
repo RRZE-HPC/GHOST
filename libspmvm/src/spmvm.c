@@ -92,10 +92,10 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM));
 #endif
 
-	if (spmvmOptions & SPMVM_OPTION_PINNING || spmvmOptions & SPMVM_OPTION_PINNING_SMT) {
+	if (spmvmOptions & SPMVM_OPTION_PIN || spmvmOptions & SPMVM_OPTION_PIN_SMT) {
 		int nCores;
 		int nPhysCores = getNumberOfPhysicalCores();
-		if (spmvmOptions & SPMVM_OPTION_PINNING)
+		if (spmvmOptions & SPMVM_OPTION_PIN)
 			nCores = nPhysCores;
 		else
 			nCores = getNumberOfHwThreads();
@@ -107,7 +107,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			int error;
 			int coreNumber;
 	
-			if (spmvmOptions & SPMVM_OPTION_PINNING)
+			if (spmvmOptions & SPMVM_OPTION_PIN)
 				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
 			else
 				coreNumber = omp_get_thread_num()/2+(offset*(getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
