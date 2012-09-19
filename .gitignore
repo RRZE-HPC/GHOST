@@ -4,3 +4,4 @@ pbshosts*
 *.o
 *.a
 obj/
+tags

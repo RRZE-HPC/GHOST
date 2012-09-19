@@ -249,7 +249,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 
 	int i;
-	size_t size_offs, size_col, size_val;
+	size_t size_offs;
 	/* Number of successfully read data items */
 	int datatype;
 	FILE* RESTFILE;
@@ -276,12 +276,7 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	IF_DEBUG(2) printf("Allocate memory for arrays\n");
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
-	size_col  = (size_t)( sizeof(int) );
-	size_val  = (size_t)( sizeof(data_t) );
-
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
-	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (data_t*) allocateMemory( size_val,  "val" );
 
 	IF_DEBUG(2){
 		printf("Reading array with row-offsets\n");
@@ -303,7 +298,8 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 
 	return;
 }
-void readCRbinFile(CR_TYPE* cr, const char* path){
+void readCRbinFile(CR_TYPE* cr, const char* path)
+{
 
 	int i, j;
 	size_t size_offs, size_col, size_val;
