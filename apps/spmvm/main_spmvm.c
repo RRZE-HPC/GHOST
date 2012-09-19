@@ -31,7 +31,7 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_PINNING;
+	int options = SPMVM_OPTION_PIN;
 	int kernels[] = {/*SPMVM_KERNEL_NOMPI,*/
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
