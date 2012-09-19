@@ -331,7 +331,7 @@ int main( int argc, char* argv[] )
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
 
-	SpMVM_printEnvInfo();
+	SpMVM_printEnvInfo(options);
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 

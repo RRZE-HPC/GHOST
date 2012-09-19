@@ -91,7 +91,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 	}
 }
 
-void SpMVM_printEnvInfo() 
+void SpMVM_printEnvInfo(int options) 
 {
 
 	int me;
@@ -140,7 +140,7 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
-		printf("Work distribution scheme         : %12s\n", WORKDIST_NAMES[WORKDIST_DESIRED]);
+		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
 #ifdef OPENCL
 		printf("OpenCL support                   :      enabled\n");
 #else
@@ -366,7 +366,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	LCRP_TYPE *lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+	LCRP_TYPE *lcrp = setup_communication(cr, options);
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
@@ -596,6 +596,16 @@ char * SpMVM_kernelName(int kernel) {
 			return "invalid";
 			break;
 	}
+}
+
+char *SpMVM_workdistName(int options)
+{
+	if (options & SPMVM_OPTION_WORKDIST_NZE)
+		return "equal nze";
+	else if (options & SPMVM_OPTION_WORKDIST_LNZE)
+		return "equal lnze";
+	else
+		return "equal rows";
 }
 
 void SpMVM_abort(char *s) {

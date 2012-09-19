@@ -126,6 +126,8 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 		}
 	}
 
+	// TODO check options for plausability
+
 #ifdef LIKWID_MARKER
 	likwid_markerInit();
 #endif
@@ -253,9 +255,9 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 		}
 	}
 	if (options & SPMVM_OPTION_SERIAL_IO)
-		lcrp = setup_communication(cr, WORKDIST_DESIRED, options);
+		lcrp = setup_communication(cr, options);
 	else
-		lcrp = setup_communication_parallel(cr, matrixPath, WORKDIST_DESIRED, options);
+		lcrp = setup_communication_parallel(cr, matrixPath, options);
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
