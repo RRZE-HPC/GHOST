@@ -275,13 +275,6 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
 	CL_uploadCRS ( lcrp, formats, options);
 #endif
-<<<<<<< HEAD:libspmvm/src/spmvm.c
-=======
-
-	//	if (me==0)
-	//	SpMVM_freeCRS(cr); FIXME
-
->>>>>>> 1cd907c3bbb6280821639a6da1e5ca78a70a5a90:libspmvm/src/spmvm.c
 	return lcrp;
 
 }
