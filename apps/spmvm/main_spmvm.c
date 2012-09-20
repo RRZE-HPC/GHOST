@@ -31,7 +31,7 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_PIN;
+	int options = SPMVM_OPTION_PIN|SPMVM_OPTION_SERIAL_IO;
 	int kernels[] = {/*SPMVM_KERNEL_NOMPI,*/
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -80,7 +80,7 @@ int main( int argc, char* argv[] )
 #endif	
 
 
-	SpMVM_printEnvInfo(options);
+	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 	for (kernel=0; kernel < nKernels; kernel++){

@@ -59,6 +59,9 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 #endif	
 
 	if(me==0){
+		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
+			1:0;
+		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"all cores";
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
 				lcrp->nEnts*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
@@ -86,12 +89,16 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 		printf("-------        Setup information        -------\n");
 		printf("-----------------------------------------------\n");
 		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x"); 
+		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
+		printf("Automatic pinning                : %12s\n", pin?"enabled":"disabled");
+		if (pin)
+			printf("Pinning threads to               : %12s\n", pinStrategy);
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 	}
 }
 
-void SpMVM_printEnvInfo(int options) 
+void SpMVM_printEnvInfo() 
 {
 
 	int me;
@@ -140,7 +147,6 @@ void SpMVM_printEnvInfo(int options)
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
-		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
 #ifdef OPENCL
 		printf("OpenCL support                   :      enabled\n");
 #else

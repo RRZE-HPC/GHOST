@@ -29,7 +29,7 @@ int main( int argc, char* argv[] ) {
 	nodeRHS = SpMVM_createVector(lcrp,VECTOR_TYPE_RHS,rhsVal); // RHS vec
 	nodeLHS = SpMVM_createVector(lcrp,VECTOR_TYPE_LHS,NULL);   // LHS vec (=0)
 
-	SpMVM_printEnvInfo(options);
+	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[1]),"_."),options);
 
 	time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernel,nIter);

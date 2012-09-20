@@ -71,7 +71,7 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 
 
 void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
-void              SpMVM_printEnvInfo(int options);
+void              SpMVM_printEnvInfo();
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int));
 void              SpMVM_referenceSolver(CR_TYPE *lcrp, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
