@@ -16,6 +16,7 @@
   - build library with very strict options, report warnings
   - create application taking the options as an argument
   - iterate over all sane permutations of options bits
+     -> sanity check in init()?
   - build library for all valid data types
   - create small(ish) test matrices covering many cases
   - automatically submit jobs to lima and tinygpu
