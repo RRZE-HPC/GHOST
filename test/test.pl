@@ -1,39 +1,57 @@
 #!/usr/bin/perl
 use File::Copy::Recursive qw(dircopy);
+use File::Copy;
 use File::Path qw(remove_tree);
-use Cwd;
+use Cwd qw(realpath getcwd);
 
-my $srcpath="/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm";
-my $libpath=getcwd()."/libspmvm";
-my $instpath=getcwd()."/inst";
 my @buildoptions=("DOUBLE","COMPLEX","OPENCL");
 
+####### DO NOT EDIT BELOW
 
-print "Copying the source code from $srcpath to $libpath... ";
+my $srcpath=realpath('..')."/libspmvm";
+my $libpath=getcwd()."/libspmvm";
+my $instpath=getcwd()."/inst";
+
+print "=== STAGE 1: BUILD ===\n";
+
+print "  Preparation... ";
 dircopy($srcpath,$libpath) or die "$!";
-print "done.\n";
-
-
 chdir("./libspmvm");
+move('config.mk','config.mk.orig');
+print "succeeded.\n";
 
-my $nopt = $#buildoptions+1;
-my $maxoptperm = 2**$nopt;
+my $nopt = $#buildoptions+1; # number of build options
+my $maxoptperm = 2**$nopt;   # number of different permutations
+my $succeeded = 0;           # number of succeeded permutations
 
+print "  Permuting build options...\n";
 for ($optperm=0; $optperm<$maxoptperm; $optperm++)
 {
 	my @bitmask = split(//,sprintf("%0".$nopt."b", $optperm));
 
-	print "Building with ";
-	for ($opt=0; $opt<$nopt; $opt++)
-	{
-		print $buildoptions[$opt]."=".$bitmask[$opt]." ";
+	open (IN,"config.mk.orig") or die "$!";
+	open (OUT,">config.mk") or die "$!";
 
+	while ($line = <IN>)
+	{
+		for ($opt=0; $opt<$nopt; $opt++)
+		{
+			my $curopt = $buildoptions[$opt];
+			$line =~ s/$curopt=[01]/$curopt=$bitmask[$opt]/g;
+		}
+		print OUT $line;
 	}
-	print "\n";
+
+	close(IN);
+	close(OUT);
+
 }
+print "  $succeeded/$maxoptperm succeded\n";
 
 
 
 chdir("..");
-remove_tree($libpath,$instpath);
+
+print "=== STAGE 2: CORRECTNESS ===\n"
+#remove_tree($libpath,$instpath);
 
