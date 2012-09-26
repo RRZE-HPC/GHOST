@@ -1,0 +1,18 @@
+1. Hybrid CPU/GPU version:
+      remote communication -- remote computation  
+  __/
+    \
+      copy local part to GPU -- local computation
+
+2. Setup communication: eliminate C->Fortran->C 
+
+3. Introduce binary format for big matrices
+  nRows  => unsigned long long     (= 64 bit)
+  nCols  => unsigned long long
+  rowPtr => unsigned long long *
+  colIdx => unsigned long long
+
+
+4. Create testing script
+
+5. Check whether matrix fits in memory
