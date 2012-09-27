@@ -504,6 +504,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	revcol          = (int*) allocateMemory( size_revc, "revcol" );
 
 
+	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i]++; // setup has to be done with fortran numbering
 	for (i=0; i<lcrp->nodes; i++) wishlist_counts[i] = 0;
 
 	/* Transform global column index into 2d-local/non-local index */
@@ -675,7 +676,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (!(options & SPMVM_OPTION_NO_TASKMODE_KERNEL)) { // split computation
+	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
@@ -869,6 +870,12 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	lcrp->fullMatrix = NULL;
 	lcrp->localMatrix = NULL;
 	lcrp->remoteMatrix = NULL;
+	lcrp->lrow_ptr_l = NULL; 
+	lcrp->lrow_ptr_r = NULL; 
+	lcrp->lcol       = NULL;
+	lcrp->rcol       = NULL;
+	lcrp->lval       = NULL;
+	lcrp->rval       = NULL;
 	
 	if (me==0) {
 		lcrp->nEnts = cr->nEnts;
@@ -1229,7 +1236,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (!(options & SPMVM_OPTION_NO_TASKMODE_KERNEL)) { // split computation
+	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 
 		pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 
@@ -1319,14 +1326,14 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
 
 	}
-	else{
+	/*else{
 		lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
 		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
 		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
 		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
 		lcrp->lval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->lval" ); 
 		lcrp->rval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->rval" ); 
-	}
+	}*/
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
 	freeMemory ( size_mem,  "cwishlist_mem",   cwishlist_mem);

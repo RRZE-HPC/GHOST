@@ -26,3 +26,5 @@
 
 6. LIKWID_MARKER/_FINE ==> LIKWID_PERFMON
   - also: likwid_* calls to LIKWID_*
+
+7. Export OPENCL makro

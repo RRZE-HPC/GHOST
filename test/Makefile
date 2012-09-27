@@ -1,0 +1,39 @@
+CUDA_INC=-I$(CUDA_HOME)/include
+CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
+
+LIBSPMVMPATH=./inst
+
+LPATH+= -L$(LIBSPMVMPATH)/lib
+IPATH+= -I$(LIBSPMVMPATH)/include
+LIBS+=-l$(PREFIX)spmvm
+
+.PHONY:clean distclean all
+
+CC=mpicc
+CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+
+ifeq ($(OPENCL),1)
+MAKROS+= -DOPENCL
+PREFIX= cl
+LIBS  += -lOpenCL
+IPATH += ${CUDA_INC}
+LPATH += ${CUDA_LIB}
+endif
+
+%.o: %.c  
+	@echo "==> Compile $< -> $@"
+	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+
+
+test.x: test.o
+	@echo "==> Link $@"
+	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
+
+clean:
+	@echo "==> Clean"
+	@rm -f *.o
+
+distclean: clean
+	@echo "==> Distclean"
+	@rm -f *.x
+

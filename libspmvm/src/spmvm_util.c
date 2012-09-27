@@ -447,7 +447,7 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = 1./SQRT(sum);
+	data_t f = (data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -464,7 +464,7 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = 1./SQRT(sum);
+	data_t f = (data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;

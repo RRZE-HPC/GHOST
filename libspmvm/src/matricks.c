@@ -52,13 +52,13 @@ void getMatrixPath(char *given, char *path) {
 	strcpy(path,mathome);
 	strcat(path,"/");
 	strcat(path,given);
-	
+
 	file = fopen(path,"r");
 	if (file) {
 		fclose(file);
 		return;
 	}
-	
+
 	strcat(path,"/");
 	strcat(path,given);
 	strcat(path,"_");
@@ -189,7 +189,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 		printf("Could not process Matrix Market banner.\n");
 		exit(1);
 	}
-	
+
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for complex data "
@@ -209,10 +209,15 @@ MM_TYPE * readMMFile(const char* filename ) {
 	mm->nze = (NZE_TYPE *)malloc(mm->nEnts*sizeof(NZE_TYPE));
 
 	if (!mm_is_complex(matcode)) {
-		double re;
 		for (i=0; i<mm->nEnts; i++)
 		{
+#ifdef DOUBLE
+			double re;
 			fscanf(f, "%d %d %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re);
+#else
+			float re;
+			fscanf(f, "%d %d %g\n", &mm->nze[i].row, &mm->nze[i].col, &re);
+#endif
 #ifdef COMPLEX	
 			mm->nze[i].val = re+I*0;
 #else
@@ -222,12 +227,18 @@ MM_TYPE * readMMFile(const char* filename ) {
 			mm->nze[i].row--;
 		}
 	} else {
-	
-		double re,im;
+
 		for (i=0; i<mm->nEnts; i++)
 		{
+#ifdef DOUBLE
+			double re,im;
 			fscanf(f, "%d %d %lg %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re,
-				   	&im);
+					&im);
+#else
+			float re,im;
+			fscanf(f, "%d %d %g %g\n", &mm->nze[i].row, &mm->nze[i].col, &re,
+					&im);
+#endif
 #ifdef COMPLEX	
 			mm->nze[i].val = re+I*im;
 #else
@@ -269,7 +280,7 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 
 	if (datatype != DATATYPE_DESIRED) {
 		fprintf(stderr,"Warning! The library has been built for %s data but the"
-			   	"file contains %s data. Casting...\n",
+				"file contains %s data. Casting...\n",
 				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
@@ -326,7 +337,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 
 	if (datatype != DATATYPE_DESIRED) {
 		fprintf(stderr,"Warning! The library has been built for %s data but the"
-			   	"file contains %s data. Casting...\n",
+				"file contains %s data. Casting...\n",
 				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
@@ -699,55 +710,55 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	}
 #endif
 
-for( i = 0; i < mm->nRows; i++ ) {
-	cr->rowOffset[i] = pos;
-	pos += nEntsInRow[i];
-}
-cr->rowOffset[mm->nRows] = pos;
+	for( i = 0; i < mm->nRows; i++ ) {
+		cr->rowOffset[i] = pos;
+		pos += nEntsInRow[i];
+	}
+	cr->rowOffset[mm->nRows] = pos;
 
-for( i = 0; i < mm->nRows; i++ ) nEntsInRow[i] = 0;
+	for( i = 0; i < mm->nRows; i++ ) nEntsInRow[i] = 0;
 
 #ifdef PLACE_CRS
-// NUMA placement for cr->col[] and cr->val []
+	// NUMA placement for cr->col[] and cr->val []
 #pragma omp parallel for schedule(runtime)
-for(i=0; i<cr->nRows; ++i) {
-	int start = cr->rowOffset[i];
-	int end = cr->rowOffset[i+1];
-	int j;
-	for(j=start; j<end; j++) {
-		cr->val[j] = 0.0;
-		cr->col[j] = 0;
+	for(i=0; i<cr->nRows; ++i) {
+		int start = cr->rowOffset[i];
+		int end = cr->rowOffset[i+1];
+		int j;
+		for(j=start; j<end; j++) {
+			cr->val[j] = 0.0;
+			cr->col[j] = 0;
+		}
 	}
-}
 #endif //PLACE_CRS
 
-/* store values in compressed row data structure ########################## */
-for( e = 0; e < mm->nEnts; e++ ) {
-	const int row = mm->nze[e].row,
-		  col = mm->nze[e].col;
-	const data_t val = mm->nze[e].val;
-	pos = cr->rowOffset[row] + nEntsInRow[row];
-	/* GW 
-	   cr->col[pos] = col;
-	 */
-	cr->col[pos] = col;
+	/* store values in compressed row data structure ########################## */
+	for( e = 0; e < mm->nEnts; e++ ) {
+		const int row = mm->nze[e].row,
+			  col = mm->nze[e].col;
+		const data_t val = mm->nze[e].val;
+		pos = cr->rowOffset[row] + nEntsInRow[row];
+		/* GW 
+		   cr->col[pos] = col;
+		 */
+		cr->col[pos] = col;
 
-	cr->val[pos] = val;
+		cr->val[pos] = val;
 
-	nEntsInRow[row]++;
-}
-/* clean up ############################################################### */
-free( nEntsInRow );
+		nEntsInRow[row]++;
+	}
+	/* clean up ############################################################### */
+	free( nEntsInRow );
 
-IF_DEBUG(2) {
-	for( i = 0; i < mm->nRows+1; i++ ) printf( "rowOffset[%2i] = %3i\n", i, cr->rowOffset[i] );
-	for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e+i%e\n", i, cr->col[i], i, REAL(cr->val[i]),IMAG(cr->val[i]) );
-}
+	IF_DEBUG(2) {
+		for( i = 0; i < mm->nRows+1; i++ ) printf( "rowOffset[%2i] = %3i\n", i, cr->rowOffset[i] );
+		for( i = 0; i < mm->nEnts; i++ ) printf( "col[%2i] = %3i, val[%2i] = %e+i%e\n", i, cr->col[i], i, REAL(cr->val[i]),IMAG(cr->val[i]) );
+	}
 
-IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
+	IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
 
 
-return cr;
+	return cr;
 }
 
 

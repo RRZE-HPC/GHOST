@@ -70,6 +70,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
 
 	int me, req, prov;
+
 	req = MPI_THREAD_MULTIPLE;
 	MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
@@ -107,12 +108,12 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			int error;
 			int coreNumber;
 	
-			if (spmvmOptions & SPMVM_OPTION_PIN)
-				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
-			else
+			if (spmvmOptions & SPMVM_OPTION_PIN_SMT)
 				coreNumber = omp_get_thread_num()/2+(offset*(getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
+			else
+				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
 
-			//printf("p: %d, l: %d, t: %d, c: %d, o: %d\n",me,getLocalRank(),omp_get_thread_num(),coreNumber,offset);
+			IF_DEBUG(1) printf("pinning thread %d to core %d\n",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
 			CPU_ZERO(&cpu_set);
 			CPU_SET(coreNumber, &cpu_set);
@@ -138,8 +139,6 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 #endif
 
 	options = spmvmOptions;
-	if (options & SPMVM_OPTION_NO_SPLIT_KERNELS)
-		options |= SPMVM_OPTION_NO_TASKMODE_KERNEL;
 
 	return me;
 }
