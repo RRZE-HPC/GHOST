@@ -69,14 +69,19 @@ static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
 
-	int me, req, prov;
+	int me, req, prov, init;
 
 	req = MPI_THREAD_MULTIPLE;
-	MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
-	if (req != prov) {
-		fprintf(stderr, "Required MPI threading level (%d) is not "
-				"provided (%d)!\n",req,prov);
+	MPI_safecall(MPI_Initialized(&init));
+
+	if (!init) {
+		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
+
+		if (req != prov) {
+			fprintf(stderr, "Required MPI threading level (%d) is not "
+					"provided (%d)!\n",req,prov);
+		}
 	}
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
