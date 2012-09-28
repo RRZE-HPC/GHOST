@@ -116,7 +116,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #else
 	int i, j;
 	data_t hlp1;
-	if (spmvmOptions == 777) printf("dummy\n"); //TODO
+	if (spmvmOptions == -1) printf("dummy\n"); //TODO
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<lcrp->lnRows[*me]; i++){
