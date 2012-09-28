@@ -3,8 +3,10 @@ use File::Copy::Recursive qw(dircopy);
 use File::Copy;
 use File::Path qw(remove_tree);
 use Cwd qw(realpath getcwd);
+use PBS::Client;
 
 my @buildoptions=("DOUBLE","COMPLEX");
+my $NNODES=3;
 
 ####### DO NOT EDIT BELOW
 
@@ -54,26 +56,37 @@ for ($optperm=0; $optperm<$maxoptperm; $optperm++)
 	chdir("..");
 	system('make OPENCL=0 > /dev/null');
 
-	my @out = `./test.x /home/vault/unrz/unrza317/matrices/test1/test1_double_CRS_bin.dat 2>run.stderr`;
-	open (OUT,">run.stdout") or die "$!";
+	my $client = PBS::Client->new();
+	my $job = PBS::Client::Job->new(
+			nodes=>$NNODES,
+			ppn=>4,
+			shell=>'/bin/bash --login',
+			wallt=>'00:05:00',
+			cmd=>"module load intel64\n./test.x /home/vault/unrz/unrza317/matrices/test1/test1_double_CRS_bin.dat 1> run.stdout 2> run.stderr");
+	$client->qsub($job);
+	my $jid = $job->pbsid;
+	print "     starting job ."$jid." with ".$NNODES."... ";
 
+	while (`qstat $jid 2>/dev/null | wc -l` > 0) {
+		sleep(1); # wait until job is finished
+	}
+	print "finished\n";
+
+	open (IN,"<run.stdout");
 	my $suc = 0;
 	my $err = 0;
-	for my $line (@out) {
+	for my $line (<IN>) {
 		if ($line =~ m/^0/) {
 			$err++;
 		} elsif ($line =~ m/^1/) {
 			$suc++;
 		}
-		print OUT $line;
 	}
-	close(OUT);
 
 	print "  -> run  : ";
 	print $err==0?"OK\n":"$suc/".$suc+$err."\n";
 
 	system('make distclean > /dev/null');
-	
 }
 
 
