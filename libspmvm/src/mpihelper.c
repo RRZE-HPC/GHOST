@@ -1067,7 +1067,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 					MPI_Datatype tmpDT;
 					MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&tmpDT));
-					MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
+					MPI_safecall(MPI_Type_commit(&tmpDT));
 
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
@@ -1087,7 +1087,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 					MPI_Datatype tmpDT;
 					MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&tmpDT));
-					MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
+					MPI_safecall(MPI_Type_commit(&tmpDT));
 
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
