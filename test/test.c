@@ -30,9 +30,10 @@ int main( int argc, char* argv[] )
 	int me, kernel, nIter = 100;
 	double time;
 
-	int i, errors = 0;
+	int i;
 	double mytol;
 
+	int options;
 	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -44,13 +45,12 @@ int main( int argc, char* argv[] )
 
 	LCRP_TYPE *lcrp;
 
-	if (argc!=3) {
-		fprintf(stderr,"Usage: test.x <matrixPath> <options>\n");
+	if (argc!=2) {
+		fprintf(stderr,"Usage: test.x <matrixPath>\n");
 		exit(SPMVM_NUMKERNELS);
 	}
 
 	char *matrixPath = argv[1];
-	int options = atoi(argv[2]);
 
 	SPM_GPUFORMATS *matrixFormats = NULL;
 
@@ -64,6 +64,7 @@ int main( int argc, char* argv[] )
 	matrixFormats->T[2] = 1;
 #endif
 
+	for (options=0; options<1<<SPMVM_NUMOPTIONS; options++) {
 	me   = SpMVM_init(argc,argv,options);       // basic initialization
 	lcrp    = SpMVM_createCRS (matrixPath,matrixFormats);
 	nodeLHS = SpMVM_createVector(lcrp,VECTOR_TYPE_LHS,NULL);
@@ -94,11 +95,11 @@ int main( int argc, char* argv[] )
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf("%s failed with options %d\n",SpMVM_kernelName(kernels[kernel]),options);
-					errors++;
+					printf("0 %s failed with options %d\n",SpMVM_kernelName(kernels[kernel]),options);
 					break;
 				}
 			}
+			printf("1 %s succeeded with options %d\n",SpMVM_kernelName(kernels[kernel]),options);
 		}
 
 		SpMVM_zeroVector(nodeLHS);
@@ -115,10 +116,11 @@ int main( int argc, char* argv[] )
 	SpMVM_freeHostVector( globLHS );
 	SpMVM_freeCRS( cr );
 
+	}
 	SpMVM_finish();
 
 
-	return errors;
+	return EXIT_SUCCESS;;
 
 }
 
