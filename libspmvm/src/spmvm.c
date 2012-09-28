@@ -275,7 +275,8 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 
 }
 
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int kernel, int nIter)
+double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+		int kernel, int nIter)
 {
 	int it;
 	int me;
@@ -283,14 +284,16 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 	FuncPrototype kernelFunc;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	if ((kernel & SPMVM_KERNELS_SPLIT) && (options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
+	if ((kernel & SPMVM_KERNELS_SPLIT) && 
+			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
 		IF_DEBUG(1) {
 			if (me==0)
 				fprintf(stderr,"Skipping the %s kernel because split kernels have not been configured.\n",SpMVM_kernelName(kernel));
 		}
 		return 0.; // kernel not selected
 	}
-	if ((kernel & SPMVM_KERNELS_COMBINED) && (options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
+	if ((kernel & SPMVM_KERNELS_COMBINED) && 
+			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
 		IF_DEBUG(1) {
 			if (me==0)
 				fprintf(stderr,"Skipping the %s kernel because combined kernels have not been configured.\n",SpMVM_kernelName(kernel));
@@ -325,6 +328,8 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 		case SPMVM_KERNEL_TASKMODE:
 			kernelFunc = kernels[3].kernel;
 			break;
+		default:
+			SpMVM_abort("Non-valid kernel specified!");
 	}
 
 

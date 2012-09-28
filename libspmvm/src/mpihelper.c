@@ -14,6 +14,7 @@
 
 #include <math.h>
 #include <omp.h>
+#include <complex.h>
 
 #define MAX_NUM_THREADS 128
 #define gettid() syscall(SYS_gettid)
@@ -22,19 +23,19 @@ static MPI_Comm single_node_comm;
 
 static int getProcessorId() {
 
-    cpu_set_t  cpu_set;
-    int processorId;
-    
-	CPU_ZERO(&cpu_set);
-    sched_getaffinity(gettid(),sizeof(cpu_set_t), &cpu_set);
+	cpu_set_t  cpu_set;
+	int processorId;
 
-    for (processorId=0;processorId<MAX_NUM_THREADS;processorId++){
-        if (CPU_ISSET(processorId,&cpu_set))
-        {  
-            break;
-        }
-    }
-    return processorId;
+	CPU_ZERO(&cpu_set);
+	sched_getaffinity(gettid(),sizeof(cpu_set_t), &cpu_set);
+
+	for (processorId=0;processorId<MAX_NUM_THREADS;processorId++){
+		if (CPU_ISSET(processorId,&cpu_set))
+		{  
+			break;
+		}
+	}
+	return processorId;
 }
 
 
@@ -67,7 +68,7 @@ int getLocalRank()
 {
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( single_node_comm, &rank));
-	
+
 	return rank;
 }
 
@@ -75,7 +76,7 @@ int getNumberOfRanksOnNode()
 {
 	int size;
 	MPI_safecall(MPI_Comm_size ( single_node_comm, &size));
-	
+
 	return size;
 
 }
@@ -116,7 +117,7 @@ void setupSingleNodeComm()
 
 	/* write local hostname to all_hostnames and share */
 	MPI_safecall(MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-			&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD ));
+				&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD ));
 
 	/* one process per node writes its global id to all its mates' fields */ 
 	if (coreId==0){
@@ -386,8 +387,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 			IF_DEBUG(1) {
 				for (i=0; i<lcrp->nodes; i++)  
-				printf("PE%3d: lfRow=%8d lfEnt=%12d lnRows=%8d lnEnts=%12d\n", i, lcrp->lfRow[i], 
-						lcrp->lfEnt[i], lcrp->lnRows[i], lcrp->lnEnts[i]);
+					printf("PE%3d: lfRow=%8d lfEnt=%12d lnRows=%8d lnEnts=%12d\n", i, lcrp->lfRow[i], 
+							lcrp->lfEnt[i], lcrp->lnRows[i], lcrp->lnEnts[i]);
 			}
 
 
@@ -457,13 +458,13 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 
 	MPI_safecall(MPI_Scatterv ( cr->val, lcrp->lnEnts, lcrp->lfEnt, MPI_MYDATATYPE, 
-			lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD));
+				lcrp->val, lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD));
 
 	MPI_safecall(MPI_Scatterv ( cr->col, lcrp->lnEnts, lcrp->lfEnt, MPI_INTEGER,
-			lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
+				lcrp->col, lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 	MPI_safecall(MPI_Scatterv ( cr->rowOffset, lcrp->lnRows, lcrp->lfRow, MPI_INTEGER,
-			lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
+				lcrp->lrow_ptr, lcrp->lnRows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 	/****************************************************************************
 	 *******        Adapt row pointer to local numbering on this PE       *******         
@@ -573,7 +574,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	 ***************************************************************************/
 
 	MPI_safecall(MPI_Allgather ( lcrp->wishes, lcrp->nodes, MPI_INTEGER, tmp_transfers, 
-			lcrp->nodes, MPI_INTEGER, MPI_COMM_WORLD )) ;
+				lcrp->nodes, MPI_INTEGER, MPI_COMM_WORLD )) ;
 
 	for (i=0; i<lcrp->nodes; i++) lcrp->dues[i] = tmp_transfers[i*lcrp->nodes+me];
 
@@ -669,8 +670,8 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 	for(i=0; i<lcrp->nodes; i++) {
 		MPI_safecall(MPI_Scatterv ( 
-				lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
-				lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
+					lcrp->wishlist_mem, lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
+					lcrp->duelist[i], lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
 	}
 
 	/****************************************************************************
@@ -786,7 +787,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 	/* Free memory for CR stored matrix and sweep memory */
 	//freeCRMatrix( cr );
-	
+
 	return lcrp;
 }
 
@@ -876,7 +877,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	lcrp->rcol       = NULL;
 	lcrp->lval       = NULL;
 	lcrp->rval       = NULL;
-	
+
 	if (me==0) {
 		lcrp->nEnts = cr->nEnts;
 		lcrp->nRows = cr->nRows;
@@ -1016,6 +1017,10 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 		exit(1);
 	}
 
+	int datatype;
+	MPI_safecall(MPI_File_seek(file_handle,0,MPI_SEEK_SET));
+	MPI_safecall(MPI_File_read(file_handle,&datatype,1,MPI_INTEGER,&status));
+
 	/* read col */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
 	IF_DEBUG(1) printf("PE%i: read col -- offset=%lu | %d\n",me,(size_t)offset_in_file,lcrp->lfEnt[me]);
@@ -1023,10 +1028,85 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	MPI_safecall(MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
 
 	/* read val */
-	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
-	IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
-	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-	MPI_safecall(MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
+	if (datatype != DATATYPE_DESIRED) {
+		if (me==0) {
+			fprintf(stderr,"Warning in %s:%d! The library has been built for %s data but"
+					" the file contains %s data. Casting...\n",__FILE__,__LINE__,
+					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+		}
+		switch(datatype) {
+			case DATATYPE_FLOAT:
+				{
+					float *tmp = (float *)allocateMemory(lcrp->lnEnts[me]*sizeof(float), "tmp");
+					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(float);
+					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_FLOAT, &status));
+					for (i = 0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = (data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+			case DATATYPE_DOUBLE:
+				{
+					double *tmp = (double *)allocateMemory(lcrp->lnEnts[me]*sizeof(double), "tmp");
+					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(double);
+					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_DOUBLE, &status));
+					for (i = 0; i<lcrp->lnEnts[me]; i++)
+						lcrp->val[i] = (data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+			case DATATYPE_COMPLEX_DOUBLE:
+				{
+					_Complex double *tmp = (_Complex double *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex double), "tmp");
+					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex double);
+					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+
+
+					MPI_Datatype tmpDT;
+					MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&tmpDT));
+					MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
+
+					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
+
+					for (i = 0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = (data_t) tmp[i];
+
+					free(tmp);
+					MPI_safecall(MPI_Type_free(&tmpDT));
+					break;
+				}
+			case DATATYPE_COMPLEX_FLOAT:
+				{
+					_Complex float *tmp = (_Complex float *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex float), "tmp");
+					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex float);
+					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+
+
+					MPI_Datatype tmpDT;
+					MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&tmpDT));
+					MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
+
+					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
+
+					for (i = 0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = (data_t) tmp[i];
+
+					free(tmp);
+					MPI_safecall(MPI_Type_free(&tmpDT));
+					break;
+				}
+
+		}
+	} else {
+
+		offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
+		IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+		MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
+		MPI_safecall(MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
+	}
 
 	ierr = MPI_File_close(&file_handle);
 
@@ -1327,13 +1407,13 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 	}
 	/*else{
-		lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
-		lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
-		lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
-		lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
-		lcrp->lval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->lval" ); 
-		lcrp->rval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->rval" ); 
-	}*/
+	  lcrp->lrow_ptr_l = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_l" ); 
+	  lcrp->lrow_ptr_r = (int*)    allocateMemory( sizeof(int), "lcrp->lrow_ptr_r" ); 
+	  lcrp->lcol       = (int*)    allocateMemory( sizeof(int), "lcrp->lcol" ); 
+	  lcrp->rcol       = (int*)    allocateMemory( sizeof(int), "lcrp->rcol" ); 
+	  lcrp->lval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->lval" ); 
+	  lcrp->rval       = (data_t*) allocateMemory( sizeof(data_t), "lcrp->rval" ); 
+	  }*/
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
 	freeMemory ( size_mem,  "cwishlist_mem",   cwishlist_mem);
@@ -1344,7 +1424,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	freeMemory ( size_nint, "item_from",       item_from);
 
 
-		return lcrp;
+	return lcrp;
 }
 
 static int stringcmp(const void *x, const void *y)
@@ -1369,23 +1449,23 @@ int getNumberOfNodes()
 				"names");
 	}
 
-	
+
 	MPI_safecall(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
-			MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD));
+				MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD));
 
 	if (me==0) {
 		qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
 		for (i=1; i<size; i++) {
 			if (strcmp(names+(i-1)*MPI_MAX_PROCESSOR_NAME,names+
 						i*MPI_MAX_PROCESSOR_NAME)) {
-					distinctNames++;
+				distinctNames++;
 			}
 		}
 		free(names);
 	}
 
 	MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD));
-	
+
 	return distinctNames;
 }
 

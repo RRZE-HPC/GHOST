@@ -196,7 +196,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 				"but the MM file contains data_t data. Casting...\n");
 #else
 	if (mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for data_t data "
+		fprintf(stderr,"Warning! The library has been built for real data "
 				"but the MM file contains complex data. Casting...\n");
 #endif
 
@@ -278,12 +278,6 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
-	if (datatype != DATATYPE_DESIRED) {
-		fprintf(stderr,"Warning! The library has been built for %s data but the"
-				"file contains %s data. Casting...\n",
-				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
-	}
-
 	IF_DEBUG(2) printf("Allocate memory for arrays\n");
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
@@ -319,7 +313,10 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
 	double mybytes;
+	int me;
 
+
+	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
 
 	timing( &startTime, &ct );
 
@@ -336,9 +333,10 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		fprintf(stderr,"Warning! The library has been built for %s data but the"
-				"file contains %s data. Casting...\n",
-				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+		if (me==0)
+			fprintf(stderr,"Warning in %s:%d! The library has been built for %s data but"
+				   " the file contains %s data. Casting...\n",__FILE__,__LINE__,
+					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 	}
 
 	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +

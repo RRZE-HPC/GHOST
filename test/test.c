@@ -94,8 +94,7 @@ int main( int argc, char* argv[] )
 					(cr->rowOffset[i+1]-cr->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf("%s failed\n",SpMVM_kernelName(kernels[kernel]));
-					printf("%f\n",globLHS->val[i]);
+					printf("%s failed with options %d\n",SpMVM_kernelName(kernels[kernel]),options);
 					errors++;
 					break;
 				}

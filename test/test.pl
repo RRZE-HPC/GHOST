@@ -27,7 +27,7 @@ my $succeeded = 0;           # number of succeeded permutations
 #print "  Testing configurations... ";
 unlink('../make.log');
 unlink('../run.log');
-for ($optperm=0; $optperm<$maxoptperm; $optperm++)
+for ($optperm=$maxoptperm-1; $optperm<$maxoptperm; $optperm++)
 {
 	my @bitmask = split(//,sprintf("%0".$nopt."b", $optperm));
 
@@ -70,6 +70,8 @@ for ($optperm=0; $optperm<$maxoptperm; $optperm++)
 	
 	chdir("..");
 	system('make OPENCL=0 > /dev/null');
+
+#TODO number of actually(!) executed kernels
 
 	my $totKern = 2**$numOptions*$numKernels;
 	my $sucKern = 0;
