@@ -16,21 +16,20 @@ my $instpath=getcwd()."/inst";
 
 #print "  Preparation... ";
 dircopy($srcpath,$libpath) or die "$!";
-chdir("./libspmvm");
-copy('config.mk','config.mk.orig');
-#print "succeeded.\n";
 
 my $nopt = $#buildoptions+1; # number of build options
 my $maxoptperm = 2**$nopt;   # number of different permutations
-my $succeeded = 0;           # number of succeeded permutations
 
 #print "  Testing configurations... ";
-unlink('../make.log');
-unlink('../run.log');
-for ($optperm=$maxoptperm-1; $optperm<$maxoptperm; $optperm++)
+unlink('../make.stderr');
+unlink('../make.stdout');
+unlink('../run.stderr');
+unlink('../run.stdout');
+for ($optperm=0; $optperm<$maxoptperm; $optperm++)
 {
 	my @bitmask = split(//,sprintf("%0".$nopt."b", $optperm));
 
+	chdir("./libspmvm");
 	copy('config.mk.orig','config.mk');   # restore original config.mk
 	open (OUT,">>config.mk") or die "$!"; # append new options to file (overrides)
 
@@ -44,51 +43,37 @@ for ($optperm=$maxoptperm-1; $optperm<$maxoptperm; $optperm++)
 	close(OUT);
 
 	system('make distclean uninstall > /dev/null');
-	if (system('make install >> ../make.log 2>&1') == 0) {
+	if (system('make install 2>> ../make.stderr 1>> ../make.stdout') == 0) {
 		print "  -> build: OK\n";
-		$succeeded++;
 	} else {
 		print "  -> build: FAILURE\n";
 		next;
 	}
 		
 
-	my $numKernels;
-	my $numOptions;
-
-	open (IN,$instpath."/include/spmvm.h");
-	while (<IN>) {
-		if ($_ =~ /SPMVM_NUMKERNELS\s+([0-9]+)/) {
-			$numKernels = $1;
-		}
-		if ($_ =~ /SPMVM_NUMOPTIONS\s+([0-9]+)/) {
-			$numOptions = $1;
-		}
-	}
-	$ntest += $numKernels;
-
-	
 	chdir("..");
 	system('make OPENCL=0 > /dev/null');
 
-#TODO number of actually(!) executed kernels
+	my @out = `./test.x /home/vault/unrz/unrza317/matrices/test1/test1_double_CRS_bin.dat 2>run.stderr`;
+	open (OUT,">run.stdout") or die "$!";
 
-	my $totKern = 2**$numOptions*$numKernels;
-	my $sucKern = 0;
-
-	for ($runopt=0; $runopt<2**$numOptions; $runopt++) {
-		my $nErr = system('./test.x /home/vault/unrz/unrza317/matrices/test1/test1_double_CRS_bin.dat '.$runopt.' >> ./run.log 2>&1')/256;
-		$sucKern+=$numKernels-$nErr;
+	my $suc = 0;
+	my $err = 0;
+	for my $line (@out) {
+		if ($line =~ m/^0/) {
+			$err++;
+		} elsif ($line =~ m/^1/) {
+			$suc++;
+		}
+		print OUT $line;
 	}
+	close(OUT);
 
 	print "  -> run  : ";
-	print $sucKern==$totKern?"OK\n":"$sucKern/$totKern\n";
+	print $err==0?"OK\n":"$suc/".$suc+$err."\n";
 
 	system('make distclean > /dev/null');
 	
-	
-	chdir("./libspmvm");
-
 }
 
 
@@ -96,5 +81,5 @@ for ($optperm=$maxoptperm-1; $optperm<$maxoptperm; $optperm++)
 chdir("..");
 
 #print "=== STAGE 2: CORRECTNESS ===\n";
-#remove_tree($libpath,$instpath);
+remove_tree($libpath,$instpath);
 
