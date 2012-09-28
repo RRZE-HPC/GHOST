@@ -914,8 +914,9 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	 ***************************************************************************/
 	if (me==0){
 		if (options & SPMVM_OPTION_WORKDIST_LNZE){
-			printf("SPMVM_OPTION_WORKDIST_LNZE has not (yet) been implemented"
-					"for parallel IO! Switching to SPMVM_OPTION_WORKDIST_NZE\n");
+			fprintf(stderr,"SPMVM_OPTION_WORKDIST_LNZE has not (yet) been "
+					"implemented for parallel IO! Switching to "
+					"SPMVM_OPTION_WORKDIST_NZE\n");
 			options |= SPMVM_OPTION_WORKDIST_NZE;
 		}
 
