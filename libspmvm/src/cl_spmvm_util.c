@@ -109,17 +109,17 @@ void CL_init()
 
 #ifdef DOUBLE
 #ifdef COMPLEX
-	char *opt = " -DDOUBLE -DCOMPLEX ";
+	char opt[] = " -DDOUBLE -DCOMPLEX ";
 #else
-	char *opt = " -DDOUBLE ";
+	char opt[] = " -DDOUBLE ";
 #endif
 #endif
 
 #ifdef SINGLE
 #ifdef COMPLEX
-	char *opt = " -DSINGLE -DCOMPLEX ";
+	char opt[] = " -DSINGLE -DCOMPLEX ";
 #else
-	char *opt = " -DSINGLE ";
+	char opt[] = " -DSINGLE ";
 #endif
 #endif
 
