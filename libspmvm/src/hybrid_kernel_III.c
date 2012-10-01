@@ -160,16 +160,19 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, in
 #ifdef _OPENMP
 		tid = omp_get_thread_num();
 #endif
+#pragma omp for	
+		for (to_PE=0 ; to_PE<lcrp->nodes ; to_PE++){
+
+				for (j=0; j<lcrp->dues[to_PE]; j++){
+					work[to_PE][j] = invec->val[lcrp->duelist[to_PE][j]];
+				}
+		}
 
 		if (tid == lcrp->threads-1){ /* Kommunikations-thread */
 			/***********************************************************************
 			 *******  Local gather of data in work array & communication    ********
 			 **********************************************************************/
 			for (to_PE=0 ; to_PE<lcrp->nodes ; to_PE++){
-
-				for (j=0; j<lcrp->dues[to_PE]; j++){
-					work[to_PE][j] = invec->val[lcrp->duelist[to_PE][j]];
-				}
 
 				if (lcrp->dues[to_PE]>0){
 					MPI_safecall(MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], MPI_MYDATATYPE,
