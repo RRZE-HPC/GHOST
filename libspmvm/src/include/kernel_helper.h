@@ -92,7 +92,11 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 /*********** kernel for remote entries only *********************/
 
 inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		int* me, int spmvmOptions) {
+		int* me
+#ifdef OPENCL
+		, int spmvmOptions
+#endif
+		) {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
 	 * nl_cycles: timing measurement for computation of non-local entries
@@ -115,7 +119,6 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #else
 	int i, j;
 	data_t hlp1;
-	if (spmvmOptions == -1) printf("dummy\n"); //TODO
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<lcrp->lnRows[*me]; i++){

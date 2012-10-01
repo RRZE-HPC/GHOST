@@ -339,13 +339,17 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	time = wctime();
+	double oldtime=1e9;
 
 	for( it = 0; it < nIter; it++ ) {
+		time = wctime();
 		kernelFunc(res, lcrp, invec, options);
+
 		MPI_Barrier(MPI_COMM_WORLD);
+		time = wctime()-time;
+		time = time<oldtime?time:oldtime;
+		oldtime=time;
 	}
-	time = wctime()-time;
 
 	return time;
 }

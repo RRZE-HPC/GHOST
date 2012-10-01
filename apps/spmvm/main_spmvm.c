@@ -31,7 +31,7 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_NONE;
+	int options = SPMVM_OPTION_PIN;
 	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -98,27 +98,28 @@ int main( int argc, char* argv[] )
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					printf( "PE%d: error in row %i: %.2e + %.2ei vs. %.2e +"
-							"%.2ei\n", me, i, REAL(goldLHS->val[i]),
+							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
-							IMAG(globLHS->val[i]));
+							IMAG(globLHS->val[i]),
+							mytol,REAL(ABS(goldLHS->val[i]-globLHS->val[i])));
 					errcount++;
 				}
 			}
 			printf("%11s: %s @ %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					errcount?"FAILURE":"SUCCESS",
-					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(time),
-					(time)*1.e3/nIter);
+					FLOPS_PER_ENTRY*1.e-9*
+					(double)lcrp->nEnts/time,
+					time*1.e3);
 		}
 #else
 		if (me==0) {
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
-					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(time),
-					(time)*1.e3/nIter);
+					FLOPS_PER_ENTRY*1.e-9*
+					(double)lcrp->nEnts/time,
+					time*1.e3);
 		}
 #endif
 
@@ -143,4 +144,3 @@ int main( int argc, char* argv[] )
 	return EXIT_SUCCESS;
 
 }
-
