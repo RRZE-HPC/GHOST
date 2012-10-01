@@ -22,8 +22,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
-//		invec->val = CL_mapBuffer(invec->CL_val_gpu
-		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(data_t));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(data_t));
 	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_FULL);
