@@ -28,3 +28,7 @@
   - also: likwid_* calls to LIKWID_*
 
 7. Export OPENCL makro
+
+8. Generate dependency files in Makefile
+
+9. all OpenCL arrays mapped memory
