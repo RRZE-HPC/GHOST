@@ -174,7 +174,7 @@ typedef float data_t;
 #endif
 
 #ifdef DOUBLE
-#define EPSILON 1e-9
+#define EPSILON 1e-8
 #endif
 #ifdef SINGLE
 #define EPSILON 1e-0
