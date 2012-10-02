@@ -234,6 +234,10 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
 				hostmem,0,NULL,NULL));
 #else
+	int me;
+
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(data_t));
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
 #endif
@@ -304,8 +308,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 
 
 	char kernelName[50] = "";
-	strcat(kernelName, 
-			format==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
+	strcat(kernelName, format==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
 	char Tstr[2] = "";
 	snprintf(Tstr,2,"%d",T);
 
@@ -367,6 +370,11 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
 	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
+	int me;
+
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	IF_DEBUG(1) printf("PE%d: Enqueueing SpMVM kernel with a global size of %lu\n",me,globalSize[type]);
+
 
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,
 				&globalSize[type],NULL,0,NULL,NULL));
@@ -412,22 +420,22 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 {
 
 	ELR_TYPE* elr 	= NULL;
+	CL_ELR_TYPE* celr  = NULL;
+	PJDS_TYPE* pjds	= NULL;
+	CL_PJDS_TYPE* cpjds  = NULL;
 	ELR_TYPE* lelr	= NULL;
 	ELR_TYPE* relr	= NULL;
-	CL_ELR_TYPE* celr  = NULL;
 	CL_ELR_TYPE* lcelr = NULL;
 	CL_ELR_TYPE* rcelr = NULL;
-	PJDS_TYPE* pjds	= NULL;
 	PJDS_TYPE* lpjds= NULL;
 	PJDS_TYPE* rpjds= NULL;
 	CL_PJDS_TYPE* rcpjds= NULL;
-	CL_PJDS_TYPE* cpjds  = NULL;
 	CL_PJDS_TYPE* lcpjds = NULL;
 
 	int me;
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
-	IF_DEBUG(1) printf("PE%i: creating matrices:\n", me);
+	IF_DEBUG(1) printf("PE%i: creating device matrices:\n", me);
 
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -484,7 +492,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && 
 				matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
-			SpMVM_abort("The matrix format must _not_ be pJDS for the"
+			SpMVM_abort("The matrix format must _not_ be pJDS for the "
 					"local and remote part of the matrix.");
 
 		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) {
@@ -555,7 +563,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 			lcrp->localMatrix = lcelr;
 			lcrp->localFormat = SPM_GPUFORMAT_ELR;
 
-			freeELR( lelr );
+			//freeELR( lelr ); // FIXME run failes for some configurations if enabled
 		}
 		if (matrixFormats->format[2] == SPM_GPUFORMAT_ELR) {
 			IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
@@ -575,7 +583,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 			lcrp->remoteMatrix = rcelr;
 			lcrp->remoteFormat = SPM_GPUFORMAT_ELR;
 
-			freeELR( relr ); 
+			//freeELR( relr ); // FIXME run failes for some configurations if enabled
 		}
 	}
 }
