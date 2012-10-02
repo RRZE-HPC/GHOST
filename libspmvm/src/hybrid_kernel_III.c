@@ -124,8 +124,8 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, in
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (MPI_MYDATATYPE, ompi_mpi_double, ompi_mpi_comm_world,\
-			lcrp, me, work, invec, send_request, res,           \
-			send_status, recv_status, recv_request, recv_messages,                 \
+			lcrp, me, work, invec, res,           \
+			status, request, recv_messages,                 \
 			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #else
@@ -133,8 +133,8 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, in
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (ompi_mpi_double, ompi_mpi_comm_world,\
-			lcrp, me, work, invec, send_request, res,           \
-			send_status, recv_status, recv_request, recv_messages,                 \
+			lcrp, me, work, invec, res,           \
+			status, request, recv_messages,                 \
 			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #endif
@@ -144,8 +144,8 @@ void hybrid_kernel_III(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, in
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (MPI_MYDATATYPE, \
-			lcrp, me, work, invec, send_request, res,           \
-			send_status, recv_status, recv_request, recv_messages,                 \
+			lcrp, me, work, invec, res,           \
+			status, request, recv_messages,                 \
 			spmvmOptions,stderr)                                                  \
 	reduction (+:send_messages)
 #else
