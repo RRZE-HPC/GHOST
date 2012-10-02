@@ -1,4 +1,4 @@
-OPENCL=0
+OPENCL=1
 DDT=0
 
 CUDA_INC=-I$(CUDA_HOME)/include

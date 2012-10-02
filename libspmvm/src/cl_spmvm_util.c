@@ -187,6 +187,9 @@ cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag )
 
 cl_mem CL_allocDeviceMemory( size_t bytesize )
 {
+	if (bytesize == 0)
+		return NULL;
+
 	cl_mem mem;
 	cl_int err;
 	mem = clCreateBuffer(context,CL_MEM_READ_WRITE,bytesize,NULL,&err);
@@ -248,6 +251,8 @@ cl_event CL_copyDeviceToHostNonBlocking(void* hostmem, cl_mem devmem,
 void CL_copyHostToDeviceOffset(cl_mem devmem, void *hostmem,
 		size_t bytesize, size_t offset)
 {
+	if (bytesize==0)
+		return;
 #ifdef CL_IMAGE
 	cl_mem_object_type type;
 	CL_safecall(clGetMemObjectInfo(devmem,CL_MEM_TYPE,sizeof(cl_mem_object_type),&type,NULL));
@@ -286,7 +291,8 @@ void CL_copyHostToDevice(cl_mem devmem, void *hostmem, size_t bytesize)
 
 void CL_freeDeviceMemory(cl_mem mem)
 {
-	CL_safecall(clReleaseMemObject(mem));
+	if (mem)
+		CL_safecall(clReleaseMemObject(mem));
 }
 
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions) 
