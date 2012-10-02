@@ -87,7 +87,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int
 		if (lcrp->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv( &invec->val[lcrp->hput_pos[from_PE]], lcrp->wishes[from_PE], 
 					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
-					&request[lcrp->nodes+recv_messages] ));
+					&request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -104,7 +104,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int
 		if (lcrp->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( &work[to_PE][0], lcrp->dues[to_PE], 
 					MPI_MYDATATYPE, to_PE, me, MPI_COMM_WORLD, 
-					&request[send_messages] ));
+					&request[recv_messages+send_messages] ));
 			send_messages++;
 		}
 	}
