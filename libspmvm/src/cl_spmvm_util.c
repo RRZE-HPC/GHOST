@@ -542,6 +542,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 			lcrp->remoteMatrix = rcpjds;
 			lcrp->remoteFormat = SPM_GPUFORMAT_PJDS;
 
+
 			freePJDS( rpjds );
 
 
@@ -563,7 +564,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 			lcrp->localMatrix = lcelr;
 			lcrp->localFormat = SPM_GPUFORMAT_ELR;
 
-			//freeELR( lelr ); // FIXME run failes for some configurations if enabled
+			freeELR( lelr ); // FIXME run failes for some configurations if enabled (or not?)
 		}
 		if (matrixFormats->format[2] == SPM_GPUFORMAT_ELR) {
 			IF_DEBUG(1) printf("PE%i: REMOTE elr:\n", me);
@@ -583,7 +584,7 @@ void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int 
 			lcrp->remoteMatrix = rcelr;
 			lcrp->remoteFormat = SPM_GPUFORMAT_ELR;
 
-			//freeELR( relr ); // FIXME run failes for some configurations if enabled
+			freeELR( relr ); // FIXME run failes for some configurations if enabled (or not?)
 		}
 	}
 }
@@ -625,7 +626,7 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	int me,size,i;
 	cl_device_id deviceID;
 	char name[CL_MAX_DEVICE_NAME_LEN];
-	char *names;
+	char *names = NULL;
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
 	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));

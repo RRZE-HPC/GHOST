@@ -227,6 +227,8 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 			break;
 		case VECTOR_TYPE_BOTH:
 			flag = CL_MEM_READ_WRITE;
+		default:
+			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 	}
 	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 	CL_uploadVector(vec);
@@ -285,8 +287,8 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 {
 	int it;
 	int me;
-	double time;
-	FuncPrototype kernelFunc;
+	double time = 0;
+	FuncPrototype kernelFunc = NULL;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if ((kernel & SPMVM_KERNELS_SPLIT) && 

@@ -1438,7 +1438,7 @@ int getNumberOfNodes()
 {
 	int nameLen,me,size,i,distinctNames = 1;
 	char name[MPI_MAX_PROCESSOR_NAME];
-	char *names;
+	char *names = NULL;
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
 	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));

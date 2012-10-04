@@ -1,4 +1,5 @@
 include config.mk
+include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header
 
