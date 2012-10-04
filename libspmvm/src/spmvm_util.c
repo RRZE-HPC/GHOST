@@ -61,7 +61,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 	if(me==0){
 		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
 			1:0;
-		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"all cores";
+		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
 				lcrp->nEnts*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
