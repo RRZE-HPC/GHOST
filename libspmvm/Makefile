@@ -1,4 +1,5 @@
 include config.mk
+include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header
 
@@ -28,6 +29,8 @@ endif
 
 ifeq ($(strip $(DOUBLE)),1)
 TYPES:= $(TYPES)"\#define DOUBLE \n"
+else
+TYPES:= $(TYPES)"\#define SINGLE \n"
 endif
 
 ifeq ($(strip $(COMPLEX)),1)

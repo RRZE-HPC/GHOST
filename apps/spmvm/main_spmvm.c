@@ -8,7 +8,7 @@
 #include <sys/time.h>
 #include <libgen.h>
 
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
 
 static data_t rhsVal (int i) 
@@ -32,7 +32,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	int options = SPMVM_OPTION_PIN;
-	int kernels[] = {/*SPMVM_KERNEL_NOMPI,*/
+	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
 		SPMVM_KERNEL_TASKMODE};
@@ -80,7 +80,7 @@ int main( int argc, char* argv[] )
 #endif	
 
 
-	SpMVM_printEnvInfo(options);
+	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 	for (kernel=0; kernel < nKernels; kernel++){
@@ -90,7 +90,12 @@ int main( int argc, char* argv[] )
 #ifdef CHECK
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
-		if (me==0 && ABS(time)>1e-16) {
+		if (me==0) {
+			if (time<1e-16) { //actually zero
+				printf("%11s: SKIPPED\n",
+						SpMVM_kernelName(kernels[kernel]));
+				continue;
+			}
 			errcount=0;
 			for (i=0; i<cr->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
@@ -98,27 +103,28 @@ int main( int argc, char* argv[] )
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
 					printf( "PE%d: error in row %i: %.2e + %.2ei vs. %.2e +"
-							"%.2ei\n", me, i, REAL(goldLHS->val[i]),
+							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
-							IMAG(globLHS->val[i]));
+							IMAG(globLHS->val[i]),
+							mytol,REAL(ABS(goldLHS->val[i]-globLHS->val[i])));
 					errcount++;
 				}
 			}
 			printf("%11s: %s @ %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					errcount?"FAILURE":"SUCCESS",
-					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(time),
-					(time)*1.e3/nIter);
+					FLOPS_PER_ENTRY*1.e-9*
+					(double)lcrp->nEnts/time,
+					time*1.e3);
 		}
 #else
 		if (me==0) {
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
-					FLOPS_PER_ENTRY*1.e-9*(double)nIter*
-					(double)lcrp->nEnts/(time),
-					(time)*1.e3/nIter);
+					FLOPS_PER_ENTRY*1.e-9*
+					(double)lcrp->nEnts/time,
+					time*1.e3);
 		}
 #endif
 
@@ -143,4 +149,3 @@ int main( int argc, char* argv[] )
 	return EXIT_SUCCESS;
 
 }
-

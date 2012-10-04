@@ -1,0 +1,34 @@
+1. Hybrid CPU/GPU version:
+      remote communication -- remote computation  
+  __/
+    \
+      copy local part to GPU -- local computation
+
+2. Setup communication: eliminate C->Fortran->C 
+
+3. Introduce binary format for big matrices
+  nRows  => unsigned long long int     (= 64 bit)
+  nCols  => unsigned long long int
+  rowPtr => unsigned long long int *
+  colIdx => unsigned long long int
+
+4. Create testing script
+  - build library with very strict options, report warnings
+  - create application taking the options as an argument
+  - iterate over all sane permutations of options bits
+     -> sanity check in init()?
+  - build library for all valid data types
+  - create small(ish) test matrices covering many cases
+  - automatically submit jobs to lima and tinygpu
+  - send report as e-mail
+
+5. Check whether matrix fits in memory
+
+6. LIKWID_MARKER/_FINE ==> LIKWID_PERFMON
+  - also: likwid_* calls to LIKWID_*
+
+7. Export OPENCL makro
+
+8. Generate dependency files in Makefile
+
+9. all OpenCL arrays mapped memory

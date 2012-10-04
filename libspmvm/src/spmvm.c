@@ -69,13 +69,19 @@ static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
 
-	int me, req, prov;
-	req = MPI_THREAD_MULTIPLE;
-	MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
+	int me, req, prov, init;
 
-	if (req != prov) {
-		fprintf(stderr, "Required MPI threading level (%d) is not "
-				"provided (%d)!\n",req,prov);
+	req = MPI_THREAD_MULTIPLE;
+
+	MPI_safecall(MPI_Initialized(&init));
+
+	if (!init) {
+		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
+
+		if (req != prov) {
+			fprintf(stderr, "Required MPI threading level (%d) is not "
+					"provided (%d)!\n",req,prov);
+		}
 	}
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
@@ -107,12 +113,12 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			int error;
 			int coreNumber;
 	
-			if (spmvmOptions & SPMVM_OPTION_PIN)
-				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
-			else
+			if (spmvmOptions & SPMVM_OPTION_PIN_SMT)
 				coreNumber = omp_get_thread_num()/2+(offset*(getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
+			else
+				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
 
-			//printf("p: %d, l: %d, t: %d, c: %d, o: %d\n",me,getLocalRank(),omp_get_thread_num(),coreNumber,offset);
+			IF_DEBUG(1) printf("pinning thread %d to core %d\n",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
 			CPU_ZERO(&cpu_set);
 			CPU_SET(coreNumber, &cpu_set);
@@ -138,8 +144,6 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 #endif
 
 	options = spmvmOptions;
-	if (options & SPMVM_OPTION_NO_SPLIT_KERNELS)
-		options |= SPMVM_OPTION_NO_TASKMODE_KERNEL;
 
 	return me;
 }
@@ -223,6 +227,8 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 			break;
 		case VECTOR_TYPE_BOTH:
 			flag = CL_MEM_READ_WRITE;
+		default:
+			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 	}
 	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 	CL_uploadVector(vec);
@@ -272,22 +278,25 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 
 }
 
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int kernel, int nIter)
+double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+		int kernel, int nIter)
 {
 	int it;
 	int me;
-	double time;
-	FuncPrototype kernelFunc;
+	double time = 0;
+	FuncPrototype kernelFunc = NULL;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
-	if ((kernel & SPMVM_KERNELS_SPLIT) && (options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
+	if ((kernel & SPMVM_KERNELS_SPLIT) && 
+			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
 		IF_DEBUG(1) {
 			if (me==0)
 				fprintf(stderr,"Skipping the %s kernel because split kernels have not been configured.\n",SpMVM_kernelName(kernel));
 		}
 		return 0.; // kernel not selected
 	}
-	if ((kernel & SPMVM_KERNELS_COMBINED) && (options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
+	if ((kernel & SPMVM_KERNELS_COMBINED) && 
+			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
 		IF_DEBUG(1) {
 			if (me==0)
 				fprintf(stderr,"Skipping the %s kernel because combined kernels have not been configured.\n",SpMVM_kernelName(kernel));
@@ -322,17 +331,23 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, int ke
 		case SPMVM_KERNEL_TASKMODE:
 			kernelFunc = kernels[3].kernel;
 			break;
+		default:
+			SpMVM_abort("Non-valid kernel specified!");
 	}
 
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	time = wctime();
+	double oldtime=1e9;
 
 	for( it = 0; it < nIter; it++ ) {
+		time = wctime();
 		kernelFunc(res, lcrp, invec, options);
+
 		MPI_Barrier(MPI_COMM_WORLD);
+		time = wctime()-time;
+		time = time<oldtime?time:oldtime;
+		oldtime=time;
 	}
-	time = wctime()-time;
 
 	return time;
 }

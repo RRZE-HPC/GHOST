@@ -1,7 +1,7 @@
-OPENCL=0
-WDDT=0
+CUDA_INC=-I$(CUDA_HOME)/include
+CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
 
-LIBSPMVMPATH=/home/hpc/h021z/di56xuq2/app/libspmvm
+LIBSPMVMPATH=./inst
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
@@ -11,11 +11,6 @@ LIBS+=-l$(PREFIX)spmvm
 
 CC=mpicc
 CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
-
-ifeq ($(WDDT),1)
-LIBS+=$(DDT)/lib/64/libdmallocth.a
-endif
-
 
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
@@ -30,9 +25,9 @@ endif
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-$(PREFIX)spmvm.x: main_spmvm.o
+test.x: test.o
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
+	$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
 
 clean:
 	@echo "==> Clean"

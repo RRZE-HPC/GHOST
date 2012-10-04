@@ -59,6 +59,9 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 #endif	
 
 	if(me==0){
+		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
+			1:0;
+		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
 				lcrp->nEnts*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
@@ -86,12 +89,16 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 		printf("-------        Setup information        -------\n");
 		printf("-----------------------------------------------\n");
 		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x"); 
+		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
+		printf("Automatic pinning                : %12s\n", pin?"enabled":"disabled");
+		if (pin)
+			printf("Pinning threads to               : %12s\n", pinStrategy);
 		printf("-----------------------------------------------\n\n");
 		fflush(stdout);
 	}
 }
 
-void SpMVM_printEnvInfo(int options) 
+void SpMVM_printEnvInfo() 
 {
 
 	int me;
@@ -123,7 +130,7 @@ void SpMVM_printEnvInfo(int options)
 		printf("MPI processes  per node          : %12d\n", nproc/nnodes); 
 		printf("Physical cores per node          : %12d\n", nphyscores); 
 		printf("HW threads     per node          : %12d\n", ncores); 
-		printf("OpenMP threads per node          : %12d\n", nproc*nthreads);
+		printf("OpenMP threads per node          : %12d\n", nproc/nnodes*nthreads);
 		printf("OpenMP threads per process       : %12d\n", nthreads);
 #ifdef OPENCL
 		printf("OpenCL devices                   :\n");
@@ -140,7 +147,6 @@ void SpMVM_printEnvInfo(int options)
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
-		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
 #ifdef OPENCL
 		printf("OpenCL support                   :      enabled\n");
 #else
@@ -441,7 +447,7 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = 1./SQRT(sum);
+	data_t f = (data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -458,7 +464,7 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = 1./SQRT(sum);
+	data_t f = (data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;

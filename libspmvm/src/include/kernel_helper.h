@@ -10,7 +10,7 @@
 
 /*********** kernel for all entries *********************/
 
-inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
+static inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		int* me, int spmvmOptions) 
 {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
@@ -22,8 +22,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 #ifdef OPENCL
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
-//		invec->val = CL_mapBuffer(invec->CL_val_gpu
-		//CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(data_t));
+		CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(data_t));
 	}
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_FULL);
@@ -54,7 +53,7 @@ inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 
 /*********** kernel for local entries only *********************/
 
-inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
+static inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
 		int* me, int spmvmOptions) {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
@@ -92,8 +91,12 @@ inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* re
 
 /*********** kernel for remote entries only *********************/
 
-inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-		int* me, int spmvmOptions) {
+static inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
+		int* me
+#ifdef OPENCL
+		, int spmvmOptions
+#endif
+		) {
 	/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
 	 * or OMP parallel kernel;
 	 * nl_cycles: timing measurement for computation of non-local entries
@@ -116,7 +119,6 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 #else
 	int i, j;
 	data_t hlp1;
-	if (spmvmOptions == 777) printf("dummy\n"); //TODO
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<lcrp->lnRows[*me]; i++){
@@ -136,7 +138,7 @@ inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* r
 
 #ifdef OPENCL
 
-inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
+static inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
 {
 	/* helper function to call SpMVM kernel only on device with device data transfer;
 	 * due to communication thread, OMP version must be called separately;
@@ -154,7 +156,7 @@ inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_T
 
 /*********** kernel for remote entries only -- comm thread *********************/
 
-inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
+static inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
 {
 	/* helper function to call SpMVM kernel only on device with device data transfer;
 	 * due to communication thread, OMP version must be called separately;

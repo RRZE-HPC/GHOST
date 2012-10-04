@@ -53,18 +53,18 @@ extern const char *SPM_FORMAT_NAMES[];
 /******************************************************************************/
 /*----  Options for the SpMVM  -----------------------------------------------*/
 /******************************************************************************/
-#define SPMVM_OPTION_NONE       (0x1<<0) // no special options applied
-#define SPMVM_OPTION_AXPY       (0x1<<1) // perform y = y+A*x instead of y = A*x
-#define SPMVM_OPTION_KEEPRESULT (0x1<<2) // keep result on OpenCL device 
-#define SPMVM_OPTION_RHSPRESENT (0x1<<3) // assume that RHS vector is present
-#define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<4) // not configure comb. kernels
-#define SPMVM_OPTION_NO_SPLIT_KERNELS    (0x1<<5) // not configure split kernels
-#define SPMVM_OPTION_NO_TASKMODE_KERNEL  (0x1<<6) // not configure task mode
-#define SPMVM_OPTION_SERIAL_IO   (0x1<<7) // read matrix with one process only
-#define SPMVM_OPTION_PIN   (0x1<<8)   // pin threads to physical cores
-#define SPMVM_OPTION_PIN_SMT   (0x1<<9) // pin threads to _all_ cores
-#define SPMVM_OPTION_WORKDIST_NZE   (0x1<<10) // distribute by # of nonzeros
-#define SPMVM_OPTION_WORKDIST_LNZE   (0x1<<11) // distribute by # of loc nonzeros
+#define SPMVM_NUMOPTIONS 10
+#define SPMVM_OPTION_NONE       (0x0)    // no special options applied
+#define SPMVM_OPTION_AXPY       (0x1<<0) // perform y = y+A*x instead of y = A*x
+#define SPMVM_OPTION_KEEPRESULT (0x1<<1) // keep result on OpenCL device 
+#define SPMVM_OPTION_RHSPRESENT (0x1<<2) // assume that RHS vector is present
+#define SPMVM_OPTION_NO_COMBINED_KERNELS (0x1<<3) // not configure comb. kernels
+#define SPMVM_OPTION_NO_SPLIT_KERNELS    (0x1<<4) // not configure split kernels
+#define SPMVM_OPTION_SERIAL_IO  (0x1<<5) // read matrix with one process only
+#define SPMVM_OPTION_PIN        (0x1<<6) // pin threads to physical cores
+#define SPMVM_OPTION_PIN_SMT    (0x1<<7) // pin threads to _all_ cores
+#define SPMVM_OPTION_WORKDIST_NZE   (0x1<<8) // distribute by # of nonzeros
+#define SPMVM_OPTION_WORKDIST_LNZE  (0x1<<9) // distribute by # of loc nonzeros
 //#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /******************************************************************************/
 
@@ -174,7 +174,7 @@ typedef float data_t;
 #endif
 
 #ifdef DOUBLE
-#define EPSILON 1e-9
+#define EPSILON 1e-8
 #endif
 #ifdef SINGLE
 #define EPSILON 1e-0
