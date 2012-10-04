@@ -90,7 +90,12 @@ int main( int argc, char* argv[] )
 #ifdef CHECK
 		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
 
-		if (me==0 && time>1e-16) {
+		if (me==0) {
+			if (time<1e-16) { //actually zero
+				printf("%11s: SKIPPED\n",
+						SpMVM_kernelName(kernels[kernel]));
+				continue;
+			}
 			errcount=0;
 			for (i=0; i<cr->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
