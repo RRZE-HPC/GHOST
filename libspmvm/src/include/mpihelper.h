@@ -11,7 +11,5 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 int getNumberOfNodes();
 int getLocalRank();
 int getNumberOfRanksOnNode();
-int getNumberOfPhysicalCores();
-int getNumberOfHwThreads();
 
 #endif

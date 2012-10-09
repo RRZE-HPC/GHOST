@@ -6,7 +6,9 @@
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
+#ifdef MPI
 #include <mpihelper.h>
+#endif
 
 #ifdef OPENCL
 #include "cl_matricks.h"
@@ -21,8 +23,18 @@
 #include <omp.h>
 #include <string.h>
 
+#define MAX_NUM_THREADS 128
 
 
+int SpMVM_getRank() {
+#ifdef MPI
+	int rank;
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
+	return rank;
+#else
+	return 0;
+#endif
+}
 
 
 
@@ -34,7 +46,7 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 	size_t ws;
 
 
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	me = SpMVM_getRank();
 
 #ifdef OPENCL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
@@ -74,10 +86,10 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 				(double)lcrp->nRows); 
 		printf("Host matrix (CRS)            [MB]: %12lu\n", ws);
 #ifdef OPENCL	
-	if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->fullFormat],lcrp->fullT,totalFullMemSize);
 		}	
-	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
+		if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
 			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->localFormat],lcrp->localT,totalLocalMemSize); 
 			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->remoteFormat],lcrp->remoteT,totalRemoteMemSize);
 			printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
@@ -101,22 +113,27 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 void SpMVM_printEnvInfo() 
 {
 
-	int me;
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	int me = SpMVM_getRank();
 
-	int nnodes = getNumberOfNodes();
-	int nphyscores = getNumberOfPhysicalCores();
-	int ncores = getNumberOfHwThreads();
-
-#ifdef OPENCL
-	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
-#endif
 
 
 	if (me==0) {
 		int nproc;
 		int nthreads;
+		int nnodes;
+		int nphyscores = getNumberOfPhysicalCores();
+		int ncores = getNumberOfHwThreads();
+
+#ifdef OPENCL
+		CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
+#endif
+#ifdef MPI
+		nnodes = getNumberOfNodes();
 		MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
+#else
+		nnodes = 1;
+		nproc = 1;
+#endif
 
 #pragma omp parallel
 #pragma omp master
@@ -178,8 +195,7 @@ void SpMVM_printEnvInfo()
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int))
 {
 
-	int me;
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	int me = SpMVM_getRank();
 
 	if (me==0) {
 		return SpMVM_newHostVector( nRows,fp );
@@ -192,14 +208,10 @@ void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int
 {
 
 	int iteration;
-	int me;
 
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
-
-
-/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+	/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] += 1;
-	}	*/
+		}	*/
 
 	if (spmvmOptions & SPMVM_OPTION_AXPY) {
 
@@ -243,9 +255,9 @@ void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int
 #endif
 #endif
 	}
-/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+	/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] -= 1;
-	}*/
+		}*/
 }
 
 
@@ -334,16 +346,23 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 }
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
-	int me;
+	int me = SpMVM_getRank();
 
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
 
 
 	VECTOR_TYPE *nodeVec = SpMVM_newVector( pseudo_ldim ); 
 
+#ifdef MPI
 	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
 				nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
+#else
+	int i;
+	for (i=0; i<vec->nRows; i++) nodeVec->val[i] = vec->val[i];
+#endif
+#ifdef OPENCL
+	CL_uploadVector(nodeVec);
+#endif
 
 	return nodeVec;
 }
@@ -351,10 +370,7 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
-	int me;
-
-
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	int me = SpMVM_getRank();
 
 	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
 		SpMVM_permuteVector(vec->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
@@ -362,17 +378,26 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 		SpMVM_permuteVector(vec->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
 	}
 
+#ifdef MPI
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+#else
+	int i;
+	for (i=0; i<totalVec->nRows; i++) totalVec->val[i] = vec->val[i];
+#endif
 }
 
 LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 {
-	int me;
+	LCRP_TYPE *lcrp;
 
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+#ifdef MPI
+	lcrp = setup_communication(cr, options);
+#else
+	UNUSED(options);
+	lcrp = SpMVM_CRtoLCRP(cr);
+#endif
 
-	LCRP_TYPE *lcrp = setup_communication(cr, options);
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
@@ -389,18 +414,16 @@ CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
 {
 
 
-	int me;
+	int me = SpMVM_getRank();
 	CR_TYPE *cr;
 	MM_TYPE *mm;
-
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 
 	if (me == 0){
 		if (!isMMfile(matrixPath)){
 
 			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
-				readCRbinFile(cr, matrixPath);
+			readCRbinFile(cr, matrixPath);
 
 		} else{
 			mm = readMMFile( matrixPath);
@@ -501,9 +524,9 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 		free(cr);
 	}
 	//TODO
-/*	size_t size_rowOffset, size_col, size_val;
+	/*	size_t size_rowOffset, size_col, size_val;
 
-	if( cr ) {
+		if( cr ) {
 
 		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
 		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
@@ -514,7 +537,7 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 		freeMemory( size_val,        "cr->val",       cr->val );
 		freeMemory( sizeof(CR_TYPE), "cr",            cr );
 
-	}*/
+		}*/
 }
 
 void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {
@@ -620,3 +643,77 @@ void SpMVM_abort(char *s) {
 	exit(EXIT_FAILURE);
 }
 
+
+
+
+int getNumberOfPhysicalCores()
+{
+	FILE *fp;
+	char nCoresS[4];
+	int nCores;
+
+	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
+	if (!fp) {
+		printf("Failed to get number of physical cores\n");
+	}
+
+	fgets(nCoresS,sizeof(nCoresS)-1,fp);
+	nCores = atoi(nCoresS);
+
+	pclose(fp);
+
+	return nCores;
+
+}
+
+int getNumberOfHwThreads()
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr) {
+
+	LCRP_TYPE *lcrp;
+	size_t size_val, size_col, size_ptr;
+	int i;
+
+	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
+	lcrp->lnRows = (int*) allocateMemory(sizeof(int),"lcrp->lnRows");	
+	lcrp->lnEnts = (int*) allocateMemory(sizeof(int),"lcrp->lnEnts");	
+	lcrp->lfEnt  = (int*) allocateMemory(sizeof(int), "lcrp->lfEnt" ); 
+	lcrp->lfRow  = (int*) allocateMemory(sizeof(int), "lcrp->lfRow" ); 
+
+	lcrp->nEnts = cr->nEnts;
+	lcrp->nRows = cr->nRows;
+	lcrp->threads = omp_get_num_threads(); 
+	lcrp->lnRows[0] = cr->nRows;
+	lcrp->lnEnts[0] = cr->nEnts;
+	lcrp->lfRow[0]  = 0;
+	lcrp->lfEnt[0] = 0;
+	lcrp->halo_elements = 0;
+
+	size_val  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( data_t ) );
+	size_col  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( int ) );
+	size_ptr  = (size_t)( (size_t)(lcrp->lnRows[0]+1) * sizeof( int ) );
+
+	lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
+	lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
+	lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
+
+
+
+
+#pragma omp parallel for schedule(static)
+	for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->val[i] = cr->val[i];
+
+#pragma omp parallel for schedule(static)
+	for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->col[i] = cr->col[i];
+
+#pragma omp parallel for schedule(static)
+	for (i=0; i<lcrp->lnRows[0]; i++) lcrp->lrow_ptr[i] = cr->rowOffset[i];
+
+	lcrp->lrow_ptr[lcrp->lnRows[0]] = lcrp->lnEnts[0]; 
+
+	return lcrp;
+
+}

@@ -10,6 +10,11 @@ IPATH     += -I./src/include
 
 OBJS	=	$(COBJS) $(FOBJS)
 
+ifeq ($(strip $(MPI)),1)
+MAKROS+= -DMPI
+OBJS  += $(MPIOBJS)
+endif
+
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
@@ -39,8 +44,10 @@ endif
 
 MAKROS+= -DDEBUG=$(DEBUG)
 
-COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(filter-out $(wildcard src/cl_*.c), $(wildcard src/*.c)))))
+COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o,\
+				$(filter-out $(wildcard src/cl_*.c src/mpi_*.c), $(wildcard src/*.c)))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
+MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi_*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 

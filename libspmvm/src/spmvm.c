@@ -3,9 +3,13 @@
 #include "spmvm.h"
 #include "spmvm_util.h"
 #include "matricks.h"
-#include "mpihelper.h"
-#include "kernel.h"
+
+#ifdef MPI
 #include <mpi.h>
+#include "mpihelper.h"
+#endif
+
+#include "kernel.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/param.h>
@@ -22,9 +26,11 @@
 
 static Hybrid_kernel kernels[] = {
 	{ &hybrid_kernel_0 },
+#ifdef MPI
 	{ &hybrid_kernel_I },
 	{ &hybrid_kernel_II },
 	{ &hybrid_kernel_III },
+#endif
 };
 
 static double wctime()
@@ -39,7 +45,8 @@ static double wctime()
 }
 
 static int options;
-#ifdef COMPLEX
+
+#if defined(COMPLEX) && defined(MPI)
 typedef struct {
 #ifdef DOUBLE
 	double x;
@@ -68,12 +75,12 @@ static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 
 int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
+	int me = SpMVM_getRank();;
 
-	int me, req, prov, init;
+#ifdef MPI
+	int req, prov, init;
 
-	req = MPI_THREAD_MULTIPLE;
-
-	MPI_safecall(MPI_Initialized(&init));
+	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
 
 	if (!init) {
 		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
@@ -131,6 +138,12 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			}
 		}
 	}
+#else
+	UNUSED(argc);
+	UNUSED(argv);
+	me = 0;
+
+#endif
 
 	// TODO check options for plausability
 
@@ -160,7 +173,9 @@ void SpMVM_finish()
 	CL_finish(options);
 #endif
 
+#ifdef MPI
 	MPI_Finalize();
+#endif
 
 }
 
@@ -170,9 +185,7 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 	size_t size_val;
 	int i;
 	int nRows;
-	int me;
-
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	int me = SpMVM_getRank();
 
 	switch (type) {
 		case VECTOR_TYPE_LHS:
@@ -239,15 +252,13 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
 
 LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 {
-	int me;
 	CR_TYPE *cr;
 	MM_TYPE *mm;
 	LCRP_TYPE *lcrp;
 
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
 	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
-	if (me == 0) { 
+	if (SpMVM_getRank() == 0) { 
 		// root process reads row pointers (parallel IO) oder entire matrix
 		if (!isMMfile(matrixPath)){
 			if (options & SPMVM_OPTION_SERIAL_IO)
@@ -260,10 +271,16 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 			freeMMMatrix(mm);
 		}
 	}
-	if (options & SPMVM_OPTION_SERIAL_IO)
+
+#ifdef MPI
+	if (options & SPMVM_OPTION_SERIAL_IO)    // TODO w/o MPI always serial I/O
 		lcrp = setup_communication(cr, options);
 	else
 		lcrp = setup_communication_parallel(cr, matrixPath, options);
+#else
+	lcrp = SpMVM_CRtoLCRP(cr);
+#endif
+
 
 	if (deviceFormats == NULL) {
 #ifdef OPENCL
@@ -286,39 +303,32 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 		int kernel, int nIter)
 {
 	int it;
-	int me;
 	double time = 0;
 	FuncPrototype kernelFunc = NULL;
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	
+#ifndef MPI
+	if (!(kernel & SPMVM_KERNEL_NOMPI)) {
+		DEBUG_LOG(1,"Skipping the %s kernel because the library is built without MPI..",SpMVM_kernelName(kernel));
+		return 0.; // kernel not selected
+	}
+#endif
 
 	if ((kernel & SPMVM_KERNELS_SPLIT) && 
 			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		IF_DEBUG(1) {
-			if (me==0)
-				fprintf(stderr,"Skipping the %s kernel because split kernels have not been configured.\n",SpMVM_kernelName(kernel));
-		}
+		DEBUG_LOG(1,"Skipping the %s kernel because split kernels have not been configured.",SpMVM_kernelName(kernel));
 		return 0.; // kernel not selected
 	}
 	if ((kernel & SPMVM_KERNELS_COMBINED) && 
 			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
-		IF_DEBUG(1) {
-			if (me==0)
-				fprintf(stderr,"Skipping the %s kernel because combined kernels have not been configured.\n",SpMVM_kernelName(kernel));
-		}
+		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",SpMVM_kernelName(kernel));
 		return 0.; // kernel not selected
 	}
 	if ((kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) {
-		IF_DEBUG(1) {
-			if (me==0)
-				fprintf(stderr,"Skipping the %s kernel because there are multiple MPI processes.\n",SpMVM_kernelName(kernel));
-		}
+		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",SpMVM_kernelName(kernel));
 		return 0.; // non-MPI kernel
 	} 
 	if ((kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) {
-		IF_DEBUG(1) {
-			if (me==0)
-				fprintf(stderr,"Skipping the %s kernel because there is only one thread.\n",SpMVM_kernelName(kernel));
-		}
+		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",SpMVM_kernelName(kernel));
 		return 0.; // not enough threads
 	}
 
@@ -340,14 +350,18 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 	}
 
 
+#ifdef MPI
 	MPI_Barrier(MPI_COMM_WORLD);
+#endif
 	double oldtime=1e9;
 
 	for( it = 0; it < nIter; it++ ) {
 		time = wctime();
 		kernelFunc(res, lcrp, invec, options);
 
+#ifdef MPI
 		MPI_Barrier(MPI_COMM_WORLD);
+#endif
 		time = wctime()-time;
 		time = time<oldtime?time:oldtime;
 		oldtime=time;

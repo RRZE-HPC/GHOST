@@ -2,7 +2,6 @@
 #define _SPMVM_H_
 
 #include <complex.h>
-#include <mpi.h>
 #include <math.h>
 
 #ifdef OPENCL
@@ -107,13 +106,17 @@ extern const char *DATATYPE_NAMES[];
 #ifdef DOUBLE
 #ifdef COMPLEX
 typedef _Complex double data_t;
+#ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
+#endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
 #else // COMPLEX
 typedef double data_t;
+#ifdef MPI
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
+#endif
 #define DATATYPE_DESIRED DATATYPE_DOUBLE
 #endif // COMPLEX
 #endif // DOUBLE
@@ -121,13 +124,17 @@ typedef double data_t;
 #ifdef SINGLE
 #ifdef COMPLEX
 typedef _Complex float data_t;
+#ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
+#endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
 #else // COMPLEX
 typedef float data_t;
+#ifdef MPI
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
+#endif
 #define DATATYPE_DESIRED DATATYPE_FLOAT
 #endif // COMPLEX
 #endif // SINGLE

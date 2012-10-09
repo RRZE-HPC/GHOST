@@ -3,10 +3,45 @@
 
 
 #include "spmvm.h"
+#ifdef MPI
+#include <mpi.h>
+#endif
 
 /******************************************************************************/
 /****** Makros ****************************************************************/
 /******************************************************************************/
+#ifdef MPI
+#define DEBUG_LOG(level,msg, ...) {\
+	if(DEBUG >= level) {\
+		int me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));\
+		fprintf(stderr,"PE%d at %s:%d: ",me,__FILE__,__LINE__);\
+		fprintf(stderr,msg, ##__VA_ARGS__);\
+	}\
+}
+#else
+#define DEBUG_LOG(level,msg, ...) {\
+	if(DEBUG >= level) {\
+		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
+		fprintf(stderr, msg, ##__VA_ARGS__);\
+	}\
+}
+#endif
+
+#ifdef MPI
+#define ABORT(msg, ...) {\
+	int me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));\
+	fprintf(stderr,"PE%d ABORTING at %s:%d: ",me,__FILE__,__LINE__);\
+	fprintf(stderr,msg, ##__VA_ARGS__);\
+}
+#else
+#define ABORT(msg, ...) {\
+	fprintf(stderr,"ABORTING at %s:%d: ",__FILE__,__LINE__);\
+	fprintf(stderr,msg, ##__VA_ARGS__);\
+}
+#endif
+
 #define MPI_safecall(call) {\
   int mpierr = call ;\
   if( MPI_SUCCESS != mpierr ){\
@@ -31,6 +66,8 @@
     fflush(stdout);\
   }\
   } while(0)
+
+#define UNUSED(x) (void)(x)
 /******************************************************************************/
 
 #ifdef OPENCL
@@ -124,4 +161,8 @@ void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );
 void SpMVM_freeLCRP( LCRP_TYPE* const );
 void SpMVM_permuteVector( data_t* vec, int* perm, int len);
+int getNumberOfPhysicalCores();
+int SpMVM_getRank();
+int getNumberOfHwThreads();
+LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr);
 #endif

@@ -16,8 +16,6 @@
 #include <omp.h>
 #include <complex.h>
 
-#define MAX_NUM_THREADS 128
-#define gettid() syscall(SYS_gettid)
 
 static MPI_Comm single_node_comm;
 
@@ -27,7 +25,7 @@ static int getProcessorId() {
 	int processorId;
 
 	CPU_ZERO(&cpu_set);
-	sched_getaffinity(gettid(),sizeof(cpu_set_t), &cpu_set);
+	sched_getaffinity((pid_t)0,sizeof(cpu_set_t), &cpu_set);
 
 	for (processorId=0;processorId<MAX_NUM_THREADS;processorId++){
 		if (CPU_ISSET(processorId,&cpu_set))
@@ -36,32 +34,6 @@ static int getProcessorId() {
 		}
 	}
 	return processorId;
-}
-
-
-int getNumberOfPhysicalCores()
-{
-	FILE *fp;
-	char nCoresS[4];
-	int nCores;
-
-	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
-	if (!fp) {
-		printf("Failed to get number of physical cores\n");
-	}
-
-	fgets(nCoresS,sizeof(nCoresS)-1,fp);
-	nCores = atoi(nCoresS);
-
-	pclose(fp);
-
-	return nCores;
-
-}
-
-int getNumberOfHwThreads()
-{
-	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
 int getLocalRank() 

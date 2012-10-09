@@ -116,13 +116,9 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	 * check for success and increase global counter */
 
 	size_t boundary = 4096;
-	int me, ierr; 
-
-	//printf("Gesamtspeicher [bytes]: %llu\n", maxMem); 
+	int ierr;
 
 	void* mem;
-
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	/*if( allocatedMem + size > maxMem ) {
 	  fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
@@ -131,22 +127,17 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	  mypabort("exceeded memory on allocation");
 	  }*/
 
-	IF_DEBUG(2){
-		//if (size>1024.0*1024.0){  
-		printf("PE%d: Allocating %8.2f MB of memory for %-18s  -- %6.3f\n ", 
-				me, size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
-		fflush(stdout);
-		//}
-	}
-
+	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
+				size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		printf("PE%d: Error while allocating using posix_memalign\n", me);
+		printf("Errorcode: %s\n", strerror(ierr));
+		SpMVM_abort("Error while allocating using posix_memalign");
+/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
 		printf("Array to be allocated: %s\n", desc);
 		printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
-				(1024.0*1024.0));
-		printf("Errorcode: %s\n", strerror(ierr));
-		exit(1);
+				(1024.0*1024.0));*/
+//		exit(1);
 	}
 
 	if( ! mem ) {
@@ -164,8 +155,7 @@ void* allocateMemory( const size_t size, const char* desc ) {
 
 void freeMemory( size_t size, const char* desc, void* this_array ) {
 
-	IF_DEBUG(1) if (size>1024.0*1024.0) printf("Freeing %8.2f MB of memory for "
-			"%s -- \n", size/(1024.0*1024.0), desc);
+	DEBUG_LOG(2,"Freeing %8.2f MB of memory for %s", size/(1024.*1024.), desc);
 
 	allocatedMem -= size;
 	free (this_array);
@@ -266,11 +256,10 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	FILE* RESTFILE;
 
 
-	IF_DEBUG(1) printf(" \n Lese %s \n", path);
+	DEBUG_LOG(1,"Lese %s", path);
 
 	if ((RESTFILE = fopen(path, "rb"))==NULL){
-		printf("Fehler beim Oeffnen von %s\n", path);
-		exit(1);
+		ABORT("Fehler beim Oeffnen von %s\n", path);
 	}
 
 	fread(&datatype, sizeof(int), 1, RESTFILE);
@@ -278,18 +267,16 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
-	IF_DEBUG(2) printf("Allocate memory for arrays\n");
+	DEBUG_LOG(2,"Allocate memory for arrays");
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 
-	IF_DEBUG(2){
-		printf("Reading array with row-offsets\n");
-		printf("Reading array with column indices\n");
-		printf("Reading array with values\n");
-	}	
+	DEBUG_LOG(2,"Reading array with row-offsets");
+	DEBUG_LOG(2,"Reading array with column indices");
+	DEBUG_LOG(2,"Reading array with values");
 
-	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
+	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset (restart-version)");
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < cr->nRows+1; i++ ) {
 		cr->rowOffset[i] = 0;
@@ -313,10 +300,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
 	double mybytes;
-	int me;
 
 
-	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
 
 	timing( &startTime, &ct );
 
@@ -333,10 +318,11 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		if (me==0)
-			fprintf(stderr,"Warning in %s:%d! The library has been built for %s data but"
+		char msg[1024];
+		sprintf(msg,"Warning in %s:%d! The library has been built for %s data but"
 				   " the file contains %s data. Casting...\n",__FILE__,__LINE__,
 					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+		DEBUG_LOG(0,msg);
 	}
 
 	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
@@ -568,61 +554,6 @@ int compareNZEPos( const void* a, const void* b ) {
 /* ########################################################################## */
 
 
-REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const int vec_dim ) {
-
-	/* set up buffer for vector of length vec_dim to avoid undata_tistic loads from cache;
-	 * buffer can hold at least as many (numvecs) copies of vector as required to fill cachesize;
-	 * starting index (i*offset, i<numvecs) of each copy of vector in buffer is aligned to pagesize*/
-
-	int i, me;
-	REVBUF_TYPE* rb;
-	size_t size_mem, size_vec;
-
-	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
-
-	rb = (REVBUF_TYPE*) allocateMemory( sizeof( REVBUF_TYPE ), "rb");
-
-	rb->pagesize  = pagesize;
-	rb->cachesize = cachesize;
-	rb->vecdim    = vec_dim;
-	rb->ppvec     = (int)( sizeof(data_t) * rb->vecdim / rb->pagesize) + 1;
-	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(data_t);
-	rb->numvecs   = (int)( (1024.0*rb->cachesize) / (rb->ppvec*rb->pagesize) ) + 2;
-	rb->globdim   = rb->numvecs*rb->offset;
-
-	IF_DEBUG(1){ 
-		printf("-----------------------------------------------------\n");
-		printf("------   Setup of revolving buffer for PE %2.2d   -----\n", me);
-		printf("-----------------------------------------------------\n");
-		printf("Elements per vector         : %12d\n", rb->vecdim);
-		printf("Cache size per socket [kB]  : %12d\n", rb->cachesize);
-		printf("Memorypage size [bytes]     : %12d\n", rb->pagesize);
-		printf("Memorypage in cache         : %12d\n", 1024*rb->cachesize/rb->pagesize);
-		printf("Memory pages per vector     : %12d\n", rb->ppvec); 
-		printf("Vectors in RevBuf           : %12d\n", rb->numvecs);
-		printf("Elements in RevBuf          : %12d\n", rb->globdim);
-		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(data_t))/(1024.0*1024.0));
-		printf("Offset between vectors (el) : %12d\n", rb->offset);
-		printf("-----------------------------------------------------\n");
-	}
-
-	size_mem = (size_t)( rb->globdim * sizeof(data_t) );
-	size_vec = (size_t)( rb->numvecs * sizeof(data_t*) );
-
-	rb->mem = (data_t*)   allocateMemory(size_mem, "rb->mem");
-	rb->vec = (data_t **) allocateMemory(size_vec, "rb->vec");
-
-	for (i=0; i<rb->numvecs; i++){
-		rb->vec[i] = &rb->mem[i*rb->offset];
-	}
-	IF_DEBUG(1) {
-		printf("----   Finished revolving buffer for PE %2.2d   ----\n", me);
-		printf("-----------------------------------------------------\n");
-	}
-	return rb;
-}
-
-
 /* ########################################################################## */
 
 
@@ -635,7 +566,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	int* nEntsInRow;
 	int i, e, pos;
 	uint64 hlpaddr;
-	int me;
 
 	size_t size_rowOffset, size_col, size_val, size_nEntsInRow;
 
@@ -643,7 +573,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
-	MPI_safecall(MPI_Comm_rank (MPI_COMM_WORLD, &me));
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );

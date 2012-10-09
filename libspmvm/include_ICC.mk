@@ -1,4 +1,8 @@
-CC  = mpicc
+ifeq ($(strip $(MPI)),1)
+CC = mpicc
+else
+CC = icc
+endif
 FC  = ifort
 
 CFLAGS  = -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981

@@ -1,5 +1,3 @@
-#include <matricks.h>
-#include <mpi.h>
 #include "kernel_helper.h"
 #include "kernel.h"
 
