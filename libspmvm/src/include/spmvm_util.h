@@ -13,10 +13,11 @@
 #ifdef MPI
 #define DEBUG_LOG(level,msg, ...) {\
 	if(DEBUG >= level) {\
-		int me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));\
-		fprintf(stderr,"PE%d at %s:%d: ",me,__FILE__,__LINE__);\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stderr,"PE%d at %s:%d: ",__me,__FILE__,__LINE__);\
 		fprintf(stderr,msg, ##__VA_ARGS__);\
+		fprintf(stderr, "\n");\
 	}\
 }
 #else
@@ -24,21 +25,24 @@
 	if(DEBUG >= level) {\
 		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
 		fprintf(stderr, msg, ##__VA_ARGS__);\
+		fprintf(stderr, "\n");\
 	}\
 }
 #endif
 
 #ifdef MPI
 #define ABORT(msg, ...) {\
-	int me;\
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));\
-	fprintf(stderr,"PE%d ABORTING at %s:%d: ",me,__FILE__,__LINE__);\
+	int __me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+	fprintf(stderr,"PE%d ABORTING at %s:%d: ",__me,__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
+	fprintf(stderr, "\n");\
 }
 #else
 #define ABORT(msg, ...) {\
 	fprintf(stderr,"ABORTING at %s:%d: ",__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
+	fprintf(stderr, "\n");\
 }
 #endif
 

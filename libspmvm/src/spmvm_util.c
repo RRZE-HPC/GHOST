@@ -23,7 +23,6 @@
 #include <omp.h>
 #include <string.h>
 
-#define MAX_NUM_THREADS 128
 
 
 int SpMVM_getRank() {

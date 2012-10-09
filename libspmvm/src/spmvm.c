@@ -75,22 +75,23 @@ static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 
 int SpMVM_init(int argc, char **argv, int spmvmOptions)
 {
-	int me = SpMVM_getRank();;
+	int me;
 
 #ifdef MPI
 	int req, prov, init;
 
 	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
 
+	MPI_safecall(MPI_Initialized(&init));
 	if (!init) {
 		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
 		if (req != prov) {
-			fprintf(stderr, "Required MPI threading level (%d) is not "
-					"provided (%d)!\n",req,prov);
+			DEBUG_LOG(0,"Warning !Required MPI threading level (%d) is not "
+					"provided (%d)!");
 		}
 	}
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
+	me = SpMVM_getRank();;
 
 	setupSingleNodeComm();
 
@@ -125,7 +126,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			else
 				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
 
-			IF_DEBUG(1) printf("pinning thread %d to core %d\n",omp_get_thread_num(),coreNumber);
+			DEBUG_LOG(1,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
 			CPU_ZERO(&cpu_set);
 			CPU_SET(coreNumber, &cpu_set);
@@ -133,7 +134,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
 
 			if (error != 0) {
-				printf("pinning thread to core %d failed (%d): %s\n", 
+				DEBUG_LOG(0,"Pinning thread to core %d failed (%d): %s", 
 						coreNumber, error, strerror(error));
 			}
 		}

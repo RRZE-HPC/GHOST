@@ -16,6 +16,7 @@
 #include <omp.h>
 #include <complex.h>
 
+#define MAX_NUM_THREADS 128
 
 static MPI_Comm single_node_comm;
 
@@ -104,7 +105,7 @@ void setupSingleNodeComm()
 	MPI_safecall(MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, &single_node_comm ));
 	MPI_safecall(MPI_Comm_rank ( single_node_comm, &me_node));
 
-	IF_DEBUG(1) printf("PE%d hat in single_node_comm den rank %d\n", me, me_node);
+	DEBUG_LOG(1,"Rank in single node comm: %d\n", me_node);
 
 	free( mymate );
 	free( acc_mates );
@@ -186,10 +187,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
-	IF_DEBUG(1){
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-		if (me==0) printf("Entering setup_communication\n");
-	}
+	DEBUG_LOG(1,"Entering setup_communication");
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
@@ -232,7 +230,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	if (me==0){
 
 		if (options & SPMVM_OPTION_WORKDIST_NZE){
-			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_NZE on each PE\n");
+			DEBUG_LOG(1,"Distribute Matrix with EQUAL_NZE on each PE");
 			target_nnz = (cr->nEnts/lcrp->nodes)+1; /* sonst bleiben welche uebrig! */
 
 			lcrp->lfRow[0]  = 0;
@@ -249,7 +247,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 		}
 		else if (options & SPMVM_OPTION_WORKDIST_LNZE){
-			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_LNZE on each PE\n");
+			DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
 
 			/* A first attempt should be blocks of equal size */
 			target_rows = (cr->nRows/lcrp->nodes);
@@ -280,21 +278,21 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 						loc_count[i]++;
 				}
 			}
-			IF_DEBUG(2) printf("erster Durchgang: lokale Elemente:\n");
+			DEBUG_LOG(2,"First run: local elements:");
 			hlpi = 0;
 			for (i=0; i<lcrp->nodes; i++){
 				hlpi += loc_count[i];
-				IF_DEBUG(1) printf("Block %3d %8d %12d\n", i, loc_count[i], lcrp->lnEnts[i]);
+				DEBUG_LOG(2,"Block %3d %8d %12d", i, loc_count[i], lcrp->lnEnts[i]);
 			}
 			target_lnze = hlpi/lcrp->nodes;
-			IF_DEBUG(1) printf("insgesamt lokale Elemente: %d bzw pro PE: %d\n", hlpi, target_lnze);
+			DEBUG_LOG(2,"total local elements: %d | per PE: %d", hlpi, target_lnze);
 
 			outer_convergence = 0; 
 			outer_iter = 0;
 
 			while(outer_convergence==0){ 
 
-				IF_DEBUG(1) printf("Convergence Iteration %d\n", outer_iter);
+				DEBUG_LOG(2,"Convergence Iteration %d", outer_iter);
 
 				for (i=0; i<lcrp->nodes-1; i++){
 
@@ -321,7 +319,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 					lcrp->lnRows[i]  = trial_rows;
 					loc_count[i]     = trial_count;
 					lcrp->lfRow[i+1] = lcrp->lfRow[i]+lcrp->lnRows[i];
-					if (lcrp->lfRow[i+1]>cr->nRows) printf("Exceeded matrix dimension\n");
+					if (lcrp->lfRow[i+1]>cr->nRows) DEBUG_LOG(0,"Exceeded matrix dimension");
 					lcrp->lfEnt[i+1] = cr->rowOffset[lcrp->lfRow[i+1]];
 					lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
 
@@ -333,14 +331,14 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 				for (j=lcrp->lfEnt[lcrp->nodes-1]; j<cr->nEnts; j++)
 					if (cr->col[j] >= lcrp->lfRow[lcrp->nodes-1]) loc_count[lcrp->nodes-1]++;
 
-				IF_DEBUG(2) printf("naechster Durchgang: outer_iter=%d:\n", outer_iter);
+				DEBUG_LOG(2,"Next run: outer_iter=%d:", outer_iter);
 				hlpi = 0;
 				for (i=0; i<lcrp->nodes; i++){
 					hlpi += loc_count[i];
-					IF_DEBUG(2) printf("Block %3d %8d %12d\n", i, loc_count[i], lcrp->lnEnts[i]);
+					DEBUG_LOG(2,"Block %3d %8d %12d", i, loc_count[i], lcrp->lnEnts[i]);
 				}
 				target_lnze = hlpi/lcrp->nodes;
-				IF_DEBUG(2) printf("insgesamt lokale Elemente: %d bzw pro PE: %d Gesamtanteil: %6.3f%%\n",
+				DEBUG_LOG(2,"total local elements: %d | per PE: %d | total share: %6.3f%%",
 						hlpi, target_lnze, 100.0*hlpi/(1.0*cr->nEnts));
 
 				hlpi = 0;
@@ -350,25 +348,22 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 				outer_iter++;
 
 				if (outer_iter>20){
-					printf("Zwar noch keine Konvergenz aber schon 20 Iterationen\n");
-					printf("Verliere die Geduld und setze outer_convergence auf 1\n");
+					DEBUG_LOG(0,"No convergence after 20 iterations, exiting iteration.");
 					outer_convergence = 1;
 				}
 
 			}
 
-			IF_DEBUG(1) {
 				for (i=0; i<lcrp->nodes; i++)  
-					printf("PE%3d: lfRow=%8d lfEnt=%12d lnRows=%8d lnEnts=%12d\n", i, lcrp->lfRow[i], 
+					DEBUG_LOG(1,"PE%3d: lfRow=%8d lfEnt=%12d lnRows=%8d lnEnts=%12d", i, lcrp->lfRow[i], 
 							lcrp->lfEnt[i], lcrp->lnRows[i], lcrp->lnEnts[i]);
-			}
-
+			
 
 			free(loc_count);
 		}
 		else {
 
-			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_ROWS on each PE\n");
+			DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
 			target_rows = (cr->nRows/lcrp->nodes);
 
 			lcrp->lfRow[0] = 0;
@@ -661,7 +656,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 		lnEnts_r = lcrp->lnEnts[me]-lnEnts_l;
 
-		IF_DEBUG(1) printf("PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d\n", 
+		DEBUG_LOG(1,"PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d", 
 				me, lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
 		size_lval = (size_t)( lnEnts_l             * sizeof(data_t) ); 
@@ -696,7 +691,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 		lcrp->lrow_ptr_r[0] = 0;
 
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-		IF_DEBUG(1) printf("PE%d: lnRows=%d row_ptr=%d..%d\n", 
+		DEBUG_LOG(1,"PE%d: lnRows=%d row_ptr=%d..%d", 
 				me, lcrp->lnRows[me], lcrp->lrow_ptr[0], lcrp->lrow_ptr[lcrp->lnRows[me]]);
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -729,12 +724,12 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 		IF_DEBUG(2){
 			for (i=0; i<lcrp->lnRows[me]+1; i++)
-				printf("--Row_ptrs-- PE %d: i=%d local=%d remote=%d\n", 
+				DEBUG_LOG(2,"--Row_ptrs-- PE %d: i=%d local=%d remote=%d", 
 						me, i, lcrp->lrow_ptr_l[i], lcrp->lrow_ptr_r[i]);
 			for (i=0; i<lcrp->lrow_ptr_l[lcrp->lnRows[me]]; i++)
-				printf("-- local -- PE%d: lcrp->lcol[%d]=%d\n", me, i, lcrp->lcol[i]);
+				DEBUG_LOG(2,"-- local -- PE%d: lcrp->lcol[%d]=%d", me, i, lcrp->lcol[i]);
 			for (i=0; i<lcrp->lrow_ptr_r[lcrp->lnRows[me]]; i++)
-				printf("-- remote -- PE%d: lcrp->rcol[%d]=%d\n", me, i, lcrp->rcol[i]);
+				DEBUG_LOG(2,"-- remote -- PE%d: lcrp->rcol[%d]=%d", me, i, lcrp->rcol[i]);
 		}
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -829,10 +824,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
-	IF_DEBUG(1){
-		ierr = MPI_Barrier(MPI_COMM_WORLD);
-		if (me==0) printf("Entering setup_communication_parallel\n");
-	}
+	DEBUG_LOG(1,"Entering setup_communication_parallel");
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
@@ -867,12 +859,6 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	size_nptr = (size_t)( lcrp->nodes             * sizeof(int*) );
 	size_a2ai = (size_t)( lcrp->nodes*lcrp->nodes * sizeof(int)  );
 
-	IF_DEBUG(1) {
-		printf("PE%i: size_nint=%lu\n",me,size_nint);
-		printf("PE%i: size_nptr=%lu\n",me,size_nptr);
-		printf("PE%i: size_a2ai=%lu\n",me,size_a2ai);
-	}
-
 	lcrp->lnEnts   = (int*)       allocateMemory( size_nint, "lcrp->lnEnts" ); 
 	lcrp->lnRows   = (int*)       allocateMemory( size_nint, "lcrp->lnRows" ); 
 	lcrp->lfEnt    = (int*)       allocateMemory( size_nint, "lcrp->lfEnt" ); 
@@ -886,14 +872,14 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	 ***************************************************************************/
 	if (me==0){
 		if (options & SPMVM_OPTION_WORKDIST_LNZE){
-			fprintf(stderr,"SPMVM_OPTION_WORKDIST_LNZE has not (yet) been "
+			DEBUG_LOG(0,"Warning! SPMVM_OPTION_WORKDIST_LNZE has not (yet) been "
 					"implemented for parallel IO! Switching to "
-					"SPMVM_OPTION_WORKDIST_NZE\n");
+					"SPMVM_OPTION_WORKDIST_NZE");
 			options |= SPMVM_OPTION_WORKDIST_NZE;
 		}
 
 		if (options & SPMVM_OPTION_WORKDIST_NZE){
-			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_NZE on each PE\n");
+			DEBUG_LOG(1, "Distribute Matrix with EQUAL_NZE on each PE");
 			target_nnz = (cr->nEnts/lcrp->nodes)+1; /* sonst bleiben welche uebrig! */
 
 			lcrp->lfRow[0]  = 0;
@@ -911,7 +897,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 		}
 		else {
 
-			IF_DEBUG(1) printf("Distribute Matrix with EQUAL_ROWS on each PE\n");
+			DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
 			target_rows = (cr->nRows/lcrp->nodes);
 
 			lcrp->lfRow[0] = 0;
@@ -944,13 +930,10 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	ierr = MPI_Bcast(lcrp->lnRows, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
 	ierr = MPI_Bcast(lcrp->lnEnts, lcrp->nodes, MPI_INTEGER, 0, MPI_COMM_WORLD);
 
-	IF_DEBUG(1) {
-		printf("PE%i: local rows          = %i\n",me,lcrp->lnRows[me]);
-		printf("PE%i: local rows (offset) = %i\n",me,lcrp->lfRow[me]);
-		printf("PE%i: local entries          = %i\n",me,lcrp->lnEnts[me]);
-		printf("PE%i: local entires (offset) = %i\n",me,lcrp->lfEnt[me]);
-		fflush(stdout);
-	}
+	DEBUG_LOG(1,"local rows          = %i",lcrp->lnRows[me]);
+	DEBUG_LOG(1,"local rows (offset) = %i",lcrp->lfRow[me]);
+	DEBUG_LOG(1,"local entries          = %i",lcrp->lnEnts[me]);
+	DEBUG_LOG(1,"local entires (offset) = %i",lcrp->lfEnt[me]);
 
 	/****************************************************************************
 	 *******   Allocate memory for matrix in distributed CRS storage      *******
@@ -982,12 +965,11 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 	/* replace scattering with read-in */
-	IF_DEBUG(1) printf("PE%i: opening file %s for parallel read-in\n",me,matrixPath);
+	DEBUG_LOG(1,"Opening file %s for parallel read-in\n",matrixPath);
 	ierr = MPI_File_open(MPI_COMM_WORLD, matrixPath, MPI_MODE_RDONLY, info, &file_handle);
 
 	if( ierr ) {
-		printf("PE%i: unable to open parallel file %s \n",me, matrixPath);
-		exit(1);
+		ABORT("Unable to open parallel file %s",matrixPath);
 	}
 
 	int datatype;
@@ -996,15 +978,15 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 	/* read col */
 	offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
-	IF_DEBUG(1) printf("PE%i: read col -- offset=%lu | %d\n",me,(size_t)offset_in_file,lcrp->lfEnt[me]);
+	DEBUG_LOG(1,"Read col -- offset=%lu | %d",(size_t)offset_in_file,lcrp->lfEnt[me]);
 	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 	MPI_safecall(MPI_File_read(file_handle, lcrp->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
 
 	/* read val */
 	if (datatype != DATATYPE_DESIRED) {
 		if (me==0) {
-			fprintf(stderr,"Warning in %s:%d! The library has been built for %s data but"
-					" the file contains %s data. Casting...\n",__FILE__,__LINE__,
+			DEBUG_LOG(0,"Warning The library has been built for %s data but"
+					" the file contains %s data. Casting...",
 					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 		}
 		switch(datatype) {
@@ -1012,7 +994,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 				{
 					float *tmp = (float *)allocateMemory(lcrp->lnEnts[me]*sizeof(float), "tmp");
 					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(float);
-					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_FLOAT, &status));
 					for (i = 0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = (data_t) tmp[i];
@@ -1023,7 +1005,8 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 				{
 					double *tmp = (double *)allocateMemory(lcrp->lnEnts[me]*sizeof(double), "tmp");
 					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(double);
-					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
+
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_DOUBLE, &status));
 					for (i = 0; i<lcrp->lnEnts[me]; i++)
@@ -1035,8 +1018,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 				{
 					_Complex double *tmp = (_Complex double *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex double), "tmp");
 					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex double);
-					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
-
+					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 
 					MPI_Datatype tmpDT;
 					MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&tmpDT));
@@ -1055,8 +1037,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 				{
 					_Complex float *tmp = (_Complex float *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex float), "tmp");
 					offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex float);
-					IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
-
+					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 
 					MPI_Datatype tmpDT;
 					MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&tmpDT));
@@ -1076,7 +1057,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	} else {
 
 		offset_in_file = (4+lcrp->nRows+1)*sizeof(int) + (lcrp->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(data_t);
-		IF_DEBUG(1) printf("PE%i: read val -- offset=%lu\n",me,(size_t)offset_in_file);
+		DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 		MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 		MPI_safecall(MPI_File_read(file_handle, lcrp->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
 	}
@@ -1300,8 +1281,8 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 		lnEnts_r = lcrp->lnEnts[me]-lnEnts_l;
 
-		IF_DEBUG(1) printf("PE%d: Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d\n", 
-				me, lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
+		DEBUG_LOG(1,"Rows=%6d\t Ents=%6d(l),%6d(r),%6d(g)\t pdim=%6d", 
+				 lcrp->lnRows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
 		size_lval = (size_t)( lnEnts_l             * sizeof(data_t) ); 
 		size_rval = (size_t)( lnEnts_r             * sizeof(data_t) ); 
@@ -1335,8 +1316,8 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 		lcrp->lrow_ptr_r[0] = 0;
 
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
-		IF_DEBUG(1) printf("PE%d: lnRows=%d row_ptr=%d..%d\n", 
-				me, lcrp->lnRows[me], lcrp->lrow_ptr[0], lcrp->lrow_ptr[lcrp->lnRows[me]]);
+		DEBUG_LOG(1,"lnRows=%d row_ptr=%d..%d", 
+				 lcrp->lnRows[me], lcrp->lrow_ptr[0], lcrp->lrow_ptr[lcrp->lnRows[me]]);
 		fflush(stdout);
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1368,12 +1349,12 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 		IF_DEBUG(2){
 			for (i=0; i<lcrp->lnRows[me]+1; i++)
-				printf("--Row_ptrs-- PE %d: i=%d local=%d remote=%d\n", 
+				DEBUG_LOG(2,"--Row_ptrs-- PE %d: i=%d local=%d remote=%d", 
 						me, i, lcrp->lrow_ptr_l[i], lcrp->lrow_ptr_r[i]);
 			for (i=0; i<lcrp->lrow_ptr_l[lcrp->lnRows[me]]; i++)
-				printf("-- local -- PE%d: lcrp->lcol[%d]=%d\n", me, i, lcrp->lcol[i]);
+				DEBUG_LOG(2,"-- local -- PE%d: lcrp->lcol[%d]=%d", me, i, lcrp->lcol[i]);
 			for (i=0; i<lcrp->lrow_ptr_r[lcrp->lnRows[me]]; i++)
-				printf("-- remote -- PE%d: lcrp->rcol[%d]=%d\n", me, i, lcrp->rcol[i]);
+				DEBUG_LOG(2,"-- remote -- PE%d: lcrp->rcol[%d]=%d", me, i, lcrp->rcol[i]);
 		}
 		fflush(stdout);
 		ierr = MPI_Barrier(MPI_COMM_WORLD);
