@@ -32,7 +32,7 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_PIN | SPMVM_OPTION_SERIAL_IO;
+	int options = SPMVM_OPTION_PIN;
 	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -62,10 +62,10 @@ int main( int argc, char* argv[] )
 	matrixFormats->T[2] = 1;
 #endif
 
-	me   = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix  = SpMVM_createMatrix(matrixPath,SPM_FORMAT_DIST_CRS,matrixFormats);
-	nodeLHS = SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
-	nodeRHS = SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
+	me     = SpMVM_init(argc,argv,options);       // basic initialization
+	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_DIST_CRS,matrixFormats);
+	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
+	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
 #ifdef CHECK	
 	MATRIX_TYPE *goldMatrix;

@@ -20,6 +20,7 @@ void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 	likwid_markerStartRegion("Kernel 0");
 #endif
 
+
 	spmvmKernAll(lcrp, invec, res, &me, spmvmOptions);
 
 #ifdef LIKWID_MARKER

@@ -259,12 +259,14 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
 		vec->val = val;
 		vec->nRows = nRows; 
 
-		DEBUG_LOG(1,"Vector created successfully");
+		DEBUG_LOG(1,"Host-only vector created successfully");
 
 		return vec;
 	} else {
 		VECTOR_TYPE* vec;
 		vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
+		vec->val = val;
+		vec->nRows = nRows; 
 #ifdef OPENCL
 		int flag;
 		switch (type) {
@@ -282,11 +284,9 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
 			default:
 				SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 		}
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,val,flag );
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
 #endif
-		vec->val = val;
-		vec->nRows = nRows; 
 
 		DEBUG_LOG(1,"Vector created successfully");
 
@@ -306,7 +306,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	if (SpMVM_getRank() == 0) 
 	{ // root process reads row pointers (parallel IO) oder entire matrix
 		if (!isMMfile(matrixPath)){
-			if (options & SPMVM_OPTION_SERIAL_IO)
+			if (options & SPMVM_OPTION_SERIAL_IO || format & SPM_FORMATS_GLOB)
 				readCRbinFile(cr, matrixPath);
 			else
 				readCRrowsBinFile(cr, matrixPath);
@@ -320,8 +320,12 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	if (format & SPM_FORMATS_DIST)
 	{ // distributed matrix
 #ifndef MPI
+		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
-#endif
+#else
+	MPI_safecall(MPI_Bcast(&cr->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&cr->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&cr->nCols,1,MPI_INT,0,MPI_COMM_WORLD));
 		LCRP_TYPE *lcrp;
 
 		if (options & SPMVM_OPTION_SERIAL_IO)    // TODO w/o MPI always serial I/O
@@ -339,6 +343,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 #else
 		UNUSED(deviceFormats);
 #endif
+#endif
 	} else 
 	{ // global matrix
 		switch (format) {
@@ -354,6 +359,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 
 	}
 
+	
 	mat->format = format;
 	mat->nNonz = cr->nEnts;
 	mat->nRows = cr->nRows;

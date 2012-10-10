@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include "kernel_helper.h"
 #include "kernel.h"
+#include <stdio.h>
 
 void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
 {
@@ -29,8 +30,6 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 
 
 	size_t size_request, size_status, size_work, size_mem;
-
-
 
 	if (init_kernel==1){
 		

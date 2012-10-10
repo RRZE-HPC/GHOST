@@ -110,7 +110,6 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options)
 void SpMVM_printEnvInfo() 
 {
 
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 	int me = SpMVM_getRank();
 
 	int nproc;
@@ -374,7 +373,6 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
-	int me = SpMVM_getRank();
 
 	UNUSED(kernel);
 	//TODO
@@ -386,6 +384,7 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 
 
 #ifdef MPI
+	int me = SpMVM_getRank();
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
@@ -395,7 +394,7 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 #endif
 }
 
-LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
+/*LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 {
 	LCRP_TYPE *lcrp;
 
@@ -403,7 +402,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 	lcrp = setup_communication(cr, options);
 #else
 	UNUSED(options);
-	lcrp = SpMVM_CRtoLCRP(cr);
+//	lcrp = SpMVM_CRtoLCRP(cr);
 #endif
 
 
@@ -417,7 +416,7 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
 	CL_uploadCRS ( lcrp, formats, options);
 #endif
 	return lcrp;
-}
+}*/
 CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
 {
 
@@ -735,10 +734,14 @@ int getNumberOfThreads() {
 
 	return nthreads;
 }
+
+#ifdef MPI
 static int stringcmp(const void *x, const void *y)
 {
 	return (strcmp((char *)x, (char *)y));
 }
+#endif
+
 int getNumberOfNodes() 
 {
 #ifndef MPI
