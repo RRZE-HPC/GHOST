@@ -36,9 +36,7 @@ int SpMVM_getRank() {
 }
 
 
-
-
-void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
+void SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options)
 {
 
 	int me;
@@ -52,15 +50,15 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
 	if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		fullMemSize = getBytesize(lcrp->fullMatrix, lcrp->fullFormat)/
+		fullMemSize = getBytesize(lcrp->devMatrix->fullMatrix, lcrp->devMatrix->fullFormat)/
 			(1024*1024);
 		MPI_safecall(MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
 	} 
 	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		localMemSize = getBytesize(lcrp->localMatrix,lcrp->localFormat)/
+		localMemSize = getBytesize(lcrp->devMatrix->localMatrix,lcrp->devMatrix->localFormat)/
 			(1024*1024);
-		remoteMemSize = getBytesize(lcrp->remoteMatrix,lcrp->remoteFormat)/
+		remoteMemSize = getBytesize(lcrp->devMatrix->remoteMatrix,lcrp->devMatrix->remoteFormat)/
 			(1024*1024);
 		MPI_safecall(MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
@@ -74,23 +72,23 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 			1:0;
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((lcrp->nRows+1)*sizeof(int) + 
-				lcrp->nEnts*(sizeof(data_t)+sizeof(int)))/(1024*1024);
+				lcrp->nNonz*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
 		printf("-------        Matrix information       -------\n");
 		printf("-----------------------------------------------\n");
 		printf("Investigated matrix              : %12s\n", matrixName); 
 		printf("Dimension of matrix              : %12.0f\n", (double)lcrp->nRows); 
-		printf("Non-zero elements                : %12.0f\n", (double)lcrp->nEnts); 
-		printf("Average elements per row         : %12.3f\n", (double)lcrp->nEnts/
-				(double)lcrp->nRows); 
+		printf("Non-zero elements                : %12.0f\n", (double)lcrp->nNonz); 
+		printf("Average elements per row         : %12.3f\n", (double)lcrp->nNonz/
+				(double)lcrp->nRows);
 		printf("Host matrix (CRS)            [MB]: %12lu\n", ws);
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->fullFormat],lcrp->fullT,totalFullMemSize);
+			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->fullFormat],lcrp->devMatrix->fullT,totalFullMemSize);
 		}	
 		if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
-			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->localFormat],lcrp->localT,totalLocalMemSize); 
-			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->remoteFormat],lcrp->remoteT,totalRemoteMemSize);
+			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->localFormat],lcrp->devMatrix->localT,totalLocalMemSize); 
+			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->remoteFormat],lcrp->devMatrix->remoteT,totalRemoteMemSize);
 			printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
@@ -112,27 +110,28 @@ void SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options)
 void SpMVM_printEnvInfo() 
 {
 
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 	int me = SpMVM_getRank();
 
-
-
-	if (me==0) {
-		int nproc;
-		int nthreads;
-		int nnodes;
-		int nphyscores = getNumberOfPhysicalCores();
-		int ncores = getNumberOfHwThreads();
+	int nproc;
+	int nnodes;
+#ifdef MPI
+	nnodes = getNumberOfNodes();
+	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
+#else
+	nnodes = 1;
+	nproc = 1;
+#endif
 
 #ifdef OPENCL
 		CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
 #endif
-#ifdef MPI
-		nnodes = getNumberOfNodes();
-		MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
-#else
-		nnodes = 1;
-		nproc = 1;
-#endif
+
+	if (me==0) {
+		int nthreads;
+		int nphyscores = getNumberOfPhysicalCores();
+		int ncores = getNumberOfHwThreads();
+
 
 #pragma omp parallel
 #pragma omp master
@@ -163,6 +162,11 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+#ifdef MPI
+		printf("MPI support                      :      enabled\n");
+#else
+		printf("MPI support                      :     disabled\n");
+#endif
 #ifdef OPENCL
 		printf("OpenCL support                   :      enabled\n");
 #else
@@ -184,10 +188,10 @@ void SpMVM_printEnvInfo()
 		fflush(stdout);
 
 	}
-
 #ifdef OPENCL
 	destroyCLdeviceInfo(devInfo);
 #endif
+
 
 }
 
@@ -207,10 +211,11 @@ void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int
 {
 
 	int iteration;
+	int i;
 
-	/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+		for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] += 1;
-		}	*/
+		}	
 
 	if (spmvmOptions & SPMVM_OPTION_AXPY) {
 
@@ -254,9 +259,9 @@ void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int
 #endif
 #endif
 	}
-	/*	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+		for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] -= 1;
-		}*/
+		}
 }
 
 
@@ -371,16 +376,20 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 
 	int me = SpMVM_getRank();
 
-	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+	UNUSED(kernel);
+	//TODO
+	/*	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
 		SpMVM_permuteVector(vec->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
 		SpMVM_permuteVector(vec->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
-	}
+		}*/
+
 
 #ifdef MPI
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
+	UNUSED(lcrp);
 	int i;
 	for (i=0; i<totalVec->nRows; i++) totalVec->val[i] = vec->val[i];
 #endif
@@ -444,6 +453,8 @@ CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
 	return cr;
 
 }
+
+
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
@@ -563,15 +574,15 @@ void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {
 		free( lcrp->rcol );
 		free( lcrp->lval );
 		free( lcrp->rval );
-		free( lcrp->fullRowPerm );
-		free( lcrp->fullInvRowPerm );
-		free( lcrp->splitRowPerm );
-		free( lcrp->splitInvRowPerm );
+		/*free( lcrp->fullRowPerm );
+		  free( lcrp->fullInvRowPerm );
+		  free( lcrp->splitRowPerm );
+		  free( lcrp->splitInvRowPerm );
 #ifdef OPENCL
-		CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
-		CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
-		CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
-#endif
+CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
+CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
+CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
+#endif*/
 		free( lcrp );
 	}
 }
@@ -670,49 +681,100 @@ int getNumberOfHwThreads()
 	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr) {
+/*LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr) {
 
-	LCRP_TYPE *lcrp;
-	size_t size_val, size_col, size_ptr;
-	int i;
+  LCRP_TYPE *lcrp;
+  size_t size_val, size_col, size_ptr;
+  int i;
 
-	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
-	lcrp->lnRows = (int*) allocateMemory(sizeof(int),"lcrp->lnRows");	
-	lcrp->lnEnts = (int*) allocateMemory(sizeof(int),"lcrp->lnEnts");	
-	lcrp->lfEnt  = (int*) allocateMemory(sizeof(int), "lcrp->lfEnt" ); 
-	lcrp->lfRow  = (int*) allocateMemory(sizeof(int), "lcrp->lfRow" ); 
+  lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
+  lcrp->lnRows = (int*) allocateMemory(sizeof(int),"lcrp->lnRows");	
+  lcrp->lnEnts = (int*) allocateMemory(sizeof(int),"lcrp->lnEnts");	
+  lcrp->lfEnt  = (int*) allocateMemory(sizeof(int), "lcrp->lfEnt" ); 
+  lcrp->lfRow  = (int*) allocateMemory(sizeof(int), "lcrp->lfRow" ); 
 
-	lcrp->nEnts = cr->nEnts;
-	lcrp->nRows = cr->nRows;
-	lcrp->threads = omp_get_num_threads(); 
-	lcrp->lnRows[0] = cr->nRows;
-	lcrp->lnEnts[0] = cr->nEnts;
-	lcrp->lfRow[0]  = 0;
-	lcrp->lfEnt[0] = 0;
-	lcrp->halo_elements = 0;
+  lcrp->nEnts = cr->nEnts;
+  lcrp->nRows = cr->nRows;
+  lcrp->threads = omp_get_num_threads(); 
+  lcrp->lnRows[0] = cr->nRows;
+  lcrp->lnEnts[0] = cr->nEnts;
+  lcrp->lfRow[0]  = 0;
+  lcrp->lfEnt[0] = 0;
+  lcrp->halo_elements = 0;
 
-	size_val  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( data_t ) );
-	size_col  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( int ) );
-	size_ptr  = (size_t)( (size_t)(lcrp->lnRows[0]+1) * sizeof( int ) );
+  size_val  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( data_t ) );
+  size_col  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( int ) );
+  size_ptr  = (size_t)( (size_t)(lcrp->lnRows[0]+1) * sizeof( int ) );
 
-	lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
-	lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
-	lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
-
-
+  lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
+  lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
+  lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
 
 
-#pragma omp parallel for schedule(static)
-	for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->val[i] = cr->val[i];
+
 
 #pragma omp parallel for schedule(static)
-	for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->col[i] = cr->col[i];
+for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->val[i] = cr->val[i];
 
 #pragma omp parallel for schedule(static)
-	for (i=0; i<lcrp->lnRows[0]; i++) lcrp->lrow_ptr[i] = cr->rowOffset[i];
+for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->col[i] = cr->col[i];
 
-	lcrp->lrow_ptr[lcrp->lnRows[0]] = lcrp->lnEnts[0]; 
+#pragma omp parallel for schedule(static)
+for (i=0; i<lcrp->lnRows[0]; i++) lcrp->lrow_ptr[i] = cr->rowOffset[i];
 
-	return lcrp;
+lcrp->lrow_ptr[lcrp->lnRows[0]] = lcrp->lnEnts[0]; 
 
+return lcrp;
+
+}*/
+
+int getNumberOfThreads() {
+	int nthreads;
+#pragma omp parallel
+	nthreads = omp_get_num_threads();
+
+	return nthreads;
+}
+static int stringcmp(const void *x, const void *y)
+{
+	return (strcmp((char *)x, (char *)y));
+}
+int getNumberOfNodes() 
+{
+#ifndef MPI
+	return 1;
+#else
+	int nameLen,me,size,i,distinctNames = 1;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	char *names = NULL;
+
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
+	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));
+	MPI_safecall(MPI_Get_processor_name(name,&nameLen));
+
+
+	if (me==0) {
+		names = (char *)allocateMemory(size*MPI_MAX_PROCESSOR_NAME*sizeof(char),
+				"names");
+	}
+
+
+	MPI_safecall(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
+				MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD));
+
+	if (me==0) {
+		qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
+		for (i=1; i<size; i++) {
+			if (strcmp(names+(i-1)*MPI_MAX_PROCESSOR_NAME,names+
+						i*MPI_MAX_PROCESSOR_NAME)) {
+				distinctNames++;
+			}
+		}
+		free(names);
+	}
+
+	MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD));
+
+	return distinctNames;
+#endif
 }

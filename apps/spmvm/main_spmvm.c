@@ -1,3 +1,4 @@
+
 #include <spmvm.h>
 #include <spmvm_util.h>
 
@@ -23,11 +24,11 @@ static data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 100;
+	int me, kernel, nIter = 1;
 	double time;
 
 #ifdef CHECK
-	int i, errcount = 0;
+	unsigned int i, errcount = 0;
 	double mytol;
 #endif
 
@@ -38,10 +39,10 @@ int main( int argc, char* argv[] )
 		SPMVM_KERNEL_TASKMODE};
 	int nKernels = sizeof(kernels)/sizeof(int);
 	
-	VECTOR_TYPE*     nodeLHS; // lhs vector per node
-	VECTOR_TYPE*     nodeRHS; // rhs vector node
+	VECTOR_TYPE *nodeLHS; // lhs vector per node
+	VECTOR_TYPE *nodeRHS; // rhs vector node
 
-	LCRP_TYPE *lcrp;
+	MATRIX_TYPE *matrix;
 
 	if (argc!=2) {
 		fprintf(stderr,"Usage: spmvm.x <matrixPath>\n");
@@ -62,33 +63,33 @@ int main( int argc, char* argv[] )
 #endif
 
 	me   = SpMVM_init(argc,argv,options);       // basic initialization
-	lcrp    = SpMVM_createCRS (matrixPath,matrixFormats);
-	nodeLHS = SpMVM_createVector(lcrp,VECTOR_TYPE_LHS,NULL);
-	nodeRHS = SpMVM_createVector(lcrp,VECTOR_TYPE_RHS,rhsVal);
+	matrix  = SpMVM_createMatrix(matrixPath,SPM_FORMAT_DIST_CRS,matrixFormats);
+	nodeLHS = SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
+	nodeRHS = SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
 #ifdef CHECK	
-	CR_TYPE *cr;
+	MATRIX_TYPE *goldMatrix;
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	cr   = SpMVM_createGlobalCRS (matrixPath);
-	goldLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
-	globRHS = SpMVM_createGlobalHostVector(lcrp->nRows,rhsVal);
-	globLHS = SpMVM_createGlobalHostVector(cr->nRows,NULL);
+	goldMatrix = SpMVM_createMatrix (matrixPath,SPM_FORMAT_GLOB_CRS,NULL);
+	goldLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	globRHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
+	globLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
 	if (me==0)
-		SpMVM_referenceSolver(cr,globRHS->val,goldLHS->val,nIter,options);	
+		SpMVM_referenceSolver((CR_TYPE *)goldMatrix->matrix,globRHS->val,goldLHS->val,nIter,options);	
 #endif	
 
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
+	SpMVM_printMatrixInfo(matrix,strtok(basename(argv[optind]),"_."),options);
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
-		time = SpMVM_solve(nodeLHS,lcrp,nodeRHS,kernels[kernel],nIter);
+		time = SpMVM_solve(nodeLHS,matrix,nodeRHS,kernels[kernel],nIter);
 
 #ifdef CHECK
-		SpMVM_collectVectors(lcrp,nodeLHS,globLHS,kernel);
+		SpMVM_collectVectors(matrix->matrix,nodeLHS,globLHS,kernel);
 
 		if (me==0) {
 			if (time<1e-16) { //actually zero
@@ -97,12 +98,12 @@ int main( int argc, char* argv[] )
 				continue;
 			}
 			errcount=0;
-			for (i=0; i<cr->nRows; i++){
+			for (i=0; i<matrix->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
-					(cr->rowOffset[i+1]-cr->rowOffset[i]);
+					(((CR_TYPE *)(goldMatrix->matrix))->rowOffset[i+1]-((CR_TYPE *)(goldMatrix->matrix))->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf( "PE%d: error in row %i: %.2e + %.2ei vs. %.2e +"
+					printf( "PE%d: error in row %u: %.2e + %.2ei vs. %.2e +"
 							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
@@ -115,7 +116,7 @@ int main( int argc, char* argv[] )
 					SpMVM_kernelName(kernels[kernel]),
 					errcount?"FAILURE":"SUCCESS",
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)lcrp->nEnts/time,
+					(double)matrix->nNonz/time,
 					time*1.e3);
 		}
 #else
@@ -123,7 +124,7 @@ int main( int argc, char* argv[] )
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)lcrp->nEnts/time,
+					(double)matrix->nNonz/time,
 					time*1.e3);
 		}
 #endif
@@ -135,13 +136,13 @@ int main( int argc, char* argv[] )
 
 	SpMVM_freeVector( nodeLHS );
 	SpMVM_freeVector( nodeRHS );
-	SpMVM_freeLCRP( lcrp );
+//	SpMVM_freeLCRP( lcrp );
 	
 #ifdef CHECK
 	SpMVM_freeHostVector( globRHS );
 	SpMVM_freeHostVector( goldLHS );
 	SpMVM_freeHostVector( globLHS );
-	SpMVM_freeCRS( cr );
+	//SpMVM_freeCRS( cr );
 #endif
 
 	SpMVM_finish();

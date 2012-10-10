@@ -82,7 +82,6 @@ void CL_freeELR( CL_ELR_TYPE* const celr );
 void CL_freeMatrix(void *matrix, int format);
 
 
-void getPadding(int nRows, int* paddedRows);
 void elrColIdToFortran( ELR_TYPE* elr );
 void elrColIdToC( ELR_TYPE* elr );
 size_t getBytesize(void *mat, int format); 

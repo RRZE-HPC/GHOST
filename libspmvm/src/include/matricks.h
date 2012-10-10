@@ -181,6 +181,7 @@ int compareNZEOrgPos( const void* a, const void* b );
 int compareNZEPos(const void*, const void*);
 int compareNZEPerRow( const void*, const void*);
 int compareNZEForJD( const void*, const void* );
-
+MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr);
+int pad(int nRows, int padding);
 
 #endif /* _MATRICKS_H_ */

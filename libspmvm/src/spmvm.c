@@ -24,15 +24,6 @@
 #include <likwid.h>
 #endif
 
-static Hybrid_kernel kernels[] = {
-	{ &hybrid_kernel_0 },
-#ifdef MPI
-	{ &hybrid_kernel_I },
-	{ &hybrid_kernel_II },
-	{ &hybrid_kernel_III },
-#endif
-};
-
 static double wctime()
 {
 	struct timeval tp;
@@ -87,8 +78,8 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
 		if (req != prov) {
-			DEBUG_LOG(0,"Warning !Required MPI threading level (%d) is not "
-					"provided (%d)!");
+			DEBUG_LOG(0,"Warning! Required MPI threading level (%d) is not "
+					"provided (%d)!",req,prov);
 		}
 	}
 	me = SpMVM_getRank();;
@@ -120,7 +111,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 		{
 			int error;
 			int coreNumber;
-	
+
 			if (spmvmOptions & SPMVM_OPTION_PIN_SMT)
 				coreNumber = omp_get_thread_num()/2+(offset*(getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
 			else
@@ -143,6 +134,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 	UNUSED(argc);
 	UNUSED(argv);
 	me = 0;
+	spmvmOptions |= SPMVM_OPTION_SERIAL_IO; // important for createMatrix()
 
 #endif
 
@@ -180,78 +172,200 @@ void SpMVM_finish()
 
 }
 
-VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int))
+void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
 {
-	VECTOR_TYPE* vec;
-	size_t size_val;
-	int i;
+
+	data_t *val;
 	int nRows;
-	int me = SpMVM_getRank();
+	size_t size_val;
 
-	switch (type) {
-		case VECTOR_TYPE_LHS:
-			nRows = lcrp->lnRows[me];
-			break;
-		case VECTOR_TYPE_RHS:
-		case VECTOR_TYPE_BOTH:
-			nRows = lcrp->lnRows[me]+lcrp->halo_elements;
-			break;
-		default:
-			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
-	}
 
-	size_val = (size_t)( nRows * sizeof(data_t) );
-	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
+	if (matrix->format & SPM_FORMATS_GLOB)
+	{
+		size_val = (size_t)matrix->nRows*sizeof(data_t);
+		val = (data_t*) allocateMemory( size_val, "vec->val");
+		nRows = matrix->nRows;
 
-	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
-	vec->nRows = nRows;
-
-	if (fp) {
+		unsigned int i;
+		if (fp) {
 #pragma omp parallel for schedule(static)
-		for (i=0; i<lcrp->lnRows[me]; i++) 
-			vec->val[i] = fp(lcrp->lfRow[me]+i);
-#pragma omp parallel for schedule(static)
-		for (i=lcrp->lnRows[me]; i<nRows; i++) 
-			vec->val[i] = fp(lcrp->lfRow[me]+i);
-	}else {
+			for (i=0; i<matrix->nRows; i++) 
+				val[i] = fp(i);
+		}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(static)
-		for (i=0; i<lcrp->lnRows[me]; i++) vec->val[i] = 0.+I*0.;
-#pragma omp parallel for schedule(static)
-		for (i=lcrp->lnRows[me]; i<nRows; i++) vec->val[i] = 0.+I*0.;
+			for (i=0; i<matrix->nRows; i++) val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(static)
-		for (i=0; i<lcrp->lnRows[me]; i++) vec->val[i] = 0.;
+			for (i=0; i<matrix->nRows; i++) val[i] = 0.;
+#endif
+		}
+
+
+
+
+	} 
+	else 
+	{
+		LCRP_TYPE *lcrp = matrix->matrix;
+		int i;
+		int me = SpMVM_getRank();
+
+		switch (type) {
+			case VECTOR_TYPE_LHS:
+				nRows = lcrp->lnRows[me];
+				break;
+			case VECTOR_TYPE_RHS:
+			case VECTOR_TYPE_BOTH:
+				nRows = lcrp->lnRows[me]+lcrp->halo_elements;
+				break;
+			default:
+				SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
+		}
+
+		size_val = (size_t)( nRows * sizeof(data_t) );
+
+		val = (data_t*) allocateMemory( size_val, "vec->val");
+		nRows = nRows;
+
+		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d+%d rows",lcrp->lnRows[me],lcrp->halo_elements);
+
+		if (fp) {
 #pragma omp parallel for schedule(static)
-		for (i=lcrp->lnRows[me]; i<nRows; i++) vec->val[i] = 0.;
+			for (i=0; i<lcrp->lnRows[me]; i++) 
+				val[i] = fp(lcrp->lfRow[me]+i);
+#pragma omp parallel for schedule(static)
+			for (i=lcrp->lnRows[me]; i<nRows; i++) 
+				val[i] = fp(lcrp->lfRow[me]+i);
+		}else {
+#ifdef COMPLEX
+#pragma omp parallel for schedule(static)
+			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.+I*0.;
+#pragma omp parallel for schedule(static)
+			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.+I*0.;
+#else
+#pragma omp parallel for schedule(static)
+			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.;
+#pragma omp parallel for schedule(static)
+			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.;
 #endif
+		}
 	}
 
+
+	if (type & VECTOR_TYPE_HOSTONLY) {
+		HOSTVECTOR_TYPE* vec;
+		vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
+		vec->val = val;
+		vec->nRows = nRows; 
+
+		DEBUG_LOG(1,"Vector created successfully");
+
+		return vec;
+	} else {
+		VECTOR_TYPE* vec;
+		vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 #ifdef OPENCL
-	int flag;
-	switch (type) {
-		case VECTOR_TYPE_LHS:
-			if (options & SPMVM_OPTION_AXPY)
+		int flag;
+		switch (type) {
+			case VECTOR_TYPE_LHS:
+				if (options & SPMVM_OPTION_AXPY)
+					flag = CL_MEM_READ_WRITE;
+				else
+					flag = CL_MEM_WRITE_ONLY;
+				break;
+			case VECTOR_TYPE_RHS:
+				flag = CL_MEM_READ_ONLY;
+				break;
+			case VECTOR_TYPE_BOTH:
 				flag = CL_MEM_READ_WRITE;
-			else
-				flag = CL_MEM_WRITE_ONLY;
-			break;
-		case VECTOR_TYPE_RHS:
-			flag = CL_MEM_READ_ONLY;
-			break;
-		case VECTOR_TYPE_BOTH:
-			flag = CL_MEM_READ_WRITE;
-		default:
-			SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
-	}
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
-	CL_uploadVector(vec);
+			default:
+				SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
+		}
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,val,flag );
+		CL_uploadVector(vec);
 #endif
+		vec->val = val;
+		vec->nRows = nRows; 
 
-	return vec;
+		DEBUG_LOG(1,"Vector created successfully");
+
+		return vec;
+	}
+
 }
 
-LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
+MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormats) 
+{
+	MATRIX_TYPE *mat;
+	CR_TYPE *cr;
+
+	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
+
+	if (SpMVM_getRank() == 0) 
+	{ // root process reads row pointers (parallel IO) oder entire matrix
+		if (!isMMfile(matrixPath)){
+			if (options & SPMVM_OPTION_SERIAL_IO)
+				readCRbinFile(cr, matrixPath);
+			else
+				readCRrowsBinFile(cr, matrixPath);
+		} else{
+			MM_TYPE *mm = readMMFile( matrixPath);
+			cr = convertMMToCRMatrix( mm );
+			freeMMMatrix(mm);
+		}
+	}
+
+	if (format & SPM_FORMATS_DIST)
+	{ // distributed matrix
+#ifndef MPI
+		ABORT("Creating a distributed matrix without MPI is not possible");
+#endif
+		LCRP_TYPE *lcrp;
+
+		if (options & SPMVM_OPTION_SERIAL_IO)    // TODO w/o MPI always serial I/O
+			lcrp = setup_communication(cr, options);
+		else
+			lcrp = setup_communication_parallel(cr, matrixPath, options);
+		mat->matrix = lcrp;
+
+#ifdef OPENCL
+		if (deviceFormats == NULL) {
+			ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
+		}
+		SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
+		mat->devMatrix = CL_uploadCRS ( lcrp, formats, options);
+#else
+		UNUSED(deviceFormats);
+#endif
+	} else 
+	{ // global matrix
+		switch (format) {
+			case SPM_FORMAT_GLOB_CRS:
+				mat->matrix = cr;
+				break;
+			case SPM_FORMAT_GLOB_MICVEC:
+				mat->matrix = CRStoMICVEC(cr);
+				break;
+			default:
+				ABORT("No valid matrix format specified!");
+		}
+
+	}
+
+	mat->format = format;
+	mat->nNonz = cr->nEnts;
+	mat->nRows = cr->nRows;
+	mat->nCols = cr->nCols;
+
+	DEBUG_LOG(1,"Matrix created successfully");
+
+	return mat;
+}
+
+
+/*LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 {
 	CR_TYPE *cr;
 	MM_TYPE *mm;
@@ -298,56 +412,82 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
 
 	return lcrp;
 
-}
+}*/
 
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec, 
 		int kernel, int nIter)
 {
 	int it;
 	double time = 0;
-	FuncPrototype kernelFunc = NULL;
-	
+	char *name = SpMVM_kernelName(kernel);
+	SpMVM_kernelFunc kernelFunc = NULL;
+
 #ifndef MPI
 	if (!(kernel & SPMVM_KERNEL_NOMPI)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because the library is built without MPI..",SpMVM_kernelName(kernel));
+		DEBUG_LOG(1,"Skipping the %s kernel because the library is built without MPI.",name);
 		return 0.; // kernel not selected
 	}
 #endif
 
 	if ((kernel & SPMVM_KERNELS_SPLIT) && 
 			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because split kernels have not been configured.",SpMVM_kernelName(kernel));
+		DEBUG_LOG(1,"Skipping the %s kernel because split kernels have not been configured.",name);
 		return 0.; // kernel not selected
 	}
 	if ((kernel & SPMVM_KERNELS_COMBINED) && 
 			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",SpMVM_kernelName(kernel));
+		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",name);
 		return 0.; // kernel not selected
 	}
-	if ((kernel & SPMVM_KERNEL_NOMPI)  && lcrp->nodes>1) {
-		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",SpMVM_kernelName(kernel));
+	if ((kernel & SPMVM_KERNEL_NOMPI)  && getNumberOfNodes() > 1) {
+		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",name);
 		return 0.; // non-MPI kernel
 	} 
-	if ((kernel & SPMVM_KERNEL_TASKMODE) &&  lcrp->threads==1) {
-		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",SpMVM_kernelName(kernel));
+	if ((kernel & SPMVM_KERNEL_TASKMODE) && getNumberOfThreads() == 1) {
+		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",name);
 		return 0.; // not enough threads
 	}
 
-	switch (kernel) {
-		case SPMVM_KERNEL_NOMPI:
-			kernelFunc = kernels[0].kernel;
+	switch (mat->format) {
+		case SPM_FORMAT_DIST_CRS:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
+					break;
+#ifdef MPI
+				case SPMVM_KERNEL_VECTORMODE:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
+					break;
+				case SPMVM_KERNEL_GOODFAITH:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
+					break;
+				case SPMVM_KERNEL_TASKMODE:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
+					break;
+#endif
+				default:
+					ABORT("Non-valid kernel specified!");
+			}
 			break;
-		case SPMVM_KERNEL_VECTORMODE:
-			kernelFunc = kernels[1].kernel;
+		case SPM_FORMAT_GLOB_CRS:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
+					break;
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
+					return 0.;
+			}
 			break;
-		case SPMVM_KERNEL_GOODFAITH:
-			kernelFunc = kernels[2].kernel;
+		case SPM_FORMAT_GLOB_MICVEC:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0;
+					break;
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no MICVEC version.",name);
+			}
 			break;
-		case SPMVM_KERNEL_TASKMODE:
-			kernelFunc = kernels[3].kernel;
-			break;
-		default:
-			SpMVM_abort("Non-valid kernel specified!");
 	}
 
 
@@ -358,7 +498,7 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 
 	for( it = 0; it < nIter; it++ ) {
 		time = wctime();
-		kernelFunc(res, lcrp, invec, options);
+		kernelFunc(res, mat->matrix, invec, options);
 
 #ifdef MPI
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -370,3 +510,45 @@ double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec,
 
 	return time;
 }
+
+
+/*MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format) 
+  {
+  MATRIX_TYPE *mat;
+  CR_TYPE *cr;
+  MM_TYPE *mm;
+
+  mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+  cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
+
+  if (SpMVM_getRank() == 0) { 
+  if (!isMMfile(matrixPath)){
+  readCRbinFile(cr, matrixPath);
+  } else{
+  mm = readMMFile( matrixPath);
+  cr = convertMMToCRMatrix( mm );
+  freeMMMatrix(mm);
+  }
+  }
+
+  mat->format = format;
+  mat->nNonz = cr->nEnts;
+  mat->nRows = cr->nRows;
+  mat->nCols = cr->nCols;
+
+  switch (format) {
+  case SPM_FORMAT_MICVEC:
+  mat->matrix = CRStoMICVEC(cr);
+  break;
+  case SPM_FORMAT_CRS:
+  mat->matrix = cr;
+  break;
+  default:
+  ABORT("No valid matrix format specified!");
+  }
+
+
+
+  return mat;
+
+  }*/

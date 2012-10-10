@@ -33,18 +33,6 @@ size_t getBytesize(void *mat, int format) {
 	return sz;
 }
 
-void getPadding(int nRows, int* paddedRows) {
-
-	/* determine padding of rowlength in ELR format to achieve half-warp alignment */
-
-	int padBlock = 1024;
-
-	if(  nRows % padBlock != 0) {
-		*paddedRows = nRows + padBlock - nRows % padBlock;
-	} else {
-		*paddedRows = nRows;
-	}
-}
 
 /**********************  pJDS MATRIX TYPE *********************************/
 
@@ -185,7 +173,7 @@ ELR_TYPE* CRStoELRT(const data_t* crs_val, const int* crs_col,
 
 	elr = (ELR_TYPE *) allocateMemory(sizeof(ELR_TYPE ),"elr");
 	elr->nRows       = nRows;
-	getPadding(nRows,&elr->padding);
+	elr->padding = pad(nRows,ELR_PADDING);
 
 	elr->nMaxRow   = 0;
 	for (i=0; i<nRows; ++i) { 
@@ -250,7 +238,7 @@ ELR_TYPE* CRStoELRTP(const data_t* crs_val, const int* crs_col,
 
 	elr = (ELR_TYPE *) allocateMemory(sizeof(ELR_TYPE ),"elr");
 	elr->nRows       = nRows;
-	getPadding(nRows,&elr->padding);
+	elr->padding = pad(nRows,ELR_PADDING);
 
 	elr->nMaxRow   = 0;
 	for (i=0; i<nRows; ++i) 
@@ -346,7 +334,7 @@ ELR_TYPE* CRStoELRP(  const data_t* crs_val, const int* crs_col,
 	elr = (ELR_TYPE*) allocateMemory( sizeof( ELR_TYPE ), "elr_sorted");
 	padRows = nRows;
 	//#ifdef PADDING
-	getPadding(nRows, &padRows);
+	padRows = pad(nRows, ELR_PADDING);
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 
@@ -453,7 +441,7 @@ ELR_TYPE* CRStoELRS(  const data_t* crs_val, const int* crs_col,
 	elr = (ELR_TYPE*) allocateMemory( sizeof( ELR_TYPE ), "elr_sorted");
 	padRows = nRows;
 	//#ifdef PADDING
-	getPadding(nRows, &padRows);
+	padRows = pad(nRows, ELR_PADDING);
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 
@@ -592,7 +580,7 @@ ELR_TYPE* CRStoELR(  const data_t* crs_val, const int* crs_col,
 	elr = (ELR_TYPE*) allocateMemory( sizeof( ELR_TYPE ), "elr");
 	padRows = nRows;
 	//#ifdef PADDING
-	getPadding(nRows, &padRows);
+	padRows = pad(nRows, ELR_PADDING);
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nRows=%i to %i\n", nRows, padRows);
 	//#endif
 

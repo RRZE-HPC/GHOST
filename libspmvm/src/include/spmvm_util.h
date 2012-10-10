@@ -81,7 +81,7 @@ void CL_init();
 cl_program CL_registerProgram(char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
 
-void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+GPUMATRIX_TYPE * CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
@@ -102,7 +102,8 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type);
 void CL_vecscal(cl_mem a, data_t s, int nRows);
 void CL_axpy(cl_mem a, cl_mem b, data_t s, int nRows);
 void CL_dotprod(cl_mem a, cl_mem b, data_t *out, int nRows);
-void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
+//void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
+GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_enqueueKernel(cl_kernel kernel);
  
 size_t CL_getLocalSize(cl_kernel kernel);
@@ -111,7 +112,7 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif
 
 
-void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
+void              SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int));
 void              SpMVM_referenceSolver(CR_TYPE *lcrp, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions);
@@ -168,5 +169,7 @@ void SpMVM_permuteVector( data_t* vec, int* perm, int len);
 int getNumberOfPhysicalCores();
 int SpMVM_getRank();
 int getNumberOfHwThreads();
+int getNumberOfThreads();
+int getNumberOfNodes();
 LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr);
 #endif

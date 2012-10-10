@@ -128,16 +128,16 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	  }*/
 
 	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
-				size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
+			size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
 		printf("Errorcode: %s\n", strerror(ierr));
 		SpMVM_abort("Error while allocating using posix_memalign");
-/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
-		printf("Array to be allocated: %s\n", desc);
-		printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
+		/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
+				printf("Array to be allocated: %s\n", desc);
+				printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
 				(1024.0*1024.0));*/
-//		exit(1);
+		//		exit(1);
 	}
 
 	if( ! mem ) {
@@ -320,8 +320,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	if (datatype != DATATYPE_DESIRED) {
 		char msg[1024];
 		sprintf(msg,"Warning in %s:%d! The library has been built for %s data but"
-				   " the file contains %s data. Casting...\n",__FILE__,__LINE__,
-					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
+				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 		DEBUG_LOG(0,msg);
 	}
 
@@ -1013,4 +1013,79 @@ void freeJDMatrix( JD_TYPE* const jd ) {
 	}
 }
 
+int pad(int nRows, int padding) {
 
+	/* determine padding of rowlength in ELR format to achieve half-warp alignment */
+
+	int nRowsPadded;
+
+	if(  nRows % padding != 0) {
+		nRowsPadded = nRows + padding - nRows % padding;
+	} else {
+		nRowsPadded = nRows;
+	}
+	return nRowsPadded;
+}
+
+
+
+MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
+	int i,j,c;
+	MICVEC_TYPE *mv;
+
+	mv = (MICVEC_TYPE *)allocateMemory(sizeof(MICVEC_TYPE),"mv");
+
+	mv->nRows = cr->nRows;
+	mv->nNz = cr->nEnts;
+	mv->nEnts = 0;
+	mv->nRowsPadded = pad(mv->nRows,MICVEC_LEN);
+
+	int nChunks = mv->nRowsPadded/MICVEC_LEN;
+	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
+	mv->chunkStart[0] = 0;
+
+
+
+
+	int chunkMax = 0;
+	int curChunk = 1;
+	for (i=0; i<mv->nRows; i++) {
+		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
+		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+
+		if ((i+1)%MICVEC_LEN == 0) {
+			mv->nEnts += MICVEC_LEN*chunkMax;
+			mv->chunkStart[curChunk] = mv->chunkStart[curChunk-1]+MICVEC_LEN*chunkMax;
+
+			chunkMax = 0;
+			curChunk++;
+		}
+	}
+
+	mv->val = (data_t *)allocateMemory(sizeof(data_t)*mv->nEnts,"mv->val");
+	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
+
+	for (c=0; c<nChunks; c++) {
+		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/MICVEC_LEN;
+
+		for (j=0; j<chunkLen; j++) {
+
+			for (i=0; i<MICVEC_LEN; i++) {
+				int rowLen = cr->rowOffset[(i+c*MICVEC_LEN)+1]-cr->rowOffset[i+c*MICVEC_LEN];
+				if (j<rowLen) {
+				
+					mv->val[mv->chunkStart[c]+j*MICVEC_LEN+i] = cr->val[cr->rowOffset[c*MICVEC_LEN+i]+j];
+					mv->col[mv->chunkStart[c]+j*MICVEC_LEN+i] = cr->col[cr->rowOffset[c*MICVEC_LEN+i]+j];
+				} else {
+					mv->val[mv->chunkStart[c]+j*MICVEC_LEN+i] = 0.0;
+					mv->col[mv->chunkStart[c]+j*MICVEC_LEN+i] = 0;
+				}
+
+
+			}
+		}
+	}
+
+
+	return mv;
+}

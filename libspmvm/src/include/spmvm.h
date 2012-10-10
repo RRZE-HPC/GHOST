@@ -29,13 +29,23 @@
 #define SPMVM_KERNEL_IDX_REMOTE 2
 /******************************************************************************/
 
+#define SPM_FORMAT_GLOB_CRS    (0x1<<1)
+#define SPM_FORMAT_GLOB_MICVEC (0x1<<2)
+#define SPM_FORMAT_DIST_CRS    (0x1<<3)
+#define SPM_FORMAT_HOSTONLY (0x1<<4)
+
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_MICVEC)
+#define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
+#define MICVEC_LEN 8
+
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
 /******************************************************************************/
-#define VECTOR_TYPE_RHS 0
-#define VECTOR_TYPE_LHS 1
-#define VECTOR_TYPE_BOTH 2
+#define VECTOR_TYPE_RHS (0x1<<0)
+#define VECTOR_TYPE_LHS (0x1<<1)
+#define VECTOR_TYPE_BOTH (VECTOR_TYPE_RHS | VECTOR_TYPE_LHS)
+#define VECTOR_TYPE_HOSTONLY (0x1<<2)
 /******************************************************************************/
 
 
@@ -45,6 +55,7 @@
 #define SPM_GPUFORMAT_ELR  0
 #define SPM_GPUFORMAT_PJDS 1
 #define PJDS_CHUNK_HEIGHT 32
+#define ELR_PADDING 1024
 extern const char *SPM_FORMAT_NAMES[];
 /******************************************************************************/
 
@@ -218,7 +229,6 @@ typedef struct {
 
 typedef struct {
   int nodes, threads, halo_elements;
-  int nEnts, nRows;
   int* lnEnts;
   int* lnRows;
   int* lfEnt;
@@ -241,6 +251,9 @@ typedef struct {
   int* rcol;
   data_t* lval;
   data_t* rval;
+} LCRP_TYPE;
+
+typedef struct {
   int fullFormat;
   int localFormat;
   int remoteFormat;
@@ -254,7 +267,10 @@ typedef struct {
   int *fullInvRowPerm;  // may be NULL
   int *splitRowPerm;    // may be NULL
   int *splitInvRowPerm; // may be NULL
-} LCRP_TYPE;
+} GPUMATRIX_TYPE;
+
+
+
 
 typedef struct {
 	int nRows, nCols, nEnts;
@@ -263,11 +279,29 @@ typedef struct {
 	data_t* val;
 } CR_TYPE;
 
-typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
+typedef struct {
+	data_t *val;
+	int *col;
+	int *chunkStart;
+	int nRows;
+	int nRowsPadded;
+	int nNz;
+	int nEnts;
+} MICVEC_TYPE;
 
 typedef struct {
-    FuncPrototype kernel;
-} Hybrid_kernel;
+	unsigned int format;
+	unsigned int nNonz;
+	unsigned int nRows;
+	unsigned int nCols;
+	void *matrix;
+#ifdef OPENCL
+	GPUMATRIX_TYPE *devMatrix;
+#endif
+} MATRIX_TYPE;
+
+typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);
+
 /******************************************************************************/
 
 /******************************************************************************/
@@ -338,6 +372,7 @@ void SpMVM_finish();
   *****************************************************************************/
 LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
 
+
 /******************************************************************************
   * Create a distributed vector with specified values in order to use it for 
   * SpMVM. Depending on the type, the length of the vector may differ.
@@ -362,7 +397,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
   *   well as the necessary data structures for communication.
   *****************************************************************************/
-VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
+void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int));
 
 /******************************************************************************
   * Perform the sparse matrix vector product using a specified kernel with a
@@ -388,8 +423,12 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
   * Returns:
   *   the wallclock time (in seconds) the kernel execution took. 
   *****************************************************************************/
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
+
+
+MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
+MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormats); 
 /******************************************************************************/
 
 #endif
