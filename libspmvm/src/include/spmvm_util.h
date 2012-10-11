@@ -1,7 +1,6 @@
 #ifndef _SPMVM_UTIL_H_
 #define _SPMVM_UTIL_H_
 
-
 #include "spmvm.h"
 #ifdef MPI
 #include <mpi.h>
@@ -125,6 +124,7 @@ void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
 char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
 char * SpMVM_matrixFormatName(int format);
+unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix);
 void SpMVM_abort(char *s);
 
 /******************************************************************************

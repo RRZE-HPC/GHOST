@@ -42,6 +42,15 @@ ifeq ($(strip $(COMPLEX)),1)
 TYPES:= $(TYPES)"\#define COMPLEX \n"
 endif
 
+ifeq ($(strip $(LIBTYPE)),static)
+SUFFIX=a
+endif
+ifeq ($(strip $(LIBTYPE)),shared)
+SUFFIX=so
+endif
+
+LIBSPMVM=lib$(PREFIX)spmvm.$(SUFFIX)
+
 MAKROS+= -DDEBUG=$(DEBUG)
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o,\
@@ -51,7 +60,6 @@ MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 
-LIBSPMVM=lib$(PREFIX)spmvm.a
 
 $(OBJDIR)/%.o: %.c 
 	@echo "==> Compile $< -> $@"
@@ -73,9 +81,16 @@ $(TYPEHEADER):
 $(OBJDIR):
 	@mkdir $(OBJDIR)
 
+ifeq ($(strip $(LIBTYPE)),static)
 $(LIBSPMVM): $(OBJS)
-	@echo "==> Create library $(LIBSPMVM)"
+	@echo "==> Create static library $(LIBSPMVM)"
 	@ar rcs  $(LIBSPMVM) $^
+endif
+ifeq ($(strip $(LIBTYPE)),shared)
+$(LIBSPMVM): $(OBJS)
+	@echo "==> Create shared library $(LIBSPMVM)"
+	@$(CC) -shared -o $(LIBSPMVM) $^
+endif
 
 clean:
 	@echo "==> Clean"
@@ -84,7 +99,7 @@ clean:
 
 distclean: clean
 	@echo "==> Distclean"
-	@rm -f *.a
+	@rm -f *.a *.so
 
 install: all
 	@mkdir -p $(strip $(INSTDIR))/lib
@@ -97,6 +112,7 @@ install: all
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a
+	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.so
 	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
 
 	

@@ -673,15 +673,17 @@ char * SpMVM_matrixFormatName(int format) {
 	}
 }
 
-size_t SpMVMmatrixSize(MATRIX_TYPE *matrix) {
+unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) {
 	size_t size = 0;
 
 	switch (matrix->format) {
 		case SPM_FORMAT_GLOB_MICVEC:
+			{
 			MICVEC_TYPE * mv= (MICVEC_TYPE *)matrix->matrix;
 			size = mv->nEnts*(sizeof(data_t) *sizeof(int));
 			size += mv->nRowsPadded/MICVEC_LEN*sizeof(int);
 			break;
+			}
 		default:
 			return 0;
 	}
