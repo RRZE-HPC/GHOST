@@ -3,6 +3,7 @@ spmvm_type.h
 pbshosts*
 *.o
 *.a
+*.so
 obj/
 tags
 *stdout*
