@@ -36,7 +36,7 @@ int SpMVM_getRank() {
 }
 
 
-void SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options)
+void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 {
 
 	int me;
@@ -50,15 +50,15 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options)
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
 	if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		fullMemSize = getBytesize(lcrp->devMatrix->fullMatrix, lcrp->devMatrix->fullFormat)/
+		fullMemSize = getBytesize(matrix->devMatrix->fullMatrix, matrix->devMatrix->fullFormat)/
 			(1024*1024);
 		MPI_safecall(MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
 	} 
 	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		localMemSize = getBytesize(lcrp->devMatrix->localMatrix,lcrp->devMatrix->localFormat)/
+		localMemSize = getBytesize(matrix->devMatrix->localMatrix,matrix->devMatrix->localFormat)/
 			(1024*1024);
-		remoteMemSize = getBytesize(lcrp->devMatrix->remoteMatrix,lcrp->devMatrix->remoteFormat)/
+		remoteMemSize = getBytesize(matrix->devMatrix->remoteMatrix,matrix->devMatrix->remoteFormat)/
 			(1024*1024);
 		MPI_safecall(MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
@@ -71,24 +71,27 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options)
 		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
 			1:0;
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
-		ws = ((lcrp->nRows+1)*sizeof(int) + 
-				lcrp->nNonz*(sizeof(data_t)+sizeof(int)))/(1024*1024);
+		ws = ((matrix->nRows+1)*sizeof(int) + 
+				matrix->nNonz*(sizeof(data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
 		printf("-------        Matrix information       -------\n");
 		printf("-----------------------------------------------\n");
 		printf("Investigated matrix              : %12s\n", matrixName); 
-		printf("Dimension of matrix              : %12.0f\n", (double)lcrp->nRows); 
-		printf("Non-zero elements                : %12.0f\n", (double)lcrp->nNonz); 
-		printf("Average elements per row         : %12.3f\n", (double)lcrp->nNonz/
-				(double)lcrp->nRows);
-		printf("Host matrix (CRS)            [MB]: %12lu\n", ws);
+		printf("Dimension of matrix              : %12.0f\n", (double)matrix->nRows); 
+		printf("Non-zero elements                : %12.0f\n", (double)matrix->nNonz); 
+		printf("Average elements per row         : %12.3f\n", (double)matrix->nNonz/
+				(double)matrix->nRows);
+		printf("CRS matrix                   [MB]: %12lu\n", ws);
+		if (!(matrix->format & SPM_FORMATS_CRS)) {
+			printf("Host matrix (%14s)               [MB]: %12lu\n", SpMVM_matrixFormatName(matrix->format),ws);
+	}
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->fullFormat],lcrp->devMatrix->fullT,totalFullMemSize);
+			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
 		}	
 		if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
-			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->localFormat],lcrp->devMatrix->localT,totalLocalMemSize); 
-			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[lcrp->devMatrix->remoteFormat],lcrp->devMatrix->remoteT,totalRemoteMemSize);
+			printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[matrix->devMatrix->localFormat],matrix->devMatrix->localT,totalLocalMemSize); 
+			printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[matrix->devMatrix->remoteFormat],matrix->devMatrix->remoteT,totalRemoteMemSize);
 			printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
@@ -652,7 +655,39 @@ void SpMVM_abort(char *s) {
 	exit(EXIT_FAILURE);
 }
 
+char * SpMVM_matrixFormatName(int format) {
 
+	switch (format) {
+		case SPM_FORMAT_DIST_CRS:
+			return "dist. CRS";
+			break;
+		case SPM_FORMAT_GLOB_CRS:
+			return "CRS";
+			break;
+		case SPM_FORMAT_GLOB_MICVEC:
+			return "MICVEC";
+			break;
+		default:
+			return "invalid";
+			break;
+	}
+}
+
+size_t SpMVMmatrixSize(MATRIX_TYPE *matrix) {
+	size_t size = 0;
+
+	switch (matrix->format) {
+		case SPM_FORMAT_GLOB_MICVEC:
+			MICVEC_TYPE * mv= (MICVEC_TYPE *)matrix->matrix;
+			size = mv->nEnts*(sizeof(data_t) *sizeof(int));
+			size += mv->nRowsPadded/MICVEC_LEN*sizeof(int);
+			break;
+		default:
+			return 0;
+	}
+
+	return size;
+}
 
 
 int getNumberOfPhysicalCores()

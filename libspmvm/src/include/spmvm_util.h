@@ -124,6 +124,7 @@ void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
 void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
 char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
+char * SpMVM_matrixFormatName(int format);
 void SpMVM_abort(char *s);
 
 /******************************************************************************
