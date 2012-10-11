@@ -1049,6 +1049,7 @@ MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
 
 	int chunkMax = 0;
 	int curChunk = 1;
+
 	for (i=0; i<mv->nRows; i++) {
 		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
 		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
@@ -1064,6 +1065,33 @@ MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
 
 	mv->val = (data_t *)allocateMemory(sizeof(data_t)*mv->nEnts,"mv->val");
 	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
+
+#pragma omp parallel for schedule(runtime)
+	for (c=0; c<mv->nRowsPadded/MICVEC_LEN; c++) 
+	{ // loop over chunks
+
+		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])/MICVEC_LEN; j++)
+		{
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN  ] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+1] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+2] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+3] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+4] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+5] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+6] = 0.;
+			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+7] = 0.;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN  ] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+1] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+2] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+3] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+4] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+5] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+6] = 0;
+			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+7] = 0;
+		}
+	}
+
+
 
 	for (c=0; c<nChunks; c++) {
 		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/MICVEC_LEN;
