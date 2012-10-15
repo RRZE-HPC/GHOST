@@ -172,5 +172,5 @@ int SpMVM_getRank();
 int getNumberOfHwThreads();
 int getNumberOfThreads();
 int getNumberOfNodes();
-LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr);
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat); 
 #endif

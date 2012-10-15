@@ -15,6 +15,11 @@ MAKROS+= -DMPI
 OBJS  += $(MPIOBJS)
 endif
 
+ifeq ($(strip $(MIC)),1)
+MAKROS+= -DMIC
+OBJS  += $(MICOBJS)
+endif
+
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
@@ -54,9 +59,10 @@ LIBSPMVM=lib$(PREFIX)spmvm.$(SUFFIX)
 MAKROS+= -DDEBUG=$(DEBUG)
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o,\
-				$(filter-out $(wildcard src/cl_*.c src/mpi_*.c), $(wildcard src/*.c)))))
+				$(filter-out $(wildcard src/cl_*.c src/mpi_*.c src/mic_*.c), $(wildcard src/*.c)))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi_*.c))))
+MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic_*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 

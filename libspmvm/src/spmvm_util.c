@@ -3,6 +3,7 @@
 #include "spmvm.h"
 #include "referencesolvers.h"
 #include "matricks.h"
+#include "kernel.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -780,6 +781,96 @@ static int stringcmp(const void *x, const void *y)
 	return (strcmp((char *)x, (char *)y));
 }
 #endif
+
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat) 
+{
+	char *name = SpMVM_kernelName(kernel);
+	SpMVM_kernelFunc kernelFunc = NULL;
+
+#ifndef MPI
+	if (!(kernel & SPMVM_KERNEL_NOMPI)) {
+		DEBUG_LOG(1,"Skipping the %s kernel because the library is built without MPI.",name);
+		return NULL; // kernel not selected
+	}
+#endif
+
+	if ((kernel & SPMVM_KERNELS_SPLIT) && 
+			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
+		DEBUG_LOG(1,"Skipping the %s kernel because split kernels have not been configured.",name);
+		return NULL; // kernel not selected
+	}
+	if ((kernel & SPMVM_KERNELS_COMBINED) && 
+			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
+		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",name);
+		return NULL; // kernel not selected
+	}
+	if ((kernel & SPMVM_KERNEL_NOMPI)  && getNumberOfNodes() > 1) {
+		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",name);
+		return NULL; // non-MPI kernel
+	} 
+	if ((kernel & SPMVM_KERNEL_TASKMODE) && getNumberOfThreads() == 1) {
+		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",name);
+		return NULL; // not enough threads
+	}
+
+	switch (mat->format) {
+		case SPM_FORMAT_DIST_CRS:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
+					break;
+#ifdef MPI
+				case SPMVM_KERNEL_VECTORMODE:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
+					break;
+				case SPMVM_KERNEL_GOODFAITH:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
+					break;
+				case SPMVM_KERNEL_TASKMODE:
+					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
+					break;
+#endif
+				default:
+					DEBUG_LOG(1,"Non-valid kernel specified!");
+					return NULL;
+			}
+			break;
+		case SPM_FORMAT_GLOB_CRS:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
+					break;
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
+					return NULL;
+			}
+			break;
+		case SPM_FORMAT_GLOB_BJDS:
+			switch (kernel) {
+#ifdef MIC
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr;
+					break;
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+					return NULL;
+#else
+				default:
+					DEBUG_LOG(1,"The BJDS kernel is only available for Intel MIC.");
+					return NULL;
+#endif
+			}
+			break;
+		default:
+			DEBUG_LOG(1,"Non-valid matrix format specified!");
+			return NULL;
+	}
+
+
+	return kernelFunc;
+
+
+}
 
 int getNumberOfNodes() 
 {

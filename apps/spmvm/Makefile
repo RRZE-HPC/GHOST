@@ -1,10 +1,10 @@
-OPENCL=1
+OPENCL=0
 WDDT=0
 
 CUDA_INC=-I$(CUDA_HOME)/include
 CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
 
-LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
+LIBSPMVMPATH=$(HOME)/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include

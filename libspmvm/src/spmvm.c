@@ -425,76 +425,11 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 {
 	int it;
 	double time = 0;
-	char *name = SpMVM_kernelName(kernel);
-	SpMVM_kernelFunc kernelFunc = NULL;
+	SpMVM_kernelFunc kernelFunc = SpMVM_selectKernelFunc(options,kernel,mat);
 
-#ifndef MPI
-	if (!(kernel & SPMVM_KERNEL_NOMPI)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because the library is built without MPI.",name);
-		return 0.; // kernel not selected
-	}
-#endif
+	if (!kernelFunc)
+		return 0.;
 
-	if ((kernel & SPMVM_KERNELS_SPLIT) && 
-			(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because split kernels have not been configured.",name);
-		return 0.; // kernel not selected
-	}
-	if ((kernel & SPMVM_KERNELS_COMBINED) && 
-			(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
-		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",name);
-		return 0.; // kernel not selected
-	}
-	if ((kernel & SPMVM_KERNEL_NOMPI)  && getNumberOfNodes() > 1) {
-		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",name);
-		return 0.; // non-MPI kernel
-	} 
-	if ((kernel & SPMVM_KERNEL_TASKMODE) && getNumberOfThreads() == 1) {
-		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",name);
-		return 0.; // not enough threads
-	}
-
-	switch (mat->format) {
-		case SPM_FORMAT_DIST_CRS:
-			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
-					break;
-#ifdef MPI
-				case SPMVM_KERNEL_VECTORMODE:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
-					break;
-				case SPMVM_KERNEL_GOODFAITH:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
-					break;
-				case SPMVM_KERNEL_TASKMODE:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
-					break;
-#endif
-				default:
-					ABORT("Non-valid kernel specified!");
-			}
-			break;
-		case SPM_FORMAT_GLOB_CRS:
-			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
-					break;
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
-					return 0.;
-			}
-			break;
-		case SPM_FORMAT_GLOB_BJDS:
-			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr;
-					break;
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
-			}
-			break;
-	}
 
 
 #ifdef MPI
