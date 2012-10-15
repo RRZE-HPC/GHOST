@@ -83,7 +83,9 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 				(double)matrix->nRows);
 		printf("CRS matrix                   [MB]: %12lu\n", ws);
 		if (!(matrix->format & SPM_FORMATS_CRS)) {
-			printf("Host matrix (%14s)               [MB]: %12lu\n", SpMVM_matrixFormatName(matrix->format),ws);
+			printf("Host matrix (%14s) [MB]: %12u\n", 
+				SpMVM_matrixFormatName(matrix->format),
+				SpMVM_matrixSize(matrix)/(1024*1024));
 	}
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -664,8 +666,8 @@ char * SpMVM_matrixFormatName(int format) {
 		case SPM_FORMAT_GLOB_CRS:
 			return "CRS";
 			break;
-		case SPM_FORMAT_GLOB_MICVEC:
-			return "MICVEC";
+		case SPM_FORMAT_GLOB_BJDS:
+			return "BJDS";
 			break;
 		default:
 			return "invalid";
@@ -674,14 +676,14 @@ char * SpMVM_matrixFormatName(int format) {
 }
 
 unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) {
-	size_t size = 0;
+	unsigned int size = 0;
 
 	switch (matrix->format) {
-		case SPM_FORMAT_GLOB_MICVEC:
+		case SPM_FORMAT_GLOB_BJDS:
 			{
-			MICVEC_TYPE * mv= (MICVEC_TYPE *)matrix->matrix;
-			size = mv->nEnts*(sizeof(data_t) *sizeof(int));
-			size += mv->nRowsPadded/MICVEC_LEN*sizeof(int);
+			BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
+			size = mv->nEnts*(sizeof(data_t) +sizeof(int));
+			size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
 			break;
 			}
 		default:

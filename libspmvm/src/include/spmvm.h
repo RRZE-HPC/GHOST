@@ -30,14 +30,14 @@
 /******************************************************************************/
 
 #define SPM_FORMAT_GLOB_CRS    (0x1<<1)
-#define SPM_FORMAT_GLOB_MICVEC (0x1<<2)
+#define SPM_FORMAT_GLOB_BJDS (0x1<<2)
 #define SPM_FORMAT_DIST_CRS    (0x1<<3)
 #define SPM_FORMAT_HOSTONLY (0x1<<4)
 
-#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_MICVEC)
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
-#define MICVEC_LEN 8
+#define BJDS_LEN 8
 
 
 /******************************************************************************/
@@ -288,7 +288,7 @@ typedef struct {
 	int nRowsPadded;
 	int nNz;
 	int nEnts;
-} MICVEC_TYPE;
+} BJDS_TYPE;
 
 typedef struct {
 	unsigned int format;

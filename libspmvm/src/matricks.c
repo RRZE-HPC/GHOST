@@ -536,9 +536,9 @@ int compareNZEPos( const void* a, const void* b ) {
 	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
-		bRow = ((NZE_TYPE*)b)->row,
-		aCol = ((NZE_TYPE*)a)->col,
-		bCol = ((NZE_TYPE*)b)->col;
+	    bRow = ((NZE_TYPE*)b)->row,
+	    aCol = ((NZE_TYPE*)a)->col,
+	    bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
 #ifdef MAIN_DIAGONAL_FIRST
@@ -662,7 +662,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* store values in compressed row data structure ########################## */
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
-			  col = mm->nze[e].col;
+		      col = mm->nze[e].col;
 		const data_t val = mm->nze[e].val;
 		pos = cr->rowOffset[row] + nEntsInRow[row];
 		/* GW 
@@ -710,15 +710,15 @@ static int* invRowPerm;
 
 int compareNZEForJD( const void* a, const void* b ) {
 	const int aRow = invRowPerm[((NZE_TYPE*)a)->row],
-		  bRow = invRowPerm[((NZE_TYPE*)b)->row],
+	      bRow = invRowPerm[((NZE_TYPE*)b)->row],
 
-		  /*  GeWe
-			  aCol = ((NZE_TYPE*)a)->col,
-			  bCol = ((NZE_TYPE*)b)->col; 
-		   */
+	      /*  GeWe
+		  aCol = ((NZE_TYPE*)a)->col,
+		  bCol = ((NZE_TYPE*)b)->col; 
+	       */
 
-		  aCol = invRowPerm[((NZE_TYPE*)a)->col],
-		  bCol = invRowPerm[((NZE_TYPE*)b)->col];
+	      aCol = invRowPerm[((NZE_TYPE*)a)->col],
+	      bCol = invRowPerm[((NZE_TYPE*)b)->col];
 
 	if( aRow == bRow )
 		return aCol - bCol;
@@ -897,7 +897,7 @@ for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
 			jd->val[pos] = mm->nze[e].val;
 
 			/*  GeWe
-				jd->col[pos] = mm->nze[e].col; 
+			    jd->col[pos] = mm->nze[e].col; 
 			 */
 
 			jd->col[pos] = invRowPerm[mm->nze[e].col]+1;
@@ -919,12 +919,12 @@ IF_DEBUG(2) {
 
 IF_DEBUG(1) printf( "convertMMToJDMatrix: done\n" );
 /*  sprintf(statfilename, "./intermediate3.dat");
-	if ((STATFILE = fopen(statfilename, "w"))==NULL){
-	printf("Fehler beim Oeffnen von %s\n", statfilename);
-	exit(1);
-	}
-	for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
-	fclose(STATFILE);
+    if ((STATFILE = fopen(statfilename, "w"))==NULL){
+    printf("Fehler beim Oeffnen von %s\n", statfilename);
+    exit(1);
+    }
+    for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
+    fclose(STATFILE);
  */
 return jd;
 }
@@ -1029,18 +1029,18 @@ int pad(int nRows, int padding) {
 
 
 
-MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
+BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) {
 	int i,j,c;
-	MICVEC_TYPE *mv;
+	BJDS_TYPE *mv;
 
-	mv = (MICVEC_TYPE *)allocateMemory(sizeof(MICVEC_TYPE),"mv");
+	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 	mv->nRows = cr->nRows;
 	mv->nNz = cr->nEnts;
 	mv->nEnts = 0;
-	mv->nRowsPadded = pad(mv->nRows,MICVEC_LEN);
+	mv->nRowsPadded = pad(mv->nRows,BJDS_LEN);
 
-	int nChunks = mv->nRowsPadded/MICVEC_LEN;
+	int nChunks = mv->nRowsPadded/BJDS_LEN;
 	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
 	mv->chunkStart[0] = 0;
 
@@ -1053,10 +1053,11 @@ MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
 	for (i=0; i<mv->nRows; i++) {
 		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
 		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+		chunkMax = chunkMax%2==0?chunkMax:chunkMax+1;
 
-		if ((i+1)%MICVEC_LEN == 0) {
-			mv->nEnts += MICVEC_LEN*chunkMax;
-			mv->chunkStart[curChunk] = mv->chunkStart[curChunk-1]+MICVEC_LEN*chunkMax;
+		if ((i+1)%BJDS_LEN == 0) {
+			mv->nEnts += BJDS_LEN*chunkMax;
+			mv->chunkStart[curChunk] = mv->chunkStart[curChunk-1]+BJDS_LEN*chunkMax;
 
 			chunkMax = 0;
 			curChunk++;
@@ -1066,48 +1067,38 @@ MICVEC_TYPE * CRStoMICVEC(CR_TYPE *cr) {
 	mv->val = (data_t *)allocateMemory(sizeof(data_t)*mv->nEnts,"mv->val");
 	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
 
-#pragma omp parallel for schedule(runtime)
-	for (c=0; c<mv->nRowsPadded/MICVEC_LEN; c++) 
+#pragma omp parallel for schedule(runtime) private(j,i)
+	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
 	{ // loop over chunks
 
-		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])/MICVEC_LEN; j++)
+		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN; j++)
 		{
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN  ] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+1] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+2] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+3] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+4] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+5] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+6] = 0.;
-			mv->val[mv->chunkStart[c]+j*MICVEC_LEN+7] = 0.;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN  ] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+1] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+2] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+3] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+4] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+5] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+6] = 0;
-			mv->col[mv->chunkStart[c]+j*MICVEC_LEN+7] = 0;
+			for (i=0; i<BJDS_LEN; i++)
+			{
+				mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.;
+				mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
+			}
 		}
 	}
 
 
 
 	for (c=0; c<nChunks; c++) {
-		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/MICVEC_LEN;
+		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN;
 
 		for (j=0; j<chunkLen; j++) {
 
-			for (i=0; i<MICVEC_LEN; i++) {
-				int rowLen = cr->rowOffset[(i+c*MICVEC_LEN)+1]-cr->rowOffset[i+c*MICVEC_LEN];
+			for (i=0; i<BJDS_LEN; i++) {
+				int rowLen = cr->rowOffset[(i+c*BJDS_LEN)+1]-cr->rowOffset[i+c*BJDS_LEN];
 				if (j<rowLen) {
-				
-					mv->val[mv->chunkStart[c]+j*MICVEC_LEN+i] = cr->val[cr->rowOffset[c*MICVEC_LEN+i]+j];
-					mv->col[mv->chunkStart[c]+j*MICVEC_LEN+i] = cr->col[cr->rowOffset[c*MICVEC_LEN+i]+j];
+
+					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
+					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
 				} else {
-					mv->val[mv->chunkStart[c]+j*MICVEC_LEN+i] = 0.0;
-					mv->col[mv->chunkStart[c]+j*MICVEC_LEN+i] = 0;
+					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
+					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
+				//			printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}

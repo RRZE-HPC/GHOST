@@ -350,8 +350,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			case SPM_FORMAT_GLOB_CRS:
 				mat->matrix = cr;
 				break;
-			case SPM_FORMAT_GLOB_MICVEC:
-				mat->matrix = CRStoMICVEC(cr);
+			case SPM_FORMAT_GLOB_BJDS:
+				mat->matrix = CRStoBJDS(cr);
 				break;
 			default:
 				ABORT("No valid matrix format specified!");
@@ -485,13 +485,13 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 					return 0.;
 			}
 			break;
-		case SPM_FORMAT_GLOB_MICVEC:
+		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
 				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0;
+					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr;
 					break;
 				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no MICVEC version.",name);
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
 			}
 			break;
 	}
@@ -543,8 +543,8 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
   mat->nCols = cr->nCols;
 
   switch (format) {
-  case SPM_FORMAT_MICVEC:
-  mat->matrix = CRStoMICVEC(cr);
+  case SPM_FORMAT_BJDS:
+  mat->matrix = CRStoBJDS(cr);
   break;
   case SPM_FORMAT_CRS:
   mat->matrix = cr;
