@@ -32,7 +32,7 @@ void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
 {
 int i, j;
-data_t hlp1;
+mat_data_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nRows; i++){

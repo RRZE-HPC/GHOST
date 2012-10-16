@@ -15,7 +15,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 
 	static int init_kernel=1; 
 	static int max_dues;
-	static data_t *work_mem, **work;
+	static mat_data_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
@@ -49,13 +49,13 @@ void hybrid_kernel_I(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 
 
 
-		size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( data_t  ) );
-		size_work    = (size_t)( lcrp->nodes          * sizeof( data_t* ) );
+		size_mem     = (size_t)( max_dues*lcrp->nodes * sizeof( mat_data_t  ) );
+		size_work    = (size_t)( lcrp->nodes          * sizeof( mat_data_t* ) );
 		size_request = (size_t)( 2*lcrp->nodes          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( 2*lcrp->nodes          * sizeof( MPI_Status ) );
 
-		work_mem = (data_t*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (data_t**) allocateMemory( size_work, "work" );
+		work_mem = (mat_data_t*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (mat_data_t**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<lcrp->nodes; i++) work[i] = &work_mem[lcrp->due_displ[i]];
 

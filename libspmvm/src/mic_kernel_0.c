@@ -10,7 +10,7 @@
 void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
 {
 	int c,j,i;
-	data_t tmp[BJDS_LEN]; 
+	mat_data_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
@@ -46,7 +46,7 @@ void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvm
 void mic_kernel_0_unr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
 {
 	int c,j;
-	data_t tmp[BJDS_LEN]; 
+	mat_data_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)
 	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 

@@ -206,11 +206,11 @@ cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
 	cl_image_format image_format;
 
 	image_format.image_channel_order = CL_RG;
-	image_format.image_channel_data_type = CL_FLOAT;
+	image_format.image_channel_mat_data_type = CL_FLOAT;
 
-	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(data_t),1,0,hostPtr,&err);
+	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(mat_data_t),1,0,hostPtr,&err);
 
-printf("image width: %lu\n",bytesize/sizeof(data_t));	
+printf("image width: %lu\n",bytesize/sizeof(mat_data_t));	
 
 	CL_checkerror(err);
 
@@ -230,14 +230,14 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 {
 #ifdef CL_IMAGE
 	const size_t origin[3] = {0,0,0};
-	const size_t region[3] = {bytesize/sizeof(data_t),0,0};
+	const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
 	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
 				hostmem,0,NULL,NULL));
 #else
 	int me;
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
-	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(data_t));
+	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(mat_data_t));
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
 #endif
@@ -265,7 +265,7 @@ void CL_copyHostToDeviceOffset(cl_mem devmem, void *hostmem,
 					hostmem,0,NULL,NULL));
 	} else {
 		const size_t origin[3] = {offset,0,0};
-		const size_t region[3] = {bytesize/sizeof(data_t),0,0};
+		const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
 		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
 					hostmem,0,NULL,NULL));
 	}
@@ -284,7 +284,7 @@ void CL_copyHostToDevice(cl_mem devmem, void *hostmem, size_t bytesize)
 		CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
 	} else {
 		const size_t origin[3] = {0,0,0};
-		const size_t region[3] = {bytesize/sizeof(data_t),0,0};
+		const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
 		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
 					hostmem,0,NULL,NULL));
 	}
@@ -354,7 +354,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 		globalSz = matrix->padding;
 	}
 	if (T>1) {
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(data_t)*
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(mat_data_t)*
 					CL_getLocalSize(kernel[kernelIdx]),NULL));
 	}
 }
@@ -595,12 +595,12 @@ GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats,
 
 void CL_uploadVector( VECTOR_TYPE *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(data_t));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(mat_data_t));
 }
 
 void CL_downloadVector( VECTOR_TYPE *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(data_t));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(mat_data_t));
 }
 
 size_t CL_getLocalSize(cl_kernel kernel) 

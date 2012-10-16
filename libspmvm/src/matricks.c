@@ -46,7 +46,7 @@ void getMatrixPath(char *given, char *path) {
 
 	char *mathome = getenv("MATHOME");
 	if (mathome == NULL)
-		SpMVM_abort("$MATHOME not set! Can't find matrix!");
+		ABORT("$MATHOME not set! Can't find matrix!");
 
 
 	strcpy(path,mathome);
@@ -93,7 +93,7 @@ int isMMfile(const char *filename) {
 	FILE *file = fopen( filename, "r" );
 
 	if( ! file ) {
-		SpMVM_abort("Could not open file in isMMfile!");
+		ABORT("Could not open file in isMMfile!");
 	}
 
 	const char *keyword="%%MatrixMarket";
@@ -132,7 +132,7 @@ void* allocateMemory( const size_t size, const char* desc ) {
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
 		printf("Errorcode: %s\n", strerror(ierr));
-		SpMVM_abort("Error while allocating using posix_memalign");
+		ABORT("Error while allocating using posix_memalign");
 		/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
 				printf("Array to be allocated: %s\n", desc);
 				printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
@@ -143,7 +143,7 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	if( ! mem ) {
 		fprintf(stderr,"allocateMemory: could not allocate %lu bytes of memory"
 				" for %s\n", size, desc);
-		SpMVM_abort("Error in memory allocation");
+		ABORT("Error in memory allocation");
 	}
 
 	allocatedMem += size;
@@ -183,7 +183,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for complex data "
-				"but the MM file contains data_t data. Casting...\n");
+				"but the MM file contains mat_data_t data. Casting...\n");
 #else
 	if (mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for real data "
@@ -326,7 +326,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	}
 
 	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-		1.0*(cr->nEnts)*sizeof(data_t);
+		1.0*(cr->nEnts)*sizeof(mat_data_t);
 
 	IF_DEBUG(1){ 
 		printf("Number of rows in matrix       = %d\n", cr->nRows);
@@ -338,11 +338,11 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	size_col  = (size_t)( cr->nEnts * sizeof(int) );
-	size_val  = (size_t)( cr->nEnts * sizeof(data_t) );
+	size_val  = (size_t)( cr->nEnts * sizeof(mat_data_t) );
 
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (data_t*) allocateMemory( size_val,  "val" );
+	cr->val       = (mat_data_t*) allocateMemory( size_val,  "val" );
 
 	IF_DEBUG(2){
 		printf("Reading array with row-offsets\n");
@@ -381,7 +381,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				float *tmp = (float *)allocateMemory(
 						cr->nEnts*sizeof(float), "tmp");
 				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -390,7 +390,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				double *tmp = (double *)allocateMemory(
 						cr->nEnts*sizeof(double), "tmp");
 				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -399,7 +399,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				_Complex float *tmp = (_Complex float *)allocateMemory(
 						cr->nEnts*sizeof(_Complex float), "tmp");
 				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -408,7 +408,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				_Complex double *tmp = (_Complex double *)allocateMemory(
 						cr->nEnts*sizeof(_Complex double), "tmp");
 				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -460,7 +460,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 	mybytes = 4.0*sizeof(int) 
 		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-		+ 1.0*(jd->nEnts)*sizeof(data_t);
+		+ 1.0*(jd->nEnts)*sizeof(mat_data_t);
 
 	IF_DEBUG(1) {
 		printf("Number of rows in matrix       = %d\n", jd->nRows);
@@ -475,7 +475,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 	jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
 	jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
 	jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
-	jd->val        = (data_t*) allocateMemory( jd->nEnts      * sizeof( data_t ), "val" );
+	jd->val        = (mat_data_t*) allocateMemory( jd->nEnts      * sizeof( mat_data_t ), "val" );
 
 	IF_DEBUG(2) {
 		printf("Reading array of permutations\n");
@@ -512,7 +512,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 
 	fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-	fread(&jd->val[0],              sizeof(data_t), jd->nEnts,    RESTFILE);
+	fread(&jd->val[0],              sizeof(mat_data_t), jd->nEnts,    RESTFILE);
 
 	fclose(RESTFILE);
 
@@ -576,14 +576,14 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( data_t) );
+	size_val        = (size_t)( mm->nEnts     * sizeof( mat_data_t) );
 	size_nEntsInRow = (size_t)(  mm->nRows    * sizeof( int ) );
 
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rowOffset = (int*)     allocateMemory( size_rowOffset,    "rowOffset" );
 	cr->col       = (int*)     allocateMemory( size_col,          "col" );
-	cr->val       = (data_t*)  allocateMemory( size_val,          "val" );
+	cr->val       = (mat_data_t*)  allocateMemory( size_val,          "val" );
 	nEntsInRow    = (int*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 	IF_DEBUG(1){
@@ -663,7 +663,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
 		      col = mm->nze[e].col;
-		const data_t val = mm->nze[e].val;
+		const mat_data_t val = mm->nze[e].val;
 		pos = cr->rowOffset[row] + nEntsInRow[row];
 		/* GW 
 		   cr->col[pos] = col;
@@ -744,14 +744,14 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 	/* allocate memory ######################################################## */
 	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts * sizeof( data_t) );
+	size_val        = (size_t)( mm->nEnts * sizeof( mat_data_t) );
 	size_invRowPerm = (size_t)( mm->nRows * sizeof( int ) );
 	size_rowSort    = (size_t)( mm->nRows * sizeof( JD_SORT_TYPE ) );
 
 	JD_TYPE* jd = (JD_TYPE*)      allocateMemory( sizeof( JD_TYPE ), "jd" );
 	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
 	jd->col     = (int*)          allocateMemory( size_col,          "col" );
-	jd->val     = (data_t*)       allocateMemory( size_val,          "val" );
+	jd->val     = (mat_data_t*)       allocateMemory( size_val,          "val" );
 	invRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
 	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
 
@@ -1064,7 +1064,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) {
 		}
 	}
 
-	mv->val = (data_t *)allocateMemory(sizeof(data_t)*mv->nEnts,"mv->val");
+	mv->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*mv->nEnts,"mv->val");
 	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
 
 #pragma omp parallel for schedule(runtime) private(j,i)

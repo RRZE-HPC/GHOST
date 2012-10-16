@@ -12,7 +12,7 @@
 #define CHECK // compare with reference solution
 
 
-static data_t rhsVal (int i) 
+static mat_data_t rhsVal (int i) 
 {
 #ifdef COMPLEX
 	return i+1.0 + I*(i+1.5);

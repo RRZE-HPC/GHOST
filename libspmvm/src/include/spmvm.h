@@ -117,14 +117,14 @@ extern const char *DATATYPE_NAMES[];
 /******************************************************************************/
 #ifdef DOUBLE
 #ifdef COMPLEX
-typedef _Complex double data_t;
+typedef _Complex double mat_data_t;
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
 #else // COMPLEX
-typedef double data_t;
+typedef double mat_data_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
@@ -135,14 +135,14 @@ typedef double data_t;
 
 #ifdef SINGLE
 #ifdef COMPLEX
-typedef _Complex float data_t;
+typedef _Complex float mat_data_t;
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
 #else // COMPLEX
-typedef float data_t;
+typedef float mat_data_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
@@ -212,7 +212,7 @@ typedef struct{
 
 typedef struct {
 	int nRows;
-	data_t* val;
+	mat_data_t* val;
 #ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
@@ -225,7 +225,7 @@ typedef struct {
 
 typedef struct {
 	int nRows;
-	data_t* val;
+	mat_data_t* val;
 } HOSTVECTOR_TYPE;
 
 typedef struct {
@@ -243,15 +243,15 @@ typedef struct {
   int* due_displ;
   int* wish_displ;
   int* hput_pos;
-  data_t* val;
+  mat_data_t* val;
   int* col;
   int* lrow_ptr;
   int* lrow_ptr_l;
   int* lrow_ptr_r;
   int* lcol;
   int* rcol;
-  data_t* lval;
-  data_t* rval;
+  mat_data_t* lval;
+  mat_data_t* rval;
 } LCRP_TYPE;
 
 typedef struct {
@@ -277,11 +277,11 @@ typedef struct {
 	int nRows, nCols, nEnts;
 	int* rowOffset;
 	int* col;
-	data_t* val;
+	mat_data_t* val;
 } CR_TYPE;
 
 typedef struct {
-	data_t *val;
+	mat_data_t *val;
 	int *col;
 	int *chunkStart;
 	int nRows;
@@ -388,9 +388,9 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
   *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
   *     The length of the vector depends on this argument.
-  *   - data_t (*fp)(int)
+  *   - mat_data_t (*fp)(int)
   *     A function pointer to a function taking an integer value and returning
-  *     a data_t. This function returns the initial value for the i-th (globally)
+  *     a mat_data_t. This function returns the initial value for the i-th (globally)
   *     element of the vector.
   *     If NULL, the vector is initialized to zero.
   *
@@ -398,7 +398,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
   *   well as the necessary data structures for communication.
   *****************************************************************************/
-void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int));
+void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int));
 
 /******************************************************************************
   * Perform the sparse matrix vector product using a specified kernel with a

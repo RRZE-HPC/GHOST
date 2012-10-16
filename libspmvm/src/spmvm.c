@@ -172,18 +172,18 @@ void SpMVM_finish()
 
 }
 
-void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
+void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 {
 
-	data_t *val;
+	mat_data_t *val;
 	int nRows;
 	size_t size_val;
 
 
 	if (matrix->format & SPM_FORMATS_GLOB)
 	{
-		size_val = (size_t)matrix->nRows*sizeof(data_t);
-		val = (data_t*) allocateMemory( size_val, "vec->val");
+		size_val = (size_t)matrix->nRows*sizeof(mat_data_t);
+		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 		nRows = matrix->nRows;
 
 		unsigned int i;
@@ -220,12 +220,12 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
 				nRows = lcrp->lnRows[me]+lcrp->halo_elements;
 				break;
 			default:
-				SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
+				ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 		}
 
-		size_val = (size_t)( nRows * sizeof(data_t) );
+		size_val = (size_t)( nRows * sizeof(mat_data_t) );
 
-		val = (data_t*) allocateMemory( size_val, "vec->val");
+		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 		nRows = nRows;
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d+%d rows",lcrp->lnRows[me],lcrp->halo_elements);
@@ -282,7 +282,7 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, data_t (*fp)(int))
 			case VECTOR_TYPE_BOTH:
 				flag = CL_MEM_READ_WRITE;
 			default:
-				SpMVM_abort("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
+				ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 		}
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);

@@ -73,7 +73,7 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 			1:0;
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((matrix->nRows+1)*sizeof(int) + 
-				matrix->nNonz*(sizeof(data_t)+sizeof(int)))/(1024*1024);
+				matrix->nNonz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
 		printf("-----------------------------------------------\n");
 		printf("-------        Matrix information       -------\n");
 		printf("-----------------------------------------------\n");
@@ -200,7 +200,7 @@ void SpMVM_printEnvInfo()
 
 }
 
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int))
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, mat_data_t (*fp)(int))
 {
 
 	int me = SpMVM_getRank();
@@ -212,7 +212,7 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int))
 	}
 }
 
-void SpMVM_referenceSolver(CR_TYPE *cr, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions) 
+void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nIter, int spmvmOptions) 
 {
 
 	int iteration;
@@ -288,17 +288,17 @@ void SpMVM_zeroVector(VECTOR_TYPE *vec)
 
 }
 
-HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, data_t (*fp)(int)) 
+HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int)) 
 {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(data_t) );
+	size_val = (size_t)( nRows * sizeof(mat_data_t) );
 	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
+	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 	if (fp) {
@@ -327,11 +327,11 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(data_t) );
+	size_val = (size_t)( nRows * sizeof(mat_data_t) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
-	vec->val = (data_t*) allocateMemory( size_val, "vec->val");
+	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
 #pragma omp parallel for schedule(static) 
@@ -402,7 +402,7 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
-	data_t *dtmp;
+	mat_data_t *dtmp;
 
 	dtmp = v1->val;
 	v1->val = v2->val;
@@ -419,12 +419,12 @@ void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2)
 void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 {
 	int i;
-	data_t sum = 0;
+	mat_data_t sum = 0;
 
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = (data_t)1/SQRT(ABS(sum));
+	mat_data_t f = (mat_data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -436,12 +436,12 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 {
 	int i;
-	data_t sum = 0;
+	mat_data_t sum = 0;
 
 	for (i=0; i<vec->nRows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	data_t f = (data_t)1/SQRT(ABS(sum));
+	mat_data_t f = (mat_data_t)1/SQRT(ABS(sum));
 
 	for (i=0; i<vec->nRows; i++)	
 		vec->val[i] *= f;
@@ -450,14 +450,14 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(data_t)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
 		free( vec );
 	}
 }
 
 void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(data_t)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
 #ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
@@ -484,7 +484,7 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 
 		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
 		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
-		size_val        = (size_t)( cr->nEnts     * sizeof( data_t) );
+		size_val        = (size_t)( cr->nEnts     * sizeof( mat_data_t) );
 
 		freeMemory( size_rowOffset,  "cr->rowOffset", cr->rowOffset );
 		freeMemory( size_col,        "cr->col",       cr->col );
@@ -531,10 +531,10 @@ CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
 	}
 }
 
-void SpMVM_permuteVector( data_t* vec, int* perm, int len) {
+void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	int i;
-	data_t* tmp;
+	mat_data_t* tmp;
 
 	if (perm == NULL) {
 		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
@@ -543,7 +543,7 @@ void SpMVM_permuteVector( data_t* vec, int* perm, int len) {
 	}
 
 
-	tmp = (data_t*)allocateMemory(sizeof(data_t)*len, "permute tmp");
+	tmp = (mat_data_t*)allocateMemory(sizeof(mat_data_t)*len, "permute tmp");
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
@@ -619,7 +619,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 		case SPM_FORMAT_GLOB_BJDS:
 			{
 			BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
-			size = mv->nEnts*(sizeof(data_t) +sizeof(int));
+			size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
 			size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
 			break;
 			}
