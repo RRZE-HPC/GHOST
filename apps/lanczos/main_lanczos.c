@@ -31,9 +31,9 @@ typedef struct {
 	SPM_GPUFORMATS *matrixFormats;
 } PROPS;
 
-static int converged(data_t evmin)
+static int converged(mat_data_t evmin)
 {
-	static data_t oldevmin = -1e9;
+	static mat_data_t oldevmin = -1e9;
 
 	int converged = ABS(evmin-oldevmin) < 1e-9;
 	//printf("%f %f %d\n",evmin,oldevmin,converged);
@@ -122,7 +122,7 @@ static void getOptions(int argc,  char * const *argv, PROPS *p)
 }
 
 
-static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t *res, int n)
+static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t *res, int n)
 {
 
 #ifdef OPENCL
@@ -131,14 +131,14 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t *res, int n)
 	int i;
 	*res = 0.0;
 
-	VECTOR_TYPE *tmp = SpMVM_newVector(resVecSize*sizeof(data_t));
+	VECTOR_TYPE *tmp = SpMVM_newVector(resVecSize*sizeof(mat_data_t));
 
 	CL_safecall(clSetKernelArg(dotprodKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,2,sizeof(cl_mem),
 				&tmp->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,3,sizeof(int),&n));
-	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(data_t)*localSize,NULL));
+	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(mat_data_t)*localSize,NULL));
 
 	CL_enqueueKernel(dotprodKernel);
 
@@ -150,7 +150,7 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t *res, int n)
 	SpMVM_freeVector(tmp);
 #else
 	int i;
-	data_t sum = 0;
+	mat_data_t sum = 0;
 #pragma omp parallel 
 	{
 
@@ -169,13 +169,13 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t *res, int n)
 #endif
 }
 
-static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t s, int n)
+static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t s, int n)
 {
 
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
-	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(data_t),&s));
+	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(mat_data_t),&s));
 	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&n));
 
 	CL_enqueueKernel(axpyKernel);
@@ -200,13 +200,13 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, data_t s, int n)
 #endif
 }
 
-static void vecscal(VECTOR_TYPE *vec, data_t s, int n)
+static void vecscal(VECTOR_TYPE *vec, mat_data_t s, int n)
 {
 
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
 				&vec->CL_val_gpu));
-	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(data_t),&s));
+	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(mat_data_t),&s));
 	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&n));
 
 	CL_enqueueKernel(vecscalKernel);	
@@ -233,7 +233,7 @@ static void vecscal(VECTOR_TYPE *vec, data_t s, int n)
 
 
 static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
-		data_t *alpha, data_t *beta, int me)
+		mat_data_t *alpha, mat_data_t *beta, int me)
 {
 	vecscal(vnew,-*beta,lcrp->lnRows[me]);
 	SpMVM_solve(vnew, lcrp, vold, KERNEL, 1);
@@ -246,7 +246,7 @@ static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 	vecscal(vnew,1./(*beta),lcrp->lnRows[me]);
 }
 
-static data_t rhsVal (int i)
+static mat_data_t rhsVal (int i)
 {
 	return i+1.0;
 }
@@ -335,15 +335,15 @@ int main( int argc, char* argv[] )
 	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 
-	//data_t *z = (data_t *)malloc(sizeof(data_t)*props.nIter*props.nIter,"z");
-	data_t *alphas  = (data_t *)malloc(sizeof(data_t)*props.nIter);
-	data_t *betas   = (data_t *)malloc(sizeof(data_t)*props.nIter);
-	data_t *falphas = (data_t *)malloc(sizeof(data_t)*props.nIter);
-	data_t *fbetas  = (data_t *)malloc(sizeof(data_t)*props.nIter);
+	//mat_data_t *z = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter*props.nIter,"z");
+	mat_data_t *alphas  = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
+	mat_data_t *betas   = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
+	mat_data_t *falphas = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
+	mat_data_t *fbetas  = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
 
 	int ferr;
 
-	data_t alpha=0., beta=0.;
+	mat_data_t alpha=0., beta=0.;
 	betas[0] = beta;
 	int n;
 
@@ -379,8 +379,8 @@ int main( int argc, char* argv[] )
 
 		alphas[iteration] = alpha;
 		betas[iteration+1] = beta;
-		memcpy(falphas,alphas,n*sizeof(data_t));
-		memcpy(fbetas,betas,n*sizeof(data_t));
+		memcpy(falphas,alphas,n*sizeof(mat_data_t));
+		memcpy(fbetas,betas,n*sizeof(mat_data_t));
 
 		if (me == 0) {
 			end = omp_get_wtime();

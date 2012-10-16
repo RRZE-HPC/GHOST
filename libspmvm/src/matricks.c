@@ -46,7 +46,7 @@ void getMatrixPath(char *given, char *path) {
 
 	char *mathome = getenv("MATHOME");
 	if (mathome == NULL)
-		SpMVM_abort("$MATHOME not set! Can't find matrix!");
+		ABORT("$MATHOME not set! Can't find matrix!");
 
 
 	strcpy(path,mathome);
@@ -93,7 +93,7 @@ int isMMfile(const char *filename) {
 	FILE *file = fopen( filename, "r" );
 
 	if( ! file ) {
-		SpMVM_abort("Could not open file in isMMfile!");
+		ABORT("Could not open file in isMMfile!");
 	}
 
 	const char *keyword="%%MatrixMarket";
@@ -116,13 +116,9 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	 * check for success and increase global counter */
 
 	size_t boundary = 4096;
-	int me, ierr; 
-
-	//printf("Gesamtspeicher [bytes]: %llu\n", maxMem); 
+	int ierr;
 
 	void* mem;
-
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	/*if( allocatedMem + size > maxMem ) {
 	  fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
@@ -131,28 +127,23 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	  mypabort("exceeded memory on allocation");
 	  }*/
 
-	IF_DEBUG(2){
-		//if (size>1024.0*1024.0){  
-		printf("PE%d: Allocating %8.2f MB of memory for %-18s  -- %6.3f\n ", 
-				me, size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
-		fflush(stdout);
-		//}
-	}
-
+	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
+			size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		printf("PE%d: Error while allocating using posix_memalign\n", me);
-		printf("Array to be allocated: %s\n", desc);
-		printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
-				(1024.0*1024.0));
 		printf("Errorcode: %s\n", strerror(ierr));
-		exit(1);
+		ABORT("Error while allocating using posix_memalign");
+		/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
+				printf("Array to be allocated: %s\n", desc);
+				printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
+				(1024.0*1024.0));*/
+		//		exit(1);
 	}
 
 	if( ! mem ) {
 		fprintf(stderr,"allocateMemory: could not allocate %lu bytes of memory"
 				" for %s\n", size, desc);
-		SpMVM_abort("Error in memory allocation");
+		ABORT("Error in memory allocation");
 	}
 
 	allocatedMem += size;
@@ -164,8 +155,7 @@ void* allocateMemory( const size_t size, const char* desc ) {
 
 void freeMemory( size_t size, const char* desc, void* this_array ) {
 
-	IF_DEBUG(1) if (size>1024.0*1024.0) printf("Freeing %8.2f MB of memory for "
-			"%s -- \n", size/(1024.0*1024.0), desc);
+	DEBUG_LOG(2,"Freeing %8.2f MB of memory for %s", size/(1024.*1024.), desc);
 
 	allocatedMem -= size;
 	free (this_array);
@@ -193,7 +183,7 @@ MM_TYPE * readMMFile(const char* filename ) {
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for complex data "
-				"but the MM file contains data_t data. Casting...\n");
+				"but the MM file contains mat_data_t data. Casting...\n");
 #else
 	if (mm_is_complex(matcode))
 		fprintf(stderr,"Warning! The library has been built for real data "
@@ -266,11 +256,10 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	FILE* RESTFILE;
 
 
-	IF_DEBUG(1) printf(" \n Lese %s \n", path);
+	DEBUG_LOG(1,"Lese %s", path);
 
 	if ((RESTFILE = fopen(path, "rb"))==NULL){
-		printf("Fehler beim Oeffnen von %s\n", path);
-		exit(1);
+		ABORT("Fehler beim Oeffnen von %s\n", path);
 	}
 
 	fread(&datatype, sizeof(int), 1, RESTFILE);
@@ -278,18 +267,16 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
-	IF_DEBUG(2) printf("Allocate memory for arrays\n");
+	DEBUG_LOG(2,"Allocate memory for arrays");
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 
-	IF_DEBUG(2){
-		printf("Reading array with row-offsets\n");
-		printf("Reading array with column indices\n");
-		printf("Reading array with values\n");
-	}	
+	DEBUG_LOG(2,"Reading array with row-offsets");
+	DEBUG_LOG(2,"Reading array with column indices");
+	DEBUG_LOG(2,"Reading array with values");
 
-	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
+	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset (restart-version)");
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < cr->nRows+1; i++ ) {
 		cr->rowOffset[i] = 0;
@@ -313,10 +300,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
 	double mybytes;
-	int me;
 
 
-	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
 
 	timing( &startTime, &ct );
 
@@ -333,14 +318,15 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		if (me==0)
-			fprintf(stderr,"Warning in %s:%d! The library has been built for %s data but"
-				   " the file contains %s data. Casting...\n",__FILE__,__LINE__,
-					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+		char msg[1024];
+		sprintf(msg,"Warning in %s:%d! The library has been built for %s data but"
+				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
+				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+		DEBUG_LOG(0,msg);
 	}
 
 	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-		1.0*(cr->nEnts)*sizeof(data_t);
+		1.0*(cr->nEnts)*sizeof(mat_data_t);
 
 	IF_DEBUG(1){ 
 		printf("Number of rows in matrix       = %d\n", cr->nRows);
@@ -352,11 +338,11 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	size_col  = (size_t)( cr->nEnts * sizeof(int) );
-	size_val  = (size_t)( cr->nEnts * sizeof(data_t) );
+	size_val  = (size_t)( cr->nEnts * sizeof(mat_data_t) );
 
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (data_t*) allocateMemory( size_val,  "val" );
+	cr->val       = (mat_data_t*) allocateMemory( size_val,  "val" );
 
 	IF_DEBUG(2){
 		printf("Reading array with row-offsets\n");
@@ -395,7 +381,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				float *tmp = (float *)allocateMemory(
 						cr->nEnts*sizeof(float), "tmp");
 				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -404,7 +390,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				double *tmp = (double *)allocateMemory(
 						cr->nEnts*sizeof(double), "tmp");
 				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -413,7 +399,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				_Complex float *tmp = (_Complex float *)allocateMemory(
 						cr->nEnts*sizeof(_Complex float), "tmp");
 				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -422,7 +408,7 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 				_Complex double *tmp = (_Complex double *)allocateMemory(
 						cr->nEnts*sizeof(_Complex double), "tmp");
 				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (data_t) tmp[i];
+				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
 				free(tmp);
 				break;
 			}
@@ -474,7 +460,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 	mybytes = 4.0*sizeof(int) 
 		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-		+ 1.0*(jd->nEnts)*sizeof(data_t);
+		+ 1.0*(jd->nEnts)*sizeof(mat_data_t);
 
 	IF_DEBUG(1) {
 		printf("Number of rows in matrix       = %d\n", jd->nRows);
@@ -489,7 +475,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 	jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
 	jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
 	jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
-	jd->val        = (data_t*) allocateMemory( jd->nEnts      * sizeof( data_t ), "val" );
+	jd->val        = (mat_data_t*) allocateMemory( jd->nEnts      * sizeof( mat_data_t ), "val" );
 
 	IF_DEBUG(2) {
 		printf("Reading array of permutations\n");
@@ -526,7 +512,7 @@ void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
 
 
 	fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-	fread(&jd->val[0],              sizeof(data_t), jd->nEnts,    RESTFILE);
+	fread(&jd->val[0],              sizeof(mat_data_t), jd->nEnts,    RESTFILE);
 
 	fclose(RESTFILE);
 
@@ -550,9 +536,9 @@ int compareNZEPos( const void* a, const void* b ) {
 	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
-		bRow = ((NZE_TYPE*)b)->row,
-		aCol = ((NZE_TYPE*)a)->col,
-		bCol = ((NZE_TYPE*)b)->col;
+	    bRow = ((NZE_TYPE*)b)->row,
+	    aCol = ((NZE_TYPE*)a)->col,
+	    bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
 #ifdef MAIN_DIAGONAL_FIRST
@@ -568,61 +554,6 @@ int compareNZEPos( const void* a, const void* b ) {
 /* ########################################################################## */
 
 
-REVBUF_TYPE* revolvingBuffer( const uint64 cachesize, const int pagesize, const int vec_dim ) {
-
-	/* set up buffer for vector of length vec_dim to avoid undata_tistic loads from cache;
-	 * buffer can hold at least as many (numvecs) copies of vector as required to fill cachesize;
-	 * starting index (i*offset, i<numvecs) of each copy of vector in buffer is aligned to pagesize*/
-
-	int i, me;
-	REVBUF_TYPE* rb;
-	size_t size_mem, size_vec;
-
-	MPI_safecall(MPI_Comm_rank( MPI_COMM_WORLD, &me ));
-
-	rb = (REVBUF_TYPE*) allocateMemory( sizeof( REVBUF_TYPE ), "rb");
-
-	rb->pagesize  = pagesize;
-	rb->cachesize = cachesize;
-	rb->vecdim    = vec_dim;
-	rb->ppvec     = (int)( sizeof(data_t) * rb->vecdim / rb->pagesize) + 1;
-	rb->offset    = ( (int)(rb->ppvec*rb->pagesize) )/sizeof(data_t);
-	rb->numvecs   = (int)( (1024.0*rb->cachesize) / (rb->ppvec*rb->pagesize) ) + 2;
-	rb->globdim   = rb->numvecs*rb->offset;
-
-	IF_DEBUG(1){ 
-		printf("-----------------------------------------------------\n");
-		printf("------   Setup of revolving buffer for PE %2.2d   -----\n", me);
-		printf("-----------------------------------------------------\n");
-		printf("Elements per vector         : %12d\n", rb->vecdim);
-		printf("Cache size per socket [kB]  : %12d\n", rb->cachesize);
-		printf("Memorypage size [bytes]     : %12d\n", rb->pagesize);
-		printf("Memorypage in cache         : %12d\n", 1024*rb->cachesize/rb->pagesize);
-		printf("Memory pages per vector     : %12d\n", rb->ppvec); 
-		printf("Vectors in RevBuf           : %12d\n", rb->numvecs);
-		printf("Elements in RevBuf          : %12d\n", rb->globdim);
-		printf("Memory for RevBuf [MB]      : %12.3f\n", (rb->globdim*sizeof(data_t))/(1024.0*1024.0));
-		printf("Offset between vectors (el) : %12d\n", rb->offset);
-		printf("-----------------------------------------------------\n");
-	}
-
-	size_mem = (size_t)( rb->globdim * sizeof(data_t) );
-	size_vec = (size_t)( rb->numvecs * sizeof(data_t*) );
-
-	rb->mem = (data_t*)   allocateMemory(size_mem, "rb->mem");
-	rb->vec = (data_t **) allocateMemory(size_vec, "rb->vec");
-
-	for (i=0; i<rb->numvecs; i++){
-		rb->vec[i] = &rb->mem[i*rb->offset];
-	}
-	IF_DEBUG(1) {
-		printf("----   Finished revolving buffer for PE %2.2d   ----\n", me);
-		printf("-----------------------------------------------------\n");
-	}
-	return rb;
-}
-
-
 /* ########################################################################## */
 
 
@@ -635,7 +566,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	int* nEntsInRow;
 	int i, e, pos;
 	uint64 hlpaddr;
-	int me;
 
 	size_t size_rowOffset, size_col, size_val, size_nEntsInRow;
 
@@ -643,18 +573,17 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
-	MPI_safecall(MPI_Comm_rank (MPI_COMM_WORLD, &me));
 
 	size_rowOffset  = (size_t)( (mm->nRows+1) * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( data_t) );
+	size_val        = (size_t)( mm->nEnts     * sizeof( mat_data_t) );
 	size_nEntsInRow = (size_t)(  mm->nRows    * sizeof( int ) );
 
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rowOffset = (int*)     allocateMemory( size_rowOffset,    "rowOffset" );
 	cr->col       = (int*)     allocateMemory( size_col,          "col" );
-	cr->val       = (data_t*)  allocateMemory( size_val,          "val" );
+	cr->val       = (mat_data_t*)  allocateMemory( size_val,          "val" );
 	nEntsInRow    = (int*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 	IF_DEBUG(1){
@@ -733,8 +662,8 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* store values in compressed row data structure ########################## */
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
-			  col = mm->nze[e].col;
-		const data_t val = mm->nze[e].val;
+		      col = mm->nze[e].col;
+		const mat_data_t val = mm->nze[e].val;
 		pos = cr->rowOffset[row] + nEntsInRow[row];
 		/* GW 
 		   cr->col[pos] = col;
@@ -781,15 +710,15 @@ static int* invRowPerm;
 
 int compareNZEForJD( const void* a, const void* b ) {
 	const int aRow = invRowPerm[((NZE_TYPE*)a)->row],
-		  bRow = invRowPerm[((NZE_TYPE*)b)->row],
+	      bRow = invRowPerm[((NZE_TYPE*)b)->row],
 
-		  /*  GeWe
-			  aCol = ((NZE_TYPE*)a)->col,
-			  bCol = ((NZE_TYPE*)b)->col; 
-		   */
+	      /*  GeWe
+		  aCol = ((NZE_TYPE*)a)->col,
+		  bCol = ((NZE_TYPE*)b)->col; 
+	       */
 
-		  aCol = invRowPerm[((NZE_TYPE*)a)->col],
-		  bCol = invRowPerm[((NZE_TYPE*)b)->col];
+	      aCol = invRowPerm[((NZE_TYPE*)a)->col],
+	      bCol = invRowPerm[((NZE_TYPE*)b)->col];
 
 	if( aRow == bRow )
 		return aCol - bCol;
@@ -815,14 +744,14 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 	/* allocate memory ######################################################## */
 	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );
 	size_col        = (size_t)( mm->nEnts * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts * sizeof( data_t) );
+	size_val        = (size_t)( mm->nEnts * sizeof( mat_data_t) );
 	size_invRowPerm = (size_t)( mm->nRows * sizeof( int ) );
 	size_rowSort    = (size_t)( mm->nRows * sizeof( JD_SORT_TYPE ) );
 
 	JD_TYPE* jd = (JD_TYPE*)      allocateMemory( sizeof( JD_TYPE ), "jd" );
 	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
 	jd->col     = (int*)          allocateMemory( size_col,          "col" );
-	jd->val     = (data_t*)       allocateMemory( size_val,          "val" );
+	jd->val     = (mat_data_t*)       allocateMemory( size_val,          "val" );
 	invRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
 	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
 
@@ -968,7 +897,7 @@ for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
 			jd->val[pos] = mm->nze[e].val;
 
 			/*  GeWe
-				jd->col[pos] = mm->nze[e].col; 
+			    jd->col[pos] = mm->nze[e].col; 
 			 */
 
 			jd->col[pos] = invRowPerm[mm->nze[e].col]+1;
@@ -990,12 +919,12 @@ IF_DEBUG(2) {
 
 IF_DEBUG(1) printf( "convertMMToJDMatrix: done\n" );
 /*  sprintf(statfilename, "./intermediate3.dat");
-	if ((STATFILE = fopen(statfilename, "w"))==NULL){
-	printf("Fehler beim Oeffnen von %s\n", statfilename);
-	exit(1);
-	}
-	for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
-	fclose(STATFILE);
+    if ((STATFILE = fopen(statfilename, "w"))==NULL){
+    printf("Fehler beim Oeffnen von %s\n", statfilename);
+    exit(1);
+    }
+    for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
+    fclose(STATFILE);
  */
 return jd;
 }
@@ -1084,4 +1013,98 @@ void freeJDMatrix( JD_TYPE* const jd ) {
 	}
 }
 
+int pad(int nRows, int padding) {
 
+	/* determine padding of rowlength in ELR format to achieve half-warp alignment */
+
+	int nRowsPadded;
+
+	if(  nRows % padding != 0) {
+		nRowsPadded = nRows + padding - nRows % padding;
+	} else {
+		nRowsPadded = nRows;
+	}
+	return nRowsPadded;
+}
+
+
+
+BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) {
+	int i,j,c;
+	BJDS_TYPE *mv;
+
+	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
+
+	mv->nRows = cr->nRows;
+	mv->nNz = cr->nEnts;
+	mv->nEnts = 0;
+	mv->nRowsPadded = pad(mv->nRows,BJDS_LEN);
+
+	int nChunks = mv->nRowsPadded/BJDS_LEN;
+	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
+	mv->chunkStart[0] = 0;
+
+
+
+
+	int chunkMax = 0;
+	int curChunk = 1;
+
+	for (i=0; i<mv->nRows; i++) {
+		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
+		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+		chunkMax = chunkMax%2==0?chunkMax:chunkMax+1;
+
+		if ((i+1)%BJDS_LEN == 0) {
+			mv->nEnts += BJDS_LEN*chunkMax;
+			mv->chunkStart[curChunk] = mv->chunkStart[curChunk-1]+BJDS_LEN*chunkMax;
+
+			chunkMax = 0;
+			curChunk++;
+		}
+	}
+
+	mv->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*mv->nEnts,"mv->val");
+	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
+
+#pragma omp parallel for schedule(runtime) private(j,i)
+	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
+	{ // loop over chunks
+
+		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN; j++)
+		{
+			for (i=0; i<BJDS_LEN; i++)
+			{
+				mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.;
+				mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
+			}
+		}
+	}
+
+
+
+	for (c=0; c<nChunks; c++) {
+		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN;
+
+		for (j=0; j<chunkLen; j++) {
+
+			for (i=0; i<BJDS_LEN; i++) {
+				int rowLen = cr->rowOffset[(i+c*BJDS_LEN)+1]-cr->rowOffset[i+c*BJDS_LEN];
+				if (j<rowLen) {
+
+					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
+					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
+				} else {
+					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
+					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
+				}
+				//			printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
+
+
+			}
+		}
+	}
+
+
+	return mv;
+}

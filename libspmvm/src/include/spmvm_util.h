@@ -1,12 +1,50 @@
 #ifndef _SPMVM_UTIL_H_
 #define _SPMVM_UTIL_H_
 
-
 #include "spmvm.h"
+#ifdef MPI
+#include <mpi.h>
+#endif
 
 /******************************************************************************/
 /****** Makros ****************************************************************/
 /******************************************************************************/
+#ifdef MPI
+#define DEBUG_LOG(level,msg, ...) {\
+	if(DEBUG >= level) {\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stderr,"PE%d at %s:%d: ",__me,__FILE__,__LINE__);\
+		fprintf(stderr,msg, ##__VA_ARGS__);\
+		fprintf(stderr, "\n");\
+	}\
+}
+#else
+#define DEBUG_LOG(level,msg, ...) {\
+	if(DEBUG >= level) {\
+		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
+		fprintf(stderr, msg, ##__VA_ARGS__);\
+		fprintf(stderr, "\n");\
+	}\
+}
+#endif
+
+#ifdef MPI
+#define ABORT(msg, ...) {\
+	int __me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+	fprintf(stderr,"PE%d ABORTING at %s:%d: ",__me,__FILE__,__LINE__);\
+	fprintf(stderr,msg, ##__VA_ARGS__);\
+	fprintf(stderr, "\n");\
+}
+#else
+#define ABORT(msg, ...) {\
+	fprintf(stderr,"ABORTING at %s:%d: ",__FILE__,__LINE__);\
+	fprintf(stderr,msg, ##__VA_ARGS__);\
+	fprintf(stderr, "\n");\
+}
+#endif
+
 #define MPI_safecall(call) {\
   int mpierr = call ;\
   if( MPI_SUCCESS != mpierr ){\
@@ -31,6 +69,8 @@
     fflush(stdout);\
   }\
   } while(0)
+
+#define UNUSED(x) (void)(x)
 /******************************************************************************/
 
 #ifdef OPENCL
@@ -40,7 +80,7 @@ void CL_init();
 cl_program CL_registerProgram(char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
 
-void CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+GPUMATRIX_TYPE * CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
@@ -58,10 +98,11 @@ void freeHostMemory( void* );
 void CL_finish(int);
 
 void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
-void CL_vecscal(cl_mem a, data_t s, int nRows);
-void CL_axpy(cl_mem a, cl_mem b, data_t s, int nRows);
-void CL_dotprod(cl_mem a, cl_mem b, data_t *out, int nRows);
-void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
+void CL_vecscal(cl_mem a, mat_data_t s, int nRows);
+void CL_axpy(cl_mem a, cl_mem b, mat_data_t s, int nRows);
+void CL_dotprod(cl_mem a, cl_mem b, mat_data_t *out, int nRows);
+//void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
+GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_enqueueKernel(cl_kernel kernel);
  
 size_t CL_getLocalSize(cl_kernel kernel);
@@ -70,19 +111,20 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif
 
 
-void              SpMVM_printMatrixInfo(LCRP_TYPE *lcrp, char *matrixName, int options);
+void              SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, data_t (*fp)(int));
-void              SpMVM_referenceSolver(CR_TYPE *lcrp, data_t *rhs, data_t *lhs, int nIter, int spmvmOptions);
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, mat_data_t (*fp)(int));
+void              SpMVM_referenceSolver(CR_TYPE *lcrp, mat_data_t *rhs, mat_data_t *lhs, int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
-HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, data_t (*fp)(int));
+HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int));
 VECTOR_TYPE*      SpMVM_newVector( const int nRows );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
 void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
 char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
-void SpMVM_abort(char *s);
+char * SpMVM_matrixFormatName(int format);
+unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix);
 
 /******************************************************************************
   * Distribute a CRS matrix from the master node to all worker nodes.
@@ -123,5 +165,11 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );
 void SpMVM_freeLCRP( LCRP_TYPE* const );
-void SpMVM_permuteVector( data_t* vec, int* perm, int len);
+void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len);
+int getNumberOfPhysicalCores();
+int SpMVM_getRank();
+int getNumberOfHwThreads();
+int getNumberOfThreads();
+int getNumberOfNodes();
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat); 
 #endif

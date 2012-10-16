@@ -32,3 +32,5 @@
 8. Generate dependency files in Makefile
 
 9. all OpenCL arrays mapped memory
+
+10. different data types for matrix and vectors

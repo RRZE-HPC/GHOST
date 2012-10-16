@@ -2,7 +2,6 @@
 #define _SPMVM_H_
 
 #include <complex.h>
-#include <mpi.h>
 #include <math.h>
 
 #ifdef OPENCL
@@ -30,13 +29,24 @@
 #define SPMVM_KERNEL_IDX_REMOTE 2
 /******************************************************************************/
 
+#define SPM_FORMAT_GLOB_CRS    (0x1<<1)
+#define SPM_FORMAT_GLOB_BJDS (0x1<<2)
+#define SPM_FORMAT_DIST_CRS    (0x1<<3)
+#define SPM_FORMAT_HOSTONLY (0x1<<4)
+
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS)
+#define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
+#define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
+#define BJDS_LEN 8
+
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
 /******************************************************************************/
-#define VECTOR_TYPE_RHS 0
-#define VECTOR_TYPE_LHS 1
-#define VECTOR_TYPE_BOTH 2
+#define VECTOR_TYPE_RHS (0x1<<0)
+#define VECTOR_TYPE_LHS (0x1<<1)
+#define VECTOR_TYPE_BOTH (VECTOR_TYPE_RHS | VECTOR_TYPE_LHS)
+#define VECTOR_TYPE_HOSTONLY (0x1<<2)
 /******************************************************************************/
 
 
@@ -46,6 +56,7 @@
 #define SPM_GPUFORMAT_ELR  0
 #define SPM_GPUFORMAT_PJDS 1
 #define PJDS_CHUNK_HEIGHT 32
+#define ELR_PADDING 1024
 extern const char *SPM_FORMAT_NAMES[];
 /******************************************************************************/
 
@@ -106,28 +117,36 @@ extern const char *DATATYPE_NAMES[];
 /******************************************************************************/
 #ifdef DOUBLE
 #ifdef COMPLEX
-typedef _Complex double data_t;
+typedef _Complex double mat_data_t;
+#ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
+#endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_DOUBLE
 #else // COMPLEX
-typedef double data_t;
+typedef double mat_data_t;
+#ifdef MPI
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
+#endif
 #define DATATYPE_DESIRED DATATYPE_DOUBLE
 #endif // COMPLEX
 #endif // DOUBLE
 
 #ifdef SINGLE
 #ifdef COMPLEX
-typedef _Complex float data_t;
+typedef _Complex float mat_data_t;
+#ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
+#endif
 #define DATATYPE_DESIRED DATATYPE_COMPLEX_FLOAT
 #else // COMPLEX
-typedef float data_t;
+typedef float mat_data_t;
+#ifdef MPI
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
+#endif
 #define DATATYPE_DESIRED DATATYPE_FLOAT
 #endif // COMPLEX
 #endif // SINGLE
@@ -193,7 +212,7 @@ typedef struct{
 
 typedef struct {
 	int nRows;
-	data_t* val;
+	mat_data_t* val;
 #ifdef OPENCL
   cl_mem CL_val_gpu;
 #endif
@@ -206,12 +225,11 @@ typedef struct {
 
 typedef struct {
 	int nRows;
-	data_t* val;
+	mat_data_t* val;
 } HOSTVECTOR_TYPE;
 
 typedef struct {
   int nodes, threads, halo_elements;
-  int nEnts, nRows;
   int* lnEnts;
   int* lnRows;
   int* lfEnt;
@@ -225,15 +243,18 @@ typedef struct {
   int* due_displ;
   int* wish_displ;
   int* hput_pos;
-  data_t* val;
+  mat_data_t* val;
   int* col;
   int* lrow_ptr;
   int* lrow_ptr_l;
   int* lrow_ptr_r;
   int* lcol;
   int* rcol;
-  data_t* lval;
-  data_t* rval;
+  mat_data_t* lval;
+  mat_data_t* rval;
+} LCRP_TYPE;
+
+typedef struct {
   int fullFormat;
   int localFormat;
   int remoteFormat;
@@ -247,20 +268,41 @@ typedef struct {
   int *fullInvRowPerm;  // may be NULL
   int *splitRowPerm;    // may be NULL
   int *splitInvRowPerm; // may be NULL
-} LCRP_TYPE;
+} GPUMATRIX_TYPE;
+
+
+
 
 typedef struct {
 	int nRows, nCols, nEnts;
 	int* rowOffset;
 	int* col;
-	data_t* val;
+	mat_data_t* val;
 } CR_TYPE;
 
-typedef void (*FuncPrototype)(VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
+typedef struct {
+	mat_data_t *val;
+	int *col;
+	int *chunkStart;
+	int nRows;
+	int nRowsPadded;
+	int nNz;
+	int nEnts;
+} BJDS_TYPE;
 
 typedef struct {
-    FuncPrototype kernel;
-} Hybrid_kernel;
+	unsigned int format;
+	unsigned int nNonz;
+	unsigned int nRows;
+	unsigned int nCols;
+	void *matrix;
+#ifdef OPENCL
+	GPUMATRIX_TYPE *devMatrix;
+#endif
+} MATRIX_TYPE;
+
+typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);
+
 /******************************************************************************/
 
 /******************************************************************************/
@@ -331,6 +373,7 @@ void SpMVM_finish();
   *****************************************************************************/
 LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
 
+
 /******************************************************************************
   * Create a distributed vector with specified values in order to use it for 
   * SpMVM. Depending on the type, the length of the vector may differ.
@@ -345,9 +388,9 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
   *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
   *     The length of the vector depends on this argument.
-  *   - data_t (*fp)(int)
+  *   - mat_data_t (*fp)(int)
   *     A function pointer to a function taking an integer value and returning
-  *     a data_t. This function returns the initial value for the i-th (globally)
+  *     a mat_data_t. This function returns the initial value for the i-th (globally)
   *     element of the vector.
   *     If NULL, the vector is initialized to zero.
   *
@@ -355,7 +398,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
   *   well as the necessary data structures for communication.
   *****************************************************************************/
-VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
+void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int));
 
 /******************************************************************************
   * Perform the sparse matrix vector product using a specified kernel with a
@@ -381,8 +424,12 @@ VECTOR_TYPE *SpMVM_createVector(LCRP_TYPE *lcrp, int type, data_t (*fp)(int));
   * Returns:
   *   the wallclock time (in seconds) the kernel execution took. 
   *****************************************************************************/
-double SpMVM_solve(VECTOR_TYPE *res, LCRP_TYPE *lcrp, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *lcrp, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
+
+
+MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
+MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormats); 
 /******************************************************************************/
 
 #endif

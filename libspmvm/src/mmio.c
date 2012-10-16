@@ -39,7 +39,7 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
  
  
-    if ( !(mm_is_data_t(matcode) && mm_is_matrix(matcode) &&
+    if ( !(mm_is_mat_data_t(matcode) && mm_is_matrix(matcode) &&
             mm_is_sparse(matcode)))
     {
         fprintf(stderr, "Sorry, this application does not support ");
@@ -89,7 +89,7 @@ int mm_is_valid(MM_typecode matcode)
 {
     if (!mm_is_matrix(matcode)) return 0;
     if (mm_is_dense(matcode) && mm_is_pattern(matcode)) return 0;
-    if (mm_is_data_t(matcode) && mm_is_hermitian(matcode)) return 0;
+    if (mm_is_mat_data_t(matcode) && mm_is_hermitian(matcode)) return 0;
     if (mm_is_pattern(matcode) && (mm_is_hermitian(matcode) || 
                 mm_is_skew(matcode))) return 0;
     return 1;
@@ -101,7 +101,7 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
     char banner[MM_MAX_TOKEN_LENGTH];
     char mtx[MM_MAX_TOKEN_LENGTH]; 
     char crd[MM_MAX_TOKEN_LENGTH];
-    char data_type[MM_MAX_TOKEN_LENGTH];
+    char mat_data_type[MM_MAX_TOKEN_LENGTH];
     char storage_scheme[MM_MAX_TOKEN_LENGTH];
     int *p;
 
@@ -111,13 +111,13 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
     if (fgets(line, MM_MAX_LINE_LENGTH, f) == NULL) 
         return MM_PREMATURE_EOF;
 
-    if (sscanf(line, "%s %s %s %s %s", banner, mtx, crd, data_type, 
+    if (sscanf(line, "%s %s %s %s %s", banner, mtx, crd, mat_data_type, 
         storage_scheme) != 5)
         return MM_PREMATURE_EOF;
 
     for (p=(int *)mtx; *p!='\0'; *p=tolower(*p),p++);  /* convert to lower case */
     for (p=(int *)crd; *p!='\0'; *p=tolower(*p),p++);  
-    for (p=(int *)data_type; *p!='\0'; *p=tolower(*p),p++);
+    for (p=(int *)mat_data_type; *p!='\0'; *p=tolower(*p),p++);
     for (p=(int *)storage_scheme; *p!='\0'; *p=tolower(*p),p++);
 
     /* check for banner */
@@ -145,16 +145,16 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
 
     /* third field */
 
-    if (strcmp(data_type, MM_REAL_STR) == 0)
-        mm_set_data_t(matcode);
+    if (strcmp(mat_data_type, MM_REAL_STR) == 0)
+        mm_set_mat_data_t(matcode);
     else
-    if (strcmp(data_type, MM_COMPLEX_STR) == 0)
+    if (strcmp(mat_data_type, MM_COMPLEX_STR) == 0)
         mm_set_complex(matcode);
     else
-    if (strcmp(data_type, MM_PATTERN_STR) == 0)
+    if (strcmp(mat_data_type, MM_PATTERN_STR) == 0)
         mm_set_pattern(matcode);
     else
-    if (strcmp(data_type, MM_INT_STR) == 0)
+    if (strcmp(mat_data_type, MM_INT_STR) == 0)
         mm_set_integer(matcode);
     else
         return MM_UNSUPPORTED_TYPE;
@@ -274,7 +274,7 @@ int mm_read_mtx_crd_data(FILE *f, int nz, int I[], int J[],
             if (fscanf(f, "%d %d %lg %lg", &I[i], &J[i], &val[2*i], &val[2*i+1])
                 != 4) return MM_PREMATURE_EOF;
     }
-    else if (mm_is_data_t(matcode))
+    else if (mm_is_mat_data_t(matcode))
     {
         for (i=0; i<nz; i++)
         {
@@ -298,16 +298,16 @@ int mm_read_mtx_crd_data(FILE *f, int nz, int I[], int J[],
 }
 
 int mm_read_mtx_crd_entry(FILE *f, int *I, int *J,
-        double *data_t, double *imag, MM_typecode matcode)
+        double *mat_data_t, double *imag, MM_typecode matcode)
 {
     if (mm_is_complex(matcode))
     {
-            if (fscanf(f, "%d %d %lg %lg", I, J, data_t, imag)
+            if (fscanf(f, "%d %d %lg %lg", I, J, mat_data_t, imag)
                 != 4) return MM_PREMATURE_EOF;
     }
-    else if (mm_is_data_t(matcode))
+    else if (mm_is_mat_data_t(matcode))
     {
-            if (fscanf(f, "%d %d %lg\n", I, J, data_t)
+            if (fscanf(f, "%d %d %lg\n", I, J, mat_data_t)
                 != 3) return MM_PREMATURE_EOF;
 
     }
@@ -329,7 +329,7 @@ int mm_read_mtx_crd_entry(FILE *f, int *I, int *J,
                         type code, e.g. 'MCRS'
 
                         if matrix is complex, values[] is of size 2*nz,
-                            (nz pairs of data_t/imaginary values)
+                            (nz pairs of mat_data_t/imaginary values)
 ************************************************************************/
 
 int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J, 
@@ -366,7 +366,7 @@ int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J,
                 *matcode);
         if (ret_code != 0) return ret_code;
     }
-    else if (mm_is_data_t(*matcode))
+    else if (mm_is_mat_data_t(*matcode))
     {
         *val = (double *) malloc(*nz * sizeof(double));
         ret_code = mm_read_mtx_crd_data(f, *nz, *II, *J, *val, 
@@ -422,7 +422,7 @@ int mm_write_mtx_crd(char fname[], int M, int N, int nz, int II[], int J[],
         for (i=0; i<nz; i++)
             fprintf(f, "%d %d\n", II[i], J[i]);
     else
-    if (mm_is_data_t(matcode))
+    if (mm_is_mat_data_t(matcode))
         for (i=0; i<nz; i++)
             fprintf(f, "%d %d %20.16g\n", II[i], J[i], val[i]);
     else
@@ -473,7 +473,7 @@ char  *mm_typecode_to_str(MM_typecode matcode)
         return NULL;
 
     /* check for element data type */
-    if (mm_is_data_t(matcode))
+    if (mm_is_mat_data_t(matcode))
         types[2] = MM_REAL_STR;
     else
     if (mm_is_complex(matcode))
