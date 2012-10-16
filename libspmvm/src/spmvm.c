@@ -303,6 +303,11 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
+	if (format & SPM_FORMATS_GLOB) {
+		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one...");
+		options |= SPMVM_OPTION_SERIAL_IO;
+	}
+
 	if (SpMVM_getRank() == 0) 
 	{ // root process reads row pointers (parallel IO) oder entire matrix
 		if (!isMMfile(matrixPath)){
@@ -323,12 +328,12 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
-	MPI_safecall(MPI_Bcast(&cr->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(&cr->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(&cr->nCols,1,MPI_INT,0,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Bcast(&cr->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Bcast(&cr->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Bcast(&cr->nCols,1,MPI_INT,0,MPI_COMM_WORLD));
 		LCRP_TYPE *lcrp;
 
-		if (options & SPMVM_OPTION_SERIAL_IO)    // TODO w/o MPI always serial I/O
+		if (options & SPMVM_OPTION_SERIAL_IO) 
 			lcrp = setup_communication(cr, options);
 		else
 			lcrp = setup_communication_parallel(cr, matrixPath, options);
@@ -344,8 +349,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 #endif
 #endif
-	} else 
-	{ // global matrix
+	} else { // global matrix
 		switch (format) {
 			case SPM_FORMAT_GLOB_CRS:
 				mat->matrix = cr;
@@ -359,7 +363,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 
 	}
 
-	
+
 	mat->format = format;
 	mat->nNonz = cr->nEnts;
 	mat->nRows = cr->nRows;
@@ -371,55 +375,6 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 }
 
 
-/*LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats)
-{
-	CR_TYPE *cr;
-	MM_TYPE *mm;
-	LCRP_TYPE *lcrp;
-
-	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-
-	if (SpMVM_getRank() == 0) { 
-		// root process reads row pointers (parallel IO) oder entire matrix
-		if (!isMMfile(matrixPath)){
-			if (options & SPMVM_OPTION_SERIAL_IO)
-				readCRbinFile(cr, matrixPath);
-			else
-				readCRrowsBinFile(cr, matrixPath);
-		} else{
-			mm = readMMFile( matrixPath);
-			cr = convertMMToCRMatrix( mm );
-			freeMMMatrix(mm);
-		}
-	}
-
-#ifdef MPI
-	if (options & SPMVM_OPTION_SERIAL_IO)    // TODO w/o MPI always serial I/O
-		lcrp = setup_communication(cr, options);
-	else
-		lcrp = setup_communication_parallel(cr, matrixPath, options);
-#else
-	lcrp = SpMVM_CRtoLCRP(cr);
-#endif
-
-
-	if (deviceFormats == NULL) {
-#ifdef OPENCL
-		SpMVM_abort("Device matrix formats have to be passed to SPMVM_distributeCRS");
-#endif
-	}
-#ifdef OPENCL
-	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
-	CL_uploadCRS ( lcrp, formats, options);
-#endif
-
-	//	if (me==0)
-	//	SpMVM_freeCRS(cr); FIXME
-
-	return lcrp;
-
-}*/
-
 double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec, 
 		int kernel, int nIter)
 {
@@ -428,7 +383,7 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 	SpMVM_kernelFunc kernelFunc = SpMVM_selectKernelFunc(options,kernel,mat);
 
 	if (!kernelFunc)
-		return 0.;
+		return -1.0;
 
 
 
@@ -452,44 +407,3 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 	return time;
 }
 
-
-/*MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format) 
-  {
-  MATRIX_TYPE *mat;
-  CR_TYPE *cr;
-  MM_TYPE *mm;
-
-  mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
-  cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-
-  if (SpMVM_getRank() == 0) { 
-  if (!isMMfile(matrixPath)){
-  readCRbinFile(cr, matrixPath);
-  } else{
-  mm = readMMFile( matrixPath);
-  cr = convertMMToCRMatrix( mm );
-  freeMMMatrix(mm);
-  }
-  }
-
-  mat->format = format;
-  mat->nNonz = cr->nEnts;
-  mat->nRows = cr->nRows;
-  mat->nCols = cr->nCols;
-
-  switch (format) {
-  case SPM_FORMAT_BJDS:
-  mat->matrix = CRStoBJDS(cr);
-  break;
-  case SPM_FORMAT_CRS:
-  mat->matrix = cr;
-  break;
-  default:
-  ABORT("No valid matrix format specified!");
-  }
-
-
-
-  return mat;
-
-  }*/

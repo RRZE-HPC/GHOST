@@ -400,67 +400,6 @@ void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec,
 #endif
 }
 
-/*LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options)
-{
-	LCRP_TYPE *lcrp;
-
-#ifdef MPI
-	lcrp = setup_communication(cr, options);
-#else
-	UNUSED(options);
-//	lcrp = SpMVM_CRtoLCRP(cr);
-#endif
-
-
-	if (deviceFormats == NULL) {
-#ifdef OPENCL
-		SpMVM_abort("Device matrix formats have to be passed to SPMVM_distributeCRS");
-#endif
-	}
-#ifdef OPENCL
-	SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
-	CL_uploadCRS ( lcrp, formats, options);
-#endif
-	return lcrp;
-}*/
-CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath)
-{
-
-
-	int me = SpMVM_getRank();
-	CR_TYPE *cr;
-	MM_TYPE *mm;
-
-	if (me == 0){
-		if (!isMMfile(matrixPath)){
-
-			cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-
-			readCRbinFile(cr, matrixPath);
-
-		} else{
-			mm = readMMFile( matrixPath);
-			cr = convertMMToCRMatrix( mm );
-			freeMMMatrix(mm);
-		}
-
-		crColIdToFortran(cr);
-	} else{
-
-		/* Allokiere minimalen Speicher fuer Dummyversion der globalen Matrix */
-		cr            = (CR_TYPE*) allocateMemory( sizeof(CR_TYPE), "cr");
-		cr->nRows     = 0;
-		cr->nEnts     = 1;
-		cr->rowOffset = (int*)     allocateMemory(sizeof(int), "rowOffset");
-		cr->col       = (int*)     allocateMemory(sizeof(int), "col");
-		cr->val       = (data_t*)  allocateMemory(sizeof(data_t), "val");
-	}
-	return cr;
-
-}
-
-
-
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
 	data_t *dtmp;
@@ -652,13 +591,9 @@ char *SpMVM_workdistName(int options)
 		return "equal rows";
 }
 
-void SpMVM_abort(char *s) {
-	fprintf(stderr,"ABORT -- %s\n",s);
-	SpMVM_finish();
-	exit(EXIT_FAILURE);
-}
 
-char * SpMVM_matrixFormatName(int format) {
+char * SpMVM_matrixFormatName(int format) 
+{
 
 	switch (format) {
 		case SPM_FORMAT_DIST_CRS:
@@ -676,7 +611,8 @@ char * SpMVM_matrixFormatName(int format) {
 	}
 }
 
-unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) {
+unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) 
+{
 	unsigned int size = 0;
 
 	switch (matrix->format) {
@@ -719,53 +655,6 @@ int getNumberOfHwThreads()
 {
 	return sysconf(_SC_NPROCESSORS_ONLN);
 }
-
-/*LCRP_TYPE *SpMVM_CRtoLCRP(CR_TYPE *cr) {
-
-  LCRP_TYPE *lcrp;
-  size_t size_val, size_col, size_ptr;
-  int i;
-
-  lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
-  lcrp->lnRows = (int*) allocateMemory(sizeof(int),"lcrp->lnRows");	
-  lcrp->lnEnts = (int*) allocateMemory(sizeof(int),"lcrp->lnEnts");	
-  lcrp->lfEnt  = (int*) allocateMemory(sizeof(int), "lcrp->lfEnt" ); 
-  lcrp->lfRow  = (int*) allocateMemory(sizeof(int), "lcrp->lfRow" ); 
-
-  lcrp->nEnts = cr->nEnts;
-  lcrp->nRows = cr->nRows;
-  lcrp->threads = omp_get_num_threads(); 
-  lcrp->lnRows[0] = cr->nRows;
-  lcrp->lnEnts[0] = cr->nEnts;
-  lcrp->lfRow[0]  = 0;
-  lcrp->lfEnt[0] = 0;
-  lcrp->halo_elements = 0;
-
-  size_val  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( data_t ) );
-  size_col  = (size_t)( (size_t)(lcrp->lnEnts[0])   * sizeof( int ) );
-  size_ptr  = (size_t)( (size_t)(lcrp->lnRows[0]+1) * sizeof( int ) );
-
-  lcrp->val      = (data_t*)    allocateMemory( size_val,  "lcrp->val" ); 
-  lcrp->col      = (int*)       allocateMemory( size_col,  "lcrp->col" ); 
-  lcrp->lrow_ptr = (int*)       allocateMemory( size_ptr,  "lcrp->lrow_ptr" ); 
-
-
-
-
-#pragma omp parallel for schedule(static)
-for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->val[i] = cr->val[i];
-
-#pragma omp parallel for schedule(static)
-for (i=0; i<lcrp->lnEnts[0]; i++) lcrp->col[i] = cr->col[i];
-
-#pragma omp parallel for schedule(static)
-for (i=0; i<lcrp->lnRows[0]; i++) lcrp->lrow_ptr[i] = cr->rowOffset[i];
-
-lcrp->lrow_ptr[lcrp->lnRows[0]] = lcrp->lnEnts[0]; 
-
-return lcrp;
-
-}*/
 
 int getNumberOfThreads() {
 	int nthreads;

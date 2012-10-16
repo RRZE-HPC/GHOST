@@ -125,7 +125,6 @@ char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
 char * SpMVM_matrixFormatName(int format);
 unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix);
-void SpMVM_abort(char *s);
 
 /******************************************************************************
   * Distribute a CRS matrix from the master node to all worker nodes.
