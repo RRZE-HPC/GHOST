@@ -108,8 +108,9 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 	__m512d tmp;
 	__m512d val;
 	__m512d rhs;
-	__m512i idx;
+	__m512i idx; // TODO lower und upper index, shuffle ueberlappen
 
+	// TODO relaxed store
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx,offs)
 	for (c=0; c<mv->nRowsPadded>>3; c++) 
 	{ // loop over chunks
