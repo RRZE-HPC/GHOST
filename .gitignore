@@ -5,6 +5,7 @@ pbshosts*
 *.a
 *.so
 obj/
+jobscripts/
 tags
 *stdout*
 *stderr*
