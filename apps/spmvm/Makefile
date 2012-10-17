@@ -1,7 +1,7 @@
 OPENCL=0
 WDDT=0
 
-LIBSPMVMPATH=/home/hpc/h021z/di56xuq2/app/libspmvm
+LIBSPMVMPATH=$(HOME)/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
