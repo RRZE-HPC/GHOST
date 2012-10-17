@@ -101,7 +101,7 @@ endif
 ifeq ($(strip $(LIBTYPE)),shared)
 $(LIBSPMVM): $(OBJS)
 	@echo "==> Create shared library $(LIBSPMVM)"
-	@$(CC) -shared -o $(LIBSPMVM) $^
+	@$(CC) $(CFLAGS) -shared -o $(LIBSPMVM) $^
 endif
 
 clean:
