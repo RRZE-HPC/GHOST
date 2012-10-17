@@ -376,25 +376,22 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	return nodeVec;
 }
 
-void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
+void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
 
-	UNUSED(kernel);
-	//TODO
-	/*	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-		SpMVM_permuteVector(vec->val,lcrp->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-		SpMVM_permuteVector(vec->val,lcrp->splitInvRowPerm,lcrp->lnRows[me]);
-		}*/
-
-
 #ifdef MPI
+		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
+		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+		SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
+		}
 	int me = SpMVM_getRank();
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
-	UNUSED(lcrp);
+	UNUSED(kernel);
+		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
 	int i;
 	for (i=0; i<totalVec->nRows; i++) totalVec->val[i] = vec->val[i];
 #endif
@@ -734,6 +731,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 					return NULL;
 			}
 			break;
+		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
 				case SPMVM_KERNEL_NOMPI:

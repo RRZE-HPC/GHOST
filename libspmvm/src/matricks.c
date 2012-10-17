@@ -1116,3 +1116,136 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 
 	return mv;
 }
+
+SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr) 
+{
+	int i,j,c;
+	SBJDS_TYPE *sbjds;
+	JD_SORT_TYPE* rowSort;
+	/* get max number of entries in one row ###########################*/
+	rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nRows * sizeof( JD_SORT_TYPE ),
+			"rowSort" );
+
+	for( i = 0; i < cr->nRows; i++ ) {
+		rowSort[i].row = i;
+		rowSort[i].nEntsInRow = cr->rowOffset[i+1] - cr->rowOffset[i];
+	} 
+
+	qsort( rowSort, cr->nRows, sizeof( JD_SORT_TYPE  ), compareNZEPerRow );
+
+	/* sort within same rowlength with asceding row number #################### */
+	i=0;
+	while(i < cr->nRows) {
+		int start = i;
+
+		j = rowSort[start].nEntsInRow;
+		while( i<cr->nRows && rowSort[i].nEntsInRow >= j ) 
+			++i;
+
+		DEBUG_LOG(1,"sorting over %i rows (%i): %i - %i\n",i-start,j, start, i-1);
+		qsort( &rowSort[start], i-start, sizeof(JD_SORT_TYPE), compareNZEOrgPos );
+	}
+
+	for(i=1; i < cr->nRows; ++i) {
+		if( rowSort[i].nEntsInRow == rowSort[i-1].nEntsInRow && rowSort[i].row < rowSort[i-1].row)
+			printf("Error in row %i: descending row number\n",i);
+	}
+
+	
+
+	sbjds = (SBJDS_TYPE *)allocateMemory(sizeof(SBJDS_TYPE),"sbjds");
+
+	sbjds->nRows = cr->nRows;
+	sbjds->nNz = cr->nEnts;
+	sbjds->nEnts = 0;
+	sbjds->nRowsPadded = pad(sbjds->nRows,BJDS_LEN);
+
+	sbjds->rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
+	sbjds->invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
+	
+	for(i=0; i < cr->nRows; ++i) {
+		/* invRowPerm maps an index in the permuted system to the original index,
+		 * rowPerm gets the original index and returns the corresponding permuted position.
+		 */
+		if( rowSort[i].row >= cr->nRows ) DEBUG_LOG(0,"error: invalid row number %i in %i\n",rowSort[i].row, i); 
+
+		sbjds->invRowPerm[i] = rowSort[i].row;
+		sbjds->rowPerm[rowSort[i].row] = i;
+	}
+
+	int nChunks = sbjds->nRowsPadded/BJDS_LEN;
+	sbjds->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"sbjds->chunkStart");
+	sbjds->chunkStart[0] = 0;
+
+
+
+
+	int chunkMax = 0;
+	int curChunk = 1;
+
+	for (i=0; i<sbjds->nRows; i++) {
+		int rowLen = rowSort[i].nEntsInRow;
+		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+#ifdef MIC
+		/* The gather instruction is only available on MIC. Therefore, the
+		   access to the index vector has to be 512bit-aligned only on MIC.
+		   Also, the innerloop in the BJDS-kernel has to be 2-way unrolled
+		   only on this case. ==> The number of columns of one chunk does
+		   not have to be a multiple of two in the other cases. */
+		chunkMax = chunkMax%2==0?chunkMax:chunkMax+1;
+#endif
+
+		if ((i+1)%BJDS_LEN == 0) {
+			sbjds->nEnts += BJDS_LEN*chunkMax;
+			sbjds->chunkStart[curChunk] = sbjds->chunkStart[curChunk-1]+BJDS_LEN*chunkMax;
+
+			chunkMax = 0;
+			curChunk++;
+		}
+	}
+
+	sbjds->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*sbjds->nEnts,"sbjds->val");
+	sbjds->col = (int *)allocateMemory(sizeof(int)*sbjds->nEnts,"sbjds->val");
+
+#pragma omp parallel for schedule(runtime) private(j,i)
+	for (c=0; c<sbjds->nRowsPadded/BJDS_LEN; c++) 
+	{ // loop over chunks
+
+		for (j=0; j<(sbjds->chunkStart[c+1]-sbjds->chunkStart[c])/BJDS_LEN; j++)
+		{
+			for (i=0; i<BJDS_LEN; i++)
+			{
+				sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.;
+				sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;
+			}
+		}
+	}
+
+
+
+	for (c=0; c<nChunks; c++) {
+		int chunkLen = (sbjds->chunkStart[c+1]-sbjds->chunkStart[c])/BJDS_LEN;
+
+		for (j=0; j<chunkLen; j++) {
+
+			for (i=0; i<BJDS_LEN; i++) {
+				int row = c*BJDS_LEN+i;
+				int rowLen = cr->rowOffset[(i+c*BJDS_LEN)+1]-cr->rowOffset[i+c*BJDS_LEN];
+				if (j<rowLen) {
+
+					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[sbjds->invRowPerm[row]]+j];
+					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[sbjds->invRowPerm[row]]+j];
+				} else {
+					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
+					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;
+				}
+				//			printf("%f ",sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i]);
+
+
+			}
+		}
+	}
+
+
+	return sbjds;
+}

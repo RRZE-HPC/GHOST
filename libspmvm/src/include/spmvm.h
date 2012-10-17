@@ -33,8 +33,9 @@
 #define SPM_FORMAT_GLOB_BJDS (0x1<<2)
 #define SPM_FORMAT_DIST_CRS    (0x1<<3)
 #define SPM_FORMAT_HOSTONLY (0x1<<4)
+#define SPM_FORMAT_GLOB_SBJDS (0x1<<5)
 
-#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS)
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
 
@@ -270,10 +271,6 @@ typedef struct {
   void *fullMatrix;
   void *localMatrix;
   void *remoteMatrix;
-  int *fullRowPerm;     // may be NULL
-  int *fullInvRowPerm;  // may be NULL
-  int *splitRowPerm;    // may be NULL
-  int *splitInvRowPerm; // may be NULL
 } GPUMATRIX_TYPE;
 
 
@@ -297,11 +294,27 @@ typedef struct {
 } BJDS_TYPE;
 
 typedef struct {
+	mat_data_t *val;
+	int *col;
+	int *chunkStart;
+	int *rowPerm;
+	int *invRowPerm;
+	int nRows;
+	int nRowsPadded;
+	int nNz;
+	int nEnts;
+} SBJDS_TYPE;
+
+typedef struct {
 	unsigned int format;
 	unsigned int nNonz;
 	unsigned int nRows;
 	unsigned int nCols;
 	void *matrix;
+  	int *fullRowPerm;     // may be NULL
+	int *fullInvRowPerm;  // may be NULL
+	int *splitRowPerm;    // may be NULL
+  	int *splitInvRowPerm; // may be NULL
 #ifdef OPENCL
 	GPUMATRIX_TYPE *devMatrix;
 #endif

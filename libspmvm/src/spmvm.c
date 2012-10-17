@@ -344,7 +344,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
 		}
 		SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
-		mat->devMatrix = CL_uploadCRS ( lcrp, formats, options);
+		CL_uploadCRS ( mat, formats, options);
 #else
 		UNUSED(deviceFormats);
 #endif
@@ -357,6 +357,14 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			case SPM_FORMAT_GLOB_BJDS:
 				mat->matrix = CRStoBJDS(cr);
 				break;
+			case SPM_FORMAT_GLOB_SBJDS:
+				{
+					SBJDS_TYPE *sbjds = CRStoSBJDS(cr);
+					mat->matrix = sbjds;
+					mat->fullRowPerm = sbjds->rowPerm;
+					mat->fullInvRowPerm = sbjds->invRowPerm;
+					break;
+				}
 			default:
 				ABORT("No valid matrix format specified!");
 		}

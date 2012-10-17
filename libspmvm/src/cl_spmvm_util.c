@@ -396,9 +396,9 @@ void CL_finish(int spmvmOptions)
 	CL_safecall(clReleaseContext(context));
 }
 
-GPUMATRIX_TYPE * CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_uploadCRS(MATRIX_TYPE *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
-	GPUMATRIX_TYPE * gpum = CL_createMatrix(lcrp,matrixFormats,spmvmOptions);
+	CL_createMatrix(matrix,matrixFormats,spmvmOptions);
 
 	//CL_setup_communication(lcrp,matrixFormats,spmvmOptions);
 
@@ -418,9 +418,10 @@ GPUMATRIX_TYPE * CL_uploadCRS(LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, in
 
 }
 
-GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
+	LCRP_TYPE *lcrp = (LCRP_TYPE *)matrix->matrix;
 	GPUMATRIX_TYPE * gpum = (GPUMATRIX_TYPE*) allocateMemory( sizeof( GPUMATRIX_TYPE ), "gpum" );
 
 	int me = SpMVM_getRank();
@@ -452,13 +453,13 @@ GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats,
 
 					pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
 							lcrp->lnRows[me],matrixFormats->T[0] );
-					gpum->fullRowPerm = (int *)allocateMemory(
+					matrix->fullRowPerm = (int *)allocateMemory(
 							sizeof(int)*lcrp->lnRows[me],"rowPerm");
-					gpum->fullInvRowPerm = (int *)allocateMemory
+					matrix->fullInvRowPerm = (int *)allocateMemory
 						(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
-					memcpy(gpum->fullRowPerm, pjds->rowPerm,
+					memcpy(matrix->fullRowPerm, pjds->rowPerm,
 							lcrp->lnRows[me]*sizeof(int));
-					memcpy(gpum->fullInvRowPerm, pjds->invRowPerm,
+					memcpy(matrix->fullInvRowPerm, pjds->invRowPerm,
 							lcrp->lnRows[me]*sizeof(int));
 
 					cpjds = CL_initPJDS( pjds );
@@ -505,15 +506,15 @@ GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats,
 					lcrp->lnRows[me],matrixFormats->T[1] );
 
 			// allocate space for permutations in lcrp
-			gpum->splitRowPerm = (int *)allocateMemory(
+			matrix->splitRowPerm = (int *)allocateMemory(
 					sizeof(int)*lcrp->lnRows[me],"rowPerm");
-			gpum->splitInvRowPerm = (int *)allocateMemory(
+			matrix->splitInvRowPerm = (int *)allocateMemory(
 					sizeof(int)*lcrp->lnRows[me],"invRowPerm");
 
 			// save permutations from matrix to lcrp
-			memcpy(gpum->splitRowPerm, lpjds->rowPerm, 
+			memcpy(matrix->splitRowPerm, lpjds->rowPerm, 
 					lcrp->lnRows[me]*sizeof(int));
-			memcpy(gpum->splitInvRowPerm, lpjds->invRowPerm, 
+			memcpy(matrix->splitInvRowPerm, lpjds->invRowPerm, 
 					lcrp->lnRows[me]*sizeof(int));
 
 			lcpjds = CL_initPJDS( lpjds );
@@ -529,14 +530,14 @@ GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats,
 			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, 
 					lcrp->lnRows[me],matrixFormats->T[2] );
 
-			gpum->splitRowPerm = (int *)allocateMemory(
+			matrix->splitRowPerm = (int *)allocateMemory(
 					sizeof(int)*lcrp->lnRows[me],"rowPerm");
-			gpum->splitInvRowPerm = (int *)allocateMemory(
+			matrix->splitInvRowPerm = (int *)allocateMemory(
 					sizeof(int)*lcrp->lnRows[me],"invRowPerm");
 
-			memcpy(gpum->splitRowPerm, rpjds->rowPerm,
+			memcpy(matrix->splitRowPerm, rpjds->rowPerm,
 					lcrp->lnRows[me]*sizeof(int));
-			memcpy(gpum->splitInvRowPerm, rpjds->invRowPerm,
+			memcpy(matrix->splitInvRowPerm, rpjds->invRowPerm,
 					lcrp->lnRows[me]*sizeof(int));
 
 
@@ -590,7 +591,7 @@ GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats,
 			freeELR( relr ); // FIXME run failes for some configurations if enabled (or not?)
 		}
 	}
-	return gpum;
+	matrix->devMatrix =  gpum;
 }
 
 void CL_uploadVector( VECTOR_TYPE *vec )

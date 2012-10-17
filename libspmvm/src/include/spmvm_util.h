@@ -80,7 +80,7 @@ void CL_init();
 cl_program CL_registerProgram(char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
 
-GPUMATRIX_TYPE * CL_uploadCRS (LCRP_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+CL_uploadCRS (MATRIY_TYPE *lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_uploadVector( VECTOR_TYPE *vec );
 void CL_downloadVector( VECTOR_TYPE *vec );
 
@@ -159,7 +159,7 @@ CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath);
 
 
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-void SpMVM_collectVectors(LCRP_TYPE *lcrp, VECTOR_TYPE *vec, 
+void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel);
 void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
