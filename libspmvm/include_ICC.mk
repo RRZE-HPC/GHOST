@@ -8,6 +8,10 @@ FC  = ifort
 CFLAGS  = -openmp -fPIC -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981
 FFLAGS  = -openmp -fPIC -nogen-interface -cpp -warn all
 
+ifeq ($(strip $(AVX)),1)
+CFLAGS += -mavx
+FFLAGS += -mavx
+endif
 ifeq ($(strip $(MIC)),1)
 CFLAGS += -mmic
 FFLAGS += -mmic
