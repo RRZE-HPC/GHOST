@@ -1029,7 +1029,8 @@ int pad(int nRows, int padding) {
 
 
 
-BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) {
+BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) 
+{
 	int i,j,c;
 	BJDS_TYPE *mv;
 
@@ -1053,7 +1054,14 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) {
 	for (i=0; i<mv->nRows; i++) {
 		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
 		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+#ifdef MIC
+		/* The gather instruction is only available on MIC. Therefore, the
+		   access to the index vector has to be 512bit-aligned only on MIC.
+		   Also, the innerloop in the BJDS-kernel has to be 2-way unrolled
+		   only on this case. ==> The number of columns of one chunk does
+		   not have to be a multiple of two in the other cases. */
 		chunkMax = chunkMax%2==0?chunkMax:chunkMax+1;
+#endif
 
 		if ((i+1)%BJDS_LEN == 0) {
 			mv->nEnts += BJDS_LEN*chunkMax;

@@ -12,6 +12,10 @@ void mic_kernel_0_unr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
 void mic_kernel_0_intr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
 #endif
 
+#ifdef AVX
+void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions);
+#endif
+
 #ifdef MPI
 void hybrid_kernel_I   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
 void hybrid_kernel_II  (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);

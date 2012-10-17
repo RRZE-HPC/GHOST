@@ -37,7 +37,13 @@
 #define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
+
+#ifdef MIC
 #define BJDS_LEN 8
+#endif
+#ifdef AVX
+#define BJDS_LEN 4 // TODO single/double precision
+#endif
 
 
 /******************************************************************************/

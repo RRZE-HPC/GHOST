@@ -736,18 +736,17 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			break;
 		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
-#ifdef MIC
 				case SPMVM_KERNEL_NOMPI:
+#ifdef MIC
 					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr;
+#endif
+#ifdef AVX
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+#endif
 					break;
 				default:
 					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
 					return NULL;
-#else
-				default:
-					DEBUG_LOG(1,"The BJDS kernel is only available for Intel MIC.");
-					return NULL;
-#endif
 			}
 			break;
 		default:
