@@ -32,7 +32,7 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_NONE;
+	int options = SPMVM_OPTION_AXPY;
 	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_SBJDS,matrixFormats);
+	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_BJDS,matrixFormats);
 	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 

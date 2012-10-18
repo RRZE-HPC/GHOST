@@ -1042,17 +1042,22 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 
 	int nChunks = mv->nRowsPadded/BJDS_LEN;
 	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
+	mv->chunkMin = (int *)allocateMemory((nChunks)*sizeof(int),"mv->chunkMin");
+	mv->rowLen = (int *)allocateMemory((mv->nRows)*sizeof(int),"mv->chunkMin");
 	mv->chunkStart[0] = 0;
 
 
 
 
 	int chunkMax = 0;
+	int chunkMin = cr->nCols;
 	int curChunk = 1;
 
 	for (i=0; i<mv->nRows; i++) {
 		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
+		mv->rowLen[i] = rowLen;
 		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
+		chunkMin = rowLen<chunkMin?rowLen:chunkMin;
 #ifdef MIC
 		/* The gather instruction is only available on MIC. Therefore, the
 		   access to the index vector has to be 512bit-aligned only on MIC.
@@ -1065,8 +1070,10 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 		if ((i+1)%BJDS_LEN == 0) {
 			mv->nEnts += BJDS_LEN*chunkMax;
 			mv->chunkStart[curChunk] = mv->chunkStart[curChunk-1]+BJDS_LEN*chunkMax;
+			mv->chunkMin[curChunk-1] = chunkMin;
 
 			chunkMax = 0;
+			chunkMin = cr->nCols;
 			curChunk++;
 		}
 	}
@@ -1233,7 +1240,11 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm)
 				if (j<rowLen) {
 
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[row]]+j];
+#ifdef SBJDS_PERMCOLS
+					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[row]]+j]];
+#else
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[row]]+j];
+#endif
 				} else {
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;

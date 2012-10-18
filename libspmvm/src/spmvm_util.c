@@ -598,6 +598,13 @@ char * SpMVM_matrixFormatName(int format)
 		case SPM_FORMAT_GLOB_BJDS:
 			return "BJDS";
 			break;
+		case SPM_FORMAT_GLOB_SBJDS:
+#ifdef SBJDS_PERMCOLS
+			return "SBJDS-PC";
+#else
+			return "SBJDS";
+#endif
+			break;
 		default:
 			return "invalid";
 			break;
@@ -609,6 +616,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 	unsigned int size = 0;
 
 	switch (matrix->format) {
+		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
 			{
 			BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
@@ -748,7 +756,8 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 #endif
 #ifdef AVX
 				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+					//kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
 					break;
 #endif
 				default:

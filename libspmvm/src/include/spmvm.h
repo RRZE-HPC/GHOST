@@ -45,6 +45,7 @@
 #ifdef AVX
 #define BJDS_LEN 4 // TODO single/double precision
 #endif
+#define SBJDS_PERMCOLS
 
 
 /******************************************************************************/
@@ -287,23 +288,13 @@ typedef struct {
 	mat_data_t *val;
 	int *col;
 	int *chunkStart;
+	int *chunkMin; // for version with remainder loop
+	int *rowLen;   // for version with remainder loop
 	int nRows;
 	int nRowsPadded;
 	int nNz;
 	int nEnts;
 } BJDS_TYPE;
-
-/*typedef struct {
-	mat_data_t *val;
-	int *col;
-	int *chunkStart;
-	int *rowPerm;
-	int *invRowPerm;
-	int nRows;
-	int nRowsPadded;
-	int nNz;
-	int nEnts;
-} SBJDS_TYPE;*/
 
 typedef struct {
 	unsigned int format;

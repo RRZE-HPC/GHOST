@@ -252,6 +252,10 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 		}
 	}
 
+#ifdef SBJDS_PERMCOLS
+	if (matrix->format == SPM_FORMAT_GLOB_SBJDS)
+		SpMVM_permuteVector(val,matrix->fullRowPerm,nRows);
+#endif
 
 	if (type & VECTOR_TYPE_HOSTONLY) {
 		HOSTVECTOR_TYPE* vec;
