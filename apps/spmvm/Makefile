@@ -1,16 +1,19 @@
 OPENCL=0
 WDDT=0
 
+CUDA_INC=-I$(CUDA_HOME)/include
+CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
+
 LIBSPMVMPATH=$(HOME)/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
-LIBS+=-l$(PREFIX)spmvm
+LIBS+=-l$(PREFIX)spmvm -limf -lsvml -lirng -lintlc
 
 .PHONY:clean distclean all
 
-CC=mpicc
-CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+CC=icc
+CFLAGS= -mmic -g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
 ifeq ($(WDDT),1)
 LIBS+=$(DDT)/lib/64/libdmallocth.a
