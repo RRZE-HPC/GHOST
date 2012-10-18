@@ -736,17 +736,6 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			}
 			break;
 		case SPM_FORMAT_GLOB_SBJDS:
-			switch (kernel) {
-#ifdef AVX
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
-					break;
-#endif
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
-					return NULL;
-			}
-			break;
 		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
 #ifdef MIC
