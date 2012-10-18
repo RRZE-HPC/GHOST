@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_CRS,matrixFormats);
+	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_SBJDS,matrixFormats);
 	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
@@ -89,8 +89,8 @@ int main( int argc, char* argv[] )
 		time = SpMVM_solve(nodeLHS,matrix,nodeRHS,kernels[kernel],nIter);
 
 #ifdef CHECK
-		if (time > 0.)
-			SpMVM_collectVectors(matrix->matrix,nodeLHS,globLHS,kernel);
+		if (time >= 0.)
+			SpMVM_collectVectors(matrix,nodeLHS,globLHS,kernel);
 
 		if (me==0) {
 			if (time < 0.) {

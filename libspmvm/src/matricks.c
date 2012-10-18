@@ -1230,7 +1230,7 @@ SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr)
 
 			for (i=0; i<BJDS_LEN; i++) {
 				int row = c*BJDS_LEN+i;
-				int rowLen = cr->rowOffset[(i+c*BJDS_LEN)+1]-cr->rowOffset[i+c*BJDS_LEN];
+				int rowLen = rowSort[row].nEntsInRow;
 				if (j<rowLen) {
 
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[sbjds->invRowPerm[row]]+j];
@@ -1239,7 +1239,7 @@ SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr)
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-				//			printf("%f ",sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i]);
+			//	printf("%f ",sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}

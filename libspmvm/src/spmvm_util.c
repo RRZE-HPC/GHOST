@@ -379,7 +379,6 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
-
 #ifdef MPI
 		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
 		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
@@ -390,9 +389,9 @@ void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec,
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
-	UNUSED(kernel);
-		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
 	int i;
+	UNUSED(kernel);
+	SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
 	for (i=0; i<totalVec->nRows; i++) totalVec->val[i] = vec->val[i];
 #endif
 }
@@ -534,9 +533,8 @@ void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) {
 	mat_data_t* tmp;
 
 	if (perm == NULL) {
-		IF_DEBUG(1) {printf("permutation vector is NULL, returning\n");}
+		DEBUG_LOG(1,"Permutation vector is NULL, returning.");
 		return;
-
 	}
 
 
@@ -544,9 +542,7 @@ void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) {
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
-			fprintf(stderr, "ERROR: permutation index out of bounds: %d > %d\n",perm[i],len);
-			free(tmp);
-			exit(-1);
+			ABORT("Permutation index out of bounds: %d > %d\n",perm[i],len);
 		}
 		tmp[perm[i]] = vec[i];
 	}
@@ -732,16 +728,29 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			}
 			break;
 		case SPM_FORMAT_GLOB_SBJDS:
+			switch (kernel) {
+#ifdef AVX
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_sbjds;
+					break;
+#endif
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+					return NULL;
+			}
+			break;
 		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
 #ifdef MIC
+				case SPMVM_KERNEL_NOMPI:
 					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr;
+					break;
 #endif
 #ifdef AVX
+				case SPMVM_KERNEL_NOMPI:
 					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
-#endif
 					break;
+#endif
 				default:
 					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
 					return NULL;

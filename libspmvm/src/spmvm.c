@@ -301,6 +301,9 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	CR_TYPE *cr;
 
 	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	mat->fullRowPerm = NULL;
+	mat->fullInvRowPerm = NULL;
+	
 	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
 	if (format & SPM_FORMATS_GLOB) {
@@ -392,6 +395,7 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 
 	if (!kernelFunc)
 		return -1.0;
+	
 
 
 
