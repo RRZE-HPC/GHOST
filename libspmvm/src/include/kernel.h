@@ -10,6 +10,7 @@ void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmv
 void mic_kernel_0      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
 void mic_kernel_0_unr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
 void mic_kernel_0_intr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
+void mic_kernel_0_intr_overlap      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
 #endif
 
 #ifdef AVX

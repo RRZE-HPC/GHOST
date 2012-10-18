@@ -1,7 +1,6 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 #include <stdio.h>
-#include <xmmintrin.h>
 #include <immintrin.h>
 
 #ifdef LIKWID
@@ -108,9 +107,8 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 	__m512d tmp;
 	__m512d val;
 	__m512d rhs;
-	__m512i idx; // TODO lower und upper index, shuffle ueberlappen
+	__m512i idx;
 
-	// TODO relaxed store
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx,offs)
 	for (c=0; c<mv->nRowsPadded>>3; c++) 
 	{ // loop over chunks
@@ -135,9 +133,49 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 			offs += 8;
 		}
 		if (spmvmOptions & SPMVM_OPTION_AXPY) {
-			_mm512_extstore_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])),_MM_DOWNCONV_PD_NONE,_MM_HINT_NT);
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
-			_mm512_extstore_pd(&res->val[c*BJDS_LEN],tmp,_MM_DOWNCONV_PD_NONE,_MM_HINT_NT);
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);
+		}
+	}
+}
+
+void mic_kernel_0_intr_overlap(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+{
+	int c,j,offs;
+	__m512d tmp;
+	__m512d val;
+	__m512d rhs;
+	__m512i idx1;
+	__m512i idx2; 
+
+#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx1,idx2,offs)
+	for (c=0; c<mv->nRowsPadded>>3; c++) 
+	{ // loop over chunks
+		tmp = _mm512_setzero_pd(); // tmp = 0
+		//		int offset = mv->chunkStart[c];
+		offs = mv->chunkStart[c];
+
+		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])>>3; j+=2) 
+		{ // loop inside chunk
+			val = _mm512_load_pd(&mv->val[offs]);
+			idx1 = _mm512_load_epi32(&mv->col[offs]);
+			idx2 = _mm512_permute4f128_epi32(idx1,_MM_PERM_BADC);
+			rhs = _mm512_i32logather_pd(idx1,invec->val,8);
+			tmp = _mm512_add_pd(tmp,_mm512_mul_pd(val,rhs));
+
+			offs += 8;
+
+			val = _mm512_load_pd(&mv->val[offs]);
+			rhs = _mm512_i32logather_pd(idx2,invec->val,8);
+			tmp = _mm512_add_pd(tmp,_mm512_mul_pd(val,rhs));
+
+			offs += 8;
+		}
+		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
+		} else {
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);
 		}
 	}
 }
