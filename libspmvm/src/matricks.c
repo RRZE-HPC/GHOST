@@ -706,19 +706,18 @@ int compareNZEOrgPos( const void* a, const void* b ) {
 /* ########################################################################## */
 
 
-static int* invRowPerm;
-
+static int* JDinvRowPerm;
 int compareNZEForJD( const void* a, const void* b ) {
-	const int aRow = invRowPerm[((NZE_TYPE*)a)->row],
-	      bRow = invRowPerm[((NZE_TYPE*)b)->row],
+	const int aRow = JDinvRowPerm[((NZE_TYPE*)a)->row],
+	      bRow = JDinvRowPerm[((NZE_TYPE*)b)->row],
 
 	      /*  GeWe
 		  aCol = ((NZE_TYPE*)a)->col,
 		  bCol = ((NZE_TYPE*)b)->col; 
 	       */
 
-	      aCol = invRowPerm[((NZE_TYPE*)a)->col],
-	      bCol = invRowPerm[((NZE_TYPE*)b)->col];
+	      aCol = JDinvRowPerm[((NZE_TYPE*)a)->col],
+	      bCol = JDinvRowPerm[((NZE_TYPE*)b)->col];
 
 	if( aRow == bRow )
 		return aCol - bCol;
@@ -752,7 +751,7 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
 	jd->col     = (int*)          allocateMemory( size_col,          "col" );
 	jd->val     = (mat_data_t*)       allocateMemory( size_val,          "val" );
-	invRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
+	JDinvRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
 	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
 
 	/* initialize values ###################################################### */
@@ -794,14 +793,14 @@ JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
 
 	/* set permutation vector for rows ######################################## */
 	for( i = 0; i <  mm->nRows; i++ ) {
-		invRowPerm[rowSort[i].row] = i;
+		JDinvRowPerm[rowSort[i].row] = i;
 		jd->rowPerm[i] = rowSort[i].row;
 	}
 
 	IF_DEBUG(2) {
 		for( i = 0; i <  mm->nRows; i++ ) {
 			printf( "rowPerm[%6i] = %6i; invRowPerm[%6i] = %6i\n", i, jd->rowPerm[i],
-					i, invRowPerm[i] );
+					i, JDinvRowPerm[i] );
 		}
 	}
 
@@ -900,7 +899,7 @@ for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
 			    jd->col[pos] = mm->nze[e].col; 
 			 */
 
-			jd->col[pos] = invRowPerm[mm->nze[e].col]+1;
+			jd->col[pos] = JDinvRowPerm[mm->nze[e].col]+1;
 			pos++;
 		}
 	}
@@ -909,7 +908,7 @@ jd->diagOffset[jd->nDiags] = pos;
 
 /* clean up ############################################################### */
 free( rowSort );
-free( invRowPerm );
+free( JDinvRowPerm );
 IF_DEBUG(1) printf( "convertMMToJDMatrix: done with FORTRAN numbering in jd->col\n" );
 IF_DEBUG(2) {
 	for( i = 0; i < mm->nRows;    i++ ) printf( "rowPerm[%6i] = %3i\n", i, jd->rowPerm[i] );
@@ -1117,10 +1116,10 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	return mv;
 }
 
-SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr) 
+BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm) 
 {
 	int i,j,c;
-	SBJDS_TYPE *sbjds;
+	BJDS_TYPE *sbjds;
 	JD_SORT_TYPE* rowSort;
 	/* get max number of entries in one row ###########################*/
 	rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nRows * sizeof( JD_SORT_TYPE ),
@@ -1153,15 +1152,15 @@ SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr)
 
 	
 
-	sbjds = (SBJDS_TYPE *)allocateMemory(sizeof(SBJDS_TYPE),"sbjds");
+	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
 
 	sbjds->nRows = cr->nRows;
 	sbjds->nNz = cr->nEnts;
 	sbjds->nEnts = 0;
 	sbjds->nRowsPadded = pad(sbjds->nRows,BJDS_LEN);
 
-	sbjds->rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
-	sbjds->invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
+	*rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
+	*invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
 	
 	for(i=0; i < cr->nRows; ++i) {
 		/* invRowPerm maps an index in the permuted system to the original index,
@@ -1169,8 +1168,8 @@ SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr)
 		 */
 		if( rowSort[i].row >= cr->nRows ) DEBUG_LOG(0,"error: invalid row number %i in %i\n",rowSort[i].row, i); 
 
-		sbjds->invRowPerm[i] = rowSort[i].row;
-		sbjds->rowPerm[rowSort[i].row] = i;
+		(*invRowPerm)[i] = rowSort[i].row;
+		(*rowPerm)[rowSort[i].row] = i;
 	}
 
 	int nChunks = sbjds->nRowsPadded/BJDS_LEN;
@@ -1233,8 +1232,8 @@ SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr)
 				int rowLen = rowSort[row].nEntsInRow;
 				if (j<rowLen) {
 
-					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[sbjds->invRowPerm[row]]+j];
-					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[sbjds->invRowPerm[row]]+j];
+					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[row]]+j];
+					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[row]]+j];
 				} else {
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;

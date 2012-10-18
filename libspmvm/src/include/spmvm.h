@@ -293,7 +293,7 @@ typedef struct {
 	int nEnts;
 } BJDS_TYPE;
 
-typedef struct {
+/*typedef struct {
 	mat_data_t *val;
 	int *col;
 	int *chunkStart;
@@ -303,7 +303,7 @@ typedef struct {
 	int nRowsPadded;
 	int nNz;
 	int nEnts;
-} SBJDS_TYPE;
+} SBJDS_TYPE;*/
 
 typedef struct {
 	unsigned int format;

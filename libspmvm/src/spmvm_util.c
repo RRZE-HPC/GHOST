@@ -731,7 +731,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			switch (kernel) {
 #ifdef AVX
 				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_sbjds;
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
 					break;
 #endif
 				default:

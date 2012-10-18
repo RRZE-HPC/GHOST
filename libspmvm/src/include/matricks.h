@@ -182,7 +182,7 @@ int compareNZEPos(const void*, const void*);
 int compareNZEPerRow( const void*, const void*);
 int compareNZEForJD( const void*, const void* );
 BJDS_TYPE * CRStoBJDS(CR_TYPE *cr);
-SBJDS_TYPE * CRStoSBJDS(CR_TYPE *cr); 
+BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm); 
 int pad(int nRows, int padding);
 
 #endif /* _MATRICKS_H_ */

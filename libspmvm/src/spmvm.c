@@ -352,7 +352,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 #endif
 #endif
-	} else { // global matrix
+	} else 
+	{ // global matrix
 		switch (format) {
 			case SPM_FORMAT_GLOB_CRS:
 				mat->matrix = cr;
@@ -361,13 +362,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 				mat->matrix = CRStoBJDS(cr);
 				break;
 			case SPM_FORMAT_GLOB_SBJDS:
-				{
-					SBJDS_TYPE *sbjds = CRStoSBJDS(cr);
-					mat->matrix = sbjds;
-					mat->fullRowPerm = sbjds->rowPerm;
-					mat->fullInvRowPerm = sbjds->invRowPerm;
-					break;
-				}
+				mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
+				break;
 			default:
 				ABORT("No valid matrix format specified!");
 		}
