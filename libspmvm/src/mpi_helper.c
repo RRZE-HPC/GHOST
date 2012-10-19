@@ -37,21 +37,10 @@ static int getProcessorId() {
 	return processorId;
 }
 
-int getLocalRank() 
+MPI_Comm getSingleNodeComm()
 {
-	int rank;
-	MPI_safecall(MPI_Comm_rank ( single_node_comm, &rank));
 
-	return rank;
-}
-
-int getNumberOfRanksOnNode()
-{
-	int size;
-	MPI_safecall(MPI_Comm_size ( single_node_comm, &size));
-
-	return size;
-
+	return single_node_comm;
 }
 
 void setupSingleNodeComm() 
@@ -965,7 +954,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 	/* replace scattering with read-in */
-	DEBUG_LOG(1,"Opening file %s for parallel read-in\n",matrixPath);
+	DEBUG_LOG(1,"Opening file %s for parallel read-in",matrixPath);
 	ierr = MPI_File_open(MPI_COMM_WORLD, matrixPath, MPI_MODE_RDONLY, info, &file_handle);
 
 	if( ierr ) {

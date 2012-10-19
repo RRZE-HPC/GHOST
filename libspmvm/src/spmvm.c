@@ -50,7 +50,7 @@ typedef struct {
 
 } MPI_complex;
 
-static void complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
+static void MPI_complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 {
 
 	int i;
@@ -94,28 +94,36 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE));
 #endif
 	MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&complAdd,1,&MPI_MYSUM));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_complAdd,1,&MPI_MYSUM));
 #endif
+
+#else // ifdef MPI
+	UNUSED(argc);
+	UNUSED(argv);
+	me = 0;
+	spmvmOptions |= SPMVM_OPTION_SERIAL_IO; // important for createMatrix()
+
+#endif // ifdef MPI
 
 	if (spmvmOptions & SPMVM_OPTION_PIN || spmvmOptions & SPMVM_OPTION_PIN_SMT) {
 		int nCores;
-		int nPhysCores = getNumberOfPhysicalCores();
+		int nPhysCores = SpMVM_getNumberOfPhysicalCores();
 		if (spmvmOptions & SPMVM_OPTION_PIN)
 			nCores = nPhysCores;
 		else
-			nCores = getNumberOfHwThreads();
+			nCores = SpMVM_getNumberOfHwThreads();
 
-		int offset = nPhysCores/getNumberOfRanksOnNode();
-		omp_set_num_threads(nCores/getNumberOfRanksOnNode());
+		int offset = nPhysCores/SpMVM_getNumberOfRanksOnNode();
+		omp_set_num_threads(nCores/SpMVM_getNumberOfRanksOnNode());
 #pragma omp parallel
 		{
 			int error;
 			int coreNumber;
 
 			if (spmvmOptions & SPMVM_OPTION_PIN_SMT)
-				coreNumber = omp_get_thread_num()/2+(offset*(getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
+				coreNumber = omp_get_thread_num()/2+(offset*(SpMVM_getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
 			else
-				coreNumber = omp_get_thread_num()+(offset*(getLocalRank()));
+				coreNumber = omp_get_thread_num()+(offset*(SpMVM_getLocalRank()));
 
 			DEBUG_LOG(1,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
@@ -130,15 +138,6 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 			}
 		}
 	}
-#else
-	UNUSED(argc);
-	UNUSED(argv);
-	me = 0;
-	spmvmOptions |= SPMVM_OPTION_SERIAL_IO; // important for createMatrix()
-
-#endif
-
-	// TODO check options for plausability
 
 #ifdef LIKWID_MARKER
 	likwid_markerInit();
@@ -309,11 +308,11 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	mat->fullRowPerm = NULL;
 	mat->fullInvRowPerm = NULL;
-	
+
 	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
 	if (format & SPM_FORMATS_GLOB) {
-		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one...");
+		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= SPMVM_OPTION_SERIAL_IO;
 	}
 
@@ -330,6 +329,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			freeMMMatrix(mm);
 		}
 	}
+
 #ifdef MPI
 	// scatter matrix properties
 	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
@@ -344,13 +344,19 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
-		LCRP_TYPE *lcrp;
-
-		if (options & SPMVM_OPTION_SERIAL_IO) 
-			lcrp = setup_communication(cr, options);
-		else
-			lcrp = setup_communication_parallel(cr, matrixPath, options);
-		mat->matrix = lcrp;
+		switch (format) {
+			case SPM_FORMAT_DIST_CRS:
+				{
+					LCRP_TYPE *lcrp;
+					if (options & SPMVM_OPTION_SERIAL_IO) 
+						lcrp = setup_communication(cr, options);
+					else
+						lcrp = setup_communication_parallel(cr, matrixPath, options);
+					mat->matrix = lcrp;
+				}
+			default:
+				ABORT("Invalid format for distributed matrix");
+		}
 
 #ifdef OPENCL
 		if (deviceFormats == NULL) {
@@ -397,18 +403,15 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *mat, VECTOR_TYPE *invec,
 {
 	int it;
 	double time = 0;
+	double oldtime=1e9;
 	SpMVM_kernelFunc kernelFunc = SpMVM_selectKernelFunc(options,kernel,mat);
 
 	if (!kernelFunc)
 		return -1.0;
-	
-
-
 
 #ifdef MPI
 	MPI_Barrier(MPI_COMM_WORLD);
 #endif
-	double oldtime=1e9;
 
 	for( it = 0; it < nIter; it++ ) {
 		time = wctime();

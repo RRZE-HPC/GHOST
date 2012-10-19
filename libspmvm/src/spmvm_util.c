@@ -36,6 +36,31 @@ int SpMVM_getRank() {
 #endif
 }
 
+int SpMVM_getLocalRank() 
+{
+#ifdef MPI
+	int rank;
+	MPI_safecall(MPI_Comm_rank ( getSingleNodeComm(), &rank));
+
+	return rank;
+#else
+	return 0;
+#endif
+}
+
+int SpMVM_getNumberOfRanksOnNode()
+{
+#ifdef MPI
+	int size;
+	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
+
+	return size;
+#else
+	return 1;
+#endif
+
+}
+
 
 void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 {
@@ -121,7 +146,7 @@ void SpMVM_printEnvInfo()
 	int nproc;
 	int nnodes;
 #ifdef MPI
-	nnodes = getNumberOfNodes();
+	nnodes = SpMVM_getNumberOfNodes();
 	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
 #else
 	nnodes = 1;
@@ -134,8 +159,8 @@ void SpMVM_printEnvInfo()
 
 	if (me==0) {
 		int nthreads;
-		int nphyscores = getNumberOfPhysicalCores();
-		int ncores = getNumberOfHwThreads();
+		int nphyscores = SpMVM_getNumberOfPhysicalCores();
+		int ncores = SpMVM_getNumberOfHwThreads();
 
 
 #pragma omp parallel
@@ -636,7 +661,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 }
 
 
-int getNumberOfPhysicalCores()
+int SpMVM_getNumberOfPhysicalCores()
 {
 	FILE *fp;
 	char nCoresS[4];
@@ -656,12 +681,12 @@ int getNumberOfPhysicalCores()
 
 }
 
-int getNumberOfHwThreads()
+int SpMVM_getNumberOfHwThreads()
 {
 	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-int getNumberOfThreads() {
+int SpMVM_getNumberOfThreads() {
 	int nthreads;
 #pragma omp parallel
 	nthreads = omp_get_num_threads();
@@ -698,11 +723,11 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 		DEBUG_LOG(1,"Skipping the %s kernel because combined kernels have not been configured.",name);
 		return NULL; // kernel not selected
 	}
-	if ((kernel & SPMVM_KERNEL_NOMPI)  && getNumberOfNodes() > 1) {
+	if ((kernel & SPMVM_KERNEL_NOMPI)  && SpMVM_getNumberOfNodes() > 1) {
 		DEBUG_LOG(1,"Skipping the %s kernel because there are multiple MPI processes.",name);
 		return NULL; // non-MPI kernel
 	} 
-	if ((kernel & SPMVM_KERNEL_TASKMODE) && getNumberOfThreads() == 1) {
+	if ((kernel & SPMVM_KERNEL_TASKMODE) && SpMVM_getNumberOfThreads() == 1) {
 		DEBUG_LOG(1,"Skipping the %s kernel because there is only one thread.",name);
 		return NULL; // not enough threads
 	}
@@ -769,7 +794,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 
 }
 
-int getNumberOfNodes() 
+int SpMVM_getNumberOfNodes() 
 {
 #ifndef MPI
 	return 1;

@@ -26,6 +26,7 @@
 		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
 		fprintf(stderr, msg, ##__VA_ARGS__);\
 		fprintf(stderr, "\n");\
+		fflush(stderr);\
 	}\
 }
 #endif
@@ -37,12 +38,14 @@
 	fprintf(stderr,"PE%d ABORTING at %s:%d: ",__me,__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, "\n");\
+	fflush(stderr);\
 }
 #else
 #define ABORT(msg, ...) {\
 	fprintf(stderr,"ABORTING at %s:%d: ",__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, "\n");\
+	fflush(stderr);\
 }
 #endif
 
@@ -167,10 +170,12 @@ void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );
 void SpMVM_freeLCRP( LCRP_TYPE* const );
 void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len);
-int getNumberOfPhysicalCores();
+int SpMVM_getNumberOfPhysicalCores();
 int SpMVM_getRank();
-int getNumberOfHwThreads();
-int getNumberOfThreads();
-int getNumberOfNodes();
+int SpMVM_getLocalRank();
+int SpMVM_getNumberOfRanksOnNode();
+int SpMVM_getNumberOfHwThreads();
+int SpMVM_getNumberOfThreads();
+int SpMVM_getNumberOfNodes();
 SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat); 
 #endif
