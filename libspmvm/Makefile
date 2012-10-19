@@ -75,7 +75,7 @@ FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))
 
 $(OBJDIR)/%.o: %.c 
 	@echo "==> Compile $< -> $@"
-	$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.f 
 	@echo "==> Compile $< -> $@"

@@ -17,6 +17,7 @@
 		fprintf(stderr,"PE%d at %s:%d: ",__me,__FILE__,__LINE__);\
 		fprintf(stderr,msg, ##__VA_ARGS__);\
 		fprintf(stderr, "\n");\
+		fflush(stderr);\
 	}\
 }
 #else

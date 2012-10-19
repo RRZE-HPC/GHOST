@@ -186,6 +186,8 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 		nRows = matrix->nRows;
 
+		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d rows",nRows);
+
 		unsigned int i;
 		if (fp) {
 #pragma omp parallel for schedule(static)
@@ -318,7 +320,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	if (SpMVM_getRank() == 0) 
 	{ // root process reads row pointers (parallel IO) oder entire matrix
 		if (!isMMfile(matrixPath)){
-			if (options & SPMVM_OPTION_SERIAL_IO || format & SPM_FORMATS_GLOB)
+			if (options & SPMVM_OPTION_SERIAL_IO)
 				readCRbinFile(cr, matrixPath);
 			else
 				readCRrowsBinFile(cr, matrixPath);
@@ -328,6 +330,13 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			freeMMMatrix(mm);
 		}
 	}
+#ifdef MPI
+	// scatter matrix properties
+	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(cr->nRows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(cr->nCols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+#endif
+
 
 	if (format & SPM_FORMATS_DIST)
 	{ // distributed matrix
@@ -335,9 +344,6 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
-		MPI_safecall(MPI_Bcast(&cr->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&cr->nRows,1,MPI_INT,0,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&cr->nCols,1,MPI_INT,0,MPI_COMM_WORLD));
 		LCRP_TYPE *lcrp;
 
 		if (options & SPMVM_OPTION_SERIAL_IO) 
@@ -380,7 +386,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	mat->nRows = cr->nRows;
 	mat->nCols = cr->nCols;
 
-	DEBUG_LOG(1,"Matrix created successfully");
+	DEBUG_LOG(1,"%ux%u matrix (%u nonzeros) created successfully",mat->nCols,mat->nRows,mat->nNonz);
 
 	return mat;
 }

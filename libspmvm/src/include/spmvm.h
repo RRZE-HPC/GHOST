@@ -41,9 +41,10 @@
 
 #ifdef MIC
 #define BJDS_LEN 8
-#endif
-#ifdef AVX
+#elif defined (AVX)
 #define BJDS_LEN 4 // TODO single/double precision
+#else
+#define BJDS_LEN 2
 #endif
 #define SBJDS_PERMCOLS
 

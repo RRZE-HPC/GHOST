@@ -85,9 +85,9 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		printf("CRS matrix                   [MB]: %12lu\n", ws);
 		if (!(matrix->format & SPM_FORMATS_CRS)) {
 			printf("Host matrix (%14s) [MB]: %12u\n", 
-				SpMVM_matrixFormatName(matrix->format),
-				SpMVM_matrixSize(matrix)/(1024*1024));
-	}
+					SpMVM_matrixFormatName(matrix->format),
+					SpMVM_matrixSize(matrix)/(1024*1024));
+		}
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", SPM_FORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
@@ -129,7 +129,7 @@ void SpMVM_printEnvInfo()
 #endif
 
 #ifdef OPENCL
-		CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
+	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
 #endif
 
 	if (me==0) {
@@ -218,9 +218,9 @@ void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nI
 	int iteration;
 	int i;
 
-		for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] += 1;
-		}	
+	}	
 
 	if (spmvmOptions & SPMVM_OPTION_AXPY) {
 
@@ -264,9 +264,9 @@ void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nI
 #endif
 #endif
 	}
-		for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
+	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
 		cr->col[i] -= 1;
-		}
+	}
 }
 
 
@@ -380,12 +380,16 @@ void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec,
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
 #ifdef MPI
-		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-		SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
-		}
+	if (matrix->format != SPM_FORMAT_DIST_CRS)
+		DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
+
+	LCRP_TYPE *lcrp = (LCRP_TYPE *)(matrix->matrix);
 	int me = SpMVM_getRank();
+	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
+	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+		SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
+	}
 	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
 				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
@@ -619,10 +623,10 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
 			{
-			BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
-			size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
-			size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
-			break;
+				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
+				size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
+				size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
+				break;
 			}
 		default:
 			return 0;
