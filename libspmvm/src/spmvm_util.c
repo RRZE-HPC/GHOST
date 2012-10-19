@@ -26,41 +26,6 @@
 
 
 
-int SpMVM_getRank() {
-#ifdef MPI
-	int rank;
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
-	return rank;
-#else
-	return 0;
-#endif
-}
-
-int SpMVM_getLocalRank() 
-{
-#ifdef MPI
-	int rank;
-	MPI_safecall(MPI_Comm_rank ( getSingleNodeComm(), &rank));
-
-	return rank;
-#else
-	return 0;
-#endif
-}
-
-int SpMVM_getNumberOfRanksOnNode()
-{
-#ifdef MPI
-	int size;
-	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
-
-	return size;
-#else
-	return 1;
-#endif
-
-}
-
 
 void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 {
@@ -294,7 +259,6 @@ void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nI
 	}
 }
 
-
 void SpMVM_zeroVector(VECTOR_TYPE *vec) 
 {
 	int i;
@@ -345,7 +309,6 @@ HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int))
 	return vec;
 }
 
-
 VECTOR_TYPE* SpMVM_newVector( const int nRows ) 
 {
 	VECTOR_TYPE* vec;
@@ -378,6 +341,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 
 	return vec;
 }
+
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
 	int me = SpMVM_getRank();
@@ -458,6 +422,7 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 	CL_uploadVector(vec);
 #endif
 }
+
 void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 {
 	int i;
@@ -472,15 +437,16 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 		vec->val[i] *= f;
 }
 
-
-void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) {
+void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) 
+{
 	if( vec ) {
 		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
 		free( vec );
 	}
 }
 
-void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
+void SpMVM_freeVector( VECTOR_TYPE* const vec ) 
+{
 	if( vec ) {
 		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
 #ifdef OPENCL
@@ -490,8 +456,8 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec ) {
 	}
 }
 
-
-void SpMVM_freeCRS( CR_TYPE* const cr ) {
+void SpMVM_freeCRS( CR_TYPE* const cr ) 
+{
 
 	if (cr) {
 		if (cr->rowOffset)
@@ -519,7 +485,8 @@ void SpMVM_freeCRS( CR_TYPE* const cr ) {
 		}*/
 }
 
-void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) {
+void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) 
+{
 	if( lcrp ) {
 		free( lcrp->lnEnts );
 		free( lcrp->lnRows );
@@ -556,7 +523,8 @@ CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
 	}
 }
 
-void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) {
+void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) 
+{
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	int i;
 	mat_data_t* tmp;
@@ -581,125 +549,6 @@ void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) {
 
 	free(tmp);
 }
-
-char * SpMVM_kernelName(int kernel) {
-
-	switch (kernel) {
-		case SPMVM_KERNEL_NOMPI:
-			return "non-MPI";
-			break;
-		case SPMVM_KERNEL_VECTORMODE:
-			return "vector mode";
-			break;
-		case SPMVM_KERNEL_GOODFAITH:
-			return "g/f hybrid";
-			break;
-		case SPMVM_KERNEL_TASKMODE:
-			return "task mode";
-			break;
-		default:
-			return "invalid";
-			break;
-	}
-}
-
-char *SpMVM_workdistName(int options)
-{
-	if (options & SPMVM_OPTION_WORKDIST_NZE)
-		return "equal nze";
-	else if (options & SPMVM_OPTION_WORKDIST_LNZE)
-		return "equal lnze";
-	else
-		return "equal rows";
-}
-
-
-char * SpMVM_matrixFormatName(int format) 
-{
-
-	switch (format) {
-		case SPM_FORMAT_DIST_CRS:
-			return "dist. CRS";
-			break;
-		case SPM_FORMAT_GLOB_CRS:
-			return "CRS";
-			break;
-		case SPM_FORMAT_GLOB_BJDS:
-			return "BJDS";
-			break;
-		case SPM_FORMAT_GLOB_SBJDS:
-#ifdef SBJDS_PERMCOLS
-			return "SBJDS-PC";
-#else
-			return "SBJDS";
-#endif
-			break;
-		default:
-			return "invalid";
-			break;
-	}
-}
-
-unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) 
-{
-	unsigned int size = 0;
-
-	switch (matrix->format) {
-		case SPM_FORMAT_GLOB_SBJDS:
-		case SPM_FORMAT_GLOB_BJDS:
-			{
-				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
-				size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
-				size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
-				break;
-			}
-		default:
-			return 0;
-	}
-
-	return size;
-}
-
-
-int SpMVM_getNumberOfPhysicalCores()
-{
-	FILE *fp;
-	char nCoresS[4];
-	int nCores;
-
-	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
-	if (!fp) {
-		printf("Failed to get number of physical cores\n");
-	}
-
-	fgets(nCoresS,sizeof(nCoresS)-1,fp);
-	nCores = atoi(nCoresS);
-
-	pclose(fp);
-
-	return nCores;
-
-}
-
-int SpMVM_getNumberOfHwThreads()
-{
-	return sysconf(_SC_NPROCESSORS_ONLN);
-}
-
-int SpMVM_getNumberOfThreads() {
-	int nthreads;
-#pragma omp parallel
-	nthreads = omp_get_num_threads();
-
-	return nthreads;
-}
-
-#ifdef MPI
-static int stringcmp(const void *x, const void *y)
-{
-	return (strcmp((char *)x, (char *)y));
-}
-#endif
 
 SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat) 
 {
@@ -794,11 +643,163 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 
 }
 
+char * SpMVM_kernelName(int kernel) 
+{
+
+	switch (kernel) {
+		case SPMVM_KERNEL_NOMPI:
+			return "non-MPI";
+			break;
+		case SPMVM_KERNEL_VECTORMODE:
+			return "vector mode";
+			break;
+		case SPMVM_KERNEL_GOODFAITH:
+			return "g/f hybrid";
+			break;
+		case SPMVM_KERNEL_TASKMODE:
+			return "task mode";
+			break;
+		default:
+			return "invalid";
+			break;
+	}
+}
+
+char * SpMVM_workdistName(int options)
+{
+	if (options & SPMVM_OPTION_WORKDIST_NZE)
+		return "equal nze";
+	else if (options & SPMVM_OPTION_WORKDIST_LNZE)
+		return "equal lnze";
+	else
+		return "equal rows";
+}
+
+char * SpMVM_matrixFormatName(int format) 
+{
+
+	switch (format) {
+		case SPM_FORMAT_DIST_CRS:
+			return "dist. CRS";
+			break;
+		case SPM_FORMAT_GLOB_CRS:
+			return "CRS";
+			break;
+		case SPM_FORMAT_GLOB_BJDS:
+			return "BJDS";
+			break;
+		case SPM_FORMAT_GLOB_SBJDS:
+#ifdef SBJDS_PERMCOLS
+			return "SBJDS-PC";
+#else
+			return "SBJDS";
+#endif
+			break;
+		default:
+			return "invalid";
+			break;
+	}
+}
+
+unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) 
+{
+	unsigned int size = 0;
+
+	switch (matrix->format) {
+		case SPM_FORMAT_GLOB_SBJDS:
+		case SPM_FORMAT_GLOB_BJDS:
+			{
+				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
+				size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
+				size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
+				break;
+			}
+		default:
+			return 0;
+	}
+
+	return size;
+}
+
+int SpMVM_getRank() 
+{
+#ifdef MPI
+	int rank;
+	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
+	return rank;
+#else
+	return 0;
+#endif
+}
+
+int SpMVM_getLocalRank() 
+{
+#ifdef MPI
+	int rank;
+	MPI_safecall(MPI_Comm_rank ( getSingleNodeComm(), &rank));
+
+	return rank;
+#else
+	return 0;
+#endif
+}
+
+int SpMVM_getNumberOfRanksOnNode()
+{
+#ifdef MPI
+	int size;
+	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
+
+	return size;
+#else
+	return 1;
+#endif
+
+}
+int SpMVM_getNumberOfPhysicalCores()
+{
+	FILE *fp;
+	char nCoresS[4];
+	int nCores;
+
+	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
+	if (!fp) {
+		printf("Failed to get number of physical cores\n");
+	}
+
+	fgets(nCoresS,sizeof(nCoresS)-1,fp);
+	nCores = atoi(nCoresS);
+
+	pclose(fp);
+
+	return nCores;
+
+}
+
+int SpMVM_getNumberOfHwThreads()
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+int SpMVM_getNumberOfThreads() 
+{
+	int nthreads;
+#pragma omp parallel
+	nthreads = omp_get_num_threads();
+
+	return nthreads;
+}
+
 int SpMVM_getNumberOfNodes() 
 {
 #ifndef MPI
 	return 1;
 #else
+	static int stringcmp(const void *x, const void *y)
+	{
+		return (strcmp((char *)x, (char *)y));
+	}
+
 	int nameLen,me,size,i,distinctNames = 1;
 	char name[MPI_MAX_PROCESSOR_NAME];
 	char *names = NULL;
@@ -833,3 +834,5 @@ int SpMVM_getNumberOfNodes()
 	return distinctNames;
 #endif
 }
+
+
