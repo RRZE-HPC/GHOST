@@ -398,9 +398,13 @@ void CL_finish(int spmvmOptions)
 
 void CL_uploadCRS(MATRIX_TYPE *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
-	CL_createMatrix(matrix,matrixFormats,spmvmOptions);
+	
+	if (!(matrix->format & SPM_FORMAT_DIST_CRS)) {
+		DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
+		return;
+	}
 
-	//CL_setup_communication(lcrp,matrixFormats,spmvmOptions);
+	CL_createMatrix(matrix,matrixFormats,spmvmOptions);
 
 	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 		CL_bindMatrixToKernel(gpum->fullMatrix,gpum->fullFormat,

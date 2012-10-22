@@ -256,10 +256,10 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	FILE* RESTFILE;
 
 
-	DEBUG_LOG(1,"Lese %s", path);
+	DEBUG_LOG(1,"Reading rows of binary CRS matrix %s",path);
 
 	if ((RESTFILE = fopen(path, "rb"))==NULL){
-		ABORT("Fehler beim Oeffnen von %s\n", path);
+		ABORT("Could not open binary CRS file %s",path);
 	}
 
 	fread(&datatype, sizeof(int), 1, RESTFILE);
@@ -272,9 +272,6 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 
-	DEBUG_LOG(2,"Reading array with row-offsets");
-	DEBUG_LOG(2,"Reading array with column indices");
-	DEBUG_LOG(2,"Reading array with values");
 
 	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset (restart-version)");
 #pragma omp parallel for schedule(runtime)
@@ -282,6 +279,7 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 		cr->rowOffset[i] = 0;
 	}
 
+	DEBUG_LOG(2,"Reading array with row-offsets");
 	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
 
 
@@ -290,6 +288,7 @@ void readCRrowsBinFile(CR_TYPE* cr, const char* path){
 
 	return;
 }
+
 void readCRbinFile(CR_TYPE* cr, const char* path)
 {
 
@@ -299,17 +298,15 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	int datatype;
 	FILE* RESTFILE;
 	double startTime, stopTime, ct; 
-	double mybytes;
 
 
 
 	timing( &startTime, &ct );
 
-	IF_DEBUG(1) printf(" \n Lese %s \n", path);
+	DEBUG_LOG(1,"Reading binary CRS matrix %s",path);
 
 	if ((RESTFILE = fopen(path, "rb"))==NULL){
-		printf("Fehler beim Oeffnen von %s\n", path);
-		exit(1);
+		ABORT("Could not open binary CRS file %s",path);
 	}
 
 	fread(&datatype, sizeof(int), 1, RESTFILE);
@@ -318,51 +315,30 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
 
 	if (datatype != DATATYPE_DESIRED) {
-		char msg[1024];
-		sprintf(msg,"Warning in %s:%d! The library has been built for %s data but"
+		DEBUG_LOG(0,"Warning in %s:%d! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
 				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
-		DEBUG_LOG(0,msg);
 	}
-
-	mybytes = 4.0*sizeof(int) + 1.0*(cr->nRows+cr->nEnts)*sizeof(int) +
-		1.0*(cr->nEnts)*sizeof(mat_data_t);
-
-	IF_DEBUG(1){ 
-		printf("Number of rows in matrix       = %d\n", cr->nRows);
-		printf("Number of columns in matrix    = %d\n", cr->nCols);
-		printf("Number of non-zero elements    = %d\n", cr->nEnts);
-		printf(" \nEntries to be read sum up to %6.2f MB\n", mybytes/1048576.0);
-	}
-	IF_DEBUG(2) printf("Allocate memory for arrays\n");
 
 	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
 	size_col  = (size_t)( cr->nEnts * sizeof(int) );
 	size_val  = (size_t)( cr->nEnts * sizeof(mat_data_t) );
 
+	DEBUG_LOG(2,"Allocate memory for arrays");
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
 	cr->col       = (int*)    allocateMemory( size_col,  "col" );
 	cr->val       = (mat_data_t*) allocateMemory( size_val,  "val" );
 
-	IF_DEBUG(2){
-		printf("Reading array with row-offsets\n");
-		printf("Reading array with column indices\n");
-		printf("Reading array with values\n");
-	}	
-
-	IF_DEBUG(1) printf("NUMA-placement for cr->rowOffset (restart-version)\n");
+	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset");
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < cr->nRows+1; i++ ) {
 		cr->rowOffset[i] = 0;
 	}
 
+	DEBUG_LOG(2,"Reading array with row-offsets");
 	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
 
-
-	IF_DEBUG(1){
-		printf("Doing NUMA-placement for cr->col (restart-version)\n");
-		printf("Doing NUMA-placement for cr->val (restart-version)\n");
-	}
+	DEBUG_LOG(1,"NUMA-placement for cr->val and cr->col");
 #pragma omp parallel for schedule(runtime)
 	for(i = 0 ; i < cr->nRows; ++i) {
 		for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
@@ -372,9 +348,10 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	}
 
 
+	DEBUG_LOG(2,"Reading array with column indices");
 	fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
 
-
+	DEBUG_LOG(2,"Reading array with values");
 	switch (datatype) {
 		case DATATYPE_FLOAT:
 			{
@@ -419,14 +396,6 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 
 
 	timing( &stopTime, &ct );
-	IF_DEBUG(2) printf("... done\n"); 
-	IF_DEBUG(1){
-		printf("Binary read of matrix in CRS-format took %8.2f s \n", 
-				(double)(stopTime-startTime) );
-		printf( "Data transfer rate : %8.2f MB/s \n",  
-				(mybytes/1048576.0)/(double)(stopTime-startTime) );
-	}
-
 	return;
 }
 

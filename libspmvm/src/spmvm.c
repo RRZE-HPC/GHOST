@@ -24,21 +24,21 @@
 #include <likwid.h>
 #endif
 
+static int options;
+
 static double wctime()
 {
 	struct timeval tp;
-	double wctime;
 
 	gettimeofday(&tp, NULL);
-	wctime=(double) (tp.tv_sec + tp.tv_usec/1000000.0);
-
-	return wctime; 
+	
+	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
-static int options;
 
 #if defined(COMPLEX) && defined(MPI)
-typedef struct {
+typedef struct 
+{
 #ifdef DOUBLE
 	double x;
 	double y;
@@ -48,7 +48,8 @@ typedef struct {
 	float y;
 #endif
 
-} MPI_complex;
+} 
+MPI_complex;
 
 static void MPI_complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 {
@@ -308,6 +309,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	mat->fullRowPerm = NULL;
 	mat->fullInvRowPerm = NULL;
+	mat->splitRowPerm = NULL;
+	mat->splitInvRowPerm = NULL;
 
 	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
@@ -317,7 +320,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	}
 
 	if (SpMVM_getRank() == 0) 
-	{ // root process reads row pointers (parallel IO) oder entire matrix
+	{ // root process reads row pointers (parallel IO) or entire matrix
 		if (!isMMfile(matrixPath)){
 			if (options & SPMVM_OPTION_SERIAL_IO)
 				readCRbinFile(cr, matrixPath);
@@ -332,6 +335,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 
 #ifdef MPI
 	// scatter matrix properties
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nRows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nCols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
@@ -344,47 +348,46 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
-		switch (format) {
-			case SPM_FORMAT_DIST_CRS:
-				{
-					LCRP_TYPE *lcrp;
-					if (options & SPMVM_OPTION_SERIAL_IO) 
-						lcrp = setup_communication(cr, options);
-					else
-						lcrp = setup_communication_parallel(cr, matrixPath, options);
-					mat->matrix = lcrp;
-				}
-			default:
-				ABORT("Invalid format for distributed matrix");
+		if (format & SPM_FORMAT_DIST_CRS) {
+			LCRP_TYPE *lcrp;
+			if (options & SPMVM_OPTION_SERIAL_IO) 
+				lcrp = setup_communication(cr, options);
+			else
+				lcrp = setup_communication_parallel(cr, matrixPath, options);
+			mat->matrix = lcrp;
+		} else {
+			ABORT("Invalid format for distributed matrix");
 		}
 
-#ifdef OPENCL
-		if (deviceFormats == NULL) {
-			ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
-		}
-		SPM_GPUFORMATS *formats = (SPM_GPUFORMATS *)deviceFormats;
-		CL_uploadCRS ( mat, formats, options);
-#else
-		UNUSED(deviceFormats);
-#endif
 #endif
 	} else 
 	{ // global matrix
-		switch (format) {
-			case SPM_FORMAT_GLOB_CRS:
-				mat->matrix = cr;
-				break;
-			case SPM_FORMAT_GLOB_BJDS:
-				mat->matrix = CRStoBJDS(cr);
-				break;
-			case SPM_FORMAT_GLOB_SBJDS:
-				mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
-				break;
-			default:
-				ABORT("No valid matrix format specified!");
+		if (format & SPM_FORMAT_GLOB_CRS) {
+			mat->matrix = cr;
+		} else if (format & SPM_FORMAT_GLOB_BJDS) {
+			mat->matrix = CRStoBJDS(cr);
+		} else if (format &  SPM_FORMAT_GLOB_SBJDS) {
+			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
+		} else {
+			ABORT("Invalid format for global matrix!");
 		}
 
 	}
+
+#ifdef OPENCL
+	if (!(format & SPM_FORMAT_HOSTONLY))
+	{
+		DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
+	} else if (deviceFormats == NULL) 
+	{
+		ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
+	} else 
+	{
+		CL_uploadCRS ( mat, (SPM_GPUFORMATS *)deviceFormats, options);
+	}
+#else
+	UNUSED(deviceFormats);
+#endif
 
 
 	mat->format = format;

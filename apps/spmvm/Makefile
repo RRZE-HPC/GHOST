@@ -1,7 +1,7 @@
 include ../../libspmvm/config.mk
 include ../../libspmvm/include_$(strip $(COMPILER)).mk
 
-WDDT=1
+WDDT=0
 
 CUDA_INC=-I$(CUDA_HOME)/include
 CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
