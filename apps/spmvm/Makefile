@@ -21,6 +21,10 @@ ifeq ($(WDDT),1)
 LIBS+=$(DDT)/lib/64/libdmallocth.a
 endif
 
+ifeq ($(strip $(MIC)),1)
+LIBS+= -limf -lsvml -lirng -lintlc
+endif
+
 
 ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
