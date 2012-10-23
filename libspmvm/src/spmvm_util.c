@@ -127,6 +127,28 @@ void SpMVM_printEnvInfo()
 		int nphyscores = SpMVM_getNumberOfPhysicalCores();
 		int ncores = SpMVM_getNumberOfHwThreads();
 
+		omp_sched_t omp_sched;
+	    int omp_sched_mod;
+		char omp_sched_str[32];
+		omp_get_schedule(&omp_sched,&omp_sched_mod);
+		switch (omp_sched) {
+			case omp_sched_static:
+				sprintf(omp_sched_str,"static,%d",omp_sched_mod);
+				break;
+			case omp_sched_dynamic:
+				sprintf(omp_sched_str,"dynamic,%d",omp_sched_mod);
+				break;
+			case omp_sched_guided:
+				sprintf(omp_sched_str,"guided,%d",omp_sched_mod);
+				break;
+			case omp_sched_auto:
+				sprintf(omp_sched_str,"auto,%d",omp_sched_mod);
+				break;
+			default:
+				sprintf(omp_sched_str,"unknown");
+				break;
+		}
+
 
 #pragma omp parallel
 #pragma omp master
@@ -137,11 +159,12 @@ void SpMVM_printEnvInfo()
 		printf("-----------------------------------------------\n");
 		printf("Nodes                            : %12d\n", nnodes); 
 		//printf("MPI processes                    : %12d\n", nproc); 
-		printf("MPI processes  per node          : %12d\n", nproc/nnodes); 
-		printf("Physical cores per node          : %12d\n", nphyscores); 
-		printf("HW threads     per node          : %12d\n", ncores); 
-		printf("OpenMP threads per node          : %12d\n", nproc/nnodes*nthreads);
-		printf("OpenMP threads per process       : %12d\n", nthreads);
+		printf("MPI processes     per node       : %12d\n", nproc/nnodes); 
+		printf("Available cores   per node       : %12d\n", nphyscores); 
+		printf("Available threads per node       : %12d\n", ncores); 
+		printf("OpenMP threads    per node       : %12d\n", nproc/nnodes*nthreads);
+		printf("OpenMP threads    per process    : %12d\n", nthreads);
+		printf("OpenMP scheduling                : %12s\n", omp_sched_str);
 #ifdef OPENCL
 		printf("OpenCL devices                   :\n");
 		int i;
@@ -157,6 +180,16 @@ void SpMVM_printEnvInfo()
 		printf("Build date                       : %12s\n", __DATE__); 
 		printf("Build time                       : %12s\n", __TIME__); 
 		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+#ifdef MIC
+		printf("MIC kernels                      :      enabled\n");
+#else
+		printf("MIC kernels                      :     disabled\n");
+#endif
+#ifdef AVX
+		printf("AVX kernels                      :      enabled\n");
+#else
+		printf("AVX support                      :     disabled\n");
+#endif
 #ifdef MPI
 		printf("MPI support                      :      enabled\n");
 #else
