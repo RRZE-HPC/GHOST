@@ -115,35 +115,20 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	/* allocate size bytes of posix-aligned memory;
 	 * check for success and increase global counter */
 
-	size_t boundary = 4096;
+	size_t boundary = 1024;
 	int ierr;
 
 	void* mem;
-
-	/*if( allocatedMem + size > maxMem ) {
-	  fprintf( stderr, "PE%d: allocateMemory: exceeded maximum memory of %llu bytes"
-	  "when allocating %-23s\n", me, (uint64)(maxMem), desc );
-	  printf("PE%d: tried to allocate %llu bytes for %s\n", me, (uint64)(size), desc);
-	  mypabort("exceeded memory on allocation");
-	  }*/
 
 	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
 			size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
 
 	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		printf("Errorcode: %s\n", strerror(ierr));
-		ABORT("Error while allocating using posix_memalign");
-		/*		printf("PE%d: Error while allocating using posix_memalign\n", me);
-				printf("Array to be allocated: %s\n", desc);
-				printf("Error ENOMEM: allocated Mem war %6.3f MB\n", (1.0*allocatedMem)/
-				(1024.0*1024.0));*/
-		//		exit(1);
+		ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
 	}
 
 	if( ! mem ) {
-		fprintf(stderr,"allocateMemory: could not allocate %lu bytes of memory"
-				" for %s\n", size, desc);
-		ABORT("Error in memory allocation");
+		ABORT("Error in memory allocation of %lu bytes for %s",size,desc);
 	}
 
 	allocatedMem += size;
@@ -1009,10 +994,11 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	mv->nEnts = 0;
 	mv->nRowsPadded = pad(mv->nRows,BJDS_LEN);
 
+
 	int nChunks = mv->nRowsPadded/BJDS_LEN;
 	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
 	mv->chunkMin = (int *)allocateMemory((nChunks)*sizeof(int),"mv->chunkMin");
-	mv->rowLen = (int *)allocateMemory((mv->nRows)*sizeof(int),"mv->chunkMin");
+	mv->rowLen = (int *)allocateMemory((mv->nRowsPadded)*sizeof(int),"mv->chunkMin");
 	mv->chunkStart[0] = 0;
 
 
@@ -1021,13 +1007,18 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	int chunkMax = 0;
 	int chunkMin = cr->nCols;
 	int curChunk = 1;
+	int rowLen;
 
-	for (i=0; i<mv->nRows; i++) {
-		int rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
+	for (i=0; i<mv->nRowsPadded; i++) {
+		if (i<cr->nRows)
+			rowLen = cr->rowOffset[i+1]-cr->rowOffset[i];
+		else
+			rowLen = 0;
+
 		mv->rowLen[i] = rowLen;
 		chunkMax = rowLen>chunkMax?rowLen:chunkMax;
 		chunkMin = rowLen<chunkMin?rowLen:chunkMin;
-#ifdef MIC
+#if defined(MIC) && BJDS_LEN==8
 		/* The gather instruction is only available on MIC. Therefore, the
 		   access to the index vector has to be 512bit-aligned only on MIC.
 		   Also, the innerloop in the BJDS-kernel has to be 2-way unrolled
@@ -1048,7 +1039,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	}
 
 	mv->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*mv->nEnts,"mv->val");
-	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->val");
+	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
 	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
@@ -1072,8 +1063,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 		for (j=0; j<chunkLen; j++) {
 
 			for (i=0; i<BJDS_LEN; i++) {
-				int rowLen = cr->rowOffset[(i+c*BJDS_LEN)+1]-cr->rowOffset[i+c*BJDS_LEN];
-				if (j<rowLen) {
+				if (j<mv->rowLen[c*BJDS_LEN+i]) {
 
 					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
 					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
@@ -1081,7 +1071,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-				//			printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
+							//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}

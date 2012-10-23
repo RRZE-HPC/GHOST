@@ -40,7 +40,8 @@
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
 
 #ifdef MIC
-#define BJDS_LEN 8
+//#define BJDS_LEN 8
+#define BJDS_LEN 16
 #elif defined (AVX)
 #define BJDS_LEN 4 // TODO single/double precision
 #else

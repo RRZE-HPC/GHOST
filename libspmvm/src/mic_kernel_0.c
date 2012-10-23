@@ -140,6 +140,48 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 	}
 }
 
+void mic_kernel_0_intr_16(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+{
+	int c,j,offs;
+	__m512d tmp1;
+	__m512d tmp2;
+	__m512d val;
+	__m512d rhs;
+	__m512i idx;
+
+#pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,val,rhs,idx,offs)
+	for (c=0; c<mv->nRowsPadded>>4; c++) 
+	{ // loop over chunks
+		tmp1 = _mm512_setzero_pd(); // tmp1 = 0
+		tmp2 = _mm512_setzero_pd(); // tmp2 = 0
+		offs = mv->chunkStart[c];
+
+		for (j=0; j<(mv->chunkStart[c+1]-mv->chunkStart[c])>>4; j++) 
+		{ // loop inside chunk
+			val = _mm512_load_pd(&mv->val[offs]);
+			idx = _mm512_load_epi32(&mv->col[offs]);
+			rhs = _mm512_i32logather_pd(idx,invec->val,8);
+			tmp1 = _mm512_add_pd(tmp1,_mm512_mul_pd(val,rhs));
+
+			offs += 8;
+
+			val = _mm512_load_pd(&mv->val[offs]);
+			idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
+			rhs = _mm512_i32logather_pd(idx,invec->val,8);
+			tmp2 = _mm512_add_pd(tmp2,_mm512_mul_pd(val,rhs));
+
+			offs += 8;
+		}
+		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
+		} else {
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp1);
+			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],tmp2);
+		}
+	}
+}
+
 void mic_kernel_0_intr_overlap(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
 {
 	int c,j,offs;
