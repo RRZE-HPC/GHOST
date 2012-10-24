@@ -74,8 +74,9 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 				(double)matrix->nRows);
 		printf("CRS matrix                   [MB]: %12lu\n", ws);
 		if (!(matrix->format & SPM_FORMATS_CRS)) {
-			printf("Host matrix (%14s) [MB]: %12u\n", 
-					SpMVM_matrixFormatName(matrix->format),
+			printf("Host matrix %*s%s%s [MB]: %12u\n", 
+					15-(int)strlen(SpMVM_matrixFormatName(matrix->format)),"(",
+					SpMVM_matrixFormatName(matrix->format),")",
 					SpMVM_matrixSize(matrix)/(1024*1024));
 		}
 #ifdef OPENCL	
@@ -188,7 +189,12 @@ void SpMVM_printEnvInfo()
 #ifdef AVX
 		printf("AVX kernels                      :      enabled\n");
 #else
-		printf("AVX support                      :     disabled\n");
+		printf("AVX kernels                      :     disabled\n");
+#endif
+#ifdef SSE
+		printf("SSE kernels                      :      enabled\n");
+#else
+		printf("SSE kernels                      :     disabled\n");
 #endif
 #ifdef MPI
 		printf("MPI support                      :      enabled\n");
@@ -324,16 +330,16 @@ HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int))
 	vec->nRows = nRows;
 
 	if (fp) {
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<nRows; i++) 
 			vec->val[i] = fp(i);
 
 	}else {
 #ifdef COMPLEX
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
 #else
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<nRows; i++) vec->val[i] = 0.;
 #endif
 	}
@@ -355,7 +361,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nRows )
 	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 	vec->nRows = nRows;
 
-#pragma omp parallel for schedule(static) 
+#pragma omp parallel for schedule(runtime) 
 	for( i = 0; i < nRows; i++ ) 
 		vec->val[i] = 0.0;
 
@@ -657,7 +663,29 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 #endif
 #ifdef AVX
 				case SPMVM_KERNEL_NOMPI:
-					//kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+				//kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
+					break;
+#endif
+#ifdef SSE
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr;
+					break;
+#endif
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+					return NULL;
+			}
+			break;
+		case SPM_FORMAT_GLOB_TBJDS:
+			switch (kernel) {
+#ifdef SSE
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr_rem;
+					break;
+#endif
+#ifdef AVX
+				case SPMVM_KERNEL_NOMPI:
 					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
 					break;
 #endif
@@ -666,8 +694,9 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 					return NULL;
 			}
 			break;
+
 		default:
-			DEBUG_LOG(1,"Non-valid matrix format specified!");
+			DEBUG_LOG(1,"Non-valid matrix format specified (%u)!",mat->format);
 			return NULL;
 	}
 
@@ -711,28 +740,33 @@ char * SpMVM_workdistName(int options)
 
 char * SpMVM_matrixFormatName(int format) 
 {
+	char * name = (char *) allocateMemory(16*sizeof(char),"name");
 
 	switch (format) {
 		case SPM_FORMAT_DIST_CRS:
-			return "dist. CRS";
+			sprintf(name,"dist. CRS");
 			break;
 		case SPM_FORMAT_GLOB_CRS:
-			return "CRS";
+			sprintf(name,"CRS");
 			break;
 		case SPM_FORMAT_GLOB_BJDS:
-			return "BJDS";
+			sprintf(name,"BJDS-%d",BJDS_LEN);
+			break;
+		case SPM_FORMAT_GLOB_TBJDS:
+			sprintf(name,"TBJDS-%d",BJDS_LEN);
 			break;
 		case SPM_FORMAT_GLOB_SBJDS:
 #ifdef SBJDS_PERMCOLS
-			return "SBJDS-PC";
+			sprintf(name,"SBJDS-%d",BJDS_LEN);
 #else
-			return "SBJDS";
+			sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
 #endif
 			break;
 		default:
-			return "invalid";
+			name = "invalid";
 			break;
 	}
+	return name;
 }
 
 unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) 
@@ -740,6 +774,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 	unsigned int size = 0;
 
 	switch (matrix->format) {
+		case SPM_FORMAT_GLOB_TBJDS:
 		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
 			{

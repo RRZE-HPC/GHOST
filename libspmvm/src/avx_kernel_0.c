@@ -20,7 +20,7 @@ void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 
 		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])>>2; j++) 
 		{ // loop inside chunk
-			
+
 			val    = _mm256_load_pd(&bjds->val[offs]);                      // load values
 			rhstmp = _mm_loadl_pd(rhstmp,&invec->val[(bjds->col[offs++])]); // load first 128 bits of RHS
 			rhstmp = _mm_loadh_pd(rhstmp,&invec->val[(bjds->col[offs++])]);
@@ -40,13 +40,13 @@ void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 
 void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
 {
-	int c,i,j,offs;
+	int c,j,offs;
 	__m256d tmp;
 	__m256d val;
 	__m256d rhs;
 	__m128d rhstmp;
 
-#pragma omp parallel for schedule(runtime) private(i,j,tmp,val,rhs,offs,rhstmp)
+#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs,rhstmp)
 	for (c=0; c<bjds->nRowsPadded>>2; c++) 
 	{ // loop over chunks
 		tmp = _mm256_setzero_pd(); // tmp = 0
@@ -63,16 +63,24 @@ void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 			rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
 			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
 		}
-		for (i=0; i<4; i++)
+		for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN]; j++)
 		{
-			for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN+i]; j++)
-			{
-				res->val[c*BJDS_LEN+i] += bjds->val[bjds->chunkStart[c]+j*BJDS_LEN+i] * 
-					invec->val[bjds->col[bjds->chunkStart[c]+j*BJDS_LEN+i]];
-			}
+			res->val[c*BJDS_LEN] += bjds->val[offs] * invec->val[bjds->col[offs++]];
 		}
-				
-		
+		for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN+1]; j++)
+		{
+			res->val[c*BJDS_LEN+1] += bjds->val[offs] * invec->val[bjds->col[offs++]];
+		}
+		for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN+2]; j++)
+		{
+			res->val[c*BJDS_LEN+2] += bjds->val[offs] * invec->val[bjds->col[offs++]];
+		}
+		for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN+3]; j++)
+		{
+			res->val[c*BJDS_LEN+3] += bjds->val[offs] * invec->val[bjds->col[offs++]];
+		}
+
+
 		if (spmvmOptions & SPMVM_OPTION_AXPY) {
 			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
 		} else {

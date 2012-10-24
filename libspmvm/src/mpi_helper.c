@@ -400,16 +400,16 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	 ***************************************************************************/
 
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = 0.0;
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i] = 0.0;
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 
@@ -941,16 +941,16 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	 ***************************************************************************/
 
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = 0.0;
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i] = 0.0;
 
-	//#pragma omp parallel for schedule(runtime)
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(runtime)
+//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 	/* replace scattering with read-in */

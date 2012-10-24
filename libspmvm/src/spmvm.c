@@ -190,15 +190,15 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 
 		unsigned int i;
 		if (fp) {
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nRows; i++) 
 				val[i] = fp(i);
 		}else {
 #ifdef COMPLEX
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nRows; i++) val[i] = 0.+I*0.;
 #else
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nRows; i++) val[i] = 0.;
 #endif
 		}
@@ -233,22 +233,22 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d+%d rows",lcrp->lnRows[me],lcrp->halo_elements);
 
 		if (fp) {
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<lcrp->lnRows[me]; i++) 
 				val[i] = fp(lcrp->lfRow[me]+i);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=lcrp->lnRows[me]; i<nRows; i++) 
 				val[i] = fp(lcrp->lfRow[me]+i);
 		}else {
 #ifdef COMPLEX
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.+I*0.;
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.+I*0.;
 #else
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.;
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(runtime)
 			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.;
 #endif
 		}
@@ -368,6 +368,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			mat->matrix = CRStoBJDS(cr);
 		} else if (format &  SPM_FORMAT_GLOB_SBJDS) {
 			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
+		} else if (format &  SPM_FORMAT_GLOB_TBJDS) {
+			mat->matrix = CRStoTBJDS(cr);
 		} else {
 			ABORT("Invalid format for global matrix!");
 		}
