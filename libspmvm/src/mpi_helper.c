@@ -94,7 +94,7 @@ void setupSingleNodeComm()
 	MPI_safecall(MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, &single_node_comm ));
 	MPI_safecall(MPI_Comm_rank ( single_node_comm, &me_node));
 
-	DEBUG_LOG(1,"Rank in single node comm: %d\n", me_node);
+	DEBUG_LOG(1,"Rank in single node comm: %d", me_node);
 
 	free( mymate );
 	free( acc_mates );
@@ -177,6 +177,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	DEBUG_LOG(1,"Entering setup_communication");
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
@@ -195,6 +196,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 	MPI_safecall(MPI_Bcast(&lcrp->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&lcrp->nRows,1,MPI_INT,0,MPI_COMM_WORLD));*/
+
 #pragma omp parallel
 	lcrp->threads = omp_get_num_threads(); 
 
@@ -461,18 +463,16 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 	revcol          = (int*) allocateMemory( size_revc, "revcol" );
 
 
-	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i]++; // setup has to be done with fortran numbering
 	for (i=0; i<lcrp->nodes; i++) wishlist_counts[i] = 0;
 
 	/* Transform global column index into 2d-local/non-local index */
 	for (i=0;i<lcrp->lnEnts[me];i++){
 		for (j=lcrp->nodes-1;j>-1; j--){
-			if (lcrp->lfRow[j]<lcrp->col[i]) {
+			if (lcrp->lfRow[j]<lcrp->col[i]+1) {
 				/* Entsprechendes Paarelement liegt auf PE j */
 				comm_remotePE[i] = j;
 				wishlist_counts[j]++;
-				/* Uebergang von FORTRAN-NUMERIERUNG AUF C-STYLE !!!!!!!!!!!!!!!! */
-				comm_remoteEl[i] = lcrp->col[i]-1 -lcrp->lfRow[j];
+				comm_remoteEl[i] = lcrp->col[i] -lcrp->lfRow[j];
 				break;
 			}
 		}
@@ -566,7 +566,7 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 		if (comm_remotePE[i] == me) // local
 			lcrp->col[i] =  comm_remoteEl[i];
 		else // remote
-			lcrp->col[i] = pseudocol[revcol[lcrp->col[i]-1]];
+			lcrp->col[i] = pseudocol[revcol[lcrp->col[i]]];
 	} /* !!!!!!!! Eintraege in wishlist gehen entsprechend Input-file von 1-9! */
 
 	freeMemory ( size_col,  "comm_remoteEl",  comm_remoteEl);
@@ -1096,18 +1096,16 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 	revcol          = (int*) allocateMemory( size_revc, "revcol" );
 
 
-	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i]++; // setup has to be done with fortran numbering
 	for (i=0; i<lcrp->nodes; i++) wishlist_counts[i] = 0;
 
 	/* Transform global column index into 2d-local/non-local index */
 	for (i=0;i<lcrp->lnEnts[me];i++){
 		for (j=lcrp->nodes-1;j>-1; j--){
-			if (lcrp->lfRow[j]<lcrp->col[i]) {
+			if (lcrp->lfRow[j]<lcrp->col[i]+1) {
 				/* Entsprechendes Paarelement liegt auf PE j */
 				comm_remotePE[i] = j;
 				wishlist_counts[j]++;
-				/* Uebergang von FORTRAN-NUMERIERUNG AUF C-STYLE !!!!!!!!!!!!!!!! */
-				comm_remoteEl[i] = lcrp->col[i]-1 -lcrp->lfRow[j];
+				comm_remoteEl[i] = lcrp->col[i] -lcrp->lfRow[j];
 				break;
 			}
 		}
@@ -1198,7 +1196,7 @@ LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int optio
 
 	for (i=0;i<lcrp->lnEnts[me];i++){
 		if (comm_remotePE[i] == me) lcrp->col[i] = comm_remoteEl[i];
-		else                        lcrp->col[i] = pseudocol[revcol[lcrp->col[i]-1]];
+		else                        lcrp->col[i] = pseudocol[revcol[lcrp->col[i]]];
 	} /* !!!!!!!! Eintraege in wishlist gehen entsprechend Input-file von 1-9! */
 
 	freeMemory ( size_col,  "comm_remoteEl",  comm_remoteEl);
