@@ -29,14 +29,15 @@
 #define SPMVM_KERNEL_IDX_REMOTE 2
 /******************************************************************************/
 
-#define SPM_FORMAT_GLOB_CRS   (0x1<<1)
-#define SPM_FORMAT_GLOB_BJDS  (0x1<<2)
-#define SPM_FORMAT_DIST_CRS   (0x1<<3)
-#define SPM_FORMAT_HOSTONLY   (0x1<<4)
-#define SPM_FORMAT_GLOB_SBJDS (0x1<<5)
-#define SPM_FORMAT_GLOB_TBJDS (0x1<<6)
+#define SPM_FORMAT_GLOB_CRS    (0x1<<1)
+#define SPM_FORMAT_GLOB_BJDS   (0x1<<2)
+#define SPM_FORMAT_DIST_CRS    (0x1<<3)
+#define SPM_FORMAT_HOSTONLY    (0x1<<4)
+#define SPM_FORMAT_GLOB_SBJDS  (0x1<<5)
+#define SPM_FORMAT_GLOB_TBJDS  (0x1<<6)
+#define SPM_FORMAT_GLOB_TCBJDS (0x1<<7)
 
-#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | SPM_FORMAT_GLOB_TBJDS)
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | SPM_FORMAT_GLOB_TBJDS | SPM_FORMAT_GLOB_TCBJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
 
@@ -295,6 +296,7 @@ typedef struct {
 	int *col;
 	int *chunkStart;
 	int *chunkMin; // for version with remainder loop
+	int *chunkLen; // for version with remainder loop
 	int *rowLen;   // for version with remainder loop
 	int nRows;
 	int nRowsPadded;

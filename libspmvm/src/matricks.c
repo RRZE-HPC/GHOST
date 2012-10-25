@@ -587,7 +587,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	return mv;
 }
 
-BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr) 
+BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise) 
 {
 	int i,j,c;
 	BJDS_TYPE *mv;
@@ -603,11 +603,13 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 	int nChunks = mv->nRowsPadded/BJDS_LEN;
 	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
 	mv->chunkMin = (int *)allocateMemory((nChunks)*sizeof(int),"mv->chunkMin");
+	mv->chunkLen = (int *)allocateMemory((nChunks)*sizeof(int),"mv->chunkMin");
 	mv->rowLen = (int *)allocateMemory((mv->nRowsPadded)*sizeof(int),"mv->chunkMin");
 	mv->chunkStart[0] = 0;
 
 
 	int chunkMin = cr->nCols;
+	int chunkLen = 0;
 	int curChunk = 1;
 	int rowLen;
 
@@ -621,12 +623,15 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 		mv->nEnts += rowLen;
 
 		chunkMin = rowLen<chunkMin?rowLen:chunkMin;
+		chunkLen = rowLen>chunkLen?rowLen:chunkLen;
 
 		if ((i+1)%BJDS_LEN == 0) {
 			mv->chunkStart[curChunk] = mv->nEnts;
 			mv->chunkMin[curChunk-1] = chunkMin;
+			mv->chunkLen[curChunk-1] = chunkLen;
 
 			chunkMin = cr->nCols;
+			chunkLen = 0;
 			curChunk++;
 		}
 	}
@@ -661,54 +666,45 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
 	{ // loop over chunks
 
+		// store block
 		for (j=0; j<mv->chunkMin[c]; j++)
 		{
 			for (i=0; i<BJDS_LEN; i++)
 			{
 				mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
 				mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
-				//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 			}
 		}
-		//	printf("\n---\n");
+
+		// store remainder
 		int rem = mv->chunkStart[c] + mv->chunkMin[c]*BJDS_LEN;
-		for (i=0; i<BJDS_LEN; i++)
+		if (rowWise) 
 		{
-			for (j=mv->chunkMin[c]; j<mv->rowLen[c*BJDS_LEN+i]; j++)
+			for (i=0; i<BJDS_LEN; i++)
 			{
-				mv->val[rem] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
-				mv->col[rem++] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
-				//printf("%f ",mv->val[rem-1]);
+				for (j=mv->chunkMin[c]; j<mv->rowLen[c*BJDS_LEN+i]; j++)
+				{
+					mv->val[rem] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
+					mv->col[rem++] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
+				}
+			}
+		} else 
+		{
+			for (j=mv->chunkMin[c]; j<mv->chunkLen[c]; j++)
+			{
+				for (i=0; i<BJDS_LEN; i++)
+				{
+					if (j<mv->rowLen[c*BJDS_LEN+i] ) {
+						mv->val[rem] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
+						mv->col[rem++] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
+					}
+				}
 			}
 		}
-		//printf("\n####\n");
 	}
 
-	/*
 
-	   for (c=0; c<nChunks; c++) {
-	   int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN;
-
-	   for (j=0; j<chunkLen; j++) {
-
-	   for (i=0; i<BJDS_LEN; i++) {
-	   if (j<mv->rowLen[c*BJDS_LEN+i]) {
-
-	   mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
-	   mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
-	   } else {
-	   mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
-	   mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
-	   }
-//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
-
-
-}
-}
-}*/
-
-
-return mv;
+	return mv;
 }
 
 BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm) 

@@ -330,6 +330,9 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			cr = convertMMToCRMatrix( mm );
 			freeMMMatrix(mm);
 		}
+	} else // TODO scatter in read function 
+	{
+		cr = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"cr");
 	}
 
 #ifdef MPI
@@ -338,6 +341,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nRows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nCols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 
 
@@ -368,7 +372,9 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		} else if (format &  SPM_FORMAT_GLOB_SBJDS) {
 			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
 		} else if (format &  SPM_FORMAT_GLOB_TBJDS) {
-			mat->matrix = CRStoTBJDS(cr);
+			mat->matrix = CRStoTBJDS(cr,1);
+		} else if (format &  SPM_FORMAT_GLOB_TCBJDS) {
+			mat->matrix = CRStoTBJDS(cr,0);
 		} else {
 			ABORT("Invalid format for global matrix!");
 		}

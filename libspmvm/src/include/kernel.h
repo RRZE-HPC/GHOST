@@ -17,6 +17,7 @@ void mic_kernel_0_intr_overlap      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int
 #ifdef AVX
 void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions);
 void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions);
+void avx_kernel_0_intr_rem_if(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions);
 #endif
 
 #ifdef SSE

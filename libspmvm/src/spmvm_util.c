@@ -694,6 +694,18 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 					return NULL;
 			}
 			break;
+		case SPM_FORMAT_GLOB_TCBJDS:
+			switch (kernel) {
+#ifdef AVX
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem_if;
+					break;
+#endif
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+					return NULL;
+			}
+			break;
 
 		default:
 			DEBUG_LOG(1,"Non-valid matrix format specified (%u)!",mat->format);

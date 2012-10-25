@@ -24,7 +24,7 @@ static mat_data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 500;
+	int me, kernel, nIter = 100;
 	double time;
 
 #ifdef CHECK
@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_TBJDS,matrixFormats);
+	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_DIST_CRS,matrixFormats);
 	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
