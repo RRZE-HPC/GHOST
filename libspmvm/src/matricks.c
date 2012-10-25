@@ -34,61 +34,44 @@
 
 static int allocatedMem;
 
-void getMatrixPath(char *given, char *path) {
-	FILE *file;
+static int compareNZEPos( const void* a, const void* b ) 
+{
 
-	strcpy(path,given);
-	file = fopen(path,"r");
-	if (file) { // given complete is already a full path
-		fclose(file);
-		return;
+	/* comparison function for sorting of matrix entries;
+	 * sort lesser row id first, then lesser column id first;
+	 * if MAIN_DIAGONAL_FIRST is defined sort diagonal 
+	 * before lesser column id */
+
+	int aRow = ((NZE_TYPE*)a)->row,
+		bRow = ((NZE_TYPE*)b)->row,
+		aCol = ((NZE_TYPE*)a)->col,
+		bCol = ((NZE_TYPE*)b)->col;
+
+	if( aRow == bRow ) {
+#ifdef MAIN_DIAGONAL_FIRST
+		if( aRow == aCol ) aCol = -1;
+		if( bRow == bCol ) bCol = -1;
+#endif /* MAIN_DIAGONAL_FIRST */
+		return aCol - bCol;
 	}
-
-	char *mathome = getenv("MATHOME");
-	if (mathome == NULL)
-		ABORT("$MATHOME not set! Can't find matrix!");
-
-
-	strcpy(path,mathome);
-	strcat(path,"/");
-	strcat(path,given);
-
-	file = fopen(path,"r");
-	if (file) {
-		fclose(file);
-		return;
-	}
-
-	strcat(path,"/");
-	strcat(path,given);
-	strcat(path,"_");
-	strcat(path,DATATYPE_NAMES[DATATYPE_DESIRED]);
-	strcat(path,"_CRS_bin.dat");
-
-	file = fopen(path,"r");
-	if (file) {
-		fclose(file);
-		return;
-	}
-
-	strcpy(path,mathome);
-	strcat(path,"/");
-	strcat(path,given);
-	strcat(path,"/");
-	strcat(path,given);
-	strcat(path,".mtx");
-
-	file = fopen(path,"r");
-	if (file) {
-		fclose(file);
-		return;
-	}
-
-	path = NULL;
-	return;
+	else return aRow - bRow;
 }
 
-int isMMfile(const char *filename) {
+static int compareNZEOrgPos( const void* a, const void* b ) 
+{
+	return  ((JD_SORT_TYPE*)a)->row - ((JD_SORT_TYPE*)b)->row;
+}
+
+int compareNZEPerRow( const void* a, const void* b ) 
+{
+	/* comparison function for JD_SORT_TYPE; 
+	 * sorts rows with higher number of non-zero elements first */
+
+	return  ((JD_SORT_TYPE*)b)->nEntsInRow - ((JD_SORT_TYPE*)a)->nEntsInRow;
+}
+
+int isMMfile(const char *filename) 
+{
 
 	FILE *file = fopen( filename, "r" );
 
@@ -107,10 +90,8 @@ int isMMfile(const char *filename) {
 	return cmp==0?1:0;
 }
 
-/* ########################################################################## */
-
-
-void* allocateMemory( const size_t size, const char* desc ) {
+void* allocateMemory( const size_t size, const char* desc ) 
+{
 
 	/* allocate size bytes of posix-aligned memory;
 	 * check for success and increase global counter */
@@ -135,10 +116,8 @@ void* allocateMemory( const size_t size, const char* desc ) {
 	return mem;
 }
 
-
-/* ########################################################################## */
-
-void freeMemory( size_t size, const char* desc, void* this_array ) {
+void freeMemory( size_t size, const char* desc, void* this_array ) 
+{
 
 	DEBUG_LOG(2,"Freeing %8.2f MB of memory for %s", size/(1024.*1024.), desc);
 
@@ -147,9 +126,8 @@ void freeMemory( size_t size, const char* desc, void* this_array ) {
 
 }
 
-/* ########################################################################## */
-
-MM_TYPE * readMMFile(const char* filename ) {
+MM_TYPE * readMMFile(const char* filename ) 
+{
 
 	MM_typecode matcode;
 	FILE *f;
@@ -167,12 +145,12 @@ MM_TYPE * readMMFile(const char* filename ) {
 
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for complex data "
-				"but the MM file contains mat_data_t data. Casting...\n");
+		DEBUG_LOG(0,"Warning! The library has been built for complex data "
+				"but the MM file contains mat_data_t data. Casting...");
 #else
 	if (mm_is_complex(matcode))
-		fprintf(stderr,"Warning! The library has been built for real data "
-				"but the MM file contains complex data. Casting...\n");
+		DEBUG_LOG(0,"Warning! The library has been built for real data "
+				"but the MM file contains complex data. Casting...");
 #endif
 
 
@@ -230,9 +208,8 @@ MM_TYPE * readMMFile(const char* filename ) {
 	return mm;
 }
 
-/* ########################################################################## */
-
-void readCRrowsBinFile(CR_TYPE* cr, const char* path){
+void readCRrowsBinFile(CR_TYPE* cr, const char* path)
+{
 
 	int i;
 	size_t size_offs;
@@ -384,134 +361,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	return;
 }
 
-/***************************************************************
- *          Einlesen der Matrix in Binaerformat (JDS)           *
- **************************************************************/
-
-
-void readJDbinFile(JD_TYPE* jd, const int blocklen, const char* testcase){
-
-	int i, ib, block_start, block_end, diag, diagLen, offset;
-	char restartfilename[50];
-	FILE* RESTFILE;
-	double startTime, stopTime, ct; 
-	double mybytes;
-
-	timing( &startTime, &ct );
-
-	sprintf(restartfilename, "./daten/%s_JDS_bin.dat", testcase);
-	IF_DEBUG(1) printf(" \n Lese %s \n", restartfilename);
-
-	if ((RESTFILE = fopen(restartfilename, "rb"))==NULL){
-		printf("Fehler beim Oeffnen von %s\n", restartfilename);
-		exit(1);
-	}
-
-	fread(&jd->nRows,               sizeof(int),    1,            RESTFILE);
-	fread(&jd->nCols,               sizeof(int),    1,            RESTFILE);
-	fread(&jd->nEnts,               sizeof(int),    1,            RESTFILE);
-	fread(&jd->nDiags,              sizeof(int),    1,            RESTFILE);
-
-	mybytes = 4.0*sizeof(int) 
-		+ 1.0*(jd->nRows + jd->nEnts + jd->nDiags+1)*sizeof(int) 
-		+ 1.0*(jd->nEnts)*sizeof(mat_data_t);
-
-	IF_DEBUG(1) {
-		printf("Number of rows in matrix       = %d\n", jd->nRows);
-		printf("Number of columns in matrix    = %d\n", jd->nCols);
-		printf("Number of non-zero elements    = %d\n", jd->nEnts);
-		printf("Number of off-diagonals        = %d\n", jd->nDiags);
-		printf(" \n Entries to be read sum up to %6.2f MB\n", mybytes/1048576.0) ;
-	}
-
-	IF_DEBUG(2) printf("Allocate memory for arrays\n");
-
-	jd->rowPerm    = (int*)    allocateMemory( jd->nRows      * sizeof( int ),    "rowPerm" );
-	jd->diagOffset = (int*)    allocateMemory( (jd->nDiags+1) * sizeof( int ),    "diagOffset" );
-	jd->col        = (int*)    allocateMemory( jd->nEnts      * sizeof( int ),    "col" );
-	jd->val        = (mat_data_t*) allocateMemory( jd->nEnts      * sizeof( mat_data_t ), "val" );
-
-	IF_DEBUG(2) {
-		printf("Reading array of permutations\n");
-		printf("Reading array of offsets of off-diagonals\n");
-		printf("Reading array with column indices\n");
-		printf("Reading array with values\n");
-	}	
-
-	fread(&jd->rowPerm[0],          sizeof(int),    jd->nRows,    RESTFILE);
-	fread(&jd->diagOffset[0],       sizeof(int),    jd->nDiags+1, RESTFILE);
-
-	printf("NUMA-placement of jd->col[] and jd->val[]\n");
-#pragma omp parallel for schedule(runtime) private (i, diag, diagLen, offset, block_start, block_end) 
-	for(ib = 0 ; ib < jd->nRows ; ib += blocklen) {
-
-		block_start = ib;
-		block_end = MIN(ib+blocklen-2, jd->nRows-1);
-
-		for(diag=0; diag < jd->nDiags ; diag++) {
-
-			diagLen = jd->diagOffset[diag+1]-jd->diagOffset[diag];
-			offset  = jd->diagOffset[diag];
-
-			if(diagLen >= block_start) {
-
-				for(i=block_start; i<= MIN(block_end,diagLen-1); ++i) {
-					jd->val[offset+i]=0.0;
-					jd->col[offset+i]=0.0;
-				}
-			}
-		}
-	} 
-	/* GH: then fill matrix */
-
-
-	fread(&jd->col[0],              sizeof(int),    jd->nEnts,    RESTFILE);
-	fread(&jd->val[0],              sizeof(mat_data_t), jd->nEnts,    RESTFILE);
-
-	fclose(RESTFILE);
-
-	timing( &stopTime, &ct );
-	IF_DEBUG(2) printf("... done\n"); 
-	IF_DEBUG(1){
-		printf("Binary read of matrix in JDS-format took %8.2f s \n", 
-				(double)(stopTime-startTime) );
-		printf( "Data transfer rate : %8.2f MB/s \n\n",  
-				(mybytes/1048576.0)/(double)(stopTime-startTime) );
-	}
-
-	return;
-}
-
-int compareNZEPos( const void* a, const void* b ) {
-
-	/* comparison function for sorting of matrix entries;
-	 * sort lesser row id first, then lesser column id first;
-	 * if MAIN_DIAGONAL_FIRST is defined sort diagonal 
-	 * before lesser column id */
-
-	int aRow = ((NZE_TYPE*)a)->row,
-	    bRow = ((NZE_TYPE*)b)->row,
-	    aCol = ((NZE_TYPE*)a)->col,
-	    bCol = ((NZE_TYPE*)b)->col;
-
-	if( aRow == bRow ) {
-#ifdef MAIN_DIAGONAL_FIRST
-		if( aRow == aCol ) aCol = -1;
-		if( bRow == bCol ) bCol = -1;
-#endif /* MAIN_DIAGONAL_FIRST */
-		return aCol - bCol;
-	}
-	else return aRow - bRow;
-}
-
-
-/* ########################################################################## */
-
-
-/* ########################################################################## */
-
-
-CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
+CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) 
+{
 
 	/* allocate and fill CRS-format matrix from MM-type;
 	 * row and col indices have same base as MM (0-based);
@@ -616,7 +467,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	/* store values in compressed row data structure ########################## */
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
-		      col = mm->nze[e].col;
+			  col = mm->nze[e].col;
 		const mat_data_t val = mm->nze[e].val;
 		pos = cr->rowOffset[row] + nEntsInRow[row];
 		/* GW 
@@ -642,251 +493,8 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) {
 	return cr;
 }
 
-
-/* ########################################################################## */
-
-
-int compareNZEPerRow( const void* a, const void* b ) {
-	/* comparison function for JD_SORT_TYPE; 
-	 * sorts rows with higher number of non-zero elements first */
-
-	return  ((JD_SORT_TYPE*)b)->nEntsInRow - ((JD_SORT_TYPE*)a)->nEntsInRow;
-}
-
-int compareNZEOrgPos( const void* a, const void* b ) {
-	return  ((JD_SORT_TYPE*)a)->row - ((JD_SORT_TYPE*)b)->row;
-}
-
-/* ########################################################################## */
-
-
-static int* JDinvRowPerm;
-int compareNZEForJD( const void* a, const void* b ) {
-	const int aRow = JDinvRowPerm[((NZE_TYPE*)a)->row],
-	      bRow = JDinvRowPerm[((NZE_TYPE*)b)->row],
-
-	      /*  GeWe
-		  aCol = ((NZE_TYPE*)a)->col,
-		  bCol = ((NZE_TYPE*)b)->col; 
-	       */
-
-	      aCol = JDinvRowPerm[((NZE_TYPE*)a)->col],
-	      bCol = JDinvRowPerm[((NZE_TYPE*)b)->col];
-
-	if( aRow == bRow )
-		return aCol - bCol;
-	else
-		return aRow - bRow;
-}
-
-
-/* ########################################################################## */
-
-
-JD_TYPE* convertMMToJDMatrix( MM_TYPE* mm) {
-	/* convert matrix-market format to blocked jagged-diagonal format*/
-
-	JD_SORT_TYPE* rowSort;
-	int i, e, pos, oldRow, nThEntryInRow;
-	uint64 hlpaddr;
-
-	size_t size_rowPerm, size_col, size_val, size_invRowPerm, size_rowSort;
-	size_t size_diagOffset;
-
-
-	/* allocate memory ######################################################## */
-	size_rowPerm    = (size_t)( mm->nRows * sizeof( int ) );
-	size_col        = (size_t)( mm->nEnts * sizeof( int ) );
-	size_val        = (size_t)( mm->nEnts * sizeof( mat_data_t) );
-	size_invRowPerm = (size_t)( mm->nRows * sizeof( int ) );
-	size_rowSort    = (size_t)( mm->nRows * sizeof( JD_SORT_TYPE ) );
-
-	JD_TYPE* jd = (JD_TYPE*)      allocateMemory( sizeof( JD_TYPE ), "jd" );
-	jd->rowPerm = (int*)          allocateMemory( size_rowPerm,      "rowPerm" );
-	jd->col     = (int*)          allocateMemory( size_col,          "col" );
-	jd->val     = (mat_data_t*)       allocateMemory( size_val,          "val" );
-	JDinvRowPerm  = (int*)          allocateMemory( size_invRowPerm,   "invRowPerm" );
-	rowSort     = (JD_SORT_TYPE*) allocateMemory( size_rowSort,      "rowSort" );
-
-	/* initialize values ###################################################### */
-	jd->nRows = mm->nRows;
-	jd->nCols = mm->nCols;
-	jd->nEnts = mm->nEnts;
-	for( i = 0; i < mm->nRows; i++ ) {
-		rowSort[i].row = i;
-		rowSort[i].nEntsInRow = 0;
-	}
-
-
-	IF_DEBUG(2){
-		hlpaddr = (uint64) ((long)8 * (long)(jd->nEnts-1));
-		printf("\njd->val %p -- %p\n", (&(jd->val))[0], 
-				(void*) ( (uint64)(&(jd->val))[0] + hlpaddr) );
-		hlpaddr = (uint64) ((long)4 * (long)(jd->nEnts-1));
-		printf("Anfangsaddresse jd->col   %p   -- %p \n\n", jd->col, 
-				(void*) ( (uint64)(&(jd->col))[0] + hlpaddr) );
-		fflush(stdout);
-	}
-
-
-	/* count entries per row ################################################## */
-	for( e = 0; e < mm->nEnts; e++ ) rowSort[mm->nze[e].row].nEntsInRow++;
-
-	/* sort rows with desceding number of NZEs ################################ */
-	//qsort( rowSort, mm->nRows, sizeof( JD_SORT_TYPE  ), compareNZEPerRow );
-	qsort( rowSort, (size_t)(mm->nRows), sizeof( JD_SORT_TYPE  ), compareNZEPerRow );
-
-	/* allocate memory for diagonal offsets */
-	jd->nDiags = rowSort[0].nEntsInRow;
-	size_diagOffset = (size_t)( (jd->nDiags+1) * sizeof( int ) );
-	jd->diagOffset = (int*) allocateMemory(size_diagOffset, "diagOffset" );
-
-	hlpaddr = (uint64) ((long)4 * (long)(jd->nDiags+1));
-	IF_DEBUG(2) printf("Anfangsaddresse jd->diagOffset   %p   -- %p \n\n", jd->diagOffset, 
-			(void*) ( (uint64)(&(jd->diagOffset))[0] + hlpaddr) );
-
-	/* set permutation vector for rows ######################################## */
-	for( i = 0; i <  mm->nRows; i++ ) {
-		JDinvRowPerm[rowSort[i].row] = i;
-		jd->rowPerm[i] = rowSort[i].row;
-	}
-
-	IF_DEBUG(2) {
-		for( i = 0; i <  mm->nRows; i++ ) {
-			printf( "rowPerm[%6i] = %6i; invRowPerm[%6i] = %6i\n", i, jd->rowPerm[i],
-					i, JDinvRowPerm[i] );
-		}
-	}
-
-	/* sort NZEs with ascending column index for each row ##################### */
-	qsort( mm->nze, (size_t)(mm->nEnts), sizeof( NZE_TYPE ), compareNZEForJD );
-	//qsort( mm->nze, mm->nEnts, sizeof( NZE_TYPE ), compareNZEForJD );
-	IF_DEBUG(2) {
-		for( i = 0; i < mm->nEnts; i++ ) {
-			printf( "%i %i %e+i%e\n", mm->nze[i].row, mm->nze[i].col, REAL(mm->nze[i].val),IMAG(mm->nze[i].val) );
-		}
-	}
-
-	/* number entries per row ################################################# */
-	oldRow = -1;
-	pos = 0;
-	for( e = 0; e < mm->nEnts; e++ ) {
-		if( oldRow != mm->nze[e].row ) {
-			pos = 0;
-			oldRow = mm->nze[e].row;
-		}
-		mm->nze[e].nThEntryInRow = pos;
-		pos++;
-	}
-
-	/* !!! SUN
-#ifdef _OPENMP
-omp_set_num_threads(128);
-	// bind to lower 64
-#pragma omp parallel
+void crColIdToFortran( CR_TYPE* cr ) 
 {
-if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
-}
-#endif
-	 */
-
-/* store values in jagged diagonal format */
-#ifdef PLACE_JDS
-/* GH: first evaluate shape */
-pos = 0;
-for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
-	jd->diagOffset[nThEntryInRow] = pos;
-	for( e = 0; e < mm->nEnts; e++ ) {
-		if( mm->nze[e].nThEntryInRow == nThEntryInRow ) {
-			// GH jd->val[pos] = mm->nze[e].val;
-
-			// GH jd->col[pos] = invRowPerm[mm->nze[e].col]+1;
-			pos++;
-		}
-	}
-}
-jd->diagOffset[jd->nDiags] = pos;
-
-
-/* GH: then place jd->col[] and jd->val[] */
-#pragma omp parallel for schedule(runtime) private(block_start, block_end, diag, diagLen, offset, i)
-for(ib=0; ib<jd->nRows; ib+=blocklen) {
-	block_start = ib;
-	block_end   = min(ib+blocklen-2, jd->nRows-1);
-
-	for(diag=0; diag<jd->nDiags; diag++) {
-
-		diagLen = jd->diagOffset[diag+1]-jd->diagOffset[diag];
-		offset  = jd->diagOffset[diag];
-
-		if(diagLen >= block_start) {
-
-			for(i=block_start; i<= min(block_end,diagLen-1); ++i) {
-				jd->val[offset+i]=0.0;
-				jd->col[offset+i]=0;
-			}
-		}
-	}
-} 
-/* GH: then fill matrix */
-#endif   // PLACE_JDS
-
-/* !!! SUN
-#ifdef _OPENMP
-omp_set_num_threads(128);
-// bind to lower 64
-#pragma omp parallel
-{
-if(processor_bind(P_LWPID,P_MYID,omp_get_thread_num(),NULL)) exit(1);
-}
-#endif
- */
-pos = 0;
-for( nThEntryInRow = 0; nThEntryInRow < jd->nDiags; nThEntryInRow++ ) {
-	jd->diagOffset[nThEntryInRow] = pos;
-	for( e = 0; e < mm->nEnts; e++ ) {
-		if( mm->nze[e].nThEntryInRow == nThEntryInRow ) {
-			if (pos > jd->nEnts) printf("wahhhh\n");
-			jd->val[pos] = mm->nze[e].val;
-
-			/*  GeWe
-			    jd->col[pos] = mm->nze[e].col; 
-			 */
-
-			jd->col[pos] = JDinvRowPerm[mm->nze[e].col]+1;
-			pos++;
-		}
-	}
-}
-jd->diagOffset[jd->nDiags] = pos;
-
-/* clean up ############################################################### */
-free( rowSort );
-free( JDinvRowPerm );
-IF_DEBUG(1) printf( "convertMMToJDMatrix: done with FORTRAN numbering in jd->col\n" );
-IF_DEBUG(2) {
-	for( i = 0; i < mm->nRows;    i++ ) printf( "rowPerm[%6i] = %3i\n", i, jd->rowPerm[i] );
-	for( i = 0; i < mm->nEnts;    i++ ) printf( "col[%6i] = %6i, val[%6i] = %e+i%e\n", i, jd->col[i], i, REAL(jd->val[i]), IMAG(jd->val[i]) );
-	for( i = 0; i < jd->nDiags+1; i++ ) printf( "diagOffset[%6i] = %6i\n", i, jd->diagOffset[i] );
-}
-
-IF_DEBUG(1) printf( "convertMMToJDMatrix: done\n" );
-/*  sprintf(statfilename, "./intermediate3.dat");
-    if ((STATFILE = fopen(statfilename, "w"))==NULL){
-    printf("Fehler beim Oeffnen von %s\n", statfilename);
-    exit(1);
-    }
-    for (i = 0 ; i < cr->nEnts ; i++) fprintf(STATFILE,"%i %25.16g\n",i, (cr->val)[i]);
-    fclose(STATFILE);
- */
-return jd;
-}
-
-
-/* ########################################################################## */
-
-
-void crColIdToFortran( CR_TYPE* cr ) {
 	/* increase column index of CRS matrix by 1;
 	 * check index after conversion */
 
@@ -911,11 +519,8 @@ void crColIdToFortran( CR_TYPE* cr ) {
 	}
 }
 
-
-/* ########################################################################## */
-
-
-void crColIdToC( CR_TYPE* cr ) {
+void crColIdToC( CR_TYPE* cr ) 
+{
 	/* decrease column index of CRS matrix by 1;
 	 * check index after conversion */
 
@@ -930,43 +535,16 @@ void crColIdToC( CR_TYPE* cr ) {
 	}
 }
 
-
-/* ########################################################################## */
-
-
-/* ########################################################################## */
-
-
-
-
-/* ########################################################################## */
-
-void freeMMMatrix( MM_TYPE* const mm ) {
+void freeMMMatrix( MM_TYPE* const mm ) 
+{
 	if( mm ) {
 		freeMemory( (size_t)(mm->nEnts*sizeof(NZE_TYPE)), "mm->nze", mm->nze );
 		freeMemory( (size_t)sizeof(MM_TYPE), "mm", mm );
 	}
 }
 
-/* ########################################################################## */
-
-
-
-
-/* ########################################################################## */
-
-
-void freeJDMatrix( JD_TYPE* const jd ) {
-	if( jd ) {
-		free( jd->rowPerm );
-		free( jd->diagOffset );
-		free( jd->col );
-		free( jd->val );
-		free( jd );
-	}
-}
-
-int pad(int nRows, int padding) {
+int pad(int nRows, int padding) 
+{
 
 	/* determine padding of rowlength in ELR format to achieve half-warp alignment */
 
@@ -979,8 +557,6 @@ int pad(int nRows, int padding) {
 	}
 	return nRowsPadded;
 }
-
-
 
 BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) 
 {
@@ -1071,7 +647,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-							//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
+				//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}
@@ -1114,7 +690,7 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 
 		mv->rowLen[i] = rowLen;
 		mv->nEnts += rowLen;
-		
+
 		chunkMin = rowLen<chunkMin?rowLen:chunkMin;
 
 		if ((i+1)%BJDS_LEN == 0) {
@@ -1165,7 +741,7 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 				//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 			}
 		}
-	//	printf("\n---\n");
+		//	printf("\n---\n");
 		int rem = mv->chunkStart[c] + mv->chunkMin[c]*BJDS_LEN;
 		for (i=0; i<BJDS_LEN; i++)
 		{
@@ -1179,31 +755,31 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr)
 		//printf("\n####\n");
 	}
 
-/*
+	/*
 
-	for (c=0; c<nChunks; c++) {
-		int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN;
+	   for (c=0; c<nChunks; c++) {
+	   int chunkLen = (mv->chunkStart[c+1]-mv->chunkStart[c])/BJDS_LEN;
 
-		for (j=0; j<chunkLen; j++) {
+	   for (j=0; j<chunkLen; j++) {
 
-			for (i=0; i<BJDS_LEN; i++) {
-				if (j<mv->rowLen[c*BJDS_LEN+i]) {
+	   for (i=0; i<BJDS_LEN; i++) {
+	   if (j<mv->rowLen[c*BJDS_LEN+i]) {
 
-					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
-					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
-				} else {
-					mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
-					mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
-				}
-							//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
-
-
-			}
-		}
-	}*/
+	   mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[c*BJDS_LEN+i]+j];
+	   mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[c*BJDS_LEN+i]+j];
+	   } else {
+	   mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
+	   mv->col[mv->chunkStart[c]+j*BJDS_LEN+i] = 0;
+	   }
+//printf("%f ",mv->val[mv->chunkStart[c]+j*BJDS_LEN+i]);
 
 
-	return mv;
+}
+}
+}*/
+
+
+return mv;
 }
 
 BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm) 
@@ -1240,7 +816,7 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm)
 			printf("Error in row %i: descending row number\n",i);
 	}
 
-	
+
 
 	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
 
@@ -1251,7 +827,7 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm)
 
 	*rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
 	*invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
-	
+
 	for(i=0; i < cr->nRows; ++i) {
 		/* invRowPerm maps an index in the permuted system to the original index,
 		 * rowPerm gets the original index and returns the corresponding permuted position.
@@ -1332,7 +908,7 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm)
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-			//	printf("%f ",sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i]);
+				//	printf("%f ",sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}
