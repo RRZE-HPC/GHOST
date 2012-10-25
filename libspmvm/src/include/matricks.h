@@ -45,8 +45,7 @@ void crColIdToC( CR_TYPE* cr );
 
 void freeMMMatrix( MM_TYPE* const mm );
 
-void readCRbinFile(CR_TYPE*, const char* );
-void readCRrowsBinFile(CR_TYPE* cr, const char* path);
+CR_TYPE * readCRbinFile(const char*, int);
 
 int compareNZEPerRow( const void*, const void*);
 BJDS_TYPE * CRStoBJDS(CR_TYPE *cr);

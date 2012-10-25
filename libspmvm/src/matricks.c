@@ -1,21 +1,5 @@
-#define _XOPEN_SOURCE 600
 #include "matricks.h"
 #include "spmvm_util.h"
-#ifdef OPENCL
-#include "cl_matricks.h"
-#endif
-#include <math.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
-#include <errno.h>
-
-#ifdef __sun
-#include <sys/processor.h>
-#include <sys/procset.h>
-#include <sun_prefetch.h>
-#endif
 
 #include <string.h>
 #include <libgen.h>
@@ -23,14 +7,6 @@
 #include <mmio.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <timing.h>
-
-
-
-#define min(A,B) ((A)<(B) ? (A) : (B))
-
-/* ########################################################################## */
-
 
 static int allocatedMem;
 
@@ -208,63 +184,17 @@ MM_TYPE * readMMFile(const char* filename )
 	return mm;
 }
 
-void readCRrowsBinFile(CR_TYPE* cr, const char* path)
+CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly)
 {
 
-	int i;
-	size_t size_offs;
-	/* Number of successfully read data items */
-	int datatype;
-	FILE* RESTFILE;
-
-
-	DEBUG_LOG(1,"Reading rows of binary CRS matrix %s",path);
-
-	if ((RESTFILE = fopen(path, "rb"))==NULL){
-		ABORT("Could not open binary CRS file %s",path);
-	}
-
-	fread(&datatype, sizeof(int), 1, RESTFILE);
-	fread(&cr->nRows, sizeof(int), 1, RESTFILE);
-	fread(&cr->nCols, sizeof(int), 1, RESTFILE);
-	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
-
-	DEBUG_LOG(2,"Allocate memory for arrays");
-
-	size_offs = (size_t)( (cr->nRows+1) * sizeof(int) );
-	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
-
-
-	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset (restart-version)");
-#pragma omp parallel for schedule(runtime)
-	for( i = 0; i < cr->nRows+1; i++ ) {
-		cr->rowOffset[i] = 0;
-	}
-
-	DEBUG_LOG(2,"Reading array with row-offsets");
-	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
-
-
-
-	fclose(RESTFILE);
-
-	return;
-}
-
-void readCRbinFile(CR_TYPE* cr, const char* path)
-{
-
+	CR_TYPE *cr;
 	int i, j;
 	size_t size_offs, size_col, size_val;
 	/* Number of successfully read data items */
 	int datatype;
 	FILE* RESTFILE;
-	double startTime, stopTime, ct; 
 
-
-
-	timing( &startTime, &ct );
-
+	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	DEBUG_LOG(1,"Reading binary CRS matrix %s",path);
 
 	if ((RESTFILE = fopen(path, "rb"))==NULL){
@@ -286,10 +216,8 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	size_col  = (size_t)( cr->nEnts * sizeof(int) );
 	size_val  = (size_t)( cr->nEnts * sizeof(mat_data_t) );
 
-	DEBUG_LOG(2,"Allocate memory for arrays");
+	DEBUG_LOG(2,"Allocate memory for cr->rowOffset");
 	cr->rowOffset = (int*)    allocateMemory( size_offs, "rowOffset" );
-	cr->col       = (int*)    allocateMemory( size_col,  "col" );
-	cr->val       = (mat_data_t*) allocateMemory( size_val,  "val" );
 
 	DEBUG_LOG(1,"NUMA-placement for cr->rowOffset");
 #pragma omp parallel for schedule(runtime)
@@ -300,65 +228,69 @@ void readCRbinFile(CR_TYPE* cr, const char* path)
 	DEBUG_LOG(2,"Reading array with row-offsets");
 	fread(&cr->rowOffset[0],        sizeof(int),    cr->nRows+1, RESTFILE);
 
-	DEBUG_LOG(1,"NUMA-placement for cr->val and cr->col");
+	if (!rowPtrOnly) {
+
+		DEBUG_LOG(2,"Allocate memory for cr->col and cr->val");
+		cr->col       = (int*)    allocateMemory( size_col,  "col" );
+		cr->val       = (mat_data_t*) allocateMemory( size_val,  "val" );
+
+		DEBUG_LOG(1,"NUMA-placement for cr->val and cr->col");
 #pragma omp parallel for schedule(runtime)
-	for(i = 0 ; i < cr->nRows; ++i) {
-		for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
-			cr->val[j] = 0.0;
-			cr->col[j] = 0;
+		for(i = 0 ; i < cr->nRows; ++i) {
+			for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
+				cr->val[j] = 0.0;
+				cr->col[j] = 0;
+			}
 		}
-	}
 
 
-	DEBUG_LOG(2,"Reading array with column indices");
-	fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
+		DEBUG_LOG(2,"Reading array with column indices");
+		fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
 
-	DEBUG_LOG(2,"Reading array with values");
-	switch (datatype) {
-		case DATATYPE_FLOAT:
-			{
-				float *tmp = (float *)allocateMemory(
-						cr->nEnts*sizeof(float), "tmp");
-				fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-				free(tmp);
-				break;
-			}
-		case DATATYPE_DOUBLE:
-			{
-				double *tmp = (double *)allocateMemory(
-						cr->nEnts*sizeof(double), "tmp");
-				fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-				free(tmp);
-				break;
-			}
-		case DATATYPE_COMPLEX_FLOAT:
-			{
-				_Complex float *tmp = (_Complex float *)allocateMemory(
-						cr->nEnts*sizeof(_Complex float), "tmp");
-				fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-				free(tmp);
-				break;
-			}
-		case DATATYPE_COMPLEX_DOUBLE:
-			{
-				_Complex double *tmp = (_Complex double *)allocateMemory(
-						cr->nEnts*sizeof(_Complex double), "tmp");
-				fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-				for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-				free(tmp);
-				break;
-			}
+		DEBUG_LOG(2,"Reading array with values");
+		switch (datatype) {
+			case DATATYPE_FLOAT:
+				{
+					float *tmp = (float *)allocateMemory(
+							cr->nEnts*sizeof(float), "tmp");
+					fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
+					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+			case DATATYPE_DOUBLE:
+				{
+					double *tmp = (double *)allocateMemory(
+							cr->nEnts*sizeof(double), "tmp");
+					fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
+					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+			case DATATYPE_COMPLEX_FLOAT:
+				{
+					_Complex float *tmp = (_Complex float *)allocateMemory(
+							cr->nEnts*sizeof(_Complex float), "tmp");
+					fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
+					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+			case DATATYPE_COMPLEX_DOUBLE:
+				{
+					_Complex double *tmp = (_Complex double *)allocateMemory(
+							cr->nEnts*sizeof(_Complex double), "tmp");
+					fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
+					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+					free(tmp);
+					break;
+				}
+		}
 	}
 
 	fclose(RESTFILE);
 
-
-
-	timing( &stopTime, &ct );
-	return;
+	return cr;
 }
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) 
@@ -545,9 +477,6 @@ void freeMMMatrix( MM_TYPE* const mm )
 
 int pad(int nRows, int padding) 
 {
-
-	/* determine padding of rowlength in ELR format to achieve half-warp alignment */
-
 	int nRowsPadded;
 
 	if(  nRows % padding != 0) {

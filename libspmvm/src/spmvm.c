@@ -312,7 +312,6 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	mat->splitRowPerm = NULL;
 	mat->splitInvRowPerm = NULL;
 
-	cr = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 
 	if (format & SPM_FORMATS_GLOB) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
@@ -323,9 +322,9 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	{ // root process reads row pointers (parallel IO) or entire matrix
 		if (!isMMfile(matrixPath)){
 			if (options & SPMVM_OPTION_SERIAL_IO)
-				readCRbinFile(cr, matrixPath);
+				cr = readCRbinFile(matrixPath,0);
 			else
-				readCRrowsBinFile(cr, matrixPath);
+				cr = readCRbinFile(matrixPath,1);
 		} else{
 			MM_TYPE *mm = readMMFile( matrixPath);
 			cr = convertMMToCRMatrix( mm );
