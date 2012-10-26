@@ -679,6 +679,11 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			break;
 		case SPM_FORMAT_GLOB_TBJDS:
 			switch (kernel) {
+#ifdef MIC
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr_16_rem;
+					break;
+#endif
 #ifdef SSE
 				case SPMVM_KERNEL_NOMPI:
 					kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr_rem;

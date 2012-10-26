@@ -181,22 +181,6 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 	lcrp = (LCRP_TYPE*) allocateMemory( sizeof(LCRP_TYPE), "lcrp");
 
-	/*lcrp->fullRowPerm = NULL;
-	lcrp->fullInvRowPerm = NULL;
-	lcrp->splitRowPerm = NULL;
-	lcrp->splitInvRowPerm = NULL;
-	lcrp->fullMatrix = NULL;
-	lcrp->localMatrix = NULL;
-	lcrp->remoteMatrix = NULL;
-
-	if (me==0) {
-		lcrp->nEnts = cr->nEnts;
-		lcrp->nRows = cr->nRows;
-	}
-
-	MPI_safecall(MPI_Bcast(&lcrp->nEnts,1,MPI_INT,0,MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(&lcrp->nRows,1,MPI_INT,0,MPI_COMM_WORLD));*/
-
 #pragma omp parallel
 	lcrp->threads = omp_get_num_threads(); 
 
@@ -403,15 +387,12 @@ LCRP_TYPE* setup_communication(CR_TYPE* cr, int options)
 
 
 	#pragma omp parallel for schedule(runtime)
-//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->val[i] = 0.0;
 
 	#pragma omp parallel for schedule(runtime)
-//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnEnts[me]; i++) lcrp->col[i] = 0.0;
 
 	#pragma omp parallel for schedule(runtime)
-//#pragma omp parallel for schedule(static)
 	for (i=0; i<lcrp->lnRows[me]; i++) lcrp->lrow_ptr[i] = 0.0;
 
 
