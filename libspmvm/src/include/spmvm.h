@@ -40,6 +40,7 @@
 #define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | SPM_FORMAT_GLOB_TBJDS | SPM_FORMAT_GLOB_TCBJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
+#define SPM_DETECT_CONST_DIAG
 
 #ifdef MIC
 //#define BJDS_LEN 8
@@ -282,6 +283,12 @@ typedef struct {
 } GPUMATRIX_TYPE;
 
 
+typedef struct
+{
+	int idx;
+	mat_data_t val;
+}
+CONST_DIAG;
 
 
 typedef struct {
@@ -289,6 +296,9 @@ typedef struct {
 	int* rowOffset;
 	int* col;
 	mat_data_t* val;
+#ifdef SPM_DETECT_CONST_DIAG
+	CONST_DIAG *constDiags;
+#endif	
 } CR_TYPE;
 
 typedef struct {

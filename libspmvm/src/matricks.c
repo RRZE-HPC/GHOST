@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 500
 #include "matricks.h"
 #include "spmvm_util.h"
 
@@ -7,7 +8,16 @@
 #include <mmio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
+
+#define DIAG_NEW (char)0
+#define DIAG_OK (char)1
+#define DIAG_INVALID (char)2
 static int allocatedMem;
 
 static int compareNZEPos( const void* a, const void* b ) 
@@ -184,13 +194,13 @@ MM_TYPE * readMMFile(const char* filename )
 	return mm;
 }
 
+
 CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly)
 {
 
 	CR_TYPE *cr;
 	int i, j;
 	size_t size_offs, size_col, size_val;
-	/* Number of successfully read data items */
 	int datatype;
 	FILE* RESTFILE;
 
@@ -245,46 +255,142 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly)
 
 
 		DEBUG_LOG(2,"Reading array with column indices");
-		fread(&cr->col[0],              sizeof(int),    cr->nEnts,   RESTFILE);
 
+
+
+
+#ifdef SPM_DETECT_CONST_DIAG
+		int *tmpcol = (int *)allocateMemory(cr->nEnts*sizeof(int),"tmpcol");
+		mat_data_t *tmpval = (mat_data_t *)allocateMemory(cr->nEnts*sizeof(mat_data_t),"tmpval");
+
+		int pfile;
+		pfile = open(path,O_RDONLY);
+		int idx = 0;
+		for (i=0; i<cr->nEnts; i++) {
+			pread(pfile,tmpcol[idx],sizeof(int),idx*sizeof(int));
+			pread(pfile,tmpval[idx],sizeof(mat_data_t),cr->nEnts*sizeof(int)+idx*sizeof(mat_data_t));
+			// TODO detect const diagonals
+			// if yes: save only necessary vals in CR
+			// if no: change pointer to tmpcol and tmpval		
+			
+			
+			idx++;
+		}
+		exit(1);
+
+		int bandwidth = 2;//cr->nCols/2;
+		int nDiags = 2*bandwidth + 1;
+
+		mat_data_t *diagVals = (mat_data_t *)allocateMemory(nDiags*sizeof(mat_data_t),"diagVals");
+		
+		char *diagStatus = (char *)allocateMemory(nDiags*sizeof(char),"diagStatus");
+		for (i=0; i<nDiags; i++) diagStatus[i] = DIAG_NEW;
+		
+		int *diagEnts = (int *)allocateMemory(nDiags*sizeof(int),"diagEnts");
+		for (i=0; i<nDiags; i++) diagEnts[i] = 0;
+
+		DEBUG_LOG(1,"Detecting constant subdiagonals within a band of width %d",bandwidth);
+
+	
+//		int idx = 0;	
+		for (i=0; i<cr->nRows; ++i) {
+			for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
+				fread(&cr->col[idx], sizeof(int), 1, RESTFILE);
+				idx++;
+			}
+		}
+
+#else
+
+		fread(&cr->col[0], sizeof(int), cr->nEnts, RESTFILE);
+#endif
+
+
+		int d;
 		DEBUG_LOG(2,"Reading array with values");
-		switch (datatype) {
-			case DATATYPE_FLOAT:
-				{
-					float *tmp = (float *)allocateMemory(
-							cr->nEnts*sizeof(float), "tmp");
-					fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-					free(tmp);
-					break;
+		if (datatype == DATATYPE_DESIRED)
+		{
+#ifdef SPM_DETECT_CONST_DIAG
+			int idx = 0;
+			for (i=0; i<cr->nRows; ++i) {
+				for(j = cr->rowOffset[i] ; j < cr->rowOffset[i+1] ; j++) {
+					fread(&cr->val[idx], sizeof(mat_data_t), 1, RESTFILE);
+					if (ABS(cr->col[idx]-i)<=bandwidth) { // in band
+
+						int didx = cr->col[idx]-i+bandwidth;
+						if (diagStatus[didx] == DIAG_NEW) { // first time
+							// TODO check for row
+							diagVals[didx] =  cr->val[idx];
+							diagStatus[didx] = (char)1;
+							diagEnts[didx] = 1;
+							DEBUG_LOG(2,"Diag %d initialized with %f\n",didx,diagVals[didx]);
+						} else if (diagStatus[didx] == DIAG_OK) { // diag initialized
+							if (diagVals[didx] == cr->val[idx]) {
+								diagEnts[didx]++;
+							} else {
+								DEBUG_LOG(2,"Diag %d discontinued in row %d: %f (was %f)\n",didx,i,cr->val[idx],diagVals[didx]);
+								diagStatus[didx] = DIAG_INVALID;
+							}
+						}
+					}
+					idx++;
 				}
-			case DATATYPE_DOUBLE:
-				{
-					double *tmp = (double *)allocateMemory(
-							cr->nEnts*sizeof(double), "tmp");
-					fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-					free(tmp);
-					break;
+			}
+			for (i=0; i<bandwidth+1; i++) { // lower subdiagonals AND diagonal
+				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->nCols-bandwidth+i) {
+					DEBUG_LOG(1,"The %d-th subdiagonal is constant with %f\n",bandwidth-i,diagVals[i]);
 				}
-			case DATATYPE_COMPLEX_FLOAT:
-				{
-					_Complex float *tmp = (_Complex float *)allocateMemory(
-							cr->nEnts*sizeof(_Complex float), "tmp");
-					fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-					free(tmp);
-					break;
+			}
+			for (i=bandwidth+1; i<nDiags ; i++) { // upper subdiagonals
+				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->nCols-bandwidth-i) {
+					DEBUG_LOG(1,"The %d-th subdiagonal is constant with %f\n",bandwidth-i,diagVals[i]);
 				}
-			case DATATYPE_COMPLEX_DOUBLE:
-				{
-					_Complex double *tmp = (_Complex double *)allocateMemory(
-							cr->nEnts*sizeof(_Complex double), "tmp");
-					fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-					for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
-					free(tmp);
-					break;
-				}
+			}
+			
+#else
+			fread(&cr->val[0], sizeof(mat_data_t), cr->nEnts, RESTFILE);
+#endif
+		} 
+		else 
+		{
+			switch (datatype) {
+				case DATATYPE_FLOAT:
+					{
+						float *tmp = (float *)allocateMemory(
+								cr->nEnts*sizeof(float), "tmp");
+						fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
+						for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+						free(tmp);
+						break;
+					}
+				case DATATYPE_DOUBLE:
+					{
+						double *tmp = (double *)allocateMemory(
+								cr->nEnts*sizeof(double), "tmp");
+						fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
+						for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+						free(tmp);
+						break;
+					}
+				case DATATYPE_COMPLEX_FLOAT:
+					{
+						_Complex float *tmp = (_Complex float *)allocateMemory(
+								cr->nEnts*sizeof(_Complex float), "tmp");
+						fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
+						for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+						free(tmp);
+						break;
+					}
+				case DATATYPE_COMPLEX_DOUBLE:
+					{
+						_Complex double *tmp = (_Complex double *)allocateMemory(
+								cr->nEnts*sizeof(_Complex double), "tmp");
+						fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
+						for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+						free(tmp);
+						break;
+					}
+			}
 		}
 	}
 
