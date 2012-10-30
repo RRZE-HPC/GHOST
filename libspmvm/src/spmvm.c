@@ -317,14 +317,19 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= SPMVM_OPTION_SERIAL_IO;
 	}
+	int constDiag;
+	if (format & SPM_FORMAT_GLOB_CRS_CD)
+		constDiag = 1;
+	else
+		constDiag = 0;
 
 	if (SpMVM_getRank() == 0) 
 	{ // root process reads row pointers (parallel IO) or entire matrix
 		if (!isMMfile(matrixPath)){
 			if (options & SPMVM_OPTION_SERIAL_IO)
-				cr = readCRbinFile(matrixPath,0);
+				cr = readCRbinFile(matrixPath,0,constDiag);
 			else
-				cr = readCRbinFile(matrixPath,1);
+				cr = readCRbinFile(matrixPath,1,constDiag);
 		} else{
 			MM_TYPE *mm = readMMFile( matrixPath);
 			cr = convertMMToCRMatrix( mm );
@@ -365,7 +370,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 #endif
 	} else 
 	{ // global matrix
-		if (format & SPM_FORMAT_GLOB_CRS) {
+		if (format & (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_CRS_CD)) {
 			mat->matrix = cr;
 		} else if (format & SPM_FORMAT_GLOB_BJDS) {
 			mat->matrix = CRStoBJDS(cr);

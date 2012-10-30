@@ -652,6 +652,16 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 					return NULL;
 			}
 			break;
+		case SPM_FORMAT_GLOB_CRS_CD:
+			switch (kernel) {
+				case SPMVM_KERNEL_NOMPI:
+					kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_CD_0;
+					break;
+				default:
+					DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
+					return NULL;
+			}
+			break;
 		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
 			switch (kernel) {
@@ -766,6 +776,9 @@ char * SpMVM_matrixFormatName(int format)
 		case SPM_FORMAT_GLOB_CRS:
 			sprintf(name,"CRS");
 			break;
+		case SPM_FORMAT_GLOB_CRS_CD:
+			sprintf(name,"CRS-CD");
+			break;
 		case SPM_FORMAT_GLOB_BJDS:
 			sprintf(name,"BJDS-%d",BJDS_LEN);
 			break;
@@ -800,6 +813,14 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 				size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
 				break;
 			}
+		case SPM_FORMAT_GLOB_CRS_CD:
+			{
+				CR_TYPE *crs = (CR_TYPE *)matrix->matrix;
+				size = crs->nEnts*(sizeof(int)*sizeof(mat_data_t))+(crs->nRows+1)*sizeof(int);
+				// TODO diagonals	
+				break;
+			}
+
 		default:
 			return 0;
 	}

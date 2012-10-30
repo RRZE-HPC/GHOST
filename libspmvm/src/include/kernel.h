@@ -5,6 +5,7 @@
 
 void hybrid_kernel_0   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
 void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions);
+void kern_glob_CRS_CD_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions);
 
 #ifdef MIC
 void mic_kernel_0      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);

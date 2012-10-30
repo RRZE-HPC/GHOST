@@ -36,8 +36,9 @@
 #define SPM_FORMAT_GLOB_SBJDS  (0x1<<5)
 #define SPM_FORMAT_GLOB_TBJDS  (0x1<<6)
 #define SPM_FORMAT_GLOB_TCBJDS (0x1<<7)
+#define SPM_FORMAT_GLOB_CRS_CD (0x1<<8)
 
-#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | SPM_FORMAT_GLOB_TBJDS | SPM_FORMAT_GLOB_TCBJDS)
+#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | SPM_FORMAT_GLOB_TBJDS | SPM_FORMAT_GLOB_TCBJDS | SPM_FORMAT_GLOB_CRS_CD)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
 #define SPM_DETECT_CONST_DIAG
@@ -208,12 +209,15 @@ typedef float mat_data_t;
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
 
+// TODO adjust
+
 #ifdef DOUBLE
 #define EPSILON 1e-8
 #endif
 #ifdef SINGLE
 #define EPSILON 1e-0
 #endif
+#define EQUALS(a,b) (ABS(REAL(a)-REAL(b)<EPSILON))
 /******************************************************************************/
 
 
@@ -285,8 +289,11 @@ typedef struct {
 
 typedef struct
 {
+	int len;
 	int idx;
 	mat_data_t val;
+	int minRow;
+	int maxRow;
 }
 CONST_DIAG;
 
@@ -297,6 +304,7 @@ typedef struct {
 	int* col;
 	mat_data_t* val;
 #ifdef SPM_DETECT_CONST_DIAG
+	int nConstDiags;
 	CONST_DIAG *constDiags;
 #endif	
 } CR_TYPE;
