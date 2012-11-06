@@ -31,7 +31,7 @@ static double wctime()
 	struct timeval tp;
 
 	gettimeofday(&tp, NULL);
-	
+
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
@@ -180,7 +180,7 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 	size_t size_val;
 
 
-	if (matrix->format & SPM_FORMATS_GLOB)
+	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_GLOBAL)
 	{
 		size_val = (size_t)matrix->nRows*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
@@ -254,10 +254,8 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 		}
 	}
 
-#ifdef SBJDS_PERMCOLS
-	if (matrix->fullRowPerm)
+	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_PERMUTECOLUMNS)
 		SpMVM_permuteVector(val,matrix->fullRowPerm,nRows);
-#endif
 
 	if (type & VECTOR_TYPE_HOSTONLY) {
 		HOSTVECTOR_TYPE* vec;
@@ -301,24 +299,27 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 
 }
 
-MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormats) 
+MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats) 
 {
+	mat_format_t format = SpMVM_matrixTraitExtractFormat(trait);
+	mat_flags_t flags = SpMVM_matrixTraitExtractFlags(trait);
 	MATRIX_TYPE *mat;
 	CR_TYPE *cr;
 
 	mat = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+
+	mat->trait = trait;
 	mat->fullRowPerm = NULL;
 	mat->fullInvRowPerm = NULL;
 	mat->splitRowPerm = NULL;
 	mat->splitInvRowPerm = NULL;
 
-
-	if (format & SPM_FORMATS_GLOB) {
+	if (flags & SPM_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= SPMVM_OPTION_SERIAL_IO;
 	}
 	int constDiag;
-	if (format & SPM_FORMAT_GLOB_CRS_CD)
+	if (format & SPM_FORMAT_CRSCD)
 		constDiag = 1;
 	else
 		constDiag = 0;
@@ -350,7 +351,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 #endif
 
 
-	if (format & SPM_FORMATS_DIST)
+	if (flags & SPM_DISTRIBUTED)
 	{ // distributed matrix
 #ifndef MPI
 		UNUSED(deviceFormats);
@@ -370,17 +371,19 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 #endif
 	} else 
 	{ // global matrix
-		if (format & (SPM_FORMAT_GLOB_CRS | SPM_FORMAT_GLOB_CRS_CD)) {
+		if (format & (SPM_FORMAT_CRS | SPM_FORMAT_CRSCD)) {
 			mat->matrix = cr;
-		} else if (format & SPM_FORMAT_GLOB_BJDS) {
+		} else if (format & SPM_FORMAT_BJDS) {
 			mat->matrix = CRStoBJDS(cr);
-		} else if (format &  SPM_FORMAT_GLOB_SBJDS) {
-			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
-		} else if (format &  SPM_FORMAT_GLOB_TBJDS) {
+		} else if (format &  SPM_FORMAT_SBJDS) {
+			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm),flags);
+		} else if (format &  SPM_FORMAT_TBJDS) {
 			mat->matrix = CRStoTBJDS(cr,1);
-		} else if (format &  SPM_FORMAT_GLOB_STBJDS) {
-			mat->matrix = CRStoSTBJDS(cr,1,1024,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
-		} else if (format &  SPM_FORMAT_GLOB_TCBJDS) {
+		} else if (format &  SPM_FORMAT_STBJDS) {
+			mat->matrix = CRStoSTBJDS(cr,1,
+					(mat_aux_t)(SpMVM_matrixTraitExtractAux(mat->trait)),
+					&(mat->fullRowPerm),&(mat->fullInvRowPerm),flags);
+		} else if (format &  SPM_FORMAT_TCBJDS) {
 			mat->matrix = CRStoTBJDS(cr,0);
 		} else {
 			ABORT("Invalid format for global matrix!");
@@ -389,7 +392,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 	}
 
 #ifdef OPENCL
-	if (!(format & SPM_FORMAT_HOSTONLY))
+	if (!(flags & SPM_HOSTONLY))
 	{
 		DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
 	} else if (deviceFormats == NULL) 
@@ -404,7 +407,6 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 #endif
 
 
-	mat->format = format;
 	mat->nNonz = cr->nEnts;
 	mat->nRows = cr->nRows;
 	mat->nCols = cr->nCols;

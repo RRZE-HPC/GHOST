@@ -738,7 +738,7 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 	return mv;
 }
 
-BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, int **invRowPerm) 
+BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **rowPerm, int **invRowPerm, mat_flags_t flags) 
 {
 	int i,j,c;
 	BJDS_TYPE *tbjds;
@@ -764,16 +764,16 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, 
 	int chunkLen = 0;
 	int curChunk = 1;
 	int rowLen;
-	double nu = 0.;
+	tbjds->nu = 0.;
 
 	JD_SORT_TYPE* rowSort;
 	/* get max number of entries in one row ###########################*/
 	rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nRows * sizeof( JD_SORT_TYPE ),
 			"rowSort" );
 
-	for (c=0; c<cr->nRows/sortBlock; c++) 
+	for (c=0; c<cr->nRows/(int)sortBlock; c++) // TODO signed vs unsigned 
 	{
-		for( i = c*sortBlock; i < (c+1)*sortBlock; i++ ) 
+		for( i = c*(int)sortBlock; i < (c+1)*(int)sortBlock; i++ ) 
 		{
 			rowSort[i].row = i;
 			rowSort[i].nEntsInRow = cr->rowOffset[i+1] - cr->rowOffset[i];
@@ -838,15 +838,14 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, 
 			tbjds->chunkMin[curChunk-1] = chunkMin;
 			tbjds->chunkLen[curChunk-1] = chunkLen;
 
-			nu += (double)chunkMin/chunkLen;
+			tbjds->nu += (double)chunkMin/chunkLen;
 
 			chunkMin = cr->nCols;
 			chunkLen = 0;
 			curChunk++;
 		}
 	}
-	nu /= (double)nChunks;
-	DEBUG_LOG(0,"nu: %f",nu);
+	tbjds->nu /= (double)nChunks;
 
 	tbjds->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*tbjds->nEnts,"tbjds->val");
 	tbjds->col = (int *)allocateMemory(sizeof(int)*tbjds->nEnts,"tbjds->col");
@@ -884,11 +883,10 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, 
 			for (i=0; i<BJDS_LEN; i++)
 			{
 				tbjds->val[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#ifdef SBJDS_PERMCOLS
+if (flags & SPM_PERMUTECOLUMNS)
 				tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-#else
+else
 				tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#endif
 			}
 		}
 
@@ -901,11 +899,10 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, 
 				for (j=tbjds->chunkMin[c]; j<tbjds->rowLen[c*BJDS_LEN+i]; j++)
 				{
 					tbjds->val[rem] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#ifdef SBJDS_PERMCOLS
+if (flags & SPM_PERMUTECOLUMNS)
 					tbjds->col[rem++] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-#else
+else
 					tbjds->col[rem++] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#endif
 				}
 			}
 		} else 
@@ -916,12 +913,10 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, 
 				{
 					if (j<tbjds->rowLen[c*BJDS_LEN+i] ) {
 						tbjds->val[rem] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#ifdef SBJDS_PERMCOLS
+if (flags & SPM_PERMUTECOLUMNS)
 						tbjds->col[rem++] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-
-#else
+else
 						tbjds->col[rem++] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-#endif
 					}
 				}
 			}
@@ -957,7 +952,7 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise)
 	int chunkLen = 0;
 	int curChunk = 1;
 	int rowLen;
-	double nu = 0.;
+	mv->nu = 0.;
 
 	for (i=0; i<mv->nRowsPadded; i++) {
 		if (i<cr->nRows)
@@ -976,15 +971,14 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise)
 			mv->chunkMin[curChunk-1] = chunkMin;
 			mv->chunkLen[curChunk-1] = chunkLen;
 
-			nu += (double)chunkMin/chunkLen;
+			mv->nu += (double)chunkMin/chunkLen;
 
 			chunkMin = cr->nCols;
 			chunkLen = 0;
 			curChunk++;
 		}
 	}
-	nu /= (double)nChunks;
-	DEBUG_LOG(0,"nu: %f",nu);
+	mv->nu /= (double)nChunks;
 
 	mv->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*mv->nEnts,"mv->val");
 	mv->col = (int *)allocateMemory(sizeof(int)*mv->nEnts,"mv->col");
@@ -1057,7 +1051,7 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise)
 	return mv;
 }
 
-BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm) 
+BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t flags) 
 {
 	int i,j,c;
 	BJDS_TYPE *sbjds;
@@ -1174,11 +1168,10 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm)
 				if (j<rowLen) {
 
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[row]]+j];
-#ifdef SBJDS_PERMCOLS
+if (flags & SPM_PERMUTECOLUMNS)
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[row]]+j]];
-#else
+else
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[row]]+j];
-#endif
 				} else {
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;

@@ -49,9 +49,9 @@ CR_TYPE * readCRbinFile(const char*, int, int);
 
 int compareNZEPerRow( const void*, const void*);
 BJDS_TYPE * CRStoBJDS(CR_TYPE *cr);
-BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm); 
+BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t flags); 
 BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int); 
-BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, int sortBlock, int **rowPerm, int **invRowPerm); 
+BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **rowPerm, int **invRowPerm, mat_flags_t flags); 
 int pad(int nRows, int padding);
 
 #endif /* _MATRICKS_H_ */

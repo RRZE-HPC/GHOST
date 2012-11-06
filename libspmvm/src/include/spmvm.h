@@ -29,23 +29,34 @@
 #define SPMVM_KERNEL_IDX_REMOTE 2
 /******************************************************************************/
 
-#define SPM_FORMAT_GLOB_CRS    (0x1<<1)
-#define SPM_FORMAT_GLOB_BJDS   (0x1<<2)
-#define SPM_FORMAT_DIST_CRS    (0x1<<3)
-#define SPM_FORMAT_HOSTONLY    (0x1<<4)
-#define SPM_FORMAT_GLOB_SBJDS  (0x1<<5)
-#define SPM_FORMAT_GLOB_TBJDS  (0x1<<6)
-#define SPM_FORMAT_GLOB_STBJDS (0x1<<7)
-#define SPM_FORMAT_GLOB_TCBJDS (0x1<<8)
-#define SPM_FORMAT_GLOB_CRS_CD (0x1<<9)
+// 63..32 additional properties (like blocking factor for STBJDS)
+// 31..16 flags (like SPM_HOSTONLY)
+// 15..0  actual format
+typedef unsigned long long mat_trait_t;
+typedef unsigned short mat_format_t;
+typedef unsigned short mat_flags_t;
+typedef unsigned int mat_aux_t;
+// formats
+#define SPM_FORMAT_CRS    (0x1<<0)
+#define SPM_FORMAT_BJDS   (0x1<<1)
+#define SPM_FORMAT_SBJDS  (0x1<<2)
+#define SPM_FORMAT_TBJDS  (0x1<<3)
+#define SPM_FORMAT_STBJDS (0x1<<4)
+#define SPM_FORMAT_TCBJDS (0x1<<5)
+#define SPM_FORMAT_CRSCD  (0x1<<6)
+
+// flags
+#define SPM_HOSTONLY       (0x1<<0)
+#define SPM_GLOBAL         (0x1<<1)
+#define SPM_DISTRIBUTED    (0x1<<2)
+#define SPM_PERMUTECOLUMNS (0x1<<3)
 
 #define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | \
-		SPM_FORMAT_GLOB_BJDS | SPM_FORMAT_GLOB_SBJDS | \
-		SPM_FORMAT_GLOB_TBJDS | SPM_FORMAT_GLOB_TCBJDS | \
-		SPM_FORMAT_GLOB_CRS_CD | SPM_FORMAT_GLOB_STBJDS)
+		SPM_FORMAT_BJDS | SPM_FORMAT_SBJDS | \
+		SPM_FORMAT_TBJDS | SPM_FORMAT_TCBJDS | \
+		SPM_FORMAT_CRSCD | SPM_FORMAT_STBJDS)
 #define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
 #define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
-#define SPM_DETECT_CONST_DIAG
 
 #ifdef MIC
 //#define BJDS_LEN 8
@@ -57,9 +68,6 @@
 #else
 #define BJDS_LEN 1
 #endif
-
-#define SBJDS_PERMCOLS
-
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
@@ -97,7 +105,6 @@ extern const char *SPM_FORMAT_NAMES[];
 #define SPMVM_OPTION_PIN_SMT    (0x1<<7) // pin threads to _all_ cores
 #define SPMVM_OPTION_WORKDIST_NZE   (0x1<<8) // distribute by # of nonzeros
 #define SPMVM_OPTION_WORKDIST_LNZE  (0x1<<9) // distribute by # of loc nonzeros
-//#define SPMVM_OPTION_PERMCOLS   (0x1<<3) // NOT SUPPORTED 
 /******************************************************************************/
 
 
@@ -307,10 +314,8 @@ typedef struct {
 	int* rowOffset;
 	int* col;
 	mat_data_t* val;
-#ifdef SPM_DETECT_CONST_DIAG
 	int nConstDiags;
 	CONST_DIAG *constDiags;
-#endif	
 } CR_TYPE;
 
 typedef struct {
@@ -324,10 +329,11 @@ typedef struct {
 	int nRowsPadded;
 	int nNz;
 	int nEnts;
+	double nu;
 } BJDS_TYPE;
 
 typedef struct {
-	unsigned int format;
+	mat_trait_t trait;
 	unsigned int nNonz;
 	unsigned int nRows;
 	unsigned int nCols;
@@ -469,7 +475,7 @@ double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *lcrp, VECTOR_TYPE *invec,
 
 
 MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
-MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormats); 
+MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats); 
 /******************************************************************************/
 
 #endif

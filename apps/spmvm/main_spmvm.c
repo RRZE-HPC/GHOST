@@ -44,8 +44,8 @@ int main( int argc, char* argv[] )
 
 	MATRIX_TYPE *matrix;
 
-	if (argc!=2) {
-		fprintf(stderr,"Usage: spmvm.x <matrixPath>\n");
+	if (argc!=3) {
+		fprintf(stderr,"Usage: spmvm.x <matrixPath> <matrixFormat>\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -62,8 +62,11 @@ int main( int argc, char* argv[] )
 	matrixFormats->T[2] = 1;
 #endif
 
+	mat_trait_t trait = SpMVM_stringToMatrixTrait(argv[2]);
+	SpMVM_matrixTraitAddFlag(&trait,SPM_PERMUTECOLUMNS);
+
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_STBJDS,matrixFormats);
+	matrix = SpMVM_createMatrix(matrixPath,trait,matrixFormats);
 	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
@@ -72,7 +75,8 @@ int main( int argc, char* argv[] )
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	goldMatrix = SpMVM_createMatrix (matrixPath,SPM_FORMAT_GLOB_CRS,NULL);
+	goldMatrix = SpMVM_createMatrix (matrixPath,
+			SpMVM_createMatrixTrait(SPM_FORMAT_CRS,SPM_GLOBAL|SPM_HOSTONLY,0),NULL);
 	goldLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
 	globRHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
 	globLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
