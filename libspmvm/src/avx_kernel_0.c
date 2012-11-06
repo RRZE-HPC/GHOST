@@ -63,6 +63,10 @@ void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 			rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
 			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
 		}
+			/*printf("rem 1 %d..%d\n",bjds->chunkMin[c],bjds->rowLen[c*BJDS_LEN]);
+			printf("rem 2 %d..%d\n",bjds->chunkMin[c],bjds->rowLen[c*BJDS_LEN+1]);
+			printf("rem 3 %d..%d\n",bjds->chunkMin[c],bjds->rowLen[c*BJDS_LEN+2]);
+		printf("rem 4 %d..%d\n",bjds->chunkMin[c],bjds->rowLen[c*BJDS_LEN+3]);*/
 		for (j=bjds->chunkMin[c]; j<bjds->rowLen[c*BJDS_LEN]; j++)
 		{
 			res->val[c*BJDS_LEN] += bjds->val[offs] * invec->val[bjds->col[offs++]];

@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_CRS_CD,matrixFormats);
+	matrix = SpMVM_createMatrix(matrixPath,SPM_FORMAT_GLOB_STBJDS,matrixFormats);
 	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
 
@@ -91,6 +91,7 @@ int main( int argc, char* argv[] )
 #ifdef CHECK
 		if (time >= 0.)
 			SpMVM_collectVectors(matrix,nodeLHS,globLHS,kernel);
+#endif
 
 		if (me==0) {
 			if (time < 0.) {
@@ -98,6 +99,7 @@ int main( int argc, char* argv[] )
 						SpMVM_kernelName(kernels[kernel]));
 				continue;
 			}
+#ifdef CHECK
 			errcount=0;
 			for (i=0; i<matrix->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
@@ -119,16 +121,14 @@ int main( int argc, char* argv[] )
 					FLOPS_PER_ENTRY*1.e-9*
 					(double)matrix->nNonz/time,
 					time*1.e3);
-		}
 #else
-		if (me==0) {
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					FLOPS_PER_ENTRY*1.e-9*
 					(double)matrix->nNonz/time,
 					time*1.e3);
-		}
 #endif
+		}
 
 		SpMVM_zeroVector(nodeLHS);
 

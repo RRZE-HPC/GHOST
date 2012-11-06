@@ -571,6 +571,8 @@ void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len)
 	if (perm == NULL) {
 		DEBUG_LOG(1,"Permutation vector is NULL, returning.");
 		return;
+	} else {
+		DEBUG_LOG(1,"Permuting vector");
 	}
 
 
@@ -687,6 +689,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 					return NULL;
 			}
 			break;
+		case SPM_FORMAT_GLOB_STBJDS:
 		case SPM_FORMAT_GLOB_TBJDS:
 			switch (kernel) {
 #ifdef MIC
@@ -792,6 +795,13 @@ char * SpMVM_matrixFormatName(int format)
 			sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
 #endif
 			break;
+		case SPM_FORMAT_GLOB_STBJDS:
+#ifdef SBJDS_PERMCOLS
+			sprintf(name,"STBJDS-%d",BJDS_LEN);
+#else
+			sprintf(name,"STBJDS-PC-%d",BJDS_LEN);
+#endif
+			break;
 		default:
 			name = "invalid";
 			break;
@@ -804,6 +814,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 	unsigned int size = 0;
 
 	switch (matrix->format) {
+		case SPM_FORMAT_GLOB_STBJDS:
 		case SPM_FORMAT_GLOB_TBJDS:
 		case SPM_FORMAT_GLOB_SBJDS:
 		case SPM_FORMAT_GLOB_BJDS:
@@ -811,6 +822,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->matrix;
 				size = mv->nEnts*(sizeof(mat_data_t) +sizeof(int));
 				size += mv->nRowsPadded/BJDS_LEN*sizeof(int);
+				// TODO chunkMin, rowLen
 				break;
 			}
 		case SPM_FORMAT_GLOB_CRS_CD:

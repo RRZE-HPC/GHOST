@@ -255,7 +255,7 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 	}
 
 #ifdef SBJDS_PERMCOLS
-	if (matrix->format == SPM_FORMAT_GLOB_SBJDS)
+	if (matrix->fullRowPerm)
 		SpMVM_permuteVector(val,matrix->fullRowPerm,nRows);
 #endif
 
@@ -378,6 +378,8 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, int format, void *deviceFormat
 			mat->matrix = CRStoSBJDS(cr,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
 		} else if (format &  SPM_FORMAT_GLOB_TBJDS) {
 			mat->matrix = CRStoTBJDS(cr,1);
+		} else if (format &  SPM_FORMAT_GLOB_STBJDS) {
+			mat->matrix = CRStoSTBJDS(cr,1,1024,&(mat->fullRowPerm),&(mat->fullInvRowPerm));
 		} else if (format &  SPM_FORMAT_GLOB_TCBJDS) {
 			mat->matrix = CRStoTBJDS(cr,0);
 		} else {
