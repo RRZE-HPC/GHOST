@@ -6,6 +6,7 @@ pbshosts*
 *.so
 obj/
 jobscripts/
+bench/
 tags
 *stdout*
 *stderr*
