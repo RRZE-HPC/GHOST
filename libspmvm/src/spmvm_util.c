@@ -131,7 +131,7 @@ void SpMVM_printEnvInfo()
 		int ncores = SpMVM_getNumberOfHwThreads();
 
 		omp_sched_t omp_sched;
-	    int omp_sched_mod;
+		int omp_sched_mod;
 		char omp_sched_str[32];
 		omp_get_schedule(&omp_sched,&omp_sched_mod);
 		switch (omp_sched) {
@@ -409,25 +409,28 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
-#ifdef MPI
-	if (matrix->format != SPM_FORMAT_DIST_CRS)
-		DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
+	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_DISTRIBUTED)
+	{
+		if (SpMVM_matrixTraitExtractFormat(matrix->trait) != SPM_FORMAT_CRS)
+			DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
-	LCRP_TYPE *lcrp = (LCRP_TYPE *)(matrix->matrix);
-	int me = SpMVM_getRank();
-	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
-	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-		SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
+		LCRP_TYPE *lcrp = (LCRP_TYPE *)(matrix->matrix);
+		int me = SpMVM_getRank();
+		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+			SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
+		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+			SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
+		}
+		MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
+					lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+	} else
+	{
+		int i;
+		UNUSED(kernel);
+		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
+		for (i=0; i<totalVec->nRows; i++) 
+			totalVec->val[i] = vec->val[i];
 	}
-	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
-				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
-#else
-	int i;
-	UNUSED(kernel);
-	SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
-	for (i=0; i<totalVec->nRows; i++) totalVec->val[i] = vec->val[i];
-#endif
 }
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
@@ -672,7 +675,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 #ifdef AVX
 				case SPMVM_KERNEL_NOMPI:
 					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
-				//kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
+					//kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
 					break;
 #endif
 #ifdef SSE
@@ -782,17 +785,17 @@ char * SpMVM_matrixFormatName(mat_trait_t trait)
 			sprintf(name,"TBJDS-%d",BJDS_LEN);
 			break;
 		case SPM_FORMAT_SBJDS:
-	if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
-			sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
-else
-			sprintf(name,"SBJDS-%d",BJDS_LEN);
+			if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
+				sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
+			else
+				sprintf(name,"SBJDS-%d",BJDS_LEN);
 			break;
 		case SPM_FORMAT_STBJDS:
-			
-	if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
-			sprintf(name,"S%u-TBJDS-PC-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
-else
-			sprintf(name,"S%u-TBJDS-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
+
+			if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
+				sprintf(name,"S%u-TBJDS-PC-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
+			else
+				sprintf(name,"S%u-TBJDS-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
 			break;
 		default:
 			name = "invalid";
@@ -863,11 +866,13 @@ mat_trait_t SpMVM_stringToMatrixTrait(char *str)
 
 #ifndef MPI
 	flags |= SPM_GLOBAL;
+#else
+	flags |= SPM_DISTRIBUTED;
 #endif
 
 	mat_trait_t trait = SpMVM_createMatrixTrait(format,flags,aux);
 	return trait;
-	
+
 }
 
 mat_trait_t SpMVM_createMatrixTrait(mat_format_t format, mat_flags_t flags, mat_aux_t aux)

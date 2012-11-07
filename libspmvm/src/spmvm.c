@@ -357,7 +357,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *devic
 		UNUSED(deviceFormats);
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
-		if (format & SPM_FORMAT_DIST_CRS) {
+		if (format & SPM_FORMAT_CRS) {
 			LCRP_TYPE *lcrp;
 			if (options & SPMVM_OPTION_SERIAL_IO) 
 				lcrp = setup_communication(cr, options);
