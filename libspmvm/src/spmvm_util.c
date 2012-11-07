@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-//#define PRETTYPRINT
+#define PRETTYPRINT
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
@@ -84,7 +84,9 @@ void SpMVM_printFooter()
 	int i;
 #ifdef PRETTYPRINT
 	printf("└");
-	for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+	for (i=0; i<LABELWIDTH; i++) printf("─");
+	printf("┴");
+	for (i=0; i<VALUEWIDTH; i++) printf("─");
 	printf("┘");
 #else
 	for (i=0; i<PRINTWIDTH; i++) printf("-");
@@ -154,12 +156,23 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((matrix->nRows+1)*sizeof(int) + 
 				matrix->nNonz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
+
+		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
+		if (matrix->trait.flags & SPM_HOSTANDDEVICE)
+			matrixLocation = "Host and Device";
+		else if (matrix->trait.flags & SPM_DEVICEONLY)
+			matrixLocation = "Device only";
+		else
+			matrixLocation = "Host only";
+
+
 		
 		SpMVM_printHeader("Matrix information");
 		SpMVM_printLine("Matrix name",NULL,"%s",matrixName);
 		SpMVM_printLine("Dimension",NULL,"%u",matrix->nRows);
 		SpMVM_printLine("Nonzeros",NULL,"%u",matrix->nNonz);
-		SpMVM_printLine("Nnz/row",NULL,"%.3f",(double)matrix->nNonz/matrix->nRows);
+		SpMVM_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)matrix->nNonz/matrix->nRows);
+		SpMVM_printLine("Matrix location",NULL,"%s",matrixLocation);
 		SpMVM_printLine("CRS size","MB","%lu",ws);
 		SpMVM_printLine("Host matrix format",NULL,"%s",SpMVM_matrixFormatName(matrix->trait));
 		SpMVM_printLine("Host matrix size","MB","%u",SpMVM_matrixSize(matrix)/(1024*1024));
@@ -170,7 +183,7 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 				SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(matrix->matrix))->nu);
 			case SPM_FORMAT_SBJDS:
 				SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(matrix->trait.aux));
-				SpMVM_printLine("Permuting columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLUMNS?"yes":"no");
+				SpMVM_printLine("Permuted columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLUMNS?"yes":"no");
 			case SPM_FORMAT_BJDS:
 			case SPM_FORMAT_TBJDS:
 				SpMVM_printLine("Block size",NULL,"%d",BJDS_LEN);
