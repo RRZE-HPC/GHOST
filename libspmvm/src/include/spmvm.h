@@ -32,10 +32,17 @@
 // 63..32 additional properties (like blocking factor for STBJDS)
 // 31..16 flags (like SPM_HOSTONLY)
 // 15..0  actual format
-typedef unsigned long long mat_trait_t;
+//typedef unsigned long long mat_trait_t;
 typedef unsigned short mat_format_t;
 typedef unsigned short mat_flags_t;
-typedef unsigned int mat_aux_t;
+typedef void * mat_aux_t;
+
+typedef struct
+{
+	mat_format_t format;
+	mat_flags_t flags;
+	mat_aux_t aux;
+} mat_trait_t;
 // formats
 #define SPM_FORMAT_CRS    (0x1<<0)
 #define SPM_FORMAT_BJDS   (0x1<<1)

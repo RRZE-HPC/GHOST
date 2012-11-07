@@ -180,7 +180,7 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 	size_t size_val;
 
 
-	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_GLOBAL)
+	if (matrix->trait.flags & SPM_GLOBAL)
 	{
 		size_val = (size_t)matrix->nRows*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
@@ -254,7 +254,7 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 		}
 	}
 
-	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_PERMUTECOLUMNS)
+	if (matrix->trait.flags & SPM_PERMUTECOLUMNS)
 		SpMVM_permuteVector(val,matrix->fullRowPerm,nRows);
 
 	if (type & VECTOR_TYPE_HOSTONLY) {
@@ -301,8 +301,8 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int))
 
 MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats) 
 {
-	mat_format_t format = SpMVM_matrixTraitExtractFormat(trait);
-	mat_flags_t flags = SpMVM_matrixTraitExtractFlags(trait);
+	mat_format_t format = trait.format;
+	mat_flags_t flags = trait.flags;
 	MATRIX_TYPE *mat;
 	CR_TYPE *cr;
 
@@ -381,7 +381,7 @@ MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *devic
 			mat->matrix = CRStoTBJDS(cr,1);
 		} else if (format &  SPM_FORMAT_STBJDS) {
 			mat->matrix = CRStoSTBJDS(cr,1,
-					(mat_aux_t)(SpMVM_matrixTraitExtractAux(mat->trait)),
+					*(unsigned int *)(mat->trait.aux),
 					&(mat->fullRowPerm),&(mat->fullInvRowPerm),flags);
 		} else if (format &  SPM_FORMAT_TCBJDS) {
 			mat->matrix = CRStoTBJDS(cr,0);

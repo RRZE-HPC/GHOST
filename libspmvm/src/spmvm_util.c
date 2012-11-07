@@ -73,12 +73,12 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		printf("Average elements per row         : %12.3f\n", (double)matrix->nNonz/
 				(double)matrix->nRows);
 		printf("CRS matrix                   [MB]: %12lu\n", ws);
-		if (!(SpMVM_matrixTraitExtractFormat(matrix->trait) & SPM_FORMAT_CRS)) {
+		if (!(matrix->trait.format & SPM_FORMAT_CRS)) {
 			printf("Host matrix %*s%s%s [MB]: %12u\n", 
 					15-(int)strlen(SpMVM_matrixFormatName(matrix->trait)),"(",
 					SpMVM_matrixFormatName(matrix->trait),")",
 					SpMVM_matrixSize(matrix)/(1024*1024));
-			if (SpMVM_matrixTraitExtractFormat(matrix->trait) & SPM_FORMAT_STBJDS)
+			if (matrix->trait.format & SPM_FORMAT_STBJDS)
 				printf("S-TBJDS matrix nu                : %12f\n",((BJDS_TYPE *)(matrix->matrix))->nu);
 		}
 #ifdef OPENCL	
@@ -409,28 +409,26 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
 		HOSTVECTOR_TYPE *totalVec, int kernel) {
 
-	if (SpMVM_matrixTraitExtractFlags(matrix->trait) & SPM_DISTRIBUTED)
-	{
-		if (SpMVM_matrixTraitExtractFormat(matrix->trait) != SPM_FORMAT_CRS)
-			DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
+#ifdef MPI
+	if (matrix->trait.format != SPM_FORMAT_CRS)
+		DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
-		LCRP_TYPE *lcrp = (LCRP_TYPE *)(matrix->matrix);
-		int me = SpMVM_getRank();
-		if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-			SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
-		} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
-			SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
-		}
-		MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
-					lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
-	} else
-	{
-		int i;
-		UNUSED(kernel);
-		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
-		for (i=0; i<totalVec->nRows; i++) 
-			totalVec->val[i] = vec->val[i];
+	LCRP_TYPE *lcrp = (LCRP_TYPE *)(matrix->matrix);
+	int me = SpMVM_getRank();
+	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
+		SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,lcrp->lnRows[me]);
+	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
+		SpMVM_permuteVector(vec->val,matrix->splitInvRowPerm,lcrp->lnRows[me]);
 	}
+	MPI_safecall(MPI_Gatherv(vec->val,lcrp->lnRows[me],MPI_MYDATATYPE,totalVec->val,
+				lcrp->lnRows,lcrp->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+#else
+	int i;
+	UNUSED(kernel);
+	SpMVM_permuteVector(vec->val,matrix->fullInvRowPerm,matrix->nRows);
+	for (i=0; i<totalVec->nRows; i++) 
+		totalVec->val[i] = vec->val[i];
+#endif
 }
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
@@ -628,11 +626,11 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 	}
 
 	// TODO format muss nicht bitweise sein weil eh nur eins geht
-	switch (SpMVM_matrixTraitExtractFormat(mat->trait)) {
+	switch (mat->trait.format) {
 		case SPM_FORMAT_CRS:
 			switch (kernel) {
 				case SPMVM_KERNEL_NOMPI:
-					if (SpMVM_matrixTraitExtractFlags(mat->trait) & SPM_DISTRIBUTED)
+					if (mat->trait.flags & SPM_DISTRIBUTED)
 						kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
 					else
 						kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
@@ -725,7 +723,7 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *ma
 			break;
 
 		default:
-			DEBUG_LOG(1,"Non-valid matrix format specified (%hu)!",SpMVM_matrixTraitExtractFormat(mat->trait));
+			DEBUG_LOG(1,"Non-valid matrix format specified (%hu)!",mat->trait.format);
 			return NULL;
 	}
 
@@ -771,7 +769,7 @@ char * SpMVM_matrixFormatName(mat_trait_t trait)
 {
 	char * name = (char *) allocateMemory(16*sizeof(char),"name");
 
-	switch (SpMVM_matrixTraitExtractFormat(trait)) {
+	switch (trait.format) {
 		case SPM_FORMAT_CRS:
 			sprintf(name,"CRS");
 			break;
@@ -785,17 +783,17 @@ char * SpMVM_matrixFormatName(mat_trait_t trait)
 			sprintf(name,"TBJDS-%d",BJDS_LEN);
 			break;
 		case SPM_FORMAT_SBJDS:
-			if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
+			if (trait.flags & SPM_PERMUTECOLUMNS)
 				sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
 			else
 				sprintf(name,"SBJDS-%d",BJDS_LEN);
 			break;
 		case SPM_FORMAT_STBJDS:
 
-			if (SpMVM_matrixTraitExtractFlags(trait) & SPM_PERMUTECOLUMNS)
-				sprintf(name,"S%u-TBJDS-PC-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
+			if (trait.flags & SPM_PERMUTECOLUMNS)
+				sprintf(name,"S%u-TBJDS-PC-%d",*(unsigned int *)(trait.aux),BJDS_LEN);
 			else
-				sprintf(name,"S%u-TBJDS-%d",SpMVM_matrixTraitExtractAux(trait),BJDS_LEN);
+				sprintf(name,"S%u-TBJDS-%d",*(unsigned int *)(trait.aux),BJDS_LEN);
 			break;
 		default:
 			name = "invalid";
@@ -808,7 +806,7 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 {
 	unsigned int size = 0;
 
-	switch (SpMVM_matrixTraitExtractFormat(matrix->trait)) {
+	switch (matrix->trait.format) {
 		case SPM_FORMAT_STBJDS:
 		case SPM_FORMAT_TBJDS:
 			{
@@ -844,65 +842,39 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 
 mat_trait_t SpMVM_stringToMatrixTrait(char *str)
 {
-	mat_format_t format = 0;
-	mat_flags_t flags = 0;
-	mat_aux_t aux = 0;
+	mat_trait_t trait = {.format = 0, .flags = 0, .aux = NULL};
 
 	if (!strncasecmp(str,"CRS",3)) {
-		format = SPM_FORMAT_CRS;
+		trait.format = SPM_FORMAT_CRS;
 	} else if (!strncasecmp(str,"BJDS",4)) {
-		format = SPM_FORMAT_BJDS;
+		trait.format = SPM_FORMAT_BJDS;
 	} else if (!strncasecmp(str,"TBJDS",5)) {
-		format = SPM_FORMAT_TBJDS;
+		trait.format = SPM_FORMAT_TBJDS;
 	} else if (!strncasecmp(str,"SBJDS",5)) {
-		format = SPM_FORMAT_SBJDS;
+		trait.format = SPM_FORMAT_SBJDS;
 	} else if (!strncasecmp(str,"STBJDS",6)) {
-		format = SPM_FORMAT_STBJDS;
-		aux = (mat_aux_t)atoi(str+7);
+		trait.format = SPM_FORMAT_STBJDS;
+		trait.aux = (unsigned int *) allocateMemory(sizeof(unsigned int),"aux");
+		*(unsigned int *)trait.aux = (unsigned int)atoi(str+7);
 	} else {
 		DEBUG_LOG(0,"Warning! Falling back to CRS format...");
-		format = SPM_FORMAT_CRS;
+		trait.format = SPM_FORMAT_CRS;
 	}
 
 #ifndef MPI
-	flags |= SPM_GLOBAL;
+	trait.flags |= SPM_GLOBAL;
 #else
-	flags |= SPM_DISTRIBUTED;
+	trait.flags |= SPM_DISTRIBUTED;
 #endif
 
-	mat_trait_t trait = SpMVM_createMatrixTrait(format,flags,aux);
 	return trait;
-
 }
 
-mat_trait_t SpMVM_createMatrixTrait(mat_format_t format, mat_flags_t flags, mat_aux_t aux)
+mat_trait_t SpMVM_createMatrixTrait(mat_format_t format, mat_flags_t flags, void * aux)
 {
-	return (mat_trait_t)((mat_trait_t)aux << 32 | flags << 16 | format);
+	mat_trait_t trait = {.format = format, .flags = flags, .aux = aux};
+	return trait;
 }
-
-mat_aux_t SpMVM_matrixTraitExtractAux(mat_trait_t trait)
-{
-	return (mat_aux_t)(trait >> 32);
-}
-
-mat_flags_t SpMVM_matrixTraitExtractFlags(mat_trait_t trait)
-{
-	return (mat_flags_t)(trait >> 16);
-}
-
-mat_format_t SpMVM_matrixTraitExtractFormat(mat_trait_t trait)
-{
-	return (mat_format_t)(trait);
-}
-
-void SpMVM_matrixTraitAddFlag(mat_trait_t * trait, mat_flags_t flag)
-{
-	*trait = SpMVM_createMatrixTrait(SpMVM_matrixTraitExtractFormat(*trait),
-			(mat_flags_t)(SpMVM_matrixTraitExtractFlags(*trait)|flag),
-			SpMVM_matrixTraitExtractAux(*trait));
-}
-
-
 
 int SpMVM_getRank() 
 {

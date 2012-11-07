@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	mat_trait_t trait = SpMVM_stringToMatrixTrait(argv[2]);
-	SpMVM_matrixTraitAddFlag(&trait,SPM_PERMUTECOLUMNS);
+	trait.flags |= SPM_PERMUTECOLUMNS;
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
 	matrix = SpMVM_createMatrix(matrixPath,trait,matrixFormats);
