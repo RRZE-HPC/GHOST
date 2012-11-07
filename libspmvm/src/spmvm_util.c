@@ -23,8 +23,98 @@
 #include <errno.h>
 #include <omp.h>
 #include <string.h>
+#include <stdarg.h>
+
+//#define PRETTYPRINT
+
+#define PRINTWIDTH 80
+#define LABELWIDTH 40
+
+#ifdef PRETTYPRINT
+#define PRINTSEP "┊"
+#else
+#define PRINTSEP ":"
+#endif
+
+#define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
 
+void SpMVM_printHeader(const char *label)
+{
+	const int spacing = 4;
+	int len = strlen(label);
+	int nDash = (PRINTWIDTH-2*spacing-len)/2;
+	int rem = (PRINTWIDTH-2*spacing-len)%2;
+	int i;
+#ifdef PRETTYPRINT
+	printf("┌");
+	for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+	printf("┐");
+	printf("\n");
+	printf("├");
+	for (i=0; i<nDash-1; i++) printf("─");
+	for (i=0; i<spacing; i++) printf(" ");
+	printf("%s",label);
+	for (i=0; i<spacing+rem; i++) printf(" ");
+	for (i=0; i<nDash-1; i++) printf("─");
+	printf("┤");
+	printf("\n");
+	printf("├");
+	for (i=0; i<LABELWIDTH; i++) printf("─");
+	printf("┬");
+	for (i=0; i<VALUEWIDTH; i++) printf("─");
+	printf("┤");
+	printf("\n");
+#else
+	for (i=0; i<PRINTWIDTH; i++) printf("-");
+	printf("\n");
+	for (i=0; i<nDash; i++) printf("-");
+	for (i=0; i<spacing; i++) printf(" ");
+	printf("%s",label);
+	for (i=0; i<spacing+rem; i++) printf(" ");
+	for (i=0; i<nDash; i++) printf("-");
+	printf("\n");
+	for (i=0; i<PRINTWIDTH; i++) printf("-");
+	printf("\n");
+#endif
+}
+
+void SpMVM_printFooter() 
+{
+	int i;
+#ifdef PRETTYPRINT
+	printf("└");
+	for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+	printf("┘");
+#else
+	for (i=0; i<PRINTWIDTH; i++) printf("-");
+#endif
+	printf("\n\n");
+}
+
+
+void SpMVM_printLine(const char *label, const char *unit, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args,fmt);
+	char dummy[1024];
+	vsnprintf(dummy,1024,fmt,args);
+	va_end(args);
+
+#ifdef PRETTYPRINT
+	printf("│");
+#endif
+	if (unit) {
+		int unitLen = strlen(unit);
+		printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
+	} else {
+		printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
+	}
+#ifdef PRETTYPRINT
+	printf("│");
+#endif
+	printf("\n");
+}
 
 
 void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
@@ -64,22 +154,27 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
 		ws = ((matrix->nRows+1)*sizeof(int) + 
 				matrix->nNonz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
-		printf("-----------------------------------------------\n");
-		printf("-------        Matrix information       -------\n");
-		printf("-----------------------------------------------\n");
-		printf("Investigated matrix              : %12s\n", matrixName); 
-		printf("Dimension of matrix              : %12.0f\n", (double)matrix->nRows); 
-		printf("Non-zero elements                : %12.0f\n", (double)matrix->nNonz); 
-		printf("Average elements per row         : %12.3f\n", (double)matrix->nNonz/
-				(double)matrix->nRows);
-		printf("CRS matrix                   [MB]: %12lu\n", ws);
-		if (!(matrix->trait.format & SPM_FORMAT_CRS)) {
-			printf("Host matrix %*s%s%s [MB]: %12u\n", 
-					15-(int)strlen(SpMVM_matrixFormatName(matrix->trait)),"(",
-					SpMVM_matrixFormatName(matrix->trait),")",
-					SpMVM_matrixSize(matrix)/(1024*1024));
-			if (matrix->trait.format & SPM_FORMAT_STBJDS)
-				printf("S-TBJDS matrix nu                : %12f\n",((BJDS_TYPE *)(matrix->matrix))->nu);
+		
+		SpMVM_printHeader("Matrix information");
+		SpMVM_printLine("Matrix name",NULL,"%s",matrixName);
+		SpMVM_printLine("Dimension",NULL,"%u",matrix->nRows);
+		SpMVM_printLine("Nonzeros",NULL,"%u",matrix->nNonz);
+		SpMVM_printLine("Nnz/row",NULL,"%.3f",(double)matrix->nNonz/matrix->nRows);
+		SpMVM_printLine("CRS size","MB","%lu",ws);
+		SpMVM_printLine("Host matrix format",NULL,"%s",SpMVM_matrixFormatName(matrix->trait));
+		SpMVM_printLine("Host matrix size","MB","%u",SpMVM_matrixSize(matrix)/(1024*1024));
+
+		//additional information depending on format
+		switch (matrix->trait.format) {
+			case SPM_FORMAT_STBJDS:
+				SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(matrix->matrix))->nu);
+			case SPM_FORMAT_SBJDS:
+				SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(matrix->trait.aux));
+				SpMVM_printLine("Permuting columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLUMNS?"yes":"no");
+			case SPM_FORMAT_BJDS:
+			case SPM_FORMAT_TBJDS:
+				SpMVM_printLine("Block size",NULL,"%d",BJDS_LEN);
+				break;
 		}
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -92,17 +187,15 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 					totalRemoteMemSize); 
 		}
 #endif
-		printf("-----------------------------------------------\n\n");
-		printf("-----------------------------------------------\n");
-		printf("-------        Setup information        -------\n");
-		printf("-----------------------------------------------\n");
-		printf("Equation                         : %12s\n", options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x"); 
-		printf("Work distribution scheme         : %12s\n", SpMVM_workdistName(options));
-		printf("Automatic pinning                : %12s\n", pin?"enabled":"disabled");
+		SpMVM_printFooter();
+		
+		SpMVM_printHeader("Setup information");
+		SpMVM_printLine("Equation",NULL,"%s",options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
+		SpMVM_printLine("Work distribution scheme",NULL,"%s",SpMVM_workdistName(options));
+		SpMVM_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
 		if (pin)
-			printf("Pinning threads to               : %12s\n", pinStrategy);
-		printf("-----------------------------------------------\n\n");
-		fflush(stdout);
+			SpMVM_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
+		SpMVM_printFooter();
 	}
 }
 
@@ -157,71 +250,67 @@ void SpMVM_printEnvInfo()
 #pragma omp master
 		nthreads = omp_get_num_threads();
 
-		printf("-----------------------------------------------\n");
-		printf("-------       System information        -------\n");
-		printf("-----------------------------------------------\n");
-		printf("Nodes                            : %12d\n", nnodes); 
-		//printf("MPI processes                    : %12d\n", nproc); 
-		printf("MPI processes     per node       : %12d\n", nproc/nnodes); 
-		printf("Available cores   per node       : %12d\n", nphyscores); 
-		printf("Available threads per node       : %12d\n", ncores); 
-		printf("OpenMP threads    per node       : %12d\n", nproc/nnodes*nthreads);
-		printf("OpenMP threads    per process    : %12d\n", nthreads);
-		printf("OpenMP scheduling                : %12s\n", omp_sched_str);
+		SpMVM_printHeader("System information");
+		SpMVM_printLine("Nodes",NULL,"%d",nnodes);
+		SpMVM_printLine("MPI processes per node",NULL,"%d",nproc/nnodes);
+		SpMVM_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
+		SpMVM_printLine("OpenMP threads per node",NULL,"%d",nproc/nnodes*nthreads);
+		SpMVM_printLine("OpenMP threads per process",NULL,"%d",nthreads);
+		SpMVM_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
+		// TODO
 		printf("OpenCL devices                   :\n");
 		int i;
 		for (i=0; i<devInfo->nDistinctDevices; i++) {
 			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
 		}
 #endif
-		printf("-----------------------------------------------\n\n");
+		SpMVM_printFooter();
 
-		printf("-----------------------------------------------\n");
-		printf("-------      LibSpMVM information       -------\n");
-		printf("-----------------------------------------------\n");
-		printf("Build date                       : %12s\n", __DATE__); 
-		printf("Build time                       : %12s\n", __TIME__); 
-		printf("Data type                        : %12s\n", DATATYPE_NAMES[DATATYPE_DESIRED]);
+		SpMVM_printHeader("LibSpMVM information");
+		SpMVM_printLine("Version",NULL,"%s",LIBSPMVM_VERSION);
+		SpMVM_printLine("Build date",NULL,"%s",__DATE__);
+		SpMVM_printLine("Build time",NULL,"%s",__TIME__);
+		SpMVM_printLine("Data type",NULL,"%s",DATATYPE_NAMES[DATATYPE_DESIRED]);
 #ifdef MIC
-		printf("MIC kernels                      :      enabled\n");
+		SpMVM_printLine("MIC kernels",NULL,"enabled");
 #else
-		printf("MIC kernels                      :     disabled\n");
+		SpMVM_printLine("MIC kernels",NULL,"disabled");
 #endif
 #ifdef AVX
-		printf("AVX kernels                      :      enabled\n");
+		SpMVM_printLine("AVX kernels",NULL,"enabled");
 #else
-		printf("AVX kernels                      :     disabled\n");
+		SpMVM_printLine("AVX kernels",NULL,"disabled");
 #endif
 #ifdef SSE
-		printf("SSE kernels                      :      enabled\n");
+		SpMVM_printLine("SSE kernels",NULL,"enabled");
 #else
-		printf("SSE kernels                      :     disabled\n");
+		SpMVM_printLine("SSE kernels",NULL,"disabled");
 #endif
 #ifdef MPI
-		printf("MPI support                      :      enabled\n");
+		SpMVM_printLine("MPI support",NULL,"enabled");
 #else
-		printf("MPI support                      :     disabled\n");
+		SpMVM_printLine("MPI support",NULL,"disabled");
 #endif
 #ifdef OPENCL
-		printf("OpenCL support                   :      enabled\n");
+		SpMVM_printLine("OpenCL support",NULL,"enabled");
 #else
-		printf("OpenCL support                   :     disabled\n");
+		SpMVM_printLine("OpenCL support",NULL,"disabled");
 #endif
 #ifdef LIKWID
+		SpMVM_printLine("Likwid support",NULL,"enabled");
 		printf("Likwid support                   :      enabled\n");
-#ifdef LIKWID_MARKER_FINE
+/*#ifdef LIKWID_MARKER_FINE
 		printf("Likwid Marker API (high res)     :      enabled\n");
 #else
 #ifdef LIKWID_MARKER
 		printf("Likwid Marker API                :      enabled\n");
 #endif
-#endif
+#endif*/
 #else
-		printf("Likwid support                   :     disabled\n");
+		SpMVM_printLine("Likwid support",NULL,"disabled");
 #endif
-		printf("-----------------------------------------------\n\n");
-		fflush(stdout);
+		SpMVM_printFooter();
 
 	}
 #ifdef OPENCL
@@ -776,24 +865,13 @@ char * SpMVM_matrixFormatName(mat_trait_t trait)
 		case SPM_FORMAT_CRSCD:
 			sprintf(name,"CRS-CD");
 			break;
-		case SPM_FORMAT_BJDS:
-			sprintf(name,"BJDS-%d",BJDS_LEN);
-			break;
-		case SPM_FORMAT_TBJDS:
-			sprintf(name,"TBJDS-%d",BJDS_LEN);
-			break;
 		case SPM_FORMAT_SBJDS:
-			if (trait.flags & SPM_PERMUTECOLUMNS)
-				sprintf(name,"SBJDS-PC-%d",BJDS_LEN);
-			else
-				sprintf(name,"SBJDS-%d",BJDS_LEN);
+		case SPM_FORMAT_BJDS:
+			sprintf(name,"BJDS");
 			break;
 		case SPM_FORMAT_STBJDS:
-
-			if (trait.flags & SPM_PERMUTECOLUMNS)
-				sprintf(name,"S%u-TBJDS-PC-%d",*(unsigned int *)(trait.aux),BJDS_LEN);
-			else
-				sprintf(name,"S%u-TBJDS-%d",*(unsigned int *)(trait.aux),BJDS_LEN);
+		case SPM_FORMAT_TBJDS:
+			sprintf(name,"TBJDS");
 			break;
 		default:
 			name = "invalid";

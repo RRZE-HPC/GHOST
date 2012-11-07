@@ -115,6 +115,9 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif
 
 
+void SpMVM_printHeader(const char *label);
+void SpMVM_printFooter(); 
+void SpMVM_printLine(const char *label, const char *unit, const char *format, ...);
 void              SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options);
 void              SpMVM_printEnvInfo();
 HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, mat_data_t (*fp)(int));

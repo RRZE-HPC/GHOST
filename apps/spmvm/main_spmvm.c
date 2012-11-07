@@ -76,7 +76,7 @@ int main( int argc, char* argv[] )
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
 	goldMatrix = SpMVM_createMatrix (matrixPath,
-			SpMVM_createMatrixTrait(SPM_FORMAT_CRS,SPM_GLOBAL|SPM_HOSTONLY,0),NULL);
+			SpMVM_createMatrixTrait(SPM_FORMAT_CRS,SPM_GLOBAL|SPM_HOSTONLY,NULL),NULL);
 	goldLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
 	globRHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
 	globLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
@@ -87,6 +87,7 @@ int main( int argc, char* argv[] )
 
 	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(matrix,strtok(basename(argv[optind]),"."),options);
+	SpMVM_printHeader("Performance");
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
@@ -99,8 +100,7 @@ int main( int argc, char* argv[] )
 
 		if (me==0) {
 			if (time < 0.) {
-				printf("%11s: SKIPPED\n",
-						SpMVM_kernelName(kernels[kernel]));
+				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),NULL,"SKIPPED");
 				continue;
 			}
 #ifdef CHECK
@@ -119,12 +119,13 @@ int main( int argc, char* argv[] )
 					errcount++;
 				}
 			}
-			printf("%11s: %s @ %5.2f GF/s | %5.2f ms/it\n",
-					SpMVM_kernelName(kernels[kernel]),
-					errcount?"FAILURE":"SUCCESS",
-					FLOPS_PER_ENTRY*1.e-9*
-					(double)matrix->nNonz/time,
-					time*1.e3);
+			if (errcount)
+				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),NULL,"FAILED");
+			else
+				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),"GF/s","%f",
+						FLOPS_PER_ENTRY*1.e-9*
+						(double)matrix->nNonz/time,
+						time*1.e3);
 #else
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
@@ -137,6 +138,7 @@ int main( int argc, char* argv[] )
 		SpMVM_zeroVector(nodeLHS);
 
 	}
+	SpMVM_printFooter();
 
 
 	SpMVM_freeVector( nodeLHS );

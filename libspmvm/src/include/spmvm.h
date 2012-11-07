@@ -10,6 +10,8 @@
 
 #include "spmvm_type.h"
 
+#define LIBSPMVM_VERSION "0.1a"
+
 /******************************************************************************/
 /*----  SpMVM kernels  -------------------------------------------------------*/
 /******************************************************************************/
@@ -29,10 +31,6 @@
 #define SPMVM_KERNEL_IDX_REMOTE 2
 /******************************************************************************/
 
-// 63..32 additional properties (like blocking factor for STBJDS)
-// 31..16 flags (like SPM_HOSTONLY)
-// 15..0  actual format
-//typedef unsigned long long mat_trait_t;
 typedef unsigned short mat_format_t;
 typedef unsigned short mat_flags_t;
 typedef void * mat_aux_t;
@@ -54,16 +52,11 @@ typedef struct
 
 // flags
 #define SPM_HOSTONLY       (0x1<<0)
-#define SPM_GLOBAL         (0x1<<1)
-#define SPM_DISTRIBUTED    (0x1<<2)
-#define SPM_PERMUTECOLUMNS (0x1<<3)
-
-#define SPM_FORMATS_GLOB (SPM_FORMAT_GLOB_CRS | \
-		SPM_FORMAT_BJDS | SPM_FORMAT_SBJDS | \
-		SPM_FORMAT_TBJDS | SPM_FORMAT_TCBJDS | \
-		SPM_FORMAT_CRSCD | SPM_FORMAT_STBJDS)
-#define SPM_FORMATS_DIST (SPM_FORMAT_DIST_CRS)
-#define SPM_FORMATS_CRS (SPM_FORMAT_DIST_CRS | SPM_FORMAT_GLOB_CRS)
+#define SPM_DEVICEONLY     (0x1<<1)
+#define SPM_HOSTANDDEVICE  (0x1<<2)
+#define SPM_GLOBAL         (0x1<<3)
+#define SPM_DISTRIBUTED    (0x1<<4)
+#define SPM_PERMUTECOLUMNS (0x1<<5)
 
 #ifdef MIC
 //#define BJDS_LEN 8
