@@ -24,7 +24,7 @@ static mat_data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 100;
+	int me, kernel, nIter = 20;
 	double time;
 
 #ifdef CHECK

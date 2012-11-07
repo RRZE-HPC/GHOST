@@ -3,10 +3,10 @@ include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header
 
-VPATH      = ./src/
+VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/
 OBJDIR     = ./obj
-TYPEHEADER = ./src/include/spmvm_type.h
-IPATH     += -I./src/include
+TYPEHEADER = ./include/spmvm_type.h
+IPATH     += -I./include/
 
 OBJS	=	$(COBJS) $(FOBJS)
 
@@ -68,18 +68,17 @@ LIBSPMVM=lib$(PREFIX)spmvm.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
 
-COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o,\
-				$(filter-out $(wildcard src/cl_*.c src/mpi_*.c src/mic_*.c src/avx_*.c src/sse_*.c), $(wildcard src/*.c)))))
-CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl_*.c))))
-MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi_*.c))))
-MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic_*.c))))
-AVXOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/avx_*.c))))
-SSEOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/sse_*.c))))
+COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
+CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
+MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
+MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic/*.c))))
+AVXOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/avx/*.c))))
+SSEOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/sse/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 
 
-$(OBJDIR)/%.o: %.c 
+$(OBJDIR)/%.o: %.c
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
@@ -125,7 +124,7 @@ install: all
 	@echo "==> Install library to $(strip $(INSTDIR))/lib"
 	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
-	@cp -f src/include/spmvm*.h $(strip $(INSTDIR))/include
+	@cp -f include/spmvm*.h $(strip $(INSTDIR))/include
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
