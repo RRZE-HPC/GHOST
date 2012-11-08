@@ -6,8 +6,9 @@
 #include <mpi.h>
 
 void       setupSingleNodeComm();
-LCRP_TYPE* setup_communication(CR_TYPE* const, int);
-LCRP_TYPE* setup_communication_parallel(CR_TYPE* cr, char *matrixPath, int options);
+void SpMVM_createDistributedSetupSerial(SETUP_TYPE *, CR_TYPE* const, int);
+void SpMVM_createDistributedSetup(SETUP_TYPE *, CR_TYPE* const, char *, int);
+LCRP_TYPE *SpMVM_createCommunicator(CR_TYPE *cr, int options);
 MPI_Comm getSingleNodeComm();
 
 #endif

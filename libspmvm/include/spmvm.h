@@ -17,10 +17,10 @@
 /******************************************************************************/
 #define SPMVM_NUMKERNELS 4
 
-#define SPMVM_KERNEL_NOMPI      (0x1<<0)
-#define SPMVM_KERNEL_VECTORMODE (0x1<<1)
-#define SPMVM_KERNEL_GOODFAITH  (0x1<<2)
-#define SPMVM_KERNEL_TASKMODE   (0x1<<3)
+#define SPMVM_KERNEL_NOMPI      (0)
+#define SPMVM_KERNEL_VECTORMODE (1)
+#define SPMVM_KERNEL_GOODFAITH  (2)
+#define SPMVM_KERNEL_TASKMODE   (3)
 
 #define SPMVM_KERNELS_COMBINED (SPMVM_KERNEL_NOMPI | SPMVM_KERNEL_VECTORMODE)
 #define SPMVM_KERNELS_SPLIT    (SPMVM_KERNEL_GOODFAITH | SPMVM_KERNEL_TASKMODE)
@@ -40,15 +40,21 @@ typedef struct
 	mat_format_t format;
 	mat_flags_t flags;
 	mat_aux_t aux;
-} mat_trait_t;
+} 
+mat_trait_t;
+
+typedef unsigned int setup_flags_t;
 // formats
-#define SPM_FORMAT_CRS    (0x1<<0)
-#define SPM_FORMAT_BJDS   (0x1<<1)
-#define SPM_FORMAT_SBJDS  (0x1<<2)
-#define SPM_FORMAT_TBJDS  (0x1<<3)
-#define SPM_FORMAT_STBJDS (0x1<<4)
-#define SPM_FORMAT_TCBJDS (0x1<<5)
-#define SPM_FORMAT_CRSCD  (0x1<<6)
+#define SPM_NUMFORMATS 7
+#define SPM_FORMAT_CRS    (0)
+#define SPM_FORMAT_BJDS   (1)
+#define SPM_FORMAT_SBJDS  (2)
+#define SPM_FORMAT_TBJDS  (3)
+#define SPM_FORMAT_STBJDS (4)
+#define SPM_FORMAT_TCBJDS (5)
+#define SPM_FORMAT_CRSCD  (6)
+
+// TODO sorting as part of trait and not own format
 
 // flags
 #define SPM_HOSTONLY       (0x1<<0)
@@ -261,6 +267,7 @@ typedef struct {
 
 typedef struct {
   int nodes, threads, halo_elements;
+
   int* lnEnts;
   int* lnRows;
   int* lfEnt;
@@ -274,16 +281,52 @@ typedef struct {
   int* due_displ;
   int* wish_displ;
   int* hput_pos;
-  mat_data_t* val;
+
+  // rest will be deleted
+/*  mat_data_t* val;
   int* col;
   int* lrow_ptr;
-  int* lrow_ptr_l;
-  int* lrow_ptr_r;
-  int* lcol;
-  int* rcol;
+ 
   mat_data_t* lval;
-  mat_data_t* rval;
+  int* lcol;
+  int* lrow_ptr_l;
+
+  int* lrow_ptr_r;
+  int* rcol;
+  mat_data_t* rval;*/
 } LCRP_TYPE;
+
+
+typedef int mat_idx_t;
+typedef struct {
+	mat_trait_t trait;
+	unsigned int nNonz;
+	mat_idx_t nRows;
+	mat_idx_t nCols;
+
+	int *rowPerm;     // may be NULL
+	int *invRowPerm;  // may be NULL
+	
+	void *data;
+
+} MATRIX_TYPE;
+
+typedef struct {
+	LCRP_TYPE *communicator;
+	MATRIX_TYPE *fullMatrix;
+	MATRIX_TYPE *localMatrix;
+	MATRIX_TYPE *remoteMatrix;
+
+	mat_idx_t nRows;
+	mat_idx_t nCols;
+	mat_idx_t nNz;
+
+	setup_flags_t flags;
+#ifdef OPENCL
+	GPUMATRIX_TYPE *devMatrix;
+#endif
+} SETUP_TYPE;
+//const SETUP_TYPE SETUP_INITIAL = {.communicator = NULL, .fullMatrix = NULL, .localMatrix = NULL, .remoteMatrix = NULL};
 
 typedef struct {
   int fullFormat;
@@ -296,6 +339,7 @@ typedef struct {
   void *localMatrix;
   void *remoteMatrix;
 } GPUMATRIX_TYPE;
+
 
 
 typedef struct
@@ -332,20 +376,6 @@ typedef struct {
 	double nu;
 } BJDS_TYPE;
 
-typedef struct {
-	mat_trait_t trait;
-	unsigned int nNonz;
-	unsigned int nRows;
-	unsigned int nCols;
-	void *matrix;
-  	int *fullRowPerm;     // may be NULL
-	int *fullInvRowPerm;  // may be NULL
-	int *splitRowPerm;    // may be NULL
-  	int *splitInvRowPerm; // may be NULL
-#ifdef OPENCL
-	GPUMATRIX_TYPE *devMatrix;
-#endif
-} MATRIX_TYPE;
 
 typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);
 
@@ -444,7 +474,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
   *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
   *   well as the necessary data structures for communication.
   *****************************************************************************/
-void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int));
+void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int));
 
 /******************************************************************************
   * Perform the sparse matrix vector product using a specified kernel with a
@@ -470,12 +500,13 @@ void *SpMVM_createVector(MATRIX_TYPE *matrix, int type, mat_data_t (*fp)(int));
   * Returns:
   *   the wallclock time (in seconds) the kernel execution took. 
   *****************************************************************************/
-double SpMVM_solve(VECTOR_TYPE *res, MATRIX_TYPE *lcrp, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 
 
-MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
-MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats); 
+//MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
+SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *trait, int nTraits, setup_flags_t, void *deviceFormats); 
+//MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats); 
 /******************************************************************************/
 
 #endif

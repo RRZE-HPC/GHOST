@@ -10,8 +10,7 @@
 
 /*********** kernel for all entries *********************/
 
-static inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-	int* me, int spmvmOptions) 
+static inline void spmvmKernAll( CR_TYPE* cr, VECTOR_TYPE* invec, VECTOR_TYPE* res, int spmvmOptions) 
 {
 /* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
  * or OMP parallel kernel;
@@ -22,23 +21,23 @@ static inline void spmvmKernAll( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYP
 
 #ifdef OPENCL
 if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (lcrp->lnRows[*me]+lcrp->halo_elements)*sizeof(mat_data_t));
+	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (cr->lnRows[*me]+cr->halo_elements)*sizeof(mat_data_t));
 }
 
 CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_FULL);
 
 if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
-	CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(mat_data_t));
+	CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnRows[*me]*sizeof(mat_data_t));
 #else
 
 int i, j;
 mat_data_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<lcrp->lnRows[*me]; i++){
+	for (i=0; i<cr->nRows; i++){
 		hlp1 = 0.0;
-		for (j=lcrp->lrow_ptr[i]; j<lcrp->lrow_ptr[i+1]; j++){
-			hlp1 = hlp1 + lcrp->val[j] * invec->val[lcrp->col[j]]; 
+		for (j=cr->rowOffset[i]; j<cr->rowOffset[i+1]; j++){
+			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
 		}
 		if (spmvmOptions & SPMVM_OPTION_AXPY) 
 			res->val[i] += hlp1;
@@ -51,94 +50,11 @@ mat_data_t hlp1;
 
 }
 
-/*********** kernel for local entries only *********************/
-
-static inline void spmvmKernLocal( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-	int* me, int spmvmOptions) {
-/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
- * or OMP parallel kernel;
- * lc_cycles: timing measurement for computation of local entries
- * cp_lin_cycles: timing for copy to device of local elements in input (rhs) vector, 
- *   only valid if CUDAKERNEL */
-
-
-
-#ifdef OPENCL
-if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT))
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, lcrp->lnRows[*me]*sizeof(mat_data_t));
-
-CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
-#else
-int i, j;
-mat_data_t hlp1;
-
-
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-for (i=0; i<lcrp->lnRows[*me]; i++){
-	hlp1 = 0.0;
-	for (j=lcrp->lrow_ptr_l[i]; j<lcrp->lrow_ptr_l[i+1]; j++){
-		hlp1 = hlp1 + lcrp->lval[j] * invec->val[lcrp->lcol[j]]; 
-	}
-	if (spmvmOptions & SPMVM_OPTION_AXPY) 
-		res->val[i] += hlp1;
-	else
-		res->val[i] = hlp1;
-}
-
-#endif
-
-}
-
-/*********** kernel for remote entries only *********************/
-
-static inline void spmvmKernRemote( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res,
-	int* me
-#ifdef OPENCL
-	, int spmvmOptions
-#endif
-	) {
-/* helper function to call either SpMVM kernel on device with device data transfer (if CUDAKERNEL) 
- * or OMP parallel kernel;
- * nl_cycles: timing measurement for computation of non-local entries
- * cp_nlin_cycles/cp_res_cycles: timing for copy to device of non-local elements in input (rhs) vector / 
- *   copy from device of result, only valid if CUDAKERNEL */
-
-
-#ifdef OPENCL
-if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
-	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-			invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(mat_data_t), 
-			lcrp->lnRows[*me]*sizeof(mat_data_t));
-}
-
-CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
-
-if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT)) {
-	CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(mat_data_t));
-}
-#else
-int i, j;
-mat_data_t hlp1;
-
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<lcrp->lnRows[*me]; i++){
-		hlp1 = 0.0;
-		for (j=lcrp->lrow_ptr_r[i]; j<lcrp->lrow_ptr_r[i+1]; j++){
-			hlp1 = hlp1 + lcrp->rval[j] * invec->val[lcrp->rcol[j]]; 
-		}
-		res->val[i] += hlp1;
-	}
-
-#endif
-
-}
-
-
 /*********** kernel for local entries only -- comm thread *********************/
 
 #ifdef OPENCL
 
-static inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
+static inline void spmvmKernLocalXThread( CR_TYPE* cr, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
 {
 /* helper function to call SpMVM kernel only on device with device data transfer;
  * due to communication thread, OMP version must be called separately;
@@ -147,7 +63,7 @@ static inline void spmvmKernLocalXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, V
 
 if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, 
-			lcrp->lnRows[*me]*sizeof(mat_data_t));
+			cr->lnRows[*me]*sizeof(mat_data_t));
 }
 
 CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
@@ -156,7 +72,7 @@ CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_LOCAL);
 
 /*********** kernel for remote entries only -- comm thread *********************/
 
-static inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
+static inline void spmvmKernRemoteXThread( CR_TYPE* cr, VECTOR_TYPE* invec, VECTOR_TYPE* res, int* me, int spmvmOptions) 
 {
 /* helper function to call SpMVM kernel only on device with device data transfer;
 	 * due to communication thread, OMP version must be called separately;
@@ -166,15 +82,15 @@ static inline void spmvmKernRemoteXThread( LCRP_TYPE* lcrp, VECTOR_TYPE* invec, 
 
 	if (!(spmvmOptions & SPMVM_OPTION_RHSPRESENT)) {
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-				invec->val+lcrp->lnRows[*me], lcrp->halo_elements*sizeof(mat_data_t),
-				lcrp->lnRows[*me]*sizeof(mat_data_t));
+				invec->val+cr->lnRows[*me], cr->halo_elements*sizeof(mat_data_t),
+				cr->lnRows[*me]*sizeof(mat_data_t));
 	}
 
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,SPMVM_KERNEL_IDX_REMOTE);
 
 	if (!(spmvmOptions & SPMVM_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, lcrp->lnRows[*me]*sizeof(mat_data_t));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnRows[*me]*sizeof(mat_data_t));
 } 
 #endif //OPENCL
 

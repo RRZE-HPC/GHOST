@@ -1,17 +1,13 @@
 #include "kernel_helper.h"
 #include "kernel.h"
+#include <stdio.h>
 
 #ifdef LIKWID
 #include <likwid.h>
 #endif
-void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
+/*void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
 {
 
-
-	/***************************************************************************
-	 ********            rein OpenMP-paralleler Kernel: ca                ******
-	 ********             ausschliesslich fuer den Fall np=1              ******
-	 **************************************************************************/
 
 	int me=0;
 
@@ -27,7 +23,7 @@ void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int 
 #pragma omp parallel
 	likwid_markerStopRegion("Kernel 0");
 #endif
-}
+}*/
 
 void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
 {

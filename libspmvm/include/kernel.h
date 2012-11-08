@@ -28,9 +28,10 @@ void sse_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 #endif
 
 #ifdef MPI
-void hybrid_kernel_I   (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
-void hybrid_kernel_II  (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
-void hybrid_kernel_III (VECTOR_TYPE*, LCRP_TYPE*, VECTOR_TYPE*, int);
+void hybrid_kernel_I   (VECTOR_TYPE*, SETUP_TYPE*, VECTOR_TYPE*, int);
+void hybrid_kernel_II  (VECTOR_TYPE*, SETUP_TYPE*, VECTOR_TYPE*, int);
+void hybrid_kernel_III (VECTOR_TYPE*, SETUP_TYPE*, VECTOR_TYPE*, int);
 #endif
+
 
 #endif

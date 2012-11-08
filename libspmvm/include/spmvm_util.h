@@ -170,10 +170,10 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options);
   *****************************************************************************/
 CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath);
 
+SpMVM_kernelFunc * SpMVM_setupKernels(SETUP_TYPE *setup);
 
 VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-void SpMVM_collectVectors(MATRIX_TYPE *matrix, VECTOR_TYPE *vec, 
-		HOSTVECTOR_TYPE *totalVec, int kernel);
+void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec,	HOSTVECTOR_TYPE *totalVec, int kernel);
 void SpMVM_freeVector( VECTOR_TYPE* const vec );
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
 void SpMVM_freeCRS( CR_TYPE* const cr );
@@ -186,5 +186,5 @@ int SpMVM_getNumberOfRanksOnNode();
 int SpMVM_getNumberOfHwThreads();
 int SpMVM_getNumberOfThreads();
 int SpMVM_getNumberOfNodes();
-SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, MATRIX_TYPE *mat); 
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, SETUP_TYPE *setup); 
 #endif

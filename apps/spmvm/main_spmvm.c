@@ -24,15 +24,15 @@ static mat_data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 20;
+	int me, kernel, nIter = 100;
 	double time;
 
 #ifdef CHECK
-	unsigned int i, errcount = 0;
+	mat_idx_t i, errcount = 0;
 	double mytol;
 #endif
 
-	int options = SPMVM_OPTION_AXPY;
+	int options = SPMVM_OPTION_AXPY; // TODO remote kernel immer axpy
 	int kernels[] = {SPMVM_KERNEL_NOMPI,
 		SPMVM_KERNEL_VECTORMODE,
 		SPMVM_KERNEL_GOODFAITH,
@@ -42,7 +42,7 @@ int main( int argc, char* argv[] )
 	VECTOR_TYPE *nodeLHS; // lhs vector per node
 	VECTOR_TYPE *nodeRHS; // rhs vector node
 
-	MATRIX_TYPE *matrix;
+	SETUP_TYPE *setup;
 
 	if (argc!=3) {
 		fprintf(stderr,"Usage: spmvm.x <matrixPath> <matrixFormat>\n");
@@ -66,36 +66,36 @@ int main( int argc, char* argv[] )
 	trait.flags |= SPM_PERMUTECOLUMNS;
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	matrix = SpMVM_createMatrix(matrixPath,trait,matrixFormats);
-	nodeLHS= SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);
-	nodeRHS= SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal);
+	setup  = SpMVM_createSetup(matrixPath,&trait,1,SPM_DISTRIBUTED,matrixFormats);
+	nodeLHS= SpMVM_createVector(setup,VECTOR_TYPE_LHS,NULL);
+	nodeRHS= SpMVM_createVector(setup,VECTOR_TYPE_RHS,rhsVal);
 
 #ifdef CHECK	
-	MATRIX_TYPE *goldMatrix;
+	SETUP_TYPE *goldSetup;
+	mat_trait_t goldTrait = SpMVM_createMatrixTrait(SPM_FORMAT_CRS,0,NULL);
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	goldMatrix = SpMVM_createMatrix (matrixPath,
-			SpMVM_createMatrixTrait(SPM_FORMAT_CRS,SPM_GLOBAL|SPM_HOSTONLY,NULL),NULL);
-	goldLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
-	globRHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
-	globLHS = SpMVM_createVector(goldMatrix,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	goldSetup = SpMVM_createSetup (matrixPath,&goldTrait,1,SPM_GLOBAL,NULL);
+	goldLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	globRHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
+	globLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
 	if (me==0)
-		SpMVM_referenceSolver((CR_TYPE *)goldMatrix->matrix,globRHS->val,goldLHS->val,nIter,options);	
+		SpMVM_referenceSolver((CR_TYPE *)goldSetup->fullMatrix->data,globRHS->val,goldLHS->val,nIter,options);	
 #endif	
 
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(matrix,strtok(basename(argv[optind]),"."),options);
+	SpMVM_printMatrixInfo(setup->fullMatrix,strtok(basename(argv[optind]),"."),options);
 	SpMVM_printHeader("Performance");
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
-		time = SpMVM_solve(nodeLHS,matrix,nodeRHS,kernels[kernel],nIter);
+		time = SpMVM_solve(nodeLHS,setup,nodeRHS,kernels[kernel],nIter);
 
 #ifdef CHECK
 		if (time >= 0.)
-			SpMVM_collectVectors(matrix,nodeLHS,globLHS,kernel);
+			SpMVM_collectVectors(setup,nodeLHS,globLHS,kernel);
 #endif
 
 		if (me==0) {
@@ -105,12 +105,12 @@ int main( int argc, char* argv[] )
 			}
 #ifdef CHECK
 			errcount=0;
-			for (i=0; i<matrix->nRows; i++){
+			for (i=0; i<setup->nRows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
-					(((CR_TYPE *)(goldMatrix->matrix))->rowOffset[i+1]-((CR_TYPE *)(goldMatrix->matrix))->rowOffset[i]);
+					(((CR_TYPE *)(goldSetup->fullMatrix->data))->rowOffset[i+1]-((CR_TYPE *)(goldSetup->fullMatrix->data))->rowOffset[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf( "PE%d: error in row %u: %.2e + %.2ei vs. %.2e +"
+					printf( "PE%d: error in row %d: %.2e + %.2ei vs. %.2e +"
 							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
@@ -124,13 +124,13 @@ int main( int argc, char* argv[] )
 			else
 				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),"GF/s","%f",
 						FLOPS_PER_ENTRY*1.e-9*
-						(double)matrix->nNonz/time,
+						(double)setup->nNz/time,
 						time*1.e3);
 #else
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)matrix->nNonz/time,
+					(double)setup->nNz/time,
 					time*1.e3);
 #endif
 		}
