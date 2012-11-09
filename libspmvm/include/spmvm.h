@@ -60,15 +60,17 @@ typedef unsigned int setup_flags_t;
 // TODO sorting as part of trait and not own format
 
 // flags
-#define SPM_FLAGS_NONE     (0) // TODO to setup_flags
-#define SPM_HOSTONLY       (0x1<<0) // TODO to setup_flags
-#define SPM_DEVICEONLY     (0x1<<1)
-#define SPM_HOSTANDDEVICE  (0x1<<2)
-#define SPM_GLOBAL         (0x1<<3)
-#define SPM_DISTRIBUTED    (0x1<<4)
-#define SPM_PERMUTECOLUMNS (0x1<<5) // TODO only flag for matrix
-#define SPM_FLAG_COLMAJOR (0x1<<6) // TODO only flag for matrix
-#define SPM_FLAG_ROWMAJOR (0x1<<7) // TODO only flag for matrix
+#define SETUP_DEFAULT       (0)
+#define SETUP_HOSTONLY      (0x1<<0)
+#define SETUP_DEVICEONLY    (0x1<<1)
+#define SETUP_HOSTANDDEVICE (0x1<<2)
+#define SETUP_GLOBAL        (0x1<<3)
+#define SETUP_DISTRIBUTED   (0x1<<4)
+
+#define SPM_DEFAULT       (0)
+#define SPM_PERMUTECOLIDX (0x1<<0)
+#define SPM_COLMAJOR      (0x1<<1)
+#define SPM_ROWMAJOR      (0x1<<2)
 
 #ifdef MIC
 //#define BJDS_LEN 8
@@ -307,7 +309,7 @@ typedef struct {
 	void *data;
 } MATRIX_TYPE;
 
-#define TRAIT_INIT(...) { .format = SPM_FORMAT_NONE, .flags = SPM_FLAGS_NONE, .aux = NULL, ## __VA_ARGS__ }
+#define TRAIT_INIT(...) { .format = SPM_FORMAT_NONE, .flags = SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
 #define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nNonz = 0, .nRows = 0, .nCols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
 
 typedef struct {

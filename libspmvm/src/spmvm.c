@@ -182,13 +182,13 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 	MATRIX_TYPE *matrix = setup->fullMatrix;
 
 
-	if (setup->flags & SPM_GLOBAL)
+	if (setup->flags & SETUP_GLOBAL)
 	{
 		size_val = (size_t)matrix->nRows*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 		nRows = matrix->nRows;
 
-		if (matrix->trait.flags & SPM_PERMUTECOLUMNS)
+		if (matrix->trait.flags & SPM_PERMUTECOLIDX)
 			SpMVM_permuteVector(val,matrix->rowPerm,nRows);
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d rows",nRows);
@@ -309,7 +309,7 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 	setup = (SETUP_TYPE *)allocateMemory(sizeof(SETUP_TYPE),"setup");
 	setup->flags = setup_flags;
 
-	if (setup_flags & SPM_GLOBAL) {
+	if (setup_flags & SETUP_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= SPMVM_OPTION_SERIAL_IO;
 	}
@@ -344,7 +344,7 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 	setup->nRows = cr->nRows;
 	setup->nCols = cr->nCols;
 
-	if (setup_flags & SPM_DISTRIBUTED)
+	if (setup_flags & SETUP_DISTRIBUTED)
 	{ // distributed matrix
 #ifndef MPI
 		UNUSED(deviceFormats);
@@ -402,7 +402,7 @@ double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec,
 	void * arg;
 
 	SpMVM_kernelFunc kernelFunc = NULL;
-	if (setup->flags & SPM_GLOBAL) {
+	if (setup->flags & SETUP_GLOBAL) {
 		kernelFunc = kernels[setup->fullMatrix->trait.format];
 		arg = setup->fullMatrix->data;
 		UNUSED(kernel);

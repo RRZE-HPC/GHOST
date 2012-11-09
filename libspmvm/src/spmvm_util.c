@@ -162,9 +162,9 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 				matrix->nNonz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-		if (matrix->trait.flags & SPM_HOSTANDDEVICE)
+		if (matrix->trait.flags & SETUP_HOSTANDDEVICE)
 			matrixLocation = "Host and Device";
-		else if (matrix->trait.flags & SPM_DEVICEONLY)
+		else if (matrix->trait.flags & SETUP_DEVICEONLY)
 			matrixLocation = "Device only";
 		else
 			matrixLocation = "Host only";
@@ -187,7 +187,7 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 				SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(matrix->data))->nu);
 			case SPM_FORMAT_SBJDS:
 				SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(matrix->trait.aux));
-				SpMVM_printLine("Permuted columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLUMNS?"yes":"no");
+				SpMVM_printLine("Permuted columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLIDX?"yes":"no");
 			case SPM_FORMAT_BJDS:
 			case SPM_FORMAT_TBJDS:
 				SpMVM_printLine("Block size",NULL,"%d",BJDS_LEN);
@@ -1024,9 +1024,9 @@ mat_trait_t SpMVM_stringToMatrixTrait(char *str)
 	}
 
 #ifndef MPI
-	trait.flags |= SPM_GLOBAL;
+	trait.flags |= SETUP_GLOBAL;
 #else
-	trait.flags |= SPM_DISTRIBUTED;
+	trait.flags |= SETUP_DISTRIBUTED;
 #endif
 
 	return trait;

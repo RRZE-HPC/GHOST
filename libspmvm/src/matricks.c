@@ -743,7 +743,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	BJDS_TYPE *tbjds;
 	int *rowPerm, *invRowPerm;
 	mat_flags_t flags;
-	int rowWise = trait.flags & SPM_FLAG_COLMAJOR;
+	int rowWise = trait.flags & SPM_COLMAJOR;
 
 	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	tbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
@@ -896,7 +896,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 			for (i=0; i<BJDS_LEN; i++)
 			{
 				tbjds->val[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
-				if (flags & SPM_PERMUTECOLUMNS)
+				if (flags & SPM_PERMUTECOLIDX)
 					tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
 				else
 					tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
@@ -912,7 +912,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 				for (j=tbjds->chunkMin[c]; j<tbjds->rowLen[c*BJDS_LEN+i]; j++)
 				{
 					tbjds->val[rem] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
-					if (flags & SPM_PERMUTECOLUMNS)
+					if (flags & SPM_PERMUTECOLIDX)
 						tbjds->col[rem++] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
 					else
 						tbjds->col[rem++] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
@@ -926,7 +926,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 				{
 					if (j<tbjds->rowLen[c*BJDS_LEN+i] ) {
 						tbjds->val[rem] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
-						if (flags & SPM_PERMUTECOLUMNS)
+						if (flags & SPM_PERMUTECOLIDX)
 							tbjds->col[rem++] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
 						else
 							tbjds->col[rem++] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
@@ -941,7 +941,7 @@ void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 {
 	int i,j,c;
 	BJDS_TYPE *mv;
-	int rowWise = trait.flags & SPM_FLAG_COLMAJOR;
+	int rowWise = trait.flags & SPM_COLMAJOR;
 
 	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
@@ -1191,7 +1191,7 @@ void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 				if (j<rowLen) {
 
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(invRowPerm)[row]]+j];
-					if (flags & SPM_PERMUTECOLUMNS)
+					if (flags & SPM_PERMUTECOLIDX)
 						sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[row]]+j]];
 					else
 						sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(invRowPerm)[row]]+j];
