@@ -539,6 +539,33 @@ void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec,
 #endif
 }
 
+MATRIX_TYPE * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait)
+{
+	MATRIX_TYPE *matrix;
+		switch (trait.format) {
+			case SPM_FORMAT_BJDS:
+				CRStoBJDS(cr,trait,&matrix);
+				break;
+			case SPM_FORMAT_SBJDS:
+				CRStoSBJDS(cr,trait,&matrix);
+				break;
+			case SPM_FORMAT_TBJDS:
+				CRStoTBJDS(cr,trait,&matrix);
+				break;
+			case SPM_FORMAT_STBJDS:
+				CRStoSTBJDS(cr,trait,&matrix);
+				break;
+			default:
+				DEBUG_LOG(0,"Warning!Invalid format for global matrix! Falling back to CRS");
+			case SPM_FORMAT_CRS:
+			case SPM_FORMAT_CRSCD:
+				CRStoCRS(cr,trait,&matrix);
+				break;
+		}
+		return matrix;
+}
+	
+
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
 	mat_data_t *dtmp;
@@ -869,9 +896,11 @@ SpMVM_kernelFunc * SpMVM_setupKernels(SETUP_TYPE *setup)
 #ifdef AVX
 	kf[SPM_FORMAT_SBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr; 
 	kf[SPM_FORMAT_BJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr; 
-	kf[SPM_FORMAT_STBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem; 
-	kf[SPM_FORMAT_TBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
-	kf[SPM_FORMAT_TCBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem_if;
+	kf[SPM_FORMAT_STBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
+	if (setup->fullMatrix->trait.flags & SPM_FLAG_COLMAJOR)
+		kf[SPM_FORMAT_TBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem_if;
+	else 
+		kf[SPM_FORMAT_TBJDS] = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
 #endif
 
 	return kf;

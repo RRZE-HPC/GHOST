@@ -66,7 +66,7 @@ int main( int argc, char* argv[] )
 	trait.flags |= SPM_PERMUTECOLUMNS;
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	setup  = SpMVM_createSetup(matrixPath,&trait,1,SPM_DISTRIBUTED,matrixFormats);
+	setup  = SpMVM_createSetup(matrixPath,&trait,1,SPM_GLOBAL,matrixFormats);
 	nodeLHS= SpMVM_createVector(setup,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(setup,VECTOR_TYPE_RHS,rhsVal);
 

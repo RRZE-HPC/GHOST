@@ -1,6 +1,7 @@
 #ifndef _SPMVM_H_
 #define _SPMVM_H_
 
+#include <stdlib.h>
 #include <complex.h>
 #include <math.h>
 
@@ -43,26 +44,31 @@ typedef struct
 } 
 mat_trait_t;
 
+
 typedef unsigned int setup_flags_t;
 // formats
 #define SPM_NUMFORMATS 7
-#define SPM_FORMAT_CRS    (0)
-#define SPM_FORMAT_BJDS   (1)
-#define SPM_FORMAT_SBJDS  (2)
-#define SPM_FORMAT_TBJDS  (3)
-#define SPM_FORMAT_STBJDS (4)
-#define SPM_FORMAT_TCBJDS (5)
+#define SPM_FORMAT_NONE   (0)
+#define SPM_FORMAT_CRS    (1)
+#define SPM_FORMAT_BJDS   (2)
+#define SPM_FORMAT_SBJDS  (3)
+#define SPM_FORMAT_TBJDS  (4)
+#define SPM_FORMAT_STBJDS (5)
+//#define SPM_FORMAT_TCBJDS (6)
 #define SPM_FORMAT_CRSCD  (6)
 
 // TODO sorting as part of trait and not own format
 
 // flags
-#define SPM_HOSTONLY       (0x1<<0)
+#define SPM_FLAGS_NONE     (0) // TODO to setup_flags
+#define SPM_HOSTONLY       (0x1<<0) // TODO to setup_flags
 #define SPM_DEVICEONLY     (0x1<<1)
 #define SPM_HOSTANDDEVICE  (0x1<<2)
 #define SPM_GLOBAL         (0x1<<3)
 #define SPM_DISTRIBUTED    (0x1<<4)
-#define SPM_PERMUTECOLUMNS (0x1<<5)
+#define SPM_PERMUTECOLUMNS (0x1<<5) // TODO only flag for matrix
+#define SPM_FLAG_COLMAJOR (0x1<<6) // TODO only flag for matrix
+#define SPM_FLAG_ROWMAJOR (0x1<<7) // TODO only flag for matrix
 
 #ifdef MIC
 //#define BJDS_LEN 8
@@ -251,7 +257,7 @@ typedef struct {
 	int nRows;
 	mat_data_t* val;
 #ifdef OPENCL
-  cl_mem CL_val_gpu;
+	cl_mem CL_val_gpu;
 #endif
 } VECTOR_TYPE;
 
@@ -266,54 +272,47 @@ typedef struct {
 } HOSTVECTOR_TYPE;
 
 typedef struct {
-  int nodes, threads, halo_elements;
+	int nodes; // TODO delete
+	int threads; // TODO delete
+	int halo_elements;
 
-  int* lnEnts;
-  int* lnRows;
-  int* lfEnt;
-  int* lfRow;
-  int* wishes;
-  int* wishlist_mem;
-  int** wishlist;
-  int* dues;
-  int* duelist_mem;
-  int** duelist;
-  int* due_displ;
-  int* wish_displ;
-  int* hput_pos;
-
-  // rest will be deleted
-/*  mat_data_t* val;
-  int* col;
-  int* lrow_ptr;
- 
-  mat_data_t* lval;
-  int* lcol;
-  int* lrow_ptr_l;
-
-  int* lrow_ptr_r;
-  int* rcol;
-  mat_data_t* rval;*/
-} LCRP_TYPE;
+	int* lnEnts;
+	int* lnRows;
+	int* lfEnt;
+	int* lfRow;
+	int* wishes;
+	int* wishlist_mem;
+	int** wishlist;
+	int* dues;
+	int* duelist_mem;
+	int** duelist;
+	int* due_displ;
+	int* wish_displ;
+	int* hput_pos;
+} LCRP_TYPE; // TODO rename
 
 
 typedef int mat_idx_t;
+typedef unsigned long long mat_nnz_t;
+
 typedef struct {
-	mat_trait_t trait;
-	unsigned int nNonz;
+	mat_trait_t trait; // TODO rename
+	mat_nnz_t nNonz; // TODO rename
 	mat_idx_t nRows;
 	mat_idx_t nCols;
 
 	int *rowPerm;     // may be NULL
 	int *invRowPerm;  // may be NULL
-	
-	void *data;
 
+	void *data;
 } MATRIX_TYPE;
 
+#define TRAIT_INIT(...) { .format = SPM_FORMAT_NONE, .flags = SPM_FLAGS_NONE, .aux = NULL, ## __VA_ARGS__ }
+#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nNonz = 0, .nRows = 0, .nCols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
+
 typedef struct {
-	LCRP_TYPE *communicator;
-	MATRIX_TYPE *fullMatrix;
+	LCRP_TYPE *communicator; // TODO shorter
+	MATRIX_TYPE *fullMatrix; // TODO array
 	MATRIX_TYPE *localMatrix;
 	MATRIX_TYPE *remoteMatrix;
 
@@ -329,15 +328,15 @@ typedef struct {
 //const SETUP_TYPE SETUP_INITIAL = {.communicator = NULL, .fullMatrix = NULL, .localMatrix = NULL, .remoteMatrix = NULL};
 
 typedef struct {
-  int fullFormat;
-  int localFormat;
-  int remoteFormat;
-  int fullT;
-  int localT;
-  int remoteT;
-  void *fullMatrix;
-  void *localMatrix;
-  void *remoteMatrix;
+	int fullFormat;
+	int localFormat;
+	int remoteFormat;
+	int fullT;
+	int localT;
+	int remoteT;
+	void *fullMatrix;
+	void *localMatrix;
+	void *remoteMatrix;
 } GPUMATRIX_TYPE;
 
 
@@ -386,120 +385,120 @@ typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);
 /******************************************************************************/
 
 /******************************************************************************
-  * Initialize the basic functionality of the library. This includes:
-  *   - initialize MPI
-  *   - create and commit custom MPI datatypes (if necessary)
-  *   - pin threads to CPU cores (if defined)
-  *   - setup the MPI communicator for the node
-  *   - initialize the OpenCL functionality of the library (if enabled)
-  *   - initialize the Likwid Marker API (if defined)
-  *
-  * Arguments:
-  *   - int argc
-  *     The number of arguments of the main function (will be passed to
-  *     MPI_init_thread())
-  *   - char ** argv
-  *     The arguments of the main functions (will be passed to 
-  *     MPI_init_thread())
-  *   - int options
-  *     This argument contains the options for the sparse matrix-vector product.
-  *     It can be assembled by OR-ing several of the available options which
-  *     are defined as SPMVM_OPTION_* (explained above).
-  *
-  * Returns:
-  *   an integer which holds the rank of the calling MPI process within
-  *   MPI_COMM_WORLD
-  *
-  * The call to SpMVM_init() has to be done before any other SpMVM_*() call.
-  *****************************************************************************/
+ * Initialize the basic functionality of the library. This includes:
+ *   - initialize MPI
+ *   - create and commit custom MPI datatypes (if necessary)
+ *   - pin threads to CPU cores (if defined)
+ *   - setup the MPI communicator for the node
+ *   - initialize the OpenCL functionality of the library (if enabled)
+ *   - initialize the Likwid Marker API (if defined)
+ *
+ * Arguments:
+ *   - int argc
+ *     The number of arguments of the main function (will be passed to
+ *     MPI_init_thread())
+ *   - char ** argv
+ *     The arguments of the main functions (will be passed to 
+ *     MPI_init_thread())
+ *   - int options
+ *     This argument contains the options for the sparse matrix-vector product.
+ *     It can be assembled by OR-ing several of the available options which
+ *     are defined as SPMVM_OPTION_* (explained above).
+ *
+ * Returns:
+ *   an integer which holds the rank of the calling MPI process within
+ *   MPI_COMM_WORLD
+ *
+ * The call to SpMVM_init() has to be done before any other SpMVM_*() call.
+ *****************************************************************************/
 int SpMVM_init(int argc, char **argv, int options);
 
 /******************************************************************************
-  * Clean up and finalize before termination. This includes:
-  *   - call MPI_Finalize()
-  *   - finish the OpenCL functionality
-  *   - close the Likwid Marker API
-  *
-  * The SpMVM_finish() call is usually the last call of the main program. 
-  *****************************************************************************/
+ * Clean up and finalize before termination. This includes:
+ *   - call MPI_Finalize()
+ *   - finish the OpenCL functionality
+ *   - close the Likwid Marker API
+ *
+ * The SpMVM_finish() call is usually the last call of the main program. 
+ *****************************************************************************/
 void SpMVM_finish();
 
 /******************************************************************************
-  * Create a distributed CRS matrix from a given path. The matrix is read-in
-  * from the processes in a parallel way (unless defined differently via
-  * SPMVM_OPTION_SERIAL_IO) and necessary data structures for communication are
-  * created. 
-  * If OpenCL is enabled, the matrices are also converted into a GPU-friendly
-  * format (as defined by the second argument) and uploaded to the device.
-  *
-  * Arguments:
-  *   - char *matrixPath
-  *     The full path to the matrix which is to be read. The matrix may either
-  *     be present in the ASCII Matrix Market format as explained in
-  *       http://math.nist.gov/MatrixMarket/formats.html
-  *     or in a binary CRS format as explained in the README file.
-  *   - void *deviceFormats
-  *     If OpenCL is disabled, this argument has to be NULL.
-  *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
-  *     structure as defined above.
-  *
-  * Returns:
-  *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
-  *   well as the necessary data structures for communication.
-  *****************************************************************************/
+ * Create a distributed CRS matrix from a given path. The matrix is read-in
+ * from the processes in a parallel way (unless defined differently via
+ * SPMVM_OPTION_SERIAL_IO) and necessary data structures for communication are
+ * created. 
+ * If OpenCL is enabled, the matrices are also converted into a GPU-friendly
+ * format (as defined by the second argument) and uploaded to the device.
+ *
+ * Arguments:
+ *   - char *matrixPath
+ *     The full path to the matrix which is to be read. The matrix may either
+ *     be present in the ASCII Matrix Market format as explained in
+ *       http://math.nist.gov/MatrixMarket/formats.html
+ *     or in a binary CRS format as explained in the README file.
+ *   - void *deviceFormats
+ *     If OpenCL is disabled, this argument has to be NULL.
+ *     If OpenCL is enabled, this has to be a pointer to a SPM_GPUFORMATS
+ *     structure as defined above.
+ *
+ * Returns:
+ *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+ *   well as the necessary data structures for communication.
+ *****************************************************************************/
 LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
 
 
 /******************************************************************************
-  * Create a distributed vector with specified values in order to use it for 
-  * SpMVM. Depending on the type, the length of the vector may differ.
-  * If OpenCL is enabled, the vector is also being created and initialized on
-  * the device.
-  *
-  * Arguments:
-  *   - LCRP_TYPE *lcrp
-  *     The local CRS matrix portion to use with the vector.
-  *   - int type
-  *     Specifies whether the vector is a right hand side vector 
-  *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
-  *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
-  *     The length of the vector depends on this argument.
-  *   - mat_data_t (*fp)(int)
-  *     A function pointer to a function taking an integer value and returning
-  *     a mat_data_t. This function returns the initial value for the i-th (globally)
-  *     element of the vector.
-  *     If NULL, the vector is initialized to zero.
-  *
-  * Returns:
-  *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
-  *   well as the necessary data structures for communication.
-  *****************************************************************************/
+ * Create a distributed vector with specified values in order to use it for 
+ * SpMVM. Depending on the type, the length of the vector may differ.
+ * If OpenCL is enabled, the vector is also being created and initialized on
+ * the device.
+ *
+ * Arguments:
+ *   - LCRP_TYPE *lcrp
+ *     The local CRS matrix portion to use with the vector.
+ *   - int type
+ *     Specifies whether the vector is a right hand side vector 
+ *     (VECTOR_TYPE_RHS), left hand side vector (VECTOR_TYPE_LHS) or a vector
+ *     which may be used as both right and left hand side (VECTOR_TYPE_BOTH).
+ *     The length of the vector depends on this argument.
+ *   - mat_data_t (*fp)(int)
+ *     A function pointer to a function taking an integer value and returning
+ *     a mat_data_t. This function returns the initial value for the i-th (globally)
+ *     element of the vector.
+ *     If NULL, the vector is initialized to zero.
+ *
+ * Returns:
+ *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+ *   well as the necessary data structures for communication.
+ *****************************************************************************/
 void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int));
 
 /******************************************************************************
-  * Perform the sparse matrix vector product using a specified kernel with a
-  * fixed number of iterations.
-  *
-  * Arguments:
-  *   - VECTOR_TYPE *res 
-  *     The result vector. Its values are being accumulated if SPMVM_OPTION_AXPY
-  *     is defined.  
-  *   - LCRP_TYPE *lcrp
-  *     The local CRS matrix part.
-  *   - VECTOR_TYPE *invec
-  *     The left hand side vector.
-  *   - int kernel
-  *     The kernel which should be used. This has to be one out of
-  *       + SPMVM_KERNEL_NOMPI
-  *       + SPMVM_KERNEL_VECTORMODE
-  *       + SPMVM_KERNEL_GOODFAITH
-  *       + SPMVM_KERNEL_TASKMODE
-  *   - int nIter
-  *     The number of iterations to run.
-  *     
-  * Returns:
-  *   the wallclock time (in seconds) the kernel execution took. 
-  *****************************************************************************/
+ * Perform the sparse matrix vector product using a specified kernel with a
+ * fixed number of iterations.
+ *
+ * Arguments:
+ *   - VECTOR_TYPE *res 
+ *     The result vector. Its values are being accumulated if SPMVM_OPTION_AXPY
+ *     is defined.  
+ *   - LCRP_TYPE *lcrp
+ *     The local CRS matrix part.
+ *   - VECTOR_TYPE *invec
+ *     The left hand side vector.
+ *   - int kernel
+ *     The kernel which should be used. This has to be one out of
+ *       + SPMVM_KERNEL_NOMPI
+ *       + SPMVM_KERNEL_VECTORMODE
+ *       + SPMVM_KERNEL_GOODFAITH
+ *       + SPMVM_KERNEL_TASKMODE
+ *   - int nIter
+ *     The number of iterations to run.
+ *     
+ * Returns:
+ *   the wallclock time (in seconds) the kernel execution took. 
+ *****************************************************************************/
 double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 

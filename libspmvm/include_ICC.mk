@@ -5,7 +5,7 @@ CC = icc
 endif
 FC  = ifort
 
-CFLAGS  = -openmp -fPIC 
+CFLAGS  = -openmp -fPIC -std=c99 
 FFLAGS  = -openmp -fPIC -nogen-interface -cpp
 
 ifeq ($(strip $(AVX)),1)

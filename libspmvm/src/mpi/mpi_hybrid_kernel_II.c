@@ -145,11 +145,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, i
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
-#ifdef OPENCL
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions );
-#else
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions );
-#endif
+	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|SPMVM_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

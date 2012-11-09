@@ -48,10 +48,11 @@ void freeMMMatrix( MM_TYPE* const mm );
 CR_TYPE * readCRbinFile(const char*, int, int);
 
 int compareNZEPerRow( const void*, const void*);
-BJDS_TYPE * CRStoBJDS(CR_TYPE *cr);
-BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t flags); 
-BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int); 
-BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **rowPerm, int **invRowPerm, mat_flags_t flags); 
+void CRStoBJDS(CR_TYPE *cr, mat_trait_t, MATRIX_TYPE **matrix);
+void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
+void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
+void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
+void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
 int pad(int nRows, int padding);
 
 #endif /* _MATRICKS_H_ */

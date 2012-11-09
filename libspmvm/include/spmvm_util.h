@@ -134,10 +134,7 @@ char * SpMVM_matrixFormatName(mat_trait_t trait);
 unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix);
 mat_trait_t SpMVM_stringToMatrixTrait(char *str);
 mat_trait_t SpMVM_createMatrixTrait(mat_format_t, mat_flags_t, mat_aux_t);
-mat_aux_t SpMVM_matrixTraitExtractAux(mat_trait_t trait);
-mat_flags_t SpMVM_matrixTraitExtractFlags(mat_trait_t trait);
-mat_format_t SpMVM_matrixTraitExtractFormat(mat_trait_t trait);
-void SpMVM_matrixTraitAddFlag(mat_trait_t * trait, mat_flags_t flag);
+MATRIX_TYPE * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait);
 
 /******************************************************************************
   * Distribute a CRS matrix from the master node to all worker nodes.

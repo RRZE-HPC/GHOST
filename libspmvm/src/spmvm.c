@@ -339,6 +339,10 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 	MPI_safecall(MPI_Bcast(&(cr->nCols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
+	
+	setup->nNz = cr->nEnts;
+	setup->nRows = cr->nRows;
+	setup->nCols = cr->nCols;
 
 	if (setup_flags & SPM_DISTRIBUTED)
 	{ // distributed matrix
@@ -348,7 +352,7 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 #else
 		//		if (traits[0].format == SPM_FORMAT_CRS) {
 		if (options & SPMVM_OPTION_SERIAL_IO) 
-			SpMVM_createDistributedSetupSerial(setup, cr, options);
+			SpMVM_createDistributedSetupSerial(setup, cr, options); // TODO traits as argument
 		else
 			SpMVM_createDistributedSetup(setup, cr, matrixPath, options);
 		//		} else {
@@ -361,38 +365,9 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 #endif
 	} else 
 	{ // global matrix
-		// TODO in create function
-		setup->fullMatrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"full matrix");	
 		DEBUG_LOG(1,"Creating global %s matrix",SpMVM_matrixFormatName(traits[0]));
-		mat_format_t format = traits[0].format;
-		mat_flags_t flags = traits[0].flags;
-		if (format == SPM_FORMAT_CRS  || format == SPM_FORMAT_CRSCD) {
-			setup->fullMatrix->data = cr;
-		} else if (format == SPM_FORMAT_BJDS) {
-			setup->fullMatrix->data = CRStoBJDS(cr);
-		} else if (format ==  SPM_FORMAT_SBJDS) {
-			setup->fullMatrix->data = CRStoSBJDS(cr,&(setup->fullMatrix->rowPerm),&(setup->fullMatrix->invRowPerm),flags);
-		} else if (format ==  SPM_FORMAT_TBJDS) {
-			setup->fullMatrix->data = CRStoTBJDS(cr,1);
-		} else if (format ==  SPM_FORMAT_STBJDS) {
-			setup->fullMatrix->data = CRStoSTBJDS(cr,1,
-					*(unsigned int *)(traits[0].aux),
-					&(setup->fullMatrix->rowPerm),&(setup->fullMatrix->invRowPerm),flags);
-		} else if (format ==  SPM_FORMAT_TCBJDS) {
-			setup->fullMatrix->data = CRStoTBJDS(cr,0);
-		} else {
-			ABORT("Invalid format for global matrix!");
-		}
-
-		setup->fullMatrix->trait = traits[0];	
-		setup->fullMatrix->nRows = cr->nRows;
-		setup->fullMatrix->nCols = cr->nCols;
-		setup->fullMatrix->nNonz = cr->nEnts;
-
+		setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
 	}
-	setup->nNz = cr->nEnts;
-	setup->nRows = cr->nRows;
-	setup->nCols = cr->nCols;
 
 #ifdef OPENCL
 	if (!(flags & SPM_HOSTONLY))
@@ -408,15 +383,14 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 #else
 	UNUSED(deviceFormats);
 #endif
-
-
-	//DEBUG_LOG(1,"%ux%u matrix (%u nonzeros) created successfully",mat->nCols,mat->nRows,mat->nNonz);
+	DEBUG_LOG(1,"%dx%d matrix (%d nonzeros) created successfully",setup->nCols,setup->nRows,setup->nNz);
 
 	kernels = SpMVM_setupKernels(setup);
 
 	DEBUG_LOG(1,"Setup created successfully");
 	return setup;
 }
+
 
 
 double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec, 
@@ -431,24 +405,23 @@ double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec,
 	if (setup->flags & SPM_GLOBAL) {
 		kernelFunc = kernels[setup->fullMatrix->trait.format];
 		arg = setup->fullMatrix->data;
+		UNUSED(kernel);
 	} else {
+#ifdef MPI
 		switch (kernel) {
 			case SPMVM_KERNEL_VECTORMODE:
 				kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
-				arg = setup;
 				break;
 			case SPMVM_KERNEL_GOODFAITH:
 				kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
-				arg = setup;
 				break;
 			case SPMVM_KERNEL_TASKMODE:
 				kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
-				arg = setup;
 				break;
 		}
+		arg = setup;
+#endif
 	}
-
-
 
 	if (!kernelFunc)
 		return -1.0;

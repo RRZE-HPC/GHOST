@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 600
 #include "matricks.h"
+#include "spmvm.h"
 #include "spmvm_util.h"
 
 #include <string.h>
@@ -638,27 +639,27 @@ int pad(int nRows, int padding)
 	return nRowsPadded;
 }
 
-BJDS_TYPE * CRStoBJDS(CR_TYPE *cr) 
+void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE ** matrix) 
 {
 	int i,j,c;
 	BJDS_TYPE *mv;
 
+	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
+
 
 	mv->nRows = cr->nRows;
 	mv->nNz = cr->nEnts;
 	mv->nEnts = 0;
 	mv->nRowsPadded = pad(mv->nRows,BJDS_LEN);
 
+	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nRows = mv->nRows, .nCols = cr->nCols, .nNonz = mv->nNz, .data = mv);
 
 	int nChunks = mv->nRowsPadded/BJDS_LEN;
 	mv->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"mv->chunkStart");
 	mv->chunkMin = (int *)allocateMemory((nChunks)*sizeof(int),"mv->chunkMin");
 	mv->rowLen = (int *)allocateMemory((mv->nRowsPadded)*sizeof(int),"mv->chunkMin");
 	mv->chunkStart[0] = 0;
-
-
-
 
 	int chunkMax = 0;
 	int chunkMin = cr->nCols;
@@ -734,16 +735,17 @@ BJDS_TYPE * CRStoBJDS(CR_TYPE *cr)
 		}
 	}
 
-
-	return mv;
 }
 
-BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **rowPerm, int **invRowPerm, mat_flags_t flags) 
+void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix) 
 {
 	int i,j,c;
 	BJDS_TYPE *tbjds;
+	int *rowPerm, *invRowPerm;
+	mat_flags_t flags;
+	int rowWise = trait.flags & SPM_FLAG_COLMAJOR;
 
-
+	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	tbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 	tbjds->nRows = cr->nRows;
@@ -751,6 +753,19 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **
 	tbjds->nEnts = 0;
 	tbjds->nRowsPadded = pad(tbjds->nRows,BJDS_LEN);
 
+	rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
+	invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
+	**matrix = (MATRIX_TYPE)MATRIX_INIT(
+			.trait = trait, 
+			.nRows = cr->nRows, 
+			.nCols = cr->nCols, 
+			.nNonz = tbjds->nNz,
+			.rowPerm = rowPerm,
+			.invRowPerm = invRowPerm,	   
+			.data = tbjds);
+
+	unsigned int sortBlock = *(unsigned int *)(trait.aux);
+	flags = trait.flags;
 
 	int nChunks = tbjds->nRowsPadded/BJDS_LEN;
 	tbjds->chunkStart = (int *)allocateMemory((nChunks+1)*sizeof(int),"tbjds->chunkStart");
@@ -789,25 +804,23 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **
 
 
 	/* sort within same rowlength with asceding row number #################### */
-/*	i=0;
-	while(i < cr->nRows) {
+	/*	i=0;
+		while(i < cr->nRows) {
 		int start = i;
 
 		j = rowSort[start].nEntsInRow;
 		while( i<cr->nRows && rowSort[i].nEntsInRow >= j ) 
-			++i;
+		++i;
 
 		DEBUG_LOG(1,"sorting over %i rows (%i): %i - %i\n",i-start,j, start, i-1);
 		qsort( &rowSort[start], i-start, sizeof(JD_SORT_TYPE), compareNZEOrgPos );
-	}
+		}
 
-	for(i=1; i < cr->nRows; ++i) {
+		for(i=1; i < cr->nRows; ++i) {
 		if( rowSort[i].nEntsInRow == rowSort[i-1].nEntsInRow && rowSort[i].row < rowSort[i-1].row)
-			printf("Error in row %i: descending row number\n",i);
-	}*/
+		printf("Error in row %i: descending row number\n",i);
+		}*/
 
-	*rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
-	*invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
 
 	for(i=0; i < cr->nRows; ++i) {
 		/* invRowPerm maps an index in the permuted system to the original index,
@@ -815,10 +828,10 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **
 		 */
 		if( rowSort[i].row >= cr->nRows ) DEBUG_LOG(0,"error: invalid row number %i in %i\n",rowSort[i].row, i); 
 
-		(*invRowPerm)[i] = rowSort[i].row;
-		(*rowPerm)[rowSort[i].row] = i;
+		(invRowPerm)[i] = rowSort[i].row;
+		(rowPerm)[rowSort[i].row] = i;
 	}
-//	for(i=0; i < cr->nRows; ++i) printf("%d\n",(*invRowPerm)[i]);
+	//	for(i=0; i < cr->nRows; ++i) printf("%d\n",(*invRowPerm)[i]);
 
 
 	for (i=0; i<tbjds->nRowsPadded; i++) {
@@ -882,11 +895,11 @@ BJDS_TYPE * CRStoSTBJDS(CR_TYPE *cr, int rowWise, unsigned int sortBlock, int **
 		{
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tbjds->val[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-if (flags & SPM_PERMUTECOLUMNS)
-				tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-else
-				tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
+				tbjds->val[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
+				if (flags & SPM_PERMUTECOLUMNS)
+					tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
+				else
+					tbjds->col[tbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
 			}
 		}
 
@@ -898,11 +911,11 @@ else
 			{
 				for (j=tbjds->chunkMin[c]; j<tbjds->rowLen[c*BJDS_LEN+i]; j++)
 				{
-					tbjds->val[rem] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-if (flags & SPM_PERMUTECOLUMNS)
-					tbjds->col[rem++] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-else
-					tbjds->col[rem++] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
+					tbjds->val[rem] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
+					if (flags & SPM_PERMUTECOLUMNS)
+						tbjds->col[rem++] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
+					else
+						tbjds->col[rem++] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
 				}
 			}
 		} else 
@@ -912,32 +925,33 @@ else
 				for (i=0; i<BJDS_LEN; i++)
 				{
 					if (j<tbjds->rowLen[c*BJDS_LEN+i] ) {
-						tbjds->val[rem] = cr->val[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
-if (flags & SPM_PERMUTECOLUMNS)
-						tbjds->col[rem++] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j]];
-else
-						tbjds->col[rem++] = cr->col[cr->rowOffset[(*invRowPerm)[c*BJDS_LEN+i]]+j];
+						tbjds->val[rem] = cr->val[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
+						if (flags & SPM_PERMUTECOLUMNS)
+							tbjds->col[rem++] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j]];
+						else
+							tbjds->col[rem++] = cr->col[cr->rowOffset[(invRowPerm)[c*BJDS_LEN+i]]+j];
 					}
 				}
 			}
 		}
 	}
-
-
-	return tbjds;
 }
 
-BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise) 
+void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix) 
 {
 	int i,j,c;
 	BJDS_TYPE *mv;
+	int rowWise = trait.flags & SPM_FLAG_COLMAJOR;
 
+	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 	mv->nRows = cr->nRows;
 	mv->nNz = cr->nEnts;
 	mv->nEnts = 0;
 	mv->nRowsPadded = pad(mv->nRows,BJDS_LEN);
+	
+	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nRows = mv->nRows, .nCols = cr->nCols, .nNonz = mv->nNz, .data = mv);
 
 
 	int nChunks = mv->nRowsPadded/BJDS_LEN;
@@ -1046,16 +1060,28 @@ BJDS_TYPE * CRStoTBJDS(CR_TYPE *cr, int rowWise)
 			}
 		}
 	}
-
-
-	return mv;
 }
 
-BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t flags) 
+void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 {
 	int i,j,c;
+	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
 	BJDS_TYPE *sbjds;
 	JD_SORT_TYPE* rowSort;
+	mat_flags_t flags = trait.flags;
+	
+	int *rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
+	int *invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
+	
+	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
+	**matrix = (MATRIX_TYPE)MATRIX_INIT(
+			.trait = trait, 
+			.nRows = cr->nRows, 
+			.nCols = cr->nCols, 
+			.nNonz = cr->nEnts,
+			.rowPerm = rowPerm,
+			.invRowPerm = invRowPerm,	   
+			.data = sbjds);
 	/* get max number of entries in one row ###########################*/
 	rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nRows * sizeof( JD_SORT_TYPE ),
 			"rowSort" );
@@ -1087,15 +1113,12 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t
 
 
 
-	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
 
 	sbjds->nRows = cr->nRows;
 	sbjds->nNz = cr->nEnts;
 	sbjds->nEnts = 0;
 	sbjds->nRowsPadded = pad(sbjds->nRows,BJDS_LEN);
 
-	*rowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->rowPerm");
-	*invRowPerm = (int *)allocateMemory(cr->nRows*sizeof(int),"sbjds->invRowPerm");
 
 	for(i=0; i < cr->nRows; ++i) {
 		/* invRowPerm maps an index in the permuted system to the original index,
@@ -1103,8 +1126,8 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t
 		 */
 		if( rowSort[i].row >= cr->nRows ) DEBUG_LOG(0,"error: invalid row number %i in %i\n",rowSort[i].row, i); 
 
-		(*invRowPerm)[i] = rowSort[i].row;
-		(*rowPerm)[rowSort[i].row] = i;
+		(invRowPerm)[i] = rowSort[i].row;
+		(rowPerm)[rowSort[i].row] = i;
 	}
 
 	int nChunks = sbjds->nRowsPadded/BJDS_LEN;
@@ -1167,11 +1190,11 @@ BJDS_TYPE * CRStoSBJDS(CR_TYPE *cr, int **rowPerm, int **invRowPerm, mat_flags_t
 				int rowLen = rowSort[row].nEntsInRow;
 				if (j<rowLen) {
 
-					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(*invRowPerm)[row]]+j];
-if (flags & SPM_PERMUTECOLUMNS)
-					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = (*rowPerm)[cr->col[cr->rowOffset[(*invRowPerm)[row]]+j]];
-else
-					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(*invRowPerm)[row]]+j];
+					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->val[cr->rowOffset[(invRowPerm)[row]]+j];
+					if (flags & SPM_PERMUTECOLUMNS)
+						sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = (rowPerm)[cr->col[cr->rowOffset[(invRowPerm)[row]]+j]];
+					else
+						sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rowOffset[(invRowPerm)[row]]+j];
 				} else {
 					sbjds->val[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					sbjds->col[sbjds->chunkStart[c]+j*BJDS_LEN+i] = 0;
@@ -1182,7 +1205,11 @@ else
 			}
 		}
 	}
-
-
-	return sbjds;
 }
+
+void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
+{
+	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nRows = cr->nRows, .nCols = cr->nCols, .nNonz = cr->nEnts, .data = cr);}
+	
+
