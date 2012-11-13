@@ -158,8 +158,8 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
 			1:0;
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
-		ws = ((matrix->nRows+1)*sizeof(int) + 
-				matrix->nNonz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
+		ws = ((matrix->nrows+1)*sizeof(int) + 
+				matrix->nnz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
 		if (matrix->trait.flags & SETUP_HOSTANDDEVICE)
@@ -173,9 +173,9 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		
 		SpMVM_printHeader("Matrix information");
 		SpMVM_printLine("Matrix name",NULL,"%s",matrixName);
-		SpMVM_printLine("Dimension",NULL,"%u",matrix->nRows);
-		SpMVM_printLine("Nonzeros",NULL,"%u",matrix->nNonz);
-		SpMVM_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)matrix->nNonz/matrix->nRows);
+		SpMVM_printLine("Dimension",NULL,"%u",matrix->nrows);
+		SpMVM_printLine("Nonzeros",NULL,"%u",matrix->nnz);
+		SpMVM_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)matrix->nnz/matrix->nrows);
 		SpMVM_printLine("Matrix location",NULL,"%s",matrixLocation);
 		SpMVM_printLine("CRS size","MB","%lu",ws);
 		SpMVM_printLine("Host matrix format",NULL,"%s",SpMVM_matrixFormatName(matrix->trait));
@@ -337,13 +337,13 @@ void SpMVM_printEnvInfo()
 
 }
 
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, mat_data_t (*fp)(int))
+HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nrows, mat_data_t (*fp)(int))
 {
 
 	int me = SpMVM_getRank();
 
 	if (me==0) {
-		return SpMVM_newHostVector( nRows,fp );
+		return SpMVM_newHostVector( nrows,fp );
 	} else {
 		return SpMVM_newHostVector(0,NULL);
 	}
@@ -351,65 +351,17 @@ HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nRows, mat_data_t (*fp)(int))
 
 void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nIter, int spmvmOptions) 
 {
+	int iter;
 
-	int iteration;
-	int i;
+	for (iter=0; iter<nIter; iter++)
+		SpMVM_referenceKernel(lhs, cr->col, cr->rpt, cr->val, rhs, cr->nrows, spmvmOptions);
 
-	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
-		cr->col[i] += 1;
-	}	
-
-	if (spmvmOptions & SPMVM_OPTION_AXPY) {
-
-		for (iteration=0; iteration<nIter; iteration++) {
-#ifdef DOUBLE
-#ifdef COMPLEX
-			fortrancrsaxpyc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val ,
-					cr->col, cr->rowOffset);
-#else
-			fortrancrsaxpy_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val ,
-					cr->col, cr->rowOffset);
-#endif
-#endif
-#ifdef SINGLE
-#ifdef COMPLEX
-			fortrancrsaxpycf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val,
-					cr->col, cr->rowOffset);
-#else
-			fortrancrsaxpyf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val,
-					cr->col, cr->rowOffset);
-#endif
-#endif
-		}
-	} else {
-#ifdef DOUBLE
-#ifdef COMPLEX
-		fortrancrsc_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-				cr->rowOffset);
-#else
-		fortrancrs_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-				cr->rowOffset);
-#endif
-#endif
-#ifdef SINGLE
-#ifdef COMPLEX
-		fortrancrscf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val, cr->col,
-				cr->rowOffset);
-#else
-		fortrancrsf_(&(cr->nRows), &(cr->nEnts), lhs, rhs, cr->val , cr->col,
-				cr->rowOffset);
-#endif
-#endif
-	}
-	for( i = 0; i < cr->rowOffset[cr->nRows]; ++i) {
-		cr->col[i] -= 1;
-	}
 }
 
 void SpMVM_zeroVector(VECTOR_TYPE *vec) 
 {
 	int i;
-	for (i=0; i<vec->nRows; i++) {
+	for (i=0; i<vec->nrows; i++) {
 #ifdef COMPLEX
 		vec->val[i] = 0;
 #else
@@ -424,31 +376,31 @@ void SpMVM_zeroVector(VECTOR_TYPE *vec)
 
 }
 
-HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int)) 
+HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nrows, mat_data_t (*fp)(int)) 
 {
 	HOSTVECTOR_TYPE* vec;
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(mat_data_t) );
+	size_val = (size_t)( nrows * sizeof(mat_data_t) );
 	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
 	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-	vec->nRows = nRows;
+	vec->nrows = nrows;
 
 	if (fp) {
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) 
+		for (i=0; i<nrows; i++) 
 			vec->val[i] = fp(i);
 
 	}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.+I*0.;
+		for (i=0; i<nrows; i++) vec->val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<nRows; i++) vec->val[i] = 0.;
+		for (i=0; i<nrows; i++) vec->val[i] = 0.;
 #endif
 	}
 
@@ -456,21 +408,21 @@ HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nRows, mat_data_t (*fp)(int))
 	return vec;
 }
 
-VECTOR_TYPE* SpMVM_newVector( const int nRows ) 
+VECTOR_TYPE* SpMVM_newVector( const int nrows ) 
 {
 	VECTOR_TYPE* vec;
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nRows * sizeof(mat_data_t) );
+	size_val = (size_t)( nrows * sizeof(mat_data_t) );
 	vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 
 
 	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-	vec->nRows = nRows;
+	vec->nrows = nrows;
 
 #pragma omp parallel for schedule(runtime) 
-	for( i = 0; i < nRows; i++ ) 
+	for( i = 0; i < nrows; i++ ) 
 		vec->val[i] = 0.0;
 
 #ifdef OPENCL
@@ -493,17 +445,17 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 {
 	int me = SpMVM_getRank();
 
-	int pseudo_ldim = lcrp->lnRows[me]+lcrp->halo_elements ;
+	int pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
 
 
 	VECTOR_TYPE *nodeVec = SpMVM_newVector( pseudo_ldim ); 
 
 #ifdef MPI
-	MPI_safecall(MPI_Scatterv ( vec->val, lcrp->lnRows, lcrp->lfRow, MPI_MYDATATYPE,
-				nodeVec->val, lcrp->lnRows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( vec->val, (int *)lcrp->lnrows, (int *)lcrp->lfRow, MPI_MYDATATYPE,
+				nodeVec->val, (int)lcrp->lnrows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
 #else
 	int i;
-	for (i=0; i<vec->nRows; i++) nodeVec->val[i] = vec->val[i];
+	for (i=0; i<vec->nrows; i++) nodeVec->val[i] = vec->val[i];
 #endif
 #ifdef OPENCL
 	CL_uploadVector(nodeVec);
@@ -522,19 +474,19 @@ void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec,
 
 	int me = SpMVM_getRank();
 	if ( 0x1<<kernel & SPMVM_KERNELS_COMBINED)  {
-		SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->communicator->lnRows[me]);
+		SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->communicator->lnrows[me]);
 	} else if ( 0x1<<kernel & SPMVM_KERNELS_SPLIT ) {
 		// one of those must return immediately
-		SpMVM_permuteVector(vec->val,setup->localMatrix->invRowPerm,setup->communicator->lnRows[me]);
-		SpMVM_permuteVector(vec->val,setup->remoteMatrix->invRowPerm,setup->communicator->lnRows[me]);
+		SpMVM_permuteVector(vec->val,setup->localMatrix->invRowPerm,setup->communicator->lnrows[me]);
+		SpMVM_permuteVector(vec->val,setup->remoteMatrix->invRowPerm,setup->communicator->lnrows[me]);
 	}
-	MPI_safecall(MPI_Gatherv(vec->val,setup->communicator->lnRows[me],MPI_MYDATATYPE,totalVec->val,
-				setup->communicator->lnRows,setup->communicator->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(vec->val,(int)setup->communicator->lnrows[me],MPI_MYDATATYPE,totalVec->val,
+				(int *)setup->communicator->lnrows,(int *)setup->communicator->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
 	int i;
 	UNUSED(kernel);
-	SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->fullMatrix->nRows);
-	for (i=0; i<totalVec->nRows; i++) 
+	SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->fullMatrix->nrows);
+	for (i=0; i<totalVec->nrows; i++) 
 		totalVec->val[i] = vec->val[i];
 #endif
 }
@@ -587,12 +539,12 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 	int i;
 	mat_data_t sum = 0;
 
-	for (i=0; i<vec->nRows; i++)	
+	for (i=0; i<vec->nrows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
 	mat_data_t f = (mat_data_t)1/SQRT(ABS(sum));
 
-	for (i=0; i<vec->nRows; i++)	
+	for (i=0; i<vec->nrows; i++)	
 		vec->val[i] *= f;
 
 #ifdef OPENCL
@@ -605,19 +557,19 @@ void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
 	int i;
 	mat_data_t sum = 0;
 
-	for (i=0; i<vec->nRows; i++)	
+	for (i=0; i<vec->nrows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
 	mat_data_t f = (mat_data_t)1/SQRT(ABS(sum));
 
-	for (i=0; i<vec->nRows; i++)	
+	for (i=0; i<vec->nrows; i++)	
 		vec->val[i] *= f;
 }
 
 void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) 
 {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nrows*sizeof(mat_data_t)), "vec->val",  vec->val );
 		free( vec );
 	}
 }
@@ -625,7 +577,7 @@ void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec )
 void SpMVM_freeVector( VECTOR_TYPE* const vec ) 
 {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nRows*sizeof(mat_data_t)), "vec->val",  vec->val );
+		freeMemory( (size_t)(vec->nrows*sizeof(mat_data_t)), "vec->val",  vec->val );
 #ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
@@ -637,8 +589,8 @@ void SpMVM_freeCRS( CR_TYPE* const cr )
 {
 
 	if (cr) {
-		if (cr->rowOffset)
-			free(cr->rowOffset);
+		if (cr->rpt)
+			free(cr->rpt);
 		if (cr->col)
 			free(cr->col);
 		if (cr->val)
@@ -646,15 +598,15 @@ void SpMVM_freeCRS( CR_TYPE* const cr )
 		free(cr);
 	}
 	//TODO
-	/*	size_t size_rowOffset, size_col, size_val;
+	/*	size_t size_rpt, size_col, size_val;
 
 		if( cr ) {
 
-		size_rowOffset  = (size_t)( (cr->nRows+1) * sizeof( int ) );
+		size_rpt  = (size_t)( (cr->nrows+1) * sizeof( int ) );
 		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
 		size_val        = (size_t)( cr->nEnts     * sizeof( mat_data_t) );
 
-		freeMemory( size_rowOffset,  "cr->rowOffset", cr->rowOffset );
+		freeMemory( size_rpt,  "cr->rpt", cr->rpt );
 		freeMemory( size_col,        "cr->col",       cr->col );
 		freeMemory( size_val,        "cr->val",       cr->val );
 		freeMemory( sizeof(CR_TYPE), "cr",            cr );
@@ -666,7 +618,7 @@ void SpMVM_freeLCRP( LCRP_TYPE* const lcrp )
 {
 	if( lcrp ) {
 /*		free( lcrp->lnEnts );
-		free( lcrp->lnRows );
+		free( lcrp->lnrows );
 		free( lcrp->lfEnt );
 		free( lcrp->lfRow );
 		free( lcrp->wishes );
@@ -700,10 +652,10 @@ CL_freeMatrix( lcrp->remoteMatrix, lcrp->remoteFormat );
 	}
 }
 
-void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len) 
+void SpMVM_permuteVector( mat_data_t* vec, mat_idx_t* perm, mat_idx_t len) 
 {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
-	int i;
+	mat_idx_t i;
 	mat_data_t* tmp;
 
 	if (perm == NULL) {
@@ -718,7 +670,7 @@ void SpMVM_permuteVector( mat_data_t* vec, int* perm, int len)
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
-			ABORT("Permutation index out of bounds: %d > %d\n",perm[i],len);
+			ABORT("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
 		}
 		tmp[perm[i]] = vec[i];
 	}
@@ -974,9 +926,9 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 			{
 				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->data;
 				size = mv->nEnts*(sizeof(mat_data_t) + sizeof(int));
-				size += mv->nRowsPadded/BJDS_LEN*sizeof(int); // chunkStart
-				size += mv->nRowsPadded/BJDS_LEN*sizeof(int); // chunkMin
-				size += mv->nRowsPadded*sizeof(int); // rowLen
+				size += mv->nrowsPadded/BJDS_LEN*sizeof(int); // chunkStart
+				size += mv->nrowsPadded/BJDS_LEN*sizeof(int); // chunkMin
+				size += mv->nrowsPadded*sizeof(int); // rowLen
 				break;
 			}
 		case SPM_FORMAT_SBJDS:
@@ -984,13 +936,13 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 			{
 				BJDS_TYPE * mv= (BJDS_TYPE *)matrix->data;
 				size = mv->nEnts*(sizeof(mat_data_t) + sizeof(int));
-				size += mv->nRowsPadded/BJDS_LEN*sizeof(int); // chunkStart
+				size += mv->nrowsPadded/BJDS_LEN*sizeof(int); // chunkStart
 				break;
 			}
 		case SPM_FORMAT_CRSCD:
 			{
 				CR_TYPE *crs = (CR_TYPE *)matrix->data;
-				size = crs->nEnts*(sizeof(int)*sizeof(mat_data_t))+(crs->nRows+1)*sizeof(int);
+				size = crs->nEnts*(sizeof(int)*sizeof(mat_data_t))+(crs->nrows+1)*sizeof(int);
 				size += crs->nConstDiags*sizeof(CONST_DIAG);
 				break;
 			}
@@ -1107,7 +1059,7 @@ int SpMVM_getNumberOfThreads()
 	return nthreads;
 }
 
-int SpMVM_getNumberOfNodes() 
+unsigned int SpMVM_getNumberOfNodes() 
 {
 #ifndef MPI
 	return 1;
@@ -1152,4 +1104,16 @@ int SpMVM_getNumberOfNodes()
 #endif
 }
 
+unsigned int SpMVM_getNumberOfProcesses() 
+{
+#ifndef MPI
+	return 1;
+#else
+	
+	int nnodes;
 
+	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD, &nnodes));
+
+	return (unsigned int)nnodes;
+#endif
+}

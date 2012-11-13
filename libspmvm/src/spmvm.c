@@ -177,34 +177,34 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 {
 
 	mat_data_t *val;
-	int nRows;
+	mat_idx_t nrows;
 	size_t size_val;
 	MATRIX_TYPE *matrix = setup->fullMatrix;
 
 
 	if (setup->flags & SETUP_GLOBAL)
 	{
-		size_val = (size_t)matrix->nRows*sizeof(mat_data_t);
+		size_val = (size_t)matrix->nrows*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-		nRows = matrix->nRows;
+		nrows = matrix->nrows;
 
 		if (matrix->trait.flags & SPM_PERMUTECOLIDX)
-			SpMVM_permuteVector(val,matrix->rowPerm,nRows);
+			SpMVM_permuteVector(val,matrix->rowPerm,nrows);
 
-		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d rows",nRows);
+		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX" rows",nrows);
 
 		mat_idx_t i;
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nRows; i++) 
+			for (i=0; i<matrix->nrows; i++) 
 				val[i] = fp(i);
 		}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nRows; i++) val[i] = 0.+I*0.;
+			for (i=0; i<matrix->nrows; i++) val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nRows; i++) val[i] = 0.;
+			for (i=0; i<matrix->nrows; i++) val[i] = 0.;
 #endif
 		}
 
@@ -212,46 +212,46 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 	else 
 	{
 		LCRP_TYPE *lcrp = setup->communicator;
-		int i;
+		mat_idx_t i;
 		int me = SpMVM_getRank();
 
 		switch (type) {
 			case VECTOR_TYPE_LHS:
-				nRows = lcrp->lnRows[me];
+				nrows = lcrp->lnrows[me];
 				break;
 			case VECTOR_TYPE_RHS:
 			case VECTOR_TYPE_BOTH:
-				nRows = lcrp->lnRows[me]+lcrp->halo_elements;
+				nrows = lcrp->lnrows[me]+lcrp->halo_elements;
 				break;
 			default:
 				ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 		}
 
-		size_val = (size_t)( nRows * sizeof(mat_data_t) );
+		size_val = (size_t)( nrows * sizeof(mat_data_t) );
 
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-		nRows = nRows;
+		nrows = nrows;
 
-		DEBUG_LOG(1,"NUMA-aware allocation of vector with %d+%d rows",lcrp->lnRows[me],lcrp->halo_elements);
+		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX"+%"PRmatIDX" rows",lcrp->lnrows[me],lcrp->halo_elements);
 
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<lcrp->lnRows[me]; i++) 
+			for (i=0; i<lcrp->lnrows[me]; i++) 
 				val[i] = fp(lcrp->lfRow[me]+i);
 #pragma omp parallel for schedule(runtime)
-			for (i=lcrp->lnRows[me]; i<nRows; i++) 
+			for (i=lcrp->lnrows[me]; i<nrows; i++) 
 				val[i] = fp(lcrp->lfRow[me]+i);
 		}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.+I*0.;
+			for (i=0; i<lcrp->lnrows[me]; i++) val[i] = 0.+I*0.;
 #pragma omp parallel for schedule(runtime)
-			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.+I*0.;
+			for (i=lcrp->lnrows[me]; i<nrows; i++) val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<lcrp->lnRows[me]; i++) val[i] = 0.;
+			for (i=0; i<lcrp->lnrows[me]; i++) val[i] = 0.;
 #pragma omp parallel for schedule(runtime)
-			for (i=lcrp->lnRows[me]; i<nRows; i++) val[i] = 0.;
+			for (i=lcrp->lnrows[me]; i<nrows; i++) val[i] = 0.;
 #endif
 		}
 	}
@@ -261,7 +261,7 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 		HOSTVECTOR_TYPE* vec;
 		vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 		vec->val = val;
-		vec->nRows = nRows; 
+		vec->nrows = nrows; 
 
 		DEBUG_LOG(1,"Host-only vector created successfully");
 
@@ -270,7 +270,7 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 		VECTOR_TYPE* vec;
 		vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 		vec->val = val;
-		vec->nRows = nRows; 
+		vec->nrows = nrows; 
 #ifdef OPENCL
 		int flag;
 		switch (type) {
@@ -335,14 +335,14 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 	// scatter matrix properties
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(&(cr->nRows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(&(cr->nCols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(cr->nrows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 	
-	setup->nNz = cr->nEnts;
-	setup->nRows = cr->nRows;
-	setup->nCols = cr->nCols;
+	setup->nnz = cr->nEnts;
+	setup->nrows = cr->nrows;
+	setup->ncols = cr->ncols;
 
 	if (setup_flags & SETUP_DISTRIBUTED)
 	{ // distributed matrix
@@ -383,7 +383,7 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 #else
 	UNUSED(deviceFormats);
 #endif
-	DEBUG_LOG(1,"%dx%d matrix (%d nonzeros) created successfully",setup->nCols,setup->nRows,setup->nNz);
+	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->ncols,setup->nrows,setup->nnz);
 
 	kernels = SpMVM_setupKernels(setup);
 
@@ -427,7 +427,7 @@ double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec,
 		return -1.0;
 
 #ifdef MPI
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 
 	for( it = 0; it < nIter; it++ ) {

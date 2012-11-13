@@ -36,7 +36,7 @@ int main( int argc, char* argv[] ) {
 
 	if (me == 0){
 		printf("%s kernel @ %7.2f GF/s\n",SpMVM_kernelName(kernel),
-				2.0e-9*(double)matrix->nNonz/time);
+				2.0e-9*(double)matrix->nnz/time);
 	}
 
 	SpMVM_freeVector( nodeLHS );

@@ -235,15 +235,15 @@ static void vecscal(VECTOR_TYPE *vec, mat_data_t s, int n)
 static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
 		mat_data_t *alpha, mat_data_t *beta, int me)
 {
-	vecscal(vnew,-*beta,lcrp->lnRows[me]);
+	vecscal(vnew,-*beta,lcrp->lnrows[me]);
 	SpMVM_solve(vnew, lcrp, vold, KERNEL, 1);
-	dotprod(vnew,vold,alpha,lcrp->lnRows[me]);
+	dotprod(vnew,vold,alpha,lcrp->lnrows[me]);
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-	axpy(vnew,vold,-(*alpha),lcrp->lnRows[me]);
-	dotprod(vnew,vnew,beta,lcrp->lnRows[me]);
+	axpy(vnew,vold,-(*alpha),lcrp->lnrows[me]);
+	dotprod(vnew,vnew,beta,lcrp->lnrows[me]);
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	*beta=SQRT(*beta);
-	vecscal(vnew,1./(*beta),lcrp->lnRows[me]);
+	vecscal(vnew,1./(*beta),lcrp->lnrows[me]);
 }
 
 static mat_data_t rhsVal (int i)
@@ -294,7 +294,7 @@ int main( int argc, char* argv[] )
 
 
 
-	r0 = SpMVM_createGlobalHostVector(lcrp->nRows,rhsVal);
+	r0 = SpMVM_createGlobalHostVector(lcrp->nrows,rhsVal);
 	SpMVM_normalizeHostVector(r0);
 
 
@@ -324,9 +324,9 @@ int main( int argc, char* argv[] )
 	vecscalKernel = clCreateKernel(program,"vecscalKernel",&err);
 #endif
 
-	vnew = SpMVM_newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = 0
-	vold = SpMVM_newVector(lcrp->lnRows[me]+lcrp->halo_elements); // = r0
-	evec = SpMVM_newVector(lcrp->lnRows[me]); // = r0
+	vnew = SpMVM_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = 0
+	vold = SpMVM_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = r0
+	evec = SpMVM_newVector(lcrp->lnrows[me]); // = r0
 
 	vold = SpMVM_distributeVector(lcrp,r0);
 	evec = SpMVM_distributeVector(lcrp,r0);
@@ -364,7 +364,7 @@ int main( int argc, char* argv[] )
 
 		lanczosStep(lcrp,vnew,vold,&alpha,&beta,me);
 #ifdef OPENCL
-		CL_copyHostToDevice(vnew->CL_val_gpu,vnew->val,lcrp->lnRows[me]);
+		CL_copyHostToDevice(vnew->CL_val_gpu,vnew->val,lcrp->lnrows[me]);
 #endif
 
 #ifdef LIKWID_MARKER

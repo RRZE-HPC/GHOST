@@ -327,7 +327,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
 
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   
-					&matrix->nRows));
+					&matrix->nrows));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(int),   
 					&matrix->padding));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),
@@ -342,7 +342,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
 
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   
-					&matrix->nRows));
+					&matrix->nrows));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(cl_mem),
 					&matrix->val));
 		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),
@@ -456,15 +456,15 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 					DEBUG_LOG(1,"FULL pjds");
 
 					pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
-							lcrp->lnRows[me],matrixFormats->T[0] );
+							lcrp->lnrows[me],matrixFormats->T[0] );
 					matrix->fullRowPerm = (int *)allocateMemory(
-							sizeof(int)*lcrp->lnRows[me],"rowPerm");
+							sizeof(int)*lcrp->lnrows[me],"rowPerm");
 					matrix->fullInvRowPerm = (int *)allocateMemory
-						(sizeof(int)*lcrp->lnRows[me],"invRowPerm");
+						(sizeof(int)*lcrp->lnrows[me],"invRowPerm");
 					memcpy(matrix->fullRowPerm, pjds->rowPerm,
-							lcrp->lnRows[me]*sizeof(int));
+							lcrp->lnrows[me]*sizeof(int));
 					memcpy(matrix->fullInvRowPerm, pjds->invRowPerm,
-							lcrp->lnRows[me]*sizeof(int));
+							lcrp->lnrows[me]*sizeof(int));
 
 					cpjds = CL_initPJDS( pjds );
 					CL_uploadPJDS(cpjds, pjds);
@@ -480,7 +480,7 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 					DEBUG_LOG(1,"FULL elr-%d", matrixFormats->T[0]);
 
 					elr = CRStoELRT( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
-							lcrp->lnRows[me],matrixFormats->T[0] );
+							lcrp->lnrows[me],matrixFormats->T[0] );
 					celr = CL_initELR( elr );
 					CL_uploadELR(celr, elr);
 					gpum->fullMatrix = celr;
@@ -507,19 +507,19 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			DEBUG_LOG(1,"LOCAL pjds");
 
 			lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, 
-					lcrp->lnRows[me],matrixFormats->T[1] );
+					lcrp->lnrows[me],matrixFormats->T[1] );
 
 			// allocate space for permutations in lcrp
 			matrix->splitRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnRows[me],"rowPerm");
+					sizeof(int)*lcrp->lnrows[me],"rowPerm");
 			matrix->splitInvRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnRows[me],"invRowPerm");
+					sizeof(int)*lcrp->lnrows[me],"invRowPerm");
 
 			// save permutations from matrix to lcrp
 			memcpy(matrix->splitRowPerm, lpjds->rowPerm, 
-					lcrp->lnRows[me]*sizeof(int));
+					lcrp->lnrows[me]*sizeof(int));
 			memcpy(matrix->splitInvRowPerm, lpjds->invRowPerm, 
-					lcrp->lnRows[me]*sizeof(int));
+					lcrp->lnrows[me]*sizeof(int));
 
 			lcpjds = CL_initPJDS( lpjds );
 			CL_uploadPJDS(lcpjds, lpjds);
@@ -532,17 +532,17 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			DEBUG_LOG(1,"REMOTE pjds");
 
 			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, 
-					lcrp->lnRows[me],matrixFormats->T[2] );
+					lcrp->lnrows[me],matrixFormats->T[2] );
 
 			matrix->splitRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnRows[me],"rowPerm");
+					sizeof(int)*lcrp->lnrows[me],"rowPerm");
 			matrix->splitInvRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnRows[me],"invRowPerm");
+					sizeof(int)*lcrp->lnrows[me],"invRowPerm");
 
 			memcpy(matrix->splitRowPerm, rpjds->rowPerm,
-					lcrp->lnRows[me]*sizeof(int));
+					lcrp->lnrows[me]*sizeof(int));
 			memcpy(matrix->splitInvRowPerm, rpjds->invRowPerm,
-					lcrp->lnRows[me]*sizeof(int));
+					lcrp->lnrows[me]*sizeof(int));
 
 
 			rcpjds = CL_initPJDS( rpjds );
@@ -560,11 +560,11 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 
 			if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) { // remote pJDS
 				lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
-						lcrp->lnRows[me],gpum->splitInvRowPerm,
+						lcrp->lnrows[me],gpum->splitInvRowPerm,
 						matrixFormats->T[1]);
 			} else { // remote ELR
 				lelr = CRStoELRT(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
-						lcrp->lnRows[me],matrixFormats->T[1]);
+						lcrp->lnrows[me],matrixFormats->T[1]);
 			}
 
 			lcelr = CL_initELR( lelr );
@@ -579,11 +579,11 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 
 			if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) { // local pJDS
 				relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
-						lcrp->lnRows[me],gpum->splitInvRowPerm,
+						lcrp->lnrows[me],gpum->splitInvRowPerm,
 						matrixFormats->T[2]);
 			} else { // local ELR
 				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
-						lcrp->lnRows[me],matrixFormats->T[2] );
+						lcrp->lnrows[me],matrixFormats->T[2] );
 			}
 
 
@@ -600,12 +600,12 @@ void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 
 void CL_uploadVector( VECTOR_TYPE *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nRows*sizeof(mat_data_t));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(mat_data_t));
 }
 
 void CL_downloadVector( VECTOR_TYPE *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nRows*sizeof(mat_data_t));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(mat_data_t));
 }
 
 size_t CL_getLocalSize(cl_kernel kernel) 

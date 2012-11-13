@@ -9,21 +9,22 @@
 
 typedef struct 
 {
-	int row, col, nThEntryInRow;
+	mat_idx_t row, col, nThEntryInRow;
 	mat_data_t val;
 } 
 NZE_TYPE;
 
 typedef struct 
 {
-	int nRows, nCols, nEnts;
+	mat_idx_t nrows, ncols;
+	mat_nnz_t nEnts;
 	NZE_TYPE* nze;
 } 
 MM_TYPE;
 
 typedef struct 
 {
-	int row, nEntsInRow;
+	mat_idx_t row, nEntsInRow;
 } 
 JD_SORT_TYPE;
 
@@ -53,6 +54,6 @@ void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
 void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
 void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
 void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix);
-int pad(int nRows, int padding);
+int pad(int nrows, int padding);
 
 #endif /* _MATRICKS_H_ */

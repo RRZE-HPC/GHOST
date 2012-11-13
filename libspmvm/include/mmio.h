@@ -6,6 +6,7 @@
 *
 */
 
+#include "spmvm.h"
 #ifndef MM_IO_H
 #define MM_IO_H
 
@@ -18,7 +19,7 @@ typedef char MM_typecode[4];
 char *mm_typecode_to_str(MM_typecode matcode);
 
 int mm_read_banner(FILE *f, MM_typecode *matcode);
-int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz);
+int mm_read_mtx_crd_size(FILE *f, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz);
 int mm_read_mtx_array_size(FILE *f, int *M, int *N);
 
 int mm_write_banner(FILE *f, MM_typecode matcode);
@@ -120,10 +121,10 @@ int mm_is_valid(MM_typecode matcode);		/* too complex for a macro */
 
 /*  high level routines */
 
-int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J, 
-        double **val, MM_typecode *matcode);
-int mm_read_mtx_crd_data(FILE *f, int nz, int II[], int J[],
-		double val[], MM_typecode matcode);
+int mm_read_mtx_crd(char *fname, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz, mat_idx_t **II, mat_idx_t **J, 
+        mat_data_t **val, MM_typecode *matcode);
+int mm_read_mtx_crd_data(FILE *f, mat_nnz_t nz, mat_idx_t II[], mat_idx_t J[],
+        mat_data_t val[], MM_typecode matcode);
 int mm_read_mtx_crd_entry(FILE *f, int *II, int *J, double *mat_data_t, double *img,
 			MM_typecode matcode);
 

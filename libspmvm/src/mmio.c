@@ -21,10 +21,11 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
 {
     FILE *f;
     MM_typecode matcode;
-    int M, N, nz;
-    int i;
+    mat_idx_t M, N;
+	mat_nnz_t nz;
+    mat_idx_t i;
     double *val;
-    int *I, *J;
+    int *II, *J;
  
     if ((f = fopen(fname, "r")) == NULL)
             return -1;
@@ -62,12 +63,12 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
     /* reseve memory for matrices */
  
-    I = (int *) malloc(nz * sizeof(int));
+    II = (int *) malloc(nz * sizeof(int));
     J = (int *) malloc(nz * sizeof(int));
     val = (double *) malloc(nz * sizeof(double));
  
     *val_ = val;
-    *I_ = I;
+    *I_ = II;
     *J_ = J;
  
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
@@ -76,8 +77,8 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i]);
-        I[i]--;  /* adjust from 1-based to 0-based */
+        fscanf(f, "%d %d %lg\n", &II[i], &J[i], &val[i]);
+        II[i]--;  /* adjust from 1-based to 0-based */
         J[i]--;
     }
     fclose(f);
@@ -188,7 +189,7 @@ int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz)
         return 0;
 }
 
-int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
+int mm_read_mtx_crd_size(FILE *f, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz )
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -204,13 +205,13 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d %d", M, N, nz) == 3)
+    if (sscanf(line, "%"PRmatIDX" %"PRmatIDX" %"PRmatNNZ, M, N, nz) == 3)
         return 0;
         
     else
     do
     { 
-        num_items_read = fscanf(f, "%d %d %d", M, N, nz); 
+        num_items_read = fscanf(f, "%"PRmatIDX" %"PRmatIDX" %"PRmatNNZ, M, N, nz); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
@@ -264,21 +265,21 @@ int mm_write_mtx_array_size(FILE *f, int M, int N)
 /* use when I[], J[], and val[]J, and val[] are already allocated */
 /******************************************************************/
 
-int mm_read_mtx_crd_data(FILE *f, int nz, int I[], int J[],
-        double val[], MM_typecode matcode)
+int mm_read_mtx_crd_data(FILE *f, mat_nnz_t nz, mat_idx_t II[], mat_idx_t J[],
+        mat_data_t val[], MM_typecode matcode)
 {
-    int i;
+    mat_nnz_t i;
     if (mm_is_complex(matcode))
     {
         for (i=0; i<nz; i++)
-            if (fscanf(f, "%d %d %lg %lg", &I[i], &J[i], &val[2*i], &val[2*i+1])
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg", &II[i], &J[i], &val[2*i], &val[2*i+1])
                 != 4) return MM_PREMATURE_EOF;
     }
     else if (mm_is_mat_data_t(matcode))
     {
         for (i=0; i<nz; i++)
         {
-            if (fscanf(f, "%d %d %lg\n", &I[i], &J[i], &val[i])
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &II[i], &J[i], &val[i])
                 != 3) return MM_PREMATURE_EOF;
 
         }
@@ -287,7 +288,7 @@ int mm_read_mtx_crd_data(FILE *f, int nz, int I[], int J[],
     else if (mm_is_pattern(matcode))
     {
         for (i=0; i<nz; i++)
-            if (fscanf(f, "%d %d", &I[i], &J[i])
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX, &II[i], &J[i])
                 != 2) return MM_PREMATURE_EOF;
     }
     else
@@ -297,24 +298,24 @@ int mm_read_mtx_crd_data(FILE *f, int nz, int I[], int J[],
         
 }
 
-int mm_read_mtx_crd_entry(FILE *f, int *I, int *J,
+int mm_read_mtx_crd_entry(FILE *f, int *II, int *J,
         double *mat_data_t, double *imag, MM_typecode matcode)
 {
     if (mm_is_complex(matcode))
     {
-            if (fscanf(f, "%d %d %lg %lg", I, J, mat_data_t, imag)
+            if (fscanf(f, "%d %d %lg %lg", II, J, mat_data_t, imag)
                 != 4) return MM_PREMATURE_EOF;
     }
     else if (mm_is_mat_data_t(matcode))
     {
-            if (fscanf(f, "%d %d %lg\n", I, J, mat_data_t)
+            if (fscanf(f, "%d %d %lg\n", II, J, mat_data_t)
                 != 3) return MM_PREMATURE_EOF;
 
     }
 
     else if (mm_is_pattern(matcode))
     {
-            if (fscanf(f, "%d %d", I, J) != 2) return MM_PREMATURE_EOF;
+            if (fscanf(f, "%d %d", II, J) != 2) return MM_PREMATURE_EOF;
     }
     else
         return MM_UNSUPPORTED_TYPE;
@@ -332,8 +333,8 @@ int mm_read_mtx_crd_entry(FILE *f, int *I, int *J,
                             (nz pairs of mat_data_t/imaginary values)
 ************************************************************************/
 
-int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J, 
-        double **val, MM_typecode *matcode)
+int mm_read_mtx_crd(char *fname, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz, mat_idx_t **II, mat_idx_t **J, 
+        mat_data_t **val, MM_typecode *matcode)
 {
     int ret_code;
     FILE *f;
@@ -355,20 +356,20 @@ int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **II, int **J,
         return ret_code;
 
 
-    *II = (int *)  malloc(*nz * sizeof(int));
-    *J = (int *)  malloc(*nz * sizeof(int));
+    *II = (mat_idx_t *)  malloc(*nz * sizeof(mat_idx_t));
+    *J = (mat_idx_t *)  malloc(*nz * sizeof(mat_idx_t));
     *val = NULL;
 
     if (mm_is_complex(*matcode))
     {
-        *val = (double *) malloc(*nz * 2 * sizeof(double));
+        *val = (mat_data_t *) malloc(*nz * 2 * sizeof(mat_data_t));
         ret_code = mm_read_mtx_crd_data(f, *nz, *II, *J, *val, 
                 *matcode);
         if (ret_code != 0) return ret_code;
     }
     else if (mm_is_mat_data_t(*matcode))
     {
-        *val = (double *) malloc(*nz * sizeof(double));
+        *val = (mat_data_t *) malloc(*nz * sizeof(mat_data_t));
         ret_code = mm_read_mtx_crd_data(f, *nz, *II, *J, *val, 
                 *matcode);
         if (ret_code != 0) return ret_code;

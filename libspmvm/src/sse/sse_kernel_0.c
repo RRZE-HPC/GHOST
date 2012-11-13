@@ -6,13 +6,14 @@
 
 void sse_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
 {
-	int c,j,offs;
+	mat_idx_t c,j;
+	mat_nnz_t offs;
 	__m128d tmp;
 	__m128d val;
 	__m128d rhs;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
-	for (c=0; c<bjds->nRowsPadded>>1; c++) 
+	for (c=0; c<bjds->nrowsPadded>>1; c++) 
 	{ // loop over chunks
 		tmp = _mm_setzero_pd(); // tmp = 0
 		offs = bjds->chunkStart[c];
@@ -35,13 +36,14 @@ void sse_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 
 void sse_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
 {
-	int c,j,offs;
+	mat_idx_t c,j;
+	mat_nnz_t offs;
 	__m128d tmp;
 	__m128d val;
 	__m128d rhs;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
-	for (c=0; c<bjds->nRowsPadded>>1; c++) 
+	for (c=0; c<bjds->nrowsPadded>>1; c++) 
 	{ // loop over chunks
 
 		tmp = _mm_setzero_pd(); // tmp = 0

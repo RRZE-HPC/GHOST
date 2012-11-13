@@ -12,7 +12,7 @@ void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvm
 	mat_data_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
+	for (c=0; c<mv->nrowsPadded/BJDS_LEN; c++) 
 	{ // loop over chunks
 		for (i=0; i<BJDS_LEN; i++)
 		{
@@ -48,7 +48,7 @@ void mic_kernel_0_unr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int s
 	mat_data_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)
-	for (c=0; c<mv->nRowsPadded/BJDS_LEN; c++) 
+	for (c=0; c<mv->nrowsPadded/BJDS_LEN; c++) 
 	{ // loop over chunks
 		tmp[0] = 0.;
 		tmp[1] = 0.;
@@ -110,7 +110,7 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 	__m512i idx;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx,offs)
-	for (c=0; c<mv->nRowsPadded>>3; c++) 
+	for (c=0; c<mv->nrowsPadded>>3; c++) 
 	{ // loop over chunks
 		tmp = _mm512_setzero_pd(); // tmp = 0
 		//		int offset = mv->chunkStart[c];
@@ -150,7 +150,7 @@ void mic_kernel_0_intr_16(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, i
 	__m512i idx;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,val,rhs,idx,offs)
-	for (c=0; c<mv->nRowsPadded>>4; c++) 
+	for (c=0; c<mv->nrowsPadded>>4; c++) 
 	{ // loop over chunks
 		tmp1 = _mm512_setzero_pd(); // tmp1 = 0
 		tmp2 = _mm512_setzero_pd(); // tmp2 = 0
@@ -192,7 +192,7 @@ void mic_kernel_0_intr_16_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* in
 	__m512i idx;
 
 #pragma omp parallel for schedule(runtime) private(i,j,tmp1,tmp2,val,rhs,idx,offs)
-	for (c=0; c<mv->nRowsPadded>>4; c++) 
+	for (c=0; c<mv->nrowsPadded>>4; c++) 
 	{ // loop over chunks
 		tmp1 = _mm512_setzero_pd(); // tmp1 = 0
 		tmp2 = _mm512_setzero_pd(); // tmp2 = 0
@@ -245,7 +245,7 @@ void mic_kernel_0_intr_overlap(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* inv
 	__m512i idx2; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx1,idx2,offs)
-	for (c=0; c<mv->nRowsPadded>>3; c++) 
+	for (c=0; c<mv->nrowsPadded>>3; c++) 
 	{ // loop over chunks
 		tmp = _mm512_setzero_pd(); // tmp = 0
 		//		int offset = mv->chunkStart[c];

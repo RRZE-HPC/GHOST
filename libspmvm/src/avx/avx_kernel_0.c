@@ -13,7 +13,7 @@ void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 	__m128d rhstmp;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs,rhstmp)
-	for (c=0; c<bjds->nRowsPadded>>2; c++) 
+	for (c=0; c<bjds->nrowsPadded>>2; c++) 
 	{ // loop over chunks
 		tmp = _mm256_setzero_pd(); // tmp = 0
 		offs = bjds->chunkStart[c];
@@ -47,7 +47,7 @@ void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 	__m128d rhstmp;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs,rhstmp)
-	for (c=0; c<bjds->nRowsPadded>>2; c++) 
+	for (c=0; c<bjds->nrowsPadded>>2; c++) 
 	{ // loop over chunks
 		tmp = _mm256_setzero_pd(); // tmp = 0
 		offs = bjds->chunkStart[c];
@@ -102,7 +102,7 @@ void avx_kernel_0_intr_rem_if(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* in
 	__m128d rhstmp;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs,rhstmp)
-	for (c=0; c<bjds->nRowsPadded>>2; c++) 
+	for (c=0; c<bjds->nrowsPadded>>2; c++) 
 	{ // loop over chunks
 		tmp = _mm256_setzero_pd(); // tmp = 0
 		offs = bjds->chunkStart[c];

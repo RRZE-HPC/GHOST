@@ -23,13 +23,14 @@ void hybrid_kernel_III(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, 
 	 ****************************************************************************/
 
 	static int init_kernel=1; 
-	static int max_dues;
+	static mat_idx_t max_dues;
 	static mat_data_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
 	static int me; 
-	int i, j;
+	int i;
+	mat_idx_t j;
 	int from_PE, to_PE;
 	int send_messages, recv_messages;
 
@@ -204,15 +205,15 @@ void hybrid_kernel_III(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, 
 #else
 			mat_data_t hlp1;
 			int n_per_thread, n_local;
-			n_per_thread = setup->communicator->lnRows[me]/(setup->communicator->threads-1);
+			n_per_thread = setup->communicator->lnrows[me]/(setup->communicator->threads-1);
 
 			/* Alle threads gleichviel; letzter evtl. mehr */
 			if (tid < setup->communicator->threads-2)  n_local = n_per_thread;
-			else                        n_local = setup->communicator->lnRows[me]-(setup->communicator->threads-2)*n_per_thread;
+			else                        n_local = setup->communicator->lnrows[me]-(setup->communicator->threads-2)*n_per_thread;
 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
 				hlp1 = 0.0;
-				for (j=localCR->rowOffset[i]; j<localCR->rowOffset[i+1]; j++){
+				for (j=localCR->rpt[i]; j<localCR->rpt[i+1]; j++){
 					hlp1 = hlp1 + localCR->val[j] * invec->val[localCR->col[j]]; 
 				}
 

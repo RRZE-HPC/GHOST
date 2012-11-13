@@ -132,4 +132,3 @@ uninstall:
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.so
 	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
 
-	

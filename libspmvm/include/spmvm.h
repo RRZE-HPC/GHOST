@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <complex.h>
 #include <math.h>
+#include <inttypes.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
@@ -249,87 +250,106 @@ typedef float mat_data_t;
 /******************************************************************************/
 /*----  Type definitions  ----------------------------------------------------*/
 /******************************************************************************/
-typedef struct{
+typedef struct
+{
 	int nDistinctDevices;
 	int *nDevices;
 	char **names;
-} CL_DEVICE_INFO;
+} 
+CL_DEVICE_INFO;
 
-typedef struct {
-	int nRows;
+typedef struct 
+{
+	int nrows;
 	mat_data_t* val;
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif
-} VECTOR_TYPE;
+} 
+VECTOR_TYPE;
 
-typedef struct {
+typedef struct 
+{
 	int format[3];
 	int T[3];
-} SPM_GPUFORMATS;
+} 
+SPM_GPUFORMATS;
 
-typedef struct {
-	int nRows;
+typedef struct 
+{
+	int nrows;
 	mat_data_t* val;
-} HOSTVECTOR_TYPE;
+} 
+HOSTVECTOR_TYPE;
 
-typedef struct {
-	int nodes; // TODO delete
-	int threads; // TODO delete
-	int halo_elements;
+typedef uint32_t mat_idx_t;
+typedef uint32_t mat_nnz_t;
 
-	int* lnEnts;
-	int* lnRows;
-	int* lfEnt;
-	int* lfRow;
-	int* wishes;
-	int* wishlist_mem;
-	int** wishlist;
-	int* dues;
-	int* duelist_mem;
+typedef struct 
+{
+	unsigned int nodes; // TODO delete
+	unsigned int threads; // TODO delete
+	mat_idx_t halo_elements;
+
+	mat_nnz_t* lnEnts;
+	mat_nnz_t* lfEnt;
+	mat_idx_t* lnrows;
+	mat_idx_t* lfRow;
+	mat_idx_t* wishes;
+	//int* wishlist_mem; // TODO delete
+	//int** wishlist;    // TODO delete
+	mat_idx_t* dues;
+	//int* duelist_mem;  // TODO delete
 	int** duelist;
-	int* due_displ;
-	int* wish_displ;
+	int* due_displ;    
+	//int* wish_displ;   // TODO delete
 	int* hput_pos;
-} LCRP_TYPE; // TODO rename
+} 
+LCRP_TYPE; // TODO rename
 
 
-typedef int mat_idx_t;
-typedef unsigned long long mat_nnz_t;
 
-typedef struct {
+#define PRmatNNZ PRIu32
+#define PRmatIDX PRIu32
+
+
+typedef struct 
+{
 	mat_trait_t trait; // TODO rename
-	mat_nnz_t nNonz; // TODO rename
-	mat_idx_t nRows;
-	mat_idx_t nCols;
+	mat_nnz_t nnz; // TODO rename
+	mat_idx_t nrows;
+	mat_idx_t ncols;
 
-	int *rowPerm;     // may be NULL
-	int *invRowPerm;  // may be NULL
+	mat_idx_t *rowPerm;     // may be NULL
+	mat_idx_t *invRowPerm;  // may be NULL
 
 	void *data;
-} MATRIX_TYPE;
+} 
+MATRIX_TYPE;
 
 #define TRAIT_INIT(...) { .format = SPM_FORMAT_NONE, .flags = SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
-#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nNonz = 0, .nRows = 0, .nCols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
+#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nnz = 0, .nrows = 0, .ncols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
 
-typedef struct {
+typedef struct 
+{
 	LCRP_TYPE *communicator; // TODO shorter
 	MATRIX_TYPE *fullMatrix; // TODO array
 	MATRIX_TYPE *localMatrix;
 	MATRIX_TYPE *remoteMatrix;
 
-	mat_idx_t nRows;
-	mat_idx_t nCols;
-	mat_idx_t nNz;
+	mat_idx_t nrows;
+	mat_idx_t ncols;
+	mat_nnz_t nnz;
 
 	setup_flags_t flags;
 #ifdef OPENCL
 	GPUMATRIX_TYPE *devMatrix;
 #endif
-} SETUP_TYPE;
-//const SETUP_TYPE SETUP_INITIAL = {.communicator = NULL, .fullMatrix = NULL, .localMatrix = NULL, .remoteMatrix = NULL};
+} 
+SETUP_TYPE;
 
-typedef struct {
+typedef struct 
+{
 	int fullFormat;
 	int localFormat;
 	int remoteFormat;
@@ -339,43 +359,50 @@ typedef struct {
 	void *fullMatrix;
 	void *localMatrix;
 	void *remoteMatrix;
-} GPUMATRIX_TYPE;
+} 
+GPUMATRIX_TYPE;
 
 
 
 typedef struct
 {
-	int len;
-	int idx;
+	mat_idx_t len;
+	mat_idx_t idx;
 	mat_data_t val;
-	int minRow;
-	int maxRow;
+	mat_idx_t minRow;
+	mat_idx_t maxRow;
 }
 CONST_DIAG;
 
 
-typedef struct {
-	int nRows, nCols, nEnts;
-	int* rowOffset;
-	int* col;
+typedef struct 
+{
+	mat_idx_t nrows, ncols;
+	mat_nnz_t nEnts;
+	mat_idx_t*        rpt;
+	mat_idx_t*        col;
 	mat_data_t* val;
-	int nConstDiags;
-	CONST_DIAG *constDiags;
-} CR_TYPE;
 
-typedef struct {
+	mat_idx_t nConstDiags;
+	CONST_DIAG *constDiags;
+} 
+CR_TYPE;
+
+typedef struct 
+{
 	mat_data_t *val;
-	int *col;
-	int *chunkStart;
-	int *chunkMin; // for version with remainder loop
-	int *chunkLen; // for version with remainder loop
-	int *rowLen;   // for version with remainder loop
-	int nRows;
-	int nRowsPadded;
-	int nNz;
-	int nEnts;
+	mat_idx_t *col;
+	mat_nnz_t *chunkStart;
+	mat_idx_t *chunkMin; // for version with remainder loop
+	mat_idx_t *chunkLen; // for version with remainder loop
+	mat_idx_t *rowLen;   // for version with remainder loop
+	mat_idx_t nrows;
+	mat_idx_t nrowsPadded;
+	mat_nnz_t nnz;
+	mat_nnz_t nEnts;
 	double nu;
-} BJDS_TYPE;
+} 
+BJDS_TYPE;
 
 
 typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);

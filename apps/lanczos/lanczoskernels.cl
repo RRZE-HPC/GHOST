@@ -25,31 +25,31 @@ typedef float clreal;
 #endif
 #endif
 
-kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nRows)
+kernel void axpyKernel(global clreal *a, global clreal *b, clreal s, int nrows)
 {
 	int i = get_global_id(0); 
-	if (i<nRows)
+	if (i<nrows)
 		a[i] += s*b[i]; 
 }
 
-kernel void vecscalKernel(global clreal *a, clreal scal, int nRows)
+kernel void vecscalKernel(global clreal *a, clreal scal, int nrows)
 {
 	int i = get_global_id(0);
-	if (i<nRows)	
+	if (i<nrows)	
 		a[i] *= scal; 
 } 
 
-kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nRows, local volatile clreal *shared) 
+kernel void dotprodKernel(global clreal *a, global clreal *b, global clreal *out, unsigned int nrows, local volatile clreal *shared) 
 {
 
 	unsigned int tid = get_local_id(0);
 	unsigned int i = get_global_id(0);
 
 #ifdef COMPLEX
-	shared[tid].s0 = (i < nRows) ? (a[i].s0*b[i].s0 + a[i].s1*b[i].s1) : 0;
-	shared[tid].s1 = (i < nRows) ? (-a[i].s0*b[i].s1 + a[i].s1*b[i].s0) : 0;
+	shared[tid].s0 = (i < nrows) ? (a[i].s0*b[i].s0 + a[i].s1*b[i].s1) : 0;
+	shared[tid].s1 = (i < nrows) ? (-a[i].s0*b[i].s1 + a[i].s1*b[i].s0) : 0;
 #else
-	shared[tid] = (i < nRows) ? a[i]*b[i] : 0;
+	shared[tid] = (i < nrows) ? a[i]*b[i] : 0;
 #endif
 
 	barrier(CLK_LOCAL_MEM_FENCE);

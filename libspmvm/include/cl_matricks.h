@@ -8,7 +8,7 @@
 #include <CL/cl.h>
 
 typedef struct {
-	int nRows, nMaxRow, padding;
+	int nrows, nMaxRow, padding;
 	int* col;
 	int* rowLen;
 	mat_data_t* val;
@@ -18,14 +18,14 @@ typedef struct {
 } ELR_TYPE;
 
 typedef struct {
-	cl_int nRows, nMaxRow, padding;
+	cl_int nrows, nMaxRow, padding;
 	cl_mem col;
 	cl_mem rowLen;
 	cl_mem val;
 } CL_ELR_TYPE;
 
 typedef struct {
-	int nRows, nMaxRow, padding, nEnts;
+	int nrows, nMaxRow, padding, nEnts;
 	int* col;
 	int* colStart;
 	int* rowLen;
@@ -36,7 +36,7 @@ typedef struct {
 } PJDS_TYPE;
 
 typedef struct {
-	cl_int nRows, nMaxRow, padding, nEnts;
+	cl_int nrows, nMaxRow, padding, nEnts;
 	cl_mem col;
 	cl_mem colStart;
 	cl_mem rowLen;
@@ -54,7 +54,7 @@ ELR_TYPE* CRStoELRS(  const mat_data_t* , const int* , const int*,  const int);
 ELR_TYPE* CRStoELRP(  const mat_data_t* , const int* , const int*,  const int, const int*);
 ELR_TYPE* CRStoELRTP(  const mat_data_t* , const int* , const int*,  const int, const int*, int);
 ELR_TYPE* MMtoELR(const char *, int);
-void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col, const int* crs_row_ptr, const int nRows, const ELR_TYPE* elr);
+void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col, const int* crs_row_ptr, const int nrows, const ELR_TYPE* elr);
 
 //void checkCRStToPJDS(const mat_data_t* crs_val, const int* crs_col,const int* crs_row_ptr, const int nRow,	const PJDS_TYPE* pjds);
 void resetELR( ELR_TYPE* elr );

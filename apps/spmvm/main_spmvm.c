@@ -11,6 +11,7 @@
 
 #define CHECK // compare with reference solution
 
+extern int optind;
 
 static mat_data_t rhsVal (int i) 
 {
@@ -63,10 +64,10 @@ int main( int argc, char* argv[] )
 #endif
 
 	mat_trait_t trait = SpMVM_stringToMatrixTrait(argv[2]);
-	trait.flags |= SPM_PERMUTECOLUMNS;
+	trait.flags |= SPM_PERMUTECOLIDX;
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	setup  = SpMVM_createSetup(matrixPath,&trait,1,SPM_GLOBAL,matrixFormats);
+	setup  = SpMVM_createSetup(matrixPath,&trait,1,SETUP_DISTRIBUTED,matrixFormats);
 	nodeLHS= SpMVM_createVector(setup,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(setup,VECTOR_TYPE_RHS,rhsVal);
 
@@ -76,7 +77,7 @@ int main( int argc, char* argv[] )
 	HOSTVECTOR_TYPE *goldLHS; // reference result
 	HOSTVECTOR_TYPE *globLHS; // global lhs vector
 	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	goldSetup = SpMVM_createSetup (matrixPath,&goldTrait,1,SPM_GLOBAL,NULL);
+	goldSetup = SpMVM_createSetup (matrixPath,&goldTrait,1,SETUP_GLOBAL,NULL);
 	goldLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
 	globRHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
 	globLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
@@ -105,12 +106,12 @@ int main( int argc, char* argv[] )
 			}
 #ifdef CHECK
 			errcount=0;
-			for (i=0; i<setup->nRows; i++){
+			for (i=0; i<setup->nrows; i++){
 				mytol = EPSILON * ABS(goldLHS->val[i]) * 
-					(((CR_TYPE *)(goldSetup->fullMatrix->data))->rowOffset[i+1]-((CR_TYPE *)(goldSetup->fullMatrix->data))->rowOffset[i]);
+					(((CR_TYPE *)(goldSetup->fullMatrix->data))->rpt[i+1]-((CR_TYPE *)(goldSetup->fullMatrix->data))->rpt[i]);
 				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
 						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf( "PE%d: error in row %d: %.2e + %.2ei vs. %.2e +"
+					printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
 							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
 							IMAG(goldLHS->val[i]),
 							REAL(globLHS->val[i]),
@@ -124,13 +125,13 @@ int main( int argc, char* argv[] )
 			else
 				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),"GF/s","%f",
 						FLOPS_PER_ENTRY*1.e-9*
-						(double)setup->nNz/time,
+						(double)setup->nnz/time,
 						time*1.e3);
 #else
 			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
 					SpMVM_kernelName(kernels[kernel]),
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)setup->nNz/time,
+					(double)setup->nnz/time,
 					time*1.e3);
 #endif
 		}

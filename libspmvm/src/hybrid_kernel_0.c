@@ -27,13 +27,13 @@
 
 void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
 {
-	int i, j;
+	mat_idx_t i, j;
 	mat_data_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<cr->nRows; i++){
+	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
-		for (j=cr->rowOffset[i]; j<cr->rowOffset[i+1]; j++){
+		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
 		}
 		if (spmvmOptions & SPMVM_OPTION_AXPY) 
@@ -46,13 +46,13 @@ void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmv
 
 void kern_glob_CRS_CD_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
 {
-	int i, j;
+	mat_idx_t i, j;
 	mat_data_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<cr->nRows; i++){
+	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
-		for (j=cr->rowOffset[i]; j<cr->rowOffset[i+1]; j++) {
+		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++) {
 			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
 		}
 
