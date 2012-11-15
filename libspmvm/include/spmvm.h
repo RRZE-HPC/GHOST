@@ -295,14 +295,14 @@ typedef struct
 	mat_nnz_t* lfEnt;
 	mat_idx_t* lnrows;
 	mat_idx_t* lfRow;
-	mat_idx_t* wishes;
-	//int* wishlist_mem; // TODO delete
-	//int** wishlist;    // TODO delete
-	mat_idx_t* dues;
-	//int* duelist_mem;  // TODO delete
+	mat_nnz_t* wishes;
+	int* wishlist_mem; // TODO delete
+	int** wishlist;    // TODO delete
+	mat_nnz_t* dues;
+	int* duelist_mem;  // TODO delete
 	int** duelist;
 	int* due_displ;    
-	//int* wish_displ;   // TODO delete
+	int* wish_displ;   // TODO delete
 	int* hput_pos;
 } 
 LCRP_TYPE; // TODO rename

@@ -14,13 +14,14 @@ void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, in
 	 ****************************************************************************/
 
 	static int init_kernel=1; 
-	static int max_dues;
+	static mat_nnz_t max_dues;
 	static mat_data_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
 	static int me; 
-	int i, j, from_PE, to_PE;
+	mat_nnz_t j;
+	unsigned int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 
 	static MPI_Request *request;

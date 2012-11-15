@@ -8,7 +8,8 @@
 void       setupSingleNodeComm();
 void SpMVM_createDistributedSetupSerial(SETUP_TYPE *, CR_TYPE* const, int);
 void SpMVM_createDistributedSetup(SETUP_TYPE *, CR_TYPE* const, char *, int);
-LCRP_TYPE *SpMVM_createCommunicator(CR_TYPE *cr, int options);
+void SpMVM_createDistribution(CR_TYPE *cr, int options, LCRP_TYPE *lcrp);
+void SpMVM_createCommunication(CR_TYPE *cr, int options, SETUP_TYPE *setup);
 MPI_Comm getSingleNodeComm();
 
 #endif

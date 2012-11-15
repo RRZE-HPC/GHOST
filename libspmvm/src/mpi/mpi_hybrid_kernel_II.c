@@ -15,14 +15,13 @@ void hybrid_kernel_II(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, i
 	 ****************************************************************************/
 
 	static int init_kernel=1; 
-	static int max_dues;
+	static mat_nnz_t max_dues;
 	static mat_data_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
 	static int me; 
-	int i, j;
-	int from_PE, to_PE;
+	unsigned int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 
 	//static MPI_Request *send_request, *recv_request;
@@ -97,9 +96,9 @@ void hybrid_kernel_II(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, i
 	 ****************************************************************************/
 
 	for (to_PE=0 ; to_PE<setup->communicator->nodes ; to_PE++){
-#pragma omp parallel for private(j) 
-		for (j=0; j<setup->communicator->dues[to_PE]; j++){
-			work[to_PE][j] = invec->val[setup->communicator->duelist[to_PE][j]];
+#pragma omp parallel for private(i) 
+		for (i=0; i<setup->communicator->dues[to_PE]; i++){
+			work[to_PE][i] = invec->val[setup->communicator->duelist[to_PE][i]];
 		}
 		if (setup->communicator->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( &work[to_PE][0], setup->communicator->dues[to_PE], 

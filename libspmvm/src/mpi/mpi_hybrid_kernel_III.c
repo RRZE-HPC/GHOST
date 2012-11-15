@@ -29,9 +29,8 @@ void hybrid_kernel_III(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, 
 	static double hlp_recv;
 
 	static int me; 
-	int i;
+	unsigned int i, from_PE, to_PE;
 	mat_idx_t j;
-	int from_PE, to_PE;
 	int send_messages, recv_messages;
 
 //	static MPI_Request *send_request, *recv_request;
@@ -42,7 +41,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, 
 
 
 	/* Thread-ID */
-	int tid;
+	unsigned int tid;
 
 	size_t size_request, size_status, size_work, size_mem;
 
