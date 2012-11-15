@@ -10,3 +10,4 @@ bench/
 tags
 *stdout*
 *stderr*
+types_c.taghl
