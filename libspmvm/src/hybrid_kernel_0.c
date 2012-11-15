@@ -1,11 +1,12 @@
 #include "kernel_helper.h"
 #include "kernel.h"
+#include "matricks.h"
 #include <stdio.h>
 
 #ifdef LIKWID
 #include <likwid.h>
 #endif
-/*void hybrid_kernel_0(VECTOR_TYPE* res, LCRP_TYPE* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
+/*void hybrid_kernel_0(VECTOR_TYPE* res, ghost_comm_t* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
 {
 
 

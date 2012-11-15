@@ -35,6 +35,8 @@
 
 typedef unsigned short mat_format_t;
 typedef unsigned short mat_flags_t;
+typedef unsigned int vec_flags_t;
+#define vec_flags_t_MPI MPI_INT
 typedef void * mat_aux_t;
 
 typedef struct
@@ -87,6 +89,7 @@ typedef unsigned int setup_flags_t;
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
 /******************************************************************************/
+#define VECTOR_DEFAULT (0)
 #define VECTOR_TYPE_RHS (0x1<<0)
 #define VECTOR_TYPE_LHS (0x1<<1)
 #define VECTOR_TYPE_BOTH (VECTOR_TYPE_RHS | VECTOR_TYPE_LHS)
@@ -260,6 +263,7 @@ CL_DEVICE_INFO;
 
 typedef struct 
 {
+	vec_flags_t flags;
 	int nrows;
 	mat_data_t* val;
 #ifdef OPENCL
@@ -275,22 +279,19 @@ typedef struct
 } 
 SPM_GPUFORMATS;
 
-typedef struct 
+/*typedef struct 
 {
 	int nrows;
 	mat_data_t* val;
 } 
-HOSTVECTOR_TYPE;
+HOSTVECTOR_TYPE;*/
 
 typedef uint32_t mat_idx_t;
 typedef uint32_t mat_nnz_t;
 
 typedef struct 
 {
-	unsigned int nodes; // TODO delete
-	unsigned int threads; // TODO delete
-	mat_idx_t halo_elements;
-
+	mat_idx_t halo_elements; // number of nonlocal RHS vector elements
 	mat_nnz_t* lnEnts;
 	mat_nnz_t* lfEnt;
 	mat_idx_t* lnrows;
@@ -305,7 +306,7 @@ typedef struct
 	int* wish_displ;   // TODO delete
 	int* hput_pos;
 } 
-LCRP_TYPE; // TODO rename
+ghost_comm_t; // TODO rename
 
 
 
@@ -325,28 +326,30 @@ typedef struct
 
 	void *data;
 } 
-MATRIX_TYPE;
+ghost_mat_t;
 
 #define TRAIT_INIT(...) { .format = SPM_FORMAT_NONE, .flags = SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
 #define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nnz = 0, .nrows = 0, .ncols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
 
 typedef struct 
 {
-	LCRP_TYPE *communicator; // TODO shorter
-	MATRIX_TYPE *fullMatrix; // TODO array
-	MATRIX_TYPE *localMatrix;
-	MATRIX_TYPE *remoteMatrix;
+	ghost_comm_t *communicator; // TODO shorter
+	ghost_mat_t *fullMatrix; // TODO array
+	ghost_mat_t *localMatrix;
+	ghost_mat_t *remoteMatrix;
 
 	mat_idx_t nrows;
 	mat_idx_t ncols;
 	mat_nnz_t nnz;
 
+	char *matrixName;
+
 	setup_flags_t flags;
 #ifdef OPENCL
-	GPUMATRIX_TYPE *devMatrix;
+	GPUghost_mat_t *devMatrix;
 #endif
 } 
-SETUP_TYPE;
+ghost_setup_t;
 
 typedef struct 
 {
@@ -360,49 +363,10 @@ typedef struct
 	void *localMatrix;
 	void *remoteMatrix;
 } 
-GPUMATRIX_TYPE;
+GPUghost_mat_t;
 
 
 
-typedef struct
-{
-	mat_idx_t len;
-	mat_idx_t idx;
-	mat_data_t val;
-	mat_idx_t minRow;
-	mat_idx_t maxRow;
-}
-CONST_DIAG;
-
-
-typedef struct 
-{
-	mat_idx_t nrows, ncols;
-	mat_nnz_t nEnts;
-	mat_idx_t*        rpt;
-	mat_idx_t*        col;
-	mat_data_t* val;
-
-	mat_idx_t nConstDiags;
-	CONST_DIAG *constDiags;
-} 
-CR_TYPE;
-
-typedef struct 
-{
-	mat_data_t *val;
-	mat_idx_t *col;
-	mat_nnz_t *chunkStart;
-	mat_idx_t *chunkMin; // for version with remainder loop
-	mat_idx_t *chunkLen; // for version with remainder loop
-	mat_idx_t *rowLen;   // for version with remainder loop
-	mat_idx_t nrows;
-	mat_idx_t nrowsPadded;
-	mat_nnz_t nnz;
-	mat_nnz_t nEnts;
-	double nu;
-} 
-BJDS_TYPE;
 
 
 typedef void (*SpMVM_kernelFunc)(VECTOR_TYPE*, void *, VECTOR_TYPE*, int);
@@ -472,10 +436,10 @@ void SpMVM_finish();
  *     structure as defined above.
  *
  * Returns:
- *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+ *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
+ghost_comm_t * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
 
 
 /******************************************************************************
@@ -485,7 +449,7 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
  * the device.
  *
  * Arguments:
- *   - LCRP_TYPE *lcrp
+ *   - ghost_comm_t *lcrp
  *     The local CRS matrix portion to use with the vector.
  *   - int type
  *     Specifies whether the vector is a right hand side vector 
@@ -499,10 +463,10 @@ LCRP_TYPE * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
  *     If NULL, the vector is initialized to zero.
  *
  * Returns:
- *   a pointer to an LCRP_TYPE structure which holds the local matrix data as
+ *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int));
+VECTOR_TYPE *SpMVM_createVector(ghost_setup_t *setup, vec_flags_t type, mat_data_t (*fp)(int));
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
@@ -512,7 +476,7 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int));
  *   - VECTOR_TYPE *res 
  *     The result vector. Its values are being accumulated if SPMVM_OPTION_AXPY
  *     is defined.  
- *   - LCRP_TYPE *lcrp
+ *   - ghost_comm_t *lcrp
  *     The local CRS matrix part.
  *   - VECTOR_TYPE *invec
  *     The left hand side vector.
@@ -528,13 +492,13 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int));
  * Returns:
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
-double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, ghost_setup_t *setup, VECTOR_TYPE *invec, 
 		int kernel, int nIter);
 
 
-//MATRIX_TYPE *SpMVM_createGlobalMatrix (char *matrixPath, int format);
-SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *trait, int nTraits, setup_flags_t, void *deviceFormats); 
-//MATRIX_TYPE *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats); 
+//ghost_mat_t *SpMVM_createGlobalMatrix (char *matrixPath, int format);
+ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *trait, int nTraits, setup_flags_t, void *deviceFormats); 
+//ghost_mat_t *SpMVM_createMatrix(char *matrixPath, mat_trait_t trait, void *deviceFormats); 
 /******************************************************************************/
 
 #endif

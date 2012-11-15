@@ -42,41 +42,41 @@
 void SpMVM_printHeader(const char *label)
 {
 	if(SpMVM_getRank() == 0){
-	const int spacing = 4;
-	int len = strlen(label);
-	int nDash = (PRINTWIDTH-2*spacing-len)/2;
-	int rem = (PRINTWIDTH-2*spacing-len)%2;
-	int i;
+		const int spacing = 4;
+		int len = strlen(label);
+		int nDash = (PRINTWIDTH-2*spacing-len)/2;
+		int rem = (PRINTWIDTH-2*spacing-len)%2;
+		int i;
 #ifdef PRETTYPRINT
-	printf("┌");
-	for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-	printf("┐");
-	printf("\n");
-	printf("├");
-	for (i=0; i<nDash-1; i++) printf("─");
-	for (i=0; i<spacing; i++) printf(" ");
-	printf("%s",label);
-	for (i=0; i<spacing+rem; i++) printf(" ");
-	for (i=0; i<nDash-1; i++) printf("─");
-	printf("┤");
-	printf("\n");
-	printf("├");
-	for (i=0; i<LABELWIDTH; i++) printf("─");
-	printf("┬");
-	for (i=0; i<VALUEWIDTH; i++) printf("─");
-	printf("┤");
-	printf("\n");
+		printf("┌");
+		for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+		printf("┐");
+		printf("\n");
+		printf("├");
+		for (i=0; i<nDash-1; i++) printf("─");
+		for (i=0; i<spacing; i++) printf(" ");
+		printf("%s",label);
+		for (i=0; i<spacing+rem; i++) printf(" ");
+		for (i=0; i<nDash-1; i++) printf("─");
+		printf("┤");
+		printf("\n");
+		printf("├");
+		for (i=0; i<LABELWIDTH; i++) printf("─");
+		printf("┬");
+		for (i=0; i<VALUEWIDTH; i++) printf("─");
+		printf("┤");
+		printf("\n");
 #else
-	for (i=0; i<PRINTWIDTH; i++) printf("-");
-	printf("\n");
-	for (i=0; i<nDash; i++) printf("-");
-	for (i=0; i<spacing; i++) printf(" ");
-	printf("%s",label);
-	for (i=0; i<spacing+rem; i++) printf(" ");
-	for (i=0; i<nDash; i++) printf("-");
-	printf("\n");
-	for (i=0; i<PRINTWIDTH; i++) printf("-");
-	printf("\n");
+		for (i=0; i<PRINTWIDTH; i++) printf("-");
+		printf("\n");
+		for (i=0; i<nDash; i++) printf("-");
+		for (i=0; i<spacing; i++) printf(" ");
+		printf("%s",label);
+		for (i=0; i<spacing+rem; i++) printf(" ");
+		for (i=0; i<nDash; i++) printf("-");
+		printf("\n");
+		for (i=0; i<PRINTWIDTH; i++) printf("-");
+		printf("\n");
 #endif
 	}
 }
@@ -84,20 +84,19 @@ void SpMVM_printHeader(const char *label)
 void SpMVM_printFooter() 
 {
 	if (SpMVM_getRank() == 0) {
-	int i;
+		int i;
 #ifdef PRETTYPRINT
-	printf("└");
-	for (i=0; i<LABELWIDTH; i++) printf("─");
-	printf("┴");
-	for (i=0; i<VALUEWIDTH; i++) printf("─");
-	printf("┘");
+		printf("└");
+		for (i=0; i<LABELWIDTH; i++) printf("─");
+		printf("┴");
+		for (i=0; i<VALUEWIDTH; i++) printf("─");
+		printf("┘");
 #else
-	for (i=0; i<PRINTWIDTH; i++) printf("-");
+		for (i=0; i<PRINTWIDTH; i++) printf("-");
 #endif
-	printf("\n\n");
+		printf("\n\n");
 	}
 }
-
 
 void SpMVM_printLine(const char *label, const char *unit, const char *fmt, ...)
 {
@@ -122,8 +121,7 @@ void SpMVM_printLine(const char *label, const char *unit, const char *fmt, ...)
 	printf("\n");
 }
 
-
-void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
+void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 {
 
 	int me;
@@ -158,40 +156,59 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		int pin = (options & SPMVM_OPTION_PIN || options & SPMVM_OPTION_PIN_SMT)?
 			1:0;
 		char *pinStrategy = options & SPMVM_OPTION_PIN?"phys. cores":"virt. cores";
-		ws = ((matrix->nrows+1)*sizeof(int) + 
-				matrix->nnz*(sizeof(mat_data_t)+sizeof(int)))/(1024*1024);
+		ws = ((setup->nrows+1)*sizeof(mat_idx_t) + 
+				setup->nnz*(sizeof(mat_data_t)+sizeof(mat_idx_t)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-		if (matrix->trait.flags & SETUP_HOSTANDDEVICE)
+		if (setup->flags & SETUP_HOSTANDDEVICE)
 			matrixLocation = "Host and Device";
-		else if (matrix->trait.flags & SETUP_DEVICEONLY)
+		else if (setup->flags & SETUP_DEVICEONLY)
 			matrixLocation = "Device only";
 		else
 			matrixLocation = "Host only";
 
+		char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
+		if (setup->flags & SETUP_DISTRIBUTED)
+			matrixLocation = "Distributed";
+		else if (setup->flags & SETUP_GLOBAL)
+			matrixLocation = "Global";
 
-		
+
 		SpMVM_printHeader("Matrix information");
-		SpMVM_printLine("Matrix name",NULL,"%s",matrixName);
-		SpMVM_printLine("Dimension",NULL,"%u",matrix->nrows);
-		SpMVM_printLine("Nonzeros",NULL,"%u",matrix->nnz);
-		SpMVM_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)matrix->nnz/matrix->nrows);
+		SpMVM_printLine("Matrix name",NULL,"%s",setup->matrixName);
+		SpMVM_printLine("Dimension",NULL,"%"PRmatIDX,setup->nrows);
+		SpMVM_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->nnz);
+		SpMVM_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->nnz/setup->nrows);
 		SpMVM_printLine("Matrix location",NULL,"%s",matrixLocation);
-		SpMVM_printLine("CRS size","MB","%lu",ws);
-		SpMVM_printLine("Host matrix format",NULL,"%s",SpMVM_matrixFormatName(matrix->trait));
-		SpMVM_printLine("Host matrix size","MB","%u",SpMVM_matrixSize(matrix)/(1024*1024));
+		SpMVM_printLine("Matrix placement",NULL,"%s",matrixPlacement);
+		SpMVM_printLine("Global CRS size","MB","%lu",ws);
 
-		//additional information depending on format
-		switch (matrix->trait.format) {
-			case SPM_FORMAT_STBJDS:
-				SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(matrix->data))->nu);
-			case SPM_FORMAT_SBJDS:
-				SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(matrix->trait.aux));
-				SpMVM_printLine("Permuted columns",NULL,"%s",matrix->trait.flags&SPM_PERMUTECOLIDX?"yes":"no");
-			case SPM_FORMAT_BJDS:
-			case SPM_FORMAT_TBJDS:
-				SpMVM_printLine("Block size",NULL,"%d",BJDS_LEN);
-				break;
+		SpMVM_printLine("Full   host matrix format",NULL,"%s",SpMVM_matrixFormatName(setup->fullMatrix->trait));
+		if (setup->flags & SETUP_DISTRIBUTED)
+		{
+			SpMVM_printLine("Local  host matrix format",NULL,"%s",SpMVM_matrixFormatName(setup->localMatrix->trait));
+			SpMVM_printLine("Remote host matrix format",NULL,"%s",SpMVM_matrixFormatName(setup->remoteMatrix->trait));
+		}
+		SpMVM_printLine("Full   host matrix size (rank 0)","MB","%u",SpMVM_matrixSize(setup->fullMatrix)/(1024*1024));
+		if (setup->flags & SETUP_DISTRIBUTED)
+		{
+			SpMVM_printLine("Local  host matrix size (rank 0)","MB","%u",SpMVM_matrixSize(setup->localMatrix)/(1024*1024));
+			SpMVM_printLine("Remote host matrix size (rank 0)","MB","%u",SpMVM_matrixSize(setup->remoteMatrix)/(1024*1024));
+		}
+
+		if (setup->flags & SETUP_GLOBAL)
+		{ //additional information depending on format
+			switch (setup->fullMatrix->trait.format) {
+				case SPM_FORMAT_STBJDS:
+					SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(setup->fullMatrix->data))->nu);
+				case SPM_FORMAT_SBJDS:
+					SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(setup->fullMatrix->trait.aux));
+					SpMVM_printLine("Permuted columns",NULL,"%s",setup->fullMatrix->trait.flags&SPM_PERMUTECOLIDX?"yes":"no");
+				case SPM_FORMAT_BJDS:
+				case SPM_FORMAT_TBJDS:
+					SpMVM_printLine("Block size",NULL,"%d",BJDS_LEN);
+					break;
+			}
 		}
 #ifdef OPENCL	
 		if (!(options & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -205,7 +222,7 @@ void SpMVM_printMatrixInfo(MATRIX_TYPE *matrix, char *matrixName, int options)
 		}
 #endif
 		SpMVM_printFooter();
-		
+
 		SpMVM_printHeader("Setup information");
 		SpMVM_printLine("Equation",NULL,"%s",options&SPMVM_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
 		SpMVM_printLine("Work distribution scheme",NULL,"%s",SpMVM_workdistName(options));
@@ -317,11 +334,11 @@ void SpMVM_printEnvInfo()
 #ifdef LIKWID
 		SpMVM_printLine("Likwid support",NULL,"enabled");
 		printf("Likwid support                   :      enabled\n");
-/*#ifdef LIKWID_MARKER_FINE
-		printf("Likwid Marker API (high res)     :      enabled\n");
+		/*#ifdef LIKWID_MARKER_FINE
+		  printf("Likwid Marker API (high res)     :      enabled\n");
 #else
 #ifdef LIKWID_MARKER
-		printf("Likwid Marker API                :      enabled\n");
+printf("Likwid Marker API                :      enabled\n");
 #endif
 #endif*/
 #else
@@ -337,24 +354,36 @@ void SpMVM_printEnvInfo()
 
 }
 
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nrows, mat_data_t (*fp)(int))
+VECTOR_TYPE *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, mat_data_t (*rhsVal)(int), int nIter, int spmvmOptions)
 {
 
+	DEBUG_LOG(1,"Computing reference solution");
 	int me = SpMVM_getRank();
+	//VECTOR_TYPE *lhs = SpMVM_createVector(distSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	VECTOR_TYPE *globLHS; 
 
 	if (me==0) {
-		return SpMVM_newHostVector( nrows,fp );
+	mat_trait_t trait = {.format = SPM_FORMAT_CRS, .flags = SPM_DEFAULT, .aux = NULL};
+	ghost_setup_t *setup = SpMVM_createSetup(matrixPath, &trait, 1, SETUP_GLOBAL|SETUP_HOSTONLY, NULL);
+		globLHS = SpMVM_createVector(setup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL); 
+		VECTOR_TYPE *globRHS = SpMVM_createVector(setup,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
+
+		CR_TYPE *cr = (CR_TYPE *)(setup->fullMatrix->data);
+		int iter;
+
+		for (iter=0; iter<nIter; iter++)
+			SpMVM_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 	} else {
-		return SpMVM_newHostVector(0,NULL);
+		globLHS = SpMVM_newVector(0,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY);
 	}
-}
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
-void SpMVM_referenceSolver(CR_TYPE *cr, mat_data_t *rhs, mat_data_t *lhs, int nIter, int spmvmOptions) 
-{
-	int iter;
+	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	for (iter=0; iter<nIter; iter++)
-		SpMVM_referenceKernel(lhs, cr->col, cr->rpt, cr->val, rhs, cr->nrows, spmvmOptions);
+	VECTOR_TYPE *lhs = SpMVM_distributeVector(distSetup->communicator,globLHS);
+		
+	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
+	return lhs;
 
 }
 
@@ -376,39 +405,7 @@ void SpMVM_zeroVector(VECTOR_TYPE *vec)
 
 }
 
-HOSTVECTOR_TYPE* SpMVM_newHostVector( const int nrows, mat_data_t (*fp)(int)) 
-{
-	HOSTVECTOR_TYPE* vec;
-	size_t size_val;
-	int i;
-
-	size_val = (size_t)( nrows * sizeof(mat_data_t) );
-	vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
-
-
-	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-	vec->nrows = nrows;
-
-	if (fp) {
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nrows; i++) 
-			vec->val[i] = fp(i);
-
-	}else {
-#ifdef COMPLEX
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nrows; i++) vec->val[i] = 0.+I*0.;
-#else
-#pragma omp parallel for schedule(runtime)
-		for (i=0; i<nrows; i++) vec->val[i] = 0.;
-#endif
-	}
-
-
-	return vec;
-}
-
-VECTOR_TYPE* SpMVM_newVector( const int nrows ) 
+VECTOR_TYPE* SpMVM_newVector( const int nrows, vec_flags_t flags ) 
 {
 	VECTOR_TYPE* vec;
 	size_t size_val;
@@ -420,6 +417,7 @@ VECTOR_TYPE* SpMVM_newVector( const int nrows )
 
 	vec->val = (mat_data_t*) allocateMemory( size_val, "vec->val");
 	vec->nrows = nrows;
+	vec->flags = flags;
 
 #pragma omp parallel for schedule(runtime) 
 	for( i = 0; i < nrows; i++ ) 
@@ -441,15 +439,27 @@ VECTOR_TYPE* SpMVM_newVector( const int nrows )
 	return vec;
 }
 
-VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
+VECTOR_TYPE * SpMVM_distributeVector(ghost_comm_t *lcrp, VECTOR_TYPE *vec)
 {
+	DEBUG_LOG(1,"Distributing vector");
 	int me = SpMVM_getRank();
 
-	int pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
+	int nrows;
+
+	MPI_safecall(MPI_Bcast(&(vec->flags),1,vec_flags_t_MPI,0,MPI_COMM_WORLD));
+
+	if (vec->flags & VECTOR_TYPE_LHS)
+		nrows = lcrp->lnrows[me];
+	else if ((vec->flags & VECTOR_TYPE_RHS) || (vec->flags & VECTOR_TYPE_BOTH))
+		nrows = lcrp->lnrows[me]+lcrp->halo_elements;
+	else
+		ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 
 
-	VECTOR_TYPE *nodeVec = SpMVM_newVector( pseudo_ldim ); 
+	DEBUG_LOG(2,"Creating local vector with %d rows",nrows);
+	VECTOR_TYPE *nodeVec = SpMVM_newVector( nrows, vec->flags ); 
 
+	DEBUG_LOG(2,"Scattering global vector to local vectors");
 #ifdef MPI
 	MPI_safecall(MPI_Scatterv ( vec->val, (int *)lcrp->lnrows, (int *)lcrp->lfRow, MPI_MYDATATYPE,
 				nodeVec->val, (int)lcrp->lnrows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
@@ -457,15 +467,16 @@ VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec)
 	int i;
 	for (i=0; i<vec->nrows; i++) nodeVec->val[i] = vec->val[i];
 #endif
-#ifdef OPENCL
+#ifdef OPENCL // TODO depending on flag
 	CL_uploadVector(nodeVec);
 #endif
 
+	DEBUG_LOG(1,"Vector distributed successfully");
 	return nodeVec;
 }
 
-void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec, 
-		HOSTVECTOR_TYPE *totalVec, int kernel) {
+void SpMVM_collectVectors(ghost_setup_t *setup, VECTOR_TYPE *vec, 
+		VECTOR_TYPE *totalVec, int kernel) {
 
 #ifdef MPI
 	// TODO
@@ -491,32 +502,6 @@ void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec,
 #endif
 }
 
-MATRIX_TYPE * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait)
-{
-	MATRIX_TYPE *matrix;
-		switch (trait.format) {
-			case SPM_FORMAT_BJDS:
-				CRStoBJDS(cr,trait,&matrix);
-				break;
-			case SPM_FORMAT_SBJDS:
-				CRStoSBJDS(cr,trait,&matrix);
-				break;
-			case SPM_FORMAT_TBJDS:
-				CRStoTBJDS(cr,trait,&matrix);
-				break;
-			case SPM_FORMAT_STBJDS:
-				CRStoSTBJDS(cr,trait,&matrix);
-				break;
-			default:
-				DEBUG_LOG(0,"Warning!Invalid format for global matrix! Falling back to CRS");
-			case SPM_FORMAT_CRS:
-			case SPM_FORMAT_CRSCD:
-				CRStoCRS(cr,trait,&matrix);
-				break;
-		}
-		return matrix;
-}
-	
 
 void SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2) 
 {
@@ -552,28 +537,6 @@ void SpMVM_normalizeVector( VECTOR_TYPE *vec)
 #endif
 }
 
-void SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec)
-{
-	int i;
-	mat_data_t sum = 0;
-
-	for (i=0; i<vec->nrows; i++)	
-		sum += vec->val[i]*vec->val[i];
-
-	mat_data_t f = (mat_data_t)1/SQRT(ABS(sum));
-
-	for (i=0; i<vec->nrows; i++)	
-		vec->val[i] *= f;
-}
-
-void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec ) 
-{
-	if( vec ) {
-		freeMemory( (size_t)(vec->nrows*sizeof(mat_data_t)), "vec->val",  vec->val );
-		free( vec );
-	}
-}
-
 void SpMVM_freeVector( VECTOR_TYPE* const vec ) 
 {
 	if( vec ) {
@@ -585,64 +548,57 @@ void SpMVM_freeVector( VECTOR_TYPE* const vec )
 	}
 }
 
-void SpMVM_freeCRS( CR_TYPE* const cr ) 
+unsigned int SpMVM_getRowLen( ghost_mat_t *matrix, mat_idx_t i)
 {
-
-	if (cr) {
-		if (cr->rpt)
-			free(cr->rpt);
-		if (cr->col)
-			free(cr->col);
-		if (cr->val)
-			free(cr->val);
-		free(cr);
+	switch(matrix->trait.format) {
+		case SPM_FORMAT_CRS:
+		case SPM_FORMAT_CRSCD:
+			{
+				CR_TYPE *cr = (CR_TYPE *)(matrix->data);
+				return cr->rpt[i+1]-cr->rpt[i];
+			}
+		case SPM_FORMAT_BJDS:
+		case SPM_FORMAT_SBJDS:
+		case SPM_FORMAT_STBJDS:
+		case SPM_FORMAT_TBJDS:
+			{
+				BJDS_TYPE *bjds = (BJDS_TYPE *)(matrix->data);
+				return bjds->rowLen[i];
+			}
+		default:
+			return 0;
 	}
-	//TODO
-	/*	size_t size_rpt, size_col, size_val;
-
-		if( cr ) {
-
-		size_rpt  = (size_t)( (cr->nrows+1) * sizeof( int ) );
-		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
-		size_val        = (size_t)( cr->nEnts     * sizeof( mat_data_t) );
-
-		freeMemory( size_rpt,  "cr->rpt", cr->rpt );
-		freeMemory( size_col,        "cr->col",       cr->col );
-		freeMemory( size_val,        "cr->val",       cr->val );
-		freeMemory( sizeof(CR_TYPE), "cr",            cr );
-
-		}*/
 }
 
-void SpMVM_freeLCRP( LCRP_TYPE* const lcrp ) 
+void SpMVM_freeLCRP( ghost_comm_t* const lcrp ) 
 {
 	if( lcrp ) {
-/*		free( lcrp->lnEnts );
-		free( lcrp->lnrows );
-		free( lcrp->lfEnt );
-		free( lcrp->lfRow );
-		free( lcrp->wishes );
-		free( lcrp->wishlist_mem );
-		free( lcrp->wishlist );
-		free( lcrp->dues );
-		free( lcrp->duelist_mem );
-		free( lcrp->duelist );
-		free( lcrp->due_displ );
-		free( lcrp->wish_displ );
-		free( lcrp->hput_pos );
-		free( lcrp->val );
-		free( lcrp->col );
-		free( lcrp->lrow_ptr );
-		free( lcrp->lrow_ptr_l );
-		free( lcrp->lrow_ptr_r );
-		free( lcrp->lcol );
-		free( lcrp->rcol );
-		free( lcrp->lval );
-		free( lcrp->rval );
-		free( lcrp->fullRowPerm );
-		  free( lcrp->fullInvRowPerm );
-		  free( lcrp->splitRowPerm );
-		  free( lcrp->splitInvRowPerm );
+		/*		free( lcrp->lnEnts );
+				free( lcrp->lnrows );
+				free( lcrp->lfEnt );
+				free( lcrp->lfRow );
+				free( lcrp->wishes );
+				free( lcrp->wishlist_mem );
+				free( lcrp->wishlist );
+				free( lcrp->dues );
+				free( lcrp->duelist_mem );
+				free( lcrp->duelist );
+				free( lcrp->due_displ );
+				free( lcrp->wish_displ );
+				free( lcrp->hput_pos );
+				free( lcrp->val );
+				free( lcrp->col );
+				free( lcrp->lrow_ptr );
+				free( lcrp->lrow_ptr_l );
+				free( lcrp->lrow_ptr_r );
+				free( lcrp->lcol );
+				free( lcrp->rcol );
+				free( lcrp->lval );
+				free( lcrp->rval );
+				free( lcrp->fullRowPerm );
+				free( lcrp->fullInvRowPerm );
+				free( lcrp->splitRowPerm );
+				free( lcrp->splitInvRowPerm );
 #ifdef OPENCL
 CL_freeMatrix( lcrp->fullMatrix, lcrp->fullFormat );
 CL_freeMatrix( lcrp->localMatrix, lcrp->localFormat );
@@ -681,7 +637,7 @@ void SpMVM_permuteVector( mat_data_t* vec, mat_idx_t* perm, mat_idx_t len)
 	free(tmp);
 }
 
-SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, SETUP_TYPE *setup) 
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, ghost_setup_t *setup) 
 {
 	char *name = SpMVM_kernelName(kernel);
 	SpMVM_kernelFunc kernelFunc = NULL;
@@ -716,112 +672,112 @@ SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, SETUP_TYPE *set
 	UNUSED(setup);
 	// TODO format muss nicht bitweise sein weil eh nur eins geht
 
-/*	switch (mat->trait.format) {
+	/*	switch (mat->trait.format) {
 		case SPM_FORMAT_CRS:
-			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
-					if (mat->trait.flags & SPM_DISTRIBUTED)
-						kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
-					else
-						kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
-					break;
+		switch (kernel) {
+		case SPMVM_KERNEL_NOMPI:
+		if (mat->trait.flags & SPM_DISTRIBUTED)
+		kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_0;
+		else
+		kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_0;
+		break;
 #ifdef MPI
-				case SPMVM_KERNEL_VECTORMODE:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
-					break;
-				case SPMVM_KERNEL_GOODFAITH:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
-					break;
-				case SPMVM_KERNEL_TASKMODE:
-					kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
-					break;
+case SPMVM_KERNEL_VECTORMODE:
+kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_I;
+break;
+case SPMVM_KERNEL_GOODFAITH:
+kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_II;
+break;
+case SPMVM_KERNEL_TASKMODE:
+kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
+break;
 #endif
-				default:
-					DEBUG_LOG(1,"Non-valid kernel specified!");
-					return NULL;
-			}
-			break;
-		case SPM_FORMAT_CRSCD:
-			switch (kernel) {
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_CD_0;
-					break;
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
-					return NULL;
-			}
-			break;
-		case SPM_FORMAT_SBJDS:
-		case SPM_FORMAT_BJDS:
-			switch (kernel) {
+default:
+DEBUG_LOG(1,"Non-valid kernel specified!");
+return NULL;
+}
+break;
+case SPM_FORMAT_CRSCD:
+switch (kernel) {
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&kern_glob_CRS_CD_0;
+break;
+default:
+DEBUG_LOG(1,"Skipping the %s kernel because the matrix is not distributed.",name);
+return NULL;
+}
+break;
+case SPM_FORMAT_SBJDS:
+case SPM_FORMAT_BJDS:
+switch (kernel) {
 #ifdef MIC
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr_16;
-					break;
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr_16;
+break;
 #endif
 #ifdef AVX
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
-					break;
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr;
+break;
 #endif
 #ifdef SSE
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr;
-					break;
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr;
+break;
 #endif
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
-					return NULL;
-			}
-			break;
-		case SPM_FORMAT_STBJDS:
-		case SPM_FORMAT_TBJDS:
-			switch (kernel) {
+default:
+DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+return NULL;
+}
+break;
+case SPM_FORMAT_STBJDS:
+case SPM_FORMAT_TBJDS:
+switch (kernel) {
 #ifdef MIC
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr_16_rem;
-					break;
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&mic_kernel_0_intr_16_rem;
+break;
 #endif
 #ifdef SSE
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr_rem;
-					break;
+case SPMVM_KERNEL_NOMPI:
+kernelFunc = (SpMVM_kernelFunc)&sse_kernel_0_intr_rem;
+break;
 #endif
 #ifdef AVX
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
-					break;
+	case SPMVM_KERNEL_NOMPI:
+	kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem;
+	break;
 #endif
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
-					return NULL;
-			}
-			break;
-		case SPM_FORMAT_TCBJDS:
-			switch (kernel) {
+	default:
+	DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+	return NULL;
+}
+break;
+case SPM_FORMAT_TCBJDS:
+switch (kernel) {
 #ifdef AVX
-				case SPMVM_KERNEL_NOMPI:
-					kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem_if;
-					break;
+	case SPMVM_KERNEL_NOMPI:
+		kernelFunc = (SpMVM_kernelFunc)&avx_kernel_0_intr_rem_if;
+		break;
 #endif
-				default:
-					DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
-					return NULL;
-			}
-			break;
+	default:
+		DEBUG_LOG(1,"Skipping the %s kernel because there is no BJDS version.",name);
+		return NULL;
+}
+break;
 
-		default:
-			DEBUG_LOG(1,"Non-valid matrix format specified (%hu)!",mat->trait.format);
-			return NULL;
-	}*/
+default:
+DEBUG_LOG(1,"Non-valid matrix format specified (%hu)!",mat->trait.format);
+return NULL;
+}*/
 
 
-	return kernelFunc;
+return kernelFunc;
 
 
 }
 
-SpMVM_kernelFunc * SpMVM_setupKernels(SETUP_TYPE *setup)
+SpMVM_kernelFunc * SpMVM_setupKernels(ghost_setup_t *setup)
 {
 	int i;
 	SpMVM_kernelFunc *kf = (SpMVM_kernelFunc *)allocateMemory(SPM_NUMFORMATS*sizeof(SpMVM_kernelFunc),"kf");
@@ -890,6 +846,7 @@ char * SpMVM_workdistName(int options)
 		return "equal rows";
 }
 
+// TODO matrix als argument
 char * SpMVM_matrixFormatName(mat_trait_t trait) 
 {
 	char * name = (char *) allocateMemory(16*sizeof(char),"name");
@@ -916,7 +873,7 @@ char * SpMVM_matrixFormatName(mat_trait_t trait)
 	return name;
 }
 
-unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix) 
+unsigned int SpMVM_matrixSize(ghost_mat_t *matrix) 
 {
 	unsigned int size = 0;
 
@@ -939,10 +896,15 @@ unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix)
 				size += mv->nrowsPadded/BJDS_LEN*sizeof(int); // chunkStart
 				break;
 			}
+		case SPM_FORMAT_CRS:
+			{
+				CR_TYPE *crs = (CR_TYPE *)matrix->data;
+				size = crs->nEnts*(sizeof(mat_idx_t)+sizeof(mat_data_t)) + (crs->nrows+1)*sizeof(mat_idx_t);
+				break;
+			}
 		case SPM_FORMAT_CRSCD:
 			{
 				CR_TYPE *crs = (CR_TYPE *)matrix->data;
-				size = crs->nEnts*(sizeof(int)*sizeof(mat_data_t))+(crs->nrows+1)*sizeof(int);
 				size += crs->nConstDiags*sizeof(CONST_DIAG);
 				break;
 			}
@@ -1109,7 +1071,7 @@ unsigned int SpMVM_getNumberOfProcesses()
 #ifndef MPI
 	return 1;
 #else
-	
+
 	int nnodes;
 
 	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD, &nnodes));

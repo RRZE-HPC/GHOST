@@ -396,7 +396,7 @@ void CL_finish(int spmvmOptions)
 	CL_safecall(clReleaseContext(context));
 }
 
-void CL_uploadCRS(MATRIX_TYPE *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_uploadCRS(ghost_mat_t *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
 	if (!(matrix->format & SPM_FORMAT_DIST_CRS)) {
@@ -422,11 +422,11 @@ void CL_uploadCRS(MATRIX_TYPE *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmO
 
 }
 
-void CL_createMatrix(MATRIX_TYPE* matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
-	LCRP_TYPE *lcrp = (LCRP_TYPE *)matrix->matrix;
-	GPUMATRIX_TYPE * gpum = (GPUMATRIX_TYPE*) allocateMemory( sizeof( GPUMATRIX_TYPE ), "gpum" );
+	ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
+	GPUghost_mat_t * gpum = (GPUghost_mat_t*) allocateMemory( sizeof( GPUghost_mat_t ), "gpum" );
 
 	int me = SpMVM_getRank();
 

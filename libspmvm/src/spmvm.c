@@ -173,13 +173,13 @@ void SpMVM_finish()
 
 }
 
-void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
+VECTOR_TYPE *SpMVM_createVector(ghost_setup_t *setup, vec_flags_t flags, mat_data_t (*fp)(int))
 {
 
 	mat_data_t *val;
 	mat_idx_t nrows;
 	size_t size_val;
-	MATRIX_TYPE *matrix = setup->fullMatrix;
+	ghost_mat_t *matrix = setup->fullMatrix;
 
 
 	if (setup->flags & SETUP_GLOBAL)
@@ -211,21 +211,16 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 	} 
 	else 
 	{
-		LCRP_TYPE *lcrp = setup->communicator;
+		ghost_comm_t *lcrp = setup->communicator;
 		mat_idx_t i;
 		int me = SpMVM_getRank();
 
-		switch (type) {
-			case VECTOR_TYPE_LHS:
-				nrows = lcrp->lnrows[me];
-				break;
-			case VECTOR_TYPE_RHS:
-			case VECTOR_TYPE_BOTH:
-				nrows = lcrp->lnrows[me]+lcrp->halo_elements;
-				break;
-			default:
-				ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
-		}
+		if (flags & VECTOR_TYPE_LHS)
+			nrows = lcrp->lnrows[me];
+		else if ((flags & VECTOR_TYPE_RHS) || (flags & VECTOR_TYPE_BOTH))
+			nrows = lcrp->lnrows[me]+lcrp->halo_elements;
+		else
+			ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 
 		size_val = (size_t)( nrows * sizeof(mat_data_t) );
 
@@ -256,58 +251,55 @@ void *SpMVM_createVector(SETUP_TYPE *setup, int type, mat_data_t (*fp)(int))
 		}
 	}
 
-
-	if (type & VECTOR_TYPE_HOSTONLY) {
-		HOSTVECTOR_TYPE* vec;
-		vec = (HOSTVECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
-		vec->val = val;
-		vec->nrows = nrows; 
-
-		DEBUG_LOG(1,"Host-only vector created successfully");
-
-		return vec;
-	} else {
 		VECTOR_TYPE* vec;
 		vec = (VECTOR_TYPE*) allocateMemory( sizeof( VECTOR_TYPE ), "vec");
 		vec->val = val;
-		vec->nrows = nrows; 
+		vec->nrows = nrows;
+	   vec->flags = flags;	
+
+	if (!(flags & VECTOR_TYPE_HOSTONLY)) {
 #ifdef OPENCL
 		int flag;
-		switch (type) {
-			case VECTOR_TYPE_LHS:
-				if (options & SPMVM_OPTION_AXPY)
-					flag = CL_MEM_READ_WRITE;
-				else
-					flag = CL_MEM_WRITE_ONLY;
-				break;
-			case VECTOR_TYPE_RHS:
-				flag = CL_MEM_READ_ONLY;
-				break;
-			case VECTOR_TYPE_BOTH:
+		if (flags & VECTOR_TYPE_LHS) {
+			if (options & SPMVM_OPTION_AXPY)
 				flag = CL_MEM_READ_WRITE;
-			default:
-				ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
+			else
+				flag = CL_MEM_WRITE_ONLY;
+		} else if (flags & VECTOR_TYPE_RHS) {
+			flag = CL_MEM_READ_ONLY;
+
+		} else if (flags & VECTOR_TYPE_BOTH) {
+			flag = CL_MEM_READ_WRITE;
+
+		} else {
+			ABORT("No valid type for vector (has to be one of VECTOR_TYPE_LHS/_RHS/_BOTH");
 		}
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
 #endif
 
-		DEBUG_LOG(1,"Vector created successfully");
+	}
+		DEBUG_LOG(1,"Host-only vector created successfully");
 
 		return vec;
-	}
 
 }
 
-SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits, setup_flags_t setup_flags, void *deviceFormats) 
+ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits, setup_flags_t setup_flags, void *deviceFormats) 
 {
 	UNUSED(nTraits);
 	DEBUG_LOG(1,"Creating setup");
-	SETUP_TYPE *setup;
+	ghost_setup_t *setup;
 	CR_TYPE *cr;
 
-	setup = (SETUP_TYPE *)allocateMemory(sizeof(SETUP_TYPE),"setup");
+	// copy is needed because basename() changes the string
+	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
+	strncpy(matrixPathCopy,matrixPath,strlen(matrixPath));
+
+
+	setup = (ghost_setup_t *)allocateMemory(sizeof(ghost_setup_t),"setup");
 	setup->flags = setup_flags;
+	setup->matrixName = strtok(basename(matrixPathCopy),".");
 
 	if (setup_flags & SETUP_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
@@ -332,14 +324,16 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 	}
 
 #ifdef MPI
+	if (setup_flags & SETUP_DISTRIBUTED) { // XXX not sure if correct
 	// scatter matrix properties
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->nrows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+	}
 #endif
-	
+
 	setup->nnz = cr->nEnts;
 	setup->nrows = cr->nrows;
 	setup->ncols = cr->ncols;
@@ -352,9 +346,9 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 #else
 		//		if (traits[0].format == SPM_FORMAT_CRS) {
 		if (options & SPMVM_OPTION_SERIAL_IO) 
-			SpMVM_createDistributedSetupSerial(setup, cr, options); // TODO traits as argument
+			SpMVM_createDistributedSetupSerial(setup, cr, options, traits); // TODO traits as argument
 		else
-			SpMVM_createDistributedSetup(setup, cr, matrixPath, options);
+			SpMVM_createDistributedSetup(setup, cr, matrixPath, options, traits);
 		//		} else {
 		//			ABORT("Invalid format for distributed matrix");
 		//		}
@@ -393,7 +387,7 @@ SETUP_TYPE *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits
 
 
 
-double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec, 
+double SpMVM_solve(VECTOR_TYPE *res, ghost_setup_t *setup, VECTOR_TYPE *invec, 
 		int kernel, int nIter)
 {
 	int it;
@@ -417,6 +411,9 @@ double SpMVM_solve(VECTOR_TYPE *res, SETUP_TYPE *setup, VECTOR_TYPE *invec,
 				break;
 			case SPMVM_KERNEL_TASKMODE:
 				kernelFunc = (SpMVM_kernelFunc)&hybrid_kernel_III;
+				break;
+			default:
+				kernelFunc = NULL;
 				break;
 		}
 		arg = setup;

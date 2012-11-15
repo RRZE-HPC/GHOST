@@ -105,8 +105,8 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type);
 void CL_vecscal(cl_mem a, mat_data_t s, int nrows);
 void CL_axpy(cl_mem a, cl_mem b, mat_data_t s, int nrows);
 void CL_dotprod(cl_mem a, cl_mem b, mat_data_t *out, int nrows);
-//void CL_setup_communication(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int);
-GPUMATRIX_TYPE * CL_createMatrix(LCRP_TYPE* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+//void CL_setup_communication(ghost_comm_t* lcrp, SPM_GPUFORMATS *matrixFormats, int);
+GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_enqueueKernel(cl_kernel kernel);
  
 size_t CL_getLocalSize(cl_kernel kernel);
@@ -118,23 +118,24 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 void SpMVM_printHeader(const char *label);
 void SpMVM_printFooter(); 
 void SpMVM_printLine(const char *label, const char *unit, const char *format, ...);
-void              SpMVM_printMatrixInfo(MATRIX_TYPE *lcrp, char *matrixName, int options);
+void SpMVM_printSetupInfo(ghost_setup_t *setup, int options);
 void              SpMVM_printEnvInfo();
-HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nrows, mat_data_t (*fp)(int));
-void              SpMVM_referenceSolver(CR_TYPE *lcrp, mat_data_t *rhs, mat_data_t *lhs, int nIter, int spmvmOptions);
+//HOSTVECTOR_TYPE * SpMVM_createGlobalHostVector(int nrows, mat_data_t (*fp)(int));
+VECTOR_TYPE *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  mat_data_t (*fp)(int), int nIter, int spmvmOptions);
 void              SpMVM_zeroVector(VECTOR_TYPE *vec);
-HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nrows, mat_data_t (*fp)(int));
-VECTOR_TYPE*      SpMVM_newVector( const int nrows );
+//HOSTVECTOR_TYPE*  SpMVM_newHostVector( const int nrows, mat_data_t (*fp)(int));
+VECTOR_TYPE*      SpMVM_newVector( const int nrows, vec_flags_t flags );
 void              SpMVM_swapVectors(VECTOR_TYPE *v1, VECTOR_TYPE *v2);
 void              SpMVM_normalizeVector( VECTOR_TYPE *vec);
-void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
+//void              SpMVM_normalizeHostVector( HOSTVECTOR_TYPE *vec);
 char * SpMVM_workdistName(int options);
 char * SpMVM_kernelName(int kernel);
 char * SpMVM_matrixFormatName(mat_trait_t trait);
-unsigned int SpMVM_matrixSize(MATRIX_TYPE *matrix);
+unsigned int SpMVM_matrixSize(ghost_mat_t *matrix);
 mat_trait_t SpMVM_stringToMatrixTrait(char *str);
 mat_trait_t SpMVM_createMatrixTrait(mat_format_t, mat_flags_t, mat_aux_t);
-MATRIX_TYPE * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait);
+
+unsigned int SpMVM_getRowLen( ghost_mat_t *matrix, mat_idx_t i);
 
 /******************************************************************************
   * Distribute a CRS matrix from the master node to all worker nodes.
@@ -147,7 +148,7 @@ MATRIX_TYPE * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait);
   *     data structure, holding information about the desired GPU matrix format.
   *     In the non-OpenCL case, this argument is NULL.
   *****************************************************************************/
-LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options);
+//ghost_comm_t * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options);
 
 /******************************************************************************
   * Create a CRS matrix on the master node from a given path.
@@ -165,16 +166,15 @@ LCRP_TYPE * SpMVM_distributeCRS (CR_TYPE *cr, void *deviceFormats, int options);
   * Note that the CR_TYPE created by this functions has to be freed manually by
   * calling SpMVM_freeCRS(CR_TYPE *).
   *****************************************************************************/
-CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath);
+//CR_TYPE * SpMVM_createGlobalCRS (char *matrixPath);
 
-SpMVM_kernelFunc * SpMVM_setupKernels(SETUP_TYPE *setup);
+SpMVM_kernelFunc * SpMVM_setupKernels(ghost_setup_t *setup);
 
-VECTOR_TYPE * SpMVM_distributeVector(LCRP_TYPE *lcrp, HOSTVECTOR_TYPE *vec);
-void SpMVM_collectVectors(SETUP_TYPE *setup, VECTOR_TYPE *vec,	HOSTVECTOR_TYPE *totalVec, int kernel);
+VECTOR_TYPE * SpMVM_distributeVector(ghost_comm_t *lcrp, VECTOR_TYPE *vec);
+void SpMVM_collectVectors(ghost_setup_t *setup, VECTOR_TYPE *vec,	VECTOR_TYPE *totalVec, int kernel);
 void SpMVM_freeVector( VECTOR_TYPE* const vec );
-void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
-void SpMVM_freeCRS( CR_TYPE* const cr );
-void SpMVM_freeLCRP( LCRP_TYPE* const );
+//void SpMVM_freeHostVector( HOSTVECTOR_TYPE* const vec );
+void SpMVM_freeLCRP( ghost_comm_t* const );
 void SpMVM_permuteVector( mat_data_t* vec, mat_idx_t* perm, mat_idx_t len);
 int SpMVM_getNumberOfPhysicalCores();
 int SpMVM_getRank();
@@ -184,5 +184,5 @@ int SpMVM_getNumberOfHwThreads();
 int SpMVM_getNumberOfThreads();
 unsigned int SpMVM_getNumberOfNodes();
 unsigned int SpMVM_getNumberOfProcesses();
-SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, SETUP_TYPE *setup); 
+SpMVM_kernelFunc SpMVM_selectKernelFunc(int options, int kernel, ghost_setup_t *setup); 
 #endif

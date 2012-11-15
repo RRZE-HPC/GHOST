@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <libgen.h>
+#include <mpi.h>
 
 #define CHECK // compare with reference solution
 
@@ -39,11 +40,11 @@ int main( int argc, char* argv[] )
 		SPMVM_KERNEL_GOODFAITH,
 		SPMVM_KERNEL_TASKMODE};
 	int nKernels = sizeof(kernels)/sizeof(int);
-	
+
 	VECTOR_TYPE *nodeLHS; // lhs vector per node
 	VECTOR_TYPE *nodeRHS; // rhs vector node
 
-	SETUP_TYPE *setup;
+	ghost_setup_t *setup;
 
 	if (argc!=3) {
 		fprintf(stderr,"Usage: spmvm.x <matrixPath> <matrixFormat>\n");
@@ -65,61 +66,63 @@ int main( int argc, char* argv[] )
 
 	mat_trait_t trait = SpMVM_stringToMatrixTrait(argv[2]);
 	trait.flags |= SPM_PERMUTECOLIDX;
+	mat_trait_t traits[3] = {trait,trait,trait};
 
 	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	setup  = SpMVM_createSetup(matrixPath,&trait,1,SETUP_DISTRIBUTED,matrixFormats);
+	setup  = SpMVM_createSetup(matrixPath,&traits[0],1,SETUP_DISTRIBUTED,matrixFormats);
 	nodeLHS= SpMVM_createVector(setup,VECTOR_TYPE_LHS,NULL);
 	nodeRHS= SpMVM_createVector(setup,VECTOR_TYPE_RHS,rhsVal);
 
 #ifdef CHECK	
-	SETUP_TYPE *goldSetup;
-	mat_trait_t goldTrait = SpMVM_createMatrixTrait(SPM_FORMAT_CRS,0,NULL);
-	HOSTVECTOR_TYPE *goldLHS; // reference result
-	HOSTVECTOR_TYPE *globLHS; // global lhs vector
-	HOSTVECTOR_TYPE *globRHS; // global rhs vector
-	goldSetup = SpMVM_createSetup (matrixPath,&goldTrait,1,SETUP_GLOBAL,NULL);
-	goldLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
-	globRHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
-	globLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
-	if (me==0)
-		SpMVM_referenceSolver((CR_TYPE *)goldSetup->fullMatrix->data,globRHS->val,goldLHS->val,nIter,options);	
+	//	ghost_setup_t *goldSetup;
+	//	mat_trait_t goldTrait = SpMVM_createMatrixTrait(SPM_FORMAT_CRS,0,NULL);
+	//	HOSTVECTOR_TYPE *goldLHS; // reference result
+	//	HOSTVECTOR_TYPE *globLHS; // global lhs vector
+	//	HOSTVECTOR_TYPE *globRHS; // global rhs vector
+	//	goldSetup = SpMVM_createSetup (matrixPath,&goldTrait,1,SETUP_GLOBAL,NULL);
+	//	goldLHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	//	globRHS = SpMVM_createVector(goldSetup,VECTOR_TYPE_RHS|VECTOR_TYPE_HOSTONLY,rhsVal);
+	//	globLHS = SpMVM_createVector(setup,VECTOR_TYPE_LHS|VECTOR_TYPE_HOSTONLY,NULL);
+	VECTOR_TYPE *goldLHS = SpMVM_referenceSolver(matrixPath,setup,rhsVal,nIter,options);	
 #endif	
 
 
 	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(setup->fullMatrix,strtok(basename(argv[optind]),"."),options);
+	SpMVM_printSetupInfo(setup,options);
 	SpMVM_printHeader("Performance");
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
 		time = SpMVM_solve(nodeLHS,setup,nodeRHS,kernels[kernel],nIter);
 
-#ifdef CHECK
-		if (time >= 0.)
-			SpMVM_collectVectors(setup,nodeLHS,globLHS,kernel);
-#endif
+		/*#ifdef CHECK
+		  if (time >= 0.)
+		  SpMVM_collectVectors(setup,nodeLHS,globLHS,kernel);
+#endif*/
 
-		if (me==0) {
-			if (time < 0.) {
+		if (time < 0.) {
+			if (me==0)
 				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),NULL,"SKIPPED");
-				continue;
-			}
+			continue;
+		}
 #ifdef CHECK
-			errcount=0;
-			for (i=0; i<setup->nrows; i++){
-				mytol = EPSILON * ABS(goldLHS->val[i]) * 
-					(((CR_TYPE *)(goldSetup->fullMatrix->data))->rpt[i+1]-((CR_TYPE *)(goldSetup->fullMatrix->data))->rpt[i]);
-				if (REAL(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol || 
-						IMAG(ABS(goldLHS->val[i]-globLHS->val[i])) > mytol){
-					printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-							"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
-							IMAG(goldLHS->val[i]),
-							REAL(globLHS->val[i]),
-							IMAG(globLHS->val[i]),
-							mytol,REAL(ABS(goldLHS->val[i]-globLHS->val[i])));
-					errcount++;
-				}
+		errcount=0;
+		for (i=0; i<setup->communicator->lnrows[me]; i++){
+			mytol = EPSILON * ABS(goldLHS->val[i]); 
+			if (REAL(ABS(goldLHS->val[i]-nodeLHS->val[i])) > mytol || 
+					IMAG(ABS(goldLHS->val[i]-nodeLHS->val[i])) > mytol){
+				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
+						"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
+						IMAG(goldLHS->val[i]),
+						REAL(nodeLHS->val[i]),
+						IMAG(nodeLHS->val[i]),
+						mytol,REAL(ABS(goldLHS->val[i]-nodeLHS->val[i])));
+				errcount++;
 			}
+		}
+		mat_idx_t totalerrors;
+		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+		if (me==0) {
 			if (errcount)
 				SpMVM_printLine(SpMVM_kernelName(kernels[kernel]),NULL,"FAILED");
 			else
@@ -127,14 +130,14 @@ int main( int argc, char* argv[] )
 						FLOPS_PER_ENTRY*1.e-9*
 						(double)setup->nnz/time,
 						time*1.e3);
-#else
-			printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
-					SpMVM_kernelName(kernels[kernel]),
-					FLOPS_PER_ENTRY*1.e-9*
-					(double)setup->nnz/time,
-					time*1.e3);
-#endif
 		}
+#else
+		printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
+				SpMVM_kernelName(kernels[kernel]),
+				FLOPS_PER_ENTRY*1.e-9*
+				(double)setup->nnz/time,
+				time*1.e3);
+#endif
 
 		SpMVM_zeroVector(nodeLHS);
 
@@ -144,12 +147,10 @@ int main( int argc, char* argv[] )
 
 	SpMVM_freeVector( nodeLHS );
 	SpMVM_freeVector( nodeRHS );
-//	SpMVM_freeLCRP( lcrp );
-	
+	//	SpMVM_freeLCRP( lcrp );
+
 #ifdef CHECK
-	SpMVM_freeHostVector( globRHS );
-	SpMVM_freeHostVector( goldLHS );
-	SpMVM_freeHostVector( globLHS );
+	SpMVM_freeVector( goldLHS );
 	//SpMVM_freeCRS( cr );
 #endif
 

@@ -4,7 +4,7 @@
 #include "kernel.h"
 #include <stdio.h>
 
-void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, int spmvmOptions)
+void hybrid_kernel_I(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* invec, int spmvmOptions)
 {
 
 	/*****************************************************************************
@@ -18,6 +18,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, in
 	static mat_data_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
+	static unsigned int nprocs;
 
 	static int me; 
 	mat_nnz_t j;
@@ -35,30 +36,31 @@ void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, in
 	if (init_kernel==1){
 		
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+		nprocs = SpMVM_getNumberOfProcesses();
 
 		max_dues = 0;
-		for (i=0;i<setup->communicator->nodes;i++)
+		for (i=0;i<nprocs;i++)
 			if (setup->communicator->dues[i]>max_dues) 
 				max_dues = setup->communicator->dues[i];
 
 		hlp_sent = 0.0;
 		hlp_recv = 0.0;
-		for (i=0;i<setup->communicator->nodes; i++){
+		for (i=0;i<nprocs; i++){
 			hlp_sent += setup->communicator->dues[i];
 			hlp_recv += setup->communicator->wishes[i];
 		}
 
 
 
-		size_mem     = (size_t)( max_dues*setup->communicator->nodes * sizeof( mat_data_t  ) );
-		size_work    = (size_t)( setup->communicator->nodes          * sizeof( mat_data_t* ) );
-		size_request = (size_t)( 2*setup->communicator->nodes          * sizeof( MPI_Request ) );
-		size_status  = (size_t)( 2*setup->communicator->nodes          * sizeof( MPI_Status ) );
+		size_mem     = (size_t)( max_dues*nprocs * sizeof( mat_data_t  ) );
+		size_work    = (size_t)( nprocs          * sizeof( mat_data_t* ) );
+		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
+		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
 
 		work_mem = (mat_data_t*)  allocateMemory( size_mem,  "work_mem" );
 		work     = (mat_data_t**) allocateMemory( size_work, "work" );
 
-		for (i=0; i<setup->communicator->nodes; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
+		for (i=0; i<nprocs; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
 
 		/*send_request = (MPI_Request*) allocateMemory( size_request, "send_request" );
 		recv_request = (MPI_Request*) allocateMemory( size_request, "recv_request" );
@@ -82,7 +84,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, in
 	likwid_markerStartRegion("Kernel 1 -- communication");
 #endif
 
-	for (from_PE=0; from_PE<setup->communicator->nodes; from_PE++){
+	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (setup->communicator->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv(&invec->val[setup->communicator->hput_pos[from_PE]], setup->communicator->wishes[from_PE], 
 					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
@@ -91,7 +93,7 @@ void hybrid_kernel_I(VECTOR_TYPE* res, SETUP_TYPE* setup, VECTOR_TYPE* invec, in
 		}
 	}
 
-	for (to_PE=0 ; to_PE<setup->communicator->nodes ; to_PE++){
+	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp parallel for private(j)
 		for (j=0; j<setup->communicator->dues[to_PE]; j++){
 			work[to_PE][j] = invec->val[setup->communicator->duelist[to_PE][j]];

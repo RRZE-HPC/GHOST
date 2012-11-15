@@ -63,7 +63,7 @@ int isMMfile(const char *filename)
 	FILE *file = fopen( filename, "r" );
 
 	if( ! file ) {
-		ABORT("Could not open file in isMMfile!");
+		ABORT("Could not open file in isMMfile: %s",filename);
 	}
 
 	const char *keyword="%%MatrixMarket";
@@ -215,6 +215,8 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 	fread(&cr->nrows, sizeof(int), 1, RESTFILE);
 	fread(&cr->ncols, sizeof(int), 1, RESTFILE);
 	fread(&cr->nEnts, sizeof(int), 1, RESTFILE);
+	
+	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",cr->nrows,cr->ncols,cr->nEnts);
 
 	if (datatype != DATATYPE_DESIRED) {
 		DEBUG_LOG(0,"Warning in %s:%d! The library has been built for %s data but"
@@ -442,6 +444,8 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 	}
 	fclose(RESTFILE);
 
+	DEBUG_LOG(1,"Matrix read in successfully");
+
 	return cr;
 }
 
@@ -565,12 +569,12 @@ int pad(int nrows, int padding)
 	return nrowsPadded;
 }
 
-void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE ** matrix) 
+void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t ** matrix) 
 {
 	mat_idx_t i,j,c;
 	BJDS_TYPE *mv;
 
-	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 
@@ -579,7 +583,7 @@ void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE ** matrix)
 	mv->nEnts = 0;
 	mv->nrowsPadded = pad(mv->nrows,BJDS_LEN);
 
-	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nrows = mv->nrows, .ncols = cr->ncols, .nnz = mv->nnz, .data = mv);
+	**matrix = (ghost_mat_t)MATRIX_INIT(.trait = trait, .nrows = mv->nrows, .ncols = cr->ncols, .nnz = mv->nnz, .data = mv);
 
 	mat_idx_t nChunks = mv->nrowsPadded/BJDS_LEN;
 	mv->chunkStart = (mat_nnz_t *)allocateMemory((nChunks+1)*sizeof(mat_nnz_t),"mv->chunkStart");
@@ -663,7 +667,7 @@ void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE ** matrix)
 
 }
 
-void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix) 
+void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix) 
 {
 	mat_idx_t i,j,c;
 	BJDS_TYPE *tbjds;
@@ -671,7 +675,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	mat_flags_t flags;
 	int rowWise = trait.flags & SPM_COLMAJOR;
 
-	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	tbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 	tbjds->nrows = cr->nrows;
@@ -681,7 +685,7 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 
 	rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sbjds->rowPerm");
 	invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sbjds->invRowPerm");
-	**matrix = (MATRIX_TYPE)MATRIX_INIT(
+	**matrix = (ghost_mat_t)MATRIX_INIT(
 			.trait = trait, 
 			.nrows = cr->nrows, 
 			.ncols = cr->ncols, 
@@ -864,13 +868,13 @@ void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	}
 }
 
-void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix) 
+void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix) 
 {
 	mat_idx_t i,j,c;
 	BJDS_TYPE *mv;
 	int rowWise = trait.flags & SPM_COLMAJOR;
 
-	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mv = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
 
 	mv->nrows = cr->nrows;
@@ -878,7 +882,7 @@ void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	mv->nEnts = 0;
 	mv->nrowsPadded = pad(mv->nrows,BJDS_LEN);
 	
-	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nrows = mv->nrows, .ncols = cr->ncols, .nnz = mv->nnz, .data = mv);
+	**matrix = (ghost_mat_t)MATRIX_INIT(.trait = trait, .nrows = mv->nrows, .ncols = cr->ncols, .nnz = mv->nnz, .data = mv);
 
 
 	int nChunks = mv->nrowsPadded/BJDS_LEN;
@@ -989,10 +993,10 @@ void  CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	}
 }
 
-void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
+void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 {
 	mat_idx_t i,j,c;
-	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
+	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	BJDS_TYPE *sbjds;
 	JD_SORT_TYPE* rowSort;
 	mat_flags_t flags = trait.flags;
@@ -1001,7 +1005,7 @@ void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	mat_idx_t *invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sbjds->invRowPerm");
 	
 	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
-	**matrix = (MATRIX_TYPE)MATRIX_INIT(
+	**matrix = (ghost_mat_t)MATRIX_INIT(
 			.trait = trait, 
 			.nrows = cr->nrows, 
 			.ncols = cr->ncols, 
@@ -1131,10 +1135,64 @@ void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
 	}
 }
 
-void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, MATRIX_TYPE **matrix)
+void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 {
-	*matrix = (MATRIX_TYPE *)allocateMemory(sizeof(MATRIX_TYPE),"matrix");
-	**matrix = (MATRIX_TYPE)MATRIX_INIT(.trait = trait, .nrows = cr->nrows, .ncols = cr->ncols, .nnz = cr->nEnts, .data = cr);
+	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	**matrix = (ghost_mat_t)MATRIX_INIT(.trait = trait, .nrows = cr->nrows, .ncols = cr->ncols, .nnz = cr->nEnts, .data = cr);
 }
 	
+ghost_mat_t * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait)
+{
+	ghost_mat_t *matrix;
+	switch (trait.format) {
+		case SPM_FORMAT_BJDS:
+			CRStoBJDS(cr,trait,&matrix);
+			break;
+		case SPM_FORMAT_SBJDS:
+			CRStoSBJDS(cr,trait,&matrix);
+			break;
+		case SPM_FORMAT_TBJDS:
+			CRStoTBJDS(cr,trait,&matrix);
+			break;
+		case SPM_FORMAT_STBJDS:
+			CRStoSTBJDS(cr,trait,&matrix);
+			break;
+		default:
+			DEBUG_LOG(0,"Warning!Invalid format for global matrix! Falling back to CRS");
+		case SPM_FORMAT_CRS:
+		case SPM_FORMAT_CRSCD:
+			CRStoCRS(cr,trait,&matrix);
+			break;
+	}
+	return matrix;
+}
+
+void SpMVM_freeCRS( CR_TYPE* const cr ) 
+{
+
+	if (cr) {
+		if (cr->rpt)
+			free(cr->rpt);
+		if (cr->col)
+			free(cr->col);
+		if (cr->val)
+			free(cr->val);
+		free(cr);
+	}
+	//TODO
+	/*	size_t size_rpt, size_col, size_val;
+
+		if( cr ) {
+
+		size_rpt  = (size_t)( (cr->nrows+1) * sizeof( int ) );
+		size_col        = (size_t)( cr->nEnts     * sizeof( int ) );
+		size_val        = (size_t)( cr->nEnts     * sizeof( mat_data_t) );
+
+		freeMemory( size_rpt,  "cr->rpt", cr->rpt );
+		freeMemory( size_col,        "cr->col",       cr->col );
+		freeMemory( size_val,        "cr->val",       cr->val );
+		freeMemory( sizeof(CR_TYPE), "cr",            cr );
+
+		}*/
+}
 

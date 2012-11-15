@@ -3,6 +3,7 @@
 
 #include "spmvm.h"
 #include "spmvm_util.h"
+#include "matricks.h"
 
 
 #include <stdbool.h>
