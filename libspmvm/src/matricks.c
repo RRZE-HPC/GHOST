@@ -19,7 +19,6 @@
 #define DIAG_NEW (char)0
 #define DIAG_OK (char)1
 #define DIAG_INVALID (char)2
-static int allocatedMem;
 
 static int compareNZEPos( const void* a, const void* b ) 
 {
@@ -77,41 +76,6 @@ int isMMfile(const char *filename)
 	return cmp==0?1:0;
 }
 
-void* allocateMemory( const size_t size, const char* desc ) 
-{
-
-	/* allocate size bytes of posix-aligned memory;
-	 * check for success and increase global counter */
-
-	size_t boundary = 1024;
-	int ierr;
-
-	void* mem;
-
-	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
-			size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
-
-	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
-	}
-
-	if( ! mem ) {
-		ABORT("Error in memory allocation of %lu bytes for %s",size,desc);
-	}
-
-	allocatedMem += size;
-	return mem;
-}
-
-void freeMemory( size_t size, const char* desc, void* this_array ) 
-{
-
-	DEBUG_LOG(2,"Freeing %8.2f MB of memory for %s", size/(1024.*1024.), desc);
-
-	allocatedMem -= size;
-	free (this_array);
-
-}
 
 MM_TYPE * readMMFile(const char* filename ) 
 {

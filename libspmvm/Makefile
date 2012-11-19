@@ -134,7 +134,7 @@ install: all
 	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
 	@cp -f include/spmvm*.h $(strip $(INSTDIR))/include
-	@cp -f include/ghost_types.h $(strip $(INSTDIR))/include
+	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
 
 #ghost_types
 uninstall: 
@@ -142,4 +142,5 @@ uninstall:
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.so
 	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
+	@rm -f $(strip $(INSTDIR))/include/ghost*.h 
 

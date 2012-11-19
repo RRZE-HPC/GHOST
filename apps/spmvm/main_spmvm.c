@@ -1,5 +1,6 @@
 #include <spmvm.h>
 #include <spmvm_util.h>
+#include <ghost_vec.h>
 
 #include <stdio.h>
 #include <string.h>

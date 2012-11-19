@@ -3,6 +3,7 @@
 #include "spmvm.h"
 #include "spmvm_util.h"
 #include "matricks.h"
+#include "ghost_vec.h"
 
 #ifdef MPI
 #include <mpi.h>
@@ -369,8 +370,8 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 #endif // MPI
 	} else 
 	{ // global matrix
-		DEBUG_LOG(1,"Creating global %s matrix",SpMVM_matrixFormatName(traits[0]));
 		setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
+		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName());
 		setup->lnrows = setup->nrows;
 
 		setup->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;

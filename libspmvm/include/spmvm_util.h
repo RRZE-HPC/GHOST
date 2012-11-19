@@ -123,19 +123,14 @@ void SpMVM_printLine(const char *label, const char *unit, const char *format, ..
 void SpMVM_printSetupInfo(ghost_setup_t *setup, int options);
 void              SpMVM_printEnvInfo();
 ghost_vec_t *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  mat_data_t (*fp)(int), int nIter, int spmvmOptions);
-void              SpMVM_zeroVector(ghost_vec_t *vec);
-ghost_vec_t*      SpMVM_newVector( const int nrows, unsigned int flags );
-void              SpMVM_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
-void              SpMVM_normalizeVector( ghost_vec_t *vec);
 char * SpMVM_workdistName(int options);
 char * SpMVM_modeName(int mode);
 mat_trait_t SpMVM_stringToMatrixTrait(char *str);
 
-ghost_vec_t * SpMVM_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec);
-void SpMVM_collectVectors(ghost_setup_t *setup, ghost_vec_t *vec,	ghost_vec_t *totalVec, int kernel);
-void SpMVM_freeVector( ghost_vec_t* const vec );
+void* allocateMemory( const size_t size, const char* desc );
+void freeMemory(size_t, const char*, void*);
+
 void SpMVM_freeLCRP( ghost_comm_t* const );
-void SpMVM_permuteVector( mat_data_t* vec, mat_idx_t* perm, mat_idx_t len);
 int SpMVM_getNumberOfPhysicalCores();
 int SpMVM_getRank();
 int SpMVM_getLocalRank();

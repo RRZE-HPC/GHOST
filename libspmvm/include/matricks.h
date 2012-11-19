@@ -74,8 +74,6 @@ typedef unsigned long long uint64;
 
 int isMMfile(const char *filename);
 
-void* allocateMemory( const size_t size, const char* desc );
-void freeMemory(size_t, const char*, void*);
 
 
 MM_TYPE* readMMFile( const char* filename );
