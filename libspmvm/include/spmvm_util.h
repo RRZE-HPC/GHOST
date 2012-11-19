@@ -125,7 +125,6 @@ void              SpMVM_printEnvInfo();
 ghost_vec_t *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  mat_data_t (*fp)(int), int nIter, int spmvmOptions);
 char * SpMVM_workdistName(int options);
 char * SpMVM_modeName(int mode);
-mat_trait_t SpMVM_stringToMatrixTrait(char *str);
 
 void* allocateMemory( const size_t size, const char* desc );
 void freeMemory(size_t, const char*, void*);

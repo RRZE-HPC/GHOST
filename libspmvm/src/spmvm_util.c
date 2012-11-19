@@ -205,20 +205,12 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 			SpMVM_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize()/(1024*1024));
 			SpMVM_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize()/(1024*1024));
 		}
+		
+		SpMVM_printLine("Permuted columns",NULL,"%s",setup->fullMatrix->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
 
 		if (setup->flags & GHOST_SETUP_GLOBAL)
 		{ //additional information depending on format
-			switch (setup->fullMatrix->trait.format) {
-				case GHOST_SPMFORMAT_BJDS:
-				case GHOST_SPMFORMAT_TBJDS:
-					SpMVM_printLine("Vector block size",NULL,"%d",BJDS_LEN);
-					SpMVM_printLine("Row length oscillation nu",NULL,"%f",((BJDS_TYPE *)(setup->fullMatrix->data))->nu);
-					if (setup->fullMatrix->trait.flags & GHOST_SPM_SORTED) {
-					SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(setup->fullMatrix->trait.aux));
-					SpMVM_printLine("Permuted columns",NULL,"%s",setup->fullMatrix->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
-					}
-					break;
-			}
+			setup->fullMatrix->printInfo();
 		}
 #ifdef OPENCL	
 		if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -465,36 +457,6 @@ char * SpMVM_workdistName(int options)
 		return "equal lnze";
 	else
 		return "equal rows";
-}
-
-mat_trait_t SpMVM_stringToMatrixTrait(char *str)
-{
-	mat_trait_t trait = {.format = 0, .flags = 0, .aux = NULL};
-
-	if (!strncasecmp(str,"CRS",3)) {
-		trait.format = GHOST_SPMFORMAT_CRS;
-	} else if (!strncasecmp(str,"BJDS",4)) {
-		trait.format = GHOST_SPMFORMAT_BJDS;
-	} else if (!strncasecmp(str,"TBJDS",5)) {
-		trait.format = GHOST_SPMFORMAT_TBJDS;
-//	} else if (!strncasecmp(str,"SBJDS",5)) {
-//		trait.format = GHOST_SPMFORMAT_SBJDS;
-//	} else if (!strncasecmp(str,"STBJDS",6)) {
-//		trait.format = GHOST_SPMFORMAT_STBJDS;
-		trait.aux = (unsigned int *) allocateMemory(sizeof(unsigned int),"aux");
-		*(unsigned int *)trait.aux = (unsigned int)atoi(str+7);
-	} else {
-		DEBUG_LOG(0,"Warning! Falling back to CRS format...");
-		trait.format = GHOST_SPMFORMAT_CRS;
-	}
-
-#ifndef MPI
-	trait.flags |= GHOST_SETUP_GLOBAL;
-#else
-	trait.flags |= GHOST_SETUP_DISTRIBUTED;
-#endif
-
-	return trait;
 }
 
 int SpMVM_getRank() 

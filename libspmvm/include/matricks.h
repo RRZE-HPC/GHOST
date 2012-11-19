@@ -2,52 +2,14 @@
 #define _MATRICKS_H_
 
 #include "spmvm.h"
-#include "spm_format_crs.h"
-#include "spm_format_bjds.h"
-#include "spm_format_tbjds.h"
+#include "ghost_spmformats.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct
-{
-	mat_idx_t len;
-	mat_idx_t idx;
-	mat_data_t val;
-	mat_idx_t minRow;
-	mat_idx_t maxRow;
-}
-CONST_DIAG;
 
 
-typedef struct 
-{
-	mat_idx_t nrows, ncols;
-	mat_nnz_t nEnts;
-	mat_idx_t*        rpt;
-	mat_idx_t*        col;
-	mat_data_t* val;
 
-	mat_idx_t nConstDiags;
-	CONST_DIAG *constDiags;
-} 
-CR_TYPE;
-
-typedef struct 
-{
-	mat_data_t *val;
-	mat_idx_t *col;
-	mat_nnz_t *chunkStart;
-	mat_idx_t *chunkMin; // for version with remainder loop
-	mat_idx_t *chunkLen; // for version with remainder loop
-	mat_idx_t *rowLen;   // for version with remainder loop
-	mat_idx_t nrows;
-	mat_idx_t nrowsPadded;
-	mat_nnz_t nnz;
-	mat_nnz_t nEnts;
-	double nu;
-} 
-BJDS_TYPE;
 
 typedef struct 
 {

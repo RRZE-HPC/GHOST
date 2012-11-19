@@ -536,13 +536,13 @@ int pad(int nrows, int padding)
 void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix) 
 {
 	mat_idx_t i,j,c;
-	BJDS_TYPE *tbjds;
+	TBJDS_TYPE *tbjds;
 	JD_SORT_TYPE* rowSort;
 	mat_idx_t *rowPerm = NULL, *invRowPerm = NULL;
 	unsigned int flags;
 
 	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
-	tbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"mv");
+	tbjds = (TBJDS_TYPE *)allocateMemory(sizeof(TBJDS_TYPE),"mv");
 
 	tbjds->nrows = cr->nrows;
 	tbjds->nnz = cr->nEnts;

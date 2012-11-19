@@ -311,6 +311,7 @@ struct ghost_mat_t
 	mat_idx_t ncols;
 
 	void       (*init) (ghost_mat_t *mat);
+	void       (*printInfo) (void);
 	mat_idx_t  (*rowLen) (mat_idx_t i);
 	mat_data_t (*entry) (mat_idx_t i, mat_idx_t j);
 	char *     (*formatName) (void);
