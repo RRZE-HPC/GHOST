@@ -3,12 +3,14 @@ include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header
 
-VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/
+VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/ ./src/spm_formats/
 OBJDIR     = ./obj
-TYPEHEADER = ./include/ghost_types.h
-IPATH     += -I./include/
+TYPES_H    = ./include/ghost_types.h
+FORMATS_H  = ./include/ghost_spmformats.h
+IPATH     += -I./include/ -I./include/spm_formats/
 
 OBJS	=	$(COBJS) $(FOBJS)
+FORMATS = $(notdir $(wildcard include/spm_formats/*.h))
 
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DMPI
@@ -95,14 +97,22 @@ $(OBJDIR)/%.o: %.f
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-all: $(TYPEHEADER) $(OBJDIR) $(LIBSPMVM)
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBSPMVM)
 
-$(TYPEHEADER):  
-	@echo "==> Generate type header"
-	@echo "#ifndef __GHOST_TYPES_H__" > $(TYPEHEADER)
-	@echo -e "#define __GHOST_TYPES_H__\n" >> $(TYPEHEADER)
-	@echo -e $(TYPES) >> $(TYPEHEADER)
-	@echo -e "\n#endif" >> $(TYPEHEADER)
+$(TYPES_H):  
+	@echo "==> Generate types header"
+	@echo "#ifndef __GHOST_TYPES_H__" > $(TYPES_H)
+	@echo -e "#define __GHOST_TYPES_H__\n" >> $(TYPES_H)
+	@echo -e $(TYPES) >> $(TYPES_H)
+	@echo -e "\n#endif" >> $(TYPES_H)
+
+$(FORMATS_H):  
+	@echo "==> Generate formats header"
+	@echo "#ifndef __GHOST_FORMATS_H__" > $(FORMATS_H)
+	@echo -e "#define __GHOST_FORMATS_H__\n" >> $(FORMATS_H)
+	@(for format in $(FORMATS); do \
+	echo "#include \"$$format\"" >> $(FORMATS_H); done)
+	@echo -e "\n#endif" >> $(FORMATS_H)
 
 $(OBJDIR):
 	@mkdir $(OBJDIR)
@@ -121,7 +131,8 @@ endif
 clean:
 	@echo "==> Clean"
 	@rm -rf obj/
-	@rm -rf $(TYPEHEADER)
+	@rm -rf $(TYPES_H)
+	@rm -rf $(FORMATS_H)
 
 distclean: clean
 	@echo "==> Distclean"
@@ -136,7 +147,6 @@ install: all
 	@cp -f include/spmvm*.h $(strip $(INSTDIR))/include
 	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
 
-#ghost_types
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a
