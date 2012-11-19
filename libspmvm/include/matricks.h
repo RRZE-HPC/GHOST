@@ -2,6 +2,9 @@
 #define _MATRICKS_H_
 
 #include "spmvm.h"
+#include "spm_format_crs.h"
+#include "spm_format_bjds.h"
+#include "spm_format_tbjds.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,9 +94,7 @@ ghost_mat_t * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait);
 
 int compareNZEPerRow( const void*, const void*);
 void CRStoBJDS(CR_TYPE *cr, mat_trait_t, ghost_mat_t **matrix);
-void CRStoSBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
 void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
-void CRStoSTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
 void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
 int pad(int nrows, int padding);
 

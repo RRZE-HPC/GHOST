@@ -14,13 +14,13 @@
 size_t getBytesize(void *mat, int format) {
 	size_t sz = 0;
 	switch (format) {
-		case SPM_GPUFORMAT_PJDS:
+		case GHOST_SPM_GPUFORMAT_PJDS:
 			{
 				CL_PJDS_TYPE * matrix = (CL_PJDS_TYPE *)mat;
 				sz = matrix->nEnts*(sizeof(mat_data_t)+sizeof(int)) + matrix->nrows*sizeof(int) + matrix->nMaxRow*sizeof(int);
 				break;
 			}
-		case SPM_GPUFORMAT_ELR:
+		case GHOST_SPM_GPUFORMAT_ELR:
 			{
 				CL_ELR_TYPE * matrix = (CL_ELR_TYPE *)mat;
 				sz = matrix->nMaxRow * matrix->padding*(sizeof(mat_data_t)+sizeof(int)) + (matrix->nrows*sizeof(int));
@@ -270,7 +270,7 @@ ELR_TYPE* CRStoELRTP(const mat_data_t* crs_val, const int* crs_col,
 			idb = j%threadsPerRow;
 			stack = j/threadsPerRow;
 			idx = stack*threadsPerRow*elr->padding + threadsPerRow*i + idb;
-//			if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+//			if (SPMVM_OPTIONS & GHOST_OPTION_PERMCOLS)
 //				elr->col[idx] = rowPerm[crs_col[crs_row_ptr[invRowPerm[i]]+j]];
 //			else
 				elr->col[idx] = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
@@ -364,7 +364,7 @@ ELR_TYPE* CRStoELRP(  const mat_data_t* crs_val, const int* crs_col,
 				printf("error: in i=%i, j=%i\n",i,j);
 
 			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]]; //PERMCOLS
-	//		if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+	//		if (SPMVM_OPTIONS & GHOST_OPTION_PERMCOLS)
 	//			elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
 	//		else
 				elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[invRowPerm[i]]+j ];
@@ -501,7 +501,7 @@ ELR_TYPE* CRStoELRS(  const mat_data_t* crs_val, const int* crs_col,
 			//elr->col[ j*padRows+i ]   = rowPerm[crs_col[ crs_row_ptr[invRowPerm[i]]+j ]];
 			// XXX: columns are NOT being permuted!
 
-		//	if (SPMVM_OPTIONS & SPMVM_OPTION_PERMCOLS)
+		//	if (SPMVM_OPTIONS & GHOST_OPTION_PERMCOLS)
 		//		elr->col[ j*padRows+i ]   = elr->rowPerm[crs_col[ crs_row_ptr[elr->invRowPerm[i]]+j ]];
 		//	else
 				elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[elr->invRowPerm[i]]+j ];
@@ -1005,9 +1005,9 @@ void CL_freeELR( CL_ELR_TYPE* const celr ) {
 
 void CL_freeMatrix(void *matrix, int format) {
 	if (matrix) {
-		if (format == SPM_GPUFORMAT_ELR) {
+		if (format == GHOST_SPM_GPUFORMAT_ELR) {
 			CL_freeELR((CL_ELR_TYPE *)matrix);
-		} else if (format == SPM_GPUFORMAT_PJDS) {
+		} else if (format == GHOST_SPM_GPUFORMAT_PJDS) {
 			CL_freePJDS((CL_PJDS_TYPE *)matrix);
 		}
 	}

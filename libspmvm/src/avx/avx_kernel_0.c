@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <immintrin.h>
 
-void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
+void avx_kernel_0_intr(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m256d tmp;
@@ -30,7 +30,7 @@ void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 			rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
 			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm256_stream_pd(&res->val[c*BJDS_LEN],tmp);
@@ -38,7 +38,7 @@ void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, in
 	}
 }
 
-void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
+void avx_kernel_0_intr_rem(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m256d tmp;
@@ -85,7 +85,7 @@ void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 		}
 
 
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm256_stream_pd(&res->val[c*BJDS_LEN],tmp);
@@ -93,7 +93,7 @@ void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec
 	}
 }
 
-void avx_kernel_0_intr_rem_if(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
+void avx_kernel_0_intr_rem_if(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m256d tmp;
@@ -132,7 +132,7 @@ void avx_kernel_0_intr_rem_if(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* in
 		}
 
 
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm256_stream_pd(&res->val[c*BJDS_LEN],tmp);

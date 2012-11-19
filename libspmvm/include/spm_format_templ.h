@@ -1,0 +1,8 @@
+#ifndef __GHOST_SPMFORMAT_TEMPL_H__
+#define __GHOST_SPMFORMAT_TEMPL_H__
+
+
+
+
+
+#endif __GHOST_SPMFORMAT_TEMPL_H__

@@ -6,27 +6,13 @@
 #ifdef LIKWID
 #include <likwid.h>
 #endif
-/*void hybrid_kernel_0(VECTOR_TYPE* res, ghost_comm_t* lcrp, VECTOR_TYPE* invec, int spmvmOptions)
+
+void hybrid_kernel_0(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions)
 {
+	setup->fullMatrix->kernel(res,invec,spmvmOptions);
+}
 
-
-	int me=0;
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 0");
-#endif
-
-
-	spmvmKernAll(lcrp, invec, res, &me, spmvmOptions);
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 0");
-#endif
-}*/
-
-void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
+void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)
 {
 	mat_idx_t i, j;
 	mat_data_t hlp1;
@@ -37,7 +23,7 @@ void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmv
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) 
+		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res->val[i] += hlp1;
 		else
 			res->val[i] = hlp1;
@@ -45,7 +31,7 @@ void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmv
 
 }
 
-void kern_glob_CRS_CD_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions)
+void kern_glob_CRS_CD_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)
 {
 	mat_idx_t i, j;
 	mat_data_t hlp1;
@@ -63,7 +49,7 @@ void kern_glob_CRS_CD_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int s
 			}
 		}
 
-		if (spmvmOptions & SPMVM_OPTION_AXPY) 
+		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res->val[i] += hlp1;
 		else
 			res->val[i] = hlp1;

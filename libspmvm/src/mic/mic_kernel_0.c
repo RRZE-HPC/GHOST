@@ -6,7 +6,7 @@
 #ifdef LIKWID
 #include <likwid.h>
 #endif
-void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,i;
 	mat_data_t tmp[BJDS_LEN]; 
@@ -24,9 +24,8 @@ void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvm
 			for (i=0; i<BJDS_LEN; i++)
 			{
 				tmp[i] += mv->val[mv->chunkStart[c]+j*BJDS_LEN+i] * invec->val[mv->col[mv->chunkStart[c]+j*BJDS_LEN+i]];
-
 			}
-			if (spmvmOptions & SPMVM_OPTION_AXPY) { 
+			if (spmvmOptions & GHOST_OPTION_AXPY) { 
 				for (i=0; i<BJDS_LEN; i++)
 				{
 					res->val[c*BJDS_LEN+i] += tmp[i];
@@ -42,7 +41,7 @@ void mic_kernel_0(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvm
 	}
 }
 
-void mic_kernel_0_unr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0_unr(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j;
 	mat_data_t tmp[BJDS_LEN]; 
@@ -75,7 +74,7 @@ void mic_kernel_0_unr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int s
 #endif
 
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) { 
+		if (spmvmOptions & GHOST_OPTION_AXPY) { 
 			res->val[c*BJDS_LEN  ] += tmp[0];
 			res->val[c*BJDS_LEN+1] += tmp[1];
 			res->val[c*BJDS_LEN+2] += tmp[2];
@@ -101,7 +100,7 @@ void mic_kernel_0_unr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int s
 	}
 }
 
-void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0_intr(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m512d tmp;
@@ -132,7 +131,7 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 
 			offs += 8;
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);
@@ -140,7 +139,7 @@ void mic_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int 
 	}
 }
 
-void mic_kernel_0_intr_16(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0_intr_16(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m512d tmp1;
@@ -172,7 +171,7 @@ void mic_kernel_0_intr_16(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, i
 
 			offs += 8;
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
 		} else {
@@ -182,7 +181,7 @@ void mic_kernel_0_intr_16(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, i
 	}
 }
 
-void mic_kernel_0_intr_16_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0_intr_16_rem(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,i,offs;
 	__m512d tmp1;
@@ -225,7 +224,7 @@ void mic_kernel_0_intr_16_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* in
 			
 	
 
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
 		} else {
@@ -235,7 +234,7 @@ void mic_kernel_0_intr_16_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* in
 	}
 }
 
-void mic_kernel_0_intr_overlap(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions)
+void mic_kernel_0_intr_overlap(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions)
 {
 	int c,j,offs;
 	__m512d tmp;
@@ -267,7 +266,7 @@ void mic_kernel_0_intr_overlap(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* inv
 
 			offs += 8;
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_OPTION_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);

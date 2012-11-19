@@ -122,7 +122,7 @@ static void getOptions(int argc,  char * const *argv, PROPS *p)
 }
 
 
-static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t *res, int n)
+static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t *res, int n)
 {
 
 #ifdef OPENCL
@@ -131,7 +131,7 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t *res, int n)
 	int i;
 	*res = 0.0;
 
-	VECTOR_TYPE *tmp = SpMVM_newVector(resVecSize*sizeof(mat_data_t));
+	ghost_vec_t *tmp = SpMVM_newVector(resVecSize*sizeof(mat_data_t));
 
 	CL_safecall(clSetKernelArg(dotprodKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
@@ -169,7 +169,7 @@ static void dotprod(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t *res, int n)
 #endif
 }
 
-static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t s, int n)
+static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t s, int n)
 {
 
 #ifdef OPENCL
@@ -200,7 +200,7 @@ static void axpy(VECTOR_TYPE *v1, VECTOR_TYPE *v2, mat_data_t s, int n)
 #endif
 }
 
-static void vecscal(VECTOR_TYPE *vec, mat_data_t s, int n)
+static void vecscal(ghost_vec_t *vec, mat_data_t s, int n)
 {
 
 #ifdef OPENCL
@@ -232,7 +232,7 @@ static void vecscal(VECTOR_TYPE *vec, mat_data_t s, int n)
 }
 
 
-static void lanczosStep(LCRP_TYPE *lcrp, VECTOR_TYPE *vnew, VECTOR_TYPE *vold,
+static void lanczosStep(LCRP_TYPE *lcrp, ghost_vec_t *vnew, ghost_vec_t *vold,
 		mat_data_t *alpha, mat_data_t *beta, int me)
 {
 	vecscal(vnew,-*beta,lcrp->lnrows[me]);
@@ -257,11 +257,11 @@ int main( int argc, char* argv[] )
 	int me;
 
 
-	VECTOR_TYPE *vold;
-	VECTOR_TYPE *vnew;
-	VECTOR_TYPE *evec;
+	ghost_vec_t *vold;
+	ghost_vec_t *vnew;
+	ghost_vec_t *evec;
 
-	HOSTVECTOR_TYPE *r0;
+	HOSTghost_vec_t *r0;
 
 	int iteration;
 

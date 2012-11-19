@@ -308,13 +308,13 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 
 
 	char kernelName[50] = "";
-	strcat(kernelName, format==SPM_GPUFORMAT_ELR?"ELR":"pJDS");
+	strcat(kernelName, format==GHOST_SPM_GPUFORMAT_ELR?"ELR":"pJDS");
 	char Tstr[2] = "";
 	snprintf(Tstr,2,"%d",T);
 
 	strcat(kernelName,Tstr);
 	strcat(kernelName,"kernel");
-	if (kernelIdx == SPMVM_KERNEL_IDX_REMOTE || (spmvmOptions & SPMVM_OPTION_AXPY))
+	if (kernelIdx == GHOST_REMOTE_MAT_IDX || (spmvmOptions & GHOST_OPTION_AXPY))
 		strcat(kernelName,"Add");
 
 
@@ -322,7 +322,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 
 	CL_checkerror(err);
 
-	if (format == SPM_GPUFORMAT_ELR) {
+	if (format == GHOST_SPM_GPUFORMAT_ELR) {
 		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
 		globalSize[kernelIdx] = (size_t)matrix->padding*T;
 
@@ -383,12 +383,12 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 void CL_finish(int spmvmOptions) 
 {
 
-	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) {
-		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_FULL]));
+	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
 	}
-	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) {
-		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_LOCAL]));
-		CL_safecall(clReleaseKernel(kernel[SPMVM_KERNEL_IDX_REMOTE]));
+	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) {
+		CL_safecall(clReleaseKernel(kernel[GHOST_LOCAL_MAT_IDX]));
+		CL_safecall(clReleaseKernel(kernel[GHOST_REMOTE_MAT_IDX]));
 
 	}
 
@@ -396,33 +396,33 @@ void CL_finish(int spmvmOptions)
 	CL_safecall(clReleaseContext(context));
 }
 
-void CL_uploadCRS(ghost_mat_t *matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
-	if (!(matrix->format & SPM_FORMAT_DIST_CRS)) {
+	if (!(matrix->format & GHOST_SPMFORMAT_DIST_CRS)) {
 		DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
 		return;
 	}
 
 	CL_createMatrix(matrix,matrixFormats,spmvmOptions);
 
-	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 		CL_bindMatrixToKernel(gpum->fullMatrix,gpum->fullFormat,
-				matrixFormats->T[SPMVM_KERNEL_IDX_FULL],SPMVM_KERNEL_IDX_FULL, spmvmOptions);
+				matrixFormats->T[GHOST_FULL_MAT_IDX],GHOST_FULL_MAT_IDX, spmvmOptions);
 	}
 
-	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
+	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
 		CL_bindMatrixToKernel(gpum->localMatrix,gpum->localFormat,
-				matrixFormats->T[SPMVM_KERNEL_IDX_LOCAL],SPMVM_KERNEL_IDX_LOCAL, spmvmOptions);
+				matrixFormats->T[GHOST_LOCAL_MAT_IDX],GHOST_LOCAL_MAT_IDX, spmvmOptions);
 		CL_bindMatrixToKernel(gpum->remoteMatrix,gpum->remoteFormat,
-				matrixFormats->T[SPMVM_KERNEL_IDX_REMOTE],SPMVM_KERNEL_IDX_REMOTE, spmvmOptions);
+				matrixFormats->T[GHOST_REMOTE_MAT_IDX],GHOST_REMOTE_MAT_IDX, spmvmOptions);
 	}
 
 	return gpum;
 
 }
 
-void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
 	ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
@@ -447,11 +447,11 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 	DEBUG_LOG(1,"Creating device matrices");
 
 
-	if (!(spmvmOptions & SPMVM_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		gpum->fullT = matrixFormats->T[SPMVM_KERNEL_IDX_FULL];
+	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+		gpum->fullT = matrixFormats->T[GHOST_FULL_MAT_IDX];
 
 		switch (matrixFormats->format[0]) {
-			case SPM_GPUFORMAT_PJDS:
+			case GHOST_SPM_GPUFORMAT_PJDS:
 				{
 					DEBUG_LOG(1,"FULL pjds");
 
@@ -469,12 +469,12 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 					cpjds = CL_initPJDS( pjds );
 					CL_uploadPJDS(cpjds, pjds);
 					gpum->fullMatrix = cpjds;
-					gpum->fullFormat = SPM_GPUFORMAT_PJDS;
+					gpum->fullFormat = GHOST_SPM_GPUFORMAT_PJDS;
 
 					freePJDS( pjds );
 					break;
 				}
-			case SPM_GPUFORMAT_ELR:
+			case GHOST_SPM_GPUFORMAT_ELR:
 				{
 
 					DEBUG_LOG(1,"FULL elr-%d", matrixFormats->T[0]);
@@ -484,7 +484,7 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 					celr = CL_initELR( elr );
 					CL_uploadELR(celr, elr);
 					gpum->fullMatrix = celr;
-					gpum->fullFormat = SPM_GPUFORMAT_ELR;
+					gpum->fullFormat = GHOST_SPM_GPUFORMAT_ELR;
 
 					freeELR( elr );
 					break;
@@ -494,16 +494,16 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 
 	}
 
-	if (!(spmvmOptions & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		gpum->localT = matrixFormats->T[SPMVM_KERNEL_IDX_LOCAL];
-		gpum->remoteT = matrixFormats->T[SPMVM_KERNEL_IDX_REMOTE];
+	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+		gpum->localT = matrixFormats->T[GHOST_LOCAL_MAT_IDX];
+		gpum->remoteT = matrixFormats->T[GHOST_REMOTE_MAT_IDX];
 
-		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS && 
-				matrixFormats->format[2] == SPM_GPUFORMAT_PJDS)
+		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS && 
+				matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS)
 			ABORT("The matrix format must _not_ be pJDS for the "
 					"local and remote part of the matrix.");
 
-		if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) {
+		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) {
 			DEBUG_LOG(1,"LOCAL pjds");
 
 			lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, 
@@ -524,11 +524,11 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			lcpjds = CL_initPJDS( lpjds );
 			CL_uploadPJDS(lcpjds, lpjds);
 			gpum->localMatrix = lcpjds;
-			gpum->localFormat = SPM_GPUFORMAT_PJDS;
+			gpum->localFormat = GHOST_SPM_GPUFORMAT_PJDS;
 
 			freePJDS( lpjds );
 		}
-		if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) {
+		if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) {
 			DEBUG_LOG(1,"REMOTE pjds");
 
 			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, 
@@ -548,17 +548,17 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			rcpjds = CL_initPJDS( rpjds );
 			CL_uploadPJDS(rcpjds, rpjds);
 			gpum->remoteMatrix = rcpjds;
-			gpum->remoteFormat = SPM_GPUFORMAT_PJDS;
+			gpum->remoteFormat = GHOST_SPM_GPUFORMAT_PJDS;
 
 
 			freePJDS( rpjds );
 
 
 		}
-		if (matrixFormats->format[1] == SPM_GPUFORMAT_ELR) {
+		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_ELR) {
 			DEBUG_LOG(1,"LOCAL elr");
 
-			if (matrixFormats->format[2] == SPM_GPUFORMAT_PJDS) { // remote pJDS
+			if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) { // remote pJDS
 				lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
 						lcrp->lnrows[me],gpum->splitInvRowPerm,
 						matrixFormats->T[1]);
@@ -570,14 +570,14 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			lcelr = CL_initELR( lelr );
 			CL_uploadELR(lcelr, lelr);
 			gpum->localMatrix = lcelr;
-			gpum->localFormat = SPM_GPUFORMAT_ELR;
+			gpum->localFormat = GHOST_SPM_GPUFORMAT_ELR;
 
 			freeELR( lelr ); // FIXME run failes for some configurations if enabled (or not?)
 		}
-		if (matrixFormats->format[2] == SPM_GPUFORMAT_ELR) {
+		if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_ELR) {
 			DEBUG_LOG(1,"REMOTE elr");
 
-			if (matrixFormats->format[1] == SPM_GPUFORMAT_PJDS) { // local pJDS
+			if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) { // local pJDS
 				relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
 						lcrp->lnrows[me],gpum->splitInvRowPerm,
 						matrixFormats->T[2]);
@@ -590,7 +590,7 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 			rcelr = CL_initELR( relr );
 			CL_uploadELR(rcelr, relr);
 			gpum->remoteMatrix = rcelr;
-			gpum->remoteFormat = SPM_GPUFORMAT_ELR;
+			gpum->remoteFormat = GHOST_SPM_GPUFORMAT_ELR;
 
 			freeELR( relr ); // FIXME run failes for some configurations if enabled (or not?)
 		}
@@ -598,12 +598,12 @@ void CL_createMatrix(ghost_mat_t* matrix, SPM_GPUFORMATS *matrixFormats, int spm
 	matrix->devMatrix =  gpum;
 }
 
-void CL_uploadVector( VECTOR_TYPE *vec )
+void CL_uploadVector( ghost_vec_t *vec )
 {
 	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(mat_data_t));
 }
 
-void CL_downloadVector( VECTOR_TYPE *vec )
+void CL_downloadVector( ghost_vec_t *vec )
 {
 	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(mat_data_t));
 }

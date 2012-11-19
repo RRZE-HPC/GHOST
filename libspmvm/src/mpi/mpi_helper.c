@@ -280,7 +280,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
 		}
 		switch(datatype) {
-			case DATATYPE_FLOAT:
+			case GHOST_DATATYPE_S:
 				{
 					float *tmp = (float *)allocateMemory(lcrp->lnEnts[me]*sizeof(float), "tmp");
 					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(float);
@@ -291,7 +291,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					free(tmp);
 					break;
 				}
-			case DATATYPE_DOUBLE:
+			case GHOST_DATATYPE_D:
 				{
 					double *tmp = (double *)allocateMemory(lcrp->lnEnts[me]*sizeof(double), "tmp");
 					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(double);
@@ -304,7 +304,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					free(tmp);
 					break;
 				}
-			case DATATYPE_COMPLEX_DOUBLE:
+			case GHOST_DATATYPE_Z:
 				{
 					_Complex double *tmp = (_Complex double *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex double), "tmp");
 					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex double);
@@ -323,7 +323,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					MPI_safecall(MPI_Type_free(&tmpDT));
 					break;
 				}
-			case DATATYPE_COMPLEX_FLOAT:
+			case GHOST_DATATYPE_C:
 				{
 					_Complex float *tmp = (_Complex float *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex float), "tmp");
 					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex float);
@@ -381,7 +381,7 @@ void SpMVM_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 	 ***************************************************************************/
 	if (me==0){
 
-		if (options & SPMVM_OPTION_WORKDIST_NZE){
+		if (options & GHOST_OPTION_WORKDIST_NZE){
 			DEBUG_LOG(1,"Distribute Matrix with EQUAL_NZE on each PE");
 			mat_nnz_t target_nnz;
 
@@ -400,12 +400,12 @@ void SpMVM_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 			}
 
 		}
-		else if (options & SPMVM_OPTION_WORKDIST_LNZE){
-			if (!(options & SPMVM_OPTION_SERIAL_IO)) {
-				DEBUG_LOG(0,"Warning! SPMVM_OPTION_WORKDIST_LNZE has not (yet) been "
+		else if (options & GHOST_OPTION_WORKDIST_LNZE){
+			if (!(options & GHOST_OPTION_SERIAL_IO)) {
+				DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
 						"implemented for parallel IO! Switching to "
-						"SPMVM_OPTION_WORKDIST_NZE");
-				options |= SPMVM_OPTION_WORKDIST_NZE;
+						"GHOST_OPTION_WORKDIST_NZE");
+				options |= GHOST_OPTION_WORKDIST_NZE;
 			} else {
 				DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
 				mat_nnz_t *loc_count;
@@ -821,7 +821,7 @@ void SpMVM_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (!(options & SPMVM_OPTION_NO_SPLIT_KERNELS)) { // split computation
+	if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
 
 
 		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;

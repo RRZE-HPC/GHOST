@@ -5,7 +5,7 @@ include include_$(strip $(COMPILER)).mk
 
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/
 OBJDIR     = ./obj
-TYPEHEADER = ./include/spmvm_type.h
+TYPEHEADER = ./include/ghost_types.h
 IPATH     += -I./include/
 
 OBJS	=	$(COBJS) $(FOBJS)
@@ -37,24 +37,33 @@ IPATH += -I$(strip $(CL_INC))
 OBJS  += $(CLOBJS)
 endif
 
-ifeq ($(strip $(LIKWID_MARKER)),1)
-MAKROS+= -DLIKWID_MARKER
+ifeq ($(strip $(LIKWID)),1)
+MAKROS+= -DLIKWID_PERMON
 IPATH += -I$(strip $(LIKWID_INC))
 endif
 
-ifeq ($(strip $(LIKWID_MARKER_FINE)),1)
-MAKROS+= -DLIKWID_MARKER_FINE
-IPATH += -I$(strip $(LIKWID_INC))
+ifeq ($(strip $(MATDATA)),s)
+TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
+else ifeq ($(strip $(MATDATA)),d)
+TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
+else ifeq ($(strip $(MATDATA)),c)
+TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
+TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
+else ifeq ($(strip $(MATDATA)),z)
+TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
+TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
 endif
 
-ifeq ($(strip $(DOUBLE)),1)
-TYPES:= $(TYPES)"\#define DOUBLE \n"
-else
-TYPES:= $(TYPES)"\#define SINGLE \n"
-endif
-
-ifeq ($(strip $(COMPLEX)),1)
-TYPES:= $(TYPES)"\#define COMPLEX \n"
+ifeq ($(strip $(VECDATA)),s)
+TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
+else ifeq ($(strip $(VECDATA)),d)
+TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
+else ifeq ($(strip $(VECDATA)),c)
+TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
+else ifeq ($(strip $(VECDATA)),z)
+TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
 endif
 
 ifeq ($(strip $(LIBTYPE)),static)
@@ -90,8 +99,8 @@ all: $(TYPEHEADER) $(OBJDIR) $(LIBSPMVM)
 
 $(TYPEHEADER):  
 	@echo "==> Generate type header"
-	@echo "#ifndef _SPMVM_TYPES_H_" > $(TYPEHEADER)
-	@echo -e "#define _SPMVM_TYPES_H_\n" >> $(TYPEHEADER)
+	@echo "#ifndef __GHOST_TYPES_H__" > $(TYPEHEADER)
+	@echo -e "#define __GHOST_TYPES_H__\n" >> $(TYPEHEADER)
 	@echo -e $(TYPES) >> $(TYPEHEADER)
 	@echo -e "\n#endif" >> $(TYPEHEADER)
 
@@ -125,7 +134,9 @@ install: all
 	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
 	@cp -f include/spmvm*.h $(strip $(INSTDIR))/include
+	@cp -f include/ghost_types.h $(strip $(INSTDIR))/include
 
+#ghost_types
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
 	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a

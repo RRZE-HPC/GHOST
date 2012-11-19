@@ -21,13 +21,13 @@ int main( int argc, char* argv[] ) {
 	int options = SPMVM_OPTION_PIN;
 
 	MATRIX_TYPE     *matrix;    // local CRS portion
-	VECTOR_TYPE     *nodeLHS; // lhs vector per node
-	VECTOR_TYPE     *nodeRHS; // rhs vector node
+	ghost_vec_t     *nodeLHS; // lhs vector per node
+	ghost_vec_t     *nodeRHS; // rhs vector node
 
 	me      = SpMVM_init(argc,argv,options); // basic initialization
 	matrix  = SpMVM_createMatrix(argv[1],SPM_FORMAT_DIST_CRS,NULL); // create CRS matrix 
-	nodeRHS = SpMVM_createVector(matrix,VECTOR_TYPE_RHS,rhsVal); // RHS vec
-	nodeLHS = SpMVM_createVector(matrix,VECTOR_TYPE_LHS,NULL);   // LHS vec (=0)
+	nodeRHS = SpMVM_createVector(matrix,ghost_vec_t_RHS,rhsVal); // RHS vec
+	nodeLHS = SpMVM_createVector(matrix,ghost_vec_t_LHS,NULL);   // LHS vec (=0)
 
 	SpMVM_printEnvInfo();
 	SpMVM_printMatrixInfo(matrix,strtok(basename(argv[1]),"_."),options);

@@ -4,7 +4,7 @@
 #include "kernel.h"
 #include <stdio.h>
 
-void hybrid_kernel_I(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* invec, int spmvmOptions)
+void hybrid_kernel_I(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions)
 {
 
 	/*****************************************************************************

@@ -10,7 +10,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_III(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* invec, int spmvmOptions){
+void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********               Kernel ir -- lc|csw  -- nl                    ********
@@ -221,7 +221,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* inve
 					hlp1 = hlp1 + localCR->val[j] * invec->val[localCR->col[j]]; 
 				}
 
-				if (spmvmOptions & SPMVM_OPTION_AXPY) 
+				if (spmvmOptions & GHOST_OPTION_AXPY) 
 					res->val[i] += hlp1;
 				else
 					res->val[i] = hlp1;
@@ -243,7 +243,7 @@ void hybrid_kernel_III(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* inve
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|SPMVM_OPTION_AXPY );
+	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

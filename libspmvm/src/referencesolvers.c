@@ -12,7 +12,7 @@ void SpMVM_referenceKernel(mat_data_t *res, mat_nnz_t *col, mat_idx_t *rpt, mat_
 		for (j=rpt[i]; j<rpt[i+1]; j++){
 			hlp1 = hlp1 + val[j] * rhs[col[j]]; 
 		}
-		if (spmvmOptions & SPMVM_OPTION_AXPY) 
+		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res[i] += hlp1;
 		else
 			res[i] = hlp1;

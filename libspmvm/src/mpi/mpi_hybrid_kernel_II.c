@@ -5,7 +5,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_II(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* invec, int spmvmOptions){
+void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********              Kernel ir -- cs -- lc -- wa -- nl              ********
@@ -146,7 +146,7 @@ void hybrid_kernel_II(VECTOR_TYPE* res, ghost_setup_t* setup, VECTOR_TYPE* invec
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|SPMVM_OPTION_AXPY );
+	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

@@ -2,35 +2,36 @@
 #define _KERNEL_H_
 
 #include "spmvm.h"
+#include "matricks.h"
 
-void hybrid_kernel_0   (VECTOR_TYPE*, ghost_comm_t*, VECTOR_TYPE*, int);
-void kern_glob_CRS_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions);
-void kern_glob_CRS_CD_0(VECTOR_TYPE* res, CR_TYPE* cr, VECTOR_TYPE* invec, int spmvmOptions);
+void hybrid_kernel_0   (ghost_vec_t*, ghost_setup_t*, ghost_vec_t*, int);
+void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions);
+void kern_glob_CRS_CD_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions);
 
 #ifdef MIC
-void mic_kernel_0      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
-void mic_kernel_0_unr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
-void mic_kernel_0_intr      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
-void mic_kernel_0_intr_16(VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
-void mic_kernel_0_intr_16_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions);
-void mic_kernel_0_intr_overlap      (VECTOR_TYPE*, BJDS_TYPE*, VECTOR_TYPE*, int);
+void mic_kernel_0      (ghost_vec_t*, BJDS_TYPE*, ghost_vec_t*, int);
+void mic_kernel_0_unr      (ghost_vec_t*, BJDS_TYPE*, ghost_vec_t*, int);
+void mic_kernel_0_intr      (ghost_vec_t*, BJDS_TYPE*, ghost_vec_t*, int);
+void mic_kernel_0_intr_16(ghost_vec_t*, BJDS_TYPE*, ghost_vec_t*, int);
+void mic_kernel_0_intr_16_rem(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions);
+void mic_kernel_0_intr_overlap      (ghost_vec_t*, BJDS_TYPE*, ghost_vec_t*, int);
 #endif
 
 #ifdef AVX
-void avx_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions);
-void avx_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* mv, VECTOR_TYPE* invec, int spmvmOptions);
-void avx_kernel_0_intr_rem_if(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions);
+void avx_kernel_0_intr(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions);
+void avx_kernel_0_intr_rem(ghost_vec_t* res, BJDS_TYPE* mv, ghost_vec_t* invec, int spmvmOptions);
+void avx_kernel_0_intr_rem_if(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions);
 #endif
 
 #ifdef SSE
-void sse_kernel_0_intr(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions);
-void sse_kernel_0_intr_rem(VECTOR_TYPE* res, BJDS_TYPE* bjds, VECTOR_TYPE* invec, int spmvmOptions);
+void sse_kernel_0_intr(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions);
+void sse_kernel_0_intr_rem(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions);
 #endif
 
 #ifdef MPI
-void hybrid_kernel_I   (VECTOR_TYPE*, ghost_setup_t*, VECTOR_TYPE*, int);
-void hybrid_kernel_II  (VECTOR_TYPE*, ghost_setup_t*, VECTOR_TYPE*, int);
-void hybrid_kernel_III (VECTOR_TYPE*, ghost_setup_t*, VECTOR_TYPE*, int);
+void hybrid_kernel_I   (ghost_vec_t*, ghost_setup_t*, ghost_vec_t*, int);
+void hybrid_kernel_II  (ghost_vec_t*, ghost_setup_t*, ghost_vec_t*, int);
+void hybrid_kernel_III (ghost_vec_t*, ghost_setup_t*, ghost_vec_t*, int);
 #endif
 
 
