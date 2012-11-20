@@ -2,7 +2,20 @@
 #ifndef __GHOST_SPMFORMAT_BJDS__
 #define __GHOST_SPMFORMAT_BJDS__
 
-#include "spmvm.h"
+#include "ghost.h"
+
+
+
+#ifdef MIC
+//#define BJDS_LEN 8
+#define BJDS_LEN 16
+#elif defined (AVX)
+#define BJDS_LEN 4 // TODO single/double precision
+#elif defined (SSE)
+#define BJDS_LEN 2
+#else
+#define BJDS_LEN 1
+#endif
 
 typedef struct 
 {
@@ -20,6 +33,6 @@ typedef struct
 } 
 BJDS_TYPE;
 
-void BJDS_init(ghost_mat_t *mat);
+void BJDS_registerFunctions(ghost_mat_t *mat);
 
 #endif

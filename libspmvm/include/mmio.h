@@ -6,7 +6,7 @@
 *
 */
 
-#include "spmvm.h"
+#include "ghost.h"
 #ifndef MM_IO_H
 #define MM_IO_H
 

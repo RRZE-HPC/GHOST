@@ -44,16 +44,12 @@ mat_trait_t;
 
 
 // formats
-#define GHOST_NUM_SPMFORMATS 5
+#define GHOST_NUM_SPMFORMATS (5)
 #define GHOST_SPMFORMAT_NONE   (0)
 #define GHOST_SPMFORMAT_CRS    (1)
 #define GHOST_SPMFORMAT_BJDS   (2)
-//#define GHOST_SPMFORMAT_SBJDS  (3)
 #define GHOST_SPMFORMAT_TBJDS  (3)
-//#define GHOST_SPMFORMAT_STBJDS (5)
 #define GHOST_SPMFORMAT_CRSCD  (4)
-
-// TODO sorting as part of trait and not own format
 
 // flags
 #define GHOST_SETUP_DEFAULT       (0)
@@ -69,16 +65,6 @@ mat_trait_t;
 #define GHOST_SPM_ROWMAJOR      (0x1<<2)
 #define GHOST_SPM_SORTED        (0x1<<3)
 
-#ifdef MIC
-//#define BJDS_LEN 8
-#define BJDS_LEN 16
-#elif defined (AVX)
-#define BJDS_LEN 4 // TODO single/double precision
-#elif defined (SSE)
-#define BJDS_LEN 2
-#else
-#define BJDS_LEN 1
-#endif
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
@@ -239,7 +225,7 @@ typedef float mat_data_t;
 #ifdef GHOST_MAT_SP
 #define EPSILON 1e-6
 #endif
-#define EQUALS(a,b) (ABS(REAL(a)-REAL(b)<EPSILON))
+#define EQUALS(a,b) (ABS(REAL(a)-REAL(b))<EPSILON && ABS(IMAG(a)-IMAG(b))<EPSILON)
 /******************************************************************************/
 
 
@@ -315,6 +301,7 @@ struct ghost_mat_t
 	mat_idx_t  (*rowLen) (mat_idx_t i);
 	mat_data_t (*entry) (mat_idx_t i, mat_idx_t j);
 	char *     (*formatName) (void);
+	void       (*fromBin)(char *matrixPath, mat_trait_t traits);
 	size_t     (*byteSize) (void);
 	ghost_kernel_t kernel;
 

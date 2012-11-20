@@ -1,7 +1,7 @@
 #define _XOPEN_SOURCE 600
 #include "matricks.h"
-#include "spmvm.h"
-#include "spmvm_util.h"
+#include "ghost.h"
+#include "ghost_util.h"
 
 #include <string.h>
 #include <libgen.h>
@@ -15,10 +15,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
-#define DIAG_NEW (char)0
-#define DIAG_OK (char)1
-#define DIAG_INVALID (char)2
 
 static int compareNZEPos( const void* a, const void* b ) 
 {
@@ -43,7 +39,7 @@ static int compareNZEPos( const void* a, const void* b )
 	else return aRow - bRow;
 }
 
-static int compareNZEOrgPos( const void* a, const void* b ) 
+int compareNZEOrgPos( const void* a, const void* b ) 
 {
 	return  ((JD_SORT_TYPE*)a)->row - ((JD_SORT_TYPE*)b)->row;
 }
@@ -564,7 +560,7 @@ void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 			.rowPerm = rowPerm,
 			.invRowPerm = invRowPerm,	   
 			.data = tbjds);
-	TBJDS_init(*matrix);
+	TBJDS_registerFunctions(*matrix);
 
 	
 
@@ -776,7 +772,7 @@ void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 			.rowPerm = rowPerm,
 			.invRowPerm = invRowPerm,	   
 			.data = sbjds);
-	BJDS_init(*matrix);
+	BJDS_registerFunctions(*matrix);
 
 	if (trait.flags & GHOST_SPM_SORTED) {
 		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sbjds->rowPerm");
@@ -921,7 +917,7 @@ void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 	DEBUG_LOG(1,"Creating CRS matrix from original CRS type");
 	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	**matrix = (ghost_mat_t)MATRIX_INIT(.trait = trait, .nrows = cr->nrows, .ncols = cr->ncols, .nnz = cr->nEnts, .data = cr);
-	CRS_init(*matrix);
+	CRS_registerFunctions(*matrix);
 
 
 }

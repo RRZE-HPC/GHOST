@@ -1,4 +1,4 @@
-#include "spmvm_util.h"
+#include "ghost_util.h"
 #include "cl_matricks.h"
 #include "cl_kernel.h"
 #include "matricks.h"

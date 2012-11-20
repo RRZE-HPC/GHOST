@@ -1,7 +1,7 @@
 #ifndef __GHOST_VEC_H__
 #define __GHOST_VEC_H__
 
-#include "spmvm.h"
+#include "ghost.h"
 
 
 void         SpMVM_zeroVector(ghost_vec_t *vec);

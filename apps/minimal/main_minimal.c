@@ -1,5 +1,5 @@
-#include <spmvm.h>
-#include <spmvm_util.h>
+#include <ghost.h>
+#include <ghost_util.h>
 
 #include <limits.h>
 #include <libgen.h>

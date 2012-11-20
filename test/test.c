@@ -5,7 +5,7 @@
  */
 
 
-#include <spmvm.h>
+#include <ghost.h>
 #include <spmvm_util.h>
 
 #include <stdio.h>

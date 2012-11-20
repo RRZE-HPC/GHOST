@@ -1,5 +1,5 @@
 #include "kernel.h"
-#include "spmvm_util.h"
+#include "ghost_util.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <immintrin.h>

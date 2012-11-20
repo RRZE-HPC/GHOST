@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
-#include "spmvm_util.h"
-#include "spmvm.h"
+#include "ghost_util.h"
+#include "ghost.h"
 #include "ghost_vec.h"
 #include "referencesolvers.h"
 #include "matricks.h"

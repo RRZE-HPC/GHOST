@@ -1,7 +1,7 @@
 #ifndef _MY_ELLPACK_H_
 #define _MY_ELLPACK_H_
 
-#include "spmvm_util.h"
+#include "ghost_util.h"
 #include <stdio.h>
 
 

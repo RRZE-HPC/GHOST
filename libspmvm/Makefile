@@ -75,7 +75,7 @@ ifeq ($(strip $(LIBTYPE)),shared)
 SUFFIX=so
 endif
 
-LIBSPMVM=lib$(PREFIX)spmvm.$(SUFFIX)
+LIBSPMVM=lib$(PREFIX)ghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
 
@@ -144,13 +144,11 @@ install: all
 	@echo "==> Install library to $(strip $(INSTDIR))/lib"
 	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
-	@cp -f include/spmvm*.h $(strip $(INSTDIR))/include
 	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
-	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.a
-	@rm -f $(strip $(INSTDIR))/lib/lib*spmvm.so
+	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.a
+	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.so
 	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
-	@rm -f $(strip $(INSTDIR))/include/ghost*.h 
 

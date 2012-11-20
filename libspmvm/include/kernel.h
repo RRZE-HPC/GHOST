@@ -1,7 +1,7 @@
 #ifndef _KERNEL_H_
 #define _KERNEL_H_
 
-#include "spmvm.h"
+#include "ghost.h"
 #include "matricks.h"
 
 void hybrid_kernel_0   (ghost_vec_t*, ghost_setup_t*, ghost_vec_t*, int);

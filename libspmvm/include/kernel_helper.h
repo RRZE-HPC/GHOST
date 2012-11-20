@@ -1,8 +1,8 @@
 #ifndef __KERNEL_HELPER_H__
 #define __KERNEL_HELPER_H__
 
-#include "spmvm.h"
-#include "spmvm_util.h"
+#include "ghost.h"
+#include "ghost_util.h"
 #include "matricks.h"
 
 

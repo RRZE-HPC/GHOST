@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
-#include "spmvm.h"
-#include "spmvm_util.h"
+#include "ghost.h"
+#include "ghost_util.h"
 #include "matricks.h"
 #include "ghost_vec.h"
 
@@ -297,7 +297,6 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
 	strncpy(matrixPathCopy,matrixPath,strlen(matrixPath));
 
-
 	setup = (ghost_setup_t *)allocateMemory(sizeof(ghost_setup_t),"setup");
 	setup->flags = setup_flags;
 	setup->matrixName = strtok(basename(matrixPathCopy),".");
@@ -344,11 +343,11 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #else
 		if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) {
-		   if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) {
-			  if (nTraits != 3) {
-				  ABORT("The number of traits has to be THREE (is: %d) if all distributed kernels are enabled",nTraits);
-			  }
-		   }
+			if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+				if (nTraits != 3) {
+					ABORT("The number of traits has to be THREE (is: %d) if all distributed kernels are enabled",nTraits);
+				}
+			}
 		}
 
 		DEBUG_LOG(1,"Creating distributed %s-%s-%s matrices",
@@ -360,7 +359,7 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 			SpMVM_createDistributedSetupSerial(setup, cr, options, traits);
 		else
 			SpMVM_createDistributedSetup(setup, cr, matrixPath, options, traits);
-		
+
 		setup->lnrows = setup->communicator->lnrows[SpMVM_getRank()];
 
 		setup->solvers[GHOST_MODE_NOMPI] = NULL;
@@ -370,7 +369,27 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 #endif // MPI
 	} else 
 	{ // global matrix
-		setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
+		setup->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+		switch (traits[0].format) {
+			case GHOST_SPMFORMAT_BJDS:
+				BJDS_registerFunctions(setup->fullMatrix);
+				break;
+			case GHOST_SPMFORMAT_TBJDS:
+				TBJDS_registerFunctions(setup->fullMatrix);
+				//			CRStoTBJDS(cr,traits[0],&(setup->fullMatrix));
+				break;
+			default:
+				DEBUG_LOG(0,"Warning!Invalid format for global matrix! Falling back to CRS");
+			case GHOST_SPMFORMAT_CRS:
+			case GHOST_SPMFORMAT_CRSCD:
+				CRS_registerFunctions(setup->fullMatrix);
+				//			CRStoCRS(cr,traits[0],&(setup->fullMatrix));
+				break;
+		}
+		setup->fullMatrix->fromBin(matrixPath,traits[0]);
+
+
+		//	setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName());
 		setup->lnrows = setup->nrows;
 
@@ -430,7 +449,7 @@ double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
-		
+
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
 		SpMVM_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows);
 	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {

@@ -1,7 +1,7 @@
 #ifndef __GHOST_SPMFORMAT_CRS__
 #define __GHOST_SPMFORMAT_CRS__
 
-#include "spmvm.h"
+#include "ghost.h"
 
 typedef struct
 {
@@ -26,7 +26,7 @@ typedef struct
 } 
 CR_TYPE;
 
-void CRS_init(ghost_mat_t *mat);
+void CRS_registerFunctions(ghost_mat_t *mat);
 
 #endif
 

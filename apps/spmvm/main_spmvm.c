@@ -1,5 +1,5 @@
-#include <spmvm.h>
-#include <spmvm_util.h>
+#include <ghost.h>
+#include <ghost_util.h>
 #include <ghost_vec.h>
 
 #include <stdio.h>
@@ -28,7 +28,7 @@ static mat_data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int me, kernel, nIter = 1;
+	int  kernel, nIter = 1;
 	double time;
 
 #ifdef CHECK
@@ -43,41 +43,27 @@ int main( int argc, char* argv[] )
 		GHOST_MODE_TASKMODE};
 	int nKernels = sizeof(kernels)/sizeof(int);
 
-	ghost_vec_t *lhs; // lhs vector per node
-	ghost_vec_t *rhs; // rhs vector node
+
+	ghost_vec_t *lhs; // lhs vector
+	ghost_vec_t *rhs; // rhs vector
 
 	ghost_setup_t *setup;
-
-/*	if (argc!=3) {
-		fprintf(stderr,"Usage: spmvm.x <matrixPath> <matrixFormat>\n");
-		exit(EXIT_FAILURE);
-	}*/
 
 	char *matrixPath = argv[1];
 	GHOST_SPM_GPUFORMATS *matrixFormats = NULL;
 
-#ifdef OPENCL
-	matrixFormats = (GHOST_SPM_GPUFORMATS *)malloc(sizeof(GHOST_SPM_GPUFORMATS));
-	matrixFormats->format[0] = GHOST_SPM_GPUFORMAT_ELR;
-	matrixFormats->format[1] = GHOST_SPM_GPUFORMAT_ELR;
-	matrixFormats->format[2] = GHOST_SPM_GPUFORMAT_ELR;
-	matrixFormats->T[0] = 1;
-	matrixFormats->T[1] = 1;
-	matrixFormats->T[2] = 1;
-#endif
-
-//	mat_trait_t trait = SpMVM_stringToMatrixTrait(argv[2]);
-//	trait.flags |= GHOST_SPM_PERMUTECOLIDX;
+	
 	unsigned int sortBlock = 4;
-	mat_trait_t trait = {.format = GHOST_SPMFORMAT_TBJDS, 
+	mat_trait_t trait = {.format = GHOST_SPMFORMAT_BJDS, 
 		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX /*GHOST_SPM_DEFAULT*/,
 		.aux = &sortBlock};
 	mat_trait_t traits[3] = {trait,trait,trait};
 
-	me     = SpMVM_init(argc,argv,options);       // basic initialization
-	setup  = SpMVM_createSetup(matrixPath,&traits[0],3,GHOST_SETUP_GLOBAL,matrixFormats);
-	lhs= SpMVM_createVector(setup,ghost_vec_t_LHS,NULL);
-	rhs= SpMVM_createVector(setup,ghost_vec_t_RHS,rhsVal);
+	
+	SpMVM_init(argc,argv,options);       // basic initialization
+	setup = SpMVM_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL,matrixFormats);
+	lhs   = SpMVM_createVector(setup,ghost_vec_t_LHS,NULL);
+	rhs   = SpMVM_createVector(setup,ghost_vec_t_RHS,rhsVal);
 
 #ifdef CHECK	
 	ghost_vec_t *goldLHS = SpMVM_referenceSolver(matrixPath,setup,rhsVal,nIter,options);	
@@ -103,7 +89,7 @@ int main( int argc, char* argv[] )
 			if (REAL(ABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
 					IMAG(ABS(goldLHS->val[i]-lhs->val[i])) > mytol){
 				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %e, diff: %e)\n", me, i, REAL(goldLHS->val[i]),
+						"%.2ei (tol: %e, diff: %e)\n", SpMVM_getRank(), i, REAL(goldLHS->val[i]),
 						IMAG(goldLHS->val[i]),
 						REAL(lhs->val[i]),
 						IMAG(lhs->val[i]),

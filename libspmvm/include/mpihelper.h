@@ -1,7 +1,7 @@
 #ifndef _MPI_HELPER_H_
 #define _MPI_HELPER_H_
 
-#include "spmvm.h"
+#include "ghost.h"
 #include "matricks.h"
 
 #include <mpi.h>

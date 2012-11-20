@@ -1,7 +1,7 @@
 #ifndef _SPMVM_UTIL_H_
 #define _SPMVM_UTIL_H_
 
-#include "spmvm.h"
+#include "ghost.h"
 #ifdef MPI
 #include <mpi.h>
 #endif

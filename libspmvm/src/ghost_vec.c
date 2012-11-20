@@ -1,5 +1,5 @@
 #include "ghost_vec.h"
-#include "spmvm_util.h"
+#include "ghost_util.h"
 
 #include <stdio.h>
 

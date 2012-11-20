@@ -10,7 +10,7 @@ LIBSPMVMPATH=$(HOME)/app/libspmvm
 
 LPATH+= -L$(LIBSPMVMPATH)/lib
 IPATH+= -I$(LIBSPMVMPATH)/include
-LIBS+=-l$(PREFIX)spmvm
+LIBS+=-l$(PREFIX)ghost
 
 .PHONY:clean distclean all
 
