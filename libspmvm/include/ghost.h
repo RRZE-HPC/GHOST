@@ -136,8 +136,10 @@ extern const char *DATATYPE_NAMES[];
 #endif
 /******************************************************************************/
 
+#ifdef OPENCL
 typedef cl_double ghost_cl_mdat_t; // TODO
 typedef cl_double ghost_cl_vdat_t; // TODO
+#endif
 
 /******************************************************************************/
 /*----  Definitions depending on datatype  -----------------------------------*/
@@ -262,17 +264,19 @@ GHOST_SPM_GPUFORMATS;
 
 typedef uint32_t mat_idx_t; // type for the index of the matrix
 typedef uint32_t mat_nnz_t; // type for the number of nonzeros in the matrix
+#ifdef OPENCL
 typedef cl_uint ghost_cl_midx_t;
 typedef cl_uint ghost_cl_mnnz_t;
+#endif
 #define PRmatNNZ PRIu32
 #define PRmatIDX PRIu32
 
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_setup_t ghost_setup_t;
 
-typedef void (*ghost_kernel_t)(ghost_vec_t*, ghost_vec_t*, int);
+typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_setup_t *setup, ghost_vec_t*, int);
-typedef ghost_mat_t *(*ghost_spmf_init_t) (void);
+typedef void (*ghost_spmf_init_t) (ghost_mat_t *);
 
 typedef struct 
 {
@@ -309,7 +313,9 @@ struct ghost_mat_t
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath, mat_trait_t traits);
 	size_t     (*byteSize) (ghost_mat_t *);
 	ghost_kernel_t kernel;
+#ifdef OPENCL
 	cl_kernel clkernel;
+#endif
 
 	mat_idx_t *rowPerm;     // may be NULL
 	mat_idx_t *invRowPerm;  // may be NULL

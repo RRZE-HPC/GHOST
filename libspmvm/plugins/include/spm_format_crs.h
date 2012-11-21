@@ -15,13 +15,16 @@ CONST_DIAG;
 
 typedef struct 
 {
+#ifdef OPENCL
 	ghost_cl_midx_t  nrows, ncols;
 	ghost_cl_mnnz_t  nEnts;
 	cl_mem rpt;
 	cl_mem col;
 	cl_mem val;
+#endif
 } 
 CL_CR_TYPE;
+
 typedef struct 
 {
 	mat_idx_t  nrows, ncols;

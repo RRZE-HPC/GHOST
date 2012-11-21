@@ -191,9 +191,9 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 
 	if (setup->flags & GHOST_SETUP_GLOBAL)
 	{
-		size_val = (size_t)matrix->nrows()*sizeof(mat_data_t);
+		size_val = (size_t)matrix->nrows(matrix)*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-		nrows = matrix->nrows();
+		nrows = matrix->nrows(matrix);
 
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX" rows",nrows);
@@ -201,15 +201,15 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 		mat_idx_t i;
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows(); i++) 
+			for (i=0; i<matrix->nrows(matrix); i++) 
 				val[i] = fp(i);
 		}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows(); i++) val[i] = 0.+I*0.;
+			for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows(); i++) val[i] = 0.;
+			for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.;
 #endif
 		}
 		if (matrix->trait.flags & GHOST_SPM_PERMUTECOLIDX)
@@ -294,7 +294,6 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 
 ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits, unsigned int setup_flags, void *deviceFormats) 
 {
-	UNUSED(nTraits);
 	DEBUG_LOG(1,"Creating setup");
 	ghost_setup_t *setup;
 	CR_TYPE *cr = NULL;
@@ -374,14 +373,14 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 	{ // global matrix
 		UNUSED(cr); // TODO
 		setup->fullMatrix = SpMVM_initMatrix(traits[0].format);
-		setup->fullMatrix->fromBin(matrixPath,traits[0]);
+		setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath,traits[0]);
 
 
 		//	setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
-		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName());
-		setup->nnz = setup->fullMatrix->nnz();
-		setup->nrows = setup->fullMatrix->nrows();
-		setup->ncols = setup->fullMatrix->ncols();
+		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
+		setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
+		setup->nrows = setup->fullMatrix->nrows(setup->fullMatrix);
+		setup->ncols = setup->fullMatrix->ncols(setup->fullMatrix);
 		setup->lnrows = setup->nrows;
 
 		setup->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
@@ -452,7 +451,9 @@ ghost_mat_t * SpMVM_initMatrix(const char *format)
 	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
 	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-	return myPlugin.init();
+	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	myPlugin.init(mat);
+	return mat;
 }
 
 

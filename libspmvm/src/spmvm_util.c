@@ -193,22 +193,22 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 		SpMVM_printLine("Matrix placement",NULL,"%s",matrixPlacement);
 		SpMVM_printLine("Global CRS size","MB","%lu",ws);
 
-		SpMVM_printLine("Full   host matrix format",NULL,"%s",setup->fullMatrix->formatName());
+		SpMVM_printLine("Full   host matrix format",NULL,"%s",setup->fullMatrix->formatName(setup->fullMatrix));
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
 		{
-			SpMVM_printLine("Local  host matrix format",NULL,"%s",setup->localMatrix->formatName());
-			SpMVM_printLine("Remote host matrix format",NULL,"%s",setup->remoteMatrix->formatName());
+			SpMVM_printLine("Local  host matrix format",NULL,"%s",setup->localMatrix->formatName(setup->fullMatrix));
+			SpMVM_printLine("Remote host matrix format",NULL,"%s",setup->remoteMatrix->formatName(setup->fullMatrix));
 		}
-		SpMVM_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize()/(1024*1024));
+		SpMVM_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize(setup->fullMatrix)/(1024*1024));
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
 		{
-			SpMVM_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize()/(1024*1024));
-			SpMVM_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize()/(1024*1024));
+			SpMVM_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->fullMatrix)/(1024*1024));
+			SpMVM_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->fullMatrix)/(1024*1024));
 		}
 		
 		if (setup->flags & GHOST_SETUP_GLOBAL)
 		{ //additional information depending on format
-			setup->fullMatrix->printInfo();
+			setup->fullMatrix->printInfo(setup->fullMatrix);
 		}
 /*#ifdef OPENCL	
 		if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -369,7 +369,6 @@ ghost_vec_t *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, m
 		ghost_vec_t *globRHS = SpMVM_createVector(setup,ghost_vec_t_RHS|ghost_vec_t_HOSTONLY,rhsVal);
 
 		CR_TYPE *cr = (CR_TYPE *)(setup->fullMatrix->data);
-		printf("ref: %p %p\n",cr,cr->clmat);
 		int iter;
 
 		for (iter=0; iter<nIter; iter++)
