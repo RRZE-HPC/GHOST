@@ -3,14 +3,15 @@ include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header
 
-VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/ ./src/spm_formats/
+VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/ ./src/spm_formats/ ./plugins/src/
 OBJDIR     = ./obj
+PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types.h
 FORMATS_H  = ./include/ghost_spmformats.h
-IPATH     += -I./include/ -I./include/spm_formats/
+IPATH     += -I./include/ -I./plugins/include/
 
 OBJS	=	$(COBJS) $(FOBJS)
-FORMATS = $(notdir $(wildcard include/spm_formats/*.h))
+FORMATS = $(notdir $(wildcard $(PLUGINDIR)/include/*.h))
 
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DMPI
@@ -35,7 +36,7 @@ endif
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
-IPATH += -I$(strip $(CL_INC))
+IPATH += -I$(CUDA_HOME)/include
 OBJS  += $(CLOBJS)
 endif
 
@@ -78,16 +79,21 @@ endif
 LIBSPMVM=lib$(PREFIX)ghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
+MAKROS+= -DPLUGINPATH=\"$(strip $(INSTDIR))/lib/ghost/\"
 
+PLUGINS = $(PLUGINDIR)/spm_format_crs.so#(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(PLUGINDIR)/src/*.c))))
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
-MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic/*.c))))
-AVXOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/avx/*.c))))
+#MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic/*.c))))
+#AVXOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/avx/*.c))))
 SSEOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/sse/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 
+$(PLUGINDIR)/%.so: %.c
+	@echo "==> Create plugin $< -> $@"
+	@$(CC) -shared $(CFLAGS) ${MAKROS} ${IPATH} -o $@ $<
 
 $(OBJDIR)/%.o: %.c
 	@echo "==> Compile $< -> $@"
@@ -97,7 +103,7 @@ $(OBJDIR)/%.o: %.f
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBSPMVM)
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBSPMVM) $(PLUGINS)
 
 $(TYPES_H):  
 	@echo "==> Generate types header"
@@ -137,18 +143,24 @@ clean:
 distclean: clean
 	@echo "==> Distclean"
 	@rm -f *.a *.so
+	@rm -f $(PLUGINDIR)/*.so
 
 install: all
 	@mkdir -p $(strip $(INSTDIR))/lib
 	@mkdir -p $(strip $(INSTDIR))/include
+	@mkdir -p $(strip $(INSTDIR))/lib/ghost
 	@echo "==> Install library to $(strip $(INSTDIR))/lib"
 	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
 	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
+	@echo "==> Install plugins to $(strip $(INSTDIR))/lib/ghost"
+	@(for plugin in $(PLUGINS); do \
+	cp -f $$plugin $(strip $(INSTDIR))/lib/ghost; done)
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"
 	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.a
 	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.so
-	@rm -f $(strip $(INSTDIR))/include/spmvm*.h 
+	@rm -f $(strip $(INSTDIR))/include/ghost*.h 
+	@rm -rf $(strip $(INSTDIR))/lib/ghost/ 
 

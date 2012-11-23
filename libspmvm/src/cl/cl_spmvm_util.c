@@ -2,7 +2,7 @@
 #include "cl_matricks.h"
 #include "cl_kernel.h"
 #include "matricks.h"
-#include "mpihelper.h"
+//#include "mpihelper.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -34,13 +34,12 @@ void CL_init()
 	unsigned int platform, device;
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
-	int rank = getLocalRank();
-	int size = getNumberOfRanksOnNode();
-	char hostname[MAXHOSTNAMELEN];
+	int rank = SpMVM_getLocalRank();
+	int size = SpMVM_getNumberOfRanksOnNode();
+	char hostname[MAXHOSTNAMELEN] = "foobar";
 	cl_uint numDevices;
 	cl_device_id *deviceIDs;
 
-	gethostname(hostname,MAXHOSTNAMELEN);
 
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
@@ -107,23 +106,23 @@ void CL_init()
 	CL_checkerror(err);
 
 
-#ifdef DOUBLE
-#ifdef COMPLEX
+#ifdef GHOST_MAT_DP
+#ifdef GHOST_MAT_COMPLEX
 	char opt[] = " -DDOUBLE -DCOMPLEX ";
 #else
 	char opt[] = " -DDOUBLE ";
 #endif
 #endif
 
-#ifdef SINGLE
-#ifdef COMPLEX
+#ifdef GHOST_MAT_SP
+#ifdef GHOST_MAT_COMPLEX
 	char opt[] = " -DSINGLE -DCOMPLEX ";
 #else
 	char opt[] = " -DSINGLE ";
 #endif
 #endif
 
-	program = CL_registerProgram("src/kernel.cl",opt);
+//	program = CL_registerProgram(kernelSource,opt);
 
 
 	free(deviceIDs);
@@ -134,25 +133,25 @@ void CL_init()
    Create program inside previously created context (global variable) and 
    build it
    -------------------------------------------------------------------------- */
-cl_program CL_registerProgram(char *filename, const char *opt)
+cl_program CL_registerProgram(const char *source, const char *opt)
 {
 	cl_program program;
 	cl_int err;
 	char *build_log;
 	size_t log_size;
 	cl_device_id deviceID;
-	int size = getNumberOfRanksOnNode();
-	int rank = getLocalRank();
-	char hostname[MAXHOSTNAMELEN];
+	int size = SpMVM_getNumberOfRanksOnNode();
+	int rank = SpMVM_getLocalRank();
+	char hostname[MAXHOSTNAMELEN] = "foobar";
 
-	gethostname(hostname,MAXHOSTNAMELEN);
+	//gethostname(hostname,MAXHOSTNAMELEN);
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
 
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
-			size-1, hostname,basename(filename));
-	program = clCreateProgramWithSource(context,1,(const char **)&kernelSource,
+//	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
+//			size-1, hostname,basename(filename));
+	program = clCreateProgramWithSource(context,1,(const char **)&source,
 			NULL,&err);
 	CL_checkerror(err);
 
@@ -201,8 +200,8 @@ cl_mem CL_allocDeviceMemory( size_t bytesize )
 
 cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
 {
-	cl_mem mem;
-	cl_int err;
+	cl_mem mem = NULL;
+	/*cl_int err;
 	cl_image_format image_format;
 
 	image_format.image_channel_order = CL_RG;
@@ -213,7 +212,7 @@ cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
 printf("image width: %lu\n",bytesize/sizeof(mat_data_t));	
 
 	CL_checkerror(err);
-
+*/
 	return mem;
 }
 
@@ -234,9 +233,8 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
 				hostmem,0,NULL,NULL));
 #else
-	int me;
+	int me = SpMVM_getRank();
 
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(mat_data_t));
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
@@ -359,6 +357,12 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 	}
 }
 
+void CL_enqueueKernelWithSize(cl_kernel kernel,size_t size)
+{
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&size,NULL,0,NULL
+				,NULL));
+
+}
 void CL_enqueueKernel(cl_kernel kernel)
 {
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&globalSz,NULL,0,NULL
@@ -370,9 +374,9 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
 	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
-	int me;
+	int me = SpMVM_getRank();
 
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+//	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 	IF_DEBUG(1) printf("PE%d: Enqueueing SpMVM kernel with a global size of %lu\n",me,globalSize[type]);
 
 
@@ -383,7 +387,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 void CL_finish(int spmvmOptions) 
 {
 
-	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
 	}
 	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) {
@@ -393,12 +397,12 @@ void CL_finish(int spmvmOptions)
 	}
 
 	CL_safecall(clReleaseCommandQueue(queue));
-	CL_safecall(clReleaseContext(context));
+	CL_safecall(clReleaseContext(context));*/
 }
 
 void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
-	
+/*	
 	if (!(matrix->format & GHOST_SPMFORMAT_DIST_CRS)) {
 		DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
 		return;
@@ -418,11 +422,11 @@ void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int 
 				matrixFormats->T[GHOST_REMOTE_MAT_IDX],GHOST_REMOTE_MAT_IDX, spmvmOptions);
 	}
 
-	return gpum;
+	return gpum;*/
 
 }
 
-void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+/*void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
 	
 	ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
@@ -596,7 +600,7 @@ void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, i
 		}
 	}
 	matrix->devMatrix =  gpum;
-}
+}*/
 
 void CL_uploadVector( ghost_vec_t *vec )
 {
@@ -629,7 +633,7 @@ static int stringcmp(const void *x, const void *y)
 
 CL_DEVICE_INFO *CL_getDeviceInfo() 
 {
-	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
+/*	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -697,7 +701,8 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 		MPI_safecall(MPI_Bcast(devInfo->names[i],CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 
 
-	return devInfo;
+	return devInfo;*/
+	return NULL;
 }
 
 void destroyCLdeviceInfo(CL_DEVICE_INFO * di) 

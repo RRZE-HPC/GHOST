@@ -552,15 +552,7 @@ void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 		tbjds->chunkStart[0] = 0;
 	flags = trait.flags;
 	
-	**matrix = (ghost_mat_t)MATRIX_INIT(
-			.trait = trait, 
-			.nrows = cr->nrows, 
-			.ncols = cr->ncols, 
-			.nnz = tbjds->nnz,
-			.rowPerm = rowPerm,
-			.invRowPerm = invRowPerm,	   
-			.data = tbjds);
-	TBJDS_registerFunctions(*matrix);
+//	TBJDS_registerFunctions(*matrix);
 
 	
 
@@ -764,15 +756,7 @@ void CRStoBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 	JD_SORT_TYPE* rowSort;
 
 	sbjds = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"sbjds");
-	**matrix = (ghost_mat_t)MATRIX_INIT(
-			.trait = trait, 
-			.nrows = cr->nrows, 
-			.ncols = cr->ncols, 
-			.nnz = cr->nEnts,
-			.rowPerm = rowPerm,
-			.invRowPerm = invRowPerm,	   
-			.data = sbjds);
-	BJDS_registerFunctions(*matrix);
+//	BJDS_registerFunctions(*matrix);
 
 	if (trait.flags & GHOST_SPM_SORTED) {
 		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sbjds->rowPerm");
@@ -916,16 +900,18 @@ void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix)
 {
 	DEBUG_LOG(1,"Creating CRS matrix from original CRS type");
 	*matrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
-	**matrix = (ghost_mat_t)MATRIX_INIT(.trait = trait, .nrows = cr->nrows, .ncols = cr->ncols, .nnz = cr->nEnts, .data = cr);
-	CRS_registerFunctions(*matrix);
+//	CRS_registerFunctions(*matrix);
+	UNUSED(cr);
+	UNUSED(trait);
+	UNUSED(matrix);
 
 
 }
 
 ghost_mat_t * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait)
 {
-	ghost_mat_t *matrix;
-	switch (trait.format) {
+	ghost_mat_t *matrix = NULL;
+	/*switch (trait.format) {
 		case GHOST_SPMFORMAT_BJDS:
 			CRStoBJDS(cr,trait,&matrix);
 			break;
@@ -944,7 +930,9 @@ ghost_mat_t * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait)
 		case GHOST_SPMFORMAT_CRSCD:
 			CRStoCRS(cr,trait,&matrix);
 			break;
-	}
+	}*/
+	UNUSED(cr);
+	UNUSED(trait);
 	return matrix;
 }
 

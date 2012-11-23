@@ -36,7 +36,8 @@
 
 typedef struct
 {
-	unsigned int format;
+//	unsigned int format; // TODO delete
+	const char * format;
 	unsigned int flags;
 	void * aux;
 } 
@@ -53,17 +54,16 @@ mat_trait_t;
 
 // flags
 #define GHOST_SETUP_DEFAULT       (0)
-#define GHOST_SETUP_HOSTONLY      (0x1<<0) // TODO one flag each for Host and Device
-#define GHOST_SETUP_DEVICEONLY    (0x1<<1)
-#define GHOST_SETUP_HOSTANDDEVICE (0x1<<2)
-#define GHOST_SETUP_GLOBAL        (0x1<<3)
-#define GHOST_SETUP_DISTRIBUTED   (0x1<<4)
+#define GHOST_SETUP_GLOBAL        (0x1<<0)
+#define GHOST_SETUP_DISTRIBUTED   (0x1<<1)
 
 #define GHOST_SPM_DEFAULT       (0)
-#define GHOST_SPM_PERMUTECOLIDX (0x1<<0)
-#define GHOST_SPM_COLMAJOR      (0x1<<1)
-#define GHOST_SPM_ROWMAJOR      (0x1<<2)
-#define GHOST_SPM_SORTED        (0x1<<3)
+#define GHOST_SPM_HOST      (0x1<<0)
+#define GHOST_SPM_DEVICE    (0x1<<1)
+#define GHOST_SPM_PERMUTECOLIDX (0x1<<2)
+#define GHOST_SPM_COLMAJOR      (0x1<<3)
+#define GHOST_SPM_ROWMAJOR      (0x1<<4)
+#define GHOST_SPM_SORTED        (0x1<<5)
 
 
 /******************************************************************************/
@@ -121,7 +121,7 @@ extern const char *DATATYPE_NAMES[];
 /******************************************************************************/
 /*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
-#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
+#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_CPU
 /******************************************************************************/
 
 
@@ -136,6 +136,8 @@ extern const char *DATATYPE_NAMES[];
 #endif
 /******************************************************************************/
 
+typedef cl_double ghost_cl_mdat_t; // TODO
+typedef cl_double ghost_cl_vdat_t; // TODO
 
 /******************************************************************************/
 /*----  Definitions depending on datatype  -----------------------------------*/
@@ -260,6 +262,8 @@ GHOST_SPM_GPUFORMATS;
 
 typedef uint32_t mat_idx_t; // type for the index of the matrix
 typedef uint32_t mat_nnz_t; // type for the number of nonzeros in the matrix
+typedef cl_uint ghost_cl_midx_t;
+typedef cl_uint ghost_cl_mnnz_t;
 #define PRmatNNZ PRIu32
 #define PRmatIDX PRIu32
 
@@ -268,6 +272,7 @@ typedef struct ghost_setup_t ghost_setup_t;
 
 typedef void (*ghost_kernel_t)(ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_setup_t *setup, ghost_vec_t*, int);
+typedef ghost_mat_t *(*ghost_spmf_init_t) (void);
 
 typedef struct 
 {
@@ -292,18 +297,19 @@ ghost_comm_t;
 struct ghost_mat_t 
 {
 	mat_trait_t trait; // TODO rename
-	mat_nnz_t nnz; // TODO rename
-	mat_idx_t nrows;
-	mat_idx_t ncols;
 
-	void       (*init) (ghost_mat_t *mat);
-	void       (*printInfo) (void);
-	mat_idx_t  (*rowLen) (mat_idx_t i);
-	mat_data_t (*entry) (mat_idx_t i, mat_idx_t j);
-	char *     (*formatName) (void);
-	void       (*fromBin)(char *matrixPath, mat_trait_t traits);
-	size_t     (*byteSize) (void);
+	// access functions
+	void       (*printInfo) (ghost_mat_t *);
+	mat_nnz_t  (*nnz) (ghost_mat_t *);
+	mat_idx_t  (*nrows) (ghost_mat_t *);
+	mat_idx_t  (*ncols) (ghost_mat_t *);
+	mat_idx_t  (*rowLen) (ghost_mat_t *, mat_idx_t i);
+	mat_data_t (*entry) (ghost_mat_t *, mat_idx_t i, mat_idx_t j);
+	char *     (*formatName) (ghost_mat_t *);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath, mat_trait_t traits);
+	size_t     (*byteSize) (ghost_mat_t *);
 	ghost_kernel_t kernel;
+	cl_kernel clkernel;
 
 	mat_idx_t *rowPerm;     // may be NULL
 	mat_idx_t *invRowPerm;  // may be NULL
@@ -311,8 +317,19 @@ struct ghost_mat_t
 	void *data;
 }; 
 
-#define TRAIT_INIT(...) { .format = GHOST_SPMFORMAT_NONE, .flags = GHOST_SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
-#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .nnz = 0, .nrows = 0, .ncols = 0, .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
+typedef struct
+{
+	void *so;
+	ghost_spmf_init_t init;
+	char *name;
+	char *version;
+	char *formatID;
+}
+ghost_spmf_plugin_t;
+	
+
+#define TRAIT_INIT(...) { .format = "", .flags = GHOST_SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
+#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
 
 struct ghost_setup_t
 {
@@ -332,9 +349,11 @@ struct ghost_setup_t
 	char *matrixName;
 
 	unsigned int flags;
-#ifdef OPENCL
-	GPUghost_mat_t *devMatrix;
-#endif
+/*#ifdef OPENCL
+	ghost_mat_t *fullCLMatrix; // TODO array
+	ghost_mat_t *localCLMatrix;
+	ghost_mat_t *remoteCLMatrix;
+#endif*/
 };
 
 typedef struct 
@@ -350,10 +369,6 @@ typedef struct
 	void *remoteMatrix;
 } 
 GPUghost_mat_t;
-
-
-
-
 
 
 /******************************************************************************/
@@ -481,6 +496,7 @@ double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 		int kernel, int nIter);
 
 ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *trait, int nTraits, unsigned int, void *deviceFormats); 
+ghost_mat_t * SpMVM_initMatrix(const char *format);
 /******************************************************************************/
 
 #endif

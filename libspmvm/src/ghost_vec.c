@@ -115,7 +115,7 @@ void SpMVM_collectVectors(ghost_setup_t *setup, ghost_vec_t *vec, ghost_vec_t *t
 #else
 	int i;
 	UNUSED(kernel);
-	SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->fullMatrix->nrows);
+	SpMVM_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->fullMatrix->nrows());
 	for (i=0; i<totalVec->nrows; i++) 
 		totalVec->val[i] = vec->val[i];
 #endif

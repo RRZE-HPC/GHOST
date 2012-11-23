@@ -15,6 +15,9 @@
 #include <unistd.h>
 #include <sys/param.h>
 #include <sys/time.h>
+#include <dlfcn.h>
+#include <dirent.h>
+#include <linux/limits.h>
 
 
 #include <string.h>
@@ -25,9 +28,10 @@
 #include <likwid.h>
 #endif
 
+//#define PLUGINPATH "/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm/plugins/"
+
 static int options;
 //static SpMVM_kernelFunc * kernels;
-
 static double wctime()
 {
 	struct timeval tp;
@@ -153,6 +157,8 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 
 	options = spmvmOptions;
 
+
+
 	return me;
 }
 
@@ -185,9 +191,9 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 
 	if (setup->flags & GHOST_SETUP_GLOBAL)
 	{
-		size_val = (size_t)matrix->nrows*sizeof(mat_data_t);
+		size_val = (size_t)matrix->nrows()*sizeof(mat_data_t);
 		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
-		nrows = matrix->nrows;
+		nrows = matrix->nrows();
 
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX" rows",nrows);
@@ -195,15 +201,15 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 		mat_idx_t i;
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows; i++) 
+			for (i=0; i<matrix->nrows(); i++) 
 				val[i] = fp(i);
 		}else {
 #ifdef COMPLEX
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows; i++) val[i] = 0.+I*0.;
+			for (i=0; i<matrix->nrows(); i++) val[i] = 0.+I*0.;
 #else
 #pragma omp parallel for schedule(runtime)
-			for (i=0; i<matrix->nrows; i++) val[i] = 0.;
+			for (i=0; i<matrix->nrows(); i++) val[i] = 0.;
 #endif
 		}
 		if (matrix->trait.flags & GHOST_SPM_PERMUTECOLIDX)
@@ -291,7 +297,7 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 	UNUSED(nTraits);
 	DEBUG_LOG(1,"Creating setup");
 	ghost_setup_t *setup;
-	CR_TYPE *cr;
+	CR_TYPE *cr = NULL;
 
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
@@ -306,25 +312,25 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
-	if (SpMVM_getRank() == 0) 
-	{ // root process reads row pointers (parallel IO) or entire matrix
-		if (!isMMfile(matrixPath)){
-			if (options & GHOST_OPTION_SERIAL_IO)
-				cr = readCRbinFile(matrixPath,0,traits[0].format & GHOST_SPMFORMAT_CRSCD);
-			else
-				cr = readCRbinFile(matrixPath,1,traits[0].format & GHOST_SPMFORMAT_CRSCD);
-		} else{
-			MM_TYPE *mm = readMMFile( matrixPath);
-			cr = convertMMToCRMatrix( mm );
-			freeMMMatrix(mm);
-		}
-	} else 
-	{ // dummy CRS for scattering
-		cr = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"cr");
-	}
-
 #ifdef MPI
 	if (setup_flags & GHOST_SETUP_DISTRIBUTED) {
+		if (SpMVM_getRank() == 0) 
+		{ // root process reads row pointers (parallel IO) or entire matrix
+			if (!isMMfile(matrixPath)){
+				if (options & GHOST_OPTION_SERIAL_IO)
+					cr = readCRbinFile(matrixPath,0,traits[0].format & GHOST_SPMFORMAT_CRSCD);
+				else
+					cr = readCRbinFile(matrixPath,1,traits[0].format & GHOST_SPMFORMAT_CRSCD);
+			} else{
+				MM_TYPE *mm = readMMFile( matrixPath);
+				cr = convertMMToCRMatrix( mm );
+				freeMMMatrix(mm);
+			}
+		} else 
+		{ // dummy CRS for scattering
+			cr = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"cr");
+		}
+
 		MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 		MPI_safecall(MPI_Bcast(&(cr->nrows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 		MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
@@ -332,9 +338,6 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 #endif
 	setup->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
-	setup->nnz = cr->nEnts;
-	setup->nrows = cr->nrows;
-	setup->ncols = cr->ncols;
 
 	if (setup_flags & GHOST_SETUP_DISTRIBUTED)
 	{ // distributed matrix
@@ -369,28 +372,16 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 #endif // MPI
 	} else 
 	{ // global matrix
-		setup->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
-		switch (traits[0].format) {
-			case GHOST_SPMFORMAT_BJDS:
-				BJDS_registerFunctions(setup->fullMatrix);
-				break;
-			case GHOST_SPMFORMAT_TBJDS:
-				TBJDS_registerFunctions(setup->fullMatrix);
-				//			CRStoTBJDS(cr,traits[0],&(setup->fullMatrix));
-				break;
-			default:
-				DEBUG_LOG(0,"Warning!Invalid format for global matrix! Falling back to CRS");
-			case GHOST_SPMFORMAT_CRS:
-			case GHOST_SPMFORMAT_CRSCD:
-				CRS_registerFunctions(setup->fullMatrix);
-				//			CRStoCRS(cr,traits[0],&(setup->fullMatrix));
-				break;
-		}
+		UNUSED(cr); // TODO
+		setup->fullMatrix = SpMVM_initMatrix(traits[0].format);
 		setup->fullMatrix->fromBin(matrixPath,traits[0]);
 
 
 		//	setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName());
+		setup->nnz = setup->fullMatrix->nnz();
+		setup->nrows = setup->fullMatrix->nrows();
+		setup->ncols = setup->fullMatrix->ncols();
 		setup->lnrows = setup->nrows;
 
 		setup->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
@@ -399,7 +390,7 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		setup->solvers[GHOST_MODE_TASKMODE] = NULL;
 	}
 
-#ifdef OPENCL
+/*#ifdef OPENCL
 	if (!(flags & GHOST_SPM_HOSTONLY))
 	{
 		DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
@@ -410,13 +401,58 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 	{
 		CL_uploadCRS ( mat, (GHOST_SPM_GPUFORMATS *)deviceFormats, options);
 	}
-#else
+#else*/
 	UNUSED(deviceFormats);
-#endif
+//#endif
 	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->ncols,setup->nrows,setup->nnz);
 
 	DEBUG_LOG(1,"Setup created successfully");
 	return setup;
+}
+
+ghost_mat_t * SpMVM_initMatrix(const char *format)
+{
+	char pluginPath[PATH_MAX];
+	DIR * pluginDir = opendir(PLUGINPATH);
+	struct dirent * dirEntry;
+	ghost_spmf_plugin_t myPlugin;
+	int found = 0;
+
+
+	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,format);
+	if (pluginDir) {
+		while (0 != (dirEntry = readdir(pluginDir))) {
+			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
+			DEBUG_LOG(2,"Trying %s",pluginPath);
+			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
+			if (!myPlugin.so) {
+				DEBUG_LOG(2,"Could not open %s",pluginPath);
+				continue;
+			}
+
+			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
+			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
+			if (!strcmp(format,myPlugin.formatID)) {
+				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
+				found = 1;
+				break;
+			} else {
+				DEBUG_LOG(2,"Skipping plugin: %s",myPlugin.formatID);
+			}
+
+		}
+		closedir(pluginDir);
+
+	} else {
+		ABORT("The plugin directory does not exist");
+	}
+	if (!found) ABORT("There is no such plugin providing %s",format);
+	myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
+	myPlugin.name = (char *)dlsym(myPlugin.so,"name");
+	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
+
+	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
+	return myPlugin.init();
 }
 
 

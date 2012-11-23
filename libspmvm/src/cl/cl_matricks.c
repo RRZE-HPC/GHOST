@@ -1,4 +1,3 @@
-#include <mpi.h>
 #include "cl_matricks.h"
 #include "matricks.h"
 
@@ -11,7 +10,7 @@
 #include <math.h>
 
 
-size_t getBytesize(void *mat, int format) {
+/*size_t getBytesize(void *mat, int format) {
 	size_t sz = 0;
 	switch (format) {
 		case GHOST_SPM_GPUFORMAT_PJDS:
@@ -27,11 +26,11 @@ size_t getBytesize(void *mat, int format) {
 				break;
 			}
 		default:
-				SpMVM_abort("Invalid device matrix format in getBytesize!");
+				ABORT("Invalid device matrix format in getBytesize!");
 	}
 
 	return sz;
-}
+}*/
 
 
 /**********************  pJDS MATRIX TYPE *********************************/
@@ -632,11 +631,9 @@ void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col,
 	/* check if matrix in elr is consistent with CRS;
 	 * assume FORTRAN numbering in crs, C numbering in ELR */
 
-	int i,j, hlpi;
-	int me;
-
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
-
+/*	int i,j, hlpi;
+	int me = SpMVM_getRank();
+		
 	printf("PE%i: -- ELRcopy sanity check:\n", me);
 	for (i=0; i<nrows; i++){
 		if( (crs_row_ptr[i+1] - crs_row_ptr[i]) != elr->rowLen[i]) 
@@ -655,7 +652,7 @@ void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col,
 		}
 	}
 
-	printf("PE%i: -- finished sanity check.\n", me);
+	printf("PE%i: -- finished sanity check.\n", me);*/
 }
 
 
@@ -732,7 +729,7 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	cl_mem col, rowLen, colStart, val;
 
-	int me;
+	int me = SpMVM_getRank();
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
@@ -741,17 +738,17 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	/* allocate */
 
-	IF_DEBUG(1) { 
+/*	IF_DEBUG(1) { 
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
-	}
+	}*/
 
 	col = CL_allocDeviceMemory(colMemSize);
 
-	IF_DEBUG(1) { 
+/*	IF_DEBUG(1) { 
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CPJDSinitAlloc: in columns\t %lu MB\n", me, colStartMemSize/(1024*1024));	
-	}
+	}*/
 	colStart = CL_allocDeviceMemory(colStartMemSize);
 
 	IF_DEBUG(1) printf("PE%i: CPJDSinitAlloc: in rows\t %lu MB\n",
@@ -787,7 +784,7 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	cl_mem col, rowLen, val;
 
-	int me;
+	int me = SpMVM_getRank();
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );
@@ -796,10 +793,10 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	/* allocate */
 
-	IF_DEBUG(1) { 
+/*	IF_DEBUG(1) { 
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 		printf("PE%i: CELRinitAlloc: in columns\t %lu MB\n", me, colMemSize/(1024*1024));	
-	}
+	}*/
 	col = CL_allocDeviceMemory(colMemSize);
 
 
@@ -839,8 +836,8 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	assert( cpjds->padding == pjds->padding );
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
-	int me;
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	int me = SpMVM_getRank();
+//	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
@@ -864,7 +861,8 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	CL_copyHostToDevice( cpjds->rowLen, pjds->rowLen, rowMemSize );
 }
 
-void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
+void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) 
+{
 
 	/* copy col, val and rowLen from CPU elr format to device;
 	 * celr must be allocated in advance (using cudaELRInit) */
@@ -874,8 +872,8 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr ) {
 	assert( celr->nMaxRow == elr->nMaxRow );
 
 
-	int me;
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	int me = SpMVM_getRank();
+//	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );
@@ -907,8 +905,7 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
 
-	int me;
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	int me = SpMVM_getRank();
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) pjds->nMaxRow * sizeof( int );
@@ -941,8 +938,8 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 	assert( celr->padding == elr->padding );
 	assert( celr->nMaxRow == elr->nMaxRow );
 
-	int me;
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+	int me = SpMVM_getRank();
+//	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
 	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );

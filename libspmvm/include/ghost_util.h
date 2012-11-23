@@ -83,10 +83,10 @@
 
 
 void CL_init();
-cl_program CL_registerProgram(char *filename, const char *options);
+cl_program CL_registerProgram(const char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
 
-CL_uploadCRS (MATRIY_TYPE *lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+//CL_uploadCRS (MATRIY_TYPE *lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_uploadVector( ghost_vec_t *vec );
 void CL_downloadVector( ghost_vec_t *vec );
 
@@ -110,6 +110,7 @@ void CL_dotprod(cl_mem a, cl_mem b, mat_data_t *out, int nrows);
 //void CL_setup_communication(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int);
 GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_enqueueKernel(cl_kernel kernel);
+void CL_enqueueKernelWithSize(cl_kernel kernel,size_t size);
  
 size_t CL_getLocalSize(cl_kernel kernel);
 CL_DEVICE_INFO * CL_getDeviceInfo();

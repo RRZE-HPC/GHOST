@@ -26,17 +26,17 @@ LIBS+= -limf -lsvml -lirng -lintlc
 endif
 
 
-ifeq ($(OPENCL),1)
+ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX= cl
-LIBS  += -lOpenCL
+LIBS  += -lintelocl #-lOpenCL
 IPATH += ${CUDA_INC}
-LPATH += ${CUDA_LIB}
+LPATH += -L/usr/lib/OpenCL/vendors/intel #${CUDA_LIB}
 endif
 
 %.o: %.c  
 	@echo "==> Compile $< -> $@"
-	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< $(LIBS) 
 
 
 $(PREFIX)spmvm.x: main_spmvm.o

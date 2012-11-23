@@ -28,7 +28,7 @@ static mat_data_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 1;
+	int  kernel, nIter = 100;
 	double time;
 
 #ifdef CHECK
@@ -52,11 +52,20 @@ int main( int argc, char* argv[] )
 	char *matrixPath = argv[1];
 	GHOST_SPM_GPUFORMATS *matrixFormats = NULL;
 
-	
-	unsigned int sortBlock = 4;
-	mat_trait_t trait = {.format = GHOST_SPMFORMAT_BJDS, 
-		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX /*GHOST_SPM_DEFAULT*/,
-		.aux = &sortBlock};
+	mat_trait_t trait;
+	if (argc == 5) {
+		trait.format = argv[2];
+		trait.flags = atoi(argv[3]);
+		unsigned int sortBlock = (unsigned int)atoi(argv[4]);
+		trait.aux = &sortBlock;
+		
+	} else {
+	unsigned int sortBlock = 1024;
+	trait.format = "CRS";
+	trait.flags = GHOST_SPM_DEVICE;
+	trait.aux = &sortBlock;
+//		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX ,
+	}
 	mat_trait_t traits[3] = {trait,trait,trait};
 
 	
@@ -108,14 +117,11 @@ int main( int argc, char* argv[] )
 		else
 			SpMVM_printLine(SpMVM_modeName(kernels[kernel]),"GF/s","%f",
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)setup->nnz/time,
-					time*1.e3);
+					(double)setup->nnz/time);
 #else
-		printf("%11s: %5.2f GF/s | %5.2f ms/it\n",
-				SpMVM_modeName(kernels[kernel]),
+		SpMVM_printLine(SpMVM_modeName(kernels[kernel]),"GF/s","%f",
 				FLOPS_PER_ENTRY*1.e-9*
-				(double)setup->nnz/time,
-				time*1.e3);
+				(double)setup->nnz/time);
 #endif
 
 		SpMVM_zeroVector(lhs);

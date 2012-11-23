@@ -140,7 +140,7 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 
 	me = SpMVM_getRank();
 
-#ifdef OPENCL	
+/*#ifdef OPENCL	
 	size_t fullMemSize, localMemSize, remoteMemSize, 
 		   totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
@@ -160,7 +160,7 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 		MPI_safecall(MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,
 					MPI_COMM_WORLD));
 	}
-#endif	
+#endif	*/
 
 	if(me==0){
 		int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
@@ -170,12 +170,12 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 				setup->nnz*(sizeof(mat_data_t)+sizeof(mat_idx_t)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-		if (setup->flags & GHOST_SETUP_HOSTANDDEVICE)
+	/*	if (setup->flags & GHOST_SETUP_HOST && setup->flags & GHOST_SETUP_DEVICE)
 			matrixLocation = "Host and Device";
-		else if (setup->flags & GHOST_SETUP_DEVICEONLY)
+		else if (setup->flags & GHOST_SETUP_DEVICE)
 			matrixLocation = "Device only";
 		else
-			matrixLocation = "Host only";
+			matrixLocation = "Host only";*/
 
 		char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
@@ -206,13 +206,11 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 			SpMVM_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize()/(1024*1024));
 		}
 		
-		SpMVM_printLine("Permuted columns",NULL,"%s",setup->fullMatrix->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
-
 		if (setup->flags & GHOST_SETUP_GLOBAL)
 		{ //additional information depending on format
 			setup->fullMatrix->printInfo();
 		}
-#ifdef OPENCL	
+/*#ifdef OPENCL	
 		if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
 			printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
 		}	
@@ -222,7 +220,7 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 			printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
 					totalRemoteMemSize); 
 		}
-#endif
+#endif*/
 		SpMVM_printFooter();
 
 		SpMVM_printHeader("Setup information");
@@ -294,12 +292,12 @@ void SpMVM_printEnvInfo()
 		SpMVM_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		SpMVM_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
-		// TODO
+/*		// TODO
 		printf("OpenCL devices                   :\n");
 		int i;
 		for (i=0; i<devInfo->nDistinctDevices; i++) {
 			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
-		}
+		}*/
 #endif
 		SpMVM_printFooter();
 
@@ -365,12 +363,13 @@ ghost_vec_t *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, m
 	ghost_vec_t *globLHS; 
 
 	if (me==0) {
-		mat_trait_t trait = {.format = GHOST_SPMFORMAT_CRS, .flags = GHOST_SPM_DEFAULT, .aux = NULL};
-		ghost_setup_t *setup = SpMVM_createSetup(matrixPath, &trait, 1, GHOST_SETUP_GLOBAL|GHOST_SETUP_HOSTONLY, NULL);
+		mat_trait_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
+		ghost_setup_t *setup = SpMVM_createSetup(matrixPath, &trait, 1, GHOST_SETUP_GLOBAL, NULL);
 		globLHS = SpMVM_createVector(setup,ghost_vec_t_LHS|ghost_vec_t_HOSTONLY,NULL); 
 		ghost_vec_t *globRHS = SpMVM_createVector(setup,ghost_vec_t_RHS|ghost_vec_t_HOSTONLY,rhsVal);
 
 		CR_TYPE *cr = (CR_TYPE *)(setup->fullMatrix->data);
+		printf("ref: %p %p\n",cr,cr->clmat);
 		int iter;
 
 		for (iter=0; iter<nIter; iter++)
