@@ -292,12 +292,12 @@ void SpMVM_printEnvInfo()
 		SpMVM_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		SpMVM_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
-/*		// TODO
+		// TODO
 		printf("OpenCL devices                   :\n");
 		int i;
 		for (i=0; i<devInfo->nDistinctDevices; i++) {
 			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
-		}*/
+		}
 #endif
 		SpMVM_printFooter();
 

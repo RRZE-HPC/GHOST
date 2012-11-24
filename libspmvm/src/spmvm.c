@@ -371,6 +371,8 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 #endif // MPI
 	} else 
 	{ // global matrix
+		if (nTraits != 1)
+			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
 		UNUSED(cr); // TODO
 		setup->fullMatrix = SpMVM_initMatrix(traits[0].format);
 		setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath,traits[0]);

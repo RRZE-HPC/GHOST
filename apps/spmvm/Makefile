@@ -30,8 +30,10 @@ ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX= cl
 LIBS  += -lintelocl #-lOpenCL
+#LIBS  += -lOpenCL
 IPATH += ${CUDA_INC}
 LPATH += -L/usr/lib/OpenCL/vendors/intel #${CUDA_LIB}
+#LPATH += ${CUDA_LIB}
 endif
 
 %.o: %.c  

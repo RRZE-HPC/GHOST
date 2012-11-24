@@ -72,6 +72,7 @@ static mat_idx_t BJDS_nrows(ghost_mat_t *mat)
 }
 static mat_idx_t BJDS_ncols(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return 0;
 }
 
@@ -90,6 +91,7 @@ static void BJDS_printInfo(ghost_mat_t *mat)
 
 static char * BJDS_formatName(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return "BJDS";
 }
 
@@ -132,7 +134,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, mat_trait_t traits)
 	mat_trait_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
 	crsMat->fromBin(crsMat,matrixPath,crsTraits);
 	
-	BJDS_fromCRS(crsMat,crsMat->data,traits);
+	BJDS_fromCRS(mat,crsMat->data,traits);
 }
 
 static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)

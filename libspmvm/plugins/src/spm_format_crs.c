@@ -102,11 +102,13 @@ static mat_idx_t CRS_ncols(ghost_mat_t *mat)
 
 static void CRS_printInfo(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return;
 }
 
 static char * CRS_formatName(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return "CRS";
 }
 
@@ -402,15 +404,15 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, mat_trait_t trait)
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u kernels",numKernels);
 
-		kernel = clCreateKernel(program,"CRS_kernel",&err);
+		mat->clkernel = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
 		
-		CL_safecall(clSetKernelArg(kernel,3,sizeof(int), &(CR(mat)->clmat->nrows)));
-		CL_safecall(clSetKernelArg(kernel,4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
-		CL_safecall(clSetKernelArg(kernel,5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
-		CL_safecall(clSetKernelArg(kernel,6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
+		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(int), &(CR(mat)->clmat->nrows)));
+		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
+		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
+		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
 
-		thisMat->kernel   = &CRS_kernel_CL;
+		mat->kernel   = &CRS_kernel_CL;
 #else
 		ABORT("Device matrix cannot be created without OpenCL");
 #endif
@@ -446,11 +448,11 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t *
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 #ifdef OPENCL
-	CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
+	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
 
-	CL_enqueueKernelWithSize(kernel,(size_t)CR(mat)->clmat->nrows);
+	CL_enqueueKernelWithSize(mat->clkernel,(size_t)CR(mat)->clmat->nrows);
 	DEBUG_LOG(1,"Finished iteration");
 #endif
 

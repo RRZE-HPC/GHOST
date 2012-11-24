@@ -69,10 +69,12 @@ static mat_idx_t TBJDS_nrows(ghost_mat_t *mat)
 }
 static mat_idx_t TBJDS_ncols(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return 0;
 }
 static char * TBJDS_formatName(ghost_mat_t *mat)
 {
+	UNUSED(mat);
 	return "TBJDS";
 }
 

@@ -122,6 +122,7 @@ void CL_init()
 #endif
 #endif
 
+	UNUSED(opt);
 //	program = CL_registerProgram(kernelSource,opt);
 
 
@@ -198,10 +199,10 @@ cl_mem CL_allocDeviceMemory( size_t bytesize )
 	return mem;
 }
 
-cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
+/*cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
 {
 	cl_mem mem = NULL;
-	/*cl_int err;
+	cl_int err;
 	cl_image_format image_format;
 
 	image_format.image_channel_order = CL_RG;
@@ -212,9 +213,9 @@ cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
 printf("image width: %lu\n",bytesize/sizeof(mat_data_t));	
 
 	CL_checkerror(err);
-*/
+
 	return mem;
-}
+}*/
 
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize)
 {
@@ -386,6 +387,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 
 void CL_finish(int spmvmOptions) 
 {
+	UNUSED(spmvmOptions);
 
 /*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
@@ -400,9 +402,9 @@ void CL_finish(int spmvmOptions)
 	CL_safecall(clReleaseContext(context));*/
 }
 
-void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
+/*void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
-/*	
+	
 	if (!(matrix->format & GHOST_SPMFORMAT_DIST_CRS)) {
 		DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
 		return;
@@ -422,9 +424,9 @@ void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int 
 				matrixFormats->T[GHOST_REMOTE_MAT_IDX],GHOST_REMOTE_MAT_IDX, spmvmOptions);
 	}
 
-	return gpum;*/
+	return gpum;
 
-}
+}*/
 
 /*void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
 {
@@ -633,7 +635,7 @@ static int stringcmp(const void *x, const void *y)
 
 CL_DEVICE_INFO *CL_getDeviceInfo() 
 {
-/*	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
+	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -641,9 +643,8 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	char name[CL_MAX_DEVICE_NAME_LEN];
 	char *names = NULL;
 
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
-	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));
-
+	me = SpMVM_getRank();
+	size = SpMVM_getNumberOfProcesses();
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
@@ -656,8 +657,12 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	}
 
 
+#ifdef MPI
 	MPI_safecall(MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
 				CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+#else
+	strncpy(names,name,CL_MAX_DEVICE_NAME_LEN);
+#endif
 
 	if (me==0) {
 		qsort(names,size,CL_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
@@ -669,7 +674,9 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 		}
 	}
 
+#ifdef MPI
 	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
+#endif
 
 	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
 	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
@@ -679,7 +686,6 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	if (me==0) {
 		strncpy(devInfo->names[0],names,CL_MAX_DEVICE_NAME_LEN);
 		devInfo->nDevices[0] = 1;
-
 
 		int distIdx = 0;
 		for (i=1; i<size; i++) {
@@ -694,15 +700,15 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 		free(names);
 	}
 
-
+#ifdef MPI
 	MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
 	for (i=0; i<devInfo->nDistinctDevices; i++)
 		MPI_safecall(MPI_Bcast(devInfo->names[i],CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+#endif
 
 
-	return devInfo;*/
-	return NULL;
+	return devInfo;
 }
 
 void destroyCLdeviceInfo(CL_DEVICE_INFO * di) 
