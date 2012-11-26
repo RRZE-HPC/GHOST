@@ -154,8 +154,8 @@ install: all
 	@echo "==> Install headers to $(strip $(INSTDIR))/include"
 	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
 	@echo "==> Install plugins to $(strip $(INSTDIR))/lib/ghost"
-	@(for plugin in $(PLUGINS); do \
-	cp -f $$plugin $(strip $(INSTDIR))/lib/ghost; done)
+	@cp -f $(PLUGINDIR)/*.so $(strip $(INSTDIR))/lib/ghost
+	@cp -f $(PLUGINDIR)/src/*.cl $(strip $(INSTDIR))/lib/ghost
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(INSTDIR))"

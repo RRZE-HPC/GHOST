@@ -62,7 +62,7 @@ int main( int argc, char* argv[] )
 	} else {
 	unsigned int sortBlock = 1024;
 	trait.format = "CRS";
-	trait.flags = GHOST_SPM_DEFAULT;
+	trait.flags = GHOST_SPM_DEVICE;
 	trait.aux = &sortBlock;
 //		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX ,
 	}

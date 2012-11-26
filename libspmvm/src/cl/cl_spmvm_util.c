@@ -134,7 +134,7 @@ void CL_init()
    Create program inside previously created context (global variable) and 
    build it
    -------------------------------------------------------------------------- */
-cl_program CL_registerProgram(const char *source, const char *opt)
+cl_program CL_registerProgram(const char *filename, const char *opt)
 {
 	cl_program program;
 	cl_int err;
@@ -145,14 +145,26 @@ cl_program CL_registerProgram(const char *source, const char *opt)
 	int rank = SpMVM_getLocalRank();
 	char hostname[MAXHOSTNAMELEN] = "foobar";
 
-	//gethostname(hostname,MAXHOSTNAMELEN);
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
 
+	char path[PATH_MAX];
+	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
 
-//	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating program %s\n", rank, 
-//			size-1, hostname,basename(filename));
-	program = clCreateProgramWithSource(context,1,(const char **)&source,
+
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		ABORT("Failed to load OpenCL kernel file %s",path);
+
+	fseek(fp,0L,SEEK_END);
+	long filesize = ftell(fp);
+	fseek(fp,0L,SEEK_SET);
+
+	char * source_str = (char*)allocateMemory(filesize,"source");
+	fread( source_str, 1, filesize, fp);
+	fclose( fp );
+
+	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
 			NULL,&err);
 	CL_checkerror(err);
 

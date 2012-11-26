@@ -170,18 +170,16 @@ void SpMVM_printSetupInfo(ghost_setup_t *setup, int options)
 				setup->nnz*(sizeof(mat_data_t)+sizeof(mat_idx_t)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-	/*	if (setup->flags & GHOST_SETUP_HOST && setup->flags & GHOST_SETUP_DEVICE)
-			matrixLocation = "Host and Device";
-		else if (setup->flags & GHOST_SETUP_DEVICE)
-			matrixLocation = "Device only";
+		if (setup->fullMatrix->trait.flags & GHOST_SPM_DEVICE)
+			matrixLocation = "Device";
 		else
-			matrixLocation = "Host only";*/
+			matrixLocation = "Host";
 
 		char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
-			matrixLocation = "Distributed";
+			matrixPlacement = "Distributed";
 		else if (setup->flags & GHOST_SETUP_GLOBAL)
-			matrixLocation = "Global";
+			matrixPlacement = "Global";
 
 
 		SpMVM_printHeader("Matrix information");
@@ -292,11 +290,10 @@ void SpMVM_printEnvInfo()
 		SpMVM_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		SpMVM_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
-		// TODO
-		printf("OpenCL devices                   :\n");
+		SpMVM_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
 		int i;
-		for (i=0; i<devInfo->nDistinctDevices; i++) {
-			printf("                            %3d x %13s\n",devInfo->nDevices[i],devInfo->names[i]);
+		for (i=1; i<devInfo->nDistinctDevices; i++) {
+			SpMVM_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
 		}
 #endif
 		SpMVM_printFooter();

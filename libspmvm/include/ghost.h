@@ -121,7 +121,7 @@ extern const char *DATATYPE_NAMES[];
 /******************************************************************************/
 /*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
-#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_CPU
+#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
 /******************************************************************************/
 
 
@@ -224,10 +224,10 @@ typedef float mat_data_t;
 // TODO adjust
 
 #ifdef GHOST_MAT_DP
-#define EPSILON 1e-10
+#define EPSILON 1e-4
 #endif
 #ifdef GHOST_MAT_SP
-#define EPSILON 1e-6
+#define EPSILON 1e-0 // TODO
 #endif
 #define EQUALS(a,b) (ABS(REAL(a)-REAL(b))<EPSILON && ABS(IMAG(a)-IMAG(b))<EPSILON)
 /******************************************************************************/

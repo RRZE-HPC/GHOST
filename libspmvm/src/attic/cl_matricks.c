@@ -613,7 +613,6 @@ ELR_TYPE* CRStoELR(  const mat_data_t* crs_val, const int* crs_col,
 
 	/* copy values ################################################ */
 	for( i = 0; i < nrows; ++i) {
-
 		for( j = 0; j < elr->rowLen[i]; ++j) {
 			elr->col[ j*padRows+i ]   = crs_col[ crs_row_ptr[i]+j ];
 			elr->val[ j*padRows+i ]   = crs_val[ crs_row_ptr[i]+j ];

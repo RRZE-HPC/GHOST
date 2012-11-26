@@ -377,7 +377,6 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		setup->fullMatrix = SpMVM_initMatrix(traits[0].format);
 		setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath,traits[0]);
 
-
 		//	setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
 		setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
@@ -417,6 +416,7 @@ ghost_mat_t * SpMVM_initMatrix(const char *format)
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry;
 	ghost_spmf_plugin_t myPlugin;
+	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	int found = 0;
 
 
@@ -453,7 +453,6 @@ ghost_mat_t * SpMVM_initMatrix(const char *format)
 	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
 	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	myPlugin.init(mat);
 	return mat;
 }
@@ -488,6 +487,10 @@ double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
+
+#ifdef OPENCL
+	CL_downloadVector(res);
+#endif
 
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
 		SpMVM_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows);

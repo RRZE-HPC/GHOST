@@ -158,7 +158,8 @@ void SpMVM_normalizeVector( ghost_vec_t *vec)
 void SpMVM_freeVector( ghost_vec_t* const vec ) 
 {
 	if( vec ) {
-		freeMemory( (size_t)(vec->nrows*sizeof(mat_data_t)), "vec->val",  vec->val );
+		free(vec->val);
+//		freeMemory( (size_t)(vec->nrows*sizeof(mat_data_t)), "vec->val",  vec->val );
 #ifdef OPENCL
 		CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif

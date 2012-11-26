@@ -3,6 +3,8 @@
 
 #include "ghost.h"
 
+#define ELLPACK_PAD 512
+
 typedef struct 
 {
 	mat_data_t *val;
