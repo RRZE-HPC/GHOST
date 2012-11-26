@@ -31,9 +31,9 @@ typedef struct {
 	SPM_GPUFORMATS *matrixFormats;
 } PROPS;
 
-static int converged(mat_data_t evmin)
+static int converged(ghost_mdat_t evmin)
 {
-	static mat_data_t oldevmin = -1e9;
+	static ghost_mdat_t oldevmin = -1e9;
 
 	int converged = ABS(evmin-oldevmin) < 1e-9;
 	//printf("%f %f %d\n",evmin,oldevmin,converged);
@@ -122,7 +122,7 @@ static void getOptions(int argc,  char * const *argv, PROPS *p)
 }
 
 
-static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t *res, int n)
+static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, ghost_mdat_t *res, int n)
 {
 
 #ifdef OPENCL
@@ -131,14 +131,14 @@ static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t *res, int n)
 	int i;
 	*res = 0.0;
 
-	ghost_vec_t *tmp = SpMVM_newVector(resVecSize*sizeof(mat_data_t));
+	ghost_vec_t *tmp = ghost_newVector(resVecSize*sizeof(ghost_mdat_t));
 
 	CL_safecall(clSetKernelArg(dotprodKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,2,sizeof(cl_mem),
 				&tmp->CL_val_gpu));
 	CL_safecall(clSetKernelArg(dotprodKernel,3,sizeof(int),&n));
-	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(mat_data_t)*localSize,NULL));
+	CL_safecall(clSetKernelArg(dotprodKernel,4,sizeof(ghost_mdat_t)*localSize,NULL));
 
 	CL_enqueueKernel(dotprodKernel);
 
@@ -147,10 +147,10 @@ static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t *res, int n)
 	for(i = 0; i < resVecSize; ++i) {
 		*res += tmp->val[i];
 	}
-	SpMVM_freeVector(tmp);
+	ghost_freeVector(tmp);
 #else
 	int i;
-	mat_data_t sum = 0;
+	ghost_mdat_t sum = 0;
 #pragma omp parallel 
 	{
 
@@ -169,13 +169,13 @@ static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t *res, int n)
 #endif
 }
 
-static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t s, int n)
+static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, ghost_mdat_t s, int n)
 {
 
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(axpyKernel,0,sizeof(cl_mem),&v1->CL_val_gpu));
 	CL_safecall(clSetKernelArg(axpyKernel,1,sizeof(cl_mem),&v2->CL_val_gpu));
-	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(mat_data_t),&s));
+	CL_safecall(clSetKernelArg(axpyKernel,2,sizeof(ghost_mdat_t),&s));
 	CL_safecall(clSetKernelArg(axpyKernel,3,sizeof(int),&n));
 
 	CL_enqueueKernel(axpyKernel);
@@ -200,13 +200,13 @@ static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, mat_data_t s, int n)
 #endif
 }
 
-static void vecscal(ghost_vec_t *vec, mat_data_t s, int n)
+static void vecscal(ghost_vec_t *vec, ghost_mdat_t s, int n)
 {
 
 #ifdef OPENCL
 	CL_safecall(clSetKernelArg(vecscalKernel,0,sizeof(cl_mem),
 				&vec->CL_val_gpu));
-	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(mat_data_t),&s));
+	CL_safecall(clSetKernelArg(vecscalKernel,1,sizeof(ghost_mdat_t),&s));
 	CL_safecall(clSetKernelArg(vecscalKernel,2,sizeof(int),&n));
 
 	CL_enqueueKernel(vecscalKernel);	
@@ -233,10 +233,10 @@ static void vecscal(ghost_vec_t *vec, mat_data_t s, int n)
 
 
 static void lanczosStep(LCRP_TYPE *lcrp, ghost_vec_t *vnew, ghost_vec_t *vold,
-		mat_data_t *alpha, mat_data_t *beta, int me)
+		ghost_mdat_t *alpha, ghost_mdat_t *beta, int me)
 {
 	vecscal(vnew,-*beta,lcrp->lnrows[me]);
-	SpMVM_solve(vnew, lcrp, vold, KERNEL, 1);
+	ghost_solve(vnew, lcrp, vold, KERNEL, 1);
 	dotprod(vnew,vold,alpha,lcrp->lnrows[me]);
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
 	axpy(vnew,vold,-(*alpha),lcrp->lnrows[me]);
@@ -246,7 +246,7 @@ static void lanczosStep(LCRP_TYPE *lcrp, ghost_vec_t *vnew, ghost_vec_t *vold,
 	vecscal(vnew,1./(*beta),lcrp->lnrows[me]);
 }
 
-static mat_data_t rhsVal (int i)
+static ghost_mdat_t rhsVal (int i)
 {
 	return i+1.0;
 }
@@ -289,13 +289,13 @@ int main( int argc, char* argv[] )
 	// keep result vector on devic and eperform y <- y + A*x
 	int options = SPMVM_OPTION_KEEPRESULT | SPMVM_OPTION_AXPY;
 
-	me      = SpMVM_init(argc,argv,options);       // basic initialization
-	LCRP_TYPE *lcrp = SpMVM_createCRS ( argv[optind],props.matrixFormats);
+	me      = ghost_init(argc,argv,options);       // basic initialization
+	LCRP_TYPE *lcrp = ghost_createCRS ( argv[optind],props.matrixFormats);
 
 
 
-	r0 = SpMVM_createGlobalHostVector(lcrp->nrows,rhsVal);
-	SpMVM_normalizeHostVector(r0);
+	r0 = ghost_createGlobalHostVector(lcrp->nrows,rhsVal);
+	ghost_normalizeHostVector(r0);
 
 
 #ifdef OPENCL
@@ -324,26 +324,26 @@ int main( int argc, char* argv[] )
 	vecscalKernel = clCreateKernel(program,"vecscalKernel",&err);
 #endif
 
-	vnew = SpMVM_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = 0
-	vold = SpMVM_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = r0
-	evec = SpMVM_newVector(lcrp->lnrows[me]); // = r0
+	vnew = ghost_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = 0
+	vold = ghost_newVector(lcrp->lnrows[me]+lcrp->halo_elements); // = r0
+	evec = ghost_newVector(lcrp->lnrows[me]); // = r0
 
-	vold = SpMVM_distributeVector(lcrp,r0);
-	evec = SpMVM_distributeVector(lcrp,r0);
+	vold = ghost_distributeVector(lcrp,r0);
+	evec = ghost_distributeVector(lcrp,r0);
 
-	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
+	ghost_printEnvInfo();
+	ghost_printMatrixInfo(lcrp,strtok(basename(argv[optind]),"_."),options);
 
 
-	//mat_data_t *z = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter*props.nIter,"z");
-	mat_data_t *alphas  = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
-	mat_data_t *betas   = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
-	mat_data_t *falphas = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
-	mat_data_t *fbetas  = (mat_data_t *)malloc(sizeof(mat_data_t)*props.nIter);
+	//ghost_mdat_t *z = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*props.nIter*props.nIter,"z");
+	ghost_mdat_t *alphas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*props.nIter);
+	ghost_mdat_t *betas   = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*props.nIter);
+	ghost_mdat_t *falphas = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*props.nIter);
+	ghost_mdat_t *fbetas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*props.nIter);
 
 	int ferr;
 
-	mat_data_t alpha=0., beta=0.;
+	ghost_mdat_t alpha=0., beta=0.;
 	betas[0] = beta;
 	int n;
 
@@ -374,13 +374,13 @@ int main( int argc, char* argv[] )
 		likwid_markerStartRegion("Housekeeping");
 		}
 #endif
-		SpMVM_swapVectors(vnew,vold);
+		ghost_swapVectors(vnew,vold);
 
 
 		alphas[iteration] = alpha;
 		betas[iteration+1] = beta;
-		memcpy(falphas,alphas,n*sizeof(mat_data_t));
-		memcpy(fbetas,betas,n*sizeof(mat_data_t));
+		memcpy(falphas,alphas,n*sizeof(ghost_mdat_t));
+		memcpy(fbetas,betas,n*sizeof(ghost_mdat_t));
 
 		if (me == 0) {
 			end = omp_get_wtime();
@@ -420,13 +420,13 @@ int main( int argc, char* argv[] )
 
 
 
-	SpMVM_freeHostVector( r0 );
-	SpMVM_freeVector( vold );
-	SpMVM_freeVector( vnew );
-	SpMVM_freeVector( evec );
-	SpMVM_freeLCRP( lcrp );
+	ghost_freeHostVector( r0 );
+	ghost_freeVector( vold );
+	ghost_freeVector( vnew );
+	ghost_freeVector( evec );
+	ghost_freeLCRP( lcrp );
 
-	SpMVM_finish();
+	ghost_finish();
 
 	return EXIT_SUCCESS;
 

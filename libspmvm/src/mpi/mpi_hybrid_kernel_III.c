@@ -27,7 +27,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	static unsigned int nprocs;
 
 	static mat_idx_t max_dues;
-	static mat_data_t *work_mem, **work;
+	static ghost_mdat_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
@@ -55,8 +55,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 
 	if (init_kernel==1){
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
-		nthreads = SpMVM_getNumberOfThreads();
-		nprocs = SpMVM_getNumberOfProcesses();
+		nthreads = ghost_getNumberOfThreads();
+		nprocs = ghost_getNumberOfProcesses();
 
 		localCR = (CR_TYPE *)(setup->localMatrix->data);
 
@@ -75,13 +75,13 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 
 
 
-		size_mem     = (size_t)( max_dues*nprocs * sizeof( mat_data_t  ) );
-		size_work    = (size_t)( nprocs          * sizeof( mat_data_t* ) );
+		size_mem     = (size_t)( max_dues*nprocs * sizeof( ghost_mdat_t  ) );
+		size_work    = (size_t)( nprocs          * sizeof( ghost_mdat_t* ) );
 		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
 
-		work_mem = (mat_data_t*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (mat_data_t**) allocateMemory( size_work, "work" );
+		work_mem = (ghost_mdat_t*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (ghost_mdat_t**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<nprocs; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
 
@@ -207,7 +207,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 			}
 
 #else
-			mat_data_t hlp1;
+			ghost_mdat_t hlp1;
 			int n_per_thread, n_local;
 			n_per_thread = setup->communicator->lnrows[me]/(nthreads-1);
 

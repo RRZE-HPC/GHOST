@@ -2,6 +2,6 @@
 #define _LANCZOS_H_
 
 
-extern void imtql1_(int *, mat_data_t *, mat_data_t *, int *);
+extern void imtql1_(int *, ghost_mdat_t *, ghost_mdat_t *, int *);
 
 #endif

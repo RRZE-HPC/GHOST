@@ -93,7 +93,7 @@ MM_TYPE * readMMFile(const char* filename )
 #ifdef COMPLEX
 	if (!mm_is_complex(matcode))
 		DEBUG_LOG(0,"Warning! The library has been built for complex data "
-				"but the MM file contains mat_data_t data. Casting...");
+				"but the MM file contains ghost_mdat_t data. Casting...");
 #else
 	if (mm_is_complex(matcode))
 		DEBUG_LOG(0,"Warning! The library has been built for real data "
@@ -204,7 +204,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			mat_idx_t bandwidth = 2;//cr->ncols/2;
 			mat_idx_t nDiags = 2*bandwidth + 1;
 
-			mat_data_t *diagVals = (mat_data_t *)allocateMemory(nDiags*sizeof(mat_data_t),"diagVals");
+			ghost_mdat_t *diagVals = (ghost_mdat_t *)allocateMemory(nDiags*sizeof(ghost_mdat_t),"diagVals");
 
 			char *diagStatus = (char *)allocateMemory(nDiags*sizeof(char),"diagStatus");
 			for (i=0; i<nDiags; i++) diagStatus[i] = DIAG_NEW;
@@ -214,7 +214,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 			DEBUG_LOG(1,"Detecting constant subdiagonals within a band of width %"PRmatIDX,bandwidth);
 			mat_idx_t *tmpcol = (mat_idx_t *)allocateMemory(cr->nEnts*sizeof(mat_idx_t),"tmpcol");
-			mat_data_t *tmpval = (mat_data_t *)allocateMemory(cr->nEnts*sizeof(mat_data_t),"tmpval");
+			ghost_mdat_t *tmpval = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"tmpval");
 
 			int pfile;
 			pfile = open(path,O_RDONLY);
@@ -223,7 +223,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			for (i=0; i<cr->nrows; ++i) {
 				for(j = cr->rpt[i] ; j < cr->rpt[i+1] ; j++) {
 					pread(pfile,&tmpcol[idx],sizeof(int),offs+idx*sizeof(int));
-					pread(pfile,&tmpval[idx],sizeof(mat_data_t),offs+cr->nEnts*sizeof(int)+idx*sizeof(mat_data_t));
+					pread(pfile,&tmpval[idx],sizeof(ghost_mdat_t),offs+cr->nEnts*sizeof(int)+idx*sizeof(ghost_mdat_t));
 					if (ABS(tmpcol[idx]-i) <= bandwidth) { // in band
 
 						int didx = tmpcol[idx]-i+bandwidth; // index of diagonal
@@ -290,7 +290,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 				DEBUG_LOG(2,"Allocate memory for cr->col and cr->val");
 				cr->col       = (mat_idx_t*)    allocateMemory( cr->nEnts * sizeof(mat_idx_t),  "col" );
-				cr->val       = (mat_data_t*) allocateMemory( cr->nEnts * sizeof(mat_data_t),  "val" );
+				cr->val       = (ghost_mdat_t*) allocateMemory( cr->nEnts * sizeof(ghost_mdat_t),  "val" );
 
 				//TODO NUMA
 				mat_idx_t *newRowOffset = (mat_idx_t *)allocateMemory((cr->nrows+1)*sizeof(mat_idx_t),"newRowOffset");
@@ -338,7 +338,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 			DEBUG_LOG(2,"Allocate memory for cr->col and cr->val");
 			cr->col       = (mat_idx_t *)    allocateMemory( cr->nEnts * sizeof(mat_idx_t),  "col" );
-			cr->val       = (mat_data_t *) allocateMemory( cr->nEnts * sizeof(mat_data_t),  "val" );
+			cr->val       = (ghost_mdat_t *) allocateMemory( cr->nEnts * sizeof(ghost_mdat_t),  "val" );
 
 			DEBUG_LOG(1,"NUMA-placement for cr->val and cr->col");
 #pragma omp parallel for schedule(runtime)
@@ -357,7 +357,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			DEBUG_LOG(2,"Reading array with values");
 			if (datatype == DATATYPE_DESIRED)
 			{
-				fread(&cr->val[0], sizeof(mat_data_t), cr->nEnts, RESTFILE);
+				fread(&cr->val[0], sizeof(ghost_mdat_t), cr->nEnts, RESTFILE);
 			} 
 			else 
 			{
@@ -367,7 +367,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							float *tmp = (float *)allocateMemory(
 									cr->nEnts*sizeof(float), "tmp");
 							fread(tmp, sizeof(float), cr->nEnts, RESTFILE);
-							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (ghost_mdat_t) tmp[i];
 							free(tmp);
 							break;
 						}
@@ -376,7 +376,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							double *tmp = (double *)allocateMemory(
 									cr->nEnts*sizeof(double), "tmp");
 							fread(tmp, sizeof(double), cr->nEnts, RESTFILE);
-							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (ghost_mdat_t) tmp[i];
 							free(tmp);
 							break;
 						}
@@ -385,7 +385,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							_Complex float *tmp = (_Complex float *)allocateMemory(
 									cr->nEnts*sizeof(_Complex float), "tmp");
 							fread(tmp, sizeof(_Complex float), cr->nEnts, RESTFILE);
-							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (ghost_mdat_t) tmp[i];
 							free(tmp);
 							break;
 						}
@@ -394,7 +394,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							_Complex double *tmp = (_Complex double *)allocateMemory(
 									cr->nEnts*sizeof(_Complex double), "tmp");
 							fread(tmp, sizeof(_Complex double), cr->nEnts, RESTFILE);
-							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (mat_data_t) tmp[i];
+							for (i = 0; i<cr->nEnts; i++) cr->val[i] = (ghost_mdat_t) tmp[i];
 							free(tmp);
 							break;
 						}
@@ -428,14 +428,14 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 
 	size_rpt  = (size_t)( (mm->nrows+1) * sizeof( mat_idx_t ) );
 	size_col        = (size_t)( mm->nEnts     * sizeof( mat_idx_t ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( mat_data_t) );
+	size_val        = (size_t)( mm->nEnts     * sizeof( ghost_mdat_t) );
 	size_nEntsInRow = (size_t)(  mm->nrows    * sizeof( mat_idx_t) );
 
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
 	cr->rpt = (mat_idx_t*)     allocateMemory( size_rpt,    "rpt" );
 	cr->col = (mat_idx_t*)     allocateMemory( size_col,          "col" );
-	cr->val = (mat_data_t*)  allocateMemory( size_val,          "val" );
+	cr->val = (ghost_mdat_t*)  allocateMemory( size_val,          "val" );
 	nEntsInRow = (mat_idx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 
@@ -489,7 +489,7 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
 			  col = mm->nze[e].col;
-		const mat_data_t val = mm->nze[e].val;
+		const ghost_mdat_t val = mm->nze[e].val;
 		pos = cr->rpt[row] + nEntsInRow[row];
 		/* GW 
 		   cr->col[pos] = col;

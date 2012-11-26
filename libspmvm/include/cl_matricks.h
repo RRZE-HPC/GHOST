@@ -11,7 +11,7 @@ typedef struct {
 	int nrows, nMaxRow, padding;
 	int* col;
 	int* rowLen;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 	int *invRowPerm;
 	int *rowPerm;
 	int T;
@@ -29,7 +29,7 @@ typedef struct {
 	int* col;
 	int* colStart;
 	int* rowLen;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 	int *invRowPerm;
 	int *rowPerm;
 	int T;
@@ -45,26 +45,26 @@ typedef struct {
 
 typedef struct {
 	int row, col;
-	mat_data_t val;
+	ghost_mdat_t val;
 } MATRIX_ENTRY;
 
-ELR_TYPE* CRStoELR( const mat_data_t*, const int*, const int*, const int ); 
-ELR_TYPE* CRStoELRT(const mat_data_t*, const int*, const int*, const int, int);
-ELR_TYPE* CRStoELRS(  const mat_data_t* , const int* , const int*,  const int);
-ELR_TYPE* CRStoELRP(  const mat_data_t* , const int* , const int*,  const int, const int*);
-ELR_TYPE* CRStoELRTP(  const mat_data_t* , const int* , const int*,  const int, const int*, int);
+ELR_TYPE* CRStoELR( const ghost_mdat_t*, const int*, const int*, const int ); 
+ELR_TYPE* CRStoELRT(const ghost_mdat_t*, const int*, const int*, const int, int);
+ELR_TYPE* CRStoELRS(  const ghost_mdat_t* , const int* , const int*,  const int);
+ELR_TYPE* CRStoELRP(  const ghost_mdat_t* , const int* , const int*,  const int, const int*);
+ELR_TYPE* CRStoELRTP(  const ghost_mdat_t* , const int* , const int*,  const int, const int*, int);
 ELR_TYPE* MMtoELR(const char *, int);
-void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col, const int* crs_row_ptr, const int nrows, const ELR_TYPE* elr);
+void checkCRSToELR(	const ghost_mdat_t* crs_val, const int* crs_col, const int* crs_row_ptr, const int nrows, const ELR_TYPE* elr);
 
-//void checkCRStToPJDS(const mat_data_t* crs_val, const int* crs_col,const int* crs_row_ptr, const int nRow,	const PJDS_TYPE* pjds);
+//void checkCRStToPJDS(const ghost_mdat_t* crs_val, const int* crs_col,const int* crs_row_ptr, const int nRow,	const PJDS_TYPE* pjds);
 void resetELR( ELR_TYPE* elr );
 void freeELR( ELR_TYPE* const elr );
 
 
-PJDS_TYPE* CRStoPJDS( const mat_data_t*, const int*, const int*, const int); 
-PJDS_TYPE* CRStoPJDST( const mat_data_t*, const int*, const int*, const int, const int); 
+PJDS_TYPE* CRStoPJDS( const ghost_mdat_t*, const int*, const int*, const int); 
+PJDS_TYPE* CRStoPJDST( const ghost_mdat_t*, const int*, const int*, const int, const int); 
 PJDS_TYPE* ELRStoPJDST( const ELR_TYPE*, int ); 
-void checkCRStoPJDS( const mat_data_t*, const int*, const int*, const int, const PJDS_TYPE* ); // TODO
+void checkCRStoPJDS( const ghost_mdat_t*, const int*, const int*, const int, const PJDS_TYPE* ); // TODO
 void resetPJDS( PJDS_TYPE* pjds );
 void freePJDS( PJDS_TYPE* pjds );
 

@@ -7,7 +7,7 @@
 
 typedef struct 
 {
-	mat_data_t *val;
+	ghost_mdat_t *val;
 	mat_idx_t *col;
 	mat_idx_t nrows;
 	mat_idx_t nrowsPadded;
@@ -18,6 +18,6 @@ typedef struct
 } 
 ELLPACK_TYPE;
 
-void init(ghost_mat_t *);
+void init(ghost_mat_t **);
 
 #endif

@@ -17,10 +17,11 @@ static mat_idx_t TBJDS_ncols(ghost_mat_t *mat);
 static void TBJDS_printInfo(ghost_mat_t *mat);
 static char * TBJDS_formatName(ghost_mat_t *mat);
 static mat_idx_t TBJDS_rowLen (ghost_mat_t *mat, mat_idx_t i);
-static mat_data_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
+static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t TBJDS_byteSize (ghost_mat_t *mat);
-static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t traits);
-static void TBJDS_fromBin(ghost_mat_t *mat, char *, mat_trait_t traits);
+static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t traits);
+static void TBJDS_fromBin(ghost_mat_t *mat, char *, ghost_mtraits_t traits);
+static void TBJDS_free(ghost_mat_t *mat);
 static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #ifdef SSE
 static void TBJDS_kernel_SSE(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions);
@@ -33,30 +34,31 @@ static void TBJDS_kernel_AVX_colwise(ghost_mat_t *mat, ghost_vec_t* res, ghost_v
 static void TBJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions);
 #endif
 
-void init(ghost_mat_t *mat)
+void init(ghost_mat_t **mat)
 {
 	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
 
-	mat->fromBin = &TBJDS_fromBin;
-	mat->printInfo = &TBJDS_printInfo;
-	mat->formatName = &TBJDS_formatName;
-	mat->rowLen   = &TBJDS_rowLen;
-	mat->entry    = &TBJDS_entry;
-	mat->byteSize = &TBJDS_byteSize;
-	mat->kernel   = &TBJDS_kernel_plain;
+	(*mat)->fromBin = &TBJDS_fromBin;
+	(*mat)->printInfo = &TBJDS_printInfo;
+	(*mat)->formatName = &TBJDS_formatName;
+	(*mat)->rowLen   = &TBJDS_rowLen;
+	(*mat)->entry    = &TBJDS_entry;
+	(*mat)->byteSize = &TBJDS_byteSize;
+	(*mat)->kernel   = &TBJDS_kernel_plain;
 #ifdef SSE
-	mat->kernel   = &TBJDS_kernel_SSE;
+	(*mat)->kernel   = &TBJDS_kernel_SSE;
 #endif
 #ifdef AVX
-	mat->kernel   = &TBJDS_kernel_AVX;
+	(*mat)->kernel   = &TBJDS_kernel_AVX;
 	UNUSED(&TBJDS_kernel_AVX_colwise);
 #endif
 #ifdef MIC
-	mat->kernel   = &TBJDS_kernel_MIC_16;
+	(*mat)->kernel   = &TBJDS_kernel_MIC_16;
 #endif
-	mat->nnz      = &TBJDS_nnz;
-	mat->nrows    = &TBJDS_nrows;
-	mat->ncols    = &TBJDS_ncols;
+	(*mat)->nnz      = &TBJDS_nnz;
+	(*mat)->nrows    = &TBJDS_nrows;
+	(*mat)->ncols    = &TBJDS_ncols;
+	(*mat)->destroy  = &TBJDS_free;
 }
 
 static mat_nnz_t TBJDS_nnz(ghost_mat_t *mat)
@@ -80,14 +82,14 @@ static char * TBJDS_formatName(ghost_mat_t *mat)
 
 static void TBJDS_printInfo(ghost_mat_t *mat)
 {
-	SpMVM_printLine("Vector block size",NULL,"%d",BJDS_LEN);
-	SpMVM_printLine("Row length oscillation nu",NULL,"%f",TBJDS(mat)->nu);
+	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
+	ghost_printLine("Row length oscillation nu",NULL,"%f",TBJDS(mat)->nu);
 	if (mat->trait.flags & GHOST_SPM_SORTED) {
-		SpMVM_printLine("Sorted",NULL,"yes");
-		SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->trait.aux));
-		SpMVM_printLine("Permuted columns",NULL,"%s",mat->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
+		ghost_printLine("Sorted",NULL,"yes");
+		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->trait.aux));
+		ghost_printLine("Permuted columns",NULL,"%s",mat->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
 	} else {
-		SpMVM_printLine("Sorted",NULL,"no");
+		ghost_printLine("Sorted",NULL,"no");
 	}
 
 
@@ -103,7 +105,7 @@ static mat_idx_t TBJDS_rowLen (ghost_mat_t *mat, mat_idx_t i)
 	return TBJDS(mat)->rowLen[i];
 }
 
-static mat_data_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
+static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 {
 	mat_idx_t e;
 	if (mat->trait.flags & GHOST_SPM_SORTED)
@@ -124,20 +126,20 @@ static mat_data_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 static size_t TBJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((TBJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(mat_nnz_t) + 
-			TBJDS(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(mat_data_t)));
+			TBJDS(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath, mat_trait_t traits)
+static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_mtraits_t traits)
 {
 	// TODO
-	ghost_mat_t *crsMat = SpMVM_initMatrix("CRS");
-	mat_trait_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mat_t *crsMat = ghost_initMatrix("CRS");
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
 	crsMat->fromBin(crsMat,matrixPath,crsTraits);
 
 	TBJDS_fromCRS(mat,crsMat->data,traits);
 }
 
-static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
+static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
 {
 	mat_idx_t i,j,c;
 	JD_SORT_TYPE* rowSort;
@@ -262,7 +264,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 	}
 	TBJDS(mat)->nu /= (double)nChunks;
 
-	TBJDS(mat)->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->val");
+	TBJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->val");
 	TBJDS(mat)->col = (mat_idx_t *)allocateMemory(sizeof(mat_idx_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->col");
 
 	//printf("nEnts: %d\n",TBJDS(mat)->nEnts);
@@ -354,12 +356,29 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 	}
 }
 
+static void TBJDS_free(ghost_mat_t *mat)
+{
+	free(TBJDS(mat)->val);
+	free(TBJDS(mat)->col);
+	free(TBJDS(mat)->chunkStart);
+	free(TBJDS(mat)->chunkMin);
+	free(TBJDS(mat)->chunkLen);
+	free(TBJDS(mat)->rowLen);
+	
+	free(mat->data);
+	free(mat->rowPerm);
+	free(mat->invRowPerm);
+
+	free(mat);
+
+}
+
 static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(2,"Calling plain TBJDS kernel");
 	mat_idx_t c,j,i;
 	mat_nnz_t offs;
-	mat_data_t tmp[BJDS_LEN]; 
+	ghost_mdat_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,offs)
 	for (c=0; c<TBJDS(mat)->nrowsPadded/BJDS_LEN; c++) 

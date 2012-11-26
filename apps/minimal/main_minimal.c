@@ -9,7 +9,7 @@
 #include <string.h>
 
 /** function to initialize the RHS vector **/
-static mat_data_t rhsVal (int i) {
+static ghost_mdat_t rhsVal (int i) {
 	return i+1.0;
 }
 
@@ -24,26 +24,26 @@ int main( int argc, char* argv[] ) {
 	ghost_vec_t     *nodeLHS; // lhs vector per node
 	ghost_vec_t     *nodeRHS; // rhs vector node
 
-	me      = SpMVM_init(argc,argv,options); // basic initialization
-	matrix  = SpMVM_createMatrix(argv[1],SPM_FORMAT_DIST_CRS,NULL); // create CRS matrix 
-	nodeRHS = SpMVM_createVector(matrix,ghost_vec_t_RHS,rhsVal); // RHS vec
-	nodeLHS = SpMVM_createVector(matrix,ghost_vec_t_LHS,NULL);   // LHS vec (=0)
+	me      = ghost_init(argc,argv,options); // basic initialization
+	matrix  = ghost_createMatrix(argv[1],SPM_FORMAT_DIST_CRS,NULL); // create CRS matrix 
+	nodeRHS = ghost_createVector(matrix,GHOST_VEC_RHS,rhsVal); // RHS vec
+	nodeLHS = ghost_createVector(matrix,GHOST_VEC_LHS,NULL);   // LHS vec (=0)
 
-	SpMVM_printEnvInfo();
-	SpMVM_printMatrixInfo(matrix,strtok(basename(argv[1]),"_."),options);
+	ghost_printEnvInfo();
+	ghost_printMatrixInfo(matrix,strtok(basename(argv[1]),"_."),options);
 
-	time = SpMVM_solve(nodeLHS,matrix,nodeRHS,kernel,nIter);
+	time = ghost_solve(nodeLHS,matrix,nodeRHS,kernel,nIter);
 
 	if (me == 0){
-		printf("%s kernel @ %7.2f GF/s\n",SpMVM_kernelName(kernel),
+		printf("%s kernel @ %7.2f GF/s\n",ghost_kernelName(kernel),
 				2.0e-9*(double)matrix->nnz/time);
 	}
 
-	SpMVM_freeVector( nodeLHS );
-	SpMVM_freeVector( nodeRHS );
-	//SpMVM_freeLCRP( lcrp );
+	ghost_freeVector( nodeLHS );
+	ghost_freeVector( nodeRHS );
+	//ghost_freeLCRP( lcrp );
 
-	SpMVM_finish();
+	ghost_finish();
 
 	return EXIT_SUCCESS;
 }

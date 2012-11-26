@@ -16,7 +16,7 @@
 
 extern int optind;
 
-static mat_data_t rhsVal (int i) 
+static ghost_mdat_t rhsVal (int i) 
 {
 #ifdef COMPLEX
 	return i+1.0 + I*(i+1.5);
@@ -52,7 +52,7 @@ int main( int argc, char* argv[] )
 	char *matrixPath = argv[1];
 	GHOST_SPM_GPUFORMATS *matrixFormats = NULL;
 
-	mat_trait_t trait;
+	ghost_mtraits_t trait;
 	if (argc == 5) {
 		trait.format = argv[2];
 		trait.flags = atoi(argv[3]);
@@ -66,28 +66,28 @@ int main( int argc, char* argv[] )
 	trait.aux = &sortBlock;
 //		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX ,
 	}
-	mat_trait_t traits[3] = {trait,trait,trait};
+	ghost_mtraits_t traits[3] = {trait,trait,trait};
 
 	
-	SpMVM_init(argc,argv,options);       // basic initialization
-	setup = SpMVM_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL,matrixFormats);
-	lhs   = SpMVM_createVector(setup,ghost_vec_t_LHS,NULL);
-	rhs   = SpMVM_createVector(setup,ghost_vec_t_RHS,rhsVal);
+	ghost_init(argc,argv,options);       // basic initialization
+	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL,matrixFormats);
+	lhs   = ghost_createVector(setup,GHOST_VEC_LHS,NULL);
+	rhs   = ghost_createVector(setup,GHOST_VEC_RHS,rhsVal);
 
 #ifdef CHECK	
-	ghost_vec_t *goldLHS = SpMVM_referenceSolver(matrixPath,setup,rhsVal,nIter,options);	
+	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,setup,rhsVal,nIter,options);	
 #endif
 
-	SpMVM_printEnvInfo();
-	SpMVM_printSetupInfo(setup,options);
-	SpMVM_printHeader("Performance");
+	ghost_printEnvInfo();
+	ghost_printSetupInfo(setup,options);
+	ghost_printHeader("Performance");
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
-		time = SpMVM_solve(lhs,setup,rhs,kernels[kernel],nIter);
+		time = ghost_solve(lhs,setup,rhs,kernels[kernel],nIter);
 
 		if (time < 0.) {
-			SpMVM_printLine(SpMVM_modeName(kernels[kernel]),NULL,"SKIPPED");
+			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"SKIPPED");
 			continue;
 		}
 		
@@ -98,7 +98,7 @@ int main( int argc, char* argv[] )
 			if (REAL(ABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
 					IMAG(ABS(goldLHS->val[i]-lhs->val[i])) > mytol){
 				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %e, diff: %e)\n", SpMVM_getRank(), i, REAL(goldLHS->val[i]),
+						"%.2ei (tol: %e, diff: %e)\n", ghost_getRank(), i, REAL(goldLHS->val[i]),
 						IMAG(goldLHS->val[i]),
 						REAL(lhs->val[i]),
 						IMAG(lhs->val[i]),
@@ -113,33 +113,32 @@ int main( int argc, char* argv[] )
 		totalerrors = errcount;
 #endif
 		if (totalerrors)
-			SpMVM_printLine(SpMVM_modeName(kernels[kernel]),NULL,"FAILED");
+			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"FAILED");
 		else
-			SpMVM_printLine(SpMVM_modeName(kernels[kernel]),"GF/s","%f",
+			ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 					FLOPS_PER_ENTRY*1.e-9*
 					(double)setup->nnz/time);
 #else
-		SpMVM_printLine(SpMVM_modeName(kernels[kernel]),"GF/s","%f",
+		ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 				FLOPS_PER_ENTRY*1.e-9*
 				(double)setup->nnz/time);
 #endif
 
-		SpMVM_zeroVector(lhs);
+		ghost_zeroVector(lhs);
 
 	}
-	SpMVM_printFooter();
+	ghost_printFooter();
 
 
-	SpMVM_freeVector( lhs );
-	SpMVM_freeVector( rhs );
-	//	SpMVM_freeLCRP( lcrp );
+	ghost_freeVector( lhs );
+	ghost_freeVector( rhs );
+	ghost_freeSetup( setup );
 
 #ifdef CHECK
-	SpMVM_freeVector( goldLHS );
-	//SpMVM_freeCRS( cr );
+	ghost_freeVector( goldLHS );
 #endif
 
-	SpMVM_finish();
+	ghost_finish();
 
 	return EXIT_SUCCESS;
 

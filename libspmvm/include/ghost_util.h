@@ -104,9 +104,9 @@ void freeHostMemory( void* );
 void CL_finish(int);
 
 void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
-void CL_vecscal(cl_mem a, mat_data_t s, int nrows);
-void CL_axpy(cl_mem a, cl_mem b, mat_data_t s, int nrows);
-void CL_dotprod(cl_mem a, cl_mem b, mat_data_t *out, int nrows);
+void CL_vecscal(cl_mem a, ghost_mdat_t s, int nrows);
+void CL_axpy(cl_mem a, cl_mem b, ghost_mdat_t s, int nrows);
+void CL_dotprod(cl_mem a, cl_mem b, ghost_mdat_t *out, int nrows);
 //void CL_setup_communication(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int);
 GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
 void CL_enqueueKernel(cl_kernel kernel);
@@ -118,25 +118,25 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 #endif
 
 
-void SpMVM_printHeader(const char *fmt, ...);
-void SpMVM_printFooter(); 
-void SpMVM_printLine(const char *label, const char *unit, const char *format, ...);
-void SpMVM_printSetupInfo(ghost_setup_t *setup, int options);
-void              SpMVM_printEnvInfo();
-ghost_vec_t *SpMVM_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  mat_data_t (*fp)(int), int nIter, int spmvmOptions);
-char * SpMVM_workdistName(int options);
-char * SpMVM_modeName(int mode);
+void ghost_printHeader(const char *fmt, ...);
+void ghost_printFooter(); 
+void ghost_printLine(const char *label, const char *unit, const char *format, ...);
+void ghost_printSetupInfo(ghost_setup_t *setup, int options);
+void              ghost_printEnvInfo();
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  ghost_mdat_t (*fp)(int), int nIter, int spmvmOptions);
+char * ghost_workdistName(int options);
+char * ghost_modeName(int mode);
 
 void* allocateMemory( const size_t size, const char* desc );
 void freeMemory(size_t, const char*, void*);
 
-void SpMVM_freeLCRP( ghost_comm_t* const );
-int SpMVM_getNumberOfPhysicalCores();
-int SpMVM_getRank();
-int SpMVM_getLocalRank();
-int SpMVM_getNumberOfRanksOnNode();
-int SpMVM_getNumberOfHwThreads();
-int SpMVM_getNumberOfThreads();
-unsigned int SpMVM_getNumberOfNodes();
-unsigned int SpMVM_getNumberOfProcesses();
+void ghost_freeCommunicator( ghost_comm_t* const );
+int ghost_getNumberOfPhysicalCores();
+int ghost_getRank();
+int ghost_getLocalRank();
+int ghost_getNumberOfRanksOnNode();
+int ghost_getNumberOfHwThreads();
+int ghost_getNumberOfThreads();
+unsigned int ghost_getNumberOfNodes();
+unsigned int ghost_getNumberOfProcesses();
 #endif

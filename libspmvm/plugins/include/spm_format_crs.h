@@ -7,7 +7,7 @@ typedef struct
 {
 	mat_idx_t len;
 	mat_idx_t idx;
-	mat_data_t val;
+	ghost_mdat_t val;
 	mat_idx_t minRow;
 	mat_idx_t maxRow;
 }
@@ -31,7 +31,7 @@ typedef struct
 	mat_nnz_t  nEnts;
 	mat_idx_t  *rpt;
 	mat_idx_t  *col;
-	mat_data_t *val;
+	ghost_mdat_t *val;
 
 	CL_CR_TYPE *clmat;
 	mat_idx_t nConstDiags;
@@ -40,7 +40,7 @@ typedef struct
 CR_TYPE;
 
 
-void init(ghost_mat_t *);
+void init(ghost_mat_t **);
 
 #endif
 

@@ -5,7 +5,7 @@
 
 typedef struct 
 {
-	mat_data_t *val;
+	ghost_mdat_t *val;
 	mat_idx_t *col;
 	mat_nnz_t *chunkStart;
 	mat_idx_t *chunkMin; // for version with remainder loop
@@ -19,6 +19,6 @@ typedef struct
 } 
 TBJDS_TYPE;
 
-void init(ghost_mat_t *);
+void init(ghost_mat_t **);
 
 #endif

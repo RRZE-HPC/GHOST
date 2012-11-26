@@ -58,15 +58,15 @@ TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
 endif
 
 ifeq ($(strip $(VECDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__SP \n"
 else ifeq ($(strip $(VECDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__DP \n"
 else ifeq ($(strip $(VECDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__SP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__COMPLEX \n"
 else ifeq ($(strip $(VECDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__DP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC__COMPLEX \n"
 endif
 
 ifeq ($(strip $(LIBTYPE)),static)

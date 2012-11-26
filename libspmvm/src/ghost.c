@@ -31,7 +31,7 @@
 //#define PLUGINPATH "/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm/plugins/"
 
 static int options;
-//static SpMVM_kernelFunc * kernels;
+//static ghost_kernelFunc * kernels;
 static double wctime()
 {
 	struct timeval tp;
@@ -71,7 +71,7 @@ static void MPI_complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 }
 #endif
 
-int SpMVM_init(int argc, char **argv, int spmvmOptions)
+int ghost_init(int argc, char **argv, int spmvmOptions)
 {
 	int me;
 
@@ -89,7 +89,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 					"provided (%d)!",req,prov);
 		}
 	}
-	me = SpMVM_getRank();;
+	me = ghost_getRank();;
 
 	setupSingleNodeComm();
 
@@ -114,23 +114,23 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 
 	if (spmvmOptions & GHOST_OPTION_PIN || spmvmOptions & GHOST_OPTION_PIN_SMT) {
 		int nCores;
-		int nPhysCores = SpMVM_getNumberOfPhysicalCores();
+		int nPhysCores = ghost_getNumberOfPhysicalCores();
 		if (spmvmOptions & GHOST_OPTION_PIN)
 			nCores = nPhysCores;
 		else
-			nCores = SpMVM_getNumberOfHwThreads();
+			nCores = ghost_getNumberOfHwThreads();
 
-		int offset = nPhysCores/SpMVM_getNumberOfRanksOnNode();
-		omp_set_num_threads(nCores/SpMVM_getNumberOfRanksOnNode());
+		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
+		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
 #pragma omp parallel
 		{
 			int error;
 			int coreNumber;
 
 			if (spmvmOptions & GHOST_OPTION_PIN_SMT)
-				coreNumber = omp_get_thread_num()/2+(offset*(SpMVM_getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
+				coreNumber = omp_get_thread_num()/2+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
 			else
-				coreNumber = omp_get_thread_num()+(offset*(SpMVM_getLocalRank()));
+				coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
 
 			DEBUG_LOG(1,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
@@ -162,7 +162,7 @@ int SpMVM_init(int argc, char **argv, int spmvmOptions)
 	return me;
 }
 
-void SpMVM_finish()
+void ghost_finish()
 {
 
 #ifdef LIKWID_MARKER
@@ -180,19 +180,19 @@ void SpMVM_finish()
 
 }
 
-ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_data_t (*fp)(int))
+ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_mdat_t (*fp)(int))
 {
 
-	mat_data_t *val;
+	ghost_mdat_t *val;
 	mat_idx_t nrows;
 	size_t size_val;
 	ghost_mat_t *matrix = setup->fullMatrix;
 
 
-	if (setup->flags & GHOST_SETUP_GLOBAL)
+	if (setup->flags & GHOST_SETUP_GLOBAL || flags & GHOST_VEC_GLOBAL)
 	{
-		size_val = (size_t)matrix->nrows(matrix)*sizeof(mat_data_t);
-		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
+		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_mdat_t);
+		val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
 		nrows = matrix->nrows(matrix);
 
 
@@ -213,25 +213,25 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 #endif
 		}
 		if (matrix->trait.flags & GHOST_SPM_PERMUTECOLIDX)
-			SpMVM_permuteVector(val,matrix->rowPerm,nrows);
+			ghost_permuteVector(val,matrix->rowPerm,nrows);
 
 	} 
 	else 
 	{
 		ghost_comm_t *lcrp = setup->communicator;
 		mat_idx_t i;
-		int me = SpMVM_getRank();
+		int me = ghost_getRank();
 
-		if (flags & ghost_vec_t_LHS)
+		if (flags & GHOST_VEC_LHS)
 			nrows = lcrp->lnrows[me];
-		else if ((flags & ghost_vec_t_RHS) || (flags & ghost_vec_t_BOTH))
+		else if (flags & GHOST_VEC_RHS)
 			nrows = lcrp->lnrows[me]+lcrp->halo_elements;
 		else
-			ABORT("No valid type for vector (has to be one of ghost_vec_t_LHS/_RHS/_BOTH");
+			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
-		size_val = (size_t)( nrows * sizeof(mat_data_t) );
+		size_val = (size_t)( nrows * sizeof(ghost_mdat_t) );
 
-		val = (mat_data_t*) allocateMemory( size_val, "vec->val");
+		val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
 		nrows = nrows;
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX"+%"PRmatIDX" rows",lcrp->lnrows[me],lcrp->halo_elements);
@@ -264,22 +264,18 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 	vec->nrows = nrows;
 	vec->flags = flags;	
 
-	if (!(flags & ghost_vec_t_HOSTONLY)) {
+	if (!(flags & GHOST_VEC_HOST)) {
 #ifdef OPENCL
 		int flag;
-		if (flags & ghost_vec_t_LHS) {
-			if (options & GHOST_OPTION_AXPY)
+		if (flags & GHOST_VEC_LHS) {
+			if (options & GHOST_OPTION_AXPY & flags & GHOST_VEC_RHS)
 				flag = CL_MEM_READ_WRITE;
 			else
 				flag = CL_MEM_WRITE_ONLY;
-		} else if (flags & ghost_vec_t_RHS) {
+		} else if (flags & GHOST_VEC_RHS) {
 			flag = CL_MEM_READ_ONLY;
-
-		} else if (flags & ghost_vec_t_BOTH) {
-			flag = CL_MEM_READ_WRITE;
-
 		} else {
-			ABORT("No valid type for vector (has to be one of ghost_vec_t_LHS/_RHS/_BOTH");
+			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 		}
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
@@ -292,7 +288,7 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int flags, mat_da
 
 }
 
-ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTraits, unsigned int setup_flags, void *deviceFormats) 
+ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int setup_flags, void *deviceFormats) 
 {
 	DEBUG_LOG(1,"Creating setup");
 	ghost_setup_t *setup;
@@ -313,7 +309,7 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 
 #ifdef MPI
 	if (setup_flags & GHOST_SETUP_DISTRIBUTED) {
-		if (SpMVM_getRank() == 0) 
+		if (ghost_getRank() == 0) 
 		{ // root process reads row pointers (parallel IO) or entire matrix
 			if (!isMMfile(matrixPath)){
 				if (options & GHOST_OPTION_SERIAL_IO)
@@ -353,16 +349,16 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		}
 
 		DEBUG_LOG(1,"Creating distributed %s-%s-%s matrices",
-				SpMVM_matrixFormatName(traits[0]),
-				SpMVM_matrixFormatName(traits[1]),
-				SpMVM_matrixFormatName(traits[2]));
+				ghost_matrixFormatName(traits[0]),
+				ghost_matrixFormatName(traits[1]),
+				ghost_matrixFormatName(traits[2]));
 
 		if (options & GHOST_OPTION_SERIAL_IO) 
-			SpMVM_createDistributedSetupSerial(setup, cr, options, traits);
+			ghost_createDistributedSetupSerial(setup, cr, options, traits);
 		else
-			SpMVM_createDistributedSetup(setup, cr, matrixPath, options, traits);
+			ghost_createDistributedSetup(setup, cr, matrixPath, options, traits);
 
-		setup->lnrows = setup->communicator->lnrows[SpMVM_getRank()];
+		setup->lnrows = setup->communicator->lnrows[ghost_getRank()];
 
 		setup->solvers[GHOST_MODE_NOMPI] = NULL;
 		setup->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
@@ -374,10 +370,10 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 		if (nTraits != 1)
 			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
 		UNUSED(cr); // TODO
-		setup->fullMatrix = SpMVM_initMatrix(traits[0].format);
+		setup->fullMatrix = ghost_initMatrix(traits[0].format);
 		setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath,traits[0]);
 
-		//	setup->fullMatrix = SpMVM_createMatrixFromCRS(cr,traits[0]);
+		//	setup->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
 		setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
 		setup->nrows = setup->fullMatrix->nrows(setup->fullMatrix);
@@ -410,13 +406,12 @@ ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *traits, int nTra
 	return setup;
 }
 
-ghost_mat_t * SpMVM_initMatrix(const char *format)
+ghost_mat_t * ghost_initMatrix(const char *format)
 {
 	char pluginPath[PATH_MAX];
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry;
 	ghost_spmf_plugin_t myPlugin;
-	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	int found = 0;
 
 
@@ -453,13 +448,15 @@ ghost_mat_t * SpMVM_initMatrix(const char *format)
 	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
 	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-	myPlugin.init(mat);
+	//ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	ghost_mat_t *mat;// = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	myPlugin.init(&mat);
 	return mat;
 }
 
 
 
-double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
+double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
 		int kernel, int nIter)
 {
 	int it;
@@ -493,13 +490,22 @@ double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 #endif
 
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
-		SpMVM_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows);
+		ghost_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows);
 	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
 		// one of those must return immediately
-		SpMVM_permuteVector(res->val,setup->localMatrix->invRowPerm,setup->lnrows);
-		SpMVM_permuteVector(res->val,setup->remoteMatrix->invRowPerm,setup->lnrows);
+		ghost_permuteVector(res->val,setup->localMatrix->invRowPerm,setup->lnrows);
+		ghost_permuteVector(res->val,setup->remoteMatrix->invRowPerm,setup->lnrows);
 	}
 
 	return time;
 }
 
+void ghost_freeSetup(ghost_setup_t *setup)
+{
+	setup->fullMatrix->destroy(setup->fullMatrix);
+	setup->localMatrix->destroy(setup->localMatrix);
+	setup->remoteMatrix->destroy(setup->remoteMatrix);
+
+	free(setup->solvers);
+	ghost_freeCommunicator(setup->communicator);
+}

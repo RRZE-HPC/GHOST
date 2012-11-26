@@ -41,7 +41,7 @@ typedef struct
 	unsigned int flags;
 	void * aux;
 } 
-mat_trait_t;
+ghost_mtraits_t;
 
 
 // formats
@@ -69,11 +69,12 @@ mat_trait_t;
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
 /******************************************************************************/
-#define VECTOR_DEFAULT (0)
-#define ghost_vec_t_RHS (0x1<<0)
-#define ghost_vec_t_LHS (0x1<<1)
-#define ghost_vec_t_BOTH (ghost_vec_t_RHS | ghost_vec_t_LHS)
-#define ghost_vec_t_HOSTONLY (0x1<<2)
+#define GHOST_VEC_DEFAULT   (0)
+#define GHOST_VEC_RHS    (0x1<<0)
+#define GHOST_VEC_LHS    (0x1<<1)
+#define GHOST_VEC_HOST   (0x1<<2)
+#define GHOST_VEC_DEVICE (0x1<<3)
+#define GHOST_VEC_GLOBAL (0x1<<4)
 /******************************************************************************/
 
 
@@ -146,14 +147,14 @@ typedef cl_double ghost_cl_vdat_t; // TODO
 /******************************************************************************/
 #ifdef GHOST_MAT_DP
 #ifdef GHOST_MAT_COMPLEX
-typedef _Complex double mat_data_t;
+typedef _Complex double ghost_mdat_t;
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_Z
 #else // GHOST_MAT_COMPLEX
-typedef double mat_data_t;
+typedef double ghost_mdat_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_DOUBLE
 #define MPI_MYSUM MPI_SUM
@@ -164,14 +165,14 @@ typedef double mat_data_t;
 
 #ifdef GHOST_MAT_SP
 #ifdef GHOST_MAT_COMPLEX
-typedef _Complex float mat_data_t;
+typedef _Complex float ghost_mdat_t;
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_C
 #else // GHOST_MAT_COMPLEX
-typedef float mat_data_t;
+typedef float ghost_mdat_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_FLOAT
 #define MPI_MYSUM MPI_SUM
@@ -248,7 +249,7 @@ typedef struct
 {
 	unsigned int flags;
 	int nrows;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif
@@ -276,7 +277,7 @@ typedef struct ghost_setup_t ghost_setup_t;
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_setup_t *setup, ghost_vec_t*, int);
-typedef void (*ghost_spmf_init_t) (ghost_mat_t *);
+typedef void (*ghost_spmf_init_t) (ghost_mat_t **);
 
 typedef struct 
 {
@@ -300,17 +301,18 @@ ghost_comm_t;
 
 struct ghost_mat_t 
 {
-	mat_trait_t trait; // TODO rename
+	ghost_mtraits_t trait; // TODO rename
 
 	// access functions
+	void       (*destroy) (ghost_mat_t *);
 	void       (*printInfo) (ghost_mat_t *);
 	mat_nnz_t  (*nnz) (ghost_mat_t *);
 	mat_idx_t  (*nrows) (ghost_mat_t *);
 	mat_idx_t  (*ncols) (ghost_mat_t *);
 	mat_idx_t  (*rowLen) (ghost_mat_t *, mat_idx_t i);
-	mat_data_t (*entry) (ghost_mat_t *, mat_idx_t i, mat_idx_t j);
+	ghost_mdat_t (*entry) (ghost_mat_t *, mat_idx_t i, mat_idx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath, mat_trait_t traits);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_mtraits_t traits);
 	size_t     (*byteSize) (ghost_mat_t *);
 	ghost_kernel_t kernel;
 #ifdef OPENCL
@@ -408,9 +410,9 @@ GPUghost_mat_t;
  *   an integer which holds the rank of the calling MPI process within
  *   MPI_COMM_WORLD
  *
- * The call to SpMVM_init() has to be done before any other SpMVM_*() call.
+ * The call to ghost_init() has to be done before any other ghost_*() call.
  *****************************************************************************/
-int SpMVM_init(int argc, char **argv, int options);
+int ghost_init(int argc, char **argv, int options);
 
 /******************************************************************************
  * Clean up and finalize before termination. This includes:
@@ -418,9 +420,9 @@ int SpMVM_init(int argc, char **argv, int options);
  *   - finish the OpenCL functionality
  *   - close the Likwid Marker API
  *
- * The SpMVM_finish() call is usually the last call of the main program. 
+ * The ghost_finish() call is usually the last call of the main program. 
  *****************************************************************************/
-void SpMVM_finish();
+void ghost_finish();
 
 /******************************************************************************
  * Create a distributed CRS matrix from a given path. The matrix is read-in
@@ -445,7 +447,7 @@ void SpMVM_finish();
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_comm_t * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
+ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
 
 
 /******************************************************************************
@@ -459,12 +461,12 @@ ghost_comm_t * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
  *     The local CRS matrix portion to use with the vector.
  *   - int type
  *     Specifies whether the vector is a right hand side vector 
- *     (ghost_vec_t_RHS), left hand side vector (ghost_vec_t_LHS) or a vector
- *     which may be used as both right and left hand side (ghost_vec_t_BOTH).
+ *     (GHOST_VEC_RHS), left hand side vector (GHOST_VEC_LHS) or a vector
+ *     which may be used as both right and left hand side (GHOST_VEC_BOTH).
  *     The length of the vector depends on this argument.
- *   - mat_data_t (*fp)(int)
+ *   - ghost_mdat_t (*fp)(int)
  *     A function pointer to a function taking an integer value and returning
- *     a mat_data_t. This function returns the initial value for the i-th (globally)
+ *     a ghost_mdat_t. This function returns the initial value for the i-th (globally)
  *     element of the vector.
  *     If NULL, the vector is initialized to zero.
  *
@@ -472,7 +474,7 @@ ghost_comm_t * SpMVM_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int type, mat_data_t (*fp)(int));
+ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int type, ghost_mdat_t (*fp)(int));
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
@@ -498,11 +500,12 @@ ghost_vec_t *SpMVM_createVector(ghost_setup_t *setup, unsigned int type, mat_dat
  * Returns:
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
-double SpMVM_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
+double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
 		int kernel, int nIter);
 
-ghost_setup_t *SpMVM_createSetup(char *matrixPath, mat_trait_t *trait, int nTraits, unsigned int, void *deviceFormats); 
-ghost_mat_t * SpMVM_initMatrix(const char *format);
+ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int, void *deviceFormats); 
+ghost_mat_t * ghost_initMatrix(const char *format);
+void ghost_freeSetup(ghost_setup_t *setup);
 /******************************************************************************/
 
 #endif

@@ -17,26 +17,28 @@ static mat_idx_t ELLPACK_ncols(ghost_mat_t *mat);
 static void ELLPACK_printInfo(ghost_mat_t *mat);
 static char * ELLPACK_formatName(ghost_mat_t *mat);
 static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i);
-static mat_data_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
+static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t traits);
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *, mat_trait_t traits);
+static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t traits);
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_mtraits_t traits);
+static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 
-void init(ghost_mat_t *mat)
+void init(ghost_mat_t **mat)
 {
 	DEBUG_LOG(1,"Setting functions for ELLPACK matrix");
 
-	mat->fromBin = &ELLPACK_fromBin;
-	mat->printInfo = &ELLPACK_printInfo;
-	mat->formatName = &ELLPACK_formatName;
-	mat->rowLen     = &ELLPACK_rowLen;
-	mat->entry      = &ELLPACK_entry;
-	mat->byteSize   = &ELLPACK_byteSize;
-	mat->kernel     = &ELLPACK_kernel_plain;
-	mat->nnz      = &ELLPACK_nnz;
-	mat->nrows    = &ELLPACK_nrows;
-	mat->ncols    = &ELLPACK_ncols;
+	(*mat)->fromBin = &ELLPACK_fromBin;
+	(*mat)->printInfo = &ELLPACK_printInfo;
+	(*mat)->formatName = &ELLPACK_formatName;
+	(*mat)->rowLen     = &ELLPACK_rowLen;
+	(*mat)->entry      = &ELLPACK_entry;
+	(*mat)->byteSize   = &ELLPACK_byteSize;
+	(*mat)->kernel     = &ELLPACK_kernel_plain;
+	(*mat)->nnz      = &ELLPACK_nnz;
+	(*mat)->nrows    = &ELLPACK_nrows;
+	(*mat)->ncols    = &ELLPACK_ncols;
+	(*mat)->destroy  = &ELLPACK_free;
 }
 
 static mat_nnz_t ELLPACK_nnz(ghost_mat_t *mat)
@@ -73,7 +75,7 @@ static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i)
 	return ELLPACK(mat)->rowLen[i];
 }
 
-static mat_data_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
+static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 {
 	mat_idx_t e;
 	mat_idx_t eInRow;
@@ -93,20 +95,20 @@ static mat_data_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((ELLPACK(mat)->nrowsPadded)*sizeof(mat_idx_t) + 
-			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(mat_idx_t)+sizeof(mat_data_t)));
+			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath, mat_trait_t traits)
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_mtraits_t traits)
 {
 	// TODO
-	ghost_mat_t *crsMat = SpMVM_initMatrix("CRS");
-	mat_trait_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mat_t *crsMat = ghost_initMatrix("CRS");
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
 	crsMat->fromBin(crsMat,matrixPath,crsTraits);
 
 	ELLPACK_fromCRS(mat,crsMat->data,traits);
 }
 
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
+static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
 {
 	DEBUG_LOG(1,"Creating ELLPACK matrix");
 	mat_idx_t i,j,c;
@@ -215,7 +217,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 	ELLPACK(mat)->nrowsPadded = pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
 	ELLPACK(mat)->rowLen = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(mat_idx_t),"rowLen");
 	ELLPACK(mat)->col = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(mat_idx_t),"col");
-	ELLPACK(mat)->val = (mat_data_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(mat_data_t),"val");
+	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
 
 	ELLPACK(mat)->rowLen = (mat_idx_t *)allocateMemory((ELLPACK(mat)->nrowsPadded)*sizeof(mat_idx_t),"ELLPACK(mat)->rowLen");
 
@@ -255,10 +257,25 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 	DEBUG_LOG(1,"Successfully created ELLPACK");
 }
 
+static void ELLPACK_free(ghost_mat_t *mat)
+{
+	free(ELLPACK(mat)->rowLen);
+	free(ELLPACK(mat)->val);
+	free(ELLPACK(mat)->col);
+	
+	free(mat->data);
+	free(mat->rowPerm);
+	free(mat->invRowPerm);
+
+	free(mat);
+
+
+}
+
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	mat_idx_t j,i;
-	mat_data_t tmp; 
+	ghost_mdat_t tmp; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {

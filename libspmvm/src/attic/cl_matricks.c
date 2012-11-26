@@ -16,13 +16,13 @@
 		case GHOST_SPM_GPUFORMAT_PJDS:
 			{
 				CL_PJDS_TYPE * matrix = (CL_PJDS_TYPE *)mat;
-				sz = matrix->nEnts*(sizeof(mat_data_t)+sizeof(int)) + matrix->nrows*sizeof(int) + matrix->nMaxRow*sizeof(int);
+				sz = matrix->nEnts*(sizeof(ghost_mdat_t)+sizeof(int)) + matrix->nrows*sizeof(int) + matrix->nMaxRow*sizeof(int);
 				break;
 			}
 		case GHOST_SPM_GPUFORMAT_ELR:
 			{
 				CL_ELR_TYPE * matrix = (CL_ELR_TYPE *)mat;
-				sz = matrix->nMaxRow * matrix->padding*(sizeof(mat_data_t)+sizeof(int)) + (matrix->nrows*sizeof(int));
+				sz = matrix->nMaxRow * matrix->padding*(sizeof(ghost_mdat_t)+sizeof(int)) + (matrix->nrows*sizeof(int));
 				break;
 			}
 		default:
@@ -35,7 +35,7 @@
 
 /**********************  pJDS MATRIX TYPE *********************************/
 
-PJDS_TYPE* CRStoPJDST(  const mat_data_t* crs_val, const int* crs_col, 
+PJDS_TYPE* CRStoPJDST(  const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows, const int threadsPerRow) 
 {
 	ELR_TYPE * elrs;
@@ -47,7 +47,7 @@ PJDS_TYPE* CRStoPJDST(  const mat_data_t* crs_val, const int* crs_col,
 	return pjds;
 }
 
-PJDS_TYPE* CRStoPJDS(  const mat_data_t* crs_val, const int* crs_col, 
+PJDS_TYPE* CRStoPJDS(  const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows) 
 {
 	return CRStoPJDST( crs_val, crs_col, crs_row_ptr, nrows, 1); 
@@ -121,7 +121,7 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
 	}
 
 
-	pjds->val = (mat_data_t*) allocateMemory(sizeof(mat_data_t)*pjds->nEnts,"pjds->val"); 
+	pjds->val = (ghost_mdat_t*) allocateMemory(sizeof(ghost_mdat_t)*pjds->nEnts,"pjds->val"); 
 	pjds->colStart = (int*) allocateMemory(sizeof(int)*(chunkLen[0]),"pjds->colStart");
 	pjds->col = (int*) allocateMemory(sizeof(int)*pjds->nEnts,"pjds->col");
 
@@ -163,7 +163,7 @@ PJDS_TYPE* ELRStoPJDST( const ELR_TYPE* elr, int threadsPerRow )
 	return pjds;
 }
 
-ELR_TYPE* CRStoELRT(const mat_data_t* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRT(const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows, int threadsPerRow) {
 
 	int i, j;
@@ -186,7 +186,7 @@ ELR_TYPE* CRStoELRT(const mat_data_t* crs_val, const int* crs_col,
 	elr->rowLen = (int*) allocateMemory(sizeof(int)*elr->nrows,"elr->rowLen"); 
 	elr->col = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,
 			"elr->col"); 
-	elr->val = (mat_data_t*)allocateMemory(sizeof(mat_data_t)*elr->padding*elr->nMaxRow,
+	elr->val = (ghost_mdat_t*)allocateMemory(sizeof(ghost_mdat_t)*elr->padding*elr->nMaxRow,
 			"elr->val"); 
 	elr->T = threadsPerRow;
 
@@ -227,7 +227,7 @@ ELR_TYPE* CRStoELRT(const mat_data_t* crs_val, const int* crs_col,
 	return elr;
 }
 
-ELR_TYPE* CRStoELRTP(const mat_data_t* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRTP(const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows,  
 		const int* invRowPerm, int threadsPerRow) 
 {
@@ -248,7 +248,7 @@ ELR_TYPE* CRStoELRTP(const mat_data_t* crs_val, const int* crs_col,
 
 	elr->rowLen      = (int*) allocateMemory(sizeof(int)*elr->nrows,"elr->rowLen"); 
 	elr->col         = (int*) allocateMemory(sizeof(int)*elr->padding*elr->nMaxRow,"elr->col"); 
-	elr->val         = (mat_data_t*)allocateMemory(sizeof(mat_data_t)*elr->padding*elr->nMaxRow,"elr->val"); 
+	elr->val         = (ghost_mdat_t*)allocateMemory(sizeof(ghost_mdat_t)*elr->padding*elr->nMaxRow,"elr->val"); 
 	elr->T			 = threadsPerRow;
 
 
@@ -286,7 +286,7 @@ ELR_TYPE* CRStoELRTP(const mat_data_t* crs_val, const int* crs_col,
 	return elr;
 }
 
-ELR_TYPE* CRStoELRP(  const mat_data_t* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRP(  const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows, const int* invRowPerm) {
 
 
@@ -294,7 +294,7 @@ ELR_TYPE* CRStoELRP(  const mat_data_t* crs_val, const int* crs_col,
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen;
 	int *rowLen, *col;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -337,13 +337,13 @@ ELR_TYPE* CRStoELRP(  const mat_data_t* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nrows=%i to %i\n", nrows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(mat_data_t) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(ghost_mdat_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nrows;
 
 	rowLen = (int*)   allocateMemory( size_rowlen, "elrp->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col, "elrp->vol" ); 
-	val   = (mat_data_t*)   allocateMemory( size_val,"elrp->val" ); 
+	val   = (ghost_mdat_t*)   allocateMemory( size_val,"elrp->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -375,14 +375,14 @@ ELR_TYPE* CRStoELRP(  const mat_data_t* crs_val, const int* crs_col,
 
 }
 
-ELR_TYPE* CRStoELRS(  const mat_data_t* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELRS(  const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows) {
 
 	JD_SORT_TYPE* rowSort;
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen, size_rowperm;
 	int *rowLen, *col;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -444,7 +444,7 @@ ELR_TYPE* CRStoELRS(  const mat_data_t* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nrows=%i to %i\n", nrows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(mat_data_t) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(ghost_mdat_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nrows;
 	size_rowperm= (size_t) sizeof(int) * nrows;
@@ -464,7 +464,7 @@ ELR_TYPE* CRStoELRS(  const mat_data_t* crs_val, const int* crs_col,
 
 	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
-	val   = (mat_data_t*)   allocateMemory( size_val,"elr->val" ); 
+	val   = (ghost_mdat_t*)   allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -536,14 +536,14 @@ ELR_TYPE* CRStoELRS(  const mat_data_t* crs_val, const int* crs_col,
 }
 
 
-/*void checkCRStToPJDS(const mat_data_t* crs_val, const int* crs_col, 
+/*void checkCRStToPJDS(const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows,
 		const PJDS_TYPE* pjds) {
 
 
 }*/
 
-ELR_TYPE* CRStoELR(  const mat_data_t* crs_val, const int* crs_col, 
+ELR_TYPE* CRStoELR(  const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows) {
 
 	/* allocate and fill ELR-format matrix from CRS format data;
@@ -553,7 +553,7 @@ ELR_TYPE* CRStoELR(  const mat_data_t* crs_val, const int* crs_col,
 	int i, j, rowMaxEnt, padRows;
 	size_t size_val, size_col, size_rowlen;
 	int *rowLen, *col;
-	mat_data_t* val;
+	ghost_mdat_t* val;
 	ELR_TYPE* elr = NULL;
 
 	/* get max number of entries in one row ###########################*/
@@ -583,13 +583,13 @@ ELR_TYPE* CRStoELR(  const mat_data_t* crs_val, const int* crs_col,
 	IF_DEBUG(1)  printf("convertCRS to ELR: padding: \t nrows=%i to %i\n", nrows, padRows);
 	//#endif
 
-	size_val    = (size_t) sizeof(mat_data_t) * padRows * rowMaxEnt;
+	size_val    = (size_t) sizeof(ghost_mdat_t) * padRows * rowMaxEnt;
 	size_col    = (size_t) sizeof(int) * padRows * rowMaxEnt;
 	size_rowlen = (size_t) sizeof(int) * nrows;
 
 	rowLen = (int*)   allocateMemory( size_rowlen,"elr->rowLen" ); 
 	col   = (int*)    allocateMemory( size_col,"elr->col" ); 
-	val   = (mat_data_t*) allocateMemory( size_val,"elr->val" ); 
+	val   = (ghost_mdat_t*) allocateMemory( size_val,"elr->val" ); 
 
 	/* initialize values ########################################### */
 	elr->rowLen = rowLen;
@@ -624,14 +624,14 @@ ELR_TYPE* CRStoELR(  const mat_data_t* crs_val, const int* crs_col,
 }
 
 
-void checkCRSToELR(	const mat_data_t* crs_val, const int* crs_col, 
+void checkCRSToELR(	const ghost_mdat_t* crs_val, const int* crs_col, 
 		const int* crs_row_ptr, const int nrows,
 		const ELR_TYPE* elr) {
 	/* check if matrix in elr is consistent with CRS;
 	 * assume FORTRAN numbering in crs, C numbering in ELR */
 
 /*	int i,j, hlpi;
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 		
 	printf("PE%i: -- ELRcopy sanity check:\n", me);
 	for (i=0; i<nrows; i++){
@@ -728,11 +728,11 @@ CL_PJDS_TYPE* CL_initPJDS( const PJDS_TYPE* pjds) {
 
 	cl_mem col, rowLen, colStart, val;
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) pjds->nrows * sizeof( int );
 
 	/* allocate */
@@ -783,10 +783,10 @@ CL_ELR_TYPE* CL_initELR( const ELR_TYPE* elr) {
 
 	cl_mem col, rowLen, val;
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) elr->nrows * sizeof( int );
 
 
@@ -835,12 +835,12 @@ void CL_uploadPJDS( CL_PJDS_TYPE* cpjds,  const PJDS_TYPE* pjds ) {
 	assert( cpjds->padding == pjds->padding );
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 //	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) (pjds->nMaxRow+1) * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) pjds->nrows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
@@ -871,11 +871,11 @@ void CL_uploadELR( CL_ELR_TYPE* celr,  const ELR_TYPE* elr )
 	assert( celr->nMaxRow == elr->nMaxRow );
 
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 //	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) elr->nrows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: ELRtoDevice: col %lu \t(%lu MB)\n", me,
@@ -904,11 +904,11 @@ void CL_downloadPJDS( PJDS_TYPE* pjds, const CL_PJDS_TYPE* cpjds ) {
 	assert( cpjds->nMaxRow == pjds->nMaxRow );
 
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
 	size_t colMemSize = (size_t) pjds->nEnts * sizeof( int );
 	size_t colStartMemSize = (size_t) pjds->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) pjds->nEnts * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) pjds->nEnts * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) pjds->nrows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: PJDStoDevice: col %lu \t(%lu MB)\n", me,
@@ -937,11 +937,11 @@ void CL_downloadELR( ELR_TYPE* elr, const CL_ELR_TYPE* celr ) {
 	assert( celr->padding == elr->padding );
 	assert( celr->nMaxRow == elr->nMaxRow );
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 //	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
 	size_t colMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( int );
-	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( mat_data_t );
+	size_t valMemSize = (size_t) elr->padding * elr->nMaxRow * sizeof( ghost_mdat_t );
 	size_t rowMemSize = (size_t) elr->nrows * sizeof( int );
 
 	IF_DEBUG(1) printf("PE%i: ELRtoHost: col %lu \t(%lu MB)\n", me,

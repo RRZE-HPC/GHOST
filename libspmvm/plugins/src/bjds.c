@@ -17,10 +17,11 @@ static mat_idx_t BJDS_ncols(ghost_mat_t *mat);
 static void BJDS_printInfo(ghost_mat_t *mat);
 static char * BJDS_formatName(ghost_mat_t *mat);
 static mat_idx_t BJDS_rowLen (ghost_mat_t *mat, mat_idx_t i);
-static mat_data_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
+static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t traits);
-static void BJDS_fromBin(ghost_mat_t *mat, char *, mat_trait_t traits);
+static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t traits);
+static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_mtraits_t traits);
+static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef SSE
 static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -36,30 +37,31 @@ static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, 
 //static ghost_mat_t *thisMat;
 //static BJDS_TYPE *BJDS(mat);
 
-void init(ghost_mat_t *mat)
+void init(ghost_mat_t **mat)
 {
 	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
 
-	mat->fromBin = &BJDS_fromBin;
-	mat->printInfo = &BJDS_printInfo;
-	mat->formatName = &BJDS_formatName;
-	mat->rowLen     = &BJDS_rowLen;
-	mat->entry      = &BJDS_entry;
-	mat->byteSize   = &BJDS_byteSize;
-	mat->kernel     = &BJDS_kernel_plain;
+	(*mat)->fromBin = &BJDS_fromBin;
+	(*mat)->printInfo = &BJDS_printInfo;
+	(*mat)->formatName = &BJDS_formatName;
+	(*mat)->rowLen     = &BJDS_rowLen;
+	(*mat)->entry      = &BJDS_entry;
+	(*mat)->byteSize   = &BJDS_byteSize;
+	(*mat)->kernel     = &BJDS_kernel_plain;
 #ifdef SSE
-	mat->kernel   = &BJDS_kernel_SSE;
+	(*mat)->kernel   = &BJDS_kernel_SSE;
 #endif
 #ifdef AVX
-	mat->kernel   = &BJDS_kernel_AVX;
+	(*mat)->kernel   = &BJDS_kernel_AVX;
 #endif
 #ifdef MIC
-	mat->kernel   = &BJDS_kernel_MIC_16;
+	(*mat)->kernel   = &BJDS_kernel_MIC_16;
 	UNUSED(&BJDS_kernel_MIC);
 #endif
-	mat->nnz      = &BJDS_nnz;
-	mat->nrows    = &BJDS_nrows;
-	mat->ncols    = &BJDS_ncols;
+	(*mat)->nnz      = &BJDS_nnz;
+	(*mat)->nrows    = &BJDS_nrows;
+	(*mat)->ncols    = &BJDS_ncols;
+	(*mat)->destroy  = &BJDS_free;
 }
 
 static mat_nnz_t BJDS_nnz(ghost_mat_t *mat)
@@ -78,14 +80,14 @@ static mat_idx_t BJDS_ncols(ghost_mat_t *mat)
 
 static void BJDS_printInfo(ghost_mat_t *mat)
 {
-	SpMVM_printLine("Vector block size",NULL,"%d",BJDS_LEN);
-	SpMVM_printLine("Row length oscillation nu",NULL,"%f",BJDS(mat)->nu);
+	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
+	ghost_printLine("Row length oscillation nu",NULL,"%f",BJDS(mat)->nu);
 	if (mat->trait.flags & GHOST_SPM_SORTED) {
-		SpMVM_printLine("Sorted",NULL,"yes");
-		SpMVM_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->trait.aux));
-		SpMVM_printLine("Permuted columns",NULL,"%s",mat->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
+		ghost_printLine("Sorted",NULL,"yes");
+		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->trait.aux));
+		ghost_printLine("Permuted columns",NULL,"%s",mat->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
 	} else {
-		SpMVM_printLine("Sorted",NULL,"no");
+		ghost_printLine("Sorted",NULL,"no");
 	}
 }
 
@@ -103,7 +105,7 @@ static mat_idx_t BJDS_rowLen (ghost_mat_t *mat, mat_idx_t i)
 	return BJDS(mat)->rowLen[i];
 }
 
-static mat_data_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
+static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 {
 	mat_idx_t e;
 
@@ -124,20 +126,20 @@ static mat_data_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 static size_t BJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(mat_nnz_t) + 
-			BJDS(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(mat_data_t)));
+			BJDS(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, mat_trait_t traits)
+static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_mtraits_t traits)
 {
 	// TODO
-	ghost_mat_t *crsMat = SpMVM_initMatrix("CRS");
-	mat_trait_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mat_t *crsMat = ghost_initMatrix("CRS");
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
 	crsMat->fromBin(crsMat,matrixPath,crsTraits);
 	
 	BJDS_fromCRS(mat,crsMat->data,traits);
 }
 
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
+static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
 {
 	DEBUG_LOG(1,"Creating BJDS matrix");
 	mat_idx_t i,j,c;
@@ -274,7 +276,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 	}
 	BJDS(mat)->nu /= (double)nChunks;
 
-	BJDS(mat)->val = (mat_data_t *)allocateMemory(sizeof(mat_data_t)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	BJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (mat_idx_t *)allocateMemory(sizeof(mat_idx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
@@ -330,11 +332,28 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, mat_trait_t trait)
 
 }
 
+static void BJDS_free(ghost_mat_t *mat)
+{
+	free(BJDS(mat)->val);
+	free(BJDS(mat)->col);
+	free(BJDS(mat)->chunkStart);
+	free(BJDS(mat)->chunkMin);
+	free(BJDS(mat)->chunkLen);
+	free(BJDS(mat)->rowLen);
+	
+	free(mat->data);
+	free(mat->rowPerm);
+	free(mat->invRowPerm);
+
+	free(mat);
+
+}
+
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	//	sse_kernel_0_intr(lhs, BJDS(mat), rhs, options);	
 	mat_idx_t c,j,i;
-	mat_data_t tmp[BJDS_LEN]; 
+	ghost_mdat_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 

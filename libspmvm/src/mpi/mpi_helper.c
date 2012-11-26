@@ -102,7 +102,7 @@ void setupSingleNodeComm()
 	free( all_hostnames );
 }
 
-void SpMVM_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int options, mat_trait_t *traits)
+void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int options, ghost_mtraits_t *traits)
 {
 
 	/* Counting and auxilliary variables */
@@ -113,7 +113,7 @@ void SpMVM_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 
 	ghost_comm_t *lcrp;
 
-	unsigned int nprocs = SpMVM_getNumberOfProcesses();
+	unsigned int nprocs = ghost_getNumberOfProcesses();
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -139,12 +139,12 @@ void SpMVM_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 	lcrp->dues     = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->dues" ); 
 
 
-	SpMVM_createDistribution(cr,options,lcrp);
+	ghost_createDistribution(cr,options,lcrp);
 
 	CR_TYPE *fullCR;
 	fullCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-	fullCR->val = (mat_data_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_data_t ),"fullMatrix->val" );
+	fullCR->val = (ghost_mdat_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_mdat_t ),"fullMatrix->val" );
 	fullCR->col = (mat_idx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_idx_t ),"fullMatrix->col" ); 
 	fullCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"fullMatrix->rpt" ); 
 	fullCR->nrows = lcrp->lnrows[me];
@@ -174,14 +174,14 @@ void SpMVM_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 				fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 
-	SpMVM_createCommunication(fullCR,options,setup);
+	ghost_createCommunication(fullCR,options,setup);
 
 	/* Free memory for CR stored matrix and sweep memory */
 	//freeCRMatrix( cr );
 
 }
 
-void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * matrixPath, int options, mat_trait_t *traits)
+void ghost_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * matrixPath, int options, ghost_mtraits_t *traits)
 {
 
 	/* Counting and auxilliary variables */
@@ -192,7 +192,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 
 	ghost_comm_t *lcrp;
 
-	unsigned int nprocs = SpMVM_getNumberOfProcesses();
+	unsigned int nprocs = ghost_getNumberOfProcesses();
 
 	MPI_Info info = MPI_INFO_NULL;
 	MPI_File file_handle;
@@ -220,7 +220,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 	lcrp->wishes   = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->wishes" ); 
 	lcrp->dues     = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->dues" ); 
 
-	SpMVM_createDistribution(cr,options,lcrp);
+	ghost_createDistribution(cr,options,lcrp);
 
 
 	DEBUG_LOG(1,"local rows          = %"PRmatIDX,lcrp->lnrows[me]);
@@ -235,7 +235,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 	CR_TYPE *fullCR;
 	fullCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-	fullCR->val = (mat_data_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_data_t ),"fullMatrix->val" );
+	fullCR->val = (ghost_mdat_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_mdat_t ),"fullMatrix->val" );
 	fullCR->col = (mat_idx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_idx_t ),"fullMatrix->col" ); 
 	fullCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"fullMatrix->rpt" ); 
 	fullCR->nrows = lcrp->lnrows[me];
@@ -287,7 +287,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_FLOAT, &status));
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (mat_data_t) tmp[i];
+					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
 					free(tmp);
 					break;
 				}
@@ -300,7 +300,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_DOUBLE, &status));
 					for (i = 0; i<lcrp->lnEnts[me]; i++)
-						fullCR->val[i] = (mat_data_t) tmp[i];
+						fullCR->val[i] = (ghost_mdat_t) tmp[i];
 					free(tmp);
 					break;
 				}
@@ -317,7 +317,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
 
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (mat_data_t) tmp[i];
+					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
 
 					free(tmp);
 					MPI_safecall(MPI_Type_free(&tmpDT));
@@ -336,7 +336,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
 
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (mat_data_t) tmp[i];
+					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
 
 					free(tmp);
 					MPI_safecall(MPI_Type_free(&tmpDT));
@@ -346,7 +346,7 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 		}
 	} else {
 
-		offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(mat_data_t);
+		offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(ghost_mdat_t);
 		DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 		MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 		MPI_safecall(MPI_File_read(file_handle, fullCR->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
@@ -358,18 +358,18 @@ void SpMVM_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 	MPI_safecall(MPI_Scatterv ( cr->rpt, (int *)lcrp->lnrows, (int *)lcrp->lfRow, MPI_INTEGER,
 			fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
-	SpMVM_createCommunication(fullCR,options,setup);
+	ghost_createCommunication(fullCR,options,setup);
 
 }
 
-void SpMVM_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
+void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 {
-	int me = SpMVM_getRank(); 
+	int me = ghost_getRank(); 
 	mat_nnz_t j;
 	mat_idx_t i;
 	int hlpi;
 	int target_rows;
-	unsigned int nprocs = SpMVM_getNumberOfProcesses();
+	unsigned int nprocs = ghost_getNumberOfProcesses();
 
 	lcrp->lnEnts   = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->lnEnts" ); 
 	lcrp->lnrows   = (mat_idx_t*)       allocateMemory( nprocs*sizeof(mat_idx_t), "lcrp->lnrows" ); 
@@ -564,7 +564,7 @@ void SpMVM_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 }
 
-void SpMVM_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setup)
+void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setup)
 {
 	
 	int hlpi;
@@ -601,14 +601,14 @@ void SpMVM_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	size_t size_revc, size_a2ai, size_nptr, size_pval;  
 	size_t size_mem, size_wish, size_dues;
 
-	unsigned int nprocs = SpMVM_getNumberOfProcesses();
+	unsigned int nprocs = ghost_getNumberOfProcesses();
 	ghost_comm_t *lcrp = setup->communicator;
 	
 	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(int)  );
 	size_nptr = (size_t)( nprocs             * sizeof(int*) );
 	size_a2ai = (size_t)( nprocs*nprocs * sizeof(int)  );
 
-	me = SpMVM_getRank();
+	me = ghost_getRank();
 	
 	/****************************************************************************
 	 *******        Adapt row pointer to local numbering on this PE       *******         
@@ -843,11 +843,11 @@ void SpMVM_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-		localCR->val = (mat_data_t*) allocateMemory(lnEnts_l*sizeof( mat_data_t ),"localMatrix->val" ); 
+		localCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
 		localCR->col = (mat_idx_t*) allocateMemory(lnEnts_l*sizeof( mat_idx_t ),"localMatrix->col" ); 
 		localCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"localMatrix->rpt" ); 
 
-		remoteCR->val = (mat_data_t*) allocateMemory(lnEnts_r*sizeof( mat_data_t ),"remoteMatrix->val" ); 
+		remoteCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
 		remoteCR->col = (mat_idx_t*) allocateMemory(lnEnts_r*sizeof( mat_idx_t ),"remoteMatrix->col" ); 
 		remoteCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"remoteMatrix->rpt" ); 
 
@@ -931,8 +931,8 @@ void SpMVM_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 		remoteCR->rpt = (int*)    allocateMemory( sizeof(int), "remoteCR->rpt" ); 
 		localCR->col       = (int*)    allocateMemory( sizeof(int), "localCR->col" ); 
 		remoteCR->col       = (int*)    allocateMemory( sizeof(int), "remoteCR->col" ); 
-		localCR->val       = (mat_data_t*) allocateMemory( sizeof(mat_data_t), "localCR->val" ); 
-		remoteCR->val       = (mat_data_t*) allocateMemory( sizeof(mat_data_t), "remoteCR->val" ); 
+		localCR->val       = (ghost_mdat_t*) allocateMemory( sizeof(ghost_mdat_t), "localCR->val" ); 
+		remoteCR->val       = (ghost_mdat_t*) allocateMemory( sizeof(ghost_mdat_t), "remoteCR->val" ); 
 		}*/
 
 	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);

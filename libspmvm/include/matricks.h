@@ -14,7 +14,7 @@
 typedef struct 
 {
 	mat_idx_t row, col, nThEntryInRow;
-	mat_data_t val;
+	ghost_mdat_t val;
 } 
 NZE_TYPE;
 
@@ -41,18 +41,18 @@ int isMMfile(const char *filename);
 MM_TYPE* readMMFile( const char* filename );
 
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm );
-void SpMVM_freeCRS( CR_TYPE* const cr );
+void ghost_freeCRS( CR_TYPE* const cr );
 
 void freeMMMatrix( MM_TYPE* const mm );
 
 CR_TYPE * readCRbinFile(const char*, int, int);
-ghost_mat_t * SpMVM_createMatrixFromCRS(CR_TYPE *cr, mat_trait_t trait);
+ghost_mat_t * ghost_createMatrixFromCRS(CR_TYPE *cr, ghost_mtraits_t trait);
 
 int compareNZEOrgPos( const void* a, const void* b ); 
 int compareNZEPerRow( const void*, const void*);
-void CRStoBJDS(CR_TYPE *cr, mat_trait_t, ghost_mat_t **matrix);
-void CRStoTBJDS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
-void CRStoCRS(CR_TYPE *cr, mat_trait_t trait, ghost_mat_t **matrix);
+void CRStoBJDS(CR_TYPE *cr, ghost_mtraits_t, ghost_mat_t **matrix);
+void CRStoTBJDS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
+void CRStoCRS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
 int pad(int nrows, int padding);
 
 #endif /* _MATRICKS_H_ */

@@ -22,13 +22,13 @@ static inline void spmvmKernAll( CR_TYPE* cr, ghost_vec_t* invec, ghost_vec_t* r
 
 #ifdef OPENCL
 /*if (!(spmvmOptions & GHOST_OPTION_RHSPRESENT)) {
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (cr->lnrows[*me]+cr->halo_elements)*sizeof(mat_data_t));
+	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, (cr->lnrows[*me]+cr->halo_elements)*sizeof(ghost_mdat_t));
 }
 
 CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,GHOST_FULL_MAT_IDX);
 
 if (!(spmvmOptions & GHOST_OPTION_KEEPRESULT))
-	CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnrows[*me]*sizeof(mat_data_t));*/
+	CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnrows[*me]*sizeof(ghost_mdat_t));*/
 UNUSED(cr);
 UNUSED(invec);
 UNUSED(res);
@@ -36,7 +36,7 @@ UNUSED(spmvmOptions);
 #else
 
 mat_idx_t i, j;
-mat_data_t hlp1;
+ghost_mdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
@@ -63,7 +63,7 @@ mat_data_t hlp1;
 {
 if (!(spmvmOptions & GHOST_OPTION_RHSPRESENT)) {
 	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, 
-			cr->lnrows[*me]*sizeof(mat_data_t));
+			cr->lnrows[*me]*sizeof(ghost_mdat_t));
 }
 
 CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,GHOST_LOCAL_MAT_IDX);
@@ -74,15 +74,15 @@ static inline void spmvmKernRemoteXThread( CR_TYPE* cr, ghost_vec_t* invec, ghos
 {
 	if (!(spmvmOptions & GHOST_OPTION_RHSPRESENT)) {
 		CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-				invec->val+cr->lnrows[*me], cr->halo_elements*sizeof(mat_data_t),
-				cr->lnrows[*me]*sizeof(mat_data_t));
+				invec->val+cr->lnrows[*me], cr->halo_elements*sizeof(ghost_mdat_t),
+				cr->lnrows[*me]*sizeof(ghost_mdat_t));
 	}
 
 
 	CL_SpMVM(invec->CL_val_gpu,res->CL_val_gpu,GHOST_REMOTE_MAT_IDX);
 
 	if (!(spmvmOptions & GHOST_OPTION_KEEPRESULT))
-		CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnrows[*me]*sizeof(mat_data_t));
+		CL_copyDeviceToHost(res->val, res->CL_val_gpu, cr->lnrows[*me]*sizeof(ghost_mdat_t));
 }*/ 
 #endif //OPENCL
 

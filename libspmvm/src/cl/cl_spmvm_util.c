@@ -34,8 +34,8 @@ void CL_init()
 	unsigned int platform, device;
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
-	int rank = SpMVM_getLocalRank();
-	int size = SpMVM_getNumberOfRanksOnNode();
+	int rank = ghost_getLocalRank();
+	int size = ghost_getNumberOfRanksOnNode();
 	char hostname[MAXHOSTNAMELEN] = "foobar";
 	cl_uint numDevices;
 	cl_device_id *deviceIDs;
@@ -141,8 +141,8 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 	char *build_log;
 	size_t log_size;
 	cl_device_id deviceID;
-	int size = SpMVM_getNumberOfRanksOnNode();
-	int rank = SpMVM_getLocalRank();
+	int size = ghost_getNumberOfRanksOnNode();
+	int rank = ghost_getLocalRank();
 	char hostname[MAXHOSTNAMELEN] = "foobar";
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
@@ -218,11 +218,11 @@ cl_mem CL_allocDeviceMemory( size_t bytesize )
 	cl_image_format image_format;
 
 	image_format.image_channel_order = CL_RG;
-	image_format.image_channel_mat_data_type = CL_FLOAT;
+	image_format.image_channel_ghost_mdat_type = CL_FLOAT;
 
-	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(mat_data_t),1,0,hostPtr,&err);
+	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(ghost_mdat_t),1,0,hostPtr,&err);
 
-printf("image width: %lu\n",bytesize/sizeof(mat_data_t));	
+printf("image width: %lu\n",bytesize/sizeof(ghost_mdat_t));	
 
 	CL_checkerror(err);
 
@@ -242,13 +242,13 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 {
 #ifdef CL_IMAGE
 	const size_t origin[3] = {0,0,0};
-	const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
+	const size_t region[3] = {bytesize/sizeof(ghost_mdat_t),0,0};
 	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
 				hostmem,0,NULL,NULL));
 #else
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
-	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(mat_data_t));
+	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(ghost_mdat_t));
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
 #endif
@@ -276,7 +276,7 @@ void CL_copyHostToDeviceOffset(cl_mem devmem, void *hostmem,
 					hostmem,0,NULL,NULL));
 	} else {
 		const size_t origin[3] = {offset,0,0};
-		const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
+		const size_t region[3] = {bytesize/sizeof(ghost_mdat_t),0,0};
 		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
 					hostmem,0,NULL,NULL));
 	}
@@ -295,7 +295,7 @@ void CL_copyHostToDevice(cl_mem devmem, void *hostmem, size_t bytesize)
 		CL_copyHostToDeviceOffset(devmem, hostmem, bytesize, 0);
 	} else {
 		const size_t origin[3] = {0,0,0};
-		const size_t region[3] = {bytesize/sizeof(mat_data_t),0,0};
+		const size_t region[3] = {bytesize/sizeof(ghost_mdat_t),0,0};
 		CL_safecall(clEnqueueWriteImage(queue,devmem,CL_TRUE,origin,region,0,0,
 					hostmem,0,NULL,NULL));
 	}
@@ -365,7 +365,7 @@ void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmv
 		globalSz = matrix->padding;
 	}
 	if (T>1) {
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(mat_data_t)*
+		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(ghost_mdat_t)*
 					CL_getLocalSize(kernel[kernelIdx]),NULL));
 	}
 }
@@ -387,7 +387,7 @@ void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type)
 	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
 	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
 //	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 	IF_DEBUG(1) printf("PE%d: Enqueueing SpMVM kernel with a global size of %lu\n",me,globalSize[type]);
@@ -446,7 +446,7 @@ void CL_finish(int spmvmOptions)
 	ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
 	GPUghost_mat_t * gpum = (GPUghost_mat_t*) allocateMemory( sizeof( GPUghost_mat_t ), "gpum" );
 
-	int me = SpMVM_getRank();
+	int me = ghost_getRank();
 
 	ELR_TYPE* elr 	= NULL;
 	CL_ELR_TYPE* celr  = NULL;
@@ -618,12 +618,12 @@ void CL_finish(int spmvmOptions)
 
 void CL_uploadVector( ghost_vec_t *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(mat_data_t));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(ghost_mdat_t));
 }
 
 void CL_downloadVector( ghost_vec_t *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(mat_data_t));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(ghost_mdat_t));
 }
 
 size_t CL_getLocalSize(cl_kernel kernel) 
@@ -655,8 +655,8 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	char name[CL_MAX_DEVICE_NAME_LEN];
 	char *names = NULL;
 
-	me = SpMVM_getRank();
-	size = SpMVM_getNumberOfProcesses();
+	me = ghost_getRank();
+	size = ghost_getNumberOfProcesses();
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));

@@ -12,24 +12,24 @@
 
 #ifdef DOUBLE
 #ifdef COMPLEX
-typedef double2 cl_mat_data_t;
+typedef double2 cl_ghost_mdat_t;
 #else
-typedef double cl_mat_data_t;
+typedef double cl_ghost_mdat_t;
 #endif
 #endif
 #ifdef SINGLE
 #ifdef COMPLEX
-typedef float2 cl_mat_data_t;
+typedef float2 cl_ghost_mdat_t;
 #else
-typedef float cl_mat_data_t;
+typedef float cl_ghost_mdat_t;
 #endif
 #endif
 
-kernel void CRS_kernel (global cl_mat_data_t *lhs, global cl_mat_data_t *rhs, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global cl_mat_data_t *val) 
+kernel void CRS_kernel (global cl_ghost_mdat_t *lhs, global cl_ghost_mdat_t *rhs, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global cl_ghost_mdat_t *val) 
 {
 	unsigned int i = get_global_id(0);
 	if (i < nrows) {
-		cl_mat_data_t svalue = 0.0;
+		cl_ghost_mdat_t svalue = 0.0;
 		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j){
 			svalue += val[j] * rhs[col[j]]; 
 		}
