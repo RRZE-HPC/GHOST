@@ -18,7 +18,7 @@ LIBS+=-l$(PREFIX)ghost
 #CFLAGS= -g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
 
 ifeq ($(WDDT),1)
-LIBS+=$(DDT)/lib/64/libdmallocth.a
+LIBS+= $(DDT)/lib/64/libdmallocth.a 
 endif
 
 ifeq ($(strip $(MIC)),1)

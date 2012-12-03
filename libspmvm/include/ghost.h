@@ -58,8 +58,8 @@ ghost_mtraits_t;
 #define GHOST_SETUP_DISTRIBUTED   (0x1<<1)
 
 #define GHOST_SPM_DEFAULT       (0)
-#define GHOST_SPM_HOST      (0x1<<0)
-#define GHOST_SPM_DEVICE    (0x1<<1)
+#define GHOST_SPM_HOST          (0x1<<0)
+#define GHOST_SPM_DEVICE        (0x1<<1)
 #define GHOST_SPM_PERMUTECOLIDX (0x1<<2)
 #define GHOST_SPM_COLMAJOR      (0x1<<3)
 #define GHOST_SPM_ROWMAJOR      (0x1<<4)
@@ -75,17 +75,6 @@ ghost_mtraits_t;
 #define GHOST_VEC_HOST   (0x1<<2)
 #define GHOST_VEC_DEVICE (0x1<<3)
 #define GHOST_VEC_GLOBAL (0x1<<4)
-/******************************************************************************/
-
-
-/******************************************************************************/
-/*----  GPU matrix formats  --------------------------------------------------*/
-/******************************************************************************/
-#define GHOST_SPM_GPUFORMAT_ELR  0
-#define GHOST_SPM_GPUFORMAT_PJDS 1
-#define PJDS_CHUNK_HEIGHT 32
-#define ELR_PADDING 1024
-extern const char *GHOST_SPMFORMAT_NAMES[];
 /******************************************************************************/
 
 
@@ -106,6 +95,11 @@ extern const char *GHOST_SPMFORMAT_NAMES[];
 #define GHOST_OPTION_WORKDIST_LNZE  (0x1<<9) // distribute by # of loc nonzeros
 /******************************************************************************/
 
+#define GHOST_IMPL_C      (0x1<<0)
+#define GHOST_IMPL_SSE    (0x1<<1)
+#define GHOST_IMPL_AVX    (0x1<<2)
+#define GHOST_IMPL_MIC    (0x1<<3)
+#define GHOST_IMPL_OPENCL (0x1<<4)
 
 /******************************************************************************/
 /*----  Available datatypes  -------------------------------------------------*/
@@ -147,6 +141,7 @@ typedef cl_double ghost_cl_vdat_t; // TODO
 /******************************************************************************/
 #ifdef GHOST_MAT_DP
 #ifdef GHOST_MAT_COMPLEX
+#define GHOST_CLFLAGS " -DDOUBLE -DCOMPLEX "
 typedef _Complex double ghost_mdat_t;
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
@@ -154,6 +149,7 @@ MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_Z
 #else // GHOST_MAT_COMPLEX
+#define GHOST_CLFLAGS " -DDOUBLE "
 typedef double ghost_mdat_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_DOUBLE
@@ -166,12 +162,14 @@ typedef double ghost_mdat_t;
 #ifdef GHOST_MAT_SP
 #ifdef GHOST_MAT_COMPLEX
 typedef _Complex float ghost_mdat_t;
+#define GHOST_CLFLAGS " -DSINGLE -DCOMPLEX "
 #ifdef MPI
 MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_C
 #else // GHOST_MAT_COMPLEX
+#define GHOST_CLFLAGS " -DSINGLE "
 typedef float ghost_mdat_t;
 #ifdef MPI
 #define MPI_MYDATATYPE MPI_FLOAT
@@ -269,17 +267,20 @@ typedef uint32_t mat_nnz_t; // type for the number of nonzeros in the matrix
 typedef cl_uint ghost_cl_midx_t;
 typedef cl_uint ghost_cl_mnnz_t;
 #endif
+
 #define PRmatNNZ PRIu32
 #define PRmatIDX PRIu32
 
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_setup_t ghost_setup_t;
+typedef struct ghost_comm_t ghost_comm_t;
+typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_setup_t *setup, ghost_vec_t*, int);
-typedef void (*ghost_spmf_init_t) (ghost_mat_t **);
+typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
 
-typedef struct 
+struct ghost_comm_t 
 {
 	mat_idx_t halo_elements; // number of nonlocal RHS vector elements
 	mat_nnz_t* lnEnts;
@@ -295,13 +296,11 @@ typedef struct
 	int* due_displ;    
 	int* wish_displ;   // TODO delete
 	int* hput_pos;
-} 
-ghost_comm_t; 
-
+}; 
 
 struct ghost_mat_t 
 {
-	ghost_mtraits_t trait; // TODO rename
+	ghost_mtraits_t *traits; // TODO rename
 
 	// access functions
 	void       (*destroy) (ghost_mat_t *);
@@ -312,7 +311,8 @@ struct ghost_mat_t
 	mat_idx_t  (*rowLen) (ghost_mat_t *, mat_idx_t i);
 	ghost_mdat_t (*entry) (ghost_mat_t *, mat_idx_t i, mat_idx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_mtraits_t traits);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
+	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	size_t     (*byteSize) (ghost_mat_t *);
 	ghost_kernel_t kernel;
 #ifdef OPENCL
@@ -325,19 +325,14 @@ struct ghost_mat_t
 	void *data;
 }; 
 
-typedef struct
+struct ghost_spmf_plugin_t
 {
 	void *so;
 	ghost_spmf_init_t init;
 	char *name;
 	char *version;
 	char *formatID;
-}
-ghost_spmf_plugin_t;
-	
-
-#define TRAIT_INIT(...) { .format = "", .flags = GHOST_SPM_DEFAULT, .aux = NULL, ## __VA_ARGS__ }
-#define MATRIX_INIT(...) { .trait = TRAIT_INIT(), .rowPerm = NULL, .invRowPerm = NULL, .data = NULL, ## __VA_ARGS__ }
+};
 
 struct ghost_setup_t
 {
@@ -363,21 +358,6 @@ struct ghost_setup_t
 	ghost_mat_t *remoteCLMatrix;
 #endif*/
 };
-
-typedef struct 
-{
-	int fullFormat;
-	int localFormat;
-	int remoteFormat;
-	int fullT;
-	int localT;
-	int remoteT;
-	void *fullMatrix;
-	void *localMatrix;
-	void *remoteMatrix;
-} 
-GPUghost_mat_t;
-
 
 /******************************************************************************/
 
@@ -503,8 +483,8 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int type, ghost_m
 double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
 		int kernel, int nIter);
 
-ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int, void *deviceFormats); 
-ghost_mat_t * ghost_initMatrix(const char *format);
+ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *);
 void ghost_freeSetup(ghost_setup_t *setup);
 /******************************************************************************/
 

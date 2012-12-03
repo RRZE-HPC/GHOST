@@ -80,6 +80,7 @@ LIBSPMVM=lib$(PREFIX)ghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
 MAKROS+= -DPLUGINPATH=\"$(strip $(INSTDIR))/lib/ghost/\"
+MAKROS+= -DHEADERPATH=\"$(strip $(INSTDIR))/include/\"
 
 PLUGINS = $(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(PLUGINDIR)/src/*.c))))
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))

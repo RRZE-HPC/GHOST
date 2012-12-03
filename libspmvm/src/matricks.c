@@ -16,7 +16,7 @@
 #include <fcntl.h>
 
 
-static int compareNZEPos( const void* a, const void* b ) 
+int compareNZEPos( const void* a, const void* b ) 
 {
 
 	/* comparison function for sorting of matrix entries;
@@ -75,7 +75,6 @@ int isMMfile(const char *filename)
 
 MM_TYPE * readMMFile(const char* filename ) 
 {
-
 	MM_typecode matcode;
 	FILE *f;
 	mat_idx_t i;
@@ -90,10 +89,10 @@ MM_TYPE * readMMFile(const char* filename )
 		exit(1);
 	}
 
-#ifdef COMPLEX
+#ifdef GHOST_MAT_COMPLEX
 	if (!mm_is_complex(matcode))
 		DEBUG_LOG(0,"Warning! The library has been built for complex data "
-				"but the MM file contains ghost_mdat_t data. Casting...");
+				"but the MM file contains real data. Casting...");
 #else
 	if (mm_is_complex(matcode))
 		DEBUG_LOG(0,"Warning! The library has been built for real data "
@@ -111,14 +110,14 @@ MM_TYPE * readMMFile(const char* filename )
 	if (!mm_is_complex(matcode)) {
 		for (i=0; i<mm->nEnts; i++)
 		{
-#ifdef DOUBLE
+#ifdef GHOST_MAT_DP
 			double re;
 			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re);
 #else
 			float re;
 			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %g\n", &mm->nze[i].row, &mm->nze[i].col, &re);
 #endif
-#ifdef COMPLEX	
+#ifdef GHOST_MAT_COMPLEX
 			mm->nze[i].val = re+I*0;
 #else
 			mm->nze[i].val = re;
@@ -130,7 +129,7 @@ MM_TYPE * readMMFile(const char* filename )
 
 		for (i=0; i<mm->nEnts; i++)
 		{
-#ifdef DOUBLE
+#ifdef GHOST_MAT_DP
 			double re,im;
 			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re,
 					&im);
@@ -139,7 +138,7 @@ MM_TYPE * readMMFile(const char* filename )
 			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %g %g\n", &mm->nze[i].row, &mm->nze[i].col, &re,
 					&im);
 #endif
-#ifdef COMPLEX	
+#ifdef GHOST_MAT_COMPLEX	
 			mm->nze[i].val = re+I*im;
 #else
 			mm->nze[i].val = re;
@@ -231,12 +230,12 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							diagVals[didx] =  tmpval[idx];
 							diagStatus[didx] = (char)1;
 							diagEnts[didx] = 1;
-							DEBUG_LOG(2,"Diag %d initialized with %f",didx,diagVals[didx]);
+							DEBUG_LOG(2,"Diag %d initialized with %f",didx,REAL(diagVals[didx]));
 						} else if (diagStatus[didx] == DIAG_OK) { // diag initialized
 							if (EQUALS(diagVals[didx],tmpval[idx])) {
 								diagEnts[didx]++;
 							} else {
-								DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f (was %f)",didx,i,tmpval[idx],diagVals[didx]);
+								DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f (was %f)",didx,i,REAL(tmpval[idx]),REAL(diagVals[didx]));
 								diagStatus[didx] = DIAG_INVALID;
 							}
 						}
@@ -249,7 +248,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 			for (i=0; i<bandwidth+1; i++) { // lower subdiagonals AND diagonal
 				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->ncols-bandwidth+i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",bandwidth-i,diagVals[i]);
+					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",bandwidth-i,REAL(diagVals[i]));
 					cr->nConstDiags++;
 					cr->constDiags = realloc(cr->constDiags,sizeof(CONST_DIAG)*cr->nConstDiags);
 					cr->constDiags[cr->nConstDiags-1].idx = bandwidth-i;
@@ -262,7 +261,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			}
 			for (i=bandwidth+1; i<nDiags ; i++) { // upper subdiagonals
 				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->ncols+bandwidth-i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",-bandwidth+i,diagVals[i]);
+					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",-bandwidth+i,REAL(diagVals[i]));
 					cr->nConstDiags++;
 					cr->constDiags = realloc(cr->constDiags,sizeof(CONST_DIAG)*cr->nConstDiags);
 					cr->constDiags[cr->nConstDiags-1].idx = -bandwidth+i;

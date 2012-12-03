@@ -15,7 +15,7 @@ fig = pyplot.figure()
 spyfig = fig.add_subplot(111)
 
 print("reading matrix")
-matrix = mmread("/home/vault/unrz/unrza317/matrices/"+matrixname+"/"+matrixname+"_alt.mtx").tolil()
+matrix = mmread("/home/vault/unrz/unrza317/matrices/"+matrixname+"/"+matrixname+".mtx").tolil()
 print("done")
 
 if mode!=0:

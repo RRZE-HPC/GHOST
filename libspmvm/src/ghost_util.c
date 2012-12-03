@@ -170,10 +170,12 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 				setup->nnz*(sizeof(ghost_mdat_t)+sizeof(mat_idx_t)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-		if (setup->fullMatrix->trait.flags & GHOST_SPM_DEVICE)
+		if (setup->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
 			matrixLocation = "Device";
-		else
+		else if (setup->fullMatrix->traits->flags & GHOST_SPM_HOST)
 			matrixLocation = "Host";
+		else
+			matrixLocation = "Default";
 
 		char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
@@ -361,7 +363,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, g
 
 	if (me==0) {
 		ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
-		ghost_setup_t *setup = ghost_createSetup(matrixPath, &trait, 1, GHOST_SETUP_GLOBAL, NULL);
+		ghost_setup_t *setup = ghost_createSetup(matrixPath, &trait, 1, GHOST_SETUP_GLOBAL);
 		globLHS = ghost_createVector(setup,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 
 		ghost_vec_t *globRHS = ghost_createVector(setup,GHOST_VEC_RHS|GHOST_VEC_HOST,rhsVal);
 

@@ -48,6 +48,7 @@ void freeMMMatrix( MM_TYPE* const mm );
 CR_TYPE * readCRbinFile(const char*, int, int);
 ghost_mat_t * ghost_createMatrixFromCRS(CR_TYPE *cr, ghost_mtraits_t trait);
 
+int compareNZEPos( const void* a, const void* b ); 
 int compareNZEOrgPos( const void* a, const void* b ); 
 int compareNZEPerRow( const void*, const void*);
 void CRStoBJDS(CR_TYPE *cr, ghost_mtraits_t, ghost_mat_t **matrix);

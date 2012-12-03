@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "ghost_util.h"
+
 #include "mmio.h"
 
 int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
@@ -40,7 +42,7 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
  
  
  
-    if ( !(mm_is_ghost_mdat_t(matcode) && mm_is_matrix(matcode) &&
+    if ( !(mm_is_real(matcode) && mm_is_matrix(matcode) &&
             mm_is_sparse(matcode)))
     {
         fprintf(stderr, "Sorry, this application does not support ");
@@ -90,7 +92,7 @@ int mm_is_valid(MM_typecode matcode)
 {
     if (!mm_is_matrix(matcode)) return 0;
     if (mm_is_dense(matcode) && mm_is_pattern(matcode)) return 0;
-    if (mm_is_ghost_mdat_t(matcode) && mm_is_hermitian(matcode)) return 0;
+    if (mm_is_real(matcode) && mm_is_hermitian(matcode)) return 0;
     if (mm_is_pattern(matcode) && (mm_is_hermitian(matcode) || 
                 mm_is_skew(matcode))) return 0;
     return 1;
@@ -271,16 +273,44 @@ int mm_read_mtx_crd_data(FILE *f, mat_nnz_t nz, mat_idx_t II[], mat_idx_t J[],
     mat_nnz_t i;
     if (mm_is_complex(matcode))
     {
-        for (i=0; i<nz; i++)
-            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg", &II[i], &J[i], &val[2*i], &val[2*i+1])
+#ifndef GHOST_MAT_COMPLEX
+		DEBUG_LOG(0,"Warning! The matrix contains complex data but ghost is built for real data. Omitting the imaginary part...");
+#endif
+#ifdef GHOST_MAT_DP
+		double real, imag;
+#else
+		float real, imag;
+#endif
+        for (i=0; i<nz; i++) {
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg", &II[i], &J[i], &real, &imag)
                 != 4) return MM_PREMATURE_EOF;
+#ifdef GHOST_MAT_COMPLEX
+			val[i] = real+I*imag;
+#else
+			val[i] = real;
+#endif
+		}
+
     }
-    else if (mm_is_ghost_mdat_t(matcode))
+    else if (mm_is_real(matcode))
     {
+#ifndef GHOST_MAT_COMPLEX
+		DEBUG_LOG(0,"Warning! The matrix contains real data but ghost is built for complex data. The imaginary part will be zero but stored anyways...");
+#endif
+#ifdef GHOST_MAT_DP
+		double real;
+#else
+		float real;
+#endif
         for (i=0; i<nz; i++)
         {
-            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &II[i], &J[i], &val[i])
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &II[i], &J[i], &real)
                 != 3) return MM_PREMATURE_EOF;
+#ifdef GHOST_MAT_COMPLEX
+			val[i] = real+I*0.;
+#else
+			val[i] = real;
+#endif
 
         }
     }
@@ -306,7 +336,7 @@ int mm_read_mtx_crd_entry(FILE *f, int *II, int *J,
             if (fscanf(f, "%d %d %lg %lg", II, J, ghost_mdat_t, imag)
                 != 4) return MM_PREMATURE_EOF;
     }
-    else if (mm_is_ghost_mdat_t(matcode))
+    else if (mm_is_real(matcode))
     {
             if (fscanf(f, "%d %d %lg\n", II, J, ghost_mdat_t)
                 != 3) return MM_PREMATURE_EOF;
@@ -367,7 +397,7 @@ int mm_read_mtx_crd(char *fname, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz, mat_
                 *matcode);
         if (ret_code != 0) return ret_code;
     }
-    else if (mm_is_ghost_mdat_t(*matcode))
+    else if (mm_is_real(*matcode))
     {
         *val = (ghost_mdat_t *) malloc(*nz * sizeof(ghost_mdat_t));
         ret_code = mm_read_mtx_crd_data(f, *nz, *II, *J, *val, 
@@ -423,7 +453,7 @@ int mm_write_mtx_crd(char fname[], int M, int N, int nz, int II[], int J[],
         for (i=0; i<nz; i++)
             fprintf(f, "%d %d\n", II[i], J[i]);
     else
-    if (mm_is_ghost_mdat_t(matcode))
+    if (mm_is_real(matcode))
         for (i=0; i<nz; i++)
             fprintf(f, "%d %d %20.16g\n", II[i], J[i], val[i]);
     else
@@ -474,7 +504,7 @@ char  *mm_typecode_to_str(MM_typecode matcode)
         return NULL;
 
     /* check for element data type */
-    if (mm_is_ghost_mdat_t(matcode))
+    if (mm_is_real(matcode))
         types[2] = MM_REAL_STR;
     else
     if (mm_is_complex(matcode))

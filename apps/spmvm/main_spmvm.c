@@ -50,7 +50,6 @@ int main( int argc, char* argv[] )
 	ghost_setup_t *setup;
 
 	char *matrixPath = argv[1];
-	GHOST_SPM_GPUFORMATS *matrixFormats = NULL;
 
 	ghost_mtraits_t trait;
 	if (argc == 5) {
@@ -58,19 +57,17 @@ int main( int argc, char* argv[] )
 		trait.flags = atoi(argv[3]);
 		unsigned int sortBlock = (unsigned int)atoi(argv[4]);
 		trait.aux = &sortBlock;
-		
+
 	} else {
-	unsigned int sortBlock = 1024;
-	trait.format = "CRS";
-	trait.flags = GHOST_SPM_DEVICE;
-	trait.aux = &sortBlock;
-//		.flags = GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX ,
+		trait.format = "BJDS";
+		trait.flags = GHOST_SPM_DEFAULT;
+		trait.aux = NULL;
 	}
 	ghost_mtraits_t traits[3] = {trait,trait,trait};
 
-	
+
 	ghost_init(argc,argv,options);       // basic initialization
-	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL,matrixFormats);
+	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL);
 	lhs   = ghost_createVector(setup,GHOST_VEC_LHS,NULL);
 	rhs   = ghost_createVector(setup,GHOST_VEC_RHS,rhsVal);
 
@@ -90,7 +87,7 @@ int main( int argc, char* argv[] )
 			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"SKIPPED");
 			continue;
 		}
-		
+
 #ifdef CHECK
 		errcount=0;
 		for (i=0; i<setup->lnrows; i++){

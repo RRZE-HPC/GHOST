@@ -4,8 +4,6 @@
 
 #include "ghost.h"
 
-
-
 #ifdef MIC
 //#define BJDS_LEN 8
 #define BJDS_LEN 16
@@ -13,9 +11,25 @@
 #define BJDS_LEN 4 // TODO single/double precision
 #elif defined (SSE)
 #define BJDS_LEN 2
+#elif defined (OPENCL)
+#define BJDS_LEN 256
 #else
 #define BJDS_LEN 1
 #endif
+
+typedef struct 
+{
+#ifdef OPENCL
+	cl_mem val;
+	cl_mem col;
+	cl_mem rowLen;
+	cl_mem chunkStart;
+	cl_mem chunkLen;
+	ghost_cl_midx_t nrows;
+	ghost_cl_midx_t nrowsPadded;
+#endif
+} 
+CL_BJDS_TYPE;
 
 typedef struct 
 {
@@ -30,9 +44,11 @@ typedef struct
 	mat_idx_t *chunkMin; // for version with remainder loop
 	mat_idx_t *chunkLen; // for version with remainder loop
 	mat_idx_t *rowLen;   // for version with remainder loop
+	
+	CL_BJDS_TYPE *clmat;
 } 
 BJDS_TYPE;
 
-void init(ghost_mat_t **);
+ghost_mat_t * init(ghost_mtraits_t *);
 
 #endif

@@ -19,26 +19,41 @@ static char * ELLPACK_formatName(ghost_mat_t *mat);
 static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i);
 static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t traits);
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_mtraits_t traits);
+static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+#ifdef OPENCL
+static void ELLPACK_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+#endif
 
-void init(ghost_mat_t **mat)
+ghost_mat_t * init(ghost_mtraits_t * traits)
 {
 	DEBUG_LOG(1,"Setting functions for ELLPACK matrix");
+	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	mat->traits = traits;
 
-	(*mat)->fromBin = &ELLPACK_fromBin;
-	(*mat)->printInfo = &ELLPACK_printInfo;
-	(*mat)->formatName = &ELLPACK_formatName;
-	(*mat)->rowLen     = &ELLPACK_rowLen;
-	(*mat)->entry      = &ELLPACK_entry;
-	(*mat)->byteSize   = &ELLPACK_byteSize;
-	(*mat)->kernel     = &ELLPACK_kernel_plain;
-	(*mat)->nnz      = &ELLPACK_nnz;
-	(*mat)->nrows    = &ELLPACK_nrows;
-	(*mat)->ncols    = &ELLPACK_ncols;
-	(*mat)->destroy  = &ELLPACK_free;
+	mat->fromBin = &ELLPACK_fromBin;
+	mat->printInfo = &ELLPACK_printInfo;
+	mat->formatName = &ELLPACK_formatName;
+	mat->rowLen     = &ELLPACK_rowLen;
+	mat->entry      = &ELLPACK_entry;
+	mat->byteSize   = &ELLPACK_byteSize;
+	mat->kernel     = &ELLPACK_kernel_plain;
+	mat->nnz      = &ELLPACK_nnz;
+	mat->nrows    = &ELLPACK_nrows;
+	mat->ncols    = &ELLPACK_ncols;
+	mat->destroy  = &ELLPACK_free;
+#ifdef OPENCL
+	if (traits->flags & GHOST_SPM_HOST)
+		mat->kernel   = &ELLPACK_kernel_plain;
+	else
+		mat->kernel   = &ELLPACK_kernel_CL;
+#else
+	mat->kernel   = &ELLPACK_kernel_plain;
+#endif
+
+	return mat;
 }
 
 static mat_nnz_t ELLPACK_nnz(ghost_mat_t *mat)
@@ -69,7 +84,7 @@ static char * ELLPACK_formatName(ghost_mat_t *mat)
 
 static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i)
 {
-	if (mat->trait.flags & GHOST_SPM_SORTED)
+	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
 
 	return ELLPACK(mat)->rowLen[i];
@@ -80,9 +95,9 @@ static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 	mat_idx_t e;
 	mat_idx_t eInRow;
 
-	if (mat->trait.flags & GHOST_SPM_SORTED)
+	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
-	if (mat->trait.flags & GHOST_SPM_PERMUTECOLIDX)
+	if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)
 		j = mat->rowPerm[j];
 
 	for (e=i, eInRow = 0; eInRow<ELLPACK(mat)->rowLen[i]; e+=ELLPACK(mat)->nrowsPadded, eInRow++) {
@@ -98,21 +113,22 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_mtraits_t traits)
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 	// TODO
-	ghost_mat_t *crsMat = ghost_initMatrix("CRS");
-	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
-	crsMat->fromBin(crsMat,matrixPath,crsTraits);
 
-	ELLPACK_fromCRS(mat,crsMat->data,traits);
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
+	crsMat->fromBin(crsMat,matrixPath);
+
+	ELLPACK_fromCRS(mat,crsMat->data);
 }
 
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
+static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 {
 	DEBUG_LOG(1,"Creating ELLPACK matrix");
 	mat_idx_t i,j,c;
-	unsigned int flags = trait.flags;
+	unsigned int flags = mat->traits->flags;
 
 	mat_idx_t *rowPerm = NULL;
 	mat_idx_t *invRowPerm = NULL;
@@ -120,19 +136,18 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait
 	JD_SORT_TYPE* rowSort;
 
 	mat->data = (ELLPACK_TYPE *)allocateMemory(sizeof(ELLPACK_TYPE),"ELLPACK(mat)");
-	mat->trait = trait;
 	mat->rowPerm = rowPerm;
 	mat->invRowPerm = invRowPerm;
 
 	ELLPACK(mat)->maxRowLen = 0;
 
-	if (trait.flags & GHOST_SPM_SORTED) {
+	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"ELLPACK(mat)->rowPerm");
 		invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"ELLPACK(mat)->invRowPerm");
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
-		unsigned int sortBlock = *(unsigned int *)(trait.aux);
+		unsigned int sortBlock = *(unsigned int *)(mat->traits->aux);
 		if (sortBlock == 0)
 			sortBlock = cr->nrows;
 
@@ -213,13 +228,11 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait
 
 	ELLPACK(mat)->nrows = cr->nrows;
 	ELLPACK(mat)->nnz = cr->nEnts;
-	ELLPACK(mat)->nEnts = ELLPACK_PAD*ELLPACK(mat)->maxRowLen;
 	ELLPACK(mat)->nrowsPadded = pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
+	ELLPACK(mat)->nEnts = ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen;
 	ELLPACK(mat)->rowLen = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(mat_idx_t),"rowLen");
 	ELLPACK(mat)->col = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(mat_idx_t),"col");
 	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
-
-	ELLPACK(mat)->rowLen = (mat_idx_t *)allocateMemory((ELLPACK(mat)->nrowsPadded)*sizeof(mat_idx_t),"ELLPACK(mat)->rowLen");
 
 #pragma omp parallel for private(i)	
 	for( i=0; i < ELLPACK(mat)->nrowsPadded; ++i) {
@@ -254,6 +267,42 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait
 	}
 
 	free( rowSort );
+
+#ifdef OPENCL
+	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
+		DEBUG_LOG(1,"Creating matrix on OpenCL device");
+		ELLPACK(mat)->clmat = (CL_ELLPACK_TYPE *)allocateMemory(sizeof(CL_ELLPACK_TYPE),"CL_ELLPACK");
+		ELLPACK(mat)->clmat->rowLen = CL_allocDeviceMemory((ELLPACK(mat)->nrows)*sizeof(ghost_cl_midx_t));
+		ELLPACK(mat)->clmat->col = CL_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_cl_midx_t));
+		ELLPACK(mat)->clmat->val = CL_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+
+		ELLPACK(mat)->clmat->nrows       = ELLPACK(mat)->nrows;
+		ELLPACK(mat)->clmat->nrowsPadded = ELLPACK(mat)->nrowsPadded;
+		ELLPACK(mat)->clmat->maxRowLen	 = ELLPACK(mat)->maxRowLen;
+
+		CL_copyHostToDevice(ELLPACK(mat)->clmat->rowLen, ELLPACK(mat)->rowLen, ELLPACK(mat)->nrows*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(ELLPACK(mat)->clmat->col,    ELLPACK(mat)->col,    ELLPACK(mat)->nEnts*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(ELLPACK(mat)->clmat->val,    ELLPACK(mat)->val,    ELLPACK(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+
+		cl_int err;
+		cl_uint numKernels;
+		cl_program program = CL_registerProgram("ellpack_clkernel.cl","");
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel = clCreateKernel(program,"ELLPACK_kernel",&err);
+		CL_checkerror(err);
+		
+		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(ghost_cl_midx_t), &(ELLPACK(mat)->clmat->nrows)));
+		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(ghost_cl_midx_t), &(ELLPACK(mat)->clmat->nrowsPadded)));
+		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(ELLPACK(mat)->clmat->rowLen)));
+		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(ELLPACK(mat)->clmat->col)));
+		CL_safecall(clSetKernelArg(mat->clkernel,7,sizeof(cl_mem), &(ELLPACK(mat)->clmat->val)));
+	}
+#else
+	if (mat->traits->flags & GHOST_SPM_DEVICE) {
+		ABORT("Device matrix cannot be created without OpenCL");
+	}
+#endif
 	DEBUG_LOG(1,"Successfully created ELLPACK");
 }
 
@@ -277,11 +326,12 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 	mat_idx_t j,i;
 	ghost_mdat_t tmp; 
 
-#pragma omp parallel for schedule(runtime) private(j,tmp,i)
+#pragma omp parallel for schedule(runtime) private(j,tmp)
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {
 		tmp = 0;
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
-			tmp += ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
+			tmp += ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
+				rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
 		if (options & GHOST_OPTION_AXPY)
 			lhs->val[i] += tmp;
@@ -291,3 +341,14 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 
 }
 
+#ifdef OPENCL
+static void ELLPACK_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
+
+	size_t gSize = (size_t)ELLPACK(mat)->clmat->nrowsPadded;
+	CL_enqueueKernel(mat->clkernel,&gSize,NULL);
+}
+#endif

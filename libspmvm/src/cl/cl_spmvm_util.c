@@ -13,10 +13,6 @@
 
 static cl_command_queue queue;
 static cl_context context;
-static cl_program program;
-static cl_kernel kernel[3];
-static size_t globalSize[3];
-static size_t globalSz;
 
 
 /* -----------------------------------------------------------------------------
@@ -134,16 +130,13 @@ void CL_init()
    Create program inside previously created context (global variable) and 
    build it
    -------------------------------------------------------------------------- */
-cl_program CL_registerProgram(const char *filename, const char *opt)
+cl_program CL_registerProgram(const char *filename, const char *additionalOptions)
 {
 	cl_program program;
 	cl_int err;
 	char *build_log;
 	size_t log_size;
 	cl_device_id deviceID;
-	int size = ghost_getNumberOfRanksOnNode();
-	int rank = ghost_getLocalRank();
-	char hostname[MAXHOSTNAMELEN] = "foobar";
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
@@ -151,6 +144,10 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 	char path[PATH_MAX];
 	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
 
+	char headerPath[PATH_MAX] = HEADERPATH;
+	size_t optionsLen = strlen(headerPath)+4+strlen(additionalOptions)+strlen(GHOST_CLFLAGS);
+	char *options = (char *)malloc(optionsLen);
+	snprintf(options,optionsLen,"-I%s %s %s",headerPath, additionalOptions, GHOST_CLFLAGS);
 
 	FILE *fp = fopen(path, "r");
 	if (!fp)
@@ -168,10 +165,9 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 			NULL,&err);
 	CL_checkerror(err);
 
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Building program with \"%s\""
-			"and creating kernels\n", rank, size-1, hostname,opt);
+	DEBUG_LOG(1,"Building program with \"%s\" and creating kernels",options);
 
-	CL_safecall(clBuildProgram(program,1,&deviceID,opt,NULL,NULL));
+	CL_safecall(clBuildProgram(program,1,&deviceID,options,NULL,NULL));
 
 	IF_DEBUG(1) {
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
@@ -179,7 +175,7 @@ cl_program CL_registerProgram(const char *filename, const char *opt)
 		build_log = (char *)allocateMemory(log_size+1,"build log");
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-		printf("Build log: %s",build_log);
+		DEBUG_LOG(1,"Build log: %s",build_log);
 	}
 
 	return program;
@@ -310,91 +306,16 @@ void CL_freeDeviceMemory(cl_mem mem)
 		CL_safecall(clReleaseMemObject(mem));
 }
 
-void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions) 
+void CL_enqueueKernel(cl_kernel kernel, size_t *gSize, size_t *lSize)
 {
-	cl_int err;
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,gSize,lSize,0,NULL,NULL));
 
-	if (mat == NULL)
-		return;
-
-
-	char kernelName[50] = "";
-	strcat(kernelName, format==GHOST_SPM_GPUFORMAT_ELR?"ELR":"pJDS");
-	char Tstr[2] = "";
-	snprintf(Tstr,2,"%d",T);
-
-	strcat(kernelName,Tstr);
-	strcat(kernelName,"kernel");
-	if (kernelIdx == GHOST_REMOTE_MAT_IDX || (spmvmOptions & GHOST_OPTION_AXPY))
-		strcat(kernelName,"Add");
-
-
-	kernel[kernelIdx] = clCreateKernel(program,kernelName,&err);
-
-	CL_checkerror(err);
-
-	if (format == GHOST_SPM_GPUFORMAT_ELR) {
-		CL_ELR_TYPE *matrix = (CL_ELR_TYPE *)mat;
-		globalSize[kernelIdx] = (size_t)matrix->padding*T;
-
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   
-					&matrix->nrows));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(int),   
-					&matrix->padding));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),
-					&matrix->val));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),
-					&matrix->col));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
-					&matrix->rowLen));
-		globalSz = matrix->padding;
-	} else {
-		CL_PJDS_TYPE *matrix = (CL_PJDS_TYPE *)mat;
-		globalSize[kernelIdx] = (size_t)matrix->padding*T;
-
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],2,sizeof(int),   
-					&matrix->nrows));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],3,sizeof(cl_mem),
-					&matrix->val));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],4,sizeof(cl_mem),
-					&matrix->col));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],5,sizeof(cl_mem),
-					&matrix->rowLen));
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],6,sizeof(cl_mem),
-					&matrix->colStart));
-		globalSz = matrix->padding;
-	}
-	if (T>1) {
-		CL_safecall(clSetKernelArg(kernel[kernelIdx],7,	sizeof(ghost_mdat_t)*
-					CL_getLocalSize(kernel[kernelIdx]),NULL));
-	}
 }
 
-void CL_enqueueKernelWithSize(cl_kernel kernel,size_t size)
+void CL_barrier()
 {
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&size,NULL,0,NULL
-				,NULL));
-
-}
-void CL_enqueueKernel(cl_kernel kernel)
-{
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,&globalSz,NULL,0,NULL
-				,NULL));
-}
-
-void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type) 
-{
-	CL_safecall(clSetKernelArg(kernel[type],0,sizeof(cl_mem),&resVec));
-	CL_safecall(clSetKernelArg(kernel[type],1,sizeof(cl_mem),&rhsVec));
-
-	int me = ghost_getRank();
-
-//	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
-	IF_DEBUG(1) printf("PE%d: Enqueueing SpMVM kernel with a global size of %lu\n",me,globalSize[type]);
-
-
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel[type],1,NULL,
-				&globalSize[type],NULL,0,NULL,NULL));
+	CL_safecall(clEnqueueBarrier(queue));
+	CL_safecall(clFinish(queue));
 }
 
 void CL_finish(int spmvmOptions) 

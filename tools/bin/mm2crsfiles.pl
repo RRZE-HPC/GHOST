@@ -19,8 +19,6 @@ open COLFILE,">$col_filename";
 open VALFILE,">$val_filename";
 
 
-
-
 my $prevRow = 1;
 my $rowPtr = 1;
 my $rowLen = 0;

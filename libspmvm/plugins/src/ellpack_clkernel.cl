@@ -25,15 +25,22 @@ typedef float cl_ghost_mdat_t;
 #endif
 #endif
 
-kernel void CRS_kernel (global cl_ghost_mdat_t *lhs, global cl_ghost_mdat_t *rhs, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global cl_ghost_mdat_t *val) 
-{
+kernel void ELLPACK_kernel(global cl_ghost_mdat_t *lhs, global cl_ghost_mdat_t *rhs, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global cl_ghost_mdat_t *val)
+{ 
 	unsigned int i = get_global_id(0);
-	if (i < nrows) {
-		cl_ghost_mdat_t svalue = 0.0;
-		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j){
-			svalue += val[j] * rhs[col[j]]; 
+
+	if (i < nRows) {
+		cl_ghost_mdat_t tmp = 0.0, value = 0.0; 
+		unsigned int max = rowLen[i]; 
+		int colidx;
+
+		for(unsigned int j=0; j<max; ++j){ 
+			value = val[i + j*nRowsPadded]; 
+			colidx = col[i + j*nRowsPadded]; 
+			tmp += value * rhs[colidx]; 
 		}
-			lhs[i] += svalue;
-	}
+			
+		lhs[i] += tmp;
+	}	
 }
 

@@ -19,8 +19,8 @@ static char * BJDS_formatName(ghost_mat_t *mat);
 static mat_idx_t BJDS_rowLen (ghost_mat_t *mat, mat_idx_t i);
 static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t traits);
-static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_mtraits_t traits);
+static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void BJDS_fromBin(ghost_mat_t *mat, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef SSE
@@ -33,35 +33,46 @@ static void BJDS_kernel_AVX (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int
 static void BJDS_kernel_MIC (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
+#ifdef OPENCL
+static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+#endif
 
 //static ghost_mat_t *thisMat;
 //static BJDS_TYPE *BJDS(mat);
 
-void init(ghost_mat_t **mat)
+ghost_mat_t * init(ghost_mtraits_t * traits)
 {
+	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	mat->traits = traits;
 	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
 
-	(*mat)->fromBin = &BJDS_fromBin;
-	(*mat)->printInfo = &BJDS_printInfo;
-	(*mat)->formatName = &BJDS_formatName;
-	(*mat)->rowLen     = &BJDS_rowLen;
-	(*mat)->entry      = &BJDS_entry;
-	(*mat)->byteSize   = &BJDS_byteSize;
-	(*mat)->kernel     = &BJDS_kernel_plain;
+	mat->fromBin = &BJDS_fromBin;
+	mat->printInfo = &BJDS_printInfo;
+	mat->formatName = &BJDS_formatName;
+	mat->rowLen     = &BJDS_rowLen;
+	mat->entry      = &BJDS_entry;
+	mat->byteSize   = &BJDS_byteSize;
+	mat->kernel     = &BJDS_kernel_plain;
 #ifdef SSE
-	(*mat)->kernel   = &BJDS_kernel_SSE;
+	mat->kernel   = &BJDS_kernel_SSE;
 #endif
 #ifdef AVX
-	(*mat)->kernel   = &BJDS_kernel_AVX;
+	mat->kernel   = &BJDS_kernel_AVX;
 #endif
 #ifdef MIC
-	(*mat)->kernel   = &BJDS_kernel_MIC_16;
+	mat->kernel   = &BJDS_kernel_MIC_16;
 	UNUSED(&BJDS_kernel_MIC);
 #endif
-	(*mat)->nnz      = &BJDS_nnz;
-	(*mat)->nrows    = &BJDS_nrows;
-	(*mat)->ncols    = &BJDS_ncols;
-	(*mat)->destroy  = &BJDS_free;
+#ifdef OPENCL
+	if (!(traits->flags & GHOST_SPM_HOST))
+		mat->kernel   = &BJDS_kernel_CL;
+#endif
+	mat->nnz      = &BJDS_nnz;
+	mat->nrows    = &BJDS_nrows;
+	mat->ncols    = &BJDS_ncols;
+	mat->destroy  = &BJDS_free;
+
+	return mat;
 }
 
 static mat_nnz_t BJDS_nnz(ghost_mat_t *mat)
@@ -82,10 +93,10 @@ static void BJDS_printInfo(ghost_mat_t *mat)
 {
 	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
 	ghost_printLine("Row length oscillation nu",NULL,"%f",BJDS(mat)->nu);
-	if (mat->trait.flags & GHOST_SPM_SORTED) {
+	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		ghost_printLine("Sorted",NULL,"yes");
-		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->trait.aux));
-		ghost_printLine("Permuted columns",NULL,"%s",mat->trait.flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
+		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->traits->aux));
+		ghost_printLine("Permuted columns",NULL,"%s",mat->traits->flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
 	} else {
 		ghost_printLine("Sorted",NULL,"no");
 	}
@@ -99,7 +110,7 @@ static char * BJDS_formatName(ghost_mat_t *mat)
 
 static mat_idx_t BJDS_rowLen (ghost_mat_t *mat, mat_idx_t i)
 {
-	if (mat->trait.flags & GHOST_SPM_SORTED)
+	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
 
 	return BJDS(mat)->rowLen[i];
@@ -109,9 +120,9 @@ static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 {
 	mat_idx_t e;
 
-	if (mat->trait.flags & GHOST_SPM_SORTED)
+	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
-	if (mat->trait.flags & GHOST_SPM_PERMUTECOLIDX)
+	if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)
 		j = mat->rowPerm[j];
 
 	for (e=BJDS(mat)->chunkStart[i/BJDS_LEN]+i%BJDS_LEN; 
@@ -129,21 +140,21 @@ static size_t BJDS_byteSize (ghost_mat_t *mat)
 			BJDS(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_mtraits_t traits)
+static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 	// TODO
-	ghost_mat_t *crsMat = ghost_initMatrix("CRS");
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
-	crsMat->fromBin(crsMat,matrixPath,crsTraits);
+	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
+	crsMat->fromBin(crsMat,matrixPath);
 	
-	BJDS_fromCRS(mat,crsMat->data,traits);
+	BJDS_fromCRS(mat,crsMat->data);
 }
 
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
+static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 {
 	DEBUG_LOG(1,"Creating BJDS matrix");
 	mat_idx_t i,j,c;
-	unsigned int flags = trait.flags;
+	unsigned int flags = mat->traits->flags;
 
 	mat_idx_t *rowPerm = NULL;
 	mat_idx_t *invRowPerm = NULL;
@@ -152,28 +163,15 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
 
 	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
 	mat->data = BJDS(mat);
-	mat->trait = trait;
-//	mat->nrows = cr->nrows;
-//	mat->ncols = cr->ncols;
-//	mat->nnz = cr->nEnts;
 	mat->rowPerm = rowPerm;
 	mat->invRowPerm = invRowPerm;
-	/**thisMat = (ghost_mat_t)MATRIX_INIT(
-	  .trait = trait, 
-	  .nrows = cr->nrows, 
-	  .ncols = cr->ncols, 
-	  .nnz = cr->nEnts,
-	  .rowPerm = rowPerm,
-	  .invRowPerm = invRowPerm,	   
-	  .data = BJDS(mat));
-	 */
-	if (trait.flags & GHOST_SPM_SORTED) {
+	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"BJDS(mat)->rowPerm");
 		invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"BJDS(mat)->invRowPerm");
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
-		unsigned int sortBlock = *(unsigned int *)(trait.aux);
+		unsigned int sortBlock = *(unsigned int *)(mat->traits->aux);
 		if (sortBlock == 0)
 			sortBlock = cr->nrows;
 
@@ -324,6 +322,47 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr, ghost_mtraits_t trait)
 			}
 		}
 	}
+#ifdef OPENCL
+	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
+		DEBUG_LOG(1,"Creating matrix on OpenCL device");
+		BJDS(mat)->clmat = (CL_BJDS_TYPE *)allocateMemory(sizeof(CL_BJDS_TYPE),"CL_CRS");
+		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
+		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
+		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
+		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
+	
+		BJDS(mat)->clmat->nrows = BJDS(mat)->nrows;
+		BJDS(mat)->clmat->nrowsPadded = BJDS(mat)->nrowsPadded;
+		CL_copyHostToDevice(BJDS(mat)->clmat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
+
+		cl_int err;
+		cl_uint numKernels;
+		cl_program program = CL_registerProgram("bjds_clkernel.cl","");
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel = clCreateKernel(program,"BJDS_kernel",&err);
+		
+	//	printf("### %lu\n",CL_getLocalSize(mat->clkernel));
+		CL_checkerror(err);
+		
+		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrows)));
+		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrowsPadded)));
+		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(BJDS(mat)->clmat->rowLen)));
+		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(BJDS(mat)->clmat->col)));
+		CL_safecall(clSetKernelArg(mat->clkernel,7,sizeof(cl_mem), &(BJDS(mat)->clmat->val)));
+		CL_safecall(clSetKernelArg(mat->clkernel,8,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkStart)));
+		CL_safecall(clSetKernelArg(mat->clkernel,9,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkLen)));
+	}
+#else
+	if (mat->traits->flags & GHOST_SPM_DEVICE) {
+		ABORT("Device matrix cannot be created without OpenCL");
+	}
+#endif
 
 
 	DEBUG_LOG(1,"Successfully created BJDS");
@@ -534,5 +573,19 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],tmp2);
 		}
 	}
+}
+#endif
+
+#ifdef OPENCL
+static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
+
+	size_t gSize = (size_t)BJDS(mat)->clmat->nrowsPadded;
+	size_t lSize = BJDS_LEN;
+
+	CL_enqueueKernel(mat->clkernel,&gSize,&lSize);
 }
 #endif

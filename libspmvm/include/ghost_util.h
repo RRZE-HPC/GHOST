@@ -108,13 +108,13 @@ void CL_vecscal(cl_mem a, ghost_mdat_t s, int nrows);
 void CL_axpy(cl_mem a, cl_mem b, ghost_mdat_t s, int nrows);
 void CL_dotprod(cl_mem a, cl_mem b, ghost_mdat_t *out, int nrows);
 //void CL_setup_communication(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int);
-GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
-void CL_enqueueKernel(cl_kernel kernel);
-void CL_enqueueKernelWithSize(cl_kernel kernel,size_t size);
+//GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
+void CL_enqueueKernel(cl_kernel kernel, size_t *gSize, size_t *lSize);
  
 size_t CL_getLocalSize(cl_kernel kernel);
 CL_DEVICE_INFO * CL_getDeviceInfo();
 void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
+void CL_barrier();
 #endif
 
 

@@ -161,7 +161,8 @@ void ghost_freeVector( ghost_vec_t* const vec )
 		free(vec->val);
 //		freeMemory( (size_t)(vec->nrows*sizeof(ghost_mdat_t)), "vec->val",  vec->val );
 #ifdef OPENCL
-		CL_freeDeviceMemory( vec->CL_val_gpu );
+		if (vec->flags & GHOST_VEC_DEVICE)
+			CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
 		free( vec );
 	}

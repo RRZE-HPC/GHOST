@@ -212,7 +212,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 			for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.;
 #endif
 		}
-		if (matrix->trait.flags & GHOST_SPM_PERMUTECOLIDX)
+		if (matrix->traits->flags & GHOST_SPM_PERMUTECOLIDX)
 			ghost_permuteVector(val,matrix->rowPerm,nrows);
 
 	} 
@@ -266,9 +266,10 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 
 	if (!(flags & GHOST_VEC_HOST)) {
 #ifdef OPENCL
+		DEBUG_LOG(1,"Creating vector on OpenCL device");
 		int flag;
 		if (flags & GHOST_VEC_LHS) {
-			if (options & GHOST_OPTION_AXPY & flags & GHOST_VEC_RHS)
+			if (options & GHOST_OPTION_AXPY)
 				flag = CL_MEM_READ_WRITE;
 			else
 				flag = CL_MEM_WRITE_ONLY;
@@ -281,14 +282,15 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 		CL_uploadVector(vec);
 #endif
 
+	} else {
+		DEBUG_LOG(1,"Host-only vector created successfully");
 	}
-	DEBUG_LOG(1,"Host-only vector created successfully");
 
 	return vec;
 
 }
 
-ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int setup_flags, void *deviceFormats) 
+ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int setup_flags) 
 {
 	DEBUG_LOG(1,"Creating setup");
 	ghost_setup_t *setup;
@@ -336,10 +338,7 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 
 	if (setup_flags & GHOST_SETUP_DISTRIBUTED)
 	{ // distributed matrix
-#ifndef MPI
-		UNUSED(deviceFormats);
-		ABORT("Creating a distributed matrix without MPI is not possible");
-#else
+#ifdef MPI
 		if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) {
 			if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) {
 				if (nTraits != 3) {
@@ -364,14 +363,23 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 		setup->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
 		setup->solvers[GHOST_MODE_GOODFAITH] = &hybrid_kernel_II;
 		setup->solvers[GHOST_MODE_TASKMODE] = &hybrid_kernel_III;
+#else
+		ABORT("Creating a distributed matrix without MPI is not possible");
 #endif // MPI
-	} else 
+	} 
+	else 
 	{ // global matrix
 		if (nTraits != 1)
 			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
 		UNUSED(cr); // TODO
-		setup->fullMatrix = ghost_initMatrix(traits[0].format);
-		setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath,traits[0]);
+		setup->fullMatrix = ghost_initMatrix(&traits[0]);
+
+		if (isMMfile(matrixPath))
+			setup->fullMatrix->fromMM(setup->fullMatrix,matrixPath);
+		else
+			setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath);
+
+
 
 		//	setup->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
@@ -386,27 +394,26 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 		setup->solvers[GHOST_MODE_TASKMODE] = NULL;
 	}
 
-/*#ifdef OPENCL
-	if (!(flags & GHOST_SPM_HOSTONLY))
-	{
-		DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
-	} else if (deviceFormats == NULL) 
-	{
-		ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
-	} else 
-	{
-		CL_uploadCRS ( mat, (GHOST_SPM_GPUFORMATS *)deviceFormats, options);
-	}
+	/*#ifdef OPENCL
+	  if (!(flags & GHOST_SPM_HOSTONLY))
+	  {
+	  DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
+	  } else if (deviceFormats == NULL) 
+	  {
+	  ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
+	  } else 
+	  {
+	  CL_uploadCRS ( mat, (GHOST_SPM_GPUFORMATS *)deviceFormats, options);
+	  }
 #else*/
-	UNUSED(deviceFormats);
-//#endif
+	//#endif
 	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->ncols,setup->nrows,setup->nnz);
 
 	DEBUG_LOG(1,"Setup created successfully");
 	return setup;
 }
 
-ghost_mat_t * ghost_initMatrix(const char *format)
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
 	char pluginPath[PATH_MAX];
 	DIR * pluginDir = opendir(PLUGINPATH);
@@ -415,7 +422,7 @@ ghost_mat_t * ghost_initMatrix(const char *format)
 	int found = 0;
 
 
-	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,format);
+	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
 	if (pluginDir) {
 		while (0 != (dirEntry = readdir(pluginDir))) {
 			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
@@ -428,7 +435,7 @@ ghost_mat_t * ghost_initMatrix(const char *format)
 
 			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
 			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
-			if (!strcmp(format,myPlugin.formatID)) {
+			if (!strcasecmp(traits->format,myPlugin.formatID)) {
 				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
 				found = 1;
 				break;
@@ -442,16 +449,14 @@ ghost_mat_t * ghost_initMatrix(const char *format)
 	} else {
 		ABORT("The plugin directory does not exist");
 	}
-	if (!found) ABORT("There is no such plugin providing %s",format);
+	if (!found) ABORT("There is no such plugin providing %s",traits->format);
 	myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
 	myPlugin.name = (char *)dlsym(myPlugin.so,"name");
 	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
 	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-	//ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
-	ghost_mat_t *mat;// = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
-	myPlugin.init(&mat);
-	return mat;
+	
+	return myPlugin.init(traits);
 }
 
 
@@ -472,6 +477,9 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 #ifdef MPI
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
+#ifdef OPENCL
+		CL_barrier();
+#endif
 
 	for( it = 0; it < nIter; it++ ) {
 		time = wctime();
@@ -479,6 +487,9 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 
 #ifdef MPI
 		MPI_Barrier(MPI_COMM_WORLD);
+#endif
+#ifdef OPENCL
+		CL_barrier();
 #endif
 		time = wctime()-time;
 		time = time<oldtime?time:oldtime;
@@ -502,10 +513,23 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 
 void ghost_freeSetup(ghost_setup_t *setup)
 {
-	setup->fullMatrix->destroy(setup->fullMatrix);
-	setup->localMatrix->destroy(setup->localMatrix);
-	setup->remoteMatrix->destroy(setup->remoteMatrix);
+/*	if (setup) {
+		if (setup->fullMatrix && setup->fullMatrix->destroy)
+			setup->fullMatrix->destroy(setup->fullMatrix);
 
-	free(setup->solvers);
-	ghost_freeCommunicator(setup->communicator);
+		if (setup->localMatrix && setup->localMatrix->destroy)
+			setup->localMatrix->destroy(setup->localMatrix);
+
+		if (setup->remoteMatrix && setup->remoteMatrix->destroy)
+			setup->remoteMatrix->destroy(setup->remoteMatrix);
+
+		free(setup->solvers);
+
+		if (setup->communicator)
+			ghost_freeCommunicator(setup->communicator);
+
+		free(setup);
+	}*/
+	UNUSED(setup);
+	//TODO
 }

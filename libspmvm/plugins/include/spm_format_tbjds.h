@@ -19,6 +19,6 @@ typedef struct
 } 
 TBJDS_TYPE;
 
-void init(ghost_mat_t **);
+ghost_mat_t * init(ghost_mtraits_t *);
 
 #endif

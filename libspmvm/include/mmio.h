@@ -39,7 +39,7 @@ int mm_write_mtx_crd(char fname[], int M, int N, int nz, int II[], int J[],
 #define mm_is_array(typecode)	((typecode)[1]=='A')
 
 #define mm_is_complex(typecode)	((typecode)[2]=='C')
-#define mm_is_ghost_mdat_t(typecode)		((typecode)[2]=='R')
+#define mm_is_real(typecode)		((typecode)[2]=='R')
 #define mm_is_pattern(typecode)	((typecode)[2]=='P')
 #define mm_is_integer(typecode) ((typecode)[2]=='I')
 
