@@ -1,0 +1,4 @@
+syn keyword CTagsSubroutine imtql1 imtql1f imtql2 imtql2f
+syn keyword CTagsLabel 10 215 20 210 200 300 270 240 290 120 180 260 110 280 100 1000 230 250 1001 105
+syn keyword CTagsFunction pythag pythagf
+
