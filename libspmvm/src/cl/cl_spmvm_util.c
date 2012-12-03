@@ -145,9 +145,9 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
 
 	char headerPath[PATH_MAX] = HEADERPATH;
-	size_t optionsLen = strlen(headerPath)+4+strlen(additionalOptions)+strlen(GHOST_CLFLAGS);
+	size_t optionsLen = strlen(headerPath)+3+strlen(additionalOptions);
 	char *options = (char *)malloc(optionsLen);
-	snprintf(options,optionsLen,"-I%s %s %s",headerPath, additionalOptions, GHOST_CLFLAGS);
+	snprintf(options,optionsLen,"-I%s %s",headerPath, additionalOptions);
 
 	FILE *fp = fopen(path, "r");
 	if (!fp)

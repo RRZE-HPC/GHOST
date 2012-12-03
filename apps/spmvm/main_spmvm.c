@@ -59,7 +59,7 @@ int main( int argc, char* argv[] )
 		trait.aux = &sortBlock;
 
 	} else {
-		trait.format = "BJDS";
+		trait.format = "CRS";
 		trait.flags = GHOST_SPM_DEFAULT;
 		trait.aux = NULL;
 	}

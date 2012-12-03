@@ -10,37 +10,33 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#ifdef DOUBLE
-#ifdef COMPLEX
-typedef double2 cl_ghost_mdat_t;
-#else
-typedef double cl_ghost_mdat_t;
-#endif
-#endif
-#ifdef SINGLE
-#ifdef COMPLEX
-typedef float2 cl_ghost_mdat_t;
-#else
-typedef float cl_ghost_mdat_t;
-#endif
-#endif
+#include <ghost_types.h>
+#include <ghost_constants.h>
 
-kernel void ELLPACK_kernel(global cl_ghost_mdat_t *lhs, global cl_ghost_mdat_t *rhs, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global cl_ghost_mdat_t *val)
+kernel void ELLPACK_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val)
 { 
 	unsigned int i = get_global_id(0);
 
 	if (i < nRows) {
-		cl_ghost_mdat_t tmp = 0.0, value = 0.0; 
+		ghost_cl_mdat_t tmp = 0.0, value = 0.0, rhs = 0.0; 
 		unsigned int max = rowLen[i]; 
 		int colidx;
 
 		for(unsigned int j=0; j<max; ++j){ 
 			value = val[i + j*nRowsPadded]; 
-			colidx = col[i + j*nRowsPadded]; 
-			tmp += value * rhs[colidx]; 
+			colidx = col[i + j*nRowsPadded];
+			rhs = rhsVec[colidx];
+#ifdef GHOST_MAT_COMPLEX
+			tmp.s0 += (value.s0 * rhs.s0 - value.s1 * rhs.s1);
+			tmp.s1 += (value.s0 * rhs.s1 + value.s1 * rhs.s0);
+#else
+			tmp += value*rhs;
+#endif
 		}
-			
-		lhs[i] += tmp;
+		if (options & GHOST_OPTION_AXPY)
+			lhs[i] += tmp;
+		else 
+			lhs[i] = tmp;
 	}	
 }
 

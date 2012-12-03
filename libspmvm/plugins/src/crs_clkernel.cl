@@ -10,30 +10,29 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#ifdef DOUBLE
-#ifdef COMPLEX
-typedef double2 cl_ghost_mdat_t;
-#else
-typedef double cl_ghost_mdat_t;
-#endif
-#endif
-#ifdef SINGLE
-#ifdef COMPLEX
-typedef float2 cl_ghost_mdat_t;
-#else
-typedef float cl_ghost_mdat_t;
-#endif
-#endif
+#include <ghost_types.h>
+#include <ghost_constants.h>
 
-kernel void CRS_kernel (global cl_ghost_mdat_t *lhs, global cl_ghost_mdat_t *rhs, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global cl_ghost_mdat_t *val) 
+kernel void CRS_kernel (global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global ghost_cl_mdat_t *val) 
 {
 	unsigned int i = get_global_id(0);
 	if (i < nrows) {
-		cl_ghost_mdat_t svalue = 0.0;
-		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j){
-			svalue += val[j] * rhs[col[j]]; 
+		ghost_cl_mdat_t tmp = 0.0, rhs = 0.0;
+		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j) {
+
+			rhs = rhsVec[col[j]];
+
+#ifdef GHOST_MAT_COMPLEX
+			tmp.s0 += (val[j].s0 * rhs.s0 - val[j].s1 * rhs.s1);
+			tmp.s1 += (val[j].s0 * rhs.s1 + val[j].s1 * rhs.s0);
+#else
+			tmp += val[j]*rhs;
+#endif
 		}
-			lhs[i] += svalue;
+		if (options & GHOST_OPTION_AXPY)
+			lhs[i] += tmp;
+		else 
+			lhs[i] = tmp;
 	}
 }
 

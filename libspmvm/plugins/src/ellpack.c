@@ -117,7 +117,7 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 	// TODO
 
-	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromBin(crsMat,matrixPath);
 

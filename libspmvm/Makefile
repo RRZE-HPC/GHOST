@@ -6,7 +6,7 @@ include include_$(strip $(COMPILER)).mk
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/ ./src/spm_formats/ ./plugins/src/
 OBJDIR     = ./obj
 PLUGINDIR  = ./plugins
-TYPES_H    = ./include/ghost_types.h
+TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
 IPATH     += -I./include/ -I./plugins/include/
 
@@ -58,15 +58,15 @@ TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
 endif
 
 ifeq ($(strip $(VECDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_VEC__SP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
 else ifeq ($(strip $(VECDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_VEC__DP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
 else ifeq ($(strip $(VECDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_VEC__SP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC__COMPLEX \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
 else ifeq ($(strip $(VECDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_VEC__DP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC__COMPLEX \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
+TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
 endif
 
 ifeq ($(strip $(LIBTYPE)),static)
@@ -108,8 +108,8 @@ all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBSPMVM) $(PLUGINS)
 
 $(TYPES_H):  
 	@echo "==> Generate types header"
-	@echo "#ifndef __GHOST_TYPES_H__" > $(TYPES_H)
-	@echo -e "#define __GHOST_TYPES_H__\n" >> $(TYPES_H)
+	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
+	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
 	@echo -e $(TYPES) >> $(TYPES_H)
 	@echo -e "\n#endif" >> $(TYPES_H)
 

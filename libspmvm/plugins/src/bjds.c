@@ -142,8 +142,7 @@ static size_t BJDS_byteSize (ghost_mat_t *mat)
 
 static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
-	// TODO
-	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_DEFAULT,NULL};
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromBin(crsMat,matrixPath);
 	
@@ -339,10 +338,12 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_mdat_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
+		char options[32];
+		snprintf(options,32,"-DBJDS_LEN=%d",BJDS_LEN);
 
 		cl_int err;
 		cl_uint numKernels;
-		cl_program program = CL_registerProgram("bjds_clkernel.cl","");
+		cl_program program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel = clCreateKernel(program,"BJDS_kernel",&err);
