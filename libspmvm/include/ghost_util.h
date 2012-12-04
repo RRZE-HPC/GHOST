@@ -62,16 +62,16 @@
 #define CL_safecall(call) {\
   cl_int clerr = call ;\
   if( CL_SUCCESS != clerr ){\
-    fprintf(stderr, "OpenCL error at %s:%d, %d\n",\
-      __FILE__, __LINE__, clerr);\
+    fprintf(stderr, "OpenCL error at %s:%d, %s\n",\
+      __FILE__, __LINE__, CL_errorString(clerr));\
     fflush(stderr);\
   }\
   }
 
-#define CL_checkerror(err) do{\
-  if( CL_SUCCESS != err ){\
-    fprintf(stdout, "OpenCL error at %s:%d, %d\n",\
-      __FILE__, __LINE__, err);\
+#define CL_checkerror(clerr) do{\
+  if( CL_SUCCESS != clerr ){\
+    fprintf(stdout, "OpenCL error at %s:%d, %s\n",\
+      __FILE__, __LINE__, CL_errorString(clerr));\
     fflush(stdout);\
   }\
   } while(0)
@@ -109,7 +109,8 @@ void CL_axpy(cl_mem a, cl_mem b, ghost_mdat_t s, int nrows);
 void CL_dotprod(cl_mem a, cl_mem b, ghost_mdat_t *out, int nrows);
 //void CL_setup_communication(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int);
 //GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
-void CL_enqueueKernel(cl_kernel kernel, size_t *gSize, size_t *lSize);
+void CL_enqueueKernel(cl_kernel kernel, cl_uint dim, size_t *gSize, size_t *lSize);
+const char * CL_errorString(cl_int err);
  
 size_t CL_getLocalSize(cl_kernel kernel);
 CL_DEVICE_INFO * CL_getDeviceInfo();

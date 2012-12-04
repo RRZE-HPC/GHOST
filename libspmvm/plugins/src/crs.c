@@ -522,6 +522,6 @@ static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rh
 
 	size_t gSize = (size_t)CR(mat)->clmat->nrows;
 
-	CL_enqueueKernel(mat->clkernel,&gSize,NULL);
+	CL_enqueueKernel(mat->clkernel,1,&gSize,NULL);
 }
 #endif

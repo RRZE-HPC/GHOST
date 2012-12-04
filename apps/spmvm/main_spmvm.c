@@ -59,9 +59,10 @@ int main( int argc, char* argv[] )
 		trait.aux = &sortBlock;
 
 	} else {
-		trait.format = "CRS";
+		unsigned int T = 2;
+		trait.format = "ELLPACK";
 		trait.flags = GHOST_SPM_DEFAULT;
-		trait.aux = NULL;
+		trait.aux = &T;
 	}
 	ghost_mtraits_t traits[3] = {trait,trait,trait};
 

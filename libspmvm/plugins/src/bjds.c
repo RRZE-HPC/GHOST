@@ -587,6 +587,6 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	size_t gSize = (size_t)BJDS(mat)->clmat->nrowsPadded;
 	size_t lSize = BJDS_LEN;
 
-	CL_enqueueKernel(mat->clkernel,&gSize,&lSize);
+	CL_enqueueKernel(mat->clkernel,1,&gSize,&lSize);
 }
 #endif

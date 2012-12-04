@@ -31,62 +31,51 @@ void CL_init()
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
 	int rank = ghost_getLocalRank();
-	int size = ghost_getNumberOfRanksOnNode();
-	char hostname[MAXHOSTNAMELEN] = "foobar";
-	cl_uint numDevices;
+	cl_uint numDevices = 0;
 	cl_device_id *deviceIDs;
 
 
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
+	DEBUG_LOG(1,"There are %u OpenCL platforms",numPlatforms);
 	platformIDs = (cl_platform_id *)allocateMemory(
 			sizeof(cl_platform_id)*numPlatforms,"platformIDs");
 	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, NULL));
 
 	for (platform=0; platform<numPlatforms; platform++) {
-		CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, 0, NULL,
-					&numDevices));
+		err = clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, 0, NULL,
+				&numDevices);
+		if (err != CL_DEVICE_NOT_FOUND) // not an actual error => no print
+			CL_checkerror(err);
 
 		if (numDevices > 0) { // correct platform has been found
 			break;
 		}
 	}
+	if (numDevices == 0)
+		ABORT("No suitable OpenCL device found.");
 
 	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,
 			"deviceIDs");
 	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, numDevices,
 				deviceIDs, &numDevices));
 
-	IF_DEBUG(1) {
-		if ( 0 == rank ) {
-			printf("## rank %i/%i on %s --\t Platform: %u, "
-					"No. devices of desired type: %u\n", 
-					rank, size-1, hostname, platform, numDevices);
+	DEBUG_LOG(1,"OpenCL platform: %u, no. devices of desired type: %u", platform, numDevices);
 
-			for( device = 0; device < numDevices; ++device) {
-				CL_safecall(clGetDeviceInfo(deviceIDs[device],CL_DEVICE_NAME,
-							sizeof(devicename),devicename,NULL));
-				printf("## rank %i/%i on %s --\t Device %u: %s\n", 
-						rank, size-1, hostname, device, devicename);
-			}
+	IF_DEBUG(1) {
+		for( device = 0; device < numDevices; ++device) {
+			CL_safecall(clGetDeviceInfo(deviceIDs[device],CL_DEVICE_NAME,
+						sizeof(devicename),devicename,NULL));
+			DEBUG_LOG(1,"Device %u: %s", device, devicename);
 		}
 	}
 
 	takedevice = rank%numDevices;
 	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,
 				sizeof(devicename),devicename,NULL));
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Selecting device %d: %s\n", 
-			rank, size-1,hostname, takedevice, devicename);
+	DEBUG_LOG(1,"Selecting device %d: %s", takedevice, devicename);
 
-	size_t maxImgWidth;
-	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_IMAGE2D_MAX_WIDTH,
-				sizeof(maxImgWidth),&maxImgWidth,NULL));
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Max image2d width: %lu\n", 
-			rank, size-1,hostname, maxImgWidth);
-
-
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating context \n", rank,
-			size-1, hostname);
+	DEBUG_LOG(1,"Creating OpenCL context...");
 	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,
 		(cl_context_properties)platformIDs[platform],0};
 	context = clCreateContext(cprops,1,&deviceIDs[takedevice],NULL,NULL,
@@ -94,32 +83,11 @@ void CL_init()
 	CL_checkerror(err);
 
 
-	IF_DEBUG(1) printf("## rank %i/%i on %s --\t Creating command queue\n", 
-			rank, size-1, hostname);
+	DEBUG_LOG(1,"Creating OpenCL command queue...");
 	queue = clCreateCommandQueue(context,deviceIDs[takedevice],
 			CL_QUEUE_PROFILING_ENABLE|CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
 			&err);
 	CL_checkerror(err);
-
-
-#ifdef GHOST_MAT_DP
-#ifdef GHOST_MAT_COMPLEX
-	char opt[] = " -DDOUBLE -DCOMPLEX ";
-#else
-	char opt[] = " -DDOUBLE ";
-#endif
-#endif
-
-#ifdef GHOST_MAT_SP
-#ifdef GHOST_MAT_COMPLEX
-	char opt[] = " -DSINGLE -DCOMPLEX ";
-#else
-	char opt[] = " -DSINGLE ";
-#endif
-#endif
-
-	UNUSED(opt);
-//	program = CL_registerProgram(kernelSource,opt);
 
 
 	free(deviceIDs);
@@ -145,7 +113,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
 
 	char headerPath[PATH_MAX] = HEADERPATH;
-	size_t optionsLen = strlen(headerPath)+3+strlen(additionalOptions);
+	size_t optionsLen = strlen(headerPath)+4+strlen(additionalOptions);
 	char *options = (char *)malloc(optionsLen);
 	snprintf(options,optionsLen,"-I%s %s",headerPath, additionalOptions);
 
@@ -208,22 +176,22 @@ cl_mem CL_allocDeviceMemory( size_t bytesize )
 }
 
 /*cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr )
-{
-	cl_mem mem = NULL;
-	cl_int err;
-	cl_image_format image_format;
+  {
+  cl_mem mem = NULL;
+  cl_int err;
+  cl_image_format image_format;
 
-	image_format.image_channel_order = CL_RG;
-	image_format.image_channel_ghost_mdat_type = CL_FLOAT;
+  image_format.image_channel_order = CL_RG;
+  image_format.image_channel_ghost_mdat_type = CL_FLOAT;
 
-	mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(ghost_mdat_t),1,0,hostPtr,&err);
+  mem = clCreateImage2D(context,CL_MEM_READ_WRITE,&image_format,bytesize/sizeof(ghost_mdat_t),1,0,hostPtr,&err);
 
-printf("image width: %lu\n",bytesize/sizeof(ghost_mdat_t));	
+  printf("image width: %lu\n",bytesize/sizeof(ghost_mdat_t));	
 
-	CL_checkerror(err);
+  CL_checkerror(err);
 
-	return mem;
-}*/
+  return mem;
+  }*/
 
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize)
 {
@@ -306,10 +274,9 @@ void CL_freeDeviceMemory(cl_mem mem)
 		CL_safecall(clReleaseMemObject(mem));
 }
 
-void CL_enqueueKernel(cl_kernel kernel, size_t *gSize, size_t *lSize)
+void CL_enqueueKernel(cl_kernel kernel, cl_uint dim, size_t *gSize, size_t *lSize)
 {
-	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,1,NULL,gSize,lSize,0,NULL,NULL));
-
+	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,dim,NULL,gSize,lSize,0,NULL,NULL));
 }
 
 void CL_barrier()
@@ -322,219 +289,219 @@ void CL_finish(int spmvmOptions)
 {
 	UNUSED(spmvmOptions);
 
-/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+	/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
-	}
-	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) {
+		}
+		if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_LOCAL_MAT_IDX]));
 		CL_safecall(clReleaseKernel(kernel[GHOST_REMOTE_MAT_IDX]));
 
-	}
+		}
 
-	CL_safecall(clReleaseCommandQueue(queue));
-	CL_safecall(clReleaseContext(context));*/
+		CL_safecall(clReleaseCommandQueue(queue));
+		CL_safecall(clReleaseContext(context));*/
 }
 
 /*void CL_uploadCRS(ghost_mat_t *matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
-{
-	
-	if (!(matrix->format & GHOST_SPMFORMAT_DIST_CRS)) {
-		DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
-		return;
-	}
+  {
 
-	CL_createMatrix(matrix,matrixFormats,spmvmOptions);
+  if (!(matrix->format & GHOST_SPMFORMAT_DIST_CRS)) {
+  DEBUG_LOG(0,"Device matrix can only be created from a distributed CRS host matrix.");
+  return;
+  }
 
-	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		CL_bindMatrixToKernel(gpum->fullMatrix,gpum->fullFormat,
-				matrixFormats->T[GHOST_FULL_MAT_IDX],GHOST_FULL_MAT_IDX, spmvmOptions);
-	}
+  CL_createMatrix(matrix,matrixFormats,spmvmOptions);
 
-	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		CL_bindMatrixToKernel(gpum->localMatrix,gpum->localFormat,
-				matrixFormats->T[GHOST_LOCAL_MAT_IDX],GHOST_LOCAL_MAT_IDX, spmvmOptions);
-		CL_bindMatrixToKernel(gpum->remoteMatrix,gpum->remoteFormat,
-				matrixFormats->T[GHOST_REMOTE_MAT_IDX],GHOST_REMOTE_MAT_IDX, spmvmOptions);
-	}
+  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+  CL_bindMatrixToKernel(gpum->fullMatrix,gpum->fullFormat,
+  matrixFormats->T[GHOST_FULL_MAT_IDX],GHOST_FULL_MAT_IDX, spmvmOptions);
+  }
 
-	return gpum;
+  if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+  CL_bindMatrixToKernel(gpum->localMatrix,gpum->localFormat,
+  matrixFormats->T[GHOST_LOCAL_MAT_IDX],GHOST_LOCAL_MAT_IDX, spmvmOptions);
+  CL_bindMatrixToKernel(gpum->remoteMatrix,gpum->remoteFormat,
+  matrixFormats->T[GHOST_REMOTE_MAT_IDX],GHOST_REMOTE_MAT_IDX, spmvmOptions);
+  }
 
-}*/
+  return gpum;
+
+  }*/
 
 /*void CL_createMatrix(ghost_mat_t* matrix, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions)
-{
-	
-	ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
-	GPUghost_mat_t * gpum = (GPUghost_mat_t*) allocateMemory( sizeof( GPUghost_mat_t ), "gpum" );
+  {
 
-	int me = ghost_getRank();
+  ghost_comm_t *lcrp = (ghost_comm_t *)matrix->matrix;
+  GPUghost_mat_t * gpum = (GPUghost_mat_t*) allocateMemory( sizeof( GPUghost_mat_t ), "gpum" );
 
-	ELR_TYPE* elr 	= NULL;
-	CL_ELR_TYPE* celr  = NULL;
-	PJDS_TYPE* pjds	= NULL;
-	CL_PJDS_TYPE* cpjds  = NULL;
-	ELR_TYPE* lelr	= NULL;
-	ELR_TYPE* relr	= NULL;
-	CL_ELR_TYPE* lcelr = NULL;
-	CL_ELR_TYPE* rcelr = NULL;
-	PJDS_TYPE* lpjds= NULL;
-	PJDS_TYPE* rpjds= NULL;
-	CL_PJDS_TYPE* rcpjds= NULL;
-	CL_PJDS_TYPE* lcpjds = NULL;
+  int me = ghost_getRank();
 
-
-	DEBUG_LOG(1,"Creating device matrices");
+  ELR_TYPE* elr 	= NULL;
+  CL_ELR_TYPE* celr  = NULL;
+  PJDS_TYPE* pjds	= NULL;
+  CL_PJDS_TYPE* cpjds  = NULL;
+  ELR_TYPE* lelr	= NULL;
+  ELR_TYPE* relr	= NULL;
+  CL_ELR_TYPE* lcelr = NULL;
+  CL_ELR_TYPE* rcelr = NULL;
+  PJDS_TYPE* lpjds= NULL;
+  PJDS_TYPE* rpjds= NULL;
+  CL_PJDS_TYPE* rcpjds= NULL;
+  CL_PJDS_TYPE* lcpjds = NULL;
 
 
-	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		gpum->fullT = matrixFormats->T[GHOST_FULL_MAT_IDX];
+  DEBUG_LOG(1,"Creating device matrices");
 
-		switch (matrixFormats->format[0]) {
-			case GHOST_SPM_GPUFORMAT_PJDS:
-				{
-					DEBUG_LOG(1,"FULL pjds");
 
-					pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
-							lcrp->lnrows[me],matrixFormats->T[0] );
-					matrix->fullRowPerm = (int *)allocateMemory(
-							sizeof(int)*lcrp->lnrows[me],"rowPerm");
-					matrix->fullInvRowPerm = (int *)allocateMemory
-						(sizeof(int)*lcrp->lnrows[me],"invRowPerm");
-					memcpy(matrix->fullRowPerm, pjds->rowPerm,
-							lcrp->lnrows[me]*sizeof(int));
-					memcpy(matrix->fullInvRowPerm, pjds->invRowPerm,
-							lcrp->lnrows[me]*sizeof(int));
+  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+  gpum->fullT = matrixFormats->T[GHOST_FULL_MAT_IDX];
 
-					cpjds = CL_initPJDS( pjds );
-					CL_uploadPJDS(cpjds, pjds);
-					gpum->fullMatrix = cpjds;
-					gpum->fullFormat = GHOST_SPM_GPUFORMAT_PJDS;
+  switch (matrixFormats->format[0]) {
+  case GHOST_SPM_GPUFORMAT_PJDS:
+  {
+  DEBUG_LOG(1,"FULL pjds");
 
-					freePJDS( pjds );
-					break;
-				}
-			case GHOST_SPM_GPUFORMAT_ELR:
-				{
+  pjds = CRStoPJDST( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
+  lcrp->lnrows[me],matrixFormats->T[0] );
+  matrix->fullRowPerm = (int *)allocateMemory(
+  sizeof(int)*lcrp->lnrows[me],"rowPerm");
+  matrix->fullInvRowPerm = (int *)allocateMemory
+  (sizeof(int)*lcrp->lnrows[me],"invRowPerm");
+  memcpy(matrix->fullRowPerm, pjds->rowPerm,
+  lcrp->lnrows[me]*sizeof(int));
+  memcpy(matrix->fullInvRowPerm, pjds->invRowPerm,
+  lcrp->lnrows[me]*sizeof(int));
 
-					DEBUG_LOG(1,"FULL elr-%d", matrixFormats->T[0]);
+  cpjds = CL_initPJDS( pjds );
+  CL_uploadPJDS(cpjds, pjds);
+  gpum->fullMatrix = cpjds;
+  gpum->fullFormat = GHOST_SPM_GPUFORMAT_PJDS;
 
-					elr = CRStoELRT( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
-							lcrp->lnrows[me],matrixFormats->T[0] );
-					celr = CL_initELR( elr );
-					CL_uploadELR(celr, elr);
-					gpum->fullMatrix = celr;
-					gpum->fullFormat = GHOST_SPM_GPUFORMAT_ELR;
+  freePJDS( pjds );
+  break;
+  }
+  case GHOST_SPM_GPUFORMAT_ELR:
+  {
 
-					freeELR( elr );
-					break;
-				}
+  DEBUG_LOG(1,"FULL elr-%d", matrixFormats->T[0]);
 
-		}
+  elr = CRStoELRT( lcrp->val, lcrp->col, lcrp->lrow_ptr, 
+  lcrp->lnrows[me],matrixFormats->T[0] );
+  celr = CL_initELR( elr );
+  CL_uploadELR(celr, elr);
+  gpum->fullMatrix = celr;
+  gpum->fullFormat = GHOST_SPM_GPUFORMAT_ELR;
+
+  freeELR( elr );
+  break;
+  }
+
+  }
+
+  }
+
+if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+	gpum->localT = matrixFormats->T[GHOST_LOCAL_MAT_IDX];
+	gpum->remoteT = matrixFormats->T[GHOST_REMOTE_MAT_IDX];
+
+	if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS && 
+			matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS)
+		ABORT("The matrix format must _not_ be pJDS for the "
+				"local and remote part of the matrix.");
+
+	if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) {
+		DEBUG_LOG(1,"LOCAL pjds");
+
+		lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, 
+				lcrp->lnrows[me],matrixFormats->T[1] );
+
+		// allocate space for permutations in lcrp
+		matrix->splitRowPerm = (int *)allocateMemory(
+				sizeof(int)*lcrp->lnrows[me],"rowPerm");
+		matrix->splitInvRowPerm = (int *)allocateMemory(
+				sizeof(int)*lcrp->lnrows[me],"invRowPerm");
+
+		// save permutations from matrix to lcrp
+		memcpy(matrix->splitRowPerm, lpjds->rowPerm, 
+				lcrp->lnrows[me]*sizeof(int));
+		memcpy(matrix->splitInvRowPerm, lpjds->invRowPerm, 
+				lcrp->lnrows[me]*sizeof(int));
+
+		lcpjds = CL_initPJDS( lpjds );
+		CL_uploadPJDS(lcpjds, lpjds);
+		gpum->localMatrix = lcpjds;
+		gpum->localFormat = GHOST_SPM_GPUFORMAT_PJDS;
+
+		freePJDS( lpjds );
+	}
+	if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) {
+		DEBUG_LOG(1,"REMOTE pjds");
+
+		rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, 
+				lcrp->lnrows[me],matrixFormats->T[2] );
+
+		matrix->splitRowPerm = (int *)allocateMemory(
+				sizeof(int)*lcrp->lnrows[me],"rowPerm");
+		matrix->splitInvRowPerm = (int *)allocateMemory(
+				sizeof(int)*lcrp->lnrows[me],"invRowPerm");
+
+		memcpy(matrix->splitRowPerm, rpjds->rowPerm,
+				lcrp->lnrows[me]*sizeof(int));
+		memcpy(matrix->splitInvRowPerm, rpjds->invRowPerm,
+				lcrp->lnrows[me]*sizeof(int));
+
+
+		rcpjds = CL_initPJDS( rpjds );
+		CL_uploadPJDS(rcpjds, rpjds);
+		gpum->remoteMatrix = rcpjds;
+		gpum->remoteFormat = GHOST_SPM_GPUFORMAT_PJDS;
+
+
+		freePJDS( rpjds );
+
 
 	}
+	if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_ELR) {
+		DEBUG_LOG(1,"LOCAL elr");
 
-	if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		gpum->localT = matrixFormats->T[GHOST_LOCAL_MAT_IDX];
-		gpum->remoteT = matrixFormats->T[GHOST_REMOTE_MAT_IDX];
-
-		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS && 
-				matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS)
-			ABORT("The matrix format must _not_ be pJDS for the "
-					"local and remote part of the matrix.");
-
-		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) {
-			DEBUG_LOG(1,"LOCAL pjds");
-
-			lpjds = CRStoPJDST( lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l, 
-					lcrp->lnrows[me],matrixFormats->T[1] );
-
-			// allocate space for permutations in lcrp
-			matrix->splitRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnrows[me],"rowPerm");
-			matrix->splitInvRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnrows[me],"invRowPerm");
-
-			// save permutations from matrix to lcrp
-			memcpy(matrix->splitRowPerm, lpjds->rowPerm, 
-					lcrp->lnrows[me]*sizeof(int));
-			memcpy(matrix->splitInvRowPerm, lpjds->invRowPerm, 
-					lcrp->lnrows[me]*sizeof(int));
-
-			lcpjds = CL_initPJDS( lpjds );
-			CL_uploadPJDS(lcpjds, lpjds);
-			gpum->localMatrix = lcpjds;
-			gpum->localFormat = GHOST_SPM_GPUFORMAT_PJDS;
-
-			freePJDS( lpjds );
+		if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) { // remote pJDS
+			lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
+					lcrp->lnrows[me],gpum->splitInvRowPerm,
+					matrixFormats->T[1]);
+		} else { // remote ELR
+			lelr = CRStoELRT(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
+					lcrp->lnrows[me],matrixFormats->T[1]);
 		}
-		if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) {
-			DEBUG_LOG(1,"REMOTE pjds");
 
-			rpjds = CRStoPJDST( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r, 
+		lcelr = CL_initELR( lelr );
+		CL_uploadELR(lcelr, lelr);
+		gpum->localMatrix = lcelr;
+		gpum->localFormat = GHOST_SPM_GPUFORMAT_ELR;
+
+		freeELR( lelr ); // FIXME run failes for some configurations if enabled (or not?)
+	}
+	if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_ELR) {
+		DEBUG_LOG(1,"REMOTE elr");
+
+		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) { // local pJDS
+			relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
+					lcrp->lnrows[me],gpum->splitInvRowPerm,
+					matrixFormats->T[2]);
+		} else { // local ELR
+			relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
 					lcrp->lnrows[me],matrixFormats->T[2] );
-
-			matrix->splitRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnrows[me],"rowPerm");
-			matrix->splitInvRowPerm = (int *)allocateMemory(
-					sizeof(int)*lcrp->lnrows[me],"invRowPerm");
-
-			memcpy(matrix->splitRowPerm, rpjds->rowPerm,
-					lcrp->lnrows[me]*sizeof(int));
-			memcpy(matrix->splitInvRowPerm, rpjds->invRowPerm,
-					lcrp->lnrows[me]*sizeof(int));
-
-
-			rcpjds = CL_initPJDS( rpjds );
-			CL_uploadPJDS(rcpjds, rpjds);
-			gpum->remoteMatrix = rcpjds;
-			gpum->remoteFormat = GHOST_SPM_GPUFORMAT_PJDS;
-
-
-			freePJDS( rpjds );
-
-
 		}
-		if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_ELR) {
-			DEBUG_LOG(1,"LOCAL elr");
-
-			if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_PJDS) { // remote pJDS
-				lelr = CRStoELRTP(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
-						lcrp->lnrows[me],gpum->splitInvRowPerm,
-						matrixFormats->T[1]);
-			} else { // remote ELR
-				lelr = CRStoELRT(lcrp->lval, lcrp->lcol, lcrp->lrow_ptr_l,
-						lcrp->lnrows[me],matrixFormats->T[1]);
-			}
-
-			lcelr = CL_initELR( lelr );
-			CL_uploadELR(lcelr, lelr);
-			gpum->localMatrix = lcelr;
-			gpum->localFormat = GHOST_SPM_GPUFORMAT_ELR;
-
-			freeELR( lelr ); // FIXME run failes for some configurations if enabled (or not?)
-		}
-		if (matrixFormats->format[2] == GHOST_SPM_GPUFORMAT_ELR) {
-			DEBUG_LOG(1,"REMOTE elr");
-
-			if (matrixFormats->format[1] == GHOST_SPM_GPUFORMAT_PJDS) { // local pJDS
-				relr = CRStoELRTP(lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
-						lcrp->lnrows[me],gpum->splitInvRowPerm,
-						matrixFormats->T[2]);
-			} else { // local ELR
-				relr = CRStoELRT( lcrp->rval, lcrp->rcol, lcrp->lrow_ptr_r,
-						lcrp->lnrows[me],matrixFormats->T[2] );
-			}
 
 
-			rcelr = CL_initELR( relr );
-			CL_uploadELR(rcelr, relr);
-			gpum->remoteMatrix = rcelr;
-			gpum->remoteFormat = GHOST_SPM_GPUFORMAT_ELR;
+		rcelr = CL_initELR( relr );
+		CL_uploadELR(rcelr, relr);
+		gpum->remoteMatrix = rcelr;
+		gpum->remoteFormat = GHOST_SPM_GPUFORMAT_ELR;
 
-			freeELR( relr ); // FIXME run failes for some configurations if enabled (or not?)
-		}
+		freeELR( relr ); // FIXME run failes for some configurations if enabled (or not?)
 	}
-	matrix->devMatrix =  gpum;
+}
+matrix->devMatrix =  gpum;
 }*/
 
 void CL_uploadVector( ghost_vec_t *vec )
@@ -658,3 +625,83 @@ void destroyCLdeviceInfo(CL_DEVICE_INFO * di)
 	}
 
 }
+
+// copyright NVIDIA SDK
+const char * CL_errorString(cl_int err)
+{
+
+	static const char* errorString[] = {
+		"CL_SUCCESS",
+		"CL_DEVICE_NOT_FOUND",
+		"CL_DEVICE_NOT_AVAILABLE",
+		"CL_COMPILER_NOT_AVAILABLE",
+		"CL_MEM_OBJECT_ALLOCATION_FAILURE",
+		"CL_OUT_OF_RESOURCES",
+		"CL_OUT_OF_HOST_MEMORY",
+		"CL_PROFILING_INFO_NOT_AVAILABLE",
+		"CL_MEM_COPY_OVERLAP",
+		"CL_IMAGE_FORMAT_MISMATCH",
+		"CL_IMAGE_FORMAT_NOT_SUPPORTED",
+		"CL_BUILD_PROGRAM_FAILURE",
+		"CL_MAP_FAILURE",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"CL_INVALID_VALUE",
+		"CL_INVALID_DEVICE_TYPE",
+		"CL_INVALID_PLATFORM",
+		"CL_INVALID_DEVICE",
+		"CL_INVALID_CONTEXT",
+		"CL_INVALID_QUEUE_PROPERTIES",
+		"CL_INVALID_COMMAND_QUEUE",
+		"CL_INVALID_HOST_PTR",
+		"CL_INVALID_MEM_OBJECT",
+		"CL_INVALID_IMAGE_FORMAT_DESCRIPTOR",
+		"CL_INVALID_IMAGE_SIZE",
+		"CL_INVALID_SAMPLER",
+		"CL_INVALID_BINARY",
+		"CL_INVALID_BUILD_OPTIONS",
+		"CL_INVALID_PROGRAM",
+		"CL_INVALID_PROGRAM_EXECUTABLE",
+		"CL_INVALID_KERNEL_NAME",
+		"CL_INVALID_KERNEL_DEFINITION",
+		"CL_INVALID_KERNEL",
+		"CL_INVALID_ARG_INDEX",
+		"CL_INVALID_ARG_VALUE",
+		"CL_INVALID_ARG_SIZE",
+		"CL_INVALID_KERNEL_ARGS",
+		"CL_INVALID_WORK_DIMENSION",
+		"CL_INVALID_WORK_GROUP_SIZE",
+		"CL_INVALID_WORK_ITEM_SIZE",
+		"CL_INVALID_GLOBAL_OFFSET",
+		"CL_INVALID_EVENT_WAIT_LIST",
+		"CL_INVALID_EVENT",
+		"CL_INVALID_OPERATION",
+		"CL_INVALID_GL_OBJECT",
+		"CL_INVALID_BUFFER_SIZE",
+		"CL_INVALID_MIP_LEVEL",
+		"CL_INVALID_GLOBAL_WORK_SIZE",
+	};
+
+	const int errorCount = sizeof(errorString) / sizeof(errorString[0]);
+
+	const int index = -err;
+
+	return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
+}
+
+

@@ -3,7 +3,8 @@
 
 #include "ghost.h"
 
-#define ELLPACK_PAD 32 // TODO
+#define ELLPACK_PAD 1024
+#define ELLPACK_WGXSIZE 256
 
 typedef struct 
 {
@@ -28,6 +29,7 @@ typedef struct
 	mat_nnz_t nnz;
 	mat_nnz_t nEnts;
 	mat_idx_t maxRowLen;
+	mat_idx_t T;
 
 	CL_ELLPACK_TYPE *clmat;
 } 
