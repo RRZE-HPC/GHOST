@@ -6,10 +6,10 @@ WDDT=0
 CUDA_INC=-I$(CUDA_HOME)/include
 CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
 
-LIBSPMVMPATH=$(HOME)/app/libspmvm
+GHOSTPATH=$(HOME)/local
 
-LPATH+= -L$(LIBSPMVMPATH)/lib
-IPATH+= -I$(LIBSPMVMPATH)/include
+LPATH+= -L$(GHOSTPATH)/lib
+IPATH+= -I$(GHOSTPATH)/include
 LIBS+=-l$(PREFIX)ghost
 
 .PHONY:clean distclean all

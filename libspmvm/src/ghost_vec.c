@@ -199,7 +199,7 @@ void ghost_permuteVector( ghost_mdat_t* vec, mat_idx_t* perm, mat_idx_t len)
 
 int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b, double tol)
 {
-	mat_idx_t i;
+	int i;
 	for (i=0; i<a->nrows; i++) {
 		if (REAL(ABS(a->val[i]-b->val[i])) > tol || IMAG(ABS(a->val[i]-b->val[i])) > tol)
 			return 0;
