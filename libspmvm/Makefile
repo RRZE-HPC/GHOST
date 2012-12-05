@@ -41,8 +41,8 @@ OBJS  += $(CLOBJS)
 endif
 
 ifeq ($(strip $(LIKWID)),1)
-MAKROS+= -DLIKWID_PERMON
-IPATH += -I$(strip $(LIKWID_INC))
+MAKROS+= -DLIKWID_PERFMON
+IPATH += -I$(strip $(LIKWIDPATH))/include
 endif
 
 ifeq ($(strip $(MATDATA)),s)

@@ -3,13 +3,15 @@
 #include "matricks.h"
 #include <stdio.h>
 
-#ifdef LIKWID
+#ifdef LIKWID_PERFMON
 #include <likwid.h>
 #endif
 
 void hybrid_kernel_0(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions)
 {
+	LIKWID_MARKER_START("full SpMVM");
 	setup->fullMatrix->kernel(setup->fullMatrix,res,invec,spmvmOptions);
+	LIKWID_MARKER_STOP("full SpMVM");
 }
 
 void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)

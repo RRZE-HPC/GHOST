@@ -25,6 +25,12 @@ ifeq ($(strip $(MIC)),1)
 LIBS+= -limf -lsvml -lirng -lintlc
 endif
 
+ifeq ($(strip $(LIKWID)),1)
+MAKROS+= -DLIKWID_PERMON
+IPATH += -I$(strip $(LIKWIDPATH))/include
+LPATH += -I$(strip $(LIKWIDPATH))/lib
+LIBS += -llikwid
+endif
 
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL

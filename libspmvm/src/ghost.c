@@ -24,20 +24,16 @@
 #include <sched.h>
 #include <omp.h>
 
-#ifdef LIKWID
+#ifdef LIKWID_PERFMON
 #include <likwid.h>
 #endif
 
-//#define PLUGINPATH "/home/hpc/unrz/unrza317/proj/SpMVM/libspmvm/plugins/"
-
 static int options;
-//static ghost_kernelFunc * kernels;
+
 static double wctime()
 {
 	struct timeval tp;
-
 	gettimeofday(&tp, NULL);
-
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
@@ -78,7 +74,7 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 #ifdef MPI
 	int req, prov, init;
 
-	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
+	req = MPI_THREAD_FUNNELED; // TODO not if not all kernels configured
 
 	MPI_safecall(MPI_Initialized(&init));
 	if (!init) {
@@ -146,10 +142,10 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 		}
 	}
 
-#ifdef LIKWID_MARKER
-	likwid_markerInit();
-#endif
+	LIKWID_MARKER_INIT;
 
+#pragma omp parallel
+	LIKWID_MARKER_THREADINIT;
 
 #ifdef OPENCL
 	CL_init();
@@ -165,10 +161,7 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 void ghost_finish()
 {
 
-#ifdef LIKWID_MARKER
-	likwid_markerClose();
-#endif
-
+	LIKWID_MARKER_CLOSE;
 
 #ifdef OPENCL
 	CL_finish(options);
