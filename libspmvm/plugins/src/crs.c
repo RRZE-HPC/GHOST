@@ -137,7 +137,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	if (datatype != DATATYPE_DESIRED) {
 		DEBUG_LOG(0,"Warning in %s:%d! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
-				DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
 	}
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->rpt");

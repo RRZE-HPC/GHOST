@@ -2,7 +2,6 @@
 #include "ghost_util.h"
 #include "ghost.h"
 #include "ghost_vec.h"
-#include "referencesolvers.h"
 #include "matricks.h"
 #include "kernel.h"
 #include <sys/param.h>
@@ -304,7 +303,7 @@ void ghost_printEnvInfo()
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		ghost_printLine("Data type",NULL,"%s",DATATYPE_NAMES[DATATYPE_DESIRED]);
+		ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(DATATYPE_DESIRED));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -389,6 +388,24 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, g
 
 }
 
+void ghost_referenceKernel(ghost_mdat_t *res, mat_nnz_t *col, mat_idx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, mat_idx_t nrows, int spmvmOptions)
+{
+	mat_idx_t i, j;
+	ghost_mdat_t hlp1;
+
+#pragma omp	parallel for schedule(runtime) private (hlp1, j)
+	for (i=0; i<nrows; i++){
+		hlp1 = 0.0;
+		for (j=rpt[i]; j<rpt[i+1]; j++){
+			hlp1 = hlp1 + val[j] * rhs[col[j]]; 
+		}
+		if (spmvmOptions & GHOST_OPTION_AXPY) 
+			res[i] += hlp1;
+		else
+			res[i] = hlp1;
+	}
+}	
+
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
@@ -413,7 +430,6 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 
 char * ghost_modeName(int mode) 
 {
-
 	switch (mode) {
 		case GHOST_MODE_NOMPI:
 			return "non-MPI";
@@ -431,6 +447,29 @@ char * ghost_modeName(int mode)
 			return "invalid";
 			break;
 	}
+}
+
+char * ghost_datatypeName(int datatype)
+{
+	switch(datatype) {
+		case GHOST_DATATYPE_D:
+			return "double";
+			break;
+		case GHOST_DATATYPE_S:
+			return "float";
+			break;
+		case GHOST_DATATYPE_Z:
+			return "complex double";
+			break;
+		case GHOST_DATATYPE_C:
+			return "complex float";
+			break;
+		default:
+			return "invalid";
+			break;
+	}
+
+
 }
 
 char * ghost_workdistName(int options)

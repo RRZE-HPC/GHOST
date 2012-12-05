@@ -277,7 +277,7 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, CR_TYPE* cr, char * mat
 		if (me==0) {
 			DEBUG_LOG(0,"Warning The library has been built for %s data but"
 					" the file contains %s data. Casting...",
-					DATATYPE_NAMES[DATATYPE_DESIRED],DATATYPE_NAMES[datatype]);
+					ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
 		}
 		switch(datatype) {
 			case GHOST_DATATYPE_S:
