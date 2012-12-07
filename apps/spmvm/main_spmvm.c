@@ -68,7 +68,7 @@ int main( int argc, char* argv[] )
 
 
 	ghost_init(argc,argv,options);       // basic initialization
-	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_GLOBAL);
+	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_DISTRIBUTED);
 	lhs   = ghost_createVector(setup,GHOST_VEC_LHS,NULL);
 	rhs   = ghost_createVector(setup,GHOST_VEC_RHS,rhsVal);
 

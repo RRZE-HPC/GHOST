@@ -231,7 +231,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		ELLPACK(mat)->maxRowLen = rowSort[0].nEntsInRow;
 	}
 	
-	if (mat->traits->aux == NULL)
+	if (mat->traits->aux == NULL || *(mat_idx_t *)(mat->traits->aux) == 0)
 		ELLPACK(mat)->T = 1;
 	else
 		ELLPACK(mat)->T = *(mat_idx_t *)(mat->traits->aux);

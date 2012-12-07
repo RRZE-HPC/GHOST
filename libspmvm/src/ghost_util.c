@@ -24,6 +24,10 @@
 #include <omp.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <dlfcn.h>
+
 
 //#define PRETTYPRINT
 
@@ -645,3 +649,4 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 	free (this_array);
 
 }
+

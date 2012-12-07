@@ -142,10 +142,12 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 		}
 	}
 
+#ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
 
 #pragma omp parallel
 	LIKWID_MARKER_THREADINIT;
+#endif
 
 #ifdef OPENCL
 	CL_init();
@@ -161,7 +163,9 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 void ghost_finish()
 {
 
+#ifdef LIKWID_PERFMON
 	LIKWID_MARKER_CLOSE;
+#endif
 
 #ifdef OPENCL
 	CL_finish(options);
@@ -304,7 +308,7 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 
 #ifdef MPI
 	if (setup_flags & GHOST_SETUP_DISTRIBUTED) {
-		if (ghost_getRank() == 0) 
+	/*	if (ghost_getRank() == 0) 
 		{ // root process reads row pointers (parallel IO) or entire matrix
 			if (!isMMfile(matrixPath)){
 				if (options & GHOST_OPTION_SERIAL_IO)
@@ -323,7 +327,7 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 
 		MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 		MPI_safecall(MPI_Bcast(&(cr->nrows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));*/
 	}
 #endif
 	setup->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
@@ -340,15 +344,15 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 			}
 		}
 
-		DEBUG_LOG(1,"Creating distributed %s-%s-%s matrices",
+		/*DEBUG_LOG(1,"Creating distributed %s-%s-%s matrices",
 				ghost_matrixFormatName(traits[0]),
 				ghost_matrixFormatName(traits[1]),
 				ghost_matrixFormatName(traits[2]));
-
+*/
 		if (options & GHOST_OPTION_SERIAL_IO) 
 			ghost_createDistributedSetupSerial(setup, cr, options, traits);
 		else
-			ghost_createDistributedSetup(setup, cr, matrixPath, options, traits);
+			ghost_createDistributedSetup(setup, matrixPath, options, traits);
 
 		setup->lnrows = setup->communicator->lnrows[ghost_getRank()];
 

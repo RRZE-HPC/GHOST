@@ -120,6 +120,7 @@ typedef struct ghost_mtraits_t ghost_mtraits_t;
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_setup_t *setup, ghost_vec_t*, int);
+typedef void (*ghost_dummyfun_t)(void *);
 typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
 
 struct ghost_comm_t 
@@ -155,6 +156,8 @@ struct ghost_mat_t
 	char *     (*formatName) (ghost_mat_t *);
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
+	ghost_dummyfun_t *extraFun;
+	// TODO MPI-IO
 	size_t     (*byteSize) (ghost_mat_t *);
 	ghost_kernel_t kernel;
 #ifdef OPENCL
@@ -333,7 +336,7 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 		int kernel, int nIter);
 
 ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
-ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *);
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 void ghost_freeSetup(ghost_setup_t *setup);
 /******************************************************************************/
 

@@ -36,8 +36,6 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	mat_idx_t j;
 	int send_messages, recv_messages;
 
-//	static MPI_Request *send_request, *recv_request;
-//	static MPI_Status  *send_status,  *recv_status;
 	static MPI_Request *request;
 	static MPI_Status  *status;
 	static CR_TYPE *localCR;
@@ -85,10 +83,6 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 
 		for (i=0; i<nprocs; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
 
-		/*send_request = (MPI_Request*) allocateMemory( size_request, "send_request" );
-		recv_request = (MPI_Request*) allocateMemory( size_request, "recv_request" );
-		send_status  = (MPI_Status*)  allocateMemory( size_status,  "send_status" );
-		recv_status  = (MPI_Status*)  allocateMemory( size_status,  "recv_status" );*/
 		request = (MPI_Request*) allocateMemory( size_request, "request" );
 		status  = (MPI_Status*)  allocateMemory( size_status,  "status" );
 
@@ -99,7 +93,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	send_messages=0;
 	recv_messages = 0;
 
-	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL;
+	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL; // TODO 2*?
 
 #ifdef LIKWID_MARKER
 #pragma omp parallel
@@ -212,8 +206,10 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 			n_per_thread = setup->communicator->lnrows[me]/(nthreads-1);
 
 			/* Alle threads gleichviel; letzter evtl. mehr */
-			if (tid < nthreads-2)  n_local = n_per_thread;
-			else                        n_local = setup->communicator->lnrows[me]-(nthreads-2)*n_per_thread;
+			if (tid < nthreads-2)  
+				n_local = n_per_thread;
+			else
+				n_local = setup->communicator->lnrows[me]-(nthreads-2)*n_per_thread;
 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
 				hlp1 = 0.0;

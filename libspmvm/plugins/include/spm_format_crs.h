@@ -39,6 +39,20 @@ typedef struct
 } 
 CR_TYPE;
 
+typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+} CRS_readRpt_args_t;
+
+typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+	size_t offsetEnts;
+	size_t offsetRows;
+	size_t nRows;
+	size_t nEnts;
+	int IOtype;
+} CRS_readColValOffset_args_t;
 
 ghost_mat_t * init(ghost_mtraits_t *);
 

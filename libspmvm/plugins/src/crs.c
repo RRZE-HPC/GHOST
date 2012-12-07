@@ -27,6 +27,9 @@ static ghost_mdat_t CRS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+static void CRS_readRpt(void *arg);
+static void CRS_readColValOffset(void *args);
+static void CRS_readHeader(void *vargs);
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -50,6 +53,10 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->nrows    = &CRS_nrows;
 	mat->ncols    = &CRS_ncols;
 	mat->destroy  = &CRS_free;
+	mat->extraFun = (ghost_dummyfun_t *)allocateMemory(2*sizeof(ghost_dummyfun_t),"dummyfun CRS");
+	mat->extraFun[0] = &CRS_readRpt;
+	mat->extraFun[1] = &CRS_readColValOffset;
+	mat->extraFun[2] = &CRS_readHeader;
 #ifdef OPENCL
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &CRS_kernel_plain;
@@ -108,14 +115,210 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
 			CR(mat)->nEnts*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
 }
 
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
+static void CRS_readHeader(void *vargs)
 {
+	CRS_readRpt_args_t *args = (CRS_readRpt_args_t *)vargs;
+	ghost_mat_t * mat = args->mat;
+	char *matrixPath = args->matrixPath;
+	FILE* file;
+	mat_idx_t i;
+	int datatype;
 
-	int rowPtrOnly = 0;
+	DEBUG_LOG(1,"Reading header from %s",matrixPath);
+
+	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	mat->rowPerm = NULL;
+	mat->invRowPerm = NULL;
+
+	if ((file = fopen(matrixPath, "rb"))==NULL){
+		ABORT("Could not open binary CRS file %s",matrixPath);
+	}
+
+	fread(&datatype, sizeof(int), 1, file);
+	fread(&CR(mat)->nrows, sizeof(int), 1, file);
+	fread(&CR(mat)->ncols, sizeof(int), 1, file);
+	fread(&CR(mat)->nEnts, sizeof(int), 1, file);
+
+	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+}
+
+static void CRS_readRpt(void *vargs)
+{
+	CRS_readRpt_args_t *args = (CRS_readRpt_args_t *)vargs;
+	ghost_mat_t * mat = args->mat;
+	char *matrixPath = args->matrixPath;
+	int file;
+	mat_idx_t i;
+	int datatype;
+
+	DEBUG_LOG(1,"Reading row pointers from %s",matrixPath);
+
+	//mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	//mat->rowPerm = NULL;
+	//mat->invRowPerm = NULL;
+
+	if ((file = open(matrixPath, O_RDONLY)) == -1){
+		ABORT("Could not open binary CRS file %s",matrixPath);
+	}
+
+	DEBUG_LOG(2,"Allocate memory for CR(mat)->rpt");
+	CR(mat)->rpt = (mat_idx_t *)    allocateMemory( (CR(mat)->nrows+1)*sizeof(mat_idx_t), "rpt" );
+
+	DEBUG_LOG(1,"NUMA-placement for CR(mat)->rpt");
+#pragma omp parallel for schedule(runtime)
+	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		CR(mat)->rpt[i] = 0;
+	}
+
+	DEBUG_LOG(2,"Reading array with row-offsets");
+	pread(file,&CR(mat)->rpt[0], sizeof(int)*CR(mat)->nrows+1, 4*sizeof(int));
+}
+
+static void CRS_readColValOffset(void *vargs)
+{
+	CRS_readColValOffset_args_t *args = (CRS_readColValOffset_args_t *)vargs;
+	ghost_mat_t *mat = args->mat;
+	char *matrixPath = args->matrixPath;
+	size_t offsetEnts = args->offsetEnts;
+	size_t offsetRows = args->offsetRows;
+	size_t nEnts = args->nEnts;
+	size_t nRows = args->nRows;
+	int IOtype = args->IOtype;
+
 	int detectDiags = 0;
 	mat_idx_t i, j;
 	int datatype;
-	FILE* RESTFILE;
+	int file;
+	file = open(matrixPath,O_RDONLY);
+
+//	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	mat->rowPerm = NULL;
+	mat->invRowPerm = NULL;
+
+	DEBUG_LOG(1,"Reading %lu cols and vals from binary file %s with offset %lu",nEnts, matrixPath,offsetEnts);
+
+	if ((file = open(matrixPath, O_RDONLY)) == -1){
+		ABORT("Could not open binary CRS file %s",matrixPath);
+	}
+	pread(file, &datatype, sizeof(int), 0);
+
+	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+
+	if (datatype != DATATYPE_DESIRED) {
+		DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
+				" the file contains %s data. Casting...\n",
+				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+	}
+
+	DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
+	CR(mat)->col       = (mat_idx_t *)    allocateMemory( nEnts * sizeof(mat_idx_t),  "col" );
+	CR(mat)->val       = (ghost_mdat_t *) allocateMemory( nEnts * sizeof(ghost_mdat_t),  "val" );
+
+	DEBUG_LOG(1,"NUMA-placement for CR(mat)->val and CR(mat)->col");
+#pragma omp parallel for schedule(runtime)
+	for(i = 0 ; i < nRows; ++i) {
+		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
+			CR(mat)->val[j] = 0.0;
+			CR(mat)->col[j] = 0;
+		}
+	}
+
+
+	DEBUG_LOG(2,"Reading array with column indices");
+
+	pread(file,&CR(mat)->col[0], sizeof(int)*nEnts, sizeof(int)*(CR(mat)->nrows+1+4+offsetEnts));
+	DEBUG_LOG(2,"Reading array with values");
+	if (datatype == DATATYPE_DESIRED)
+	{
+		pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*nEnts, sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts)+sizeof(ghost_mdat_t)*offsetEnts);
+	} 
+	else 
+	{
+		/*	switch (datatype) {
+			case GHOST_DATATYPE_S:
+			{
+			float *tmp = (float *)allocateMemory(
+			CR(mat)->nEnts*sizeof(float), "tmp");
+			pread(tmp, sizeof(float)*CR(mat)->nEnts, RESTFILE);
+			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+			free(tmp);
+			break;
+			}
+			case GHOST_DATATYPE_D:
+			{
+			double *tmp = (double *)allocateMemory(
+			CR(mat)->nEnts*sizeof(double), "tmp");
+			fread(tmp, sizeof(double), CR(mat)->nEnts, RESTFILE);
+			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+			free(tmp);
+			break;
+			}
+			case GHOST_DATATYPE_C:
+			{
+			_Complex float *tmp = (_Complex float *)allocateMemory(
+			CR(mat)->nEnts*sizeof(_Complex float), "tmp");
+			fread(tmp, sizeof(_Complex float), CR(mat)->nEnts, RESTFILE);
+			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+			free(tmp);
+			break;
+			}
+			case GHOST_DATATYPE_Z:
+			{
+			_Complex double *tmp = (_Complex double *)allocateMemory(
+			CR(mat)->nEnts*sizeof(_Complex double), "tmp");
+			fread(tmp, sizeof(_Complex double), CR(mat)->nEnts, RESTFILE);
+			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+			free(tmp);
+			break;
+			}
+			}*/
+	}
+	close(file);
+
+
+#ifdef OPENCL
+	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
+		DEBUG_LOG(1,"Creating matrix on OpenCL device");
+		CR(mat)->clmat = (CL_CR_TYPE *)allocateMemory(sizeof(CL_CR_TYPE),"CL_CRS");
+		CR(mat)->clmat->rpt = CL_allocDeviceMemory((CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
+		CR(mat)->clmat->col = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_midx_t));
+		CR(mat)->clmat->val = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+
+		CR(mat)->clmat->nrows = CR(mat)->nrows;
+		CL_copyHostToDevice(CR(mat)->clmat->rpt, CR(mat)->rpt, (CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
+		CL_copyHostToDevice(CR(mat)->clmat->col, CR(mat)->col, CR(mat)->nEnts*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(CR(mat)->clmat->val, CR(mat)->val, CR(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+
+		cl_int err;
+		cl_uint numKernels;
+		cl_program program = CL_registerProgram("crs_clkernel.cl","");
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel = clCreateKernel(program,"CRS_kernel",&err);
+		CL_checkerror(err);
+
+		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(int), &(CR(mat)->clmat->nrows)));
+		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
+		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
+		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
+	}
+#else
+	if (mat->traits->flags & GHOST_SPM_DEVICE) {
+		ABORT("Device matrix cannot be created without OpenCL");
+	}
+#endif
+
+	DEBUG_LOG(1,"Matrix read in successfully");
+}
+
+static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
+{
+
+	int detectDiags = 0;
+	mat_idx_t i, j;
+	int datatype;
+	int file;
+	file = open(matrixPath,O_RDONLY);
 
 	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
 	mat->rowPerm = NULL;
@@ -123,14 +326,14 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 	DEBUG_LOG(1,"Reading binary CRS matrix %s",matrixPath);
 
-	if ((RESTFILE = fopen(matrixPath, "rb"))==NULL){
+	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 
-	fread(&datatype, sizeof(int), 1, RESTFILE);
-	fread(&CR(mat)->nrows, sizeof(int), 1, RESTFILE);
-	fread(&CR(mat)->ncols, sizeof(int), 1, RESTFILE);
-	fread(&CR(mat)->nEnts, sizeof(int), 1, RESTFILE);
+	pread(file, &datatype, sizeof(int), 0);
+	pread(file, &CR(mat)->nrows, sizeof(int), 1*sizeof(int));
+	pread(file, &CR(mat)->ncols, sizeof(int), 2*sizeof(int));
+	pread(file, &CR(mat)->nEnts, sizeof(int), 3*sizeof(int));
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
@@ -150,215 +353,213 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	}
 
 	DEBUG_LOG(2,"Reading array with row-offsets");
-	fread(&CR(mat)->rpt[0],        sizeof(int),    CR(mat)->nrows+1, RESTFILE);
+	pread(file,&CR(mat)->rpt[0], sizeof(int)*(CR(mat)->nrows+1), 4*sizeof(int));
 
 
-	if (!rowPtrOnly) {
-		CR(mat)->constDiags = NULL;
+	CR(mat)->constDiags = NULL;
 
-		if (detectDiags) {
-			mat_idx_t bandwidth = 2;//CR(mat)->ncols/2;
-			mat_idx_t nDiags = 2*bandwidth + 1;
+	if (detectDiags) {
+		mat_idx_t bandwidth = 2;//CR(mat)->ncols/2;
+		mat_idx_t nDiags = 2*bandwidth + 1;
 
-			ghost_mdat_t *diagVals = (ghost_mdat_t *)allocateMemory(nDiags*sizeof(ghost_mdat_t),"diagVals");
+		ghost_mdat_t *diagVals = (ghost_mdat_t *)allocateMemory(nDiags*sizeof(ghost_mdat_t),"diagVals");
 
-			char *diagStatus = (char *)allocateMemory(nDiags*sizeof(char),"diagStatus");
-			for (i=0; i<nDiags; i++) diagStatus[i] = DIAG_NEW;
+		char *diagStatus = (char *)allocateMemory(nDiags*sizeof(char),"diagStatus");
+		for (i=0; i<nDiags; i++) diagStatus[i] = DIAG_NEW;
 
-			int *diagEnts = (int *)allocateMemory(nDiags*sizeof(int),"diagEnts");
-			for (i=0; i<nDiags; i++) diagEnts[i] = 0;
+		int *diagEnts = (int *)allocateMemory(nDiags*sizeof(int),"diagEnts");
+		for (i=0; i<nDiags; i++) diagEnts[i] = 0;
 
-			DEBUG_LOG(1,"Detecting constant subdiagonals within a band of width %"PRmatIDX,bandwidth);
-			mat_idx_t *tmpcol = (mat_idx_t *)allocateMemory(CR(mat)->nEnts*sizeof(mat_idx_t),"tmpcol");
-			ghost_mdat_t *tmpval = (ghost_mdat_t *)allocateMemory(CR(mat)->nEnts*sizeof(ghost_mdat_t),"tmpval");
+		DEBUG_LOG(1,"Detecting constant subdiagonals within a band of width %"PRmatIDX,bandwidth);
+		mat_idx_t *tmpcol = (mat_idx_t *)allocateMemory(CR(mat)->nEnts*sizeof(mat_idx_t),"tmpcol");
+		ghost_mdat_t *tmpval = (ghost_mdat_t *)allocateMemory(CR(mat)->nEnts*sizeof(ghost_mdat_t),"tmpval");
 
-			int pfile;
-			pfile = open(matrixPath,O_RDONLY);
-			int offs = 4*sizeof(int)+(CR(mat)->nrows+1)*sizeof(int);
-			int idx = 0;
-			for (i=0; i<CR(mat)->nrows; ++i) {
-				for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1] ; j++) {
-					pread(pfile,&tmpcol[idx],sizeof(int),offs+idx*sizeof(int));
-					pread(pfile,&tmpval[idx],sizeof(ghost_mdat_t),offs+CR(mat)->nEnts*sizeof(int)+idx*sizeof(ghost_mdat_t));
-					if (ABS(tmpcol[idx]-i) <= bandwidth) { // in band
+		int pfile;
+		pfile = open(matrixPath,O_RDONLY);
+		int offs = 4*sizeof(int)+(CR(mat)->nrows+1)*sizeof(int);
+		int idx = 0;
+		for (i=0; i<CR(mat)->nrows; ++i) {
+			for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1] ; j++) {
+				pread(pfile,&tmpcol[idx],sizeof(int),offs+idx*sizeof(int));
+				pread(pfile,&tmpval[idx],sizeof(ghost_mdat_t),offs+CR(mat)->nEnts*sizeof(int)+idx*sizeof(ghost_mdat_t));
+				if (ABS(tmpcol[idx]-i) <= bandwidth) { // in band
 
-						int didx = tmpcol[idx]-i+bandwidth; // index of diagonal
-						if (diagStatus[didx] == DIAG_NEW) { // first time
-							diagVals[didx] =  tmpval[idx];
-							diagStatus[didx] = (char)1;
-							diagEnts[didx] = 1;
-							DEBUG_LOG(2,"Diag %d initialized with %f+%fi",didx,REAL(diagVals[didx]),IMAG(diagVals[didx]));
-						} else if (diagStatus[didx] == DIAG_OK) { // diag initialized
-							if (EQUALS(diagVals[didx],tmpval[idx])) {
-								diagEnts[didx]++;
-							} else {
-								DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f+%fi (was %f%fi)",didx,i,REAL(tmpval[idx]),IMAG(tmpval[idx]),REAL(diagVals[didx]),IMAG(diagVals[didx]));
-								diagStatus[didx] = DIAG_INVALID;
-							}
+					int didx = tmpcol[idx]-i+bandwidth; // index of diagonal
+					if (diagStatus[didx] == DIAG_NEW) { // first time
+						diagVals[didx] =  tmpval[idx];
+						diagStatus[didx] = (char)1;
+						diagEnts[didx] = 1;
+						DEBUG_LOG(2,"Diag %d initialized with %f+%fi",didx,REAL(diagVals[didx]),IMAG(diagVals[didx]));
+					} else if (diagStatus[didx] == DIAG_OK) { // diag initialized
+						if (EQUALS(diagVals[didx],tmpval[idx])) {
+							diagEnts[didx]++;
+						} else {
+							DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f+%fi (was %f%fi)",didx,i,REAL(tmpval[idx]),IMAG(tmpval[idx]),REAL(diagVals[didx]),IMAG(diagVals[didx]));
+							diagStatus[didx] = DIAG_INVALID;
 						}
 					}
-					idx++;
 				}
+				idx++;
 			}
+		}
 
-			CR(mat)->nConstDiags = 0;
+		CR(mat)->nConstDiags = 0;
 
-			for (i=0; i<bandwidth+1; i++) { // lower subdiagonals AND diagonal
-				if (diagStatus[i] == DIAG_OK && diagEnts[i] == CR(mat)->ncols-bandwidth+i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f+%fi",bandwidth-i,REAL(diagVals[i]),IMAG(diagVals[i]));
-					CR(mat)->nConstDiags++;
-					CR(mat)->constDiags = realloc(CR(mat)->constDiags,sizeof(CONST_DIAG)*CR(mat)->nConstDiags);
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].idx = bandwidth-i;
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].val = diagVals[i];
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].len = diagEnts[i];
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].minRow = i-bandwidth;
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].maxRow = CR(mat)->nrows-1;
-					DEBUG_LOG(1,"range: %"PRmatIDX"..%"PRmatIDX,i-bandwidth,CR(mat)->nrows-1);
-				}
+		for (i=0; i<bandwidth+1; i++) { // lower subdiagonals AND diagonal
+			if (diagStatus[i] == DIAG_OK && diagEnts[i] == CR(mat)->ncols-bandwidth+i) {
+				DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f+%fi",bandwidth-i,REAL(diagVals[i]),IMAG(diagVals[i]));
+				CR(mat)->nConstDiags++;
+				CR(mat)->constDiags = realloc(CR(mat)->constDiags,sizeof(CONST_DIAG)*CR(mat)->nConstDiags);
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].idx = bandwidth-i;
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].val = diagVals[i];
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].len = diagEnts[i];
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].minRow = i-bandwidth;
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].maxRow = CR(mat)->nrows-1;
+				DEBUG_LOG(1,"range: %"PRmatIDX"..%"PRmatIDX,i-bandwidth,CR(mat)->nrows-1);
 			}
-			for (i=bandwidth+1; i<nDiags ; i++) { // upper subdiagonals
-				if (diagStatus[i] == DIAG_OK && diagEnts[i] == CR(mat)->ncols+bandwidth-i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f+%fi",-bandwidth+i,REAL(diagVals[i]),IMAG(diagVals[i]));
-					CR(mat)->nConstDiags++;
-					CR(mat)->constDiags = realloc(CR(mat)->constDiags,sizeof(CONST_DIAG)*CR(mat)->nConstDiags);
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].idx = -bandwidth+i;
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].val = diagVals[i];
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].len = diagEnts[i];
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].minRow = 0;
-					CR(mat)->constDiags[CR(mat)->nConstDiags-1].maxRow = CR(mat)->nrows-1-i+bandwidth;
-					DEBUG_LOG(1,"range: 0..%"PRmatIDX,CR(mat)->nrows-1-i+bandwidth);
-				}
+		}
+		for (i=bandwidth+1; i<nDiags ; i++) { // upper subdiagonals
+			if (diagStatus[i] == DIAG_OK && diagEnts[i] == CR(mat)->ncols+bandwidth-i) {
+				DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f+%fi",-bandwidth+i,REAL(diagVals[i]),IMAG(diagVals[i]));
+				CR(mat)->nConstDiags++;
+				CR(mat)->constDiags = realloc(CR(mat)->constDiags,sizeof(CONST_DIAG)*CR(mat)->nConstDiags);
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].idx = -bandwidth+i;
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].val = diagVals[i];
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].len = diagEnts[i];
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].minRow = 0;
+				CR(mat)->constDiags[CR(mat)->nConstDiags-1].maxRow = CR(mat)->nrows-1-i+bandwidth;
+				DEBUG_LOG(1,"range: 0..%"PRmatIDX,CR(mat)->nrows-1-i+bandwidth);
 			}
+		}
 
-			if (CR(mat)->nConstDiags == 0) 
-			{ // no constant diagonals found
-				CR(mat)->val = tmpval;
-				CR(mat)->col = tmpcol;
-			} 
-			else {
-				mat_idx_t d = 0;
+		if (CR(mat)->nConstDiags == 0) 
+		{ // no constant diagonals found
+			CR(mat)->val = tmpval;
+			CR(mat)->col = tmpcol;
+		} 
+		else {
+			mat_idx_t d = 0;
 
-				DEBUG_LOG(1,"Adjusting the number of matrix entries, old: %"PRmatNNZ,CR(mat)->nEnts);
-				for (d=0; d<CR(mat)->nConstDiags; d++) {
-					CR(mat)->nEnts -= CR(mat)->constDiags[d].len;
-				}
-				DEBUG_LOG(1,"Adjusting the number of matrix entries, new: %"PRmatNNZ,CR(mat)->nEnts);
+			DEBUG_LOG(1,"Adjusting the number of matrix entries, old: %"PRmatNNZ,CR(mat)->nEnts);
+			for (d=0; d<CR(mat)->nConstDiags; d++) {
+				CR(mat)->nEnts -= CR(mat)->constDiags[d].len;
+			}
+			DEBUG_LOG(1,"Adjusting the number of matrix entries, new: %"PRmatNNZ,CR(mat)->nEnts);
 
-				DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
-				CR(mat)->col       = (mat_idx_t*)    allocateMemory( CR(mat)->nEnts * sizeof(mat_idx_t),  "col" );
-				CR(mat)->val       = (ghost_mdat_t*) allocateMemory( CR(mat)->nEnts * sizeof(ghost_mdat_t),  "val" );
+			DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
+			CR(mat)->col       = (mat_idx_t*)    allocateMemory( CR(mat)->nEnts * sizeof(mat_idx_t),  "col" );
+			CR(mat)->val       = (ghost_mdat_t*) allocateMemory( CR(mat)->nEnts * sizeof(ghost_mdat_t),  "val" );
 
-				//TODO NUMA
-				mat_idx_t *newRowOffset = (mat_idx_t *)allocateMemory((CR(mat)->nrows+1)*sizeof(mat_idx_t),"newRowOffset");
+			//TODO NUMA
+			mat_idx_t *newRowOffset = (mat_idx_t *)allocateMemory((CR(mat)->nrows+1)*sizeof(mat_idx_t),"newRowOffset");
 
-				idx = 0;
-				mat_idx_t oidx = 0; // original idx in tmp arrays
-				for (i=0; i<CR(mat)->nrows; ++i) {
-					newRowOffset[i] = idx;
-					for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1]; j++) {
-						if (ABS(tmpcol[oidx]-i) <= bandwidth) { // in band
-							int diagFound = 0;
-							for (d=0; d<CR(mat)->nConstDiags; d++) {
-								if (tmpcol[oidx]-i == CR(mat)->constDiags[d].idx) { // do not store constant diagonal
-									oidx++;
-									diagFound = 1;
-									break;
-								} 
-							}
-							if (!diagFound) {
-								CR(mat)->col[idx] = tmpcol[oidx];
-								CR(mat)->val[idx] = tmpval[oidx];
-								idx++;
+			idx = 0;
+			mat_idx_t oidx = 0; // original idx in tmp arrays
+			for (i=0; i<CR(mat)->nrows; ++i) {
+				newRowOffset[i] = idx;
+				for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1]; j++) {
+					if (ABS(tmpcol[oidx]-i) <= bandwidth) { // in band
+						int diagFound = 0;
+						for (d=0; d<CR(mat)->nConstDiags; d++) {
+							if (tmpcol[oidx]-i == CR(mat)->constDiags[d].idx) { // do not store constant diagonal
 								oidx++;
-							}
-
-						} else {
+								diagFound = 1;
+								break;
+							} 
+						}
+						if (!diagFound) {
 							CR(mat)->col[idx] = tmpcol[oidx];
 							CR(mat)->val[idx] = tmpval[oidx];
 							idx++;
 							oidx++;
-
 						}
+
+					} else {
+						CR(mat)->col[idx] = tmpcol[oidx];
+						CR(mat)->val[idx] = tmpval[oidx];
+						idx++;
+						oidx++;
+
 					}
 				}
-				free(CR(mat)->rpt);
-				free(tmpval);
-				free(tmpcol);
-
-				newRowOffset[CR(mat)->nrows] = CR(mat)->nEnts;
-				CR(mat)->rpt = newRowOffset;
 			}
-			close(pfile);
-		} 
-		else {
+			free(CR(mat)->rpt);
+			free(tmpval);
+			free(tmpcol);
 
-			DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
-			CR(mat)->col       = (mat_idx_t *)    allocateMemory( CR(mat)->nEnts * sizeof(mat_idx_t),  "col" );
-			CR(mat)->val       = (ghost_mdat_t *) allocateMemory( CR(mat)->nEnts * sizeof(ghost_mdat_t),  "val" );
+			newRowOffset[CR(mat)->nrows] = CR(mat)->nEnts;
+			CR(mat)->rpt = newRowOffset;
+		}
+		close(pfile);
+	} 
+	else {
 
-			DEBUG_LOG(1,"NUMA-placement for CR(mat)->val and CR(mat)->col");
+		DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
+		CR(mat)->col       = (mat_idx_t *)    allocateMemory( CR(mat)->nEnts * sizeof(mat_idx_t),  "col" );
+		CR(mat)->val       = (ghost_mdat_t *) allocateMemory( CR(mat)->nEnts * sizeof(ghost_mdat_t),  "val" );
+
+		DEBUG_LOG(1,"NUMA-placement for CR(mat)->val and CR(mat)->col");
 #pragma omp parallel for schedule(runtime)
-			for(i = 0 ; i < CR(mat)->nrows; ++i) {
-				for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1] ; j++) {
-					CR(mat)->val[j] = 0.0;
-					CR(mat)->col[j] = 0;
-				}
-			}
-
-
-			DEBUG_LOG(2,"Reading array with column indices");
-
-			// TODO fread => pread
-			fread(&CR(mat)->col[0], sizeof(int), CR(mat)->nEnts, RESTFILE);
-			DEBUG_LOG(2,"Reading array with values");
-			if (datatype == DATATYPE_DESIRED)
-			{
-				fread(&CR(mat)->val[0], sizeof(ghost_mdat_t), CR(mat)->nEnts, RESTFILE);
-			} 
-			else 
-			{
-				switch (datatype) {
-					case GHOST_DATATYPE_S:
-						{
-							float *tmp = (float *)allocateMemory(
-									CR(mat)->nEnts*sizeof(float), "tmp");
-							fread(tmp, sizeof(float), CR(mat)->nEnts, RESTFILE);
-							for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-							free(tmp);
-							break;
-						}
-					case GHOST_DATATYPE_D:
-						{
-							double *tmp = (double *)allocateMemory(
-									CR(mat)->nEnts*sizeof(double), "tmp");
-							fread(tmp, sizeof(double), CR(mat)->nEnts, RESTFILE);
-							for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-							free(tmp);
-							break;
-						}
-					case GHOST_DATATYPE_C:
-						{
-							_Complex float *tmp = (_Complex float *)allocateMemory(
-									CR(mat)->nEnts*sizeof(_Complex float), "tmp");
-							fread(tmp, sizeof(_Complex float), CR(mat)->nEnts, RESTFILE);
-							for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-							free(tmp);
-							break;
-						}
-					case GHOST_DATATYPE_Z:
-						{
-							_Complex double *tmp = (_Complex double *)allocateMemory(
-									CR(mat)->nEnts*sizeof(_Complex double), "tmp");
-							fread(tmp, sizeof(_Complex double), CR(mat)->nEnts, RESTFILE);
-							for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-							free(tmp);
-							break;
-						}
-				}
+		for(i = 0 ; i < CR(mat)->nrows; ++i) {
+			for(j = CR(mat)->rpt[i] ; j < CR(mat)->rpt[i+1] ; j++) {
+				CR(mat)->val[j] = 0.0;
+				CR(mat)->col[j] = 0;
 			}
 		}
+
+
+		DEBUG_LOG(2,"Reading array with column indices");
+
+		pread(file,&CR(mat)->col[0], sizeof(int)*CR(mat)->nEnts, sizeof(int)*(CR(mat)->nrows+1+4));
+		DEBUG_LOG(2,"Reading array with values");
+		if (datatype == DATATYPE_DESIRED)
+		{
+			pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*CR(mat)->nEnts, sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts));
+		} 
+		else 
+		{
+			/*	switch (datatype) {
+				case GHOST_DATATYPE_S:
+				{
+				float *tmp = (float *)allocateMemory(
+				CR(mat)->nEnts*sizeof(float), "tmp");
+				pread(tmp, sizeof(float)*CR(mat)->nEnts, RESTFILE);
+				for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+				free(tmp);
+				break;
+				}
+				case GHOST_DATATYPE_D:
+				{
+				double *tmp = (double *)allocateMemory(
+				CR(mat)->nEnts*sizeof(double), "tmp");
+				fread(tmp, sizeof(double), CR(mat)->nEnts, RESTFILE);
+				for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+				free(tmp);
+				break;
+				}
+				case GHOST_DATATYPE_C:
+				{
+				_Complex float *tmp = (_Complex float *)allocateMemory(
+				CR(mat)->nEnts*sizeof(_Complex float), "tmp");
+				fread(tmp, sizeof(_Complex float), CR(mat)->nEnts, RESTFILE);
+				for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+				free(tmp);
+				break;
+				}
+				case GHOST_DATATYPE_Z:
+				{
+				_Complex double *tmp = (_Complex double *)allocateMemory(
+				CR(mat)->nEnts*sizeof(_Complex double), "tmp");
+				fread(tmp, sizeof(_Complex double), CR(mat)->nEnts, RESTFILE);
+				for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+				free(tmp);
+				break;
+				}
+				}*/
+		}
 	}
-	fclose(RESTFILE);
+	close(file);
+
 
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
@@ -367,7 +568,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 		CR(mat)->clmat->rpt = CL_allocDeviceMemory((CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
 		CR(mat)->clmat->col = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_midx_t));
 		CR(mat)->clmat->val = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
-	
+
 		CR(mat)->clmat->nrows = CR(mat)->nrows;
 		CL_copyHostToDevice(CR(mat)->clmat->rpt, CR(mat)->rpt, (CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(CR(mat)->clmat->col, CR(mat)->col, CR(mat)->nEnts*sizeof(ghost_cl_midx_t));
@@ -380,7 +581,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
-		
+
 		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(int), &(CR(mat)->clmat->nrows)));
 		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
 		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
@@ -398,7 +599,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {
 	MM_TYPE * mm = readMMFile(matrixPath);
-	
+
 	mat_idx_t* nEntsInRow;
 	mat_idx_t i, e, pos;
 

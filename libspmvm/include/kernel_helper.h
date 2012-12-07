@@ -38,7 +38,7 @@ UNUSED(spmvmOptions);
 mat_idx_t i, j;
 ghost_mdat_t hlp1;
 
-#pragma omp	parallel for schedule(runtime) private (hlp1, j)
+//#pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){

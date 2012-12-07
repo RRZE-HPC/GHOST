@@ -19,6 +19,8 @@
 #define GHOST_REMOTE_MAT_IDX 2
 /******************************************************************************/
 
+#define GHOST_IO_MPI (0)
+#define GHOST_IO_STD (1)
 
 // formats
 #define GHOST_NUM_SPMFORMATS   (5)

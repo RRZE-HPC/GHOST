@@ -9,9 +9,13 @@
 
 void hybrid_kernel_0(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions)
 {
+#ifdef LIKWID_PERFMON
 	LIKWID_MARKER_START("full SpMVM");
+#endif
 	setup->fullMatrix->kernel(setup->fullMatrix,res,invec,spmvmOptions);
+#ifdef LIKWID_PERFMON
 	LIKWID_MARKER_STOP("full SpMVM");
+#endif
 }
 
 void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)

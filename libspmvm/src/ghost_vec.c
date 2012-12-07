@@ -65,10 +65,10 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec)
 
 	MPI_safecall(MPI_Bcast(&(vec->flags),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 
-	if (vec->flags & GHOST_VEC_LHS)
-		nrows = lcrp->lnrows[me];
-	else if ((vec->flags & GHOST_VEC_RHS) || (vec->flags & GHOST_VEC_BOTH))
+	if (vec->flags & GHOST_VEC_RHS)
 		nrows = lcrp->lnrows[me]+lcrp->halo_elements;
+	else if (vec->flags & GHOST_VEC_LHS)
+		nrows = lcrp->lnrows[me];
 	else
 		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
