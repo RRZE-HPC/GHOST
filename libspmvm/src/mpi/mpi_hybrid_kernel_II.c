@@ -119,7 +119,8 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 	likwid_markerStartRegion("Kernel 2 -- local computation");
 #endif
 
-	spmvmKernAll( setup->localMatrix->data, invec, res, spmvmOptions);
+	setup->localMatrix->kernel(setup->localMatrix,res,invec,spmvmOptions);
+	//spmvmKernAll( setup->localMatrix->data, invec, res, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
@@ -146,7 +147,8 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
+	setup->remoteMatrix->kernel(setup->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
+//	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

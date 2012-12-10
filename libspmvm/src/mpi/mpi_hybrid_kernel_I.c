@@ -117,8 +117,9 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec,
 	likwid_markerStartRegion("Kernel 1 -- computation");
 	}
 #endif
-	
-	spmvmKernAll(setup->fullMatrix->data, invec, res, spmvmOptions);
+
+	setup->fullMatrix->kernel(setup->fullMatrix,res,invec,spmvmOptions);	
+//	spmvmKernAll(setup->fullMatrix->data, invec, res, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

@@ -239,7 +239,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
-	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
+	setup->remoteMatrix->kernel(setup->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
+	//spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
