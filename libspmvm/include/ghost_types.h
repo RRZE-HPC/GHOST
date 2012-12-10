@@ -12,6 +12,7 @@ MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_Z
+#define SIZEOF_DATATYPE_DESIRED sizeof(_Complex double)
 #else // GHOST_MAT_COMPLEX
 typedef double ghost_mdat_t;
 typedef double ghost_cl_mdat_t;
@@ -20,6 +21,7 @@ typedef double ghost_cl_mdat_t;
 #define MPI_MYSUM MPI_SUM
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_D
+#define SIZEOF_DATATYPE_DESIRED sizeof(double)
 #endif // GHOST_MAT_COMPLEX
 #endif // GHOST_MAT_DP
 
@@ -31,6 +33,7 @@ MPI_Datatype MPI_MYDATATYPE;
 MPI_Op MPI_MYSUM;
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_C
+#define SIZEOF_DATATYPE_DESIRED sizeof(_Complex float)
 #else // GHOST_MAT_COMPLEX
 typedef float ghost_mdat_t;
 #ifdef MPI
@@ -38,6 +41,7 @@ typedef float ghost_mdat_t;
 #define MPI_MYSUM MPI_SUM
 #endif
 #define DATATYPE_DESIRED GHOST_DATATYPE_S
+#define SIZEOF_DATATYPE_DESIRED sizeof(float)
 #endif // GHOST_MAT_COMPLEX
 #endif // GHOST_MAT_SP
 

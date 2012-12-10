@@ -188,11 +188,18 @@ struct ghost_setup_t
 	ghost_mat_t *localMatrix;
 	ghost_mat_t *remoteMatrix;
 
-	mat_idx_t nrows;
-	mat_idx_t ncols;
-	mat_nnz_t nnz;
+//	mat_idx_t nrows;
+//	mat_idx_t ncols;
+//	mat_nnz_t nnz;
+	
+	mat_nnz_t  (*gnnz) (ghost_setup_t *);
+	mat_idx_t  (*gnrows) (ghost_setup_t *);
+	mat_idx_t  (*gncols) (ghost_setup_t *);
+	mat_nnz_t  (*lnnz) (ghost_setup_t *);
+	mat_idx_t  (*lnrows) (ghost_setup_t *);
+	mat_idx_t  (*lncols) (ghost_setup_t *);
 
-	mat_idx_t lnrows;
+//	mat_idx_t lnrows;
 
 	char *matrixName;
 

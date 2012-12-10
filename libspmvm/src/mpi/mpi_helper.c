@@ -191,11 +191,11 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
-	MPI_Info info = MPI_INFO_NULL;
+/*	MPI_Info info = MPI_INFO_NULL;
 	MPI_File file_handle;
 	MPI_Offset offset_in_file;
 	MPI_Status status;
-
+*/
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
 	 ***************************************************************************/
@@ -247,8 +247,6 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 //#pragma omp parallel for schedule(runtime)
 //		for (i=0; i<lcrp->lnrows[me]+1; i++) ((CR_TYPE *)(setup->fullMatrix->data))->rpt[i] = 0;
 	}
-	DEBUG_LOG(1,"Scattering rpt %d",((CR_TYPE *)(setup->fullMatrix->data))->rpt[0]);
-
 
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
 	MPI_safecall(MPI_Scatterv(
@@ -418,7 +416,6 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 			fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 */
 
-	DEBUG_LOG(1,"Setting up communication");
 	ghost_createCommunication((CR_TYPE *)(setup->fullMatrix->data),options,setup);
 
 }
@@ -627,6 +624,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setup)
 {
+	DEBUG_LOG(1,"Setting up communication");
 	
 	int hlpi;
 	mat_nnz_t j;

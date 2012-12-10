@@ -37,6 +37,50 @@ static double wctime()
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
+static mat_nnz_t setup_gnnz (ghost_setup_t * setup)
+{
+	mat_nnz_t gnnz;
+	mat_nnz_t lnnz = setup->fullMatrix->nnz(setup->fullMatrix);
+
+	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+
+	return gnnz;
+}
+
+static mat_nnz_t setup_lnnz (ghost_setup_t * setup)
+{
+	return setup->fullMatrix->nnz(setup->fullMatrix);
+}
+	
+static mat_nnz_t setup_gnrows (ghost_setup_t * setup)
+{
+	mat_nnz_t gnrows;
+	mat_nnz_t lnrows = setup->fullMatrix->nrows(setup->fullMatrix);
+
+	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+
+	return gnrows;
+}
+
+static mat_nnz_t setup_lnrows (ghost_setup_t * setup)
+{
+	return setup->fullMatrix->nrows(setup->fullMatrix);
+}
+
+static mat_nnz_t setup_gncols (ghost_setup_t * setup)
+{
+	mat_nnz_t gncols;
+	mat_nnz_t lncols = setup->fullMatrix->ncols(setup->fullMatrix);
+
+	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+
+	return gncols;
+}
+
+static mat_nnz_t setup_lncols (ghost_setup_t * setup)
+{
+	return setup->fullMatrix->ncols(setup->fullMatrix);
+}
 
 #if defined(COMPLEX) && defined(MPI)
 typedef struct 
@@ -354,7 +398,7 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 		else
 			ghost_createDistributedSetup(setup, matrixPath, options, traits);
 
-		setup->lnrows = setup->communicator->lnrows[ghost_getRank()];
+		//setup->lnrows = setup->communicator->lnrows[ghost_getRank()];
 
 		setup->solvers[GHOST_MODE_NOMPI] = NULL;
 		setup->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
@@ -380,10 +424,10 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 
 		//	setup->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
 		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
-		setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
-		setup->nrows = setup->fullMatrix->nrows(setup->fullMatrix);
-		setup->ncols = setup->fullMatrix->ncols(setup->fullMatrix);
-		setup->lnrows = setup->nrows;
+		//setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
+		//setup->nrows = setup->fullMatrix->nrows(setup->fullMatrix);
+		//setup->ncols = setup->fullMatrix->ncols(setup->fullMatrix);
+		//setup->lnrows = setup->nrows;
 
 		setup->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
 		setup->solvers[GHOST_MODE_VECTORMODE] = NULL;
@@ -404,7 +448,14 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 	  }
 #else*/
 	//#endif
-	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->ncols,setup->nrows,setup->nnz);
+	setup->lnnz = &setup_lnnz;
+	setup->lnrows = &setup_lnrows;
+	setup->lncols = &setup_lncols;
+	setup->gnnz = &setup_gnnz;
+	setup->gnrows = &setup_gnrows;
+	setup->gncols = &setup_gncols;
+
+	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->gncols(setup),setup->gnrows(setup),setup->gnnz(setup));
 
 	DEBUG_LOG(1,"Setup created successfully");
 	return setup;
@@ -475,7 +526,7 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef OPENCL
-		CL_barrier();
+	CL_barrier();
 #endif
 
 	for( it = 0; it < nIter; it++ ) {
@@ -483,7 +534,7 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 		solver(res,setup,invec,options);
 
 #ifdef MPI
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef OPENCL
 		CL_barrier();
@@ -498,11 +549,11 @@ double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 #endif
 
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
-		ghost_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows);
+		ghost_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows(setup));
 	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
 		// one of those must return immediately
-		ghost_permuteVector(res->val,setup->localMatrix->invRowPerm,setup->lnrows);
-		ghost_permuteVector(res->val,setup->remoteMatrix->invRowPerm,setup->lnrows);
+		ghost_permuteVector(res->val,setup->localMatrix->invRowPerm,setup->lnrows(setup));
+		ghost_permuteVector(res->val,setup->remoteMatrix->invRowPerm,setup->lnrows(setup));
 	}
 
 	return time;

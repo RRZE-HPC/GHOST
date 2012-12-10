@@ -121,7 +121,6 @@ static void CRS_readHeader(void *vargs)
 	ghost_mat_t * mat = args->mat;
 	char *matrixPath = args->matrixPath;
 	FILE* file;
-	mat_idx_t i;
 	int datatype;
 
 	DEBUG_LOG(1,"Reading header from %s",matrixPath);
@@ -149,7 +148,6 @@ static void CRS_readRpt(void *vargs)
 	char *matrixPath = args->matrixPath;
 	int file;
 	mat_idx_t i;
-	int datatype;
 
 	DEBUG_LOG(1,"Reading row pointers from %s",matrixPath);
 
@@ -185,15 +183,19 @@ static void CRS_readColValOffset(void *vargs)
 	size_t nRows = args->nRows;
 	int IOtype = args->IOtype;
 
-	int detectDiags = 0;
+	UNUSED(offsetRows);
+	UNUSED(IOtype);
+
 	mat_idx_t i, j;
 	int datatype;
 	int file;
-	file = open(matrixPath,O_RDONLY);
 
-//	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-	mat->rowPerm = NULL;
-	mat->invRowPerm = NULL;
+	off_t offs;
+
+	//	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	//	mat->rowPerm = NULL;
+	//	mat->invRowPerm = NULL;
+	file = open(matrixPath,O_RDONLY);
 
 	DEBUG_LOG(1,"Reading %lu cols and vals from binary file %s with offset %lu",nEnts, matrixPath,offsetEnts);
 
@@ -204,17 +206,11 @@ static void CRS_readColValOffset(void *vargs)
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
-	if (datatype != DATATYPE_DESIRED) {
-		DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
-				" the file contains %s data. Casting...\n",
-				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
-	}
-
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
 	CR(mat)->col       = (mat_idx_t *)    allocateMemory( nEnts * sizeof(mat_idx_t),  "col" );
 	CR(mat)->val       = (ghost_mdat_t *) allocateMemory( nEnts * sizeof(ghost_mdat_t),  "val" );
 
-	DEBUG_LOG(1,"NUMA-placement for CR(mat)->val and CR(mat)->col");
+	DEBUG_LOG(2,"NUMA-placement for CR(mat)->val and CR(mat)->col");
 #pragma omp parallel for schedule(runtime)
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
@@ -224,54 +220,58 @@ static void CRS_readColValOffset(void *vargs)
 	}
 
 
-	DEBUG_LOG(2,"Reading array with column indices");
+	DEBUG_LOG(1,"Reading array with column indices");
+	offs = sizeof(int)*(CR(mat)->nrows+1+4+offsetEnts);
+	pread(file,&CR(mat)->col[0], sizeof(int)*nEnts, offs );
 
-	pread(file,&CR(mat)->col[0], sizeof(int)*nEnts, sizeof(int)*(CR(mat)->nrows+1+4+offsetEnts));
-	DEBUG_LOG(2,"Reading array with values");
-	if (datatype == DATATYPE_DESIRED)
-	{
-		pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*nEnts, sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts)+sizeof(ghost_mdat_t)*offsetEnts);
-	} 
-	else 
-	{
-		/*	switch (datatype) {
+
+	DEBUG_LOG(1,"Reading array with values");
+	offs = sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts) + ghost_sizeofDataType(datatype)*offsetEnts;
+	
+	if (datatype == DATATYPE_DESIRED) {
+		pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*nEnts, offs);
+	} else {
+	/*	DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
+				" the file contains %s data. Casting...\n",
+				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+		switch (datatype) {
 			case GHOST_DATATYPE_S:
-			{
-			float *tmp = (float *)allocateMemory(
-			CR(mat)->nEnts*sizeof(float), "tmp");
-			pread(tmp, sizeof(float)*CR(mat)->nEnts, RESTFILE);
-			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-			free(tmp);
-			break;
-			}
+				{
+					float *tmp = (float *)allocateMemory(
+							CR(mat)->nEnts*sizeof(float), "tmp");
+					pread(file,tmp, sizeof(float)*CR(mat)->nEnts, RESTFILE);
+					for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+					free(tmp);
+					break;
+				}
 			case GHOST_DATATYPE_D:
-			{
-			double *tmp = (double *)allocateMemory(
-			CR(mat)->nEnts*sizeof(double), "tmp");
-			fread(tmp, sizeof(double), CR(mat)->nEnts, RESTFILE);
-			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-			free(tmp);
-			break;
-			}
+				{
+					double *tmp = (double *)allocateMemory(
+							CR(mat)->nEnts*sizeof(double), "tmp");
+					fread(tmp, sizeof(double), CR(mat)->nEnts, RESTFILE);
+					for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+					free(tmp);
+					break;
+				}
 			case GHOST_DATATYPE_C:
-			{
-			_Complex float *tmp = (_Complex float *)allocateMemory(
-			CR(mat)->nEnts*sizeof(_Complex float), "tmp");
-			fread(tmp, sizeof(_Complex float), CR(mat)->nEnts, RESTFILE);
-			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-			free(tmp);
-			break;
-			}
+				{
+					_Complex float *tmp = (_Complex float *)allocateMemory(
+							CR(mat)->nEnts*sizeof(_Complex float), "tmp");
+					fread(tmp, sizeof(_Complex float), CR(mat)->nEnts, RESTFILE);
+					for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+					free(tmp);
+					break;
+				}
 			case GHOST_DATATYPE_Z:
-			{
-			_Complex double *tmp = (_Complex double *)allocateMemory(
-			CR(mat)->nEnts*sizeof(_Complex double), "tmp");
-			fread(tmp, sizeof(_Complex double), CR(mat)->nEnts, RESTFILE);
-			for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
-			free(tmp);
-			break;
-			}
-			}*/
+				{
+					_Complex double *tmp = (_Complex double *)allocateMemory(
+							CR(mat)->nEnts*sizeof(_Complex double), "tmp");
+					fread(tmp, sizeof(_Complex double), CR(mat)->nEnts, RESTFILE);
+					for (i = 0; i<CR(mat)->nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmp[i];
+					free(tmp);
+					break;
+				}
+		}*/
 	}
 	close(file);
 

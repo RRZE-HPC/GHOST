@@ -91,7 +91,7 @@ int main( int argc, char* argv[] )
 
 #ifdef CHECK
 		errcount=0;
-		for (i=0; i<setup->lnrows; i++){
+		for (i=0; i<setup->lnrows(setup); i++){
 			mytol = EPSILON * ABS(goldLHS->val[i]); 
 			if (REAL(ABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
 					IMAG(ABS(goldLHS->val[i]-lhs->val[i])) > mytol){
@@ -115,11 +115,11 @@ int main( int argc, char* argv[] )
 		else
 			ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)setup->nnz/time);
+					(double)setup->gnnz(setup)/time);
 #else
 		ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 				FLOPS_PER_ENTRY*1.e-9*
-				(double)setup->nnz/time);
+				(double)setup->gnnz(setup)/time);
 #endif
 
 		ghost_zeroVector(lhs);

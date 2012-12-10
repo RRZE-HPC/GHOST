@@ -29,7 +29,7 @@
 #include <dlfcn.h>
 
 
-//#define PRETTYPRINT
+#define PRETTYPRINT
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
@@ -137,11 +137,8 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 {
 
-	int me;
 	size_t ws;
 
-
-	me = ghost_getRank();
 
 	/*#ifdef OPENCL	
 	  size_t fullMemSize, localMemSize, remoteMemSize, 
@@ -165,12 +162,11 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 	  }
 #endif	*/
 
-	if(me==0){
 		int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
 			1:0;
 		char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
-		ws = ((setup->nrows+1)*sizeof(mat_idx_t) + 
-				setup->nnz*(sizeof(ghost_mdat_t)+sizeof(mat_idx_t)))/(1024*1024);
+		ws = ((setup->gnrows(setup)+1)*sizeof(mat_idx_t) + 
+				setup->gnnz(setup)*(sizeof(ghost_mdat_t)+sizeof(mat_idx_t)))/(1024*1024);
 
 		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
 		if (setup->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
@@ -189,9 +185,9 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 
 		ghost_printHeader("Matrix information");
 		ghost_printLine("Matrix name",NULL,"%s",setup->matrixName);
-		ghost_printLine("Dimension",NULL,"%"PRmatIDX,setup->nrows);
-		ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->nnz);
-		ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->nnz/setup->nrows);
+		ghost_printLine("Dimension",NULL,"%"PRmatIDX,setup->gnrows(setup));
+		ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->gnnz(setup));
+		ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->gnnz(setup)/setup->gnrows(setup));
 		ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 		ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
 		ghost_printLine("Global CRS size","MB","%lu",ws);
@@ -205,8 +201,8 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 		ghost_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize(setup->fullMatrix)/(1024*1024));
 		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
 		{
-			ghost_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->fullMatrix)/(1024*1024));
-			ghost_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->fullMatrix)/(1024*1024));
+			ghost_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->localMatrix)/(1024*1024));
+			ghost_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->remoteMatrix)/(1024*1024));
 		}
 
 		if (setup->flags & GHOST_SETUP_GLOBAL)
@@ -233,7 +229,6 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 		if (pin)
 			ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
 		ghost_printFooter();
-	}
 }
 
 void ghost_printEnvInfo() 
@@ -613,6 +608,27 @@ unsigned int ghost_getNumberOfProcesses()
 	return (unsigned int)nnodes;
 #endif
 }
+
+size_t ghost_sizeofDataType(int dt)
+{
+	switch (dt) {
+		case GHOST_DATATYPE_D:
+			return sizeof(double);
+			break;
+		case GHOST_DATATYPE_S:
+			return sizeof(float);
+			break;
+		case GHOST_DATATYPE_C:
+			return sizeof(_Complex float);
+			break;
+		case GHOST_DATATYPE_Z:
+			return sizeof (_Complex double);
+			break;
+		default:
+			return 0;
+	}
+}
+
 
 void* allocateMemory( const size_t size, const char* desc ) 
 {
