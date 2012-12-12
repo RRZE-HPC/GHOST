@@ -578,9 +578,9 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 				}
 
-				for (i=0; i<nprocs; i++)  
-					DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, i, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
-
+				int p;
+				for (p=0; i<nprocs; i++)  
+					DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, p, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
 
 				free(loc_count);
 			}

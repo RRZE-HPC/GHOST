@@ -81,8 +81,8 @@ typedef float ghost_vdat_t;
 
 
 #ifdef GHOST_LONGIDX
-typedef long long ghost_midx_t; // type for the index of the matrix
-typedef long long ghost_mnnz_t; // type for the number of nonzeros in the matrix
+typedef int64_t ghost_midx_t; // type for the index of the matrix
+typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
 
 typedef ghost_midx_t ghost_vidx_t; // type for the index of the vector
 
@@ -96,10 +96,12 @@ typedef cl_long ghost_cl_mnnz_t;
 
 #else
 
-typedef int ghost_midx_t; // type for the index of the matrix
-typedef int ghost_mnnz_t; // type for the number of nonzeros in the matrix
+typedef int32_t ghost_midx_t; // type for the index of the matrix
+typedef int32_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
 
 typedef ghost_midx_t ghost_vidx_t; // type for the index of the vector
+
+#define GHOST_MIDX_ABS(a) abs(a)
 
 #ifdef OPENCL
 typedef cl_int ghost_cl_midx_t;

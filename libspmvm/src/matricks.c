@@ -223,7 +223,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 				for(j = cr->rpt[i] ; j < cr->rpt[i+1] ; j++) {
 					pread(pfile,&tmpcol[idx],sizeof(int),offs+idx*sizeof(int));
 					pread(pfile,&tmpval[idx],sizeof(ghost_mdat_t),offs+cr->nEnts*sizeof(int)+idx*sizeof(ghost_mdat_t));
-					if (ABS(tmpcol[idx]-i) <= bandwidth) { // in band
+					if ((ghost_midx_t)llabs(tmpcol[idx]-i) <= bandwidth) { // in band
 
 						int didx = tmpcol[idx]-i+bandwidth; // index of diagonal
 						if (diagStatus[didx] == DIAG_NEW) { // first time
@@ -299,7 +299,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 				for (i=0; i<cr->nrows; ++i) {
 					newRowOffset[i] = idx;
 					for(j = cr->rpt[i] ; j < cr->rpt[i+1]; j++) {
-						if (ABS(tmpcol[oidx]-i) <= bandwidth) { // in band
+						if ((ghost_midx_t)llabs(tmpcol[oidx]-i) <= bandwidth) { // in band
 							int diagFound = 0;
 							for (d=0; d<cr->nConstDiags; d++) {
 								if (tmpcol[oidx]-i == cr->constDiags[d].idx) { // do not store constant diagonal
