@@ -77,7 +77,7 @@ MM_TYPE * readMMFile(const char* filename )
 {
 	MM_typecode matcode;
 	FILE *f;
-	mat_idx_t i;
+	ghost_midx_t i;
 	MM_TYPE* mm = (MM_TYPE*) malloc( sizeof( MM_TYPE ) );
 
 	if ((f = fopen(filename, "r")) == NULL) 
@@ -159,7 +159,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 {
 
 	CR_TYPE *cr;
-	mat_idx_t i, j;
+	ghost_midx_t i, j;
 	int datatype;
 	FILE* RESTFILE;
 
@@ -184,7 +184,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 	}
 
 	DEBUG_LOG(2,"Allocate memory for cr->rpt");
-	cr->rpt = (mat_idx_t *)    allocateMemory( (cr->nrows+1)*sizeof(mat_idx_t), "rpt" );
+	cr->rpt = (ghost_midx_t *)    allocateMemory( (cr->nrows+1)*sizeof(ghost_midx_t), "rpt" );
 
 	DEBUG_LOG(1,"NUMA-placement for cr->rpt");
 #pragma omp parallel for schedule(runtime)
@@ -200,8 +200,8 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 		cr->constDiags = NULL;
 
 		if (detectDiags) {
-			mat_idx_t bandwidth = 2;//cr->ncols/2;
-			mat_idx_t nDiags = 2*bandwidth + 1;
+			ghost_midx_t bandwidth = 2;//cr->ncols/2;
+			ghost_midx_t nDiags = 2*bandwidth + 1;
 
 			ghost_mdat_t *diagVals = (ghost_mdat_t *)allocateMemory(nDiags*sizeof(ghost_mdat_t),"diagVals");
 
@@ -212,7 +212,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			for (i=0; i<nDiags; i++) diagEnts[i] = 0;
 
 			DEBUG_LOG(1,"Detecting constant subdiagonals within a band of width %"PRmatIDX,bandwidth);
-			mat_idx_t *tmpcol = (mat_idx_t *)allocateMemory(cr->nEnts*sizeof(mat_idx_t),"tmpcol");
+			ghost_midx_t *tmpcol = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"tmpcol");
 			ghost_mdat_t *tmpval = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"tmpval");
 
 			int pfile;
@@ -279,7 +279,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 				cr->col = tmpcol;
 			} 
 			else {
-				mat_idx_t d = 0;
+				ghost_midx_t d = 0;
 
 				DEBUG_LOG(1,"Adjusting the number of matrix entries, old: %"PRmatNNZ,cr->nEnts);
 				for (d=0; d<cr->nConstDiags; d++) {
@@ -288,14 +288,14 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 				DEBUG_LOG(1,"Adjusting the number of matrix entries, new: %"PRmatNNZ,cr->nEnts);
 
 				DEBUG_LOG(2,"Allocate memory for cr->col and cr->val");
-				cr->col       = (mat_idx_t*)    allocateMemory( cr->nEnts * sizeof(mat_idx_t),  "col" );
+				cr->col       = (ghost_midx_t*)    allocateMemory( cr->nEnts * sizeof(ghost_midx_t),  "col" );
 				cr->val       = (ghost_mdat_t*) allocateMemory( cr->nEnts * sizeof(ghost_mdat_t),  "val" );
 
 				//TODO NUMA
-				mat_idx_t *newRowOffset = (mat_idx_t *)allocateMemory((cr->nrows+1)*sizeof(mat_idx_t),"newRowOffset");
+				ghost_midx_t *newRowOffset = (ghost_midx_t *)allocateMemory((cr->nrows+1)*sizeof(ghost_midx_t),"newRowOffset");
 
 				idx = 0;
-				mat_idx_t oidx = 0; // original idx in tmp arrays
+				ghost_midx_t oidx = 0; // original idx in tmp arrays
 				for (i=0; i<cr->nrows; ++i) {
 					newRowOffset[i] = idx;
 					for(j = cr->rpt[i] ; j < cr->rpt[i+1]; j++) {
@@ -336,7 +336,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 		else {
 
 			DEBUG_LOG(2,"Allocate memory for cr->col and cr->val");
-			cr->col       = (mat_idx_t *)    allocateMemory( cr->nEnts * sizeof(mat_idx_t),  "col" );
+			cr->col       = (ghost_midx_t *)    allocateMemory( cr->nEnts * sizeof(ghost_midx_t),  "col" );
 			cr->val       = (ghost_mdat_t *) allocateMemory( cr->nEnts * sizeof(ghost_mdat_t),  "val" );
 
 			DEBUG_LOG(1,"NUMA-placement for cr->val and cr->col");
@@ -415,8 +415,8 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 	 * row and col indices have same base as MM (0-based);
 	 * elements in row are sorted according to column*/
 
-	mat_idx_t* nEntsInRow;
-	mat_idx_t i, e, pos;
+	ghost_midx_t* nEntsInRow;
+	ghost_midx_t i, e, pos;
 
 	size_t size_rpt, size_col, size_val, size_nEntsInRow;
 
@@ -425,17 +425,17 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
 
-	size_rpt  = (size_t)( (mm->nrows+1) * sizeof( mat_idx_t ) );
-	size_col        = (size_t)( mm->nEnts     * sizeof( mat_idx_t ) );
+	size_rpt  = (size_t)( (mm->nrows+1) * sizeof( ghost_midx_t ) );
+	size_col        = (size_t)( mm->nEnts     * sizeof( ghost_midx_t ) );
 	size_val        = (size_t)( mm->nEnts     * sizeof( ghost_mdat_t) );
-	size_nEntsInRow = (size_t)(  mm->nrows    * sizeof( mat_idx_t) );
+	size_nEntsInRow = (size_t)(  mm->nrows    * sizeof( ghost_midx_t) );
 
 
 	CR_TYPE* cr   = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "cr" );
-	cr->rpt = (mat_idx_t*)     allocateMemory( size_rpt,    "rpt" );
-	cr->col = (mat_idx_t*)     allocateMemory( size_col,          "col" );
+	cr->rpt = (ghost_midx_t*)     allocateMemory( size_rpt,    "rpt" );
+	cr->col = (ghost_midx_t*)     allocateMemory( size_col,          "col" );
 	cr->val = (ghost_mdat_t*)  allocateMemory( size_val,          "val" );
-	nEntsInRow = (mat_idx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
+	nEntsInRow = (ghost_midx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 
 	/* initialize values ###################################################### */
@@ -475,9 +475,9 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 
 #pragma omp parallel for schedule(runtime)
 	for(i=0; i<cr->nrows; ++i) {
-		mat_idx_t start = cr->rpt[i];
-		mat_idx_t end = cr->rpt[i+1];
-		mat_idx_t j;
+		ghost_midx_t start = cr->rpt[i];
+		ghost_midx_t end = cr->rpt[i+1];
+		ghost_midx_t j;
 		for(j=start; j<end; j++) {
 			cr->val[j] = 0.0;
 			cr->col[j] = 0;

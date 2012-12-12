@@ -35,7 +35,7 @@ UNUSED(res);
 UNUSED(spmvmOptions);
 #else
 
-mat_idx_t i, j;
+ghost_midx_t i, j;
 ghost_mdat_t hlp1;
 
 //#pragma omp	parallel for schedule(runtime) private (hlp1, j)

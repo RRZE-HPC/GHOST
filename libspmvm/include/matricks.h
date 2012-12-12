@@ -13,22 +13,22 @@
 
 typedef struct 
 {
-	mat_idx_t row, col, nThEntryInRow;
+	ghost_midx_t row, col, nThEntryInRow;
 	ghost_mdat_t val;
 } 
 NZE_TYPE;
 
 typedef struct 
 {
-	mat_idx_t nrows, ncols;
-	mat_nnz_t nEnts;
+	ghost_midx_t nrows, ncols;
+	ghost_mnnz_t nEnts;
 	NZE_TYPE* nze;
 } 
 MM_TYPE;
 
 typedef struct 
 {
-	mat_idx_t row, nEntsInRow;
+	ghost_midx_t row, nEntsInRow;
 } 
 JD_SORT_TYPE;
 

@@ -20,7 +20,7 @@ void hybrid_kernel_0(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec,
 
 void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t i, j;
+	ghost_midx_t i, j;
 	ghost_mdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
@@ -39,7 +39,7 @@ void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmv
 
 void kern_glob_CRS_CD_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t i, j;
+	ghost_midx_t i, j;
 	ghost_mdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)

@@ -15,7 +15,7 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 	 ****************************************************************************/
 
 	static int init_kernel=1; 
-	static mat_nnz_t max_dues;
+	static ghost_mnnz_t max_dues;
 	static ghost_mdat_t *work_mem, **work;
 	static unsigned int nprocs;
 	static double hlp_sent;

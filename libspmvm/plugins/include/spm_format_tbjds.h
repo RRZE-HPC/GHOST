@@ -6,15 +6,15 @@
 typedef struct 
 {
 	ghost_mdat_t *val;
-	mat_idx_t *col;
-	mat_nnz_t *chunkStart;
-	mat_idx_t *chunkMin; // for version with remainder loop
-	mat_idx_t *chunkLen; // for version with remainder loop
-	mat_idx_t *rowLen;   // for version with remainder loop
-	mat_idx_t nrows;
-	mat_idx_t nrowsPadded;
-	mat_nnz_t nnz;
-	mat_nnz_t nEnts;
+	ghost_midx_t *col;
+	ghost_mnnz_t *chunkStart;
+	ghost_midx_t *chunkMin; // for version with remainder loop
+	ghost_midx_t *chunkLen; // for version with remainder loop
+	ghost_midx_t *rowLen;   // for version with remainder loop
+	ghost_midx_t nrows;
+	ghost_midx_t nrowsPadded;
+	ghost_mnnz_t nnz;
+	ghost_mnnz_t nEnts;
 	double nu;
 } 
 TBJDS_TYPE;

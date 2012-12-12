@@ -23,9 +23,9 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
 {
     FILE *f;
     MM_typecode matcode;
-    mat_idx_t M, N;
-	mat_nnz_t nz;
-    mat_idx_t i;
+    ghost_midx_t M, N;
+	ghost_mnnz_t nz;
+    ghost_midx_t i;
     double *val;
     int *II, *J;
  
@@ -191,7 +191,7 @@ int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz)
         return 0;
 }
 
-int mm_read_mtx_crd_size(FILE *f, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz )
+int mm_read_mtx_crd_size(FILE *f, ghost_midx_t *M, ghost_midx_t *N, ghost_mnnz_t *nz )
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -267,10 +267,10 @@ int mm_write_mtx_array_size(FILE *f, int M, int N)
 /* use when I[], J[], and val[]J, and val[] are already allocated */
 /******************************************************************/
 
-int mm_read_mtx_crd_data(FILE *f, mat_nnz_t nz, mat_idx_t II[], mat_idx_t J[],
+int mm_read_mtx_crd_data(FILE *f, ghost_mnnz_t nz, ghost_midx_t II[], ghost_midx_t J[],
         ghost_mdat_t val[], MM_typecode matcode)
 {
-    mat_nnz_t i;
+    ghost_mnnz_t i;
     if (mm_is_complex(matcode))
     {
 #ifndef GHOST_MAT_COMPLEX
@@ -363,7 +363,7 @@ int mm_read_mtx_crd_entry(FILE *f, int *II, int *J,
                             (nz pairs of ghost_mdat_t/imaginary values)
 ************************************************************************/
 
-int mm_read_mtx_crd(char *fname, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz, mat_idx_t **II, mat_idx_t **J, 
+int mm_read_mtx_crd(char *fname, ghost_midx_t *M, ghost_midx_t *N, ghost_mnnz_t *nz, ghost_midx_t **II, ghost_midx_t **J, 
         ghost_mdat_t **val, MM_typecode *matcode)
 {
     int ret_code;
@@ -386,8 +386,8 @@ int mm_read_mtx_crd(char *fname, mat_idx_t *M, mat_idx_t *N, mat_nnz_t *nz, mat_
         return ret_code;
 
 
-    *II = (mat_idx_t *)  malloc(*nz * sizeof(mat_idx_t));
-    *J = (mat_idx_t *)  malloc(*nz * sizeof(mat_idx_t));
+    *II = (ghost_midx_t *)  malloc(*nz * sizeof(ghost_midx_t));
+    *J = (ghost_midx_t *)  malloc(*nz * sizeof(ghost_midx_t));
     *val = NULL;
 
     if (mm_is_complex(*matcode))

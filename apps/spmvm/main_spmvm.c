@@ -32,7 +32,7 @@ int main( int argc, char* argv[] )
 	double time;
 
 #ifdef CHECK
-	mat_idx_t i, errcount = 0;
+	ghost_midx_t i, errcount = 0;
 	double mytol;
 #endif
 
@@ -82,7 +82,7 @@ int main( int argc, char* argv[] )
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
-		time = ghost_solve(lhs,setup,rhs,kernels[kernel],nIter);
+		time = ghost_spmvm(lhs,setup,rhs,kernels[kernel],nIter);
 
 		if (time < 0.) {
 			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"SKIPPED");
@@ -104,7 +104,7 @@ int main( int argc, char* argv[] )
 				errcount++;
 			}
 		}
-		mat_idx_t totalerrors;
+		ghost_midx_t totalerrors;
 #ifdef MPI
 		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
 #else

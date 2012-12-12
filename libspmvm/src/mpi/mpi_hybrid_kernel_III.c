@@ -26,14 +26,14 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	static unsigned int nthreads;
 	static unsigned int nprocs;
 
-	static mat_idx_t max_dues;
+	static ghost_midx_t max_dues;
 	static ghost_mdat_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
 	static int me; 
 	unsigned int i, from_PE, to_PE;
-	mat_idx_t j;
+	ghost_midx_t j;
 	int send_messages, recv_messages;
 
 	static MPI_Request *request;

@@ -162,73 +162,73 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 	  }
 #endif	*/
 
-		int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
-			1:0;
-		char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
-		ws = ((setup->gnrows(setup)+1)*sizeof(mat_idx_t) + 
-				setup->gnnz(setup)*(sizeof(ghost_mdat_t)+sizeof(mat_idx_t)))/(1024*1024);
+	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
+		1:0;
+	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
+	ws = ((setup->gnrows(setup)+1)*sizeof(ghost_midx_t) + 
+			setup->gnnz(setup)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
 
-		char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-		if (setup->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
-			matrixLocation = "Device";
-		else if (setup->fullMatrix->traits->flags & GHOST_SPM_HOST)
-			matrixLocation = "Host";
-		else
-			matrixLocation = "Default";
+	char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
+	if (setup->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
+		matrixLocation = "Device";
+	else if (setup->fullMatrix->traits->flags & GHOST_SPM_HOST)
+		matrixLocation = "Host";
+	else
+		matrixLocation = "Default";
 
-		char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
-		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
-			matrixPlacement = "Distributed";
-		else if (setup->flags & GHOST_SETUP_GLOBAL)
-			matrixPlacement = "Global";
+	char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
+	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+		matrixPlacement = "Distributed";
+	else if (setup->flags & GHOST_SETUP_GLOBAL)
+		matrixPlacement = "Global";
 
 
-		ghost_printHeader("Matrix information");
-		ghost_printLine("Matrix name",NULL,"%s",setup->matrixName);
-		ghost_printLine("Dimension",NULL,"%"PRmatIDX,setup->gnrows(setup));
-		ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->gnnz(setup));
-		ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->gnnz(setup)/setup->gnrows(setup));
-		ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-		ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
-		ghost_printLine("Global CRS size","MB","%lu",ws);
+	ghost_printHeader("Matrix information");
+	ghost_printLine("Matrix name",NULL,"%s",setup->matrixName);
+	ghost_printLine("Dimension",NULL,"%"PRmatIDX,setup->gnrows(setup));
+	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->gnnz(setup));
+	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->gnnz(setup)/setup->gnrows(setup));
+	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
+	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
+	ghost_printLine("Global CRS size","MB","%lu",ws);
 
-		ghost_printLine("Full   host matrix format",NULL,"%s",setup->fullMatrix->formatName(setup->fullMatrix));
-		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
-		{
-			ghost_printLine("Local  host matrix format",NULL,"%s",setup->localMatrix->formatName(setup->fullMatrix));
-			ghost_printLine("Remote host matrix format",NULL,"%s",setup->remoteMatrix->formatName(setup->fullMatrix));
-		}
-		ghost_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize(setup->fullMatrix)/(1024*1024));
-		if (setup->flags & GHOST_SETUP_DISTRIBUTED)
-		{
-			ghost_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->localMatrix)/(1024*1024));
-			ghost_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->remoteMatrix)/(1024*1024));
-		}
+	ghost_printLine("Full   host matrix format",NULL,"%s",setup->fullMatrix->formatName(setup->fullMatrix));
+	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+	{
+		ghost_printLine("Local  host matrix format",NULL,"%s",setup->localMatrix->formatName(setup->fullMatrix));
+		ghost_printLine("Remote host matrix format",NULL,"%s",setup->remoteMatrix->formatName(setup->fullMatrix));
+	}
+	ghost_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize(setup->fullMatrix)/(1024*1024));
+	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+	{
+		ghost_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->localMatrix)/(1024*1024));
+		ghost_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->remoteMatrix)/(1024*1024));
+	}
 
-		if (setup->flags & GHOST_SETUP_GLOBAL)
-		{ //additional information depending on format
-			setup->fullMatrix->printInfo(setup->fullMatrix);
-		}
-		/*#ifdef OPENCL	
-		  if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-		  printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
-		  }	
-		  if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
-		  printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->localFormat],matrix->devMatrix->localT,totalLocalMemSize); 
-		  printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->remoteFormat],matrix->devMatrix->remoteT,totalRemoteMemSize);
-		  printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
-		  totalRemoteMemSize); 
-		  }
+	if (setup->flags & GHOST_SETUP_GLOBAL)
+	{ //additional information depending on format
+		setup->fullMatrix->printInfo(setup->fullMatrix);
+	}
+	/*#ifdef OPENCL	
+	  if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+	  printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
+	  }	
+	  if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+	  printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->localFormat],matrix->devMatrix->localT,totalLocalMemSize); 
+	  printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->remoteFormat],matrix->devMatrix->remoteT,totalRemoteMemSize);
+	  printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
+	  totalRemoteMemSize); 
+	  }
 #endif*/
-		ghost_printFooter();
+	ghost_printFooter();
 
-		ghost_printHeader("Setup information");
-		ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
-		ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
-		ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
-		if (pin)
-			ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
-		ghost_printFooter();
+	ghost_printHeader("Setup information");
+	ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
+	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
+	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
+	if (pin)
+		ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
+	ghost_printFooter();
 }
 
 void ghost_printEnvInfo() 
@@ -236,15 +236,8 @@ void ghost_printEnvInfo()
 
 	int me = ghost_getRank();
 
-	int nproc;
-	int nnodes;
-#ifdef MPI
-	nnodes = ghost_getNumberOfNodes();
-	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &nproc ));
-#else
-	nnodes = 1;
-	nproc = 1;
-#endif
+	int nproc = ghost_getNumberOfProcesses();
+	int nnodes = ghost_getNumberOfNodes();
 
 #ifdef OPENCL
 	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
@@ -370,7 +363,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, g
 
 		for (iter=0; iter<nIter; iter++)
 			ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
-	
+
 		ghost_freeVector(globRHS);
 		ghost_freeSetup(setup);
 	} else {
@@ -387,9 +380,9 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, g
 
 }
 
-void ghost_referenceKernel(ghost_mdat_t *res, mat_nnz_t *col, mat_idx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, mat_idx_t nrows, int spmvmOptions)
+void ghost_referenceKernel(ghost_mdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
-	mat_idx_t i, j;
+	ghost_midx_t i, j;
 	ghost_mdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)

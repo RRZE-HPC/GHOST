@@ -11,13 +11,13 @@ char name[] = "TBJDS plugin for ghost";
 char version[] = "0.1a";
 char formatID[] = "TBJDS";
 
-static mat_nnz_t TBJDS_nnz(ghost_mat_t *mat);
-static mat_idx_t TBJDS_nrows(ghost_mat_t *mat);
-static mat_idx_t TBJDS_ncols(ghost_mat_t *mat);
+static ghost_mnnz_t TBJDS_nnz(ghost_mat_t *mat);
+static ghost_midx_t TBJDS_nrows(ghost_mat_t *mat);
+static ghost_midx_t TBJDS_ncols(ghost_mat_t *mat);
 static void TBJDS_printInfo(ghost_mat_t *mat);
 static char * TBJDS_formatName(ghost_mat_t *mat);
-static mat_idx_t TBJDS_rowLen (ghost_mat_t *mat, mat_idx_t i);
-static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
+static ghost_midx_t TBJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
+static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t TBJDS_byteSize (ghost_mat_t *mat);
 static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
 static void TBJDS_fromBin(ghost_mat_t *mat, char *);
@@ -65,15 +65,15 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	return mat;
 }
 
-static mat_nnz_t TBJDS_nnz(ghost_mat_t *mat)
+static ghost_mnnz_t TBJDS_nnz(ghost_mat_t *mat)
 {
 	return TBJDS(mat)->nnz;
 }
-static mat_idx_t TBJDS_nrows(ghost_mat_t *mat)
+static ghost_midx_t TBJDS_nrows(ghost_mat_t *mat)
 {
 	return TBJDS(mat)->nrows;
 }
-static mat_idx_t TBJDS_ncols(ghost_mat_t *mat)
+static ghost_midx_t TBJDS_ncols(ghost_mat_t *mat)
 {
 	UNUSED(mat);
 	return 0;
@@ -101,7 +101,7 @@ static void TBJDS_printInfo(ghost_mat_t *mat)
 }
 
 
-static mat_idx_t TBJDS_rowLen (ghost_mat_t *mat, mat_idx_t i)
+static ghost_midx_t TBJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
 	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
@@ -109,9 +109,9 @@ static mat_idx_t TBJDS_rowLen (ghost_mat_t *mat, mat_idx_t i)
 	return TBJDS(mat)->rowLen[i];
 }
 
-static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
+static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
-	mat_idx_t e;
+	ghost_midx_t e;
 	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
 	if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)
@@ -130,9 +130,9 @@ static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 static size_t TBJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)(
-			(TBJDS(mat)->nrowsPadded/BJDS_LEN) * (sizeof(mat_nnz_t)+sizeof(mat_idx_t)) + // chunkStart + chunkMin 
-			TBJDS(mat)->nrows * sizeof(mat_idx_t) + // rowLen
-			TBJDS(mat)->nEnts * (sizeof(mat_idx_t)+sizeof(ghost_mdat_t))); // col + val
+			(TBJDS(mat)->nrowsPadded/BJDS_LEN) * (sizeof(ghost_mnnz_t)+sizeof(ghost_midx_t)) + // chunkStart + chunkMin 
+			TBJDS(mat)->nrows * sizeof(ghost_midx_t) + // rowLen
+			TBJDS(mat)->nEnts * (sizeof(ghost_midx_t)+sizeof(ghost_mdat_t))); // col + val
 }
 
 static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
@@ -147,9 +147,9 @@ static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 {
-	mat_idx_t i,j,c;
+	ghost_midx_t i,j,c;
 	JD_SORT_TYPE* rowSort;
-	mat_idx_t *rowPerm = NULL, *invRowPerm = NULL;
+	ghost_midx_t *rowPerm = NULL, *invRowPerm = NULL;
 	unsigned int flags;
 
 	mat->data = (TBJDS_TYPE *)allocateMemory(sizeof(TBJDS_TYPE),"mv");
@@ -160,8 +160,8 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	flags = mat->traits->flags;
 
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
-		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sTBJDS(mat)->rowPerm");
-		invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"sTBJDS(mat)->invRowPerm");
+		rowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"sTBJDS(mat)->rowPerm");
+		invRowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"sTBJDS(mat)->invRowPerm");
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
@@ -222,18 +222,18 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	TBJDS(mat)->nnz = cr->nEnts;
 	TBJDS(mat)->nEnts = 0;
 	TBJDS(mat)->nrowsPadded = pad(TBJDS(mat)->nrows,BJDS_LEN);
-	mat_idx_t nChunks = TBJDS(mat)->nrowsPadded/BJDS_LEN;
-	TBJDS(mat)->chunkStart = (mat_nnz_t *)allocateMemory((nChunks+1)*sizeof(mat_nnz_t),"TBJDS(mat)->chunkStart");
-	TBJDS(mat)->chunkMin = (mat_idx_t *)allocateMemory((nChunks)*sizeof(mat_idx_t),"TBJDS(mat)->chunkMin");
-	TBJDS(mat)->chunkLen = (mat_idx_t *)allocateMemory((nChunks)*sizeof(mat_idx_t),"TBJDS(mat)->chunkMin");
-	TBJDS(mat)->rowLen = (mat_idx_t *)allocateMemory((TBJDS(mat)->nrowsPadded)*sizeof(mat_idx_t),"TBJDS(mat)->chunkMin");
+	ghost_midx_t nChunks = TBJDS(mat)->nrowsPadded/BJDS_LEN;
+	TBJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"TBJDS(mat)->chunkStart");
+	TBJDS(mat)->chunkMin = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"TBJDS(mat)->chunkMin");
+	TBJDS(mat)->chunkLen = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"TBJDS(mat)->chunkMin");
+	TBJDS(mat)->rowLen = (ghost_midx_t *)allocateMemory((TBJDS(mat)->nrowsPadded)*sizeof(ghost_midx_t),"TBJDS(mat)->chunkMin");
 	TBJDS(mat)->chunkStart[0] = 0;
 
 	//	for(i=0; i < cr->nrows; ++i) printf("%d\n",(*invRowPerm)[i]);
 
-	mat_idx_t chunkMin = cr->ncols;
-	mat_idx_t chunkLen = 0;
-	mat_idx_t curChunk = 1;
+	ghost_midx_t chunkMin = cr->ncols;
+	ghost_midx_t chunkLen = 0;
+	ghost_midx_t curChunk = 1;
 	TBJDS(mat)->nu = 0.;
 
 	for (i=0; i<TBJDS(mat)->nrowsPadded; i++) {
@@ -269,7 +269,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	TBJDS(mat)->nu /= (double)nChunks;
 
 	TBJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->val");
-	TBJDS(mat)->col = (mat_idx_t *)allocateMemory(sizeof(mat_idx_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->col");
+	TBJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*TBJDS(mat)->nEnts,"TBJDS(mat)->col");
 
 	//printf("nEnts: %d\n",TBJDS(mat)->nEnts);
 
@@ -285,7 +285,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 				TBJDS(mat)->col[TBJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
 			}
 		}
-		mat_nnz_t rem = TBJDS(mat)->chunkStart[c] + TBJDS(mat)->chunkMin[c]*BJDS_LEN;
+		ghost_mnnz_t rem = TBJDS(mat)->chunkStart[c] + TBJDS(mat)->chunkMin[c]*BJDS_LEN;
 		for (i=0; i<BJDS_LEN; i++)
 		{
 			for (j=TBJDS(mat)->chunkMin[c]; j<TBJDS(mat)->rowLen[c*BJDS_LEN+i]; j++)
@@ -317,7 +317,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		}
 
 		// store remainder
-		mat_nnz_t rem = TBJDS(mat)->chunkStart[c] + TBJDS(mat)->chunkMin[c]*BJDS_LEN;
+		ghost_mnnz_t rem = TBJDS(mat)->chunkStart[c] + TBJDS(mat)->chunkMin[c]*BJDS_LEN;
 		if (flags & GHOST_SPM_COLMAJOR) 
 		{
 			for (j=TBJDS(mat)->chunkMin[c]; j<TBJDS(mat)->chunkLen[c]; j++)
@@ -380,8 +380,8 @@ static void TBJDS_free(ghost_mat_t *mat)
 static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(2,"Calling plain TBJDS kernel");
-	mat_idx_t c,j,i;
-	mat_nnz_t offs;
+	ghost_midx_t c,j,i;
+	ghost_mnnz_t offs;
 	ghost_mdat_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,offs)
@@ -423,8 +423,8 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 #ifdef SSE
 static void TBJDS_kernel_SSE(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t c,j;
-	mat_nnz_t offs;
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
 	__m128d tmp;
 	__m128d val;
 	__m128d rhs;
@@ -469,8 +469,8 @@ static void TBJDS_kernel_SSE(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* in
 #ifdef AVX
 static void TBJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t c,j;
-	mat_nnz_t offs;
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
 	__m256d tmp;
 	__m256d val;
 	__m256d rhs;
@@ -525,8 +525,8 @@ static void TBJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* in
 
 static void TBJDS_kernel_AVX_colwise(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t c,j;
-	mat_nnz_t offs;
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
 	__m256d tmp;
 	__m256d val;
 	__m256d rhs;
@@ -575,8 +575,8 @@ static void TBJDS_kernel_AVX_colwise(ghost_mat_t *mat, ghost_vec_t* res, ghost_v
 #ifdef MIC
 static void TBJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t c,j;
-	mat_nnz_t offs;
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
 	unsigned short i;
 	__m512d tmp1;
 	__m512d tmp2;

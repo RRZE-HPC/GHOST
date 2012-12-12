@@ -45,8 +45,10 @@ typedef float ghost_mdat_t;
 #endif // GHOST_MAT_COMPLEX
 #endif // GHOST_MAT_SP
 
-typedef unsigned int mat_idx_t; // type for the index of the matrix
-typedef unsigned int mat_nnz_t; // type for the number of nonzeros in the matrix
+typedef unsigned int ghost_midx_t; // type for the index of the matrix
+typedef unsigned int ghost_mnnz_t; // type for the number of nonzeros in the matrix
+
+typedef ghost_midx_t ghost_vidx_t; // type for the index of the vector
 
 #ifdef OPENCL
 typedef cl_uint ghost_cl_midx_t;

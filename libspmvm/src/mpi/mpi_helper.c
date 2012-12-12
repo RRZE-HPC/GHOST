@@ -111,7 +111,7 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 	UNUSED(cr);
 	UNUSED(options);
 	UNUSED(traits);
-/*	mat_idx_t i;
+/*	ghost_midx_t i;
 
 	int me; 
 
@@ -135,8 +135,8 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 	*setup->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
 	*setup->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
 
-	lcrp->wishes   = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->wishes" ); 
-	lcrp->dues     = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->dues" ); 
+	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
+	lcrp->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->dues" ); 
 
 
 	ghost_createDistribution(cr,options,lcrp);
@@ -145,8 +145,8 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 	fullCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
 	fullCR->val = (ghost_mdat_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_mdat_t ),"fullMatrix->val" );
-	fullCR->col = (mat_idx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_idx_t ),"fullMatrix->col" ); 
-	fullCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"fullMatrix->rpt" ); 
+	fullCR->col = (ghost_midx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_midx_t ),"fullMatrix->col" ); 
+	fullCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"fullMatrix->rpt" ); 
 	fullCR->nrows = lcrp->lnrows[me];
 	fullCR->nEnts = lcrp->lnEnts[me];
 
@@ -182,7 +182,7 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 	DEBUG_LOG(1,"Creating distributed setup with parallel MPI-IO");
 
 	/* Counting and auxilliary variables */
-	mat_idx_t i;
+	ghost_midx_t i;
 
 	/* Processor rank (MPI-process) */
 	int me = ghost_getRank(); 
@@ -227,8 +227,8 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 		setup->fullMatrix->extraFun[0](&args);  // read rpt
 	}
 	
-	lcrp->wishes   = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->wishes" ); 
-	lcrp->dues     = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->dues" ); 
+	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
+	lcrp->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->dues" ); 
 
 	ghost_createDistribution(setup->fullMatrix->data,options,lcrp);
 
@@ -240,10 +240,10 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 
 		memcpy(tmp,((CR_TYPE *)(setup->fullMatrix->data))->rpt,(setup->fullMatrix->nrows(setup->fullMatrix)+1)*sizeof(int));
 	}
-	((CR_TYPE *)(setup->fullMatrix->data))->rpt = (mat_idx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));*/
+	((CR_TYPE *)(setup->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));*/
 	
 	if (ghost_getRank() != 0) {
-		((CR_TYPE *)(setup->fullMatrix->data))->rpt = (mat_idx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));
+		((CR_TYPE *)(setup->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));
 //#pragma omp parallel for schedule(runtime)
 //		for (i=0; i<lcrp->lnrows[me]+1; i++) ((CR_TYPE *)(setup->fullMatrix->data))->rpt[i] = 0;
 	}
@@ -296,8 +296,8 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 	//fullCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
 	//fullCR->val = (ghost_mdat_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_mdat_t ),"fullMatrix->val" );
-	//fullCR->col = (mat_idx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( mat_idx_t ),"fullMatrix->col" ); 
-	//fullCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"fullMatrix->rpt" ); 
+	//fullCR->col = (ghost_midx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_midx_t ),"fullMatrix->col" ); 
+	//fullCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"fullMatrix->rpt" ); 
 	//fullCR->nrows = lcrp->lnrows[me];
 	//fullCR->nEnts = lcrp->lnEnts[me];
 	//setup->fullMatrix->data = fullCR;
@@ -423,16 +423,16 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 {
 	int me = ghost_getRank(); 
-	mat_nnz_t j;
-	mat_idx_t i;
+	ghost_mnnz_t j;
+	ghost_midx_t i;
 	int hlpi;
 	int target_rows;
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
-	lcrp->lnEnts   = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->lnEnts" ); 
-	lcrp->lnrows   = (mat_idx_t*)       allocateMemory( nprocs*sizeof(mat_idx_t), "lcrp->lnrows" ); 
-	lcrp->lfEnt    = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "lcrp->lfEnt" ); 
-	lcrp->lfRow    = (mat_idx_t*)       allocateMemory( nprocs*sizeof(mat_idx_t), "lcrp->lfRow" ); 
+	lcrp->lnEnts   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->lnEnts" ); 
+	lcrp->lnrows   = (ghost_midx_t*)       allocateMemory( nprocs*sizeof(ghost_midx_t), "lcrp->lnrows" ); 
+	lcrp->lfEnt    = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->lfEnt" ); 
+	lcrp->lfRow    = (ghost_midx_t*)       allocateMemory( nprocs*sizeof(ghost_midx_t), "lcrp->lfRow" ); 
 
 	/****************************************************************************
 	 *******  Calculate a fair partitioning of NZE and ROWS on master PE  *******
@@ -441,7 +441,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 		if (options & GHOST_OPTION_WORKDIST_NZE){
 			DEBUG_LOG(1,"Distribute Matrix with EQUAL_NZE on each PE");
-			mat_nnz_t target_nnz;
+			ghost_mnnz_t target_nnz;
 
 			target_nnz = (cr->nEnts/nprocs)+1; /* sonst bleiben welche uebrig! */
 
@@ -466,7 +466,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 				options |= GHOST_OPTION_WORKDIST_NZE;
 			} else {
 				DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
-				mat_nnz_t *loc_count;
+				ghost_mnnz_t *loc_count;
 				int target_lnze;
 
 				int trial_count, prev_count, trial_rows;
@@ -492,7 +492,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 				lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
 
 				/* Count number of local elements in each block */
-				loc_count      = (mat_nnz_t*)       allocateMemory( nprocs*sizeof(mat_nnz_t), "loc_count" ); 
+				loc_count      = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "loc_count" ); 
 				for (i=0; i<nprocs; i++) loc_count[i] = 0;     
 
 				for (i=0; i<nprocs; i++){
@@ -627,10 +627,10 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	DEBUG_LOG(1,"Setting up communication");
 	
 	int hlpi;
-	mat_nnz_t j;
-	mat_idx_t i;
+	ghost_mnnz_t j;
+	ghost_midx_t i;
 	int me;
-	mat_nnz_t max_loc_elements, thisentry;
+	ghost_mnnz_t max_loc_elements, thisentry;
 	int *present_values;
 	int acc_dues;
 	int *tmp_transfers;
@@ -640,7 +640,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	/* Counter how many entries are requested from each PE */
 	int *item_from;
 
-	mat_nnz_t *wishlist_counts;
+	ghost_mnnz_t *wishlist_counts;
 	
 	int *wishlist_mem,  **wishlist;
 	int *cwishlist_mem, **cwishlist;
@@ -651,9 +651,9 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	int *revcol;
 	
 	int *comm_remotePE, *comm_remoteEl;
-	mat_nnz_t lnEnts_l, lnEnts_r;
+	ghost_mnnz_t lnEnts_l, lnEnts_r;
 	int current_l, current_r;
-	mat_idx_t pseudo_ldim;
+	ghost_midx_t pseudo_ldim;
 	int acc_transfer_wishes, acc_transfer_dues;
 	
 	size_t size_nint, size_col;
@@ -695,7 +695,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 
 
 	item_from       = (int*) allocateMemory( size_nint, "item_from" ); 
-	wishlist_counts = (mat_nnz_t *) allocateMemory( nprocs*sizeof(mat_nnz_t), "wishlist_counts" ); 
+	wishlist_counts = (ghost_mnnz_t *) allocateMemory( nprocs*sizeof(ghost_mnnz_t), "wishlist_counts" ); 
 	comm_remotePE   = (int*) allocateMemory( size_col,  "comm_remotePE" );
 	comm_remoteEl   = (int*) allocateMemory( size_col,  "comm_remoteEl" );
 	present_values  = (int*) allocateMemory( size_pval, "present_values" ); 
@@ -898,12 +898,12 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
 		localCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
-		localCR->col = (mat_idx_t*) allocateMemory(lnEnts_l*sizeof( mat_idx_t ),"localMatrix->col" ); 
-		localCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"localMatrix->rpt" ); 
+		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
+		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
 
 		remoteCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
-		remoteCR->col = (mat_idx_t*) allocateMemory(lnEnts_r*sizeof( mat_idx_t ),"remoteMatrix->col" ); 
-		remoteCR->rpt = (mat_idx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( mat_idx_t ),"remoteMatrix->rpt" ); 
+		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
+		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 
 		setup->localMatrix->data = localCR;
 		setup->remoteMatrix->data = remoteCR;

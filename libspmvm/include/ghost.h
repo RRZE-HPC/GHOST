@@ -97,7 +97,8 @@ typedef struct
 {
 	unsigned int flags;
 	int nrows;
-	ghost_mdat_t* val;
+	ghost_vdat_t* val;
+
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif
@@ -125,15 +126,15 @@ typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
 
 struct ghost_comm_t 
 {
-	mat_idx_t halo_elements; // number of nonlocal RHS vector elements
-	mat_nnz_t* lnEnts;
-	mat_nnz_t* lfEnt;
-	mat_idx_t* lnrows;
-	mat_idx_t* lfRow;
-	mat_nnz_t* wishes;
+	ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
+	ghost_mnnz_t* lnEnts;
+	ghost_mnnz_t* lfEnt;
+	ghost_midx_t* lnrows;
+	ghost_midx_t* lfRow;
+	ghost_mnnz_t* wishes;
 	int* wishlist_mem; // TODO delete
 	int** wishlist;    // TODO delete
-	mat_nnz_t* dues;
+	ghost_mnnz_t* dues;
 	int* duelist_mem;  // TODO delete
 	int** duelist;
 	int* due_displ;    
@@ -148,11 +149,11 @@ struct ghost_mat_t
 	// access functions
 	void       (*destroy) (ghost_mat_t *);
 	void       (*printInfo) (ghost_mat_t *);
-	mat_nnz_t  (*nnz) (ghost_mat_t *);
-	mat_idx_t  (*nrows) (ghost_mat_t *);
-	mat_idx_t  (*ncols) (ghost_mat_t *);
-	mat_idx_t  (*rowLen) (ghost_mat_t *, mat_idx_t i);
-	ghost_mdat_t (*entry) (ghost_mat_t *, mat_idx_t i, mat_idx_t j);
+	ghost_mnnz_t  (*nnz) (ghost_mat_t *);
+	ghost_midx_t  (*nrows) (ghost_mat_t *);
+	ghost_midx_t  (*ncols) (ghost_mat_t *);
+	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
+	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
@@ -164,8 +165,8 @@ struct ghost_mat_t
 	cl_kernel clkernel;
 #endif
 
-	mat_idx_t *rowPerm;     // may be NULL
-	mat_idx_t *invRowPerm;  // may be NULL
+	ghost_midx_t *rowPerm;     // may be NULL
+	ghost_midx_t *invRowPerm;  // may be NULL
 
 	void *data;
 }; 
@@ -188,27 +189,16 @@ struct ghost_setup_t
 	ghost_mat_t *localMatrix;
 	ghost_mat_t *remoteMatrix;
 
-//	mat_idx_t nrows;
-//	mat_idx_t ncols;
-//	mat_nnz_t nnz;
-	
-	mat_nnz_t  (*gnnz) (ghost_setup_t *);
-	mat_idx_t  (*gnrows) (ghost_setup_t *);
-	mat_idx_t  (*gncols) (ghost_setup_t *);
-	mat_nnz_t  (*lnnz) (ghost_setup_t *);
-	mat_idx_t  (*lnrows) (ghost_setup_t *);
-	mat_idx_t  (*lncols) (ghost_setup_t *);
-
-//	mat_idx_t lnrows;
+	ghost_mnnz_t  (*gnnz) (ghost_setup_t *);
+	ghost_midx_t  (*gnrows) (ghost_setup_t *);
+	ghost_midx_t  (*gncols) (ghost_setup_t *);
+	ghost_mnnz_t  (*lnnz) (ghost_setup_t *);
+	ghost_midx_t  (*lnrows) (ghost_setup_t *);
+	ghost_midx_t  (*lncols) (ghost_setup_t *);
 
 	char *matrixName;
 
 	unsigned int flags;
-/*#ifdef OPENCL
-	ghost_mat_t *fullCLMatrix; // TODO array
-	ghost_mat_t *localCLMatrix;
-	ghost_mat_t *remoteCLMatrix;
-#endif*/
 };
 
 struct ghost_mtraits_t
@@ -339,7 +329,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int type, ghost_m
  * Returns:
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
-double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
+double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
 		int kernel, int nIter);
 
 ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 

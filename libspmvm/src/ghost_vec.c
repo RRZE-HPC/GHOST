@@ -168,10 +168,10 @@ void ghost_freeVector( ghost_vec_t* const vec )
 	}
 }
 
-void ghost_permuteVector( ghost_mdat_t* vec, mat_idx_t* perm, mat_idx_t len) 
+void ghost_permuteVector( ghost_mdat_t* vec, ghost_midx_t* perm, ghost_midx_t len) 
 {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
-	mat_idx_t i;
+	ghost_midx_t i;
 	ghost_mdat_t* tmp;
 
 	if (perm == NULL) {

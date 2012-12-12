@@ -125,7 +125,7 @@ void ghost_printLine(const char *label, const char *unit, const char *format, ..
 void ghost_printSetupInfo(ghost_setup_t *setup, int options);
 void              ghost_printEnvInfo();
 ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup,  ghost_mdat_t (*fp)(int), int nIter, int spmvmOptions);
-void ghost_referenceKernel(ghost_mdat_t *res, mat_nnz_t *col, mat_idx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, mat_idx_t nrows, int spmvmOptions);
+void ghost_referenceKernel(ghost_mdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 char * ghost_workdistName(int options);
 char * ghost_modeName(int mode);
 char * ghost_datatypeName(int datatype);

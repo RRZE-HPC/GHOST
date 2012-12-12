@@ -22,14 +22,14 @@ CL_ELLPACK_TYPE;
 typedef struct 
 {
 	ghost_mdat_t *val;
-	mat_idx_t *col;
-	mat_idx_t *rowLen;
-	mat_idx_t nrows;
-	mat_idx_t nrowsPadded;
-	mat_nnz_t nnz;
-	mat_nnz_t nEnts;
-	mat_idx_t maxRowLen;
-	mat_idx_t T;
+	ghost_midx_t *col;
+	ghost_midx_t *rowLen;
+	ghost_midx_t nrows;
+	ghost_midx_t nrowsPadded;
+	ghost_mnnz_t nnz;
+	ghost_mnnz_t nEnts;
+	ghost_midx_t maxRowLen;
+	ghost_midx_t T;
 
 	CL_ELLPACK_TYPE *clmat;
 } 

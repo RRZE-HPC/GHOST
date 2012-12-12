@@ -14,14 +14,14 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec,
 	 ****************************************************************************/
 
 	static int init_kernel=1; 
-	static mat_nnz_t max_dues;
+	static ghost_mnnz_t max_dues;
 	static ghost_mdat_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 	static unsigned int nprocs;
 
 	static int me; 
-	mat_nnz_t j;
+	ghost_mnnz_t j;
 	unsigned int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 

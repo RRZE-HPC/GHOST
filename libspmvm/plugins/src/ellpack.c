@@ -12,13 +12,13 @@ char name[] = "ELLPACK plugin for ghost";
 char version[] = "0.1a";
 char formatID[] = "ELLPACK";
 
-static mat_nnz_t ELLPACK_nnz(ghost_mat_t *mat);
-static mat_idx_t ELLPACK_nrows(ghost_mat_t *mat);
-static mat_idx_t ELLPACK_ncols(ghost_mat_t *mat);
+static ghost_mnnz_t ELLPACK_nnz(ghost_mat_t *mat);
+static ghost_midx_t ELLPACK_nrows(ghost_mat_t *mat);
+static ghost_midx_t ELLPACK_ncols(ghost_mat_t *mat);
 static void ELLPACK_printInfo(ghost_mat_t *mat);
 static char * ELLPACK_formatName(ghost_mat_t *mat);
-static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i);
-static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j);
+static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i);
+static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
 static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
 static void ELLPACK_fromBin(ghost_mat_t *mat, char *);
@@ -58,15 +58,15 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	return mat;
 }
 
-static mat_nnz_t ELLPACK_nnz(ghost_mat_t *mat)
+static ghost_mnnz_t ELLPACK_nnz(ghost_mat_t *mat)
 {
 	return ELLPACK(mat)->nnz;
 }
-static mat_idx_t ELLPACK_nrows(ghost_mat_t *mat)
+static ghost_midx_t ELLPACK_nrows(ghost_mat_t *mat)
 {
 	return ELLPACK(mat)->nrows;
 }
-static mat_idx_t ELLPACK_ncols(ghost_mat_t *mat)
+static ghost_midx_t ELLPACK_ncols(ghost_mat_t *mat)
 {
 	UNUSED(mat);
 	return 0;
@@ -91,7 +91,7 @@ static char * ELLPACK_formatName(ghost_mat_t *mat)
 	return "ELLPACK";
 }
 
-static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i)
+static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
 	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
@@ -99,10 +99,10 @@ static mat_idx_t ELLPACK_rowLen (ghost_mat_t *mat, mat_idx_t i)
 	return ELLPACK(mat)->rowLen[i];
 }
 
-static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
+static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
-	mat_idx_t e;
-	mat_idx_t eInRow;
+	ghost_midx_t e;
+	ghost_midx_t eInRow;
 
 	if (mat->traits->flags & GHOST_SPM_SORTED)
 		i = mat->rowPerm[i];
@@ -118,8 +118,8 @@ static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, mat_idx_t i, mat_idx_t j)
 
 static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 {
-	return (size_t)((ELLPACK(mat)->nrowsPadded)*sizeof(mat_idx_t) + 
-			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(mat_idx_t)+sizeof(ghost_mdat_t)));
+	return (size_t)((ELLPACK(mat)->nrowsPadded)*sizeof(ghost_midx_t) + 
+			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
 }
 
 static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
@@ -136,11 +136,11 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
 static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 {
 	DEBUG_LOG(1,"Creating ELLPACK matrix");
-	mat_idx_t i,j,c;
+	ghost_midx_t i,j,c;
 	unsigned int flags = mat->traits->flags;
 
-	mat_idx_t *rowPerm = NULL;
-	mat_idx_t *invRowPerm = NULL;
+	ghost_midx_t *rowPerm = NULL;
+	ghost_midx_t *invRowPerm = NULL;
 
 	JD_SORT_TYPE* rowSort;
 
@@ -151,8 +151,8 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	ELLPACK(mat)->maxRowLen = 0;
 
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
-		rowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"ELLPACK(mat)->rowPerm");
-		invRowPerm = (mat_idx_t *)allocateMemory(cr->nrows*sizeof(mat_idx_t),"ELLPACK(mat)->invRowPerm");
+		rowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"ELLPACK(mat)->rowPerm");
+		invRowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"ELLPACK(mat)->invRowPerm");
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
@@ -187,7 +187,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		/* sort within same rowlength with asceding row number #################### */
 		/*i=0;
 		  while(i < cr->nrows) {
-		  mat_idx_t start = i;
+		  ghost_midx_t start = i;
 
 		  j = rowSort[start].nEntsInRow;
 		  while( i<cr->nrows && rowSort[i].nEntsInRow >= j ) 
@@ -231,10 +231,10 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		ELLPACK(mat)->maxRowLen = rowSort[0].nEntsInRow;
 	}
 	
-	if (mat->traits->aux == NULL || *(mat_idx_t *)(mat->traits->aux) == 0)
+	if (mat->traits->aux == NULL || *(ghost_midx_t *)(mat->traits->aux) == 0)
 		ELLPACK(mat)->T = 1;
 	else
-		ELLPACK(mat)->T = *(mat_idx_t *)(mat->traits->aux);
+		ELLPACK(mat)->T = *(ghost_midx_t *)(mat->traits->aux);
 
 
 	ELLPACK(mat)->maxRowLen = pad(ELLPACK(mat)->maxRowLen,ELLPACK(mat)->T);
@@ -245,8 +245,8 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	ELLPACK(mat)->nnz = cr->nEnts;
 	ELLPACK(mat)->nrowsPadded = pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
 	ELLPACK(mat)->nEnts = ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen;
-	ELLPACK(mat)->rowLen = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(mat_idx_t),"rowLen");
-	ELLPACK(mat)->col = (mat_idx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(mat_idx_t),"col");
+	ELLPACK(mat)->rowLen = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(ghost_midx_t),"rowLen");
+	ELLPACK(mat)->col = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_midx_t),"col");
 	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
 	
 
@@ -344,7 +344,7 @@ static void ELLPACK_free(ghost_mat_t *mat)
 
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	mat_idx_t j,i;
+	ghost_midx_t j,i;
 	ghost_mdat_t tmp; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)

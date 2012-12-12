@@ -6,8 +6,8 @@
 
 void sse_kernel_0_intr(ghost_vec_t* res, BJDS_TYPE* bjds, ghost_vec_t* invec, int spmvmOptions)
 {
-	mat_idx_t c,j;
-	mat_nnz_t offs;
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
 	__m128d tmp;
 	__m128d val;
 	__m128d rhs;

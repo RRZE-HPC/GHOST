@@ -37,47 +37,47 @@ static double wctime()
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
-static mat_nnz_t setup_gnnz (ghost_setup_t * setup)
+static ghost_mnnz_t setup_gnnz (ghost_setup_t * setup)
 {
-	mat_nnz_t gnnz;
-	mat_nnz_t lnnz = setup->fullMatrix->nnz(setup->fullMatrix);
+	ghost_mnnz_t gnnz;
+	ghost_mnnz_t lnnz = setup->fullMatrix->nnz(setup->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gnnz;
 }
 
-static mat_nnz_t setup_lnnz (ghost_setup_t * setup)
+static ghost_mnnz_t setup_lnnz (ghost_setup_t * setup)
 {
 	return setup->fullMatrix->nnz(setup->fullMatrix);
 }
 	
-static mat_nnz_t setup_gnrows (ghost_setup_t * setup)
+static ghost_mnnz_t setup_gnrows (ghost_setup_t * setup)
 {
-	mat_nnz_t gnrows;
-	mat_nnz_t lnrows = setup->fullMatrix->nrows(setup->fullMatrix);
+	ghost_mnnz_t gnrows;
+	ghost_mnnz_t lnrows = setup->fullMatrix->nrows(setup->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gnrows;
 }
 
-static mat_nnz_t setup_lnrows (ghost_setup_t * setup)
+static ghost_mnnz_t setup_lnrows (ghost_setup_t * setup)
 {
 	return setup->fullMatrix->nrows(setup->fullMatrix);
 }
 
-static mat_nnz_t setup_gncols (ghost_setup_t * setup)
+static ghost_mnnz_t setup_gncols (ghost_setup_t * setup)
 {
-	mat_nnz_t gncols;
-	mat_nnz_t lncols = setup->fullMatrix->ncols(setup->fullMatrix);
+	ghost_mnnz_t gncols;
+	ghost_mnnz_t lncols = setup->fullMatrix->ncols(setup->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gncols;
 }
 
-static mat_nnz_t setup_lncols (ghost_setup_t * setup)
+static ghost_mnnz_t setup_lncols (ghost_setup_t * setup)
 {
 	return setup->fullMatrix->ncols(setup->fullMatrix);
 }
@@ -225,7 +225,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 {
 
 	ghost_mdat_t *val;
-	mat_idx_t nrows;
+	ghost_midx_t nrows;
 	size_t size_val;
 	ghost_mat_t *matrix = setup->fullMatrix;
 
@@ -239,7 +239,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX" rows",nrows);
 
-		mat_idx_t i;
+		ghost_midx_t i;
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nrows(matrix); i++) 
@@ -260,7 +260,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 	else 
 	{
 		ghost_comm_t *lcrp = setup->communicator;
-		mat_idx_t i;
+		ghost_midx_t i;
 		int me = ghost_getRank();
 
 		if (flags & GHOST_VEC_LHS)
@@ -509,7 +509,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 
 
 
-double ghost_solve(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
+double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
 		int kernel, int nIter)
 {
 	int it;
