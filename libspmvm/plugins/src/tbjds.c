@@ -166,7 +166,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
 
-		unsigned int sortBlock = *(unsigned int *)(mat->traits->aux);
+		int sortBlock = *(int *)(mat->traits->aux);
 		if (sortBlock == 0)
 			sortBlock = cr->nrows;
 

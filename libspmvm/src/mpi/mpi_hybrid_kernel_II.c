@@ -17,12 +17,12 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 	static int init_kernel=1; 
 	static ghost_mnnz_t max_dues;
 	static ghost_mdat_t *work_mem, **work;
-	static unsigned int nprocs;
+	static int nprocs;
 	static double hlp_sent;
 	static double hlp_recv;
 
 	static int me; 
-	unsigned int i, from_PE, to_PE;
+	int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 
 	//static MPI_Request *send_request, *recv_request;

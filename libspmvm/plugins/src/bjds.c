@@ -170,11 +170,11 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
-		unsigned int sortBlock = *(unsigned int *)(mat->traits->aux);
+		int sortBlock = *(int *)(mat->traits->aux);
 		if (sortBlock == 0)
 			sortBlock = cr->nrows;
 
-		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %u",sortBlock);
+		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",sortBlock);
 
 		/* get max number of entries in one row ###########################*/
 		rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nrows * sizeof( JD_SORT_TYPE ),

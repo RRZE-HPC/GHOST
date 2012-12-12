@@ -232,7 +232,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	ghost_createDistribution(context->fullMatrix->data,options,lcrp);
 
-	DEBUG_LOG(1,"Mallocing space for %u rows",lcrp->lnrows[me]);
+	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",lcrp->lnrows[me]);
 	
 /*
 	int *tmp = (int *)malloc((context->fullMatrix->nrows(context->fullMatrix)+1)*sizeof(int));
@@ -427,7 +427,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 	ghost_midx_t i;
 	int hlpi;
 	int target_rows;
-	unsigned int nprocs = ghost_getNumberOfProcesses();
+	int nprocs = ghost_getNumberOfProcesses();
 
 	lcrp->lnEnts   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->lnEnts" ); 
 	lcrp->lnrows   = (ghost_midx_t*)       allocateMemory( nprocs*sizeof(ghost_midx_t), "lcrp->lnrows" ); 
@@ -579,8 +579,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 				}
 
 				for (i=0; i<nprocs; i++)  
-					DEBUG_LOG(1,"PE%u lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, i, lcrp->lfRow[i], 
-							lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
+					DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, i, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
 
 
 				free(loc_count);
@@ -660,7 +659,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_context_t *co
 	size_t size_revc, size_a2ai, size_nptr, size_pval;  
 	size_t size_mem, size_wish, size_dues;
 
-	unsigned int nprocs = ghost_getNumberOfProcesses();
+	int nprocs = ghost_getNumberOfProcesses();
 	ghost_comm_t *lcrp = context->communicator;
 	
 	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(int)  );
@@ -709,7 +708,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_context_t *co
 
 	/* Transform global column index into 2d-local/non-local index */
 	for (i=0;i<lcrp->lnEnts[me];i++){
-		for (j=nprocs-1;j<nprocs; j--){ // unsigned integers are defined to wrap nicely
+		for (j=nprocs-1;j>=0; j--){
 			if (lcrp->lfRow[j]<fullCR->col[i]+1) {
 				/* Entsprechendes Paarelement liegt auf PE j */
 				comm_remotePE[i] = j;

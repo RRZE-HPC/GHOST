@@ -42,105 +42,105 @@
 
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
-static int allocatedMem;
+	static int allocatedMem;
 
-void ghost_printHeader(const char *fmt, ...)
-{
-	if(ghost_getRank() == 0){
-		va_list args;
-		va_start(args,fmt);
-		char label[1024];
-		vsnprintf(label,1024,fmt,args);
-		va_end(args);
+	void ghost_printHeader(const char *fmt, ...)
+	{
+		if(ghost_getRank() == 0){
+			va_list args;
+			va_start(args,fmt);
+			char label[1024];
+			vsnprintf(label,1024,fmt,args);
+			va_end(args);
 
-		const int spacing = 4;
-		int len = strlen(label);
-		int nDash = (PRINTWIDTH-2*spacing-len)/2;
-		int rem = (PRINTWIDTH-2*spacing-len)%2;
-		int i;
+			const int spacing = 4;
+			int len = strlen(label);
+			int nDash = (PRINTWIDTH-2*spacing-len)/2;
+			int rem = (PRINTWIDTH-2*spacing-len)%2;
+			int i;
 #ifdef PRETTYPRINT
-		printf("┌");
-		for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-		printf("┐");
-		printf("\n");
-		printf("├");
-		for (i=0; i<nDash-1; i++) printf("─");
-		for (i=0; i<spacing; i++) printf(" ");
-		printf("%s",label);
-		for (i=0; i<spacing+rem; i++) printf(" ");
-		for (i=0; i<nDash-1; i++) printf("─");
-		printf("┤");
-		printf("\n");
-		printf("├");
-		for (i=0; i<LABELWIDTH; i++) printf("─");
-		printf("┬");
-		for (i=0; i<VALUEWIDTH; i++) printf("─");
-		printf("┤");
-		printf("\n");
+			printf("┌");
+			for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+			printf("┐");
+			printf("\n");
+			printf("├");
+			for (i=0; i<nDash-1; i++) printf("─");
+			for (i=0; i<spacing; i++) printf(" ");
+			printf("%s",label);
+			for (i=0; i<spacing+rem; i++) printf(" ");
+			for (i=0; i<nDash-1; i++) printf("─");
+			printf("┤");
+			printf("\n");
+			printf("├");
+			for (i=0; i<LABELWIDTH; i++) printf("─");
+			printf("┬");
+			for (i=0; i<VALUEWIDTH; i++) printf("─");
+			printf("┤");
+			printf("\n");
 #else
-		for (i=0; i<PRINTWIDTH; i++) printf("-");
-		printf("\n");
-		for (i=0; i<nDash; i++) printf("-");
-		for (i=0; i<spacing; i++) printf(" ");
-		printf("%s",label);
-		for (i=0; i<spacing+rem; i++) printf(" ");
-		for (i=0; i<nDash; i++) printf("-");
-		printf("\n");
-		for (i=0; i<PRINTWIDTH; i++) printf("-");
-		printf("\n");
+			for (i=0; i<PRINTWIDTH; i++) printf("-");
+			printf("\n");
+			for (i=0; i<nDash; i++) printf("-");
+			for (i=0; i<spacing; i++) printf(" ");
+			printf("%s",label);
+			for (i=0; i<spacing+rem; i++) printf(" ");
+			for (i=0; i<nDash; i++) printf("-");
+			printf("\n");
+			for (i=0; i<PRINTWIDTH; i++) printf("-");
+			printf("\n");
 #endif
-	}
-}
-
-void ghost_printFooter() 
-{
-	if (ghost_getRank() == 0) {
-		int i;
-#ifdef PRETTYPRINT
-		printf("└");
-		for (i=0; i<LABELWIDTH; i++) printf("─");
-		printf("┴");
-		for (i=0; i<VALUEWIDTH; i++) printf("─");
-		printf("┘");
-#else
-		for (i=0; i<PRINTWIDTH; i++) printf("-");
-#endif
-		printf("\n\n");
-	}
-}
-
-void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
-{
-	if (ghost_getRank() == 0) {
-		va_list args;
-		va_start(args,fmt);
-		char dummy[1024];
-		vsnprintf(dummy,1024,fmt,args);
-		va_end(args);
-
-#ifdef PRETTYPRINT
-		printf("│");
-#endif
-		if (unit) {
-			int unitLen = strlen(unit);
-			printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
-		} else {
-			printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
 		}
-#ifdef PRETTYPRINT
-		printf("│");
-#endif
-		printf("\n");
 	}
-}
 
-void ghost_printContextInfo(ghost_context_t *context, int options)
-{
+	void ghost_printFooter() 
+	{
+		if (ghost_getRank() == 0) {
+			int i;
+#ifdef PRETTYPRINT
+			printf("└");
+			for (i=0; i<LABELWIDTH; i++) printf("─");
+			printf("┴");
+			for (i=0; i<VALUEWIDTH; i++) printf("─");
+			printf("┘");
+#else
+			for (i=0; i<PRINTWIDTH; i++) printf("-");
+#endif
+			printf("\n\n");
+		}
+	}
 
-	size_t ws;
+	void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
+	{
+		if (ghost_getRank() == 0) {
+			va_list args;
+			va_start(args,fmt);
+			char dummy[1024];
+			vsnprintf(dummy,1024,fmt,args);
+			va_end(args);
+
+#ifdef PRETTYPRINT
+			printf("│");
+#endif
+			if (unit) {
+				int unitLen = strlen(unit);
+				printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
+			} else {
+				printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
+			}
+#ifdef PRETTYPRINT
+			printf("│");
+#endif
+			printf("\n");
+		}
+	}
+
+	void ghost_printContextInfo(ghost_context_t *context, int options)
+	{
+
+		size_t ws;
 
 
-	/*#ifdef OPENCL	
+		/*#ifdef OPENCL	
 	  size_t fullMemSize, localMemSize, remoteMemSize, 
 	  totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
 
@@ -543,7 +543,7 @@ int ghost_getNumberOfThreads()
 	return nthreads;
 }
 
-unsigned int ghost_getNumberOfNodes() 
+int ghost_getNumberOfNodes() 
 {
 #ifndef MPI
 	return 1;
@@ -588,7 +588,7 @@ unsigned int ghost_getNumberOfNodes()
 #endif
 }
 
-unsigned int ghost_getNumberOfProcesses() 
+int ghost_getNumberOfProcesses() 
 {
 #ifndef MPI
 	return 1;
@@ -598,7 +598,7 @@ unsigned int ghost_getNumberOfProcesses()
 
 	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD, &nnodes));
 
-	return (unsigned int)nnodes;
+	return nnodes;
 #endif
 }
 

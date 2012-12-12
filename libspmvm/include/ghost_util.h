@@ -140,7 +140,7 @@ int ghost_getLocalRank();
 int ghost_getNumberOfRanksOnNode();
 int ghost_getNumberOfHwThreads();
 int ghost_getNumberOfThreads();
-unsigned int ghost_getNumberOfNodes();
-unsigned int ghost_getNumberOfProcesses();
+int ghost_getNumberOfNodes();
+int ghost_getNumberOfProcesses();
 size_t ghost_sizeofDataType(int dt);
 #endif

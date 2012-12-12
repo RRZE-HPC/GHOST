@@ -177,10 +177,10 @@ static void CRS_readColValOffset(void *vargs)
 	CRS_readColValOffset_args_t *args = (CRS_readColValOffset_args_t *)vargs;
 	ghost_mat_t *mat = args->mat;
 	char *matrixPath = args->matrixPath;
-	size_t offsetEnts = args->offsetEnts;
-	size_t offsetRows = args->offsetRows;
-	size_t nEnts = args->nEnts;
-	size_t nRows = args->nRows;
+	ghost_mnnz_t offsetEnts = args->offsetEnts;
+	ghost_midx_t offsetRows = args->offsetRows;
+	ghost_mnnz_t nEnts = args->nEnts;
+	ghost_midx_t nRows = args->nRows;
 	int IOtype = args->IOtype;
 
 	UNUSED(offsetRows);
@@ -197,7 +197,7 @@ static void CRS_readColValOffset(void *vargs)
 	//	mat->invRowPerm = NULL;
 	file = open(matrixPath,O_RDONLY);
 
-	DEBUG_LOG(1,"Reading %lu cols and vals from binary file %s with offset %lu",nEnts, matrixPath,offsetEnts);
+	DEBUG_LOG(1,"Reading %"PRmatNNZ" cols and vals from binary file %s with offset %"PRmatNNZ,nEnts, matrixPath,offsetEnts);
 
 	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);

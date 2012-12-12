@@ -47,10 +47,10 @@ typedef struct{
 typedef struct{
 	ghost_mat_t *mat;
 	char *matrixPath;
-	size_t offsetEnts;
-	size_t offsetRows;
-	size_t nRows;
-	size_t nEnts;
+	ghost_mnnz_t offsetEnts;
+	ghost_midx_t offsetRows;
+	ghost_midx_t nRows;
+	ghost_mnnz_t nEnts;
 	int IOtype;
 } CRS_readColValOffset_args_t;
 
