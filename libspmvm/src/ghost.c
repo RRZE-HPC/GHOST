@@ -29,6 +29,7 @@
 #endif
 
 static int options;
+static int MPIwasInitialized;
 
 static double wctime()
 {
@@ -37,49 +38,49 @@ static double wctime()
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
 
-static ghost_mnnz_t setup_gnnz (ghost_setup_t * setup)
+static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 {
 	ghost_mnnz_t gnnz;
-	ghost_mnnz_t lnnz = setup->fullMatrix->nnz(setup->fullMatrix);
+	ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gnnz;
 }
 
-static ghost_mnnz_t setup_lnnz (ghost_setup_t * setup)
+static ghost_mnnz_t context_lnnz (ghost_context_t * context)
 {
-	return setup->fullMatrix->nnz(setup->fullMatrix);
+	return context->fullMatrix->nnz(context->fullMatrix);
 }
 	
-static ghost_mnnz_t setup_gnrows (ghost_setup_t * setup)
+static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 {
 	ghost_mnnz_t gnrows;
-	ghost_mnnz_t lnrows = setup->fullMatrix->nrows(setup->fullMatrix);
+	ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gnrows;
 }
 
-static ghost_mnnz_t setup_lnrows (ghost_setup_t * setup)
+static ghost_mnnz_t context_lnrows (ghost_context_t * context)
 {
-	return setup->fullMatrix->nrows(setup->fullMatrix);
+	return context->fullMatrix->nrows(context->fullMatrix);
 }
 
-static ghost_mnnz_t setup_gncols (ghost_setup_t * setup)
+static ghost_mnnz_t context_gncols (ghost_context_t * context)
 {
 	ghost_mnnz_t gncols;
-	ghost_mnnz_t lncols = setup->fullMatrix->ncols(setup->fullMatrix);
+	ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
 
 	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
 
 	return gncols;
 }
 
-static ghost_mnnz_t setup_lncols (ghost_setup_t * setup)
+static ghost_mnnz_t context_lncols (ghost_context_t * context)
 {
-	return setup->fullMatrix->ncols(setup->fullMatrix);
+	return context->fullMatrix->ncols(context->fullMatrix);
 }
 
 #if defined(COMPLEX) && defined(MPI)
@@ -116,12 +117,12 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 	int me;
 
 #ifdef MPI
-	int req, prov, init;
+	int req, prov;
 
 	req = MPI_THREAD_FUNNELED; // TODO not if not all kernels configured
 
-	MPI_safecall(MPI_Initialized(&init));
-	if (!init) {
+	MPI_safecall(MPI_Initialized(&MPIwasInitialized));
+	if (!MPIwasInitialized) {
 		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
 		if (req != prov) {
@@ -131,7 +132,7 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 	}
 	me = ghost_getRank();;
 
-	setupSingleNodeComm();
+	contextSingleNodeComm();
 
 #ifdef COMPLEX
 #ifdef DOUBLE
@@ -212,25 +213,26 @@ void ghost_finish()
 #endif
 
 #ifdef OPENCL
-	CL_finish(options);
+	CL_finish();
 #endif
 
 #ifdef MPI
-	MPI_Finalize();
+	if (!MPIwasInitialized)
+		MPI_Finalize();
 #endif
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_mdat_t (*fp)(int))
+ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, ghost_mdat_t (*fp)(int))
 {
 
 	ghost_mdat_t *val;
 	ghost_midx_t nrows;
 	size_t size_val;
-	ghost_mat_t *matrix = setup->fullMatrix;
+	ghost_mat_t *matrix = context->fullMatrix;
 
 
-	if (setup->flags & GHOST_SETUP_GLOBAL || flags & GHOST_VEC_GLOBAL)
+	if (context->flags & GHOST_CONTEXT_GLOBAL || flags & GHOST_VEC_GLOBAL)
 	{
 		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_mdat_t);
 		val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
@@ -259,7 +261,7 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 	} 
 	else 
 	{
-		ghost_comm_t *lcrp = setup->communicator;
+		ghost_comm_t *lcrp = context->communicator;
 		ghost_midx_t i;
 		int me = ghost_getRank();
 
@@ -331,27 +333,27 @@ ghost_vec_t *ghost_createVector(ghost_setup_t *setup, unsigned int flags, ghost_
 
 }
 
-ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int setup_flags) 
+ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int context_flags) 
 {
-	DEBUG_LOG(1,"Creating setup");
-	ghost_setup_t *setup;
+	DEBUG_LOG(1,"Creating context");
+	ghost_context_t *context;
 	CR_TYPE *cr = NULL;
 
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
 	strncpy(matrixPathCopy,matrixPath,strlen(matrixPath));
 
-	setup = (ghost_setup_t *)allocateMemory(sizeof(ghost_setup_t),"setup");
-	setup->flags = setup_flags;
-	setup->matrixName = strtok(basename(matrixPathCopy),".");
+	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
+	context->flags = context_flags;
+	context->matrixName = strtok(basename(matrixPathCopy),".");
 
-	if (setup_flags & GHOST_SETUP_GLOBAL) {
+	if (context_flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
 #ifdef MPI
-	if (setup_flags & GHOST_SETUP_DISTRIBUTED) {
+	if (context_flags & GHOST_CONTEXT_DISTRIBUTED) {
 	/*	if (ghost_getRank() == 0) 
 		{ // root process reads row pointers (parallel IO) or entire matrix
 			if (!isMMfile(matrixPath)){
@@ -374,10 +376,10 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 		MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));*/
 	}
 #endif
-	setup->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
+	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
 
-	if (setup_flags & GHOST_SETUP_DISTRIBUTED)
+	if (context_flags & GHOST_CONTEXT_DISTRIBUTED)
 	{ // distributed matrix
 #ifdef MPI
 		if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) {
@@ -394,16 +396,16 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 				ghost_matrixFormatName(traits[2]));
 */
 		if (options & GHOST_OPTION_SERIAL_IO) 
-			ghost_createDistributedSetupSerial(setup, cr, options, traits);
+			ghost_createDistributedContextSerial(context, cr, options, traits);
 		else
-			ghost_createDistributedSetup(setup, matrixPath, options, traits);
+			ghost_createDistributedContext(context, matrixPath, options, traits);
 
-		//setup->lnrows = setup->communicator->lnrows[ghost_getRank()];
+		//context->lnrows = context->communicator->lnrows[ghost_getRank()];
 
-		setup->solvers[GHOST_MODE_NOMPI] = NULL;
-		setup->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
-		setup->solvers[GHOST_MODE_GOODFAITH] = &hybrid_kernel_II;
-		setup->solvers[GHOST_MODE_TASKMODE] = &hybrid_kernel_III;
+		context->solvers[GHOST_MODE_NOMPI] = NULL;
+		context->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
+		context->solvers[GHOST_MODE_GOODFAITH] = &hybrid_kernel_II;
+		context->solvers[GHOST_MODE_TASKMODE] = &hybrid_kernel_III;
 #else
 		ABORT("Creating a distributed matrix without MPI is not possible");
 #endif // MPI
@@ -413,26 +415,26 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 		if (nTraits != 1)
 			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
 		UNUSED(cr); // TODO
-		setup->fullMatrix = ghost_initMatrix(&traits[0]);
+		context->fullMatrix = ghost_initMatrix(&traits[0]);
 
 		if (isMMfile(matrixPath))
-			setup->fullMatrix->fromMM(setup->fullMatrix,matrixPath);
+			context->fullMatrix->fromMM(context->fullMatrix,matrixPath);
 		else
-			setup->fullMatrix->fromBin(setup->fullMatrix,matrixPath);
+			context->fullMatrix->fromBin(context->fullMatrix,matrixPath);
 
 
 
-		//	setup->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
-		DEBUG_LOG(1,"Created global %s matrix",setup->fullMatrix->formatName(setup->fullMatrix));
-		//setup->nnz = setup->fullMatrix->nnz(setup->fullMatrix);
-		//setup->nrows = setup->fullMatrix->nrows(setup->fullMatrix);
-		//setup->ncols = setup->fullMatrix->ncols(setup->fullMatrix);
-		//setup->lnrows = setup->nrows;
+		//	context->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
+		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
+		//context->nnz = context->fullMatrix->nnz(context->fullMatrix);
+		//context->nrows = context->fullMatrix->nrows(context->fullMatrix);
+		//context->ncols = context->fullMatrix->ncols(context->fullMatrix);
+		//context->lnrows = context->nrows;
 
-		setup->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
-		setup->solvers[GHOST_MODE_VECTORMODE] = NULL;
-		setup->solvers[GHOST_MODE_GOODFAITH] = NULL;
-		setup->solvers[GHOST_MODE_TASKMODE] = NULL;
+		context->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
+		context->solvers[GHOST_MODE_VECTORMODE] = NULL;
+		context->solvers[GHOST_MODE_GOODFAITH] = NULL;
+		context->solvers[GHOST_MODE_TASKMODE] = NULL;
 	}
 
 	/*#ifdef OPENCL
@@ -448,17 +450,17 @@ ghost_setup_t *ghost_createSetup(char *matrixPath, ghost_mtraits_t *traits, int 
 	  }
 #else*/
 	//#endif
-	setup->lnnz = &setup_lnnz;
-	setup->lnrows = &setup_lnrows;
-	setup->lncols = &setup_lncols;
-	setup->gnnz = &setup_gnnz;
-	setup->gnrows = &setup_gnrows;
-	setup->gncols = &setup_gncols;
+	context->lnnz = &context_lnnz;
+	context->lnrows = &context_lnrows;
+	context->lncols = &context_lncols;
+	context->gnnz = &context_gnnz;
+	context->gnrows = &context_gnrows;
+	context->gncols = &context_gncols;
 
-	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",setup->gncols(setup),setup->gnrows(setup),setup->gnnz(setup));
+	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));
 
-	DEBUG_LOG(1,"Setup created successfully");
-	return setup;
+	DEBUG_LOG(1,"Context created successfully");
+	return context;
 }
 
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
@@ -509,7 +511,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 
 
 
-double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec, 
+double ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
 		int kernel, int nIter)
 {
 	int it;
@@ -517,7 +519,7 @@ double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 	double oldtime=1e9;
 
 	ghost_solver_t solver = NULL;
-	solver = setup->solvers[kernel];
+	solver = context->solvers[kernel];
 
 	if (!solver)
 		return -1.0;
@@ -531,7 +533,7 @@ double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 
 	for( it = 0; it < nIter; it++ ) {
 		time = wctime();
-		solver(res,setup,invec,options);
+		solver(res,context,invec,options);
 
 #ifdef MPI
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -549,35 +551,35 @@ double ghost_spmvm(ghost_vec_t *res, ghost_setup_t *setup, ghost_vec_t *invec,
 #endif
 
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
-		ghost_permuteVector(res->val,setup->fullMatrix->invRowPerm,setup->lnrows(setup));
+		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
 	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
 		// one of those must return immediately
-		ghost_permuteVector(res->val,setup->localMatrix->invRowPerm,setup->lnrows(setup));
-		ghost_permuteVector(res->val,setup->remoteMatrix->invRowPerm,setup->lnrows(setup));
+		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
+		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
 	}
 
 	return time;
 }
 
-void ghost_freeSetup(ghost_setup_t *setup)
+void ghost_freeContext(ghost_context_t *context)
 {
-/*	if (setup) {
-		if (setup->fullMatrix && setup->fullMatrix->destroy)
-			setup->fullMatrix->destroy(setup->fullMatrix);
+/*	if (context) {
+		if (context->fullMatrix && context->fullMatrix->destroy)
+			context->fullMatrix->destroy(context->fullMatrix);
 
-		if (setup->localMatrix && setup->localMatrix->destroy)
-			setup->localMatrix->destroy(setup->localMatrix);
+		if (context->localMatrix && context->localMatrix->destroy)
+			context->localMatrix->destroy(context->localMatrix);
 
-		if (setup->remoteMatrix && setup->remoteMatrix->destroy)
-			setup->remoteMatrix->destroy(setup->remoteMatrix);
+		if (context->remoteMatrix && context->remoteMatrix->destroy)
+			context->remoteMatrix->destroy(context->remoteMatrix);
 
-		free(setup->solvers);
+		free(context->solvers);
 
-		if (setup->communicator)
-			ghost_freeCommunicator(setup->communicator);
+		if (context->communicator)
+			ghost_freeCommunicator(context->communicator);
 
-		free(setup);
+		free(context);
 	}*/
-	UNUSED(setup);
+	UNUSED(context);
 	//TODO
 }

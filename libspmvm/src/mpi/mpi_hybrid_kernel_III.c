@@ -10,7 +10,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions){
+void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********               Kernel ir -- lc|csw  -- nl                    ********
@@ -56,18 +56,18 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 		nthreads = ghost_getNumberOfThreads();
 		nprocs = ghost_getNumberOfProcesses();
 
-		localCR = (CR_TYPE *)(setup->localMatrix->data);
+		localCR = (CR_TYPE *)(context->localMatrix->data);
 
 		max_dues = 0;
 		for (i=0;i<nprocs;i++)
-			if (setup->communicator->dues[i]>max_dues) 
-				max_dues = setup->communicator->dues[i];
+			if (context->communicator->dues[i]>max_dues) 
+				max_dues = context->communicator->dues[i];
 
 		hlp_sent = 0.0;
 		hlp_recv = 0.0;
 		for (i=0;i<nprocs; i++){
-			hlp_sent += setup->communicator->dues[i];
-			hlp_recv += setup->communicator->wishes[i];
+			hlp_sent += context->communicator->dues[i];
+			hlp_recv += context->communicator->wishes[i];
 		}
 
 
@@ -81,7 +81,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 		work_mem = (ghost_mdat_t*)  allocateMemory( size_mem,  "work_mem" );
 		work     = (ghost_mdat_t**) allocateMemory( size_work, "work" );
 
-		for (i=0; i<nprocs; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
+		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
 
 		request = (MPI_Request*) allocateMemory( size_request, "request" );
 		status  = (MPI_Status*)  allocateMemory( size_status,  "status" );
@@ -109,8 +109,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	 ****************************************************************************/
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
-		if (setup->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv( &invec->val[setup->communicator->hput_pos[from_PE]], setup->communicator->wishes[from_PE], 
+		if (context->communicator->wishes[from_PE]>0){
+			MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
 						MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
 						&request[recv_messages] ));
 			recv_messages++;
@@ -126,7 +126,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (MPI_MYDATATYPE, ompi_mpi_double, ompi_mpi_comm_world,\
-			setup, me, work, invec, res,  localCR,          \
+			context, me, work, invec, res,  localCR,          \
 			status, request, recv_messages,                 \
 			spmvmOptions,stderr, nthreads, nprocs)                                                  \
 	reduction (+:send_messages)
@@ -135,7 +135,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (ompi_mpi_double, ompi_mpi_comm_world,\
-			setup, me, work, invec, res,  localCR,          \
+			context, me, work, invec, res,  localCR,          \
 			status, request, recv_messages,                 \
 			spmvmOptions,stderr, nthreads, nprocs)                                                  \
 	reduction (+:send_messages)
@@ -146,7 +146,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (MPI_MYDATATYPE, \
-			setup, me, work, invec, res, localCR,           \
+			context, me, work, invec, res, localCR,           \
 			status, request, recv_messages,                 \
 			spmvmOptions,stderr, nthreads, nprocs)                                                  \
 	reduction (+:send_messages)
@@ -155,7 +155,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
 	shared    (\
-			setup, me, work, invec, request, res,  localCR,          \
+			context, me, work, invec, request, res,  localCR,          \
 			status, recv_messages,                 \
 			spmvmOptions,stderr, nthreads, nprocs)                                                  \
 	reduction (+:send_messages)
@@ -168,8 +168,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 #endif
 		for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for
-				for (j=0; j<setup->communicator->dues[to_PE]; j++){
-					work[to_PE][j] = invec->val[setup->communicator->duelist[to_PE][j]];
+				for (j=0; j<context->communicator->dues[to_PE]; j++){
+					work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
 				}
 		}
 
@@ -179,8 +179,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 			 **********************************************************************/
 			for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 
-				if (setup->communicator->dues[to_PE]>0){
-					MPI_safecall(MPI_Isend( &work[to_PE][0], setup->communicator->dues[to_PE], MPI_MYDATATYPE,
+				if (context->communicator->dues[to_PE]>0){
+					MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], MPI_MYDATATYPE,
 								to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
 					send_messages++;
 				}
@@ -197,19 +197,19 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 #ifdef OPENCL
 
 			if( tid == nthreads-2 ) {
-				spmvmKernLocalXThread( setup->communicator, invec, res, &me, spmvmOptions);
+				spmvmKernLocalXThread( context->communicator, invec, res, &me, spmvmOptions);
 			}
 
 #else
 			ghost_mdat_t hlp1;
 			int n_per_thread, n_local;
-			n_per_thread = setup->communicator->lnrows[me]/(nthreads-1);
+			n_per_thread = context->communicator->lnrows[me]/(nthreads-1);
 
 			/* Alle threads gleichviel; letzter evtl. mehr */
 			if (tid < nthreads-2)  
 				n_local = n_per_thread;
 			else
-				n_local = setup->communicator->lnrows[me]-(nthreads-2)*n_per_thread;
+				n_local = context->communicator->lnrows[me]-(nthreads-2)*n_per_thread;
 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
 				hlp1 = 0.0;
@@ -239,8 +239,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* inve
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
-	setup->remoteMatrix->kernel(setup->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
-	//spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
+	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
+	//spmvmKernAll( context->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

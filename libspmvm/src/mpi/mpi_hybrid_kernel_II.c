@@ -5,7 +5,7 @@
 #include "kernel_helper.h"
 #include "kernel.h"
 
-void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec, int spmvmOptions){
+void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions){
 
 	/*****************************************************************************
 	 ********              Kernel ir -- cs -- lc -- wa -- nl              ********
@@ -39,14 +39,14 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 
 		max_dues = 0;
 		for (i=0;i<nprocs;i++)
-			if (setup->communicator->dues[i]>max_dues) 
-				max_dues = setup->communicator->dues[i];
+			if (context->communicator->dues[i]>max_dues) 
+				max_dues = context->communicator->dues[i];
 
 		hlp_sent = 0.0;
 		hlp_recv = 0.0;
 		for (i=0;i<nprocs; i++){
-			hlp_sent += setup->communicator->dues[i];
-			hlp_recv += setup->communicator->wishes[i];
+			hlp_sent += context->communicator->dues[i];
+			hlp_recv += context->communicator->wishes[i];
 		}
 
 
@@ -58,7 +58,7 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 		work_mem = (ghost_mdat_t*)  allocateMemory( size_mem,  "work_mem" );
 		work     = (ghost_mdat_t**) allocateMemory( size_work, "work" );
 
-		for (i=0; i<nprocs; i++) work[i] = &work_mem[setup->communicator->due_displ[i]];
+		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
 
 		/*send_request = (MPI_Request*) allocateMemory( size_request, "send_request" );
 		recv_request = (MPI_Request*) allocateMemory( size_request, "recv_request" );
@@ -85,8 +85,8 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 #endif
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
-		if (setup->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv( &invec->val[setup->communicator->hput_pos[from_PE]], setup->communicator->wishes[from_PE], 
+		if (context->communicator->wishes[from_PE]>0){
+			MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
 					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
 					&request[recv_messages] ));
 			recv_messages++;
@@ -99,11 +99,11 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp parallel for private(i) 
-		for (i=0; i<setup->communicator->dues[to_PE]; i++){
-			work[to_PE][i] = invec->val[setup->communicator->duelist[to_PE][i]];
+		for (i=0; i<context->communicator->dues[to_PE]; i++){
+			work[to_PE][i] = invec->val[context->communicator->duelist[to_PE][i]];
 		}
-		if (setup->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( &work[to_PE][0], setup->communicator->dues[to_PE], 
+		if (context->communicator->dues[to_PE]>0){
+			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], 
 					MPI_MYDATATYPE, to_PE, me, MPI_COMM_WORLD, 
 					&request[recv_messages+send_messages] ));
 			send_messages++;
@@ -119,8 +119,8 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 	likwid_markerStartRegion("Kernel 2 -- local computation");
 #endif
 
-	setup->localMatrix->kernel(setup->localMatrix,res,invec,spmvmOptions);
-	//spmvmKernAll( setup->localMatrix->data, invec, res, spmvmOptions);
+	context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
+	//spmvmKernAll( context->localMatrix->data, invec, res, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
@@ -147,8 +147,8 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_setup_t* setup, ghost_vec_t* invec
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
 
-	setup->remoteMatrix->kernel(setup->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
-//	spmvmKernAll( setup->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
+	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
+//	spmvmKernAll( context->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

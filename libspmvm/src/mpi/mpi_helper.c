@@ -45,7 +45,7 @@ MPI_Comm getSingleNodeComm()
 	return single_node_comm;
 }
 
-void setupSingleNodeComm() 
+void contextSingleNodeComm() 
 {
 
 	/* return MPI communicator between nodal MPI processes single_node_comm
@@ -104,10 +104,10 @@ void setupSingleNodeComm()
 	free( all_hostnames );
 }
 
-void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int options, ghost_mtraits_t *traits)
+void ghost_createDistributedContextSerial(ghost_context_t * context, CR_TYPE* cr, int options, ghost_mtraits_t *traits)
 {
 
-	UNUSED(setup);
+	UNUSED(context);
 	UNUSED(cr);
 	UNUSED(options);
 	UNUSED(traits);
@@ -121,19 +121,19 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
-	DEBUG_LOG(1,"Entering setup_communication");
+	DEBUG_LOG(1,"Entering context_communication");
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	lcrp = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "lcrp");
 
-	setup->communicator = lcrp;
-	setup->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	setup->localMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	setup->remoteMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+	context->communicator = lcrp;
+	context->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+	context->localMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+	context->remoteMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
 
-	*setup->fullMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[0]);
-	*setup->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
-	*setup->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
+	*context->fullMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[0]);
+	*context->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
+	*context->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
 
 	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
 	lcrp->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->dues" ); 
@@ -150,9 +150,9 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 	fullCR->nrows = lcrp->lnrows[me];
 	fullCR->nEnts = lcrp->lnEnts[me];
 
-	setup->fullMatrix->data = fullCR;
-	setup->fullMatrix->nnz = lcrp->lnEnts[me];
-	setup->fullMatrix->nrows = lcrp->lnrows[me];
+	context->fullMatrix->data = fullCR;
+	context->fullMatrix->nnz = lcrp->lnEnts[me];
+	context->fullMatrix->nrows = lcrp->lnrows[me];
 
 #pragma omp parallel for schedule(runtime)
 	for (i=0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = 0.0;
@@ -174,12 +174,12 @@ void ghost_createDistributedSetupSerial(ghost_setup_t * setup, CR_TYPE* cr, int 
 				fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 
 
-	ghost_createCommunication(fullCR,options,setup);*/
+	ghost_createCommunication(fullCR,options,context);*/
 }
 
-void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int options, ghost_mtraits_t *traits)
+void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath, int options, ghost_mtraits_t *traits)
 {
-	DEBUG_LOG(1,"Creating distributed setup with parallel MPI-IO");
+	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
 	/* Counting and auxilliary variables */
 	ghost_midx_t i;
@@ -202,60 +202,60 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
 
-	DEBUG_LOG(1,"Entering setup_communication_parallel");
+	DEBUG_LOG(1,"Entering context_communication_parallel");
 
 	lcrp = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "lcrp");
-	setup->communicator = lcrp;
+	context->communicator = lcrp;
 
 
-/*	setup->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	setup->localMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	setup->remoteMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+/*	context->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+	context->localMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
+	context->remoteMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
 	
-	*setup->fullMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[0]);
-	*setup->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
-	*setup->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
+	*context->fullMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[0]);
+	*context->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
+	*context->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
 */
-	setup->fullMatrix = ghost_initMatrix(&traits[0]);
-	setup->localMatrix = ghost_initMatrix(&traits[1]);
-	setup->remoteMatrix = ghost_initMatrix(&traits[2]);
+	context->fullMatrix = ghost_initMatrix(&traits[0]);
+	context->localMatrix = ghost_initMatrix(&traits[1]);
+	context->remoteMatrix = ghost_initMatrix(&traits[2]);
 
-	CRS_readRpt_args_t args = {.mat=setup->fullMatrix,.matrixPath=matrixPath};
-	setup->fullMatrix->extraFun[2](&args);  // read header
+	CRS_readRpt_args_t args = {.mat=context->fullMatrix,.matrixPath=matrixPath};
+	context->fullMatrix->extraFun[2](&args);  // read header
 	
 	if (ghost_getRank() == 0) {
-		setup->fullMatrix->extraFun[0](&args);  // read rpt
+		context->fullMatrix->extraFun[0](&args);  // read rpt
 	}
 	
 	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
 	lcrp->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->dues" ); 
 
-	ghost_createDistribution(setup->fullMatrix->data,options,lcrp);
+	ghost_createDistribution(context->fullMatrix->data,options,lcrp);
 
 	DEBUG_LOG(1,"Mallocing space for %u rows",lcrp->lnrows[me]);
 	
 /*
-	int *tmp = (int *)malloc((setup->fullMatrix->nrows(setup->fullMatrix)+1)*sizeof(int));
+	int *tmp = (int *)malloc((context->fullMatrix->nrows(context->fullMatrix)+1)*sizeof(int));
 	if (ghost_getRank() == 0) {
 
-		memcpy(tmp,((CR_TYPE *)(setup->fullMatrix->data))->rpt,(setup->fullMatrix->nrows(setup->fullMatrix)+1)*sizeof(int));
+		memcpy(tmp,((CR_TYPE *)(context->fullMatrix->data))->rpt,(context->fullMatrix->nrows(context->fullMatrix)+1)*sizeof(int));
 	}
-	((CR_TYPE *)(setup->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));*/
+	((CR_TYPE *)(context->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));*/
 	
 	if (ghost_getRank() != 0) {
-		((CR_TYPE *)(setup->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));
+		((CR_TYPE *)(context->fullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));
 //#pragma omp parallel for schedule(runtime)
-//		for (i=0; i<lcrp->lnrows[me]+1; i++) ((CR_TYPE *)(setup->fullMatrix->data))->rpt[i] = 0;
+//		for (i=0; i<lcrp->lnrows[me]+1; i++) ((CR_TYPE *)(context->fullMatrix->data))->rpt[i] = 0;
 	}
 
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
 	MPI_safecall(MPI_Scatterv(
-				((CR_TYPE *)(setup->fullMatrix->data))->rpt, 
+				((CR_TYPE *)(context->fullMatrix->data))->rpt, 
 			//	tmp, 
 				(int *)lcrp->lnrows, 
 				(int *)lcrp->lfRow, 
 				MPI_INTEGER,
-				((CR_TYPE *)(setup->fullMatrix->data))->rpt,
+				((CR_TYPE *)(context->fullMatrix->data))->rpt,
 				(int)lcrp->lnrows[me],
 				MPI_INTEGER, 0, MPI_COMM_WORLD));
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
@@ -263,10 +263,10 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 	DEBUG_LOG(1,"Scatter successfully");
 	
 	for (i=0;i<lcrp->lnrows[me]+1;i++)
-		((CR_TYPE *)(setup->fullMatrix->data))->rpt[i] =  ((CR_TYPE *)(setup->fullMatrix->data))->rpt[i] - lcrp->lfEnt[me]; 
+		((CR_TYPE *)(context->fullMatrix->data))->rpt[i] =  ((CR_TYPE *)(context->fullMatrix->data))->rpt[i] - lcrp->lfEnt[me]; 
 
 	/* last entry of row_ptr holds the local number of entries */
-	((CR_TYPE *)(setup->fullMatrix->data))->rpt[lcrp->lnrows[me]] = lcrp->lnEnts[me]; 
+	((CR_TYPE *)(context->fullMatrix->data))->rpt[lcrp->lnrows[me]] = lcrp->lnEnts[me]; 
 		
 	DEBUG_LOG(1,"local rows          = %"PRmatIDX,lcrp->lnrows[me]);
 	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,lcrp->lfRow[me]);
@@ -274,17 +274,17 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 	DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,lcrp->lfEnt[me]);
 
 	CRS_readColValOffset_args_t cvargs = {
-		.mat=setup->fullMatrix,
+		.mat=context->fullMatrix,
 		.matrixPath=matrixPath,
 		.nEnts = lcrp->lnEnts[me],
 		.offsetEnts = lcrp->lfEnt[me],
 		.offsetRows = lcrp->lfRow[me],
 		.nRows = lcrp->lnrows[me],
 		.IOtype = GHOST_IO_STD};
-	setup->fullMatrix->extraFun[1](&cvargs); // read col and val
+	context->fullMatrix->extraFun[1](&cvargs); // read col and val
 
-	((CR_TYPE *)(setup->fullMatrix->data))->nrows = lcrp->lnrows[me];
-	((CR_TYPE *)(setup->fullMatrix->data))->nEnts = lcrp->lnEnts[me];
+	((CR_TYPE *)(context->fullMatrix->data))->nrows = lcrp->lnrows[me];
+	((CR_TYPE *)(context->fullMatrix->data))->nEnts = lcrp->lnEnts[me];
 
 
 
@@ -300,9 +300,9 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 	//fullCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"fullMatrix->rpt" ); 
 	//fullCR->nrows = lcrp->lnrows[me];
 	//fullCR->nEnts = lcrp->lnEnts[me];
-	//setup->fullMatrix->data = fullCR;
-	//setup->fullMatrix->nnz = lcrp->lnEnts[me];
-	//setup->fullMatrix->nrows = lcrp->lnrows[me];
+	//context->fullMatrix->data = fullCR;
+	//context->fullMatrix->nnz = lcrp->lnEnts[me];
+	//context->fullMatrix->nrows = lcrp->lnrows[me];
 
 	/****************************************************************************
 	 *******   Fill all fields with their corresponding values            *******
@@ -416,7 +416,7 @@ void ghost_createDistributedSetup(ghost_setup_t * setup, char * matrixPath, int 
 			fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 */
 
-	ghost_createCommunication((CR_TYPE *)(setup->fullMatrix->data),options,setup);
+	ghost_createCommunication((CR_TYPE *)(context->fullMatrix->data),options,context);
 
 }
 
@@ -622,7 +622,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 }
 
-void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setup)
+void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_context_t *context)
 {
 	DEBUG_LOG(1,"Setting up communication");
 	
@@ -661,7 +661,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	size_t size_mem, size_wish, size_dues;
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
-	ghost_comm_t *lcrp = setup->communicator;
+	ghost_comm_t *lcrp = context->communicator;
 	
 	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(int)  );
 	size_nptr = (size_t)( nprocs             * sizeof(int*) );
@@ -819,7 +819,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	freeMemory ( size_pval, "present_values", present_values ); 
 
 	/****************************************************************************
-	 *******               Finally setup compressed wishlist              *******
+	 *******               Finally context compressed wishlist              *******
 	 ***************************************************************************/
 
 	size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
@@ -873,7 +873,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 	}
 
 	/****************************************************************************
-	 *******        Setup the variant using local/non-local arrays        *******
+	 *******        Context the variant using local/non-local arrays        *******
 	 ***************************************************************************/
 	if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
 
@@ -905,8 +905,8 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
 		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 
-		setup->localMatrix->data = localCR;
-		setup->remoteMatrix->data = remoteCR;
+		context->localMatrix->data = localCR;
+		context->remoteMatrix->data = remoteCR;
 
 		localCR->nrows = lcrp->lnrows[me];
 		localCR->nEnts = lnEnts_l;
@@ -914,13 +914,13 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_setup_t *setu
 		remoteCR->nrows = lcrp->lnrows[me];
 		remoteCR->nEnts = lnEnts_r;
 
-		//setup->localMatrix->data = localCR;
-		//setup->localMatrix->nnz = lnEnts_l;
-		//setup->localMatrix->nrows = lcrp->lnrows[me];
+		//context->localMatrix->data = localCR;
+		//context->localMatrix->nnz = lnEnts_l;
+		//context->localMatrix->nrows = lcrp->lnrows[me];
 		
-		//setup->remoteMatrix->data = remoteCR;
-		//setup->localMatrix->nnz = lnEnts_r;
-		//setup->localMatrix->nrows = lcrp->lnrows[me];
+		//context->remoteMatrix->data = remoteCR;
+		//context->localMatrix->nnz = lnEnts_r;
+		//context->localMatrix->nrows = lcrp->lnrows[me];
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) localCR->val[i] = 0.0;

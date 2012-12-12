@@ -31,9 +31,9 @@
 #define GHOST_SPMFORMAT_CRSCD  (4)
 
 // flags
-#define GHOST_SETUP_DEFAULT       (0)
-#define GHOST_SETUP_GLOBAL        (0x1<<0)
-#define GHOST_SETUP_DISTRIBUTED   (0x1<<1)
+#define GHOST_CONTEXT_DEFAULT       (0)
+#define GHOST_CONTEXT_GLOBAL        (0x1<<0)
+#define GHOST_CONTEXT_DISTRIBUTED   (0x1<<1)
 
 #define GHOST_SPM_DEFAULT       (0)
 #define GHOST_SPM_HOST          (0x1<<0)

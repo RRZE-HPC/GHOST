@@ -285,10 +285,10 @@ void CL_barrier()
 	CL_safecall(clFinish(queue));
 }
 
-void CL_finish(int spmvmOptions) 
+void CL_finish() 
 {
-	UNUSED(spmvmOptions);
 
+	// TODO
 	/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
 		}

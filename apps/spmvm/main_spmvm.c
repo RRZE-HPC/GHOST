@@ -47,7 +47,7 @@ int main( int argc, char* argv[] )
 	ghost_vec_t *lhs; // lhs vector
 	ghost_vec_t *rhs; // rhs vector
 
-	ghost_setup_t *setup;
+	ghost_context_t *context;
 
 	char *matrixPath = argv[1];
 
@@ -68,21 +68,21 @@ int main( int argc, char* argv[] )
 
 
 	ghost_init(argc,argv,options);       // basic initialization
-	setup = ghost_createSetup(matrixPath,traits,3,GHOST_SETUP_DISTRIBUTED);
-	lhs   = ghost_createVector(setup,GHOST_VEC_LHS,NULL);
-	rhs   = ghost_createVector(setup,GHOST_VEC_RHS,rhsVal);
+	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DISTRIBUTED);
+	lhs   = ghost_createVector(context,GHOST_VEC_LHS,NULL);
+	rhs   = ghost_createVector(context,GHOST_VEC_RHS,rhsVal);
 
 #ifdef CHECK	
-	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,setup,rhsVal,nIter,options);	
+	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,options);	
 #endif
 
 	ghost_printEnvInfo();
-	ghost_printSetupInfo(setup,options);
+	ghost_printContextInfo(context,options);
 	ghost_printHeader("Performance");
 
 	for (kernel=0; kernel < nKernels; kernel++){
 
-		time = ghost_spmvm(lhs,setup,rhs,kernels[kernel],nIter);
+		time = ghost_spmvm(lhs,context,rhs,kernels[kernel],nIter);
 
 		if (time < 0.) {
 			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"SKIPPED");
@@ -91,7 +91,7 @@ int main( int argc, char* argv[] )
 
 #ifdef CHECK
 		errcount=0;
-		for (i=0; i<setup->lnrows(setup); i++){
+		for (i=0; i<context->lnrows(context); i++){
 			mytol = EPSILON * ABS(goldLHS->val[i]); 
 			if (REAL(ABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
 					IMAG(ABS(goldLHS->val[i]-lhs->val[i])) > mytol){
@@ -115,11 +115,11 @@ int main( int argc, char* argv[] )
 		else
 			ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 					FLOPS_PER_ENTRY*1.e-9*
-					(double)setup->gnnz(setup)/time);
+					(double)context->gnnz(context)/time);
 #else
 		ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
 				FLOPS_PER_ENTRY*1.e-9*
-				(double)setup->gnnz(setup)/time);
+				(double)context->gnnz(context)/time);
 #endif
 
 		ghost_zeroVector(lhs);
@@ -130,7 +130,7 @@ int main( int argc, char* argv[] )
 
 	ghost_freeVector( lhs );
 	ghost_freeVector( rhs );
-	ghost_freeSetup( setup );
+	ghost_freeContext( context );
 
 #ifdef CHECK
 	ghost_freeVector( goldLHS );

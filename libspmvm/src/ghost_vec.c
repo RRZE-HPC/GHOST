@@ -94,7 +94,7 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec)
 	return nodeVec;
 }
 
-void ghost_collectVectors(ghost_setup_t *setup, ghost_vec_t *vec, ghost_vec_t *totalVec, int kernel) 
+void ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec, ghost_vec_t *totalVec, int kernel) 
 {
 
 #ifdef MPI
@@ -104,18 +104,18 @@ void ghost_collectVectors(ghost_setup_t *setup, ghost_vec_t *vec, ghost_vec_t *t
 
 	int me = ghost_getRank();
 	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
-		ghost_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->communicator->lnrows[me]);
+		ghost_permuteVector(vec->val,context->fullMatrix->invRowPerm,context->communicator->lnrows[me]);
 	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
 		// one of those must return immediately
-		ghost_permuteVector(vec->val,setup->localMatrix->invRowPerm,setup->communicator->lnrows[me]);
-		ghost_permuteVector(vec->val,setup->remoteMatrix->invRowPerm,setup->communicator->lnrows[me]);
+		ghost_permuteVector(vec->val,context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
+		ghost_permuteVector(vec->val,context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}
-	MPI_safecall(MPI_Gatherv(vec->val,(int)setup->communicator->lnrows[me],MPI_MYDATATYPE,totalVec->val,
-				(int *)setup->communicator->lnrows,(int *)setup->communicator->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],MPI_MYDATATYPE,totalVec->val,
+				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
 #else
 	int i;
 	UNUSED(kernel);
-	ghost_permuteVector(vec->val,setup->fullMatrix->invRowPerm,setup->fullMatrix->nrows(setup->fullMatrix));
+	ghost_permuteVector(vec->val,context->fullMatrix->invRowPerm,context->fullMatrix->nrows(context->fullMatrix));
 	for (i=0; i<totalVec->nrows; i++) 
 		totalVec->val[i] = vec->val[i];
 #endif

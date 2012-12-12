@@ -134,7 +134,7 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 	}
 }
 
-void ghost_printSetupInfo(ghost_setup_t *setup, int options)
+void ghost_printContextInfo(ghost_context_t *context, int options)
 {
 
 	size_t ws;
@@ -165,49 +165,49 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
 		1:0;
 	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
-	ws = ((setup->gnrows(setup)+1)*sizeof(ghost_midx_t) + 
-			setup->gnnz(setup)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
+	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
+			context->gnnz(context)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
 
 	char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
-	if (setup->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
+	if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
 		matrixLocation = "Device";
-	else if (setup->fullMatrix->traits->flags & GHOST_SPM_HOST)
+	else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
 		matrixLocation = "Host";
 	else
 		matrixLocation = "Default";
 
 	char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
-	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 		matrixPlacement = "Distributed";
-	else if (setup->flags & GHOST_SETUP_GLOBAL)
+	else if (context->flags & GHOST_CONTEXT_GLOBAL)
 		matrixPlacement = "Global";
 
 
 	ghost_printHeader("Matrix information");
-	ghost_printLine("Matrix name",NULL,"%s",setup->matrixName);
-	ghost_printLine("Dimension",NULL,"%"PRmatIDX,setup->gnrows(setup));
-	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,setup->gnnz(setup));
-	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)setup->gnnz(setup)/setup->gnrows(setup));
+	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
+	ghost_printLine("Dimension",NULL,"%"PRmatIDX,context->gnrows(context));
+	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
+	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
 	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
 	ghost_printLine("Global CRS size","MB","%lu",ws);
 
-	ghost_printLine("Full   host matrix format",NULL,"%s",setup->fullMatrix->formatName(setup->fullMatrix));
-	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+	ghost_printLine("Full   host matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
-		ghost_printLine("Local  host matrix format",NULL,"%s",setup->localMatrix->formatName(setup->fullMatrix));
-		ghost_printLine("Remote host matrix format",NULL,"%s",setup->remoteMatrix->formatName(setup->fullMatrix));
+		ghost_printLine("Local  host matrix format",NULL,"%s",context->localMatrix->formatName(context->fullMatrix));
+		ghost_printLine("Remote host matrix format",NULL,"%s",context->remoteMatrix->formatName(context->fullMatrix));
 	}
-	ghost_printLine("Full   host matrix size (rank 0)","MB","%u",setup->fullMatrix->byteSize(setup->fullMatrix)/(1024*1024));
-	if (setup->flags & GHOST_SETUP_DISTRIBUTED)
+	ghost_printLine("Full   host matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
-		ghost_printLine("Local  host matrix size (rank 0)","MB","%u",setup->localMatrix->byteSize(setup->localMatrix)/(1024*1024));
-		ghost_printLine("Remote host matrix size (rank 0)","MB","%u",setup->remoteMatrix->byteSize(setup->remoteMatrix)/(1024*1024));
+		ghost_printLine("Local  host matrix size (rank 0)","MB","%u",context->localMatrix->byteSize(context->localMatrix)/(1024*1024));
+		ghost_printLine("Remote host matrix size (rank 0)","MB","%u",context->remoteMatrix->byteSize(context->remoteMatrix)/(1024*1024));
 	}
 
-	if (setup->flags & GHOST_SETUP_GLOBAL)
+	if (context->flags & GHOST_CONTEXT_GLOBAL)
 	{ //additional information depending on format
-		setup->fullMatrix->printInfo(setup->fullMatrix);
+		context->fullMatrix->printInfo(context->fullMatrix);
 	}
 	/*#ifdef OPENCL	
 	  if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
@@ -222,7 +222,7 @@ void ghost_printSetupInfo(ghost_setup_t *setup, int options)
 #endif*/
 	ghost_printFooter();
 
-	ghost_printHeader("Setup information");
+	ghost_printHeader("Context information");
 	ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
 	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
 	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
@@ -344,34 +344,34 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_setup_t *distSetup, ghost_mdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_mdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
 	int me = ghost_getRank();
-	//ghost_vec_t *lhs = ghost_createVector(distSetup,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
+	//ghost_vec_t *lhs = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 
 	if (me==0) {
 		ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
-		ghost_setup_t *setup = ghost_createSetup(matrixPath, &trait, 1, GHOST_SETUP_GLOBAL);
-		globLHS = ghost_createVector(setup,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 
-		ghost_vec_t *globRHS = ghost_createVector(setup,GHOST_VEC_RHS|GHOST_VEC_HOST,rhsVal);
+		ghost_context_t *context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
+		globLHS = ghost_createVector(context,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 
+		ghost_vec_t *globRHS = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_HOST,rhsVal);
 
-		CR_TYPE *cr = (CR_TYPE *)(setup->fullMatrix->data);
+		CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
 		for (iter=0; iter<nIter; iter++)
 			ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 
 		ghost_freeVector(globRHS);
-		ghost_freeSetup(setup);
+		ghost_freeContext(context);
 	} else {
 		globLHS = ghost_newVector(0,GHOST_VEC_LHS|GHOST_VEC_HOST);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vec_t *lhs = ghost_distributeVector(distSetup->communicator,globLHS);
+	ghost_vec_t *lhs = ghost_distributeVector(distContext->communicator,globLHS);
 
 	ghost_freeVector(globLHS);
 

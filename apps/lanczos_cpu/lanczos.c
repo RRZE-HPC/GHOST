@@ -50,16 +50,16 @@ static void vecscal(ghost_vec_t *vec, ghost_mdat_t s, int n)
 }
 
 
-static void lanczosStep(ghost_setup_t *setup, ghost_vec_t *vnew, ghost_vec_t *vold,
+static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t *vold,
 		ghost_mdat_t *alpha, ghost_mdat_t *beta)
 {
-	vecscal(vnew,-*beta,setup->lnrows);
-	ghost_solve(vnew, setup, vold, GHOST_MODE_NOMPI, 1);
-	dotprod(vnew,vold,alpha,setup->lnrows);
-	axpy(vnew,vold,-(*alpha),setup->lnrows);
-	dotprod(vnew,vnew,beta,setup->lnrows);
+	vecscal(vnew,-*beta,context->lnrows);
+	ghost_solve(vnew, context, vold, GHOST_MODE_NOMPI, 1);
+	dotprod(vnew,vold,alpha,context->lnrows);
+	axpy(vnew,vold,-(*alpha),context->lnrows);
+	dotprod(vnew,vnew,beta,context->lnrows);
 	*beta=SQRT(*beta);
-	vecscal(vnew,1./(*beta),setup->lnrows);
+	vecscal(vnew,1./(*beta),context->lnrows);
 }
 
 static ghost_mdat_t rhsVal (int i)
@@ -73,7 +73,7 @@ int main( int argc, char* argv[] )
 	ghost_mdat_t alpha=0., beta=0.;
 	int n;
 
-	ghost_setup_t *setup;
+	ghost_context_t *context;
 	ghost_vec_t   *vold;
 	ghost_vec_t   *vnew;
 	ghost_vec_t   *r0;
@@ -87,13 +87,13 @@ int main( int argc, char* argv[] )
 
 	ghost_init(argc,argv,options);       // basic initialization
 	
-	setup = ghost_createSetup(matrixPath,&trait,1,GHOST_SETUP_GLOBAL,NULL);
-	vnew  = ghost_createVector(setup,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
-	r0    = ghost_createVector(setup,GHOST_VEC_GLOBAL,rhsVal); 
+	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_GLOBAL,NULL);
+	vnew  = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
+	r0    = ghost_createVector(context,GHOST_VEC_GLOBAL,rhsVal); 
 	
 	ghost_normalizeVector(r0); // normalize the global vector r0
 
-	vold = ghost_distributeVector(setup->communicator,r0); // scatter r0 to vold
+	vold = ghost_distributeVector(context->communicator,r0); // scatter r0 to vold
 
 	ghost_mdat_t *alphas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
 	ghost_mdat_t *betas   = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
@@ -108,7 +108,7 @@ int main( int argc, char* argv[] )
 	{
 		printf("\r");
 
-		lanczosStep(setup,vnew,vold,&alpha,&beta);
+		lanczosStep(context,vnew,vold,&alpha,&beta);
 		ghost_swapVectors(vnew,vold);
 
 		alphas[iteration] = alpha;
@@ -125,7 +125,7 @@ int main( int argc, char* argv[] )
 	ghost_freeVector(r0);
 	ghost_freeVector(vold);
 	ghost_freeVector(vnew);
-	ghost_freeSetup (setup);
+	ghost_freeContext (context);
 
 	ghost_finish();
 
