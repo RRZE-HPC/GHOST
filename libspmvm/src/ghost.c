@@ -136,13 +136,13 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 
 #ifdef COMPLEX
 #ifdef DOUBLE
-	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&MPI_MYDATATYPE));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
 #endif
 #ifdef SINGLE
-	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&MPI_MYDATATYPE));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
 #endif
-	MPI_safecall(MPI_Type_commit(&MPI_MYDATATYPE));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_complAdd,1,&MPI_MYSUM));
+	MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_complAdd,1,&ghost_mpi_sum_mdat));
 #endif
 
 #else // ifdef MPI

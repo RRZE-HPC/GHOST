@@ -164,8 +164,8 @@ void ghost_createDistributedContextSerial(ghost_context_t * context, CR_TYPE* cr
 	for (i=0; i<lcrp->lnrows[me]; i++) fullCR->rpt[i] = 0.0;
 
 
-	MPI_safecall(MPI_Scatterv ( cr->val, (int *)lcrp->lnEnts, (int *)lcrp->lfEnt, MPI_MYDATATYPE, 
-				fullCR->val, (int)lcrp->lnEnts[me],  MPI_MYDATATYPE, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Scatterv ( cr->val, (int *)lcrp->lnEnts, (int *)lcrp->lfEnt, ghost_mpi_dt_mdat, 
+				fullCR->val, (int)lcrp->lnEnts[me],  ghost_mpi_dt_mdat, 0, MPI_COMM_WORLD));
 
 	MPI_safecall(MPI_Scatterv ( cr->col, (int *)lcrp->lnEnts, (int *)lcrp->lfEnt, MPI_INTEGER,
 				fullCR->col, (int)lcrp->lnEnts[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
@@ -330,11 +330,11 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
 	MPI_safecall(MPI_File_read(file_handle, fullCR->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
 
-	if (datatype != DATATYPE_DESIRED) {
+	if (datatype != GHOST_MY_MDATATYPE) {
 		if (me==0) {
 			DEBUG_LOG(0,"Warning The library has been built for %s data but"
 					" the file contains %s data. Casting...",
-					ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+					ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
 		}
 		switch(datatype) {
 			case GHOST_DATATYPE_S:
@@ -406,7 +406,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 		offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(ghost_mdat_t);
 		DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
 		MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-		MPI_safecall(MPI_File_read(file_handle, fullCR->val, lcrp->lnEnts[me], MPI_MYDATATYPE, &status));
+		MPI_safecall(MPI_File_read(file_handle, fullCR->val, lcrp->lnEnts[me], ghost_mpi_dt_mdat, &status));
 	}
 
 	MPI_safecall(MPI_File_close(&file_handle));

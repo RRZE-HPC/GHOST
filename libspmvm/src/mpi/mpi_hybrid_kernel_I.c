@@ -87,7 +87,7 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv(&invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
-					MPI_MYDATATYPE, from_PE, from_PE, MPI_COMM_WORLD, 
+					ghost_mpi_dt_mdat, from_PE, from_PE, MPI_COMM_WORLD, 
 					&request[recv_messages] ));
 			recv_messages++;
 		}
@@ -100,7 +100,7 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 		}
 		if (context->communicator->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], 
-					MPI_MYDATATYPE, to_PE, me, MPI_COMM_WORLD, 
+					ghost_mpi_dt_mdat, to_PE, me, MPI_COMM_WORLD, 
 					&request[recv_messages+send_messages] ));
 			send_messages++;
 		}

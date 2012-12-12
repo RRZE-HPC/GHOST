@@ -295,7 +295,7 @@ void ghost_printEnvInfo()
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(DATATYPE_DESIRED));
+		ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else

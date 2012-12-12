@@ -45,6 +45,10 @@ MAKROS+= -DLIKWID_PERFMON
 IPATH += -I$(strip $(LIKWIDPATH))/include
 endif
 
+ifeq ($(strip $(LONGIDX)),1)
+TYPES:= $(TYPES)"\#define GHOST_LONGIDX \n"
+endif
+
 ifeq ($(strip $(MATDATA)),s)
 TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
 else ifeq ($(strip $(MATDATA)),d)

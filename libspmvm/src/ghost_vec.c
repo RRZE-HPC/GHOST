@@ -77,8 +77,8 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec)
 	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->flags ); 
 
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( vec->val, (int *)lcrp->lnrows, (int *)lcrp->lfRow, MPI_MYDATATYPE,
-				nodeVec->val, (int)lcrp->lnrows[me], MPI_MYDATATYPE, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( vec->val, (int *)lcrp->lnrows, (int *)lcrp->lfRow, ghost_mpi_dt_mdat,
+				nodeVec->val, (int)lcrp->lnrows[me], ghost_mpi_dt_mdat, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(lcrp);
 	ghost_vec_t *nodeVec = ghost_newVector( vec->nrows, vec->flags ); 
@@ -110,8 +110,8 @@ void ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec, ghost_vec_
 		ghost_permuteVector(vec->val,context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
 		ghost_permuteVector(vec->val,context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}
-	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],MPI_MYDATATYPE,totalVec->val,
-				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,MPI_MYDATATYPE,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],ghost_mpi_dt_mdat,totalVec->val,
+				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_mdat,0,MPI_COMM_WORLD));
 #else
 	int i;
 	UNUSED(kernel);

@@ -228,12 +228,12 @@ static void CRS_readColValOffset(void *vargs)
 	DEBUG_LOG(1,"Reading array with values");
 	offs = sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts) + ghost_sizeofDataType(datatype)*offsetEnts;
 	
-	if (datatype == DATATYPE_DESIRED) {
+	if (datatype == GHOST_MY_MDATATYPE) {
 		pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*nEnts, offs);
 	} else {
 	/*	DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",
-				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
 		switch (datatype) {
 			case GHOST_DATATYPE_S:
 				{
@@ -337,10 +337,10 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
-	if (datatype != DATATYPE_DESIRED) {
+	if (datatype != GHOST_MY_MDATATYPE) {
 		DEBUG_LOG(0,"Warning in %s:%d! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
-				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
 	}
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->rpt");
@@ -512,7 +512,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 		pread(file,&CR(mat)->col[0], sizeof(int)*CR(mat)->nEnts, sizeof(int)*(CR(mat)->nrows+1+4));
 		DEBUG_LOG(2,"Reading array with values");
-		if (datatype == DATATYPE_DESIRED)
+		if (datatype == GHOST_MY_MDATATYPE)
 		{
 			pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*CR(mat)->nEnts, sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts));
 		} 

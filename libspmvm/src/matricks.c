@@ -177,10 +177,10 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",cr->nrows,cr->ncols,cr->nEnts);
 
-	if (datatype != DATATYPE_DESIRED) {
+	if (datatype != GHOST_MY_MDATATYPE) {
 		DEBUG_LOG(0,"Warning in %s:%d! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",__FILE__,__LINE__,
-				ghost_datatypeName(DATATYPE_DESIRED),ghost_datatypeName(datatype));
+				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
 	}
 
 	DEBUG_LOG(2,"Allocate memory for cr->rpt");
@@ -354,7 +354,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			// TODO fread => pread
 			fread(&cr->col[0], sizeof(int), cr->nEnts, RESTFILE);
 			DEBUG_LOG(2,"Reading array with values");
-			if (datatype == DATATYPE_DESIRED)
+			if (datatype == GHOST_MY_MDATATYPE)
 			{
 				fread(&cr->val[0], sizeof(ghost_mdat_t), cr->nEnts, RESTFILE);
 			} 
