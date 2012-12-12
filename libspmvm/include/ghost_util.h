@@ -116,6 +116,7 @@ size_t CL_getLocalSize(cl_kernel kernel);
 CL_DEVICE_INFO * CL_getDeviceInfo();
 void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
 void CL_barrier();
+const char * CL_getVersion();
 #endif
 
 

@@ -65,6 +65,9 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 #else
 	mat->kernel   = &CRS_kernel_plain;
 #endif
+	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	mat->rowPerm = NULL;
+	mat->invRowPerm = NULL;
 	return mat;
 
 }
@@ -121,22 +124,23 @@ static void CRS_readHeader(void *vargs)
 	ghost_mat_t * mat = args->mat;
 	char *matrixPath = args->matrixPath;
 	FILE* file;
-	int datatype;
+	int32_t fileVersion;
+	int32_t symmetry;
+	int32_t datatype;
 
 	DEBUG_LOG(1,"Reading header from %s",matrixPath);
 
-	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-	mat->rowPerm = NULL;
-	mat->invRowPerm = NULL;
 
 	if ((file = fopen(matrixPath, "rb"))==NULL){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 
-	fread(&datatype, sizeof(int), 1, file);
-	fread(&CR(mat)->nrows, sizeof(int), 1, file);
-	fread(&CR(mat)->ncols, sizeof(int), 1, file);
-	fread(&CR(mat)->nEnts, sizeof(int), 1, file);
+	fread(&fileVersion, 4, 1, file);
+	fread(&symmetry, 4, 1, file);
+	fread(&datatype, 4, 1, file);
+	fread(&CR(mat)->nrows, 8, 1, file);
+	fread(&CR(mat)->ncols, 8, 1, file);
+	fread(&CR(mat)->nEnts, 8, 1, file);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 }
@@ -169,7 +173,16 @@ static void CRS_readRpt(void *vargs)
 	}
 
 	DEBUG_LOG(2,"Reading array with row-offsets");
-	pread(file,&CR(mat)->rpt[0], sizeof(int)*CR(mat)->nrows+1, 4*sizeof(int));
+#ifdef LONGIDX
+	pread(file,&CR(mat)->rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER);
+#else // casting
+	int64_t tmp;
+	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		pread(file,&tmp, GHOST_BINCRS_SIZE_RPT_EL, GHOST_BINCRS_SIZE_HEADER+i*8);
+		CR(mat)->rpt[i] = (ghost_midx_t)tmp;
+	}
+#endif
+
 }
 
 static void CRS_readColValOffset(void *vargs)
@@ -202,12 +215,12 @@ static void CRS_readColValOffset(void *vargs)
 	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
-	pread(file, &datatype, sizeof(int), 0);
+	pread(file, &datatype, sizeof(int), 8);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
-	CR(mat)->col       = (ghost_midx_t *)    allocateMemory( nEnts * sizeof(ghost_midx_t),  "col" );
+	CR(mat)->col       = (ghost_midx_t *) allocateMemory( nEnts * sizeof(ghost_midx_t),  "col" );
 	CR(mat)->val       = (ghost_mdat_t *) allocateMemory( nEnts * sizeof(ghost_mdat_t),  "val" );
 
 	DEBUG_LOG(2,"NUMA-placement for CR(mat)->val and CR(mat)->col");
@@ -221,15 +234,28 @@ static void CRS_readColValOffset(void *vargs)
 
 
 	DEBUG_LOG(1,"Reading array with column indices");
-	offs = sizeof(int)*(CR(mat)->nrows+1+4+offsetEnts);
-	pread(file,&CR(mat)->col[0], sizeof(int)*nEnts, offs );
+	offs = GHOST_BINCRS_SIZE_HEADER+
+		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
+		GHOST_BINCRS_SIZE_COL_EL*offsetEnts;
+#ifdef LONGIDX
+	pread(file,&CR(mat)->col[0], GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+#else // casting
+	int64_t tmp;
+	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		pread(file,&tmp, GHOST_BINCRS_SIZE_COL_EL, offs+i*8 );
+		CR(mat)->col[i] = (ghost_midx_t)tmp;
+	}
+#endif
 
 
 	DEBUG_LOG(1,"Reading array with values");
-	offs = sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts) + ghost_sizeofDataType(datatype)*offsetEnts;
+	offs = GHOST_BINCRS_SIZE_HEADER+
+		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
+		GHOST_BINCRS_SIZE_COL_EL*CR(mat)->nEnts+
+		ghost_sizeofDataType(datatype)*offsetEnts;
 	
 	if (datatype == GHOST_MY_MDATATYPE) {
-		pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*nEnts, offs);
+		pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs);
 	} else {
 	/*	DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",
@@ -314,7 +340,7 @@ static void CRS_readColValOffset(void *vargs)
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 
-	int detectDiags = 0;
+/*	int detectDiags = 0;
 	ghost_midx_t i, j;
 	int datatype;
 	int file;
@@ -517,7 +543,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 			pread(file,&CR(mat)->val[0], sizeof(ghost_mdat_t)*CR(mat)->nEnts, sizeof(int)*(CR(mat)->nrows+1+4+CR(mat)->nEnts));
 		} 
 		else 
-		{
+		{*/
 			/*	switch (datatype) {
 				case GHOST_DATATYPE_S:
 				{
@@ -556,9 +582,24 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 				break;
 				}
 				}*/
-		}
+	/*	}
 	}
-	close(file);
+	close(file);*/
+
+	CRS_readRpt_args_t args = {.mat=mat,.matrixPath=matrixPath};
+	CRS_readHeader(&args);  // read header
+	CRS_readRpt(&args);
+	
+	CRS_readColValOffset_args_t cvargs = {
+		.mat=mat,
+		.matrixPath=matrixPath,
+		.nEnts = CR(mat)->nEnts,
+		.offsetEnts = 0,
+		.offsetRows = 0,
+		.nRows = CR(mat)->nrows,
+		.IOtype = GHOST_IO_STD};
+	CRS_readColValOffset(&cvargs);
+
 
 
 #ifdef OPENCL

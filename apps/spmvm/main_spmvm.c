@@ -68,7 +68,7 @@ int main( int argc, char* argv[] )
 
 
 	ghost_init(argc,argv,options);       // basic initialization
-	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DISTRIBUTED);
+	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DEFAULT);
 	lhs   = ghost_createVector(context,GHOST_VEC_LHS,NULL);
 	rhs   = ghost_createVector(context,GHOST_VEC_RHS,rhsVal);
 

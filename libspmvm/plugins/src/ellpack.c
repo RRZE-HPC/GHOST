@@ -303,7 +303,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 
 		cl_int err;
 			char opt[32];
-			snprintf(opt,32,"-DT=%u",ELLPACK(mat)->T);
+			snprintf(opt,32,"-DT=%"PRmatIDX,ELLPACK(mat)->T);
 			cl_program program = CL_registerProgram("ellpack_clkernel.cl",opt);
 
 		if (ELLPACK(mat)->T == 1) {

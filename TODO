@@ -34,3 +34,5 @@
 => different data types for matrix and vectors
 
 => replace 0 to SPMVM_MPI_ROOT everywhere
+
+=> replace MPI_COMM_WORLD with custom communicator everywhere

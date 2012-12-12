@@ -55,20 +55,20 @@ ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 	return vec;
 }
 
-ghost_vec_t * ghost_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec)
+ghost_vec_t * ghost_distributeVector(ghost_comm_t *comm, ghost_vec_t *vec)
 {
 	DEBUG_LOG(1,"Distributing vector");
 #ifdef MPI
 	int me = ghost_getRank();
 
-	int nrows;
+	ghost_vidx_t nrows;
 
 	MPI_safecall(MPI_Bcast(&(vec->flags),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
 
 	if (vec->flags & GHOST_VEC_RHS)
-		nrows = lcrp->lnrows[me]+lcrp->halo_elements;
+		nrows = comm->lnrows[me]+comm->halo_elements;
 	else if (vec->flags & GHOST_VEC_LHS)
-		nrows = lcrp->lnrows[me];
+		nrows = comm->lnrows[me];
 	else
 		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
@@ -77,10 +77,10 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *lcrp, ghost_vec_t *vec)
 	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->flags ); 
 
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( vec->val, (int *)lcrp->lnrows, (int *)lcrp->lfRow, ghost_mpi_dt_mdat,
-				nodeVec->val, (int)lcrp->lnrows[me], ghost_mpi_dt_mdat, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_mdat,
+				nodeVec->val, (int)comm->lnrows[me], ghost_mpi_dt_mdat, 0, MPI_COMM_WORLD ));
 #else
-	UNUSED(lcrp);
+	UNUSED(comm);
 	ghost_vec_t *nodeVec = ghost_newVector( vec->nrows, vec->flags ); 
 	int i;
 	for (i=0; i<vec->nrows; i++) nodeVec->val[i] = vec->val[i];

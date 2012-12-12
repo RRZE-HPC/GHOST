@@ -13,6 +13,7 @@
 
 static cl_command_queue queue;
 static cl_context context;
+static cl_platform_id platform;
 
 
 /* -----------------------------------------------------------------------------
@@ -27,7 +28,7 @@ void CL_init()
 	cl_uint numPlatforms;
 	cl_platform_id *platformIDs;
 	cl_int err;
-	unsigned int platform, device;
+	unsigned int platformNum, device;
 	char devicename[CL_MAX_DEVICE_NAME_LEN];
 	int takedevice;
 	int rank = ghost_getLocalRank();
@@ -42,13 +43,14 @@ void CL_init()
 			sizeof(cl_platform_id)*numPlatforms,"platformIDs");
 	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, NULL));
 
-	for (platform=0; platform<numPlatforms; platform++) {
-		err = clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, 0, NULL,
+	for (platformNum=0; platformNum<numPlatforms; platformNum++) {
+		err = clGetDeviceIDs(platformIDs[platformNum],CL_MY_DEVICE_TYPE, 0, NULL,
 				&numDevices);
 		if (err != CL_DEVICE_NOT_FOUND) // not an actual error => no print
 			CL_checkerror(err);
 
 		if (numDevices > 0) { // correct platform has been found
+			platform = platformIDs[platformNum];
 			break;
 		}
 	}
@@ -57,10 +59,10 @@ void CL_init()
 
 	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,
 			"deviceIDs");
-	CL_safecall(clGetDeviceIDs(platformIDs[platform],CL_MY_DEVICE_TYPE, numDevices,
+	CL_safecall(clGetDeviceIDs(platformIDs[platformNum],CL_MY_DEVICE_TYPE, numDevices,
 				deviceIDs, &numDevices));
 
-	DEBUG_LOG(1,"OpenCL platform: %u, no. devices of desired type: %u", platform, numDevices);
+	DEBUG_LOG(1,"OpenCL platform: %u, no. devices of desired type: %u", platformNum, numDevices);
 
 	IF_DEBUG(1) {
 		for( device = 0; device < numDevices; ++device) {
@@ -77,7 +79,7 @@ void CL_init()
 
 	DEBUG_LOG(1,"Creating OpenCL context...");
 	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,
-		(cl_context_properties)platformIDs[platform],0};
+		(cl_context_properties)platform,0};
 	context = clCreateContext(cprops,1,&deviceIDs[takedevice],NULL,NULL,
 			&err);
 	CL_checkerror(err);
@@ -702,6 +704,13 @@ const char * CL_errorString(cl_int err)
 	const int index = -err;
 
 	return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
+}
+
+const char * CL_getVersion()
+{
+	char *version = (char *)malloc(1024); // TODO as parameter, else: leak
+	CL_safecall(clGetPlatformInfo(platform,CL_PLATFORM_VERSION,1024,version,NULL));
+	return version;
 }
 
 

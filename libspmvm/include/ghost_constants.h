@@ -43,6 +43,10 @@
 #define GHOST_SPM_ROWMAJOR      (0x1<<4)
 #define GHOST_SPM_SORTED        (0x1<<5)
 
+#define GHOST_BINCRS_SIZE_HEADER 36 // header consumes 36 bytes
+#define GHOST_BINCRS_SIZE_RPT_EL 8 // one rpt element is 8 bytes
+#define GHOST_BINCRS_SIZE_COL_EL 8 // one col element is 8 bytes
+
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/

@@ -29,7 +29,9 @@
 #endif
 
 static int options;
+#ifdef MPI
 static int MPIwasInitialized;
+#endif
 
 static double wctime()
 {
@@ -43,7 +45,11 @@ static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 	ghost_mnnz_t gnnz;
 	ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
 
-	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+#ifdef MPI
+	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+#else
+	gnnz = lnnz;
+#endif
 
 	return gnnz;
 }
@@ -58,7 +64,11 @@ static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 	ghost_mnnz_t gnrows;
 	ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
 
-	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+#ifdef MPI
+	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+#else
+	gnrows = lnrows;
+#endif
 
 	return gnrows;
 }
@@ -73,7 +83,11 @@ static ghost_mnnz_t context_gncols (ghost_context_t * context)
 	ghost_mnnz_t gncols;
 	ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
 
-	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD));
+#ifdef MPI
+	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+#else
+	gncols = lncols;
+#endif
 
 	return gncols;
 }
@@ -352,32 +366,12 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
-#ifdef MPI
-	if (context_flags & GHOST_CONTEXT_DISTRIBUTED) {
-	/*	if (ghost_getRank() == 0) 
-		{ // root process reads row pointers (parallel IO) or entire matrix
-			if (!isMMfile(matrixPath)){
-				if (options & GHOST_OPTION_SERIAL_IO)
-					cr = readCRbinFile(matrixPath,0,traits[0].format & GHOST_SPMFORMAT_CRSCD);
-				else
-					cr = readCRbinFile(matrixPath,1,traits[0].format & GHOST_SPMFORMAT_CRSCD);
-			} else{
-				MM_TYPE *mm = readMMFile( matrixPath);
-				cr = convertMMToCRMatrix( mm );
-				freeMMMatrix(mm);
-			}
-		} else 
-		{ // dummy CRS for scattering
-			cr = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"cr");
-		}
-
-		MPI_safecall(MPI_Bcast(&(cr->nEnts),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&(cr->nrows),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&(cr->ncols),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));*/
-	}
-#endif
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
+#ifdef MPI
+	if (context_flags & GHOST_CONTEXT_DEFAULT && !(context_flags & GHOST_CONTEXT_GLOBAL))
+		context_flags |= GHOST_CONTEXT_DISTRIBUTED;
+#endif
 
 	if (context_flags & GHOST_CONTEXT_DISTRIBUTED)
 	{ // distributed matrix
@@ -390,17 +384,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 			}
 		}
 
-		/*DEBUG_LOG(1,"Creating distributed %s-%s-%s matrices",
-				ghost_matrixFormatName(traits[0]),
-				ghost_matrixFormatName(traits[1]),
-				ghost_matrixFormatName(traits[2]));
-*/
 		if (options & GHOST_OPTION_SERIAL_IO) 
 			ghost_createDistributedContextSerial(context, cr, options, traits);
 		else
 			ghost_createDistributedContext(context, matrixPath, options, traits);
-
-		//context->lnrows = context->communicator->lnrows[ghost_getRank()];
 
 		context->solvers[GHOST_MODE_NOMPI] = NULL;
 		context->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
@@ -421,15 +408,8 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 			context->fullMatrix->fromMM(context->fullMatrix,matrixPath);
 		else
 			context->fullMatrix->fromBin(context->fullMatrix,matrixPath);
-
-
-
-		//	context->fullMatrix = ghost_createMatrixFromCRS(cr,traits[0]);
+		
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
-		//context->nnz = context->fullMatrix->nnz(context->fullMatrix);
-		//context->nrows = context->fullMatrix->nrows(context->fullMatrix);
-		//context->ncols = context->fullMatrix->ncols(context->fullMatrix);
-		//context->lnrows = context->nrows;
 
 		context->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
 		context->solvers[GHOST_MODE_VECTORMODE] = NULL;
@@ -437,18 +417,6 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		context->solvers[GHOST_MODE_TASKMODE] = NULL;
 	}
 
-	/*#ifdef OPENCL
-	  if (!(flags & GHOST_SPM_HOSTONLY))
-	  {
-	  DEBUG_LOG(1,"Skipping device matrix creation because the matrix ist host-only.");
-	  } else if (deviceFormats == NULL) 
-	  {
-	  ABORT("Device matrix formats have to be passed to SPMVM_distributeCRS!");
-	  } else 
-	  {
-	  CL_uploadCRS ( mat, (GHOST_SPM_GPUFORMATS *)deviceFormats, options);
-	  }
-#else*/
 	//#endif
 	context->lnnz = &context_lnnz;
 	context->lnrows = &context_lnrows;
@@ -458,6 +426,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	context->gncols = &context_gncols;
 
 	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));
+
 
 	DEBUG_LOG(1,"Context created successfully");
 	return context;
