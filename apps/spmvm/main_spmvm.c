@@ -28,7 +28,7 @@ static ghost_mdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 100;
+	int  kernel, nIter = 1;
 	double time;
 
 #ifdef CHECK

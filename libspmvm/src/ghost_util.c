@@ -348,12 +348,12 @@ printf("Likwid Marker API                :      enabled\n");
 ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_mdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
 {
 
-	DEBUG_LOG(1,"Computing reference solution");
 	int me = ghost_getRank();
 	//ghost_vec_t *lhs = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 
 	if (me==0) {
+		DEBUG_LOG(1,"Computing reference solution");
 		ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
 		ghost_context_t *context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
 		globLHS = ghost_createVector(context,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 

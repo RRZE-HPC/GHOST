@@ -130,7 +130,6 @@ static void CRS_readHeader(void *vargs)
 
 	DEBUG_LOG(1,"Reading header from %s",matrixPath);
 
-
 	if ((file = fopen(matrixPath, "rb"))==NULL){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
@@ -155,9 +154,6 @@ static void CRS_readRpt(void *vargs)
 
 	DEBUG_LOG(1,"Reading row pointers from %s",matrixPath);
 
-	//mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-	//mat->rowPerm = NULL;
-	//mat->invRowPerm = NULL;
 
 	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);
@@ -176,6 +172,7 @@ static void CRS_readRpt(void *vargs)
 #ifdef LONGIDX
 	pread(file,&CR(mat)->rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER);
 #else // casting
+	DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
 	int64_t tmp;
 	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
 		pread(file,&tmp, GHOST_BINCRS_SIZE_RPT_EL, GHOST_BINCRS_SIZE_HEADER+i*8);
@@ -240,8 +237,9 @@ static void CRS_readColValOffset(void *vargs)
 #ifdef LONGIDX
 	pread(file,&CR(mat)->col[0], GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
 #else // casting
+	DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
 	int64_t tmp;
-	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+	for( i = 0; i < nEnts; i++ ) {
 		pread(file,&tmp, GHOST_BINCRS_SIZE_COL_EL, offs+i*8 );
 		CR(mat)->col[i] = (ghost_midx_t)tmp;
 	}
@@ -746,7 +744,7 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t *
 	for (i=0; i<CR(mat)->nrows; i++){
 		hlp1 = 0.0;
 		for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++){
-			hlp1 = hlp1 + CR(mat)->val[j] * rhs->val[CR(mat)->col[j]]; 
+			hlp1 = hlp1 + CR(mat)->val[j] * rhs->val[CR(mat)->col[j]];
 		}
 		if (options & GHOST_OPTION_AXPY) 
 			lhs->val[i] += hlp1;

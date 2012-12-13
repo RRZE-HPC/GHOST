@@ -46,7 +46,11 @@ static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 	ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
 
 #ifdef MPI
-	MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+	} else {
+		gnnz = lnnz;
+	}
 #else
 	gnnz = lnnz;
 #endif
@@ -65,7 +69,11 @@ static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 	ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
 
 #ifdef MPI
-	MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) { 
+		MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+	} else {
+		gnrows = lnrows;
+	}
 #else
 	gnrows = lnrows;
 #endif
@@ -84,7 +92,11 @@ static ghost_mnnz_t context_gncols (ghost_context_t * context)
 	ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
 
 #ifdef MPI
-	MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+	} else {
+		gncols = lncols;
+	}
 #else
 	gncols = lncols;
 #endif
@@ -369,8 +381,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
 #ifdef MPI
-	if (context_flags & GHOST_CONTEXT_DEFAULT && !(context_flags & GHOST_CONTEXT_GLOBAL))
+	if (!(context_flags & GHOST_CONTEXT_DISTRIBUTED) && !(context_flags & GHOST_CONTEXT_GLOBAL)) {
+		DEBUG_LOG(1,"Context is set to be distributed");
 		context_flags |= GHOST_CONTEXT_DISTRIBUTED;
+	}
 #endif
 
 	if (context_flags & GHOST_CONTEXT_DISTRIBUTED)
