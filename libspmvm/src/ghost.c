@@ -373,6 +373,20 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	context->flags = context_flags;
 	context->matrixName = strtok(basename(matrixPathCopy),".");
 
+#ifdef MPI
+	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
+		DEBUG_LOG(1,"Context is set to be distributed");
+		context->flags |= GHOST_CONTEXT_DISTRIBUTED;
+	}
+#else
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		ABORT("Creating a distributed matrix without MPI is not possible");
+	} else if (!(context->flags & GHOST_CONTEXT_GLOBAL)) {
+		DEBUG_LOG(1,"Context is set to be global");
+		context->flags |= GHOST_CONTEXT_GLOBAL;
+	}
+#endif
+
 	if (context_flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= GHOST_OPTION_SERIAL_IO;
@@ -380,14 +394,8 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
-#ifdef MPI
-	if (!(context_flags & GHOST_CONTEXT_DISTRIBUTED) && !(context_flags & GHOST_CONTEXT_GLOBAL)) {
-		DEBUG_LOG(1,"Context is set to be distributed");
-		context_flags |= GHOST_CONTEXT_DISTRIBUTED;
-	}
-#endif
 
-	if (context_flags & GHOST_CONTEXT_DISTRIBUTED)
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{ // distributed matrix
 #ifdef MPI
 		if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) {
@@ -407,9 +415,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		context->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
 		context->solvers[GHOST_MODE_GOODFAITH] = &hybrid_kernel_II;
 		context->solvers[GHOST_MODE_TASKMODE] = &hybrid_kernel_III;
-#else
-		ABORT("Creating a distributed matrix without MPI is not possible");
-#endif // MPI
+#endif
 	} 
 	else 
 	{ // global matrix

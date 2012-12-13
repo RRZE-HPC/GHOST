@@ -28,7 +28,7 @@ static ghost_mdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 1;
+	int  kernel, nIter = 100;
 	double time;
 
 #ifdef CHECK
@@ -59,10 +59,10 @@ int main( int argc, char* argv[] )
 		trait.aux = &sortBlock;
 
 	} else {
-		unsigned int aux = 256;
-		trait.format = "BJDS";
-		trait.flags = GHOST_SPM_SORTED|GHOST_SPM_PERMUTECOLIDX;
-		trait.aux = &aux;
+//		unsigned int aux = 256;
+		trait.format = "CRS";
+		trait.flags = GHOST_SPM_DEFAULT;//GHOST_SPM_SORTED|GHOST_SPM_PERMUTECOLIDX;
+		trait.aux = NULL;//&aux;
 	}
 	ghost_mtraits_t traits[3] = {trait,trait,trait};
 

@@ -8,6 +8,7 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <CL/cl_ext.h>
 
 #define CL_MAX_DEVICE_NAME_LEN 500
 
@@ -34,6 +35,7 @@ void CL_init()
 	int rank = ghost_getLocalRank();
 	cl_uint numDevices = 0;
 	cl_device_id *deviceIDs;
+	cl_device_id deviceID;
 
 
 
@@ -73,20 +75,41 @@ void CL_init()
 	}
 
 	takedevice = rank%numDevices;
-	CL_safecall(clGetDeviceInfo(deviceIDs[takedevice],CL_DEVICE_NAME,
-				sizeof(devicename),devicename,NULL));
+	deviceID = deviceIDs[takedevice];
+
+	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 	DEBUG_LOG(1,"Selecting device %d: %s", takedevice, devicename);
 
+#ifdef GHOST_CL_DEVICE_FISSION
+	DEBUG_LOG(1,"Create subdevices...");
+	cl_uint numSubDevices;
+	cl_device_partition_property_ext props[3];
+	props[0] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT;
+	props[1] = CL_AFFINITY_DOMAIN_L3_CACHE_EXT;
+	props[2] = 0;
+
+	CL_safecall(clCreateSubDevicesEXT(deviceID,props,0,NULL,&numSubDevices));
+	DEBUG_LOG(1,"There are %u subdevices",numSubDevices);
+
+	cl_device_id *subdeviceIDs = (cl_device_id *)malloc(numSubDevices*sizeof(cl_device_id));
+	CL_safecall(clCreateSubDevicesEXT(deviceID,props,numSubDevices,subdeviceIDs,&numSubDevices));
+
+	deviceID = subdeviceIDs[0]
+#endif;
+
+	cl_uint nCores;
+	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_MAX_COMPUTE_UNITS,sizeof(cl_uint),&nCores,NULL));
+	DEBUG_LOG(0,"The (sub-)device has %u cores",nCores);
+
+
 	DEBUG_LOG(1,"Creating OpenCL context...");
-	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,
-		(cl_context_properties)platform,0};
-	context = clCreateContext(cprops,1,&deviceIDs[takedevice],NULL,NULL,
-			&err);
+	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};
+	context = clCreateContext(cprops,1,&deviceID,NULL,NULL,&err);
 	CL_checkerror(err);
 
 
 	DEBUG_LOG(1,"Creating OpenCL command queue...");
-	queue = clCreateCommandQueue(context,deviceIDs[takedevice],
+	queue = clCreateCommandQueue(context,deviceID,
 			CL_QUEUE_PROFILING_ENABLE|CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
 			&err);
 	CL_checkerror(err);
@@ -110,6 +133,8 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
+	char devicename[CL_MAX_DEVICE_NAME_LEN];
+	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 
 	char path[PATH_MAX];
 	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
