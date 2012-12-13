@@ -184,7 +184,7 @@ void ghost_printContextInfo(ghost_context_t *context, int options)
 
 
 	ghost_printHeader("Matrix information");
-	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
+	ghost_printLine("Name",NULL,"%s",context->matrixName);
 	ghost_printLine("Dimension",NULL,"%"PRmatIDX,context->gnrows(context));
 	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
 	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
@@ -192,6 +192,7 @@ void ghost_printContextInfo(ghost_context_t *context, int options)
 	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
 	ghost_printLine("Global CRS size","MB","%lu",ws);
 
+	ghost_printLine("Symmetry (full matrix)",NULL,"%s",ghost_symmetryName(context->fullMatrix->symmetry));
 	ghost_printLine("Full   host matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
@@ -426,43 +427,85 @@ char * ghost_modeName(int mode)
 	switch (mode) {
 		case GHOST_MODE_NOMPI:
 			return "non-MPI";
-			break;
 		case GHOST_MODE_VECTORMODE:
 			return "vector mode";
-			break;
 		case GHOST_MODE_GOODFAITH:
 			return "g/f hybrid";
-			break;
 		case GHOST_MODE_TASKMODE:
 			return "task mode";
-			break;
 		default:
 			return "invalid";
-			break;
 	}
+}
+
+int ghost_symmetryValid(int symmetry)
+{
+	if ((symmetry & GHOST_BINCRS_SYMM_GENERAL) &&
+			(symmetry & ~GHOST_BINCRS_SYMM_GENERAL))
+		return 0;
+	
+	if ((symmetry & GHOST_BINCRS_SYMM_SYMMETRIC) &&
+			(symmetry & ~GHOST_BINCRS_SYMM_SYMMETRIC))
+		return 0;
+
+	return 1;
+}
+
+char * ghost_symmetryName(int symmetry)
+{
+	if (symmetry & GHOST_BINCRS_SYMM_GENERAL)
+		return "general";
+	
+	if (symmetry & GHOST_BINCRS_SYMM_SYMMETRIC)
+		return "symmetric";
+
+	if (symmetry & GHOST_BINCRS_SYMM_SKEW_SYMMETRIC) {
+		if (symmetry & GHOST_BINCRS_SYMM_HERMITIAN)
+			return "skew-hermitian";
+		else
+			return "skew-symmetric";
+	} else {
+		if (symmetry & GHOST_BINCRS_SYMM_HERMITIAN)
+			return "hermitian";
+	}
+
+	return "invalid";
+}
+
+int ghost_datatypeValid(int datatype)
+{
+	if ((datatype & GHOST_BINCRS_DT_FLOAT) &&
+			(datatype & GHOST_BINCRS_DT_DOUBLE))
+		return 0;
+
+	if (!(datatype & GHOST_BINCRS_DT_FLOAT) &&
+			!(datatype & GHOST_BINCRS_DT_DOUBLE))
+		return 0;
+	
+	if ((datatype & GHOST_BINCRS_DT_REAL) &&
+			(datatype & GHOST_BINCRS_DT_COMPLEX))
+		return 0;
+
+	if (!(datatype & GHOST_BINCRS_DT_REAL) &&
+			!(datatype & GHOST_BINCRS_DT_COMPLEX))
+		return 0;
+
+	return 1;
 }
 
 char * ghost_datatypeName(int datatype)
 {
-	switch(datatype) {
-		case GHOST_DATATYPE_D:
-			return "double";
-			break;
-		case GHOST_DATATYPE_S:
+	if (datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (datatype & GHOST_BINCRS_DT_REAL)
 			return "float";
-			break;
-		case GHOST_DATATYPE_Z:
-			return "complex double";
-			break;
-		case GHOST_DATATYPE_C:
+		else
 			return "complex float";
-			break;
-		default:
-			return "invalid";
-			break;
+	} else {
+		if (datatype & GHOST_BINCRS_DT_REAL)
+			return "double";
+		else
+			return "complex double";
 	}
-
-
 }
 
 char * ghost_workdistName(int options)
@@ -605,22 +648,17 @@ int ghost_getNumberOfProcesses()
 
 size_t ghost_sizeofDataType(int dt)
 {
-	switch (dt) {
-		case GHOST_DATATYPE_D:
-			return sizeof(double);
-			break;
-		case GHOST_DATATYPE_S:
-			return sizeof(float);
-			break;
-		case GHOST_DATATYPE_C:
-			return sizeof(_Complex float);
-			break;
-		case GHOST_DATATYPE_Z:
-			return sizeof (_Complex double);
-			break;
-		default:
-			return 0;
-	}
+	size_t size;
+
+	if (dt & GHOST_BINCRS_DT_FLOAT)
+		size = sizeof(float);
+	else
+		size = sizeof(double);
+
+	if (dt & GHOST_BINCRS_DT_COMPLEX)
+		size *= 2;
+
+	return size;
 }
 
 

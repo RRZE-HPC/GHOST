@@ -11,7 +11,7 @@ typedef double2 ghost_cl_mdat_t;
 MPI_Datatype ghost_mpi_dt_mdat;
 MPI_Op ghost_mpi_sum_mdat;
 #endif
-#define GHOST_MY_MDATATYPE GHOST_DATATYPE_Z
+#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_MAT_COMPLEX
 typedef double ghost_mdat_t;
 typedef double ghost_cl_mdat_t;
@@ -19,7 +19,7 @@ typedef double ghost_cl_mdat_t;
 #define ghost_mpi_dt_mdat MPI_DOUBLE
 #define ghost_mpi_sum_mdat MPI_SUM
 #endif
-#define GHOST_MY_MDATATYPE GHOST_DATATYPE_D
+#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_MAT_COMPLEX
 #endif // GHOST_MAT_DP
 
@@ -30,14 +30,14 @@ typedef _Complex float ghost_mdat_t;
 MPI_Datatype ghost_mpi_dt_mdat;
 MPI_Op ghost_mpi_sum_mdat;
 #endif
-#define GHOST_MY_MDATATYPE GHOST_DATATYPE_C
+#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_MAT_COMPLEX
 typedef float ghost_mdat_t;
 #ifdef MPI
 #define ghost_mpi_dt_mdat MPI_FLOAT
 #define ghost_mpi_sum_mdat MPI_SUM
 #endif
-#define GHOST_MY_MDATATYPE GHOST_DATATYPE_S
+#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_MAT_COMPLEX
 #endif // GHOST_MAT_SP
 

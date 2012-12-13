@@ -53,10 +53,10 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->nrows    = &CRS_nrows;
 	mat->ncols    = &CRS_ncols;
 	mat->destroy  = &CRS_free;
-	mat->extraFun = (ghost_dummyfun_t *)allocateMemory(2*sizeof(ghost_dummyfun_t),"dummyfun CRS");
-	mat->extraFun[0] = &CRS_readRpt;
-	mat->extraFun[1] = &CRS_readColValOffset;
-	mat->extraFun[2] = &CRS_readHeader;
+	mat->extraFun = (ghost_dummyfun_t *)allocateMemory(3*sizeof(ghost_dummyfun_t),"dummyfun CRS");
+	mat->extraFun[GHOST_CRS_EXTRAFUN_READ_RPT] = &CRS_readRpt;
+	mat->extraFun[GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET] = &CRS_readColValOffset;
+	mat->extraFun[GHOST_CRS_EXTRAFUN_READ_HEADER] = &CRS_readHeader;
 #ifdef OPENCL
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &CRS_kernel_plain;
@@ -124,6 +124,8 @@ static void CRS_readHeader(void *vargs)
 	ghost_mat_t * mat = args->mat;
 	char *matrixPath = args->matrixPath;
 	FILE* file;
+	long filesize;
+	int32_t endianess;
 	int32_t fileVersion;
 	int32_t symmetry;
 	int32_t datatype;
@@ -134,12 +136,41 @@ static void CRS_readHeader(void *vargs)
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 
+	fseek(file,0L,SEEK_END);
+	filesize = ftell(file);
+	fseek(file,0L,SEEK_SET);
+
+
+	fread(&endianess, 4, 1, file);
+	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
+		ABORT("Big endian currently not supported!");
+
 	fread(&fileVersion, 4, 1, file);
+	if (fileVersion != 1)
+		ABORT("Can not read version %d of binary CRS format!",fileVersion);
+
 	fread(&symmetry, 4, 1, file);
+	if (!ghost_symmetryValid(symmetry))
+		ABORT("Symmetry is invalid! (%d)",symmetry);
+	if (symmetry != GHOST_BINCRS_SYMM_GENERAL)
+		ABORT("Can not handle symmetry different to general at the moment!");
+	mat->symmetry = symmetry;
+
 	fread(&datatype, 4, 1, file);
+	if (!ghost_datatypeValid(datatype))
+		ABORT("Datatype is invalid! (%d)",datatype);
+	
 	fread(&CR(mat)->nrows, 8, 1, file);
 	fread(&CR(mat)->ncols, 8, 1, file);
 	fread(&CR(mat)->nEnts, 8, 1, file);
+
+	long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
+				(CR(mat)->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
+				CR(mat)->nEnts * GHOST_BINCRS_SIZE_COL_EL +
+				CR(mat)->nEnts * ghost_sizeofDataType(datatype);
+
+	if (filesize != rightFilesize)
+		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 }
@@ -153,7 +184,6 @@ static void CRS_readRpt(void *vargs)
 	ghost_midx_t i;
 
 	DEBUG_LOG(1,"Reading row pointers from %s",matrixPath);
-
 
 	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);
@@ -202,9 +232,6 @@ static void CRS_readColValOffset(void *vargs)
 
 	off_t offs;
 
-	//	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-	//	mat->rowPerm = NULL;
-	//	mat->invRowPerm = NULL;
 	file = open(matrixPath,O_RDONLY);
 
 	DEBUG_LOG(1,"Reading %"PRmatNNZ" cols and vals from binary file %s with offset %"PRmatNNZ,nEnts, matrixPath,offsetEnts);
@@ -212,7 +239,7 @@ static void CRS_readColValOffset(void *vargs)
 	if ((file = open(matrixPath, O_RDONLY)) == -1){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
-	pread(file, &datatype, sizeof(int), 8);
+	pread(file, &datatype, sizeof(int), 12);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
@@ -730,9 +757,9 @@ static void CRS_free(ghost_mat_t * mat)
 	free(mat->data);
 	free(mat->rowPerm);
 	free(mat->invRowPerm);
+	free(mat->extraFun);
 
 	free(mat);
-
 }
 
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)

@@ -22,15 +22,6 @@
 #define GHOST_IO_MPI (0)
 #define GHOST_IO_STD (1)
 
-// formats
-#define GHOST_NUM_SPMFORMATS   (5)
-#define GHOST_SPMFORMAT_NONE   (0)
-#define GHOST_SPMFORMAT_CRS    (1)
-#define GHOST_SPMFORMAT_BJDS   (2)
-#define GHOST_SPMFORMAT_TBJDS  (3)
-#define GHOST_SPMFORMAT_CRSCD  (4)
-
-// flags
 #define GHOST_CONTEXT_DEFAULT       (0)
 #define GHOST_CONTEXT_GLOBAL        (0x1<<0)
 #define GHOST_CONTEXT_DISTRIBUTED   (0x1<<1)
@@ -42,11 +33,6 @@
 #define GHOST_SPM_COLMAJOR      (0x1<<3)
 #define GHOST_SPM_ROWMAJOR      (0x1<<4)
 #define GHOST_SPM_SORTED        (0x1<<5)
-
-#define GHOST_BINCRS_SIZE_HEADER 36 // header consumes 36 bytes
-#define GHOST_BINCRS_SIZE_RPT_EL 8 // one rpt element is 8 bytes
-#define GHOST_BINCRS_SIZE_COL_EL 8 // one col element is 8 bytes
-
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
@@ -86,10 +72,32 @@
 /******************************************************************************/
 /*----  Available datatypes  -------------------------------------------------*/
 /******************************************************************************/
-#define GHOST_DATATYPE_S 0
-#define GHOST_DATATYPE_D 1
-#define GHOST_DATATYPE_C 2
-#define GHOST_DATATYPE_Z 3
+//#define GHOST_DATATYPE_S 0
+//#define GHOST_DATATYPE_D 1
+//#define GHOST_DATATYPE_C 2
+//#define GHOST_DATATYPE_Z 3
 /******************************************************************************/
+
+
+/******************************************************************************/
+/*----  Constants for binary CRS format  -------------------------------------*/
+/******************************************************************************/
+#define GHOST_BINCRS_SIZE_HEADER 40 // header consumes 36 bytes
+#define GHOST_BINCRS_SIZE_RPT_EL 8 // one rpt element is 8 bytes
+#define GHOST_BINCRS_SIZE_COL_EL 8 // one col element is 8 bytes
+
+#define GHOST_BINCRS_LITTLE_ENDIAN (0)
+
+#define GHOST_BINCRS_SYMM_GENERAL        (0x1<<0)
+#define GHOST_BINCRS_SYMM_SYMMETRIC      (0x1<<1)
+#define GHOST_BINCRS_SYMM_SKEW_SYMMETRIC (0x1<<2)
+#define GHOST_BINCRS_SYMM_HERMITIAN      (0x1<<3)
+
+#define GHOST_BINCRS_DT_FLOAT   (0x1<<0)
+#define GHOST_BINCRS_DT_DOUBLE  (0x1<<1)
+#define GHOST_BINCRS_DT_REAL    (0x1<<2)
+#define GHOST_BINCRS_DT_COMPLEX (0x1<<3)
+/******************************************************************************/
+
 
 #endif

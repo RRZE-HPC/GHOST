@@ -168,6 +168,8 @@ struct ghost_mat_t
 	ghost_midx_t *rowPerm;     // may be NULL
 	ghost_midx_t *invRowPerm;  // may be NULL
 
+	int symmetry;
+
 	void *data;
 }; 
 
@@ -204,7 +206,7 @@ struct ghost_context_t
 struct ghost_mtraits_t
 {
 	const char * format;
-	unsigned int flags;
+	int flags;
 	void * aux;
 }; 
 

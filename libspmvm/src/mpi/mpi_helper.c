@@ -221,10 +221,10 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 	context->remoteMatrix = ghost_initMatrix(&traits[2]);
 
 	CRS_readRpt_args_t args = {.mat=context->fullMatrix,.matrixPath=matrixPath};
-	context->fullMatrix->extraFun[2](&args);  // read header
+	context->fullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_HEADER](&args);  // read header
 	
 	if (ghost_getRank() == 0) {
-		context->fullMatrix->extraFun[0](&args);  // read rpt
+		context->fullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_RPT](&args);  // read rpt
 	}
 	
 	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
@@ -281,7 +281,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 		.offsetRows = lcrp->lfRow[me],
 		.nRows = lcrp->lnrows[me],
 		.IOtype = GHOST_IO_STD};
-	context->fullMatrix->extraFun[1](&cvargs); // read col and val
+	context->fullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET](&cvargs); // read col and val
 
 	((CR_TYPE *)(context->fullMatrix->data))->nrows = lcrp->lnrows[me];
 	((CR_TYPE *)(context->fullMatrix->data))->nEnts = lcrp->lnEnts[me];

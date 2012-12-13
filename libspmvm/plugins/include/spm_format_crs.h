@@ -56,5 +56,9 @@ typedef struct{
 
 ghost_mat_t * init(ghost_mtraits_t *);
 
+#define GHOST_CRS_EXTRAFUN_READ_RPT 0
+#define GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET 1
+#define GHOST_CRS_EXTRAFUN_READ_HEADER 2
+
 #endif
 

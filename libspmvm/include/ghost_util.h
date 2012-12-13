@@ -144,4 +144,7 @@ int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
 int ghost_getNumberOfProcesses();
 size_t ghost_sizeofDataType(int dt);
+int ghost_datatypeValid(int datatype);
+int ghost_symmetryValid(int symmetry);
+char * ghost_symmetryName(int symmetry);
 #endif
