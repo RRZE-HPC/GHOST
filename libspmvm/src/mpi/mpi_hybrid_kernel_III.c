@@ -121,7 +121,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	 *******                          Overlap region                       *******
 	 ****************************************************************************/
 #ifdef OPEN_MPI
-#ifdef COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
+#ifdef GHOST_MAT_COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
@@ -141,7 +141,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	reduction (+:send_messages)
 #endif
 #else
-#ifdef COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
+#ifdef GHOST_MAT_COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \
 	default   (none)                                                             \
 	private   (i, j, to_PE, tid)                            \
@@ -214,7 +214,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
 				hlp1 = 0.0;
 				for (j=localCR->rpt[i]; j<localCR->rpt[i+1]; j++){
-					hlp1 = hlp1 + localCR->val[j] * invec->val[localCR->col[j]]; 
+					hlp1 = hlp1 + (ghost_vdat_t)localCR->val[j] * invec->val[localCR->col[j]]; 
 				}
 
 				if (spmvmOptions & GHOST_OPTION_AXPY) 

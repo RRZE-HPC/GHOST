@@ -346,7 +346,7 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_mdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
 {
 
 	int me = ghost_getRank();
@@ -391,7 +391,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 	for (i=0; i<nrows; i++){
 		hlp1 = 0.0;
 		for (j=rpt[i]; j<rpt[i+1]; j++){
-			hlp1 = hlp1 + val[j] * rhs[col[j]]; 
+			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; 
 		}
 		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res[i] += hlp1;

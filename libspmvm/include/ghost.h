@@ -333,7 +333,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, ghost_mdat_t (*fp)(int));
+ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, ghost_vdat_t (*fp)(int));
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a

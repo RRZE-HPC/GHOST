@@ -42,7 +42,7 @@ ghost_vdat_t hlp1;
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
+			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * invec->val[cr->col[j]]; 
 		}
 		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res->val[i] += hlp1;

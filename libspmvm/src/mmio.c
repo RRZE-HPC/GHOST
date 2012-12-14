@@ -276,13 +276,10 @@ int mm_read_mtx_crd_data(FILE *f, ghost_mnnz_t nz, ghost_midx_t II[], ghost_midx
 #ifndef GHOST_MAT_COMPLEX
 		DEBUG_LOG(0,"Warning! The matrix contains complex data but ghost is built for real data. Omitting the imaginary part...");
 #endif
-#ifdef GHOST_MAT_DP
-		double real, imag;
-#else
-		float real, imag;
-#endif
-        for (i=0; i<nz; i++) {
-            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg", &II[i], &J[i], &real, &imag)
+		ghost_mdat_el_t real,imag;
+        
+		for (i=0; i<nz; i++) {
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %"PRmatDAT" %"PRmatDAT, &II[i], &J[i], &real, &imag)
                 != 4) return MM_PREMATURE_EOF;
 #ifdef GHOST_MAT_COMPLEX
 			val[i] = real+I*imag;
@@ -297,17 +294,14 @@ int mm_read_mtx_crd_data(FILE *f, ghost_mnnz_t nz, ghost_midx_t II[], ghost_midx
 #ifndef GHOST_MAT_COMPLEX
 		DEBUG_LOG(0,"Warning! The matrix contains real data but ghost is built for complex data. The imaginary part will be zero but stored anyways...");
 #endif
-#ifdef GHOST_MAT_DP
-		double real;
-#else
-		float real;
-#endif
-        for (i=0; i<nz; i++)
+		ghost_mdat_el_t real;
+        
+		for (i=0; i<nz; i++)
         {
-            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &II[i], &J[i], &real)
+            if (fscanf(f, "%"PRmatIDX" %"PRmatIDX" %"PRmatDAT, &II[i], &J[i], &real)
                 != 3) return MM_PREMATURE_EOF;
 #ifdef GHOST_MAT_COMPLEX
-			val[i] = real+I*0.;
+			val[i] = (ghost_mdat_t)(real+I*0.);
 #else
 			val[i] = real;
 #endif

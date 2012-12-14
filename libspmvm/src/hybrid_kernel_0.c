@@ -27,7 +27,7 @@ void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmv
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
+			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * invec->val[cr->col[j]]; 
 		}
 		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res->val[i] += hlp1;
@@ -46,12 +46,12 @@ void kern_glob_CRS_CD_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int s
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++) {
-			hlp1 = hlp1 + cr->val[j] * invec->val[cr->col[j]]; 
+			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * invec->val[cr->col[j]]; 
 		}
 
 		for (j=0; j<cr->nConstDiags; j++) {
 			if (i >= cr->constDiags[j].minRow && i <= cr->constDiags[j].maxRow) {
-				hlp1 = hlp1 + cr->constDiags[j].val * invec->val[i+cr->constDiags[j].idx];
+				hlp1 = hlp1 + (ghost_vdat_t)cr->constDiags[j].val * invec->val[i+cr->constDiags[j].idx];
 			}
 		}
 

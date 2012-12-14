@@ -277,7 +277,7 @@ void ghost_finish()
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, ghost_mdat_t (*fp)(int))
+ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, ghost_vdat_t (*fp)(int))
 {
 
 	ghost_vdat_t *val;

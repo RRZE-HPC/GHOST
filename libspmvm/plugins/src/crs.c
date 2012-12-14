@@ -772,7 +772,7 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t *
 	for (i=0; i<CR(mat)->nrows; i++){
 		hlp1 = 0.0;
 		for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++){
-			hlp1 = hlp1 + CR(mat)->val[j] * rhs->val[CR(mat)->col[j]];
+			hlp1 = hlp1 + (ghost_vdat_t)CR(mat)->val[j] * rhs->val[CR(mat)->col[j]];
 		}
 		if (options & GHOST_OPTION_AXPY) 
 			lhs->val[i] += hlp1;

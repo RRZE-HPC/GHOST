@@ -351,7 +351,7 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {
 		tmp = 0;
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
-			tmp += ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
+			tmp += (ghost_vdat_t)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
 				rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
 		if (options & GHOST_OPTION_AXPY)

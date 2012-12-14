@@ -33,6 +33,7 @@ typedef double ghost_cl_mdat_t;
 #endif
 #define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_MAT_COMPLEX
+#define PRmatDAT "lg"
 #endif // GHOST_MAT_DP
 
 #ifdef GHOST_MAT_SP
@@ -59,6 +60,7 @@ typedef float ghost_cl_mdat_t;
 #endif
 #define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_MAT_COMPLEX
+#define PRmatDAT "g"
 #endif // GHOST_MAT_SP
 
 #ifdef GHOST_VEC_DP
@@ -85,6 +87,7 @@ typedef double ghost_cl_vdat_t;
 #endif
 #define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_VEC_COMPLEX
+#define PRvecDAT "lg"
 #endif // GHOST_VEC_DP
 
 #ifdef GHOST_VEC_SP
@@ -111,6 +114,7 @@ typedef float ghost_cl_vdat_t;
 #endif
 #define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_VEC_COMPLEX
+#define PRvecDAT "g"
 #endif // GHOST_VEC_SP
 
 
