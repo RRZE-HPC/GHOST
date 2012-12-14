@@ -27,7 +27,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	static unsigned int nprocs;
 
 	static ghost_midx_t max_dues;
-	static ghost_mdat_t *work_mem, **work;
+	static ghost_vdat_t *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
@@ -73,13 +73,13 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 
 
 
-		size_mem     = (size_t)( max_dues*nprocs * sizeof( ghost_mdat_t  ) );
-		size_work    = (size_t)( nprocs          * sizeof( ghost_mdat_t* ) );
+		size_mem     = (size_t)( max_dues*nprocs * sizeof( ghost_vdat_t  ) );
+		size_work    = (size_t)( nprocs          * sizeof( ghost_vdat_t* ) );
 		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
 
-		work_mem = (ghost_mdat_t*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (ghost_mdat_t**) allocateMemory( size_work, "work" );
+		work_mem = (ghost_vdat_t*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (ghost_vdat_t**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
 
@@ -201,7 +201,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			}
 
 #else
-			ghost_mdat_t hlp1;
+			ghost_vdat_t hlp1;
 			int n_per_thread, n_local;
 			n_per_thread = context->communicator->lnrows[me]/(nthreads-1);
 

@@ -3,6 +3,7 @@
 
 #define GHOST_MAT_DP 
 #define GHOST_VEC_DP 
+#define GHOST_VEC_COMPLEX 
 
 
 #endif

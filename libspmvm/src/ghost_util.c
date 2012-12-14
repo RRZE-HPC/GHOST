@@ -382,10 +382,10 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 
 }
 
-void ghost_referenceKernel(ghost_mdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_mdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
+void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
 	ghost_midx_t i, j;
-	ghost_mdat_t hlp1;
+	ghost_vdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<nrows; i++){

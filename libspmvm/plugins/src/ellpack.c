@@ -345,7 +345,7 @@ static void ELLPACK_free(ghost_mat_t *mat)
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	ghost_midx_t j,i;
-	ghost_mdat_t tmp; 
+	ghost_vdat_t tmp; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {

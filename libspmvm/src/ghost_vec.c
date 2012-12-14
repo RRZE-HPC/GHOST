@@ -27,11 +27,11 @@ ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nrows * sizeof(ghost_mdat_t) );
+	size_val = (size_t)( nrows * sizeof(ghost_vdat_t) );
 	vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
 
 
-	vec->val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
+	vec->val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
 	vec->nrows = nrows;
 	vec->flags = flags;
 
@@ -123,7 +123,7 @@ void ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec, ghost_vec_
 
 void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
 {
-	ghost_mdat_t *dtmp;
+	ghost_vdat_t *dtmp;
 
 	dtmp = v1->val;
 	v1->val = v2->val;
@@ -140,12 +140,12 @@ void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 void ghost_normalizeVector( ghost_vec_t *vec)
 {
 	int i;
-	ghost_mdat_t sum = 0;
+	ghost_vdat_t sum = 0;
 
 	for (i=0; i<vec->nrows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	ghost_mdat_t f = (ghost_mdat_t)1/SQRT(ABS(sum));
+	ghost_vdat_t f = (ghost_vdat_t)1/VSQRT(VABS(sum));
 
 	for (i=0; i<vec->nrows; i++)	
 		vec->val[i] *= f;
@@ -168,11 +168,11 @@ void ghost_freeVector( ghost_vec_t* const vec )
 	}
 }
 
-void ghost_permuteVector( ghost_mdat_t* vec, ghost_midx_t* perm, ghost_midx_t len) 
+void ghost_permuteVector( ghost_vdat_t* vec, ghost_vidx_t* perm, ghost_vidx_t len) 
 {
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	ghost_midx_t i;
-	ghost_mdat_t* tmp;
+	ghost_vdat_t* tmp;
 
 	if (perm == NULL) {
 		DEBUG_LOG(1,"Permutation vector is NULL, returning.");
@@ -182,7 +182,7 @@ void ghost_permuteVector( ghost_mdat_t* vec, ghost_midx_t* perm, ghost_midx_t le
 	}
 
 
-	tmp = (ghost_mdat_t*)allocateMemory(sizeof(ghost_mdat_t)*len, "permute tmp");
+	tmp = (ghost_vdat_t*)allocateMemory(sizeof(ghost_vdat_t)*len, "permute tmp");
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
@@ -201,7 +201,7 @@ int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b, double tol)
 {
 	int i;
 	for (i=0; i<a->nrows; i++) {
-		if (REAL(ABS(a->val[i]-b->val[i])) > tol || IMAG(ABS(a->val[i]-b->val[i])) > tol)
+		if (VREAL(VABS(a->val[i]-b->val[i])) > tol || VIMAG(VABS(a->val[i]-b->val[i])) > tol)
 			return 0;
 	}
 

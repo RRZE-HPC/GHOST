@@ -230,12 +230,12 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							diagVals[didx] =  tmpval[idx];
 							diagStatus[didx] = (char)1;
 							diagEnts[didx] = 1;
-							DEBUG_LOG(2,"Diag %d initialized with %f",didx,REAL(diagVals[didx]));
+							DEBUG_LOG(2,"Diag %d initialized with %f",didx,MREAL(diagVals[didx]));
 						} else if (diagStatus[didx] == DIAG_OK) { // diag initialized
-							if (EQUALS(diagVals[didx],tmpval[idx])) {
+							if (MEQUALS(diagVals[didx],tmpval[idx])) {
 								diagEnts[didx]++;
 							} else {
-								DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f (was %f)",didx,i,REAL(tmpval[idx]),REAL(diagVals[didx]));
+								DEBUG_LOG(2,"Diag %d discontinued in row %"PRmatIDX": %f (was %f)",didx,i,MREAL(tmpval[idx]),MREAL(diagVals[didx]));
 								diagStatus[didx] = DIAG_INVALID;
 							}
 						}
@@ -248,7 +248,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 
 			for (i=0; i<bandwidth+1; i++) { // lower subdiagonals AND diagonal
 				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->ncols-bandwidth+i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",bandwidth-i,REAL(diagVals[i]));
+					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",bandwidth-i,MREAL(diagVals[i]));
 					cr->nConstDiags++;
 					cr->constDiags = realloc(cr->constDiags,sizeof(CONST_DIAG)*cr->nConstDiags);
 					cr->constDiags[cr->nConstDiags-1].idx = bandwidth-i;
@@ -261,7 +261,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			}
 			for (i=bandwidth+1; i<nDiags ; i++) { // upper subdiagonals
 				if (diagStatus[i] == DIAG_OK && diagEnts[i] == cr->ncols+bandwidth-i) {
-					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",-bandwidth+i,REAL(diagVals[i]));
+					DEBUG_LOG(1,"The %"PRmatIDX"-th subdiagonal is constant with %f",-bandwidth+i,MREAL(diagVals[i]));
 					cr->nConstDiags++;
 					cr->constDiags = realloc(cr->constDiags,sizeof(CONST_DIAG)*cr->nConstDiags);
 					cr->constDiags[cr->nConstDiags-1].idx = -bandwidth+i;
@@ -360,7 +360,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			} 
 			else 
 			{
-				switch (datatype) {
+	/*			switch (datatype) {
 					case GHOST_DATATYPE_S:
 						{
 							float *tmp = (float *)allocateMemory(
@@ -397,7 +397,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							free(tmp);
 							break;
 						}
-				}
+				}*/
 			}
 		}
 	}

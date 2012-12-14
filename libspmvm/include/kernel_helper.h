@@ -36,7 +36,7 @@ UNUSED(spmvmOptions);
 #else
 
 ghost_midx_t i, j;
-ghost_mdat_t hlp1;
+ghost_vdat_t hlp1;
 
 //#pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){

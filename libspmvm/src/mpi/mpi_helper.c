@@ -45,7 +45,7 @@ MPI_Comm getSingleNodeComm()
 	return single_node_comm;
 }
 
-void contextSingleNodeComm() 
+void setupSingleNodeComm() 
 {
 
 	/* return MPI communicator between nodal MPI processes single_node_comm

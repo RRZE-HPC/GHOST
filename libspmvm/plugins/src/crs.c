@@ -662,6 +662,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	DEBUG_LOG(1,"Matrix read in successfully");
 }
 
+
 static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {
 	MM_TYPE * mm = readMMFile(matrixPath);
@@ -765,7 +766,7 @@ static void CRS_free(ghost_mat_t * mat)
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	ghost_midx_t i, j;
-	ghost_mdat_t hlp1;
+	ghost_vdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<CR(mat)->nrows; i++){

@@ -37,29 +37,57 @@
 
 #ifdef GHOST_MAT_DP
 #ifdef GHOST_MAT_COMPLEX
-#define ABS(a) cabs(a)
-#define REAL(a) creal(a)
-#define IMAG(a) cimag(a)
-#define SQRT(a) csqrt(a)
+#define MABS(a) cabs(a)
+#define MREAL(a) creal(a)
+#define MIMAG(a) cimag(a)
+#define MSQRT(a) csqrt(a)
 #else
-#define ABS(a) fabs(a)
-#define REAL(a) a
-#define IMAG(a) 0.0
-#define SQRT(a) sqrt(a)
+#define MABS(a) fabs(a)
+#define MREAL(a) a
+#define MIMAG(a) 0.0
+#define MSQRT(a) sqrt(a)
 #endif
 #endif
 
 #ifdef GHOST_MAT_SP
 #ifdef GHOST_MAT_COMPLEX
-#define ABS(a) cabsf(a)
-#define REAL(a) crealf(a)
-#define IMAG(a) cimagf(a)
-#define SQRT(a) csqrtf(a)
+#define MABS(a) cabsf(a)
+#define MREAL(a) crealf(a)
+#define MIMAG(a) cimagf(a)
+#define MSQRT(a) csqrtf(a)
 #else
-#define ABS(a) fabsf(a)
-#define REAL(a) a
-#define IMAG(a) 0.0
-#define SQRT(a) sqrtf(a)
+#define MABS(a) fabsf(a)
+#define MREAL(a) a
+#define MIMAG(a) 0.0
+#define MSQRT(a) sqrtf(a)
+#endif
+#endif
+
+#ifdef GHOST_VEC_DP
+#ifdef GHOST_VEC_COMPLEX
+#define VABS(a) cabs(a)
+#define VREAL(a) creal(a)
+#define VIMAG(a) cimag(a)
+#define VSQRT(a) csqrt(a)
+#else
+#define VABS(a) fabs(a)
+#define VREAL(a) a
+#define VIMAG(a) 0.0
+#define VSQRT(a) sqrt(a)
+#endif
+#endif
+
+#ifdef GHOST_VEC_SP
+#ifdef GHOST_VEC_COMPLEX
+#define VABS(a) cabsf(a)
+#define VREAL(a) crealf(a)
+#define VIMAG(a) cimagf(a)
+#define VSQRT(a) csqrtf(a)
+#else
+#define VABS(a) fabsf(a)
+#define VREAL(a) a
+#define VIMAG(a) 0.0
+#define VSQRT(a) sqrtf(a)
 #endif
 #endif
 
@@ -73,12 +101,12 @@
 // TODO adjust
 
 #ifdef GHOST_MAT_DP
-#define EPSILON 1e-4
+#define MEPSILON 1e-4
 #endif
 #ifdef GHOST_MAT_SP
-#define EPSILON 1e-0 // TODO
+#define MEPSILON 1e-0 // TODO
 #endif
-#define EQUALS(a,b) (ABS(REAL(a)-REAL(b))<EPSILON && ABS(IMAG(a)-IMAG(b))<EPSILON)
+#define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<MEPSILON && MABS(MIMAG(a)-MIMAG(b))<MEPSILON)
 /******************************************************************************/
 
 

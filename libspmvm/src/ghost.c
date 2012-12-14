@@ -109,26 +109,19 @@ static ghost_mnnz_t context_lncols (ghost_context_t * context)
 	return context->fullMatrix->ncols(context->fullMatrix);
 }
 
-#if defined(COMPLEX) && defined(MPI)
+#ifdef MPI
+#ifdef GHOST_VEC_COMPLEX
 typedef struct 
 {
-#ifdef DOUBLE
-	double x;
-	double y;
-#endif
-#ifdef SINGLE
-	float x;
-	float y;
-#endif
-
+	ghost_vdat_el_t x;
+	ghost_vdat_el_t y;
 } 
-MPI_complex;
+MPI_vComplex;
 
-static void MPI_complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
+static void MPI_vComplAdd(MPI_vComplex *invec, MPI_vComplex *inoutvec, int *len)
 {
-
 	int i;
-	MPI_complex c;
+	MPI_vComplex c;
 
 	for (i=0; i<*len; i++, invec++, inoutvec++){
 		c.x = invec->x + inoutvec->x;
@@ -136,6 +129,29 @@ static void MPI_complAdd(MPI_complex *invec, MPI_complex *inoutvec, int *len)
 		*inoutvec = c;
 	}
 }
+#endif
+
+#ifdef GHOST_MAT_COMPLEX
+
+typedef struct 
+{
+	ghost_mdat_el_t x;
+	ghost_mdat_el_t y;
+} 
+MPI_mComplex;
+
+static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
+{
+	int i;
+	MPI_mComplex c;
+
+	for (i=0; i<*len; i++, invec++, inoutvec++){
+		c.x = invec->x + inoutvec->x;
+		c.y = invec->y + inoutvec->y;
+		*inoutvec = c;
+	}
+}
+#endif
 #endif
 
 int ghost_init(int argc, char **argv, int spmvmOptions)
@@ -158,17 +174,29 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 	}
 	me = ghost_getRank();;
 
-	contextSingleNodeComm();
+	setupSingleNodeComm();
 
-#ifdef COMPLEX
-#ifdef DOUBLE
-	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
+#ifdef GHOST_MAT_COMPLEX
+	if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+			MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
+		} else {
+			MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
+		}
+		MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
+		MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_mComplAdd,1,&ghost_mpi_sum_mdat));
+	} 
 #endif
-#ifdef SINGLE
-	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
-#endif
-	MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_complAdd,1,&ghost_mpi_sum_mdat));
+#ifdef GHOST_VEC_COMPLEX
+	if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+		if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+			MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_vdat));
+		} else {
+			MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_vdat));
+		}
+		MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_vdat));
+		MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_vComplAdd,1,&ghost_mpi_sum_vdat));
+	} 
 #endif
 
 #else // ifdef MPI
@@ -252,16 +280,16 @@ void ghost_finish()
 ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, ghost_mdat_t (*fp)(int))
 {
 
-	ghost_mdat_t *val;
-	ghost_midx_t nrows;
+	ghost_vdat_t *val;
+	ghost_vidx_t nrows;
 	size_t size_val;
 	ghost_mat_t *matrix = context->fullMatrix;
 
 
 	if (context->flags & GHOST_CONTEXT_GLOBAL || flags & GHOST_VEC_GLOBAL)
 	{
-		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_mdat_t);
-		val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
+		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_vdat_t);
+		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
 		nrows = matrix->nrows(matrix);
 
 
@@ -298,9 +326,9 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		else
 			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
-		size_val = (size_t)( nrows * sizeof(ghost_mdat_t) );
+		size_val = (size_t)( nrows * sizeof(ghost_vdat_t) );
 
-		val = (ghost_mdat_t*) allocateMemory( size_val, "vec->val");
+		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
 		nrows = nrows;
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX"+%"PRmatIDX" rows",lcrp->lnrows[me],lcrp->halo_elements);

@@ -2,11 +2,20 @@
 #define __GHOST_TYPES_H__
 
 #include "ghost_types_gen.h"
+#ifdef MPI
+#include <mpi.h>
+#endif
+#ifdef OPENCL
+#include <CL/cl.h>
+#endif
 
 #ifdef GHOST_MAT_DP
 #ifdef GHOST_MAT_COMPLEX
 typedef _Complex double ghost_mdat_t;
+typedef double ghost_mdat_el_t;
+#ifdef OPENCL
 typedef double2 ghost_cl_mdat_t;
+#endif
 #ifdef MPI
 MPI_Datatype ghost_mpi_dt_mdat;
 MPI_Op ghost_mpi_sum_mdat;
@@ -14,7 +23,10 @@ MPI_Op ghost_mpi_sum_mdat;
 #define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_MAT_COMPLEX
 typedef double ghost_mdat_t;
+typedef double ghost_mdat_el_t;
+#ifdef OPENCL
 typedef double ghost_cl_mdat_t;
+#endif
 #ifdef MPI
 #define ghost_mpi_dt_mdat MPI_DOUBLE
 #define ghost_mpi_sum_mdat MPI_SUM
@@ -26,6 +38,10 @@ typedef double ghost_cl_mdat_t;
 #ifdef GHOST_MAT_SP
 #ifdef GHOST_MAT_COMPLEX
 typedef _Complex float ghost_mdat_t;
+typedef float ghost_mdat_el_t;
+#ifdef OPENCL
+typedef float2 ghost_cl_mdat_t;
+#endif
 #ifdef MPI
 MPI_Datatype ghost_mpi_dt_mdat;
 MPI_Op ghost_mpi_sum_mdat;
@@ -33,6 +49,10 @@ MPI_Op ghost_mpi_sum_mdat;
 #define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_MAT_COMPLEX
 typedef float ghost_mdat_t;
+typedef float ghost_mdat_el_t;
+#ifdef OPENCL
+typedef float ghost_cl_mdat_t;
+#endif
 #ifdef MPI
 #define ghost_mpi_dt_mdat MPI_FLOAT
 #define ghost_mpi_sum_mdat MPI_SUM
@@ -44,38 +64,52 @@ typedef float ghost_mdat_t;
 #ifdef GHOST_VEC_DP
 #ifdef GHOST_VEC_COMPLEX
 typedef _Complex double ghost_vdat_t;
+typedef double ghost_vdat_el_t;
+#ifdef OPENCL
 typedef double2 ghost_cl_vdat_t;
+#endif
 #ifdef MPI
 MPI_Datatype ghost_mpi_dt_vdat;
 MPI_Op ghost_mpi_sum_vdat;
 #endif
-#define GHOST_MY_VDATATYPE GHOST_DATATYPE_Z
+#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_VEC_COMPLEX
 typedef double ghost_vdat_t;
+typedef double ghost_vdat_el_t;
+#ifdef OPENCL
 typedef double ghost_cl_vdat_t;
+#endif
 #ifdef MPI
 #define ghost_mpi_dt_vdat MPI_DOUBLE
 #define ghost_mpi_sum_vdat MPI_SUM
 #endif
-#define GHOST_MY_VDATATYPE GHOST_DATATYPE_D
+#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_VEC_COMPLEX
 #endif // GHOST_VEC_DP
 
 #ifdef GHOST_VEC_SP
 #ifdef GHOST_VEC_COMPLEX
 typedef _Complex float ghost_vdat_t;
+typedef float ghost_vdat_el_t;
+#ifdef OPENCL
+typedef float2 ghost_cl_vdat_t;
+#endif
 #ifdef MPI
 MPI_Datatype ghost_mpi_dt_vdat;
 MPI_Op ghost_mpi_sum_vdat;
 #endif
-#define GHOST_MY_VDATATYPE GHOST_DATATYPE_C
+#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_VEC_COMPLEX
 typedef float ghost_vdat_t;
+typedef float ghost_vdat_el_t;
+#ifdef OPENCL
+typedef float ghost_cl_vdat_t;
+#endif
 #ifdef MPI
 #define ghost_mpi_dt_vdat MPI_FLOAT
 #define ghost_mpi_sum_vdat MPI_SUM
 #endif
-#define GHOST_MY_VDATATYPE GHOST_DATATYPE_S
+#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
 #endif // GHOST_VEC_COMPLEX
 #endif // GHOST_VEC_SP
 

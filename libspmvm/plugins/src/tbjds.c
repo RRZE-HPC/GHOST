@@ -382,7 +382,7 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 	DEBUG_LOG(2,"Calling plain TBJDS kernel");
 	ghost_midx_t c,j,i;
 	ghost_mnnz_t offs;
-	ghost_mdat_t tmp[BJDS_LEN]; 
+	ghost_vdat_t tmp[BJDS_LEN]; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,offs)
 	for (c=0; c<TBJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
