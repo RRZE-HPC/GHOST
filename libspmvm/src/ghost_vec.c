@@ -73,7 +73,7 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *comm, ghost_vec_t *vec)
 		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
 
-	DEBUG_LOG(2,"Creating local vector with %d rows",nrows);
+	DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
 	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->flags ); 
 
 	DEBUG_LOG(2,"Scattering global vector to local vectors");

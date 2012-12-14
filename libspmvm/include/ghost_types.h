@@ -134,6 +134,7 @@ typedef cl_long ghost_cl_mnnz_t;
 
 #define PRmatNNZ PRId64
 #define PRmatIDX PRId64
+#define PRvecIDX PRId64
 
 #else
 
