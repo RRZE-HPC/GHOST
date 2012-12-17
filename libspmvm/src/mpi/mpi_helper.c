@@ -418,6 +418,9 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	ghost_createCommunication((CR_TYPE *)(context->fullMatrix->data),options,context);
 
+	context->localMatrix->CLupload(context->localMatrix);
+	context->remoteMatrix->CLupload(context->remoteMatrix);
+
 }
 
 void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)

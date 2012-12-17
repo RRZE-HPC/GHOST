@@ -22,14 +22,14 @@
 /******************************************************************************/
 /*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
-#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_CPU
+#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
 /******************************************************************************/
 
 /******************************************************************************/
 /*----  Definitions depending on datatype  -----------------------------------*/
 /******************************************************************************/
 
-#ifdef GHOST_MAT_COMPLEX
+#if defined(GHOST_MAT_COMPLEX) || defined(GHOST_VEC_COMPLEX)
 #define FLOPS_PER_ENTRY 8.0
 #else
 #define FLOPS_PER_ENTRY 2.0
@@ -100,11 +100,11 @@
 
 // TODO adjust
 
-#ifdef GHOST_MAT_DP
+#ifdef GHOST_VEC_DP
 #define EPSILON 1e-4
 #endif
-#ifdef GHOST_MAT_SP
-#define EPSILON 1e-0 // TODO
+#ifdef GHOST_VEC_SP
+#define EPSILON 1e-1 // TODO
 #endif
 #define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<EPSILON && MABS(MIMAG(a)-MIMAG(b))<EPSILON)
 /******************************************************************************/
@@ -185,6 +185,7 @@ struct ghost_mat_t
 	char *     (*formatName) (ghost_mat_t *);
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
+	void       (*CLupload)(ghost_mat_t *);
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	size_t     (*byteSize) (ghost_mat_t *);

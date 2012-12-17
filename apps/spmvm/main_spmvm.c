@@ -19,7 +19,7 @@ extern int optind;
 static ghost_vdat_t rhsVal (int i) 
 {
 #ifdef GHOST_VEC_COMPLEX
-	return i+1.0 + I*(i+1.5);
+	return (ghost_vdat_el_t)(i+1.0) + I*(ghost_vdat_el_t)(i+1.5);
 #else
 	return i+1.0 ;
 #endif
@@ -28,12 +28,12 @@ static ghost_vdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 1;
+	int  kernel, nIter = 100;
 	double time;
 
 #ifdef CHECK
 	ghost_midx_t i, errcount = 0;
-	double mytol;
+	ghost_vdat_t mytol;
 #endif
 
 	int options = GHOST_OPTION_AXPY; // TODO remote kernel immer axpy
@@ -92,17 +92,15 @@ int main( int argc, char* argv[] )
 #ifdef CHECK
 		errcount=0;
 		for (i=0; i<context->lnrows(context); i++){
-		//	if (ghost_getRank() == 0)
-		//		printf("!!! %.2f + i%.2f\n",VREAL(goldLHS->val[i]),VIMAG(goldLHS->val[i]));
 			mytol = EPSILON * VABS(goldLHS->val[i]); 
-			if (VREAL(VABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
-					VIMAG(VABS(goldLHS->val[i]-lhs->val[i])) > mytol){
+			if (VREAL(VABS(goldLHS->val[i]-lhs->val[i])) > VREAL(mytol) ||
+					VIMAG(VABS(goldLHS->val[i]-lhs->val[i])) > VIMAG(mytol)){
 				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %e, diff: %e)\n", ghost_getRank(), i, VREAL(goldLHS->val[i]),
+						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(), i, VREAL(goldLHS->val[i]),
 						VIMAG(goldLHS->val[i]),
 						VREAL(lhs->val[i]),
 						VIMAG(lhs->val[i]),
-						mytol,VREAL(VABS(goldLHS->val[i]-lhs->val[i])));
+						VREAL(mytol),VIMAG(mytol),VREAL(VABS(goldLHS->val[i]-lhs->val[i])));
 				errcount++;
 			}
 		}

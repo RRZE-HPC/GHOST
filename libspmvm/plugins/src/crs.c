@@ -30,6 +30,7 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, in
 static void CRS_readRpt(void *arg);
 static void CRS_readColValOffset(void *args);
 static void CRS_readHeader(void *vargs);
+static void CRS_upload(ghost_mat_t *mat);
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -53,6 +54,7 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->nrows    = &CRS_nrows;
 	mat->ncols    = &CRS_ncols;
 	mat->destroy  = &CRS_free;
+	mat->CLupload = &CRS_upload;
 	mat->extraFun = (ghost_dummyfun_t *)allocateMemory(3*sizeof(ghost_dummyfun_t),"dummyfun CRS");
 	mat->extraFun[GHOST_CRS_EXTRAFUN_READ_RPT] = &CRS_readRpt;
 	mat->extraFun[GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET] = &CRS_readColValOffset;
@@ -326,7 +328,15 @@ static void CRS_readColValOffset(void *vargs)
 	}
 	close(file);
 
+	CRS_upload(mat);
 
+
+
+	DEBUG_LOG(1,"Matrix read in successfully");
+}
+
+static void CRS_upload(ghost_mat_t *mat)
+{
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
@@ -358,9 +368,11 @@ static void CRS_readColValOffset(void *vargs)
 		ABORT("Device matrix cannot be created without OpenCL");
 	}
 #endif
-
-	DEBUG_LOG(1,"Matrix read in successfully");
 }
+
+
+
+
 
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {

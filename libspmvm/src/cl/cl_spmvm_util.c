@@ -95,11 +95,11 @@ void CL_init()
 	CL_safecall(clCreateSubDevicesEXT(deviceID,props,numSubDevices,subdeviceIDs,&numSubDevices));
 
 	deviceID = subdeviceIDs[0]
-#endif;
+#endif
 
 	cl_uint nCores;
 	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_MAX_COMPUTE_UNITS,sizeof(cl_uint),&nCores,NULL));
-	DEBUG_LOG(0,"The (sub-)device has %u cores",nCores);
+	DEBUG_LOG(1,"The (sub-)device has %u cores",nCores);
 
 
 	DEBUG_LOG(1,"Creating OpenCL context...");

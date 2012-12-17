@@ -32,6 +32,7 @@
 => all OpenCL arrays mapped memory
 
 => different data types for matrix and vectors
+  - works BUT does useless flops (mults with zero)
 
 => replace 0 to SPMVM_MPI_ROOT everywhere
 

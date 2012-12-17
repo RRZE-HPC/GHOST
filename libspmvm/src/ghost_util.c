@@ -392,7 +392,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 	for (i=0; i<nrows; i++){
 			hlp1 = 0.0;
 		for (j=rpt[i]; j<rpt[i+1]; j++){
-			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; 
+			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; // TODO do not multiply with zero if different datatypes 
 		}
 		if (spmvmOptions & GHOST_OPTION_AXPY) 
 			res[i] += hlp1;

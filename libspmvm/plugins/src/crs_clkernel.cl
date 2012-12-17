@@ -10,14 +10,14 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#include <ghost_types.h>
+#include <ghost_types_clkernel.h>
 #include <ghost_constants.h>
 
-kernel void CRS_kernel (global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nrows, global unsigned int *rpt, global unsigned int *col, global ghost_cl_mdat_t *val) 
+kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, int nrows, global int *rpt, global int *col, global ghost_cl_mdat_t *val) 
 {
 	unsigned int i = get_global_id(0);
 	if (i < nrows) {
-		ghost_cl_mdat_t tmp = 0.0, rhs = 0.0;
+		ghost_cl_vdat_t tmp = 0.0, rhs = 0.0;
 		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j) {
 
 			rhs = rhsVec[col[j]];
@@ -35,4 +35,5 @@ kernel void CRS_kernel (global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhs
 			lhs[i] = tmp;
 	}
 }
+
 

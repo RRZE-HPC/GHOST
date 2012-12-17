@@ -158,9 +158,10 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			 *******     Calculation of SpMVM for local entries of invec->val     *******
 			 **********************************************************************/
 #ifdef OPENCL
-
+			UNUSED(localCR);
 			if( tid == nthreads-2 ) {
-				spmvmKernLocalXThread( context->communicator, invec, res, &me, spmvmOptions);
+				context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
+//				spmvmKernLocalXThread( context->communicator, invec, res, &me, spmvmOptions);
 			}
 
 #else
@@ -203,7 +204,6 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	 *************************************************************************/
 
 	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
-	//spmvmKernAll( context->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
