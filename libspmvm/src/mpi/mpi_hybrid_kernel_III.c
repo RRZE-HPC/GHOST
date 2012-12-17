@@ -111,7 +111,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
-						ghost_mpi_dt_mdat, from_PE, from_PE, MPI_COMM_WORLD, 
+						ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, 
 						&request[recv_messages] ));
 			recv_messages++;
 		}
@@ -120,47 +120,10 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	/*****************************************************************************
 	 *******                          Overlap region                       *******
 	 ****************************************************************************/
-#ifdef OPEN_MPI
-#ifdef GHOST_MAT_COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
 #pragma omp parallel                                                            \
-	default   (none)                                                             \
+	default   (shared)                                                             \
 	private   (i, j, to_PE, tid)                            \
-	shared    (ghost_mpi_dt_mdat, ompi_mpi_double, ompi_mpi_comm_world,\
-			context, me, work, invec, res,  localCR,          \
-			status, request, recv_messages,                 \
-			spmvmOptions,stderr, nthreads, nprocs)                                                  \
 	reduction (+:send_messages)
-#else
-#pragma omp parallel                                                            \
-	default   (none)                                                             \
-	private   (i, j, to_PE, tid)                            \
-	shared    (ompi_mpi_double, ompi_mpi_comm_world,\
-			context, me, work, invec, res,  localCR,          \
-			status, request, recv_messages,                 \
-			spmvmOptions,stderr, nthreads, nprocs)                                                  \
-	reduction (+:send_messages)
-#endif
-#else
-#ifdef GHOST_MAT_COMPLEX // ghost_mpi_dt_mdat is _only_ a variable in the complex case (otherwise it's a #define) 
-#pragma omp parallel                                                            \
-	default   (none)                                                             \
-	private   (i, j, to_PE, tid)                            \
-	shared    (ghost_mpi_dt_mdat, \
-			context, me, work, invec, res, localCR,           \
-			status, request, recv_messages,                 \
-			spmvmOptions,stderr, nthreads, nprocs)                                                  \
-	reduction (+:send_messages)
-#else
-#pragma omp parallel                                                            \
-	default   (none)                                                             \
-	private   (i, j, to_PE, tid)                            \
-	shared    (\
-			context, me, work, invec, request, res,  localCR,          \
-			status, recv_messages,                 \
-			spmvmOptions,stderr, nthreads, nprocs)                                                  \
-	reduction (+:send_messages)
-#endif
-#endif 
 	{
 
 #ifdef _OPENMP
@@ -180,7 +143,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 
 				if (context->communicator->dues[to_PE]>0){
-					MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], ghost_mpi_dt_mdat,
+					MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], ghost_mpi_dt_vdat,
 								to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
 					send_messages++;
 				}

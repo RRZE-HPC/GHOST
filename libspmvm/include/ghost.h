@@ -101,12 +101,12 @@
 // TODO adjust
 
 #ifdef GHOST_MAT_DP
-#define MEPSILON 1e-4
+#define EPSILON 1e-4
 #endif
 #ifdef GHOST_MAT_SP
-#define MEPSILON 1e-0 // TODO
+#define EPSILON 1e-0 // TODO
 #endif
-#define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<MEPSILON && MABS(MIMAG(a)-MIMAG(b))<MEPSILON)
+#define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<EPSILON && MABS(MIMAG(a)-MIMAG(b))<EPSILON)
 /******************************************************************************/
 
 

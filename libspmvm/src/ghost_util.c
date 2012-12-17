@@ -297,7 +297,8 @@ void ghost_printEnvInfo()
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
+		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
+		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -350,7 +351,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 {
 
 	int me = ghost_getRank();
-	//ghost_vec_t *lhs = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
+	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 
 	if (me==0) {
@@ -373,12 +374,12 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vec_t *lhs = ghost_distributeVector(distContext->communicator,globLHS);
+	ghost_vec_t *res = ghost_distributeVector(distContext->communicator,globLHS);
 
 	ghost_freeVector(globLHS);
 
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
-	return lhs;
+	return res;
 
 }
 
@@ -389,7 +390,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<nrows; i++){
-		hlp1 = 0.0;
+			hlp1 = 0.0;
 		for (j=rpt[i]; j<rpt[i+1]; j++){
 			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; 
 		}

@@ -7,10 +7,10 @@ void ghost_zeroVector(ghost_vec_t *vec)
 {
 	int i;
 	for (i=0; i<vec->nrows; i++) {
-#ifdef COMPLEX
-		vec->val[i] = 0;
+#ifdef GHOST_VEC_COMPLEX
+		vec->val[i] = 0.;
 #else
-		vec->val[i] = 0+I*0;
+		vec->val[i] = 0.+I*0.;
 #endif
 	}
 
@@ -63,7 +63,7 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *comm, ghost_vec_t *vec)
 
 	ghost_vidx_t nrows;
 
-	MPI_safecall(MPI_Bcast(&(vec->flags),1,MPI_UNSIGNED,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(vec->flags),1,MPI_INT,0,MPI_COMM_WORLD));
 
 	if (vec->flags & GHOST_VEC_RHS)
 		nrows = comm->lnrows[me]+comm->halo_elements;
@@ -77,8 +77,8 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *comm, ghost_vec_t *vec)
 	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->flags ); 
 
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_mdat,
-				nodeVec->val, (int)comm->lnrows[me], ghost_mpi_dt_mdat, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_vdat,
+				nodeVec->val, (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	ghost_vec_t *nodeVec = ghost_newVector( vec->nrows, vec->flags ); 
@@ -110,8 +110,8 @@ void ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec, ghost_vec_
 		ghost_permuteVector(vec->val,context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
 		ghost_permuteVector(vec->val,context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}
-	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],ghost_mpi_dt_mdat,totalVec->val,
-				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_mdat,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],ghost_mpi_dt_vdat,totalVec->val,
+				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_vdat,0,MPI_COMM_WORLD));
 #else
 	int i;
 	UNUSED(kernel);

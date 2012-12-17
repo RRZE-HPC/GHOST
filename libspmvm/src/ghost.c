@@ -286,7 +286,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 	ghost_mat_t *matrix = context->fullMatrix;
 
 
-	if (context->flags & GHOST_CONTEXT_GLOBAL || flags & GHOST_VEC_GLOBAL)
+	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (flags & GHOST_VEC_GLOBAL))
 	{
 		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_vdat_t);
 		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
@@ -301,7 +301,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 			for (i=0; i<matrix->nrows(matrix); i++) 
 				val[i] = fp(i);
 		}else {
-#ifdef COMPLEX
+#ifdef GHOST_VEC_COMPLEX
 #pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.+I*0.;
 #else
@@ -341,7 +341,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 			for (i=lcrp->lnrows[me]; i<nrows; i++) 
 				val[i] = fp(lcrp->lfRow[me]+i);
 		}else {
-#ifdef COMPLEX
+#ifdef GHOST_VEC_COMPLEX
 #pragma omp parallel for schedule(runtime)
 			for (i=0; i<lcrp->lnrows[me]; i++) val[i] = 0.+I*0.;
 #pragma omp parallel for schedule(runtime)

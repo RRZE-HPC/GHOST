@@ -153,6 +153,7 @@ typedef cl_int ghost_cl_mnnz_t;
 
 #define PRmatNNZ PRId32
 #define PRmatIDX PRId32
+#define PRvecIDX PRId32
 
 #endif
 

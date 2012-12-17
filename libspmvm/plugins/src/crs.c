@@ -278,14 +278,14 @@ static void CRS_readColValOffset(void *vargs)
 		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
 		GHOST_BINCRS_SIZE_COL_EL*CR(mat)->nEnts+
 		ghost_sizeofDataType(datatype)*offsetEnts;
-	
+
 	if (datatype == GHOST_MY_MDATATYPE) {
 		pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs);
 	} else {
-	/*	DEBUG_LOG(0,"Warning in! The library has been built for %s data but"
+		DEBUG_LOG(0,"Warning! The library has been built for %s data but"
 				" the file contains %s data. Casting...\n",
 				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
-		switch (datatype) {
+	/*	switch (datatype) {
 			case GHOST_DATATYPE_S:
 				{
 					float *tmp = (float *)allocateMemory(

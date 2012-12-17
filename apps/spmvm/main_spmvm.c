@@ -16,9 +16,9 @@
 
 extern int optind;
 
-static ghost_mdat_t rhsVal (int i) 
+static ghost_vdat_t rhsVal (int i) 
 {
-#ifdef COMPLEX
+#ifdef GHOST_VEC_COMPLEX
 	return i+1.0 + I*(i+1.5);
 #else
 	return i+1.0 ;
@@ -28,7 +28,7 @@ static ghost_mdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 100;
+	int  kernel, nIter = 1;
 	double time;
 
 #ifdef CHECK
@@ -92,15 +92,17 @@ int main( int argc, char* argv[] )
 #ifdef CHECK
 		errcount=0;
 		for (i=0; i<context->lnrows(context); i++){
-			mytol = EPSILON * ABS(goldLHS->val[i]); 
-			if (REAL(ABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
-					IMAG(ABS(goldLHS->val[i]-lhs->val[i])) > mytol){
+		//	if (ghost_getRank() == 0)
+		//		printf("!!! %.2f + i%.2f\n",VREAL(goldLHS->val[i]),VIMAG(goldLHS->val[i]));
+			mytol = EPSILON * VABS(goldLHS->val[i]); 
+			if (VREAL(VABS(goldLHS->val[i]-lhs->val[i])) > mytol || 
+					VIMAG(VABS(goldLHS->val[i]-lhs->val[i])) > mytol){
 				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %e, diff: %e)\n", ghost_getRank(), i, REAL(goldLHS->val[i]),
-						IMAG(goldLHS->val[i]),
-						REAL(lhs->val[i]),
-						IMAG(lhs->val[i]),
-						mytol,REAL(ABS(goldLHS->val[i]-lhs->val[i])));
+						"%.2ei (tol: %e, diff: %e)\n", ghost_getRank(), i, VREAL(goldLHS->val[i]),
+						VIMAG(goldLHS->val[i]),
+						VREAL(lhs->val[i]),
+						VIMAG(lhs->val[i]),
+						mytol,VREAL(VABS(goldLHS->val[i]-lhs->val[i])));
 				errcount++;
 			}
 		}
