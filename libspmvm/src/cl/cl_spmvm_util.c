@@ -16,6 +16,12 @@ static cl_command_queue queue;
 static cl_context context;
 static cl_platform_id platform;
 
+static void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data)
+{
+
+	// TODO call makro
+    fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,__FILE__,__LINE__,errinfo);
+}
 
 /* -----------------------------------------------------------------------------
    Initiliaze OpenCL for the SpMVM, i.e., 
@@ -104,7 +110,7 @@ void CL_init()
 
 	DEBUG_LOG(1,"Creating OpenCL context...");
 	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};
-	context = clCreateContext(cprops,1,&deviceID,NULL,NULL,&err);
+	context = clCreateContext(cprops,1,&deviceID,&pfn_notify,NULL,&err);
 	CL_checkerror(err);
 
 
@@ -183,7 +189,8 @@ cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag )
 
 	mem = clCreateBuffer(context,flag|CL_MEM_USE_HOST_PTR,bytesize,
 			hostPtr,&err);
-	CL_checkerror(err);
+	if (!(err == CL_INVALID_BUFFER_SIZE && bytesize == 0))
+		CL_checkerror(err);
 
 	return mem;
 }
@@ -239,11 +246,14 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 #else
 	int me = ghost_getRank();
 
-	IF_DEBUG(1) printf("PE%d: Copying back %lu data elements to host\n",me,bytesize/sizeof(ghost_mdat_t));
+	DEBUG_LOG(1,"Copying back %lu bytes to host\n",bytesize);
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));
 #endif
 }
+
+	
+
 
 cl_event CL_copyDeviceToHostNonBlocking(void* hostmem, cl_mem devmem,
 		size_t bytesize)
@@ -259,6 +269,7 @@ void CL_copyHostToDeviceOffset(cl_mem devmem, void *hostmem,
 {
 	if (bytesize==0)
 		return;
+	DEBUG_LOG(1,"Copying %lu bytes to device",bytesize);
 #ifdef CL_IMAGE
 	cl_mem_object_type type;
 	CL_safecall(clGetMemObjectInfo(devmem,CL_MEM_TYPE,sizeof(cl_mem_object_type),&type,NULL));
@@ -303,6 +314,7 @@ void CL_freeDeviceMemory(cl_mem mem)
 
 void CL_enqueueKernel(cl_kernel kernel, cl_uint dim, size_t *gSize, size_t *lSize)
 {
+	DEBUG_LOG(1,"Enqueueing kernel with global size %lu, local size %lu",gSize==NULL?0:*gSize,lSize==NULL?0:*lSize);
 	CL_safecall(clEnqueueNDRangeKernel(queue,kernel,dim,NULL,gSize,lSize,0,NULL,NULL));
 }
 
@@ -533,12 +545,12 @@ matrix->devMatrix =  gpum;
 
 void CL_uploadVector( ghost_vec_t *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(ghost_mdat_t));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(ghost_vdat_t));
 }
 
 void CL_downloadVector( ghost_vec_t *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(ghost_mdat_t));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(ghost_vdat_t));
 }
 
 size_t CL_getLocalSize(cl_kernel kernel) 

@@ -9,6 +9,14 @@
 /******************************************************************************/
 /****** Makros ****************************************************************/
 /******************************************************************************/
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 #define IF_DEBUG(level) if( DEBUG >= level )
 
 #ifdef MPI
@@ -37,14 +45,14 @@
 #define ABORT(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,"PE%d ABORTING at %s:%d: ",__me,__FILE__,__LINE__);\
+	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: " ANSI_COLOR_RESET,__me,__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, "\n");\
 	fflush(stderr);\
 }
 #else
 #define ABORT(msg, ...) {\
-	fprintf(stderr,"ABORTING at %s:%d: ",__FILE__,__LINE__);\
+	fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: " ANSI_COLOR_RESET,__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, "\n");\
 	fflush(stderr);\
@@ -54,15 +62,40 @@
 #define MPI_safecall(call) {\
   int mpierr = call ;\
   if( MPI_SUCCESS != mpierr ){\
-    fprintf(stderr, "MPI error at %s:%d, %d\n",\
+    fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
       __FILE__, __LINE__, mpierr);\
     fflush(stderr);\
   }\
   }
+
+#ifdef MPI
 #define CL_safecall(call) {\
   cl_int clerr = call ;\
   if( CL_SUCCESS != clerr ){\
-    fprintf(stderr, "OpenCL error at %s:%d, %s\n",\
+	int __me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+    fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+      __me, __FILE__, __LINE__, CL_errorString(clerr));\
+    fflush(stderr);\
+  }\
+  }
+
+#define CL_checkerror(clerr) do{\
+  if( CL_SUCCESS != clerr ){\
+	int __me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+    fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+      __me, __FILE__, __LINE__, CL_errorString(clerr));\
+    fflush(stdout);\
+  }\
+  } while(0)
+
+#else
+
+#define CL_safecall(call) {\
+  cl_int clerr = call ;\
+  if( CL_SUCCESS != clerr ){\
+    fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
       __FILE__, __LINE__, CL_errorString(clerr));\
     fflush(stderr);\
   }\
@@ -70,11 +103,12 @@
 
 #define CL_checkerror(clerr) do{\
   if( CL_SUCCESS != clerr ){\
-    fprintf(stdout, "OpenCL error at %s:%d, %s\n",\
+    fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
       __FILE__, __LINE__, CL_errorString(clerr));\
     fflush(stdout);\
   }\
   } while(0)
+#endif
 
 #define UNUSED(x) (void)(x)
 /******************************************************************************/

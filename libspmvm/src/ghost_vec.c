@@ -5,12 +5,13 @@
 
 void ghost_zeroVector(ghost_vec_t *vec) 
 {
+	DEBUG_LOG(1,"Zeroing vector");
 	int i;
 	for (i=0; i<vec->nrows; i++) {
 #ifdef GHOST_VEC_COMPLEX
-		vec->val[i] = 0.;
-#else
 		vec->val[i] = 0.+I*0.;
+#else
+		vec->val[i] = 0.;
 #endif
 	}
 

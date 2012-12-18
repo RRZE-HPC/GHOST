@@ -225,7 +225,7 @@ static void CRS_readColValOffset(void *vargs)
 	ghost_midx_t nRows = args->nRows;
 	int IOtype = args->IOtype;
 
-	UNUSED(offsetRows);
+	
 	UNUSED(IOtype);
 
 	ghost_midx_t i, j;
@@ -328,7 +328,6 @@ static void CRS_readColValOffset(void *vargs)
 	}
 	close(file);
 
-	CRS_upload(mat);
 
 
 
@@ -337,6 +336,7 @@ static void CRS_readColValOffset(void *vargs)
 
 static void CRS_upload(ghost_mat_t *mat)
 {
+	DEBUG_LOG(1,"Uploading CRS matrix to device");
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
@@ -637,7 +637,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 		.IOtype = GHOST_IO_STD};
 	CRS_readColValOffset(&cvargs);
 
-
+/*
 
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
@@ -671,7 +671,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	}
 #endif
 
-	DEBUG_LOG(1,"Matrix read in successfully");
+	DEBUG_LOG(1,"Matrix read in successfully");*/
 }
 
 
@@ -799,7 +799,7 @@ static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rh
 	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
-
+	
 	size_t gSize = (size_t)CR(mat)->clmat->nrows;
 
 	CL_enqueueKernel(mat->clkernel,1,&gSize,NULL);

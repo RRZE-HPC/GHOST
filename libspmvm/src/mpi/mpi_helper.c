@@ -260,8 +260,8 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 				MPI_INTEGER, 0, MPI_COMM_WORLD));
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
 
-	DEBUG_LOG(1,"Scatter successfully");
-	
+	DEBUG_LOG(1,"Adjusting row pointers");
+
 	for (i=0;i<lcrp->lnrows[me]+1;i++)
 		((CR_TYPE *)(context->fullMatrix->data))->rpt[i] =  ((CR_TYPE *)(context->fullMatrix->data))->rpt[i] - lcrp->lfEnt[me]; 
 
@@ -283,6 +283,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 		.IOtype = GHOST_IO_STD};
 	context->fullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET](&cvargs); // read col and val
 
+	DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
 	((CR_TYPE *)(context->fullMatrix->data))->nrows = lcrp->lnrows[me];
 	((CR_TYPE *)(context->fullMatrix->data))->nEnts = lcrp->lnEnts[me];
 
@@ -418,6 +419,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	ghost_createCommunication((CR_TYPE *)(context->fullMatrix->data),options,context);
 
+	context->fullMatrix->CLupload(context->fullMatrix);
 	context->localMatrix->CLupload(context->localMatrix);
 	context->remoteMatrix->CLupload(context->remoteMatrix);
 
@@ -874,8 +876,9 @@ void ghost_createCommunication(CR_TYPE *fullCR, int options, ghost_context_t *co
 					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
 	}
 
+	// TODO do this in CRS plugin
 	/****************************************************************************
-	 *******        Context the variant using local/non-local arrays        *******
+	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
 	if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
 

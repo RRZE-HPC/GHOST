@@ -19,7 +19,6 @@ kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhs
 	if (i < nrows) {
 		ghost_cl_vdat_t tmp = 0.0, rhs = 0.0;
 		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j) {
-
 			rhs = rhsVec[col[j]];
 
 #ifdef GHOST_MAT_COMPLEX
@@ -35,5 +34,4 @@ kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhs
 			lhs[i] = tmp;
 	}
 }
-
 

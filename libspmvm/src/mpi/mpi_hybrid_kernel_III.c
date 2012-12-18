@@ -160,8 +160,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 #ifdef OPENCL
 			UNUSED(localCR);
 			if( tid == nthreads-2 ) {
+				CL_copyHostToDevice(invec->CL_val_gpu, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
 				context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
-//				spmvmKernLocalXThread( context->communicator, invec, res, &me, spmvmOptions);
 			}
 
 #else
@@ -203,6 +203,11 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	 *******    Calculation of SpMVM for non-local entries of invec->val     *******
 	 *************************************************************************/
 
+#ifdef OPENCL
+	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
+			invec->val+context->lnrows(context), context->communicator->halo_elements*sizeof(ghost_vdat_t),
+			context->lnrows(context)*sizeof(ghost_vdat_t));
+#endif
 	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
 
 #ifdef LIKWID_MARKER_FINE

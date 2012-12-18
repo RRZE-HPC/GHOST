@@ -119,6 +119,10 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 	likwid_markerStartRegion("Kernel 2 -- local computation");
 #endif
 
+#ifdef OPENCL
+	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
+#endif
+
 	context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
 	//spmvmKernAll( context->localMatrix->data, invec, res, spmvmOptions);
 
@@ -146,6 +150,11 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
+#ifdef OPENCL
+	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
+			invec->val+context->lnrows(context), context->communicator->halo_elements*sizeof(ghost_vdat_t),
+			context->lnrows(context)*sizeof(ghost_vdat_t));
+#endif
 
 	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
 //	spmvmKernAll( context->remoteMatrix->data, invec, res, spmvmOptions|GHOST_OPTION_AXPY );

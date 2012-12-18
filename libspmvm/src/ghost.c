@@ -552,11 +552,11 @@ double ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *inve
 		time = wctime();
 		solver(res,context,invec,options);
 
-#ifdef MPI
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-#endif
 #ifdef OPENCL
 		CL_barrier();
+#endif
+#ifdef MPI
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 		time = wctime()-time;
 		time = time<oldtime?time:oldtime;
@@ -564,6 +564,7 @@ double ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *inve
 	}
 
 #ifdef OPENCL
+	DEBUG_LOG(1,"Downloading result from OpenCL device");
 	CL_downloadVector(res);
 #endif
 

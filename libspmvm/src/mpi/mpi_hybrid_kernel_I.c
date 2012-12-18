@@ -118,8 +118,12 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 	}
 #endif
 
+#ifdef OPENCL
+	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to OpenCL device");
+	CL_uploadVector(invec);
+#endif
+
 	context->fullMatrix->kernel(context->fullMatrix,res,invec,spmvmOptions);	
-//	spmvmKernAll(context->fullMatrix->data, invec, res, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
