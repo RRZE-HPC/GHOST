@@ -1,5 +1,5 @@
-include ../../libspmvm/config.mk
-include ../../libspmvm/include_$(strip $(COMPILER)).mk
+include ../../ghost/config.mk
+include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
 
@@ -12,7 +12,7 @@ LIBS+=  -lghost
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-$(PREFIX)minimal.x: minimal.o ../../libspmvm/config.mk
+$(PREFIX)minimal.x: minimal.o ../../ghost/config.mk
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 

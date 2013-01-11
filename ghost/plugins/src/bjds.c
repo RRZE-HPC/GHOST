@@ -161,7 +161,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	ghost_midx_t *rowPerm = NULL;
 	ghost_midx_t *invRowPerm = NULL;
 
-	JD_SORT_TYPE* rowSort;
+	JD_SORT_TYPE* rowSort = NULL;
 
 
 	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");

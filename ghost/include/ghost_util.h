@@ -202,4 +202,7 @@ size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
 char * ghost_symmetryName(int symmetry);
+
+double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+		int kernel, int options, int nIter);
 #endif

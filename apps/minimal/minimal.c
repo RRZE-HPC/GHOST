@@ -4,8 +4,8 @@
 #include <ghost_util.h>
 #include <ghost_vec.h>
 
-/** function to initialize the RHS vector **/
-static ghost_vdat_t rhsVal (int i) {
+static ghost_vdat_t rhsVal (int i) 
+{
 	return i + (ghost_vdat_t)1.0;
 }
 
@@ -33,8 +33,9 @@ int main( int argc, char* argv[] )
 	
 	ghost_printHeader("Performance");
 	
-	time = ghost_spmvm(lhs,ctx,rhs,mode,nIter);
-	ghost_printLine(ghost_modeName(mode),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
+	time = ghost_bench_spmvm(lhs,ctx,rhs,mode,options,nIter);
+	if (time > 0)
+		ghost_printLine(ghost_modeName(mode),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 
 	ghost_printFooter();
 

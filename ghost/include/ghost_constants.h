@@ -19,6 +19,10 @@
 #define GHOST_REMOTE_MAT_IDX 2
 /******************************************************************************/
 
+#define GHOST_SUCCESS 0
+#define GHOST_FAILURE 1
+
+
 #define GHOST_IO_MPI (0)
 #define GHOST_IO_STD (1)
 

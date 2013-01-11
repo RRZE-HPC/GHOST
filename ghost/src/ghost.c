@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/param.h>
-#include <sys/time.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <linux/limits.h>
@@ -33,12 +32,6 @@ static int options;
 static int MPIwasInitialized;
 #endif
 
-static double wctime()
-{
-	struct timeval tp;
-	gettimeofday(&tp, NULL);
-	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
-}
 
 static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 {
@@ -62,7 +55,7 @@ static ghost_mnnz_t context_lnnz (ghost_context_t * context)
 {
 	return context->fullMatrix->nnz(context->fullMatrix);
 }
-	
+
 static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 {
 	ghost_mnnz_t gnrows;
@@ -244,8 +237,8 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
 
-//#pragma omp parallel
-//	LIKWID_MARKER_THREADINIT;
+	//#pragma omp parallel
+	//	LIKWID_MARKER_THREADINIT;
 #endif
 
 #ifdef OPENCL
@@ -461,7 +454,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		if (!(traits[0].flags & GHOST_SPM_HOST))
 			context->fullMatrix->CLupload(context->fullMatrix);
 #endif
-		
+
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
 
 		context->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
@@ -491,7 +484,6 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry;
 	ghost_spmf_plugin_t myPlugin;
-	int found = 0;
 
 
 	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
@@ -507,102 +499,71 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 
 			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
 			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
-			if (!strcasecmp(traits->format,myPlugin.formatID)) {
+			if (!strcasecmp(traits->format,myPlugin.formatID)) 
+			{
 				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
-				found = 1;
-				break;
+
+				myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
+				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
+				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
+
+				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
+
+				closedir(pluginDir);
+				return myPlugin.init(traits);
 			} else {
 				DEBUG_LOG(2,"Skipping plugin: %s",myPlugin.formatID);
 			}
 
 		}
 		closedir(pluginDir);
+		ABORT("There is no such plugin providing %s",traits->format);
 
 	} else {
 		ABORT("The plugin directory does not exist");
 	}
-	if (!found) ABORT("There is no such plugin providing %s",traits->format);
-	myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
-	myPlugin.name = (char *)dlsym(myPlugin.so,"name");
-	myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
-	DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-	
-	return myPlugin.init(traits);
+	return NULL;
+
+
 }
 
 
 
-double ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int kernel, int nIter)
+int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+		int kernel)
 {
-	int it;
-	double time = 0;
-	double oldtime=1e9;
 
 	ghost_solver_t solver = NULL;
 	solver = context->solvers[kernel];
 
 	if (!solver)
-		return -1.0;
+		return GHOST_FAILURE;
 
-#ifdef MPI
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-#endif
-#ifdef OPENCL
-	CL_barrier();
-#endif
+	solver(res,context,invec,options);
 
-	for( it = 0; it < nIter; it++ ) {
-		time = wctime();
-		solver(res,context,invec,options);
-
-#ifdef OPENCL
-		CL_barrier();
-#endif
-#ifdef MPI
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-#endif
-		time = wctime()-time;
-		time = time<oldtime?time:oldtime;
-		oldtime=time;
-	}
-
-#ifdef OPENCL
-	DEBUG_LOG(1,"Downloading result from OpenCL device");
-	CL_downloadVector(res);
-#endif
-
-	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
-		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
-	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
-		// one of those must return immediately
-		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
-		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
-	}
-
-	return time;
+	return GHOST_SUCCESS;
 }
 
 void ghost_freeContext(ghost_context_t *context)
 {
-/*	if (context) {
+	/*	if (context) {
 		if (context->fullMatrix && context->fullMatrix->destroy)
-			context->fullMatrix->destroy(context->fullMatrix);
+		context->fullMatrix->destroy(context->fullMatrix);
 
 		if (context->localMatrix && context->localMatrix->destroy)
-			context->localMatrix->destroy(context->localMatrix);
+		context->localMatrix->destroy(context->localMatrix);
 
 		if (context->remoteMatrix && context->remoteMatrix->destroy)
-			context->remoteMatrix->destroy(context->remoteMatrix);
+		context->remoteMatrix->destroy(context->remoteMatrix);
 
 		free(context->solvers);
 
 		if (context->communicator)
-			ghost_freeCommunicator(context->communicator);
+		ghost_freeCommunicator(context->communicator);
 
 		free(context);
-	}*/
+		}*/
 	UNUSED(context);
 	//TODO
 }

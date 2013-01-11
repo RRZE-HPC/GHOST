@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <dlfcn.h>
 
@@ -43,6 +44,13 @@
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
 static int allocatedMem;
+
+static double wctime()
+{
+	struct timeval tp;
+	gettimeofday(&tp, NULL);
+	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
+}
 
 void ghost_printHeader(const char *fmt, ...)
 {
@@ -714,6 +722,62 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 
 	allocatedMem -= size;
 	free (this_array);
+
+}
+
+double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+		int kernel, int options, int nIter)
+{
+	int it;
+	double time = 0;
+	double oldtime=1e9;
+
+	ghost_solver_t solver = NULL;
+	solver = context->solvers[kernel];
+
+	if (!solver)
+		return -1.0;
+
+#ifdef MPI
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+#endif
+#ifdef OPENCL
+	CL_barrier();
+#endif
+
+	for( it = 0; it < nIter; it++ ) {
+		time = wctime();
+		solver(res,context,invec,options);
+
+#ifdef OPENCL
+		CL_barrier();
+#endif
+#ifdef MPI
+		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+#endif
+		time = wctime()-time;
+		time = time<oldtime?time:oldtime;
+		oldtime=time;
+	}
+
+#ifdef OPENCL
+	DEBUG_LOG(1,"Downloading result from OpenCL device");
+	CL_downloadVector(res);
+#endif
+
+	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
+		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
+	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
+		// one of those must return immediately
+		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
+		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
+	}
+
+	return time;
+
+
+
+
 
 }
 
