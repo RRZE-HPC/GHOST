@@ -18,7 +18,9 @@ static cl_platform_id platform;
 
 static void pfn_notify(const char *errinfo, const void *private_info, size_t cb, void *user_data)
 {
-
+	UNUSED(private_info);
+	UNUSED(cb);
+	UNUSED(user_data);
 	// TODO call makro
     fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,__FILE__,__LINE__,errinfo);
 }
@@ -131,6 +133,7 @@ void CL_init()
    -------------------------------------------------------------------------- */
 cl_program CL_registerProgram(const char *filename, const char *additionalOptions)
 {
+	DEBUG_LOG(1,"Registering OpenCL program in %s",filename);
 	cl_program program;
 	cl_int err;
 	char *build_log;
@@ -244,8 +247,6 @@ void CL_copyDeviceToHost(void* hostmem, cl_mem devmem, size_t bytesize)
 	CL_safecall(clEnqueueReadImage(queue,devmem,CL_TRUE,origin,region,0,0,
 				hostmem,0,NULL,NULL));
 #else
-	int me = ghost_getRank();
-
 	DEBUG_LOG(1,"Copying back %lu bytes to host\n",bytesize);
 	CL_safecall(clEnqueueReadBuffer(queue,devmem,CL_TRUE,0,bytesize,hostmem,0,
 				NULL,NULL));

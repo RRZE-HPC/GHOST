@@ -244,8 +244,8 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
 
-#pragma omp parallel
-	LIKWID_MARKER_THREADINIT;
+//#pragma omp parallel
+//	LIKWID_MARKER_THREADINIT;
 #endif
 
 #ifdef OPENCL
@@ -456,6 +456,11 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 			context->fullMatrix->fromMM(context->fullMatrix,matrixPath);
 		else
 			context->fullMatrix->fromBin(context->fullMatrix,matrixPath);
+
+#ifdef OPENCL
+		if (!(traits[0].flags & GHOST_SPM_HOST))
+			context->fullMatrix->CLupload(context->fullMatrix);
+#endif
 		
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
 

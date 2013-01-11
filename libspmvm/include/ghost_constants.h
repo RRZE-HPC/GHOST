@@ -82,7 +82,7 @@
 /******************************************************************************/
 /*----  Constants for binary CRS format  -------------------------------------*/
 /******************************************************************************/
-#define GHOST_BINCRS_SIZE_HEADER 40 // header consumes 36 bytes
+#define GHOST_BINCRS_SIZE_HEADER 44 // header consumes 44 bytes
 #define GHOST_BINCRS_SIZE_RPT_EL 8 // one rpt element is 8 bytes
 #define GHOST_BINCRS_SIZE_COL_EL 8 // one col element is 8 bytes
 

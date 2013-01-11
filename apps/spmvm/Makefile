@@ -8,8 +8,8 @@ CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
 
 GHOSTPATH=$(HOME)/local
 
-LPATH+= -L$(GHOSTPATH)/lib
-IPATH+= -I$(GHOSTPATH)/include
+LPATH+= -L$(strip $(GHOSTPATH))/lib
+IPATH+= -I$(strip $(GHOSTPATH))/include
 LIBS+=-l$(PREFIX)ghost
 
 .PHONY:clean distclean all
@@ -28,7 +28,7 @@ endif
 ifeq ($(strip $(LIKWID)),1)
 MAKROS+= -DLIKWID_PERMON
 IPATH += -I$(strip $(LIKWIDPATH))/include
-LPATH += -I$(strip $(LIKWIDPATH))/lib
+LPATH := -L$(strip $(LIKWIDPATH))/lib $(LPATH)
 LIBS += -llikwid
 endif
 

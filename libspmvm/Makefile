@@ -83,8 +83,8 @@ endif
 LIBSPMVM=lib$(PREFIX)ghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
-MAKROS+= -DPLUGINPATH=\"$(strip $(INSTDIR))/lib/ghost/\"
-MAKROS+= -DHEADERPATH=\"$(strip $(INSTDIR))/include/\"
+MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
+MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/\"
 
 PLUGINS = $(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(PLUGINDIR)/src/*.c))))
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
@@ -96,11 +96,11 @@ SSEOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/sse
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 
-$(PLUGINDIR)/%.so: %.c
+$(PLUGINDIR)/%.so: %.c config.mk
 	@echo "==> Create plugin $< -> $@"
 	@$(CC) -shared $(CFLAGS) ${MAKROS} ${IPATH} -o $@ $<
 
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
@@ -151,21 +151,21 @@ distclean: clean
 	@rm -f $(PLUGINDIR)/*.so
 
 install: all
-	@mkdir -p $(strip $(INSTDIR))/lib
-	@mkdir -p $(strip $(INSTDIR))/include
-	@mkdir -p $(strip $(INSTDIR))/lib/ghost
-	@echo "==> Install library to $(strip $(INSTDIR))/lib"
-	@cp -f $(LIBSPMVM) $(strip $(INSTDIR))/lib
-	@echo "==> Install headers to $(strip $(INSTDIR))/include"
-	@cp -f include/ghost*.h $(strip $(INSTDIR))/include
-	@echo "==> Install plugins to $(strip $(INSTDIR))/lib/ghost"
-	@cp -f $(PLUGINDIR)/*.so $(strip $(INSTDIR))/lib/ghost
-	@cp -f $(PLUGINDIR)/src/*.cl $(strip $(INSTDIR))/lib/ghost
+	@mkdir -p $(strip $(GHOSTPATH))/lib
+	@mkdir -p $(strip $(GHOSTPATH))/include
+	@mkdir -p $(strip $(GHOSTPATH))/lib/ghost
+	@echo "==> Install library to $(strip $(GHOSTPATH))/lib"
+	@cp -f $(LIBSPMVM) $(strip $(GHOSTPATH))/lib
+	@echo "==> Install headers to $(strip $(GHOSTPATH))/include"
+	@cp -f include/ghost*.h $(strip $(GHOSTPATH))/include
+	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost"
+	@cp -f $(PLUGINDIR)/*.so $(strip $(GHOSTPATH))/lib/ghost
+	@cp -f $(PLUGINDIR)/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
 
 uninstall: 
-	@echo "==> Uninstall from $(strip $(INSTDIR))"
-	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.a
-	@rm -f $(strip $(INSTDIR))/lib/lib*ghost.so
-	@rm -f $(strip $(INSTDIR))/include/ghost*.h 
-	@rm -rf $(strip $(INSTDIR))/lib/ghost/ 
+	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
+	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.a
+	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.so
+	@rm -f $(strip $(GHOSTPATH))/include/ghost*.h 
+	@rm -rf $(strip $(GHOSTPATH))/lib/ghost/ 
 

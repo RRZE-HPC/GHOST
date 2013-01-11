@@ -29,7 +29,7 @@
 #include <dlfcn.h>
 
 
-#define PRETTYPRINT
+//#define PRETTYPRINT
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
@@ -134,37 +134,30 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 	}
 }
 
-void ghost_printContextInfo(ghost_context_t *context, int options)
+
+void ghost_printOptionsInfo(int options)
+{
+	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
+		1:0;
+	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
+
+	ghost_printHeader("Options");
+	ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
+	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
+	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
+	if (pin)
+		ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
+	ghost_printFooter();
+
+}
+
+
+void ghost_printContextInfo(ghost_context_t *context)
 {
 
 	size_t ws;
 
 
-	/*#ifdef OPENCL	
-	  size_t fullMemSize, localMemSize, remoteMemSize, 
-	  totalFullMemSize = 0, totalLocalMemSize = 0, totalRemoteMemSize = 0;
-
-	  if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-	  fullMemSize = getBytesize(matrix->devMatrix->fullMatrix, matrix->devMatrix->fullFormat)/
-	  (1024*1024);
-	  MPI_safecall(MPI_Reduce(&fullMemSize, &totalFullMemSize,1,MPI_LONG,MPI_SUM,0,
-	  MPI_COMM_WORLD));
-	  } 
-	  if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
-	  localMemSize = getBytesize(matrix->devMatrix->localMatrix,matrix->devMatrix->localFormat)/
-	  (1024*1024);
-	  remoteMemSize = getBytesize(matrix->devMatrix->remoteMatrix,matrix->devMatrix->remoteFormat)/
-	  (1024*1024);
-	  MPI_safecall(MPI_Reduce(&localMemSize, &totalLocalMemSize,1,MPI_LONG,MPI_SUM,0,
-	  MPI_COMM_WORLD));
-	  MPI_safecall(MPI_Reduce(&remoteMemSize, &totalRemoteMemSize,1,MPI_LONG,MPI_SUM,0,
-	  MPI_COMM_WORLD));
-	  }
-#endif	*/
-
-	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
-		1:0;
-	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
 	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
 			context->gnnz(context)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
 
@@ -183,8 +176,8 @@ void ghost_printContextInfo(ghost_context_t *context, int options)
 		matrixPlacement = "Global";
 
 
-	ghost_printHeader("Matrix information");
-	ghost_printLine("Name",NULL,"%s",context->matrixName);
+	ghost_printHeader("Context");
+	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
 	ghost_printLine("Dimension",NULL,"%"PRmatIDX,context->gnrows(context));
 	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
 	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
@@ -210,33 +203,12 @@ void ghost_printContextInfo(ghost_context_t *context, int options)
 	{ //additional information depending on format
 		context->fullMatrix->printInfo(context->fullMatrix);
 	}
-	/*#ifdef OPENCL	
-	  if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
-	  printf("Dev. matrix (combin.%4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->fullFormat],matrix->devMatrix->fullT,totalFullMemSize);
-	  }	
-	  if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
-	  printf("Dev. matrix (local  %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->localFormat],matrix->devMatrix->localT,totalLocalMemSize); 
-	  printf("Dev. matrix (remote %4s-%2d) [MB]: %12lu\n", GHOST_SPMFORMAT_NAMES[matrix->devMatrix->remoteFormat],matrix->devMatrix->remoteT,totalRemoteMemSize);
-	  printf("Dev. matrix (local & remote) [MB]: %12lu\n", totalLocalMemSize+
-	  totalRemoteMemSize); 
-	  }
-#endif*/
 	ghost_printFooter();
 
-	ghost_printHeader("Context information");
-	ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
-	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
-	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
-	if (pin)
-		ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
-	ghost_printFooter();
 }
 
-void ghost_printEnvInfo() 
+void ghost_printSysInfo()
 {
-
-	int me = ghost_getRank();
-
 	int nproc = ghost_getNumberOfProcesses();
 	int nnodes = ghost_getNumberOfNodes();
 
@@ -244,7 +216,7 @@ void ghost_printEnvInfo()
 	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
 #endif
 
-	if (me==0) {
+	if (ghost_getRank()==0) {
 		int nthreads;
 		int nphyscores = ghost_getNumberOfPhysicalCores();
 		int ncores = ghost_getNumberOfHwThreads();
@@ -270,13 +242,11 @@ void ghost_printEnvInfo()
 				sprintf(omp_sched_str,"unknown");
 				break;
 		}
-
-
 #pragma omp parallel
 #pragma omp master
 		nthreads = omp_get_num_threads();
 
-		ghost_printHeader("System information");
+		ghost_printHeader("System");
 		ghost_printLine("Nodes",NULL,"%d",nnodes);
 		ghost_printLine("MPI processes per node",NULL,"%d",nproc/nnodes);
 		ghost_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
@@ -292,8 +262,20 @@ void ghost_printEnvInfo()
 		}
 #endif
 		ghost_printFooter();
+	}
 
-		ghost_printHeader("%s information", GHOST_NAME);
+
+
+
+
+}
+
+
+void ghost_printGhostInfo() 
+{
+
+	if (ghost_getRank()==0) {
+		ghost_printHeader("%s", GHOST_NAME);
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
@@ -364,8 +346,13 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 		CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
-		for (iter=0; iter<nIter; iter++)
-			ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+		if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
+			for (iter=0; iter<nIter; iter++)
+				ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+		} else if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
+			for (iter=0; iter<nIter; iter++)
+				ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+		}
 
 		ghost_freeVector(globRHS);
 		ghost_freeContext(context);
@@ -381,6 +368,37 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 	return res;
 
+}
+
+// FIXME
+void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
+{
+		ghost_midx_t i, j;
+		ghost_vdat_t hlp1;
+
+#pragma omp	parallel for schedule(runtime) private (hlp1, j)
+		for (i=0; i<nrows; i++){
+			hlp1 = 0.0;
+			for (j=rpt[i]; j<rpt[i+1]; j++){
+				hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]];
+		
+				if (i!=col[j]) {	
+					if (spmvmOptions & GHOST_OPTION_AXPY) { 
+#pragma omp atomic
+						res[col[j]] += (ghost_vdat_t)val[j] * rhs[i];
+					} else {
+#pragma omp atomic
+						res[col[j]] += (ghost_vdat_t)val[i] * rhs[i];  // FIXME non-axpy case doesnt work
+					}
+				}
+
+			}
+			if (spmvmOptions & GHOST_OPTION_AXPY) {
+				res[i] += hlp1;
+			} else {
+				res[i] = hlp1;
+			}
+		}
 }
 
 void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)

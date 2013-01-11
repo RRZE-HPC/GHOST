@@ -72,7 +72,7 @@ int isMMfile(const char *filename)
 	return cmp==0?1:0;
 }
 
-
+/*
 MM_TYPE * readMMFile(const char* filename ) 
 {
 	MM_typecode matcode;
@@ -122,7 +122,7 @@ MM_TYPE * readMMFile(const char* filename )
 #else
 			mm->nze[i].val = re;
 #endif
-			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
+			mm->nze[i].col--;  // adjust from 1-based to 0-based 
 			mm->nze[i].row--;
 		}
 	} else {
@@ -143,7 +143,7 @@ MM_TYPE * readMMFile(const char* filename )
 #else
 			mm->nze[i].val = re;
 #endif
-			mm->nze[i].col--;  /* adjust from 1-based to 0-based */
+			mm->nze[i].col--; //  adjust from 1-based to 0-based
 			mm->nze[i].row--;
 		}
 
@@ -360,7 +360,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 			} 
 			else 
 			{
-	/*			switch (datatype) {
+				switch (datatype) {
 					case GHOST_DATATYPE_S:
 						{
 							float *tmp = (float *)allocateMemory(
@@ -397,7 +397,7 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 							free(tmp);
 							break;
 						}
-				}*/
+				}
 			}
 		}
 	}
@@ -411,9 +411,6 @@ CR_TYPE * readCRbinFile(const char* path, int rowPtrOnly, int detectDiags)
 CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm ) 
 {
 
-	/* allocate and fill CRS-format matrix from MM-type;
-	 * row and col indices have same base as MM (0-based);
-	 * elements in row are sorted according to column*/
 
 	ghost_midx_t* nEntsInRow;
 	ghost_midx_t i, e, pos;
@@ -421,7 +418,6 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 	size_t size_rpt, size_col, size_val, size_nEntsInRow;
 
 
-	/* allocate memory ######################################################## */
 	IF_DEBUG(1) printf("Entering convertMMToCRMatrix\n");
 
 
@@ -438,23 +434,18 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 	nEntsInRow = (ghost_midx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
 
-	/* initialize values ###################################################### */
 	cr->nrows = mm->nrows;
 	cr->ncols = mm->ncols;
 	cr->nEnts = mm->nEnts;
 	for( i = 0; i < mm->nrows; i++ ) nEntsInRow[i] = 0;
 
 
-	/* sort NZEs with ascending column index for each row ##################### */
 	//qsort( mm->nze, mm->nEnts, sizeof( NZE_TYPE ), compareNZEPos );
 	IF_DEBUG(1) printf("direkt vor  qsort\n"); fflush(stdout);
 	qsort( mm->nze, (size_t)(mm->nEnts), sizeof( NZE_TYPE ), compareNZEPos );
 	IF_DEBUG(1) printf("Nach qsort\n"); fflush(stdout);
 
-	/* count entries per row ################################################## */
 	for( e = 0; e < mm->nEnts; e++ ) nEntsInRow[mm->nze[e].row]++;
-
-	/* set offsets for each row ############################################### */
 	pos = 0;
 	cr->rpt[0] = pos;
 #ifdef PLACE_CRS
@@ -484,22 +475,17 @@ CR_TYPE* convertMMToCRMatrix( const MM_TYPE* mm )
 		}
 	}
 
-	/* store values in compressed row data structure ########################## */
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
 			  col = mm->nze[e].col;
 		const ghost_mdat_t val = mm->nze[e].val;
 		pos = cr->rpt[row] + nEntsInRow[row];
-		/* GW 
-		   cr->col[pos] = col;
-		 */
 		cr->col[pos] = col;
 
 		cr->val[pos] = val;
 
 		nEntsInRow[row]++;
 	}
-	/* clean up ############################################################### */
 	free( nEntsInRow );
 
 	IF_DEBUG(1) printf( "convertMMToCRMatrix: done\n" );
@@ -515,7 +501,7 @@ void freeMMMatrix( MM_TYPE* const mm )
 		freeMemory( (size_t)sizeof(MM_TYPE), "mm", mm );
 	}
 }
-
+*/
 int pad(int nrows, int padding) 
 {
 	int nrowsPadded;

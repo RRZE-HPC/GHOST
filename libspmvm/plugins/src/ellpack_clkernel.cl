@@ -10,10 +10,10 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#include <ghost_types.h>
+#include <ghost_types_clkernel.h>
 #include <ghost_constants.h>
 
-kernel void ELLPACK_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val)
+kernel void ELLPACK_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val)
 { 
 	unsigned int i = get_global_id(0);
 
@@ -40,7 +40,7 @@ kernel void ELLPACK_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *
 	}	
 }
 
-kernel void ELLPACKT_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, local ghost_cl_mdat_t *shared)
+kernel void ELLPACKT_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, local ghost_cl_mdat_t *shared)
 { 
 	unsigned int i = get_global_id(0);
 
@@ -91,3 +91,6 @@ kernel void ELLPACKT_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t 
 		}
 	}	
 }
+
+
+

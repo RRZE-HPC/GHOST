@@ -12,7 +12,7 @@
 #include <mpi.h>
 #endif
 
-#define CHECK // compare with reference solution
+//#define CHECK // compare with reference solution
 
 extern int optind;
 
@@ -28,7 +28,7 @@ static ghost_vdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 100;
+	int  kernel, nIter = 50;
 	double time;
 
 #ifdef CHECK

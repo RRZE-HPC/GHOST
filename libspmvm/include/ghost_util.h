@@ -42,19 +42,37 @@
 #endif
 
 #ifdef MPI
+#define WARNING_LOG(msg, ...) {\
+	int __me;\
+	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+	fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: " ,__me,__FILE__,__LINE__);\
+	fprintf(stderr,msg, ##__VA_ARGS__);\
+	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fflush(stderr);\
+}
+#else
+#define WARNING_LOG(msg, ...) {\
+	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: " ,__FILE__,__LINE__);\
+	fprintf(stderr, msg, ##__VA_ARGS__);\
+	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fflush(stderr);\
+}
+#endif
+
+#ifdef MPI
 #define ABORT(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: " ANSI_COLOR_RESET,__me,__FILE__,__LINE__);\
+	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: " ,__me,__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
-	fprintf(stderr, "\n");\
+	fprintf(stderr, ANSI_COLOR_RESET"\n");\
 	fflush(stderr);\
 }
 #else
 #define ABORT(msg, ...) {\
-	fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: " ANSI_COLOR_RESET,__FILE__,__LINE__);\
+	fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: ",__FILE__,__LINE__);\
 	fprintf(stderr,msg, ##__VA_ARGS__);\
-	fprintf(stderr, "\n");\
+	fprintf(stderr, ANSI_COLOR_RESET"\n");\
 	fflush(stderr);\
 }
 #endif
@@ -157,10 +175,13 @@ const char * CL_getVersion();
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
 void ghost_printLine(const char *label, const char *unit, const char *format, ...);
-void ghost_printContextInfo(ghost_context_t *context, int options);
-void              ghost_printEnvInfo();
+void ghost_printContextInfo(ghost_context_t *context);
+void ghost_printOptionsInfo(int options);
+void ghost_printSysInfo();
+void ghost_printGhostInfo();
 ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext,  ghost_vdat_t (*fp)(int), int nIter, int spmvmOptions);
 void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
+void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 char * ghost_workdistName(int options);
 char * ghost_modeName(int mode);
 char * ghost_datatypeName(int datatype);

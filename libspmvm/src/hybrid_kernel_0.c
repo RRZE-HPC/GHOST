@@ -10,10 +10,12 @@
 void hybrid_kernel_0(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
 {
 #ifdef LIKWID_PERFMON
+#pragma omp parallel
 	LIKWID_MARKER_START("full SpMVM");
 #endif
 	context->fullMatrix->kernel(context->fullMatrix,res,invec,spmvmOptions);
 #ifdef LIKWID_PERFMON
+#pragma omp parallel
 	LIKWID_MARKER_STOP("full SpMVM");
 #endif
 }

@@ -1,22 +1,20 @@
-LIBSPMVMPATH=/home/hpc/unrz/unrza317/app/libspmvm
-
-LPATH+= -L$(LIBSPMVMPATH)/lib
-IPATH+= -I$(LIBSPMVMPATH)/include
-LIBS+=  -lspmvm
+include ../../libspmvm/config.mk
+include ../../libspmvm/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
 
-CC=mpicc
-CFLAGS=-g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+LPATH+= -L$(strip $(GHOSTPATH))/lib
+IPATH+= -I$(strip $(GHOSTPATH))/include
+LIBS+=  -lghost
 
 %.o: %.c  
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-$(PREFIX)minimal.x: main_minimal.o
+$(PREFIX)minimal.x: minimal.o ../../libspmvm/config.mk
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(LPATH) -o $@ $^  $(LIBS)
+	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 
 clean:
 	@echo "==> Clean"

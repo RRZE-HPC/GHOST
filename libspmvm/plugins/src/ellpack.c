@@ -20,7 +20,8 @@ static char * ELLPACK_formatName(ghost_mat_t *mat);
 static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void ELLPACK_upload(ghost_mat_t *mat);
+static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs);
 static void ELLPACK_fromBin(ghost_mat_t *mat, char *);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -45,6 +46,8 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->nrows    = &ELLPACK_nrows;
 	mat->ncols    = &ELLPACK_ncols;
 	mat->destroy  = &ELLPACK_free;
+	mat->fromCRS  = &ELLPACK_fromCRS;
+	mat->CLupload = &ELLPACK_upload;
 #ifdef OPENCL
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &ELLPACK_kernel_plain;
@@ -133,9 +136,10 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
 	ELLPACK_fromCRS(mat,crsMat->data);
 }
 
-static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
+static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 {
 	DEBUG_LOG(1,"Creating ELLPACK matrix");
+	CR_TYPE *cr = (CR_TYPE*)crs;
 	ghost_midx_t i,j,c;
 	unsigned int flags = mat->traits->flags;
 
@@ -285,6 +289,13 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 
 	free( rowSort );
 
+	DEBUG_LOG(1,"Successfully created ELLPACK");
+}
+
+static void ELLPACK_upload(ghost_mat_t *mat)
+{
+	DEBUG_LOG(1,"Uploading ELLPACK matrix to device");
+
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
@@ -324,7 +335,6 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		ABORT("Device matrix cannot be created without OpenCL");
 	}
 #endif
-	DEBUG_LOG(1,"Successfully created ELLPACK");
 }
 
 static void ELLPACK_free(ghost_mat_t *mat)
@@ -365,6 +375,7 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 #ifdef OPENCL
 static void ELLPACK_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
+	DEBUG_LOG(1,"Calling ELLPACK OpenCL kernel");
 
 	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));

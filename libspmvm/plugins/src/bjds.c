@@ -20,6 +20,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void BJDS_upload(ghost_mat_t* mat); 
 static void BJDS_fromBin(ghost_mat_t *mat, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -46,6 +47,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->traits = traits;
 	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
 
+	mat->CLupload = &BJDS_upload;
 	mat->fromBin = &BJDS_fromBin;
 	mat->printInfo = &BJDS_printInfo;
 	mat->formatName = &BJDS_formatName;
@@ -145,7 +147,8 @@ static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromBin(crsMat,matrixPath);
-	
+
+	mat->symmetry = crsMat->symmetry;
 	BJDS_fromCRS(mat,crsMat->data);
 }
 
@@ -159,6 +162,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	ghost_midx_t *invRowPerm = NULL;
 
 	JD_SORT_TYPE* rowSort;
+
 
 	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
 	mat->data = BJDS(mat);
@@ -321,6 +325,17 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 			}
 		}
 	}
+
+
+	DEBUG_LOG(1,"Successfully created BJDS");
+
+
+
+}
+
+static void BJDS_upload(ghost_mat_t* mat) 
+{
+	DEBUG_LOG(1,"Uploading BJDS matrix to device");
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
@@ -364,13 +379,9 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 		ABORT("Device matrix cannot be created without OpenCL");
 	}
 #endif
-
-
-	DEBUG_LOG(1,"Successfully created BJDS");
-
-
-
 }
+
+
 
 static void BJDS_free(ghost_mat_t *mat)
 {
