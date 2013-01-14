@@ -10,10 +10,6 @@
 #include <mpihelper.h>
 #endif
 
-#ifdef OPENCL
-#include "cl_matricks.h"
-#endif
-
 #ifdef LIKWID
 #include <likwid.h>
 #endif
