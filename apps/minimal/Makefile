@@ -4,7 +4,7 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 .PHONY:clean distclean
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
-IPATH+= -I$(strip $(GHOSTPATH))/include
+IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost
 
 %.o: %.c  

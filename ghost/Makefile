@@ -153,13 +153,13 @@ distclean: clean
 
 install: all
 	@mkdir -p $(strip $(GHOSTPATH))/lib
-	@mkdir -p $(strip $(GHOSTPATH))/include
+	@mkdir -p $(strip $(GHOSTPATH))/include/ghost
 	@mkdir -p $(strip $(GHOSTPATH))/lib/ghost
-	@echo "==> Install library to $(strip $(GHOSTPATH))/lib"
+	@echo "==> Install library to $(strip $(GHOSTPATH))/lib/"
 	@cp -f $(LIBSPMVM) $(strip $(GHOSTPATH))/lib
-	@echo "==> Install headers to $(strip $(GHOSTPATH))/include"
-	@cp -f include/ghost*.h $(strip $(GHOSTPATH))/include
-	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost"
+	@echo "==> Install headers to $(strip $(GHOSTPATH))/include/ghost/"
+	@cp -rf include/* $(strip $(GHOSTPATH))/include/ghost
+	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost/"
 	@cp -f $(PLUGINDIR)/*.so $(strip $(GHOSTPATH))/lib/ghost
 	@cp -f $(PLUGINDIR)/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
 
@@ -167,6 +167,6 @@ uninstall:
 	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
 	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.a
 	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.so
-	@rm -f $(strip $(GHOSTPATH))/include/ghost*.h 
+	@rm -rf $(strip $(GHOSTPATH))/include/ghost/
 	@rm -rf $(strip $(GHOSTPATH))/lib/ghost/ 
 
