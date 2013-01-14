@@ -3,21 +3,11 @@
 
 == INSTALLATION ==
   Edit config.mk in order to fit your system and requirements.
-  Then, run make install in order to install the library and headers to the
-  specified location.
+  Then, run make install in order to install the the ghost library and header
+  files to the specified location.
 
 
 == HEADER FILES ==
-  There are 2 headers which you may need in your programs:
-  1) ghost.h
-     This header includes the most basic data structures, prototypes and macros 
-	 you will need in any case.
-  2) ghost_util.h
-     This header includes utility functions and macros that may be helpful
-	 when using LibSpMVM in certain cases. 
-	 This includes, e.g., functions for setting up and using vector types, 
-	 printing information about the matrix, plugging in user-defined kernels,
-	 and many more.
 
 
 == FUNCTIONS ==
@@ -27,22 +17,43 @@
 == INPUT DATA ==
   There are two matrix file formats which are supported:
     1) Matrix Market
-	   This is an ASCII format for matrices which is documented here:
-	   http://math.nist.gov/MatrixMarket/formats.html
+        This is an ASCII format for matrices which is documented here:
+        http://math.nist.gov/MatrixMarket/formats.html
     2) binary CRS
-	   This format stores the matrix as CRS (binary) and looks as 
-	   follows:
-	     1) 4 bytes: an integer defining the datatype for the matrix entries.
-		      Available datatypes:
-		       0: float (4 bytes per entry)
-		       1: double (8 bytes per entry)
-		       2: complex float (8 bytes per entry)
-		       3: complex double (16 bytes per entry)
-		 2) 4 bytes: an integer telling the number of rows (N) of the matrix
-		 3) 4 bytes: an integer telling the number of columns (M) of the matrix
-		 4) 4 bytes: an integer telling the number of nonzero entries (E) of the
-		      matrix
-		 5) (N+1)*4 bytes: the row pointers (integer) of the CRS matrix
-		 6) E*4 bytes: the columns indices of the matrix entries
-		 7) E*sizeof(datatype) bytes: the values of the matrix entries
+        This format stores the matrix as CRS (binary) and looks as 
+        follows:
+          1) 4 bytes: Indicator whether data is stored in little or big endian
+              format.
+               0: little endian
+               else: big endian
+          2) 4 bytes: Indicator for version of data format. (this version: 1)
+          3) 4 bytes: Indicator for base of indices (row pointers and column
+              indices).
+               0: indices are 0-based (as in C)
+               1: indices are 1-based (as in Fortran)
+          4) 4 bytes: Symmetry information bit field; multiple may be combined.
+               1: general
+               2: symmetric
+               4: skew-symmetric
+               8: hermitian
+              Example: Matrix is hermitian and skew-symmetric: 12
+          5) 4 bytes: Data type bit field; multiple may be combined.
+               1: float
+               2: double 
+               4: real
+               8: complex
+	 		 Example: Matrix has complex float values: 9
+          6) 8 bytes: an integer telling the number of rows (N) of the matrix
+          7) 8 bytes: an integer telling the number of columns (M) of the matrix
+          8) 8 bytes: an integer telling the number of nonzero entries (E) of the
+              matrix
+          9) (N+1)*8 bytes: the row pointers (integer) of the CRS matrix
+         10) E*8 bytes: the columns indices of the matrix entries
+         11) E*sizeof(datatype) bytes: the values of the matrix entries
+        
+        NOTE: In the case of any set symmetry flag except 'general', only the
+              part of the matrix is to be stored. The number of entries and row
+              row pointers always relate to the _stored_ matrix and not to the
+              full one (if symmetric). Due to this constraint, the stored
+              matrix is always a valid one.
 
