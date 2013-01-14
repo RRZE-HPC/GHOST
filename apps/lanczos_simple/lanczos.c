@@ -4,7 +4,6 @@
 #include "lanczos.h"
 #include <omp.h>
 
-#include <mpi.h>
 #include <limits.h>
 #include <getopt.h>
 #include <libgen.h>
@@ -16,7 +15,7 @@ static int converged(ghost_mdat_t evmin)
 {
 	static ghost_mdat_t oldevmin = -1e9;
 
-	int converged = ABS(evmin-oldevmin) < 1e-9;
+	int converged = MABS(evmin-oldevmin) < 1e-9;
 	oldevmin = evmin;
 
 	return converged;
@@ -53,13 +52,13 @@ static void vecscal(ghost_vec_t *vec, ghost_mdat_t s, int n)
 static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t *vold,
 		ghost_mdat_t *alpha, ghost_mdat_t *beta)
 {
-	vecscal(vnew,-*beta,context->lnrows);
-	ghost_solve(vnew, context, vold, GHOST_MODE_NOMPI, 1);
-	dotprod(vnew,vold,alpha,context->lnrows);
-	axpy(vnew,vold,-(*alpha),context->lnrows);
-	dotprod(vnew,vnew,beta,context->lnrows);
-	*beta=SQRT(*beta);
-	vecscal(vnew,1./(*beta),context->lnrows);
+	vecscal(vnew,-*beta,context->lnrows(context));
+	ghost_spmvm(vnew, context, vold, GHOST_MODE_NOMPI);
+	dotprod(vnew,vold,alpha,context->lnrows(context));
+	axpy(vnew,vold,-(*alpha),context->lnrows(context));
+	dotprod(vnew,vnew,beta,context->lnrows(context));
+	*beta=MSQRT(*beta);
+	vecscal(vnew,1./(*beta),context->lnrows(context));
 }
 
 static ghost_mdat_t rhsVal (int i)
@@ -87,7 +86,7 @@ int main( int argc, char* argv[] )
 
 	ghost_init(argc,argv,options);       // basic initialization
 	
-	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_GLOBAL,NULL);
+	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_GLOBAL);
 	vnew  = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
 	r0    = ghost_createVector(context,GHOST_VEC_GLOBAL,rhsVal); 
 	

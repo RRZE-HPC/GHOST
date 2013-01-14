@@ -10,7 +10,7 @@ LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost
 
-%.o: %.c  
+%.o: %.c 
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
@@ -18,9 +18,11 @@ LIBS+=  -lghost
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-lanczos.x: lanczos.o imtql1.o pythag.o ../../ghost/config.mk
+
+$(PREFIX)lanczos.x: lanczos.o imtql1.o pythag.o
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
+	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
+
 
 clean:
 	@echo "==> Clean"
@@ -29,4 +31,3 @@ clean:
 distclean: clean
 	@echo "==> Distclean"
 	@rm -f *.x
-

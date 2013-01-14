@@ -12,7 +12,7 @@ LIBS+=  -lghost
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-$(PREFIX)minimal.x: minimal.o ../../ghost/config.mk
+minimal.x: minimal.o ../../ghost/config.mk
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 

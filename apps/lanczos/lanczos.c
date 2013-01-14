@@ -7,7 +7,11 @@
 #ifdef LIKWID
 #include <likwid.h>
 #endif
+
+#ifdef MPI
 #include <mpi.h>
+#endif
+
 #include <limits.h>
 #include <getopt.h>
 #include <libgen.h>
@@ -21,106 +25,23 @@ static cl_kernel vecscalKernel;
 static cl_kernel dotprodKernel;
 #endif
 
-#define KERNEL SPMVM_KERNEL_VECTORMODE
+#ifdef MPI
+#define MODE GHOST_MODE_TASKMODE
+#else
+#define MODE GHOST_MODE_NOMPI
+#endif
 
-
-typedef struct {
-	char matrixPath[PATH_MAX];
-	char matrixName[PATH_MAX];
-	int nIter;
-	SPM_GPUFORMATS *matrixFormats;
-} PROPS;
 
 static int converged(ghost_mdat_t evmin)
 {
 	static ghost_mdat_t oldevmin = -1e9;
 
-	int converged = ABS(evmin-oldevmin) < 1e-9;
-	//printf("%f %f %d\n",evmin,oldevmin,converged);
+	int converged = MABS(evmin-oldevmin) < 1e-9;
 
 	oldevmin = evmin;
 
 	return converged;
 }
-
-static void usage()
-{
-}
-
-static void getOptions(int argc,  char * const *argv, PROPS *p)
-{
-
-	while (1) {
-		static struct option long_options[] =
-		{
-			{"help", no_argument, 0, 'h'},
-			{"matrixFormat",    required_argument, 0, 'f'},
-			//{"workGroupSize",  required_argument, 0, 'w'},
-			//{"nEigs",  required_argument, 0, 'e'},
-			{"nIter",  required_argument, 0, 'i'},
-			//{"dev",  required_argument, 0, 'd'},
-			//{"nThreads",  required_argument, 0, 'T'},
-			{0, 0, 0, 0}
-		};
-		/* getopt_long stores the option index here. */
-		int option_index = 0;
-
-		int c = getopt_long (argc, argv, "hf:w:e:i:d:T:",
-				long_options, &option_index);
-
-		/* Detect the end of the options. */
-		if (c == -1)
-			break;
-
-		switch (c) {
-			case 0:
-				if (long_options[option_index].flag != 0)
-					break;
-
-			case 'h':
-				usage();
-				exit(0);
-				break;
-
-
-			case 'f':
-				{
-#ifdef OPENCL
-					char *format;
-					format = strtok(optarg,",");
-					int i=0;
-
-					while(format != NULL) {
-						if (!strncasecmp(format,"ELR",3)) {
-							p->matrixFormats->format[i] = SPM_GPUFORMAT_ELR;
-							p->matrixFormats->T[i] = atoi(format+4);
-						}
-						if (!strncasecmp(format,"PJDS",4)) {
-							p->matrixFormats->format[i] = SPM_GPUFORMAT_PJDS;
-							p->matrixFormats->T[i] = atoi(format+5);
-						}
-						format = strtok(NULL,",");
-						i++;
-					}
-#endif
-
-					break;
-				}
-
-			case 'i':
-				p->nIter = atoi(optarg);
-				break;
-
-			case '?':
-				/* getopt_long already printed an error message. */
-				break;
-
-			default:
-				abort ();
-		}
-	}
-}
-
 
 static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, ghost_mdat_t *res, int n)
 {
@@ -232,18 +153,22 @@ static void vecscal(ghost_vec_t *vec, ghost_mdat_t s, int n)
 }
 
 
-static void lanczosStep(LCRP_TYPE *lcrp, ghost_vec_t *vnew, ghost_vec_t *vold,
-		ghost_mdat_t *alpha, ghost_mdat_t *beta, int me)
+static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t *vold,
+		ghost_mdat_t *alpha, ghost_mdat_t *beta)
 {
-	vecscal(vnew,-*beta,lcrp->lnrows[me]);
-	ghost_solve(vnew, lcrp, vold, KERNEL, 1);
-	dotprod(vnew,vold,alpha,lcrp->lnrows[me]);
+	vecscal(vnew,-*beta,context->lnrows(context));
+	ghost_spmvm(vnew, context, vold, MODE);
+	dotprod(vnew,vold,alpha,context->lnrows(context));
+#ifdef MPI
 	MPI_Allreduce(MPI_IN_PLACE,alpha,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-	axpy(vnew,vold,-(*alpha),lcrp->lnrows[me]);
-	dotprod(vnew,vnew,beta,lcrp->lnrows[me]);
+#endif
+	axpy(vnew,vold,-(*alpha),context->lnrows(context));
+	dotprod(vnew,vnew,beta,context->lnrows(context));
+#ifdef MPI
 	MPI_Allreduce(MPI_IN_PLACE, beta,1,MPI_MYDATATYPE,MPI_MYSUM,MPI_COMM_WORLD);
-	*beta=SQRT(*beta);
-	vecscal(vnew,1./(*beta),lcrp->lnrows[me]);
+#endif
+	*beta=MSQRT(*beta);
+	vecscal(vnew,1./(*beta),context->lnrows(context));
 }
 
 static ghost_mdat_t rhsVal (int i)
@@ -256,48 +181,35 @@ int main( int argc, char* argv[] )
 
 	int me;
 
-
+	ghost_context_t *ctx;
 	ghost_vec_t *vold;
 	ghost_vec_t *vnew;
 	ghost_vec_t *evec;
 
-	HOSTghost_vec_t *r0;
+	ghost_vec_t *r0;
 
 	int iteration;
 
 	double start, end, tstart, tend, tacc, time_it_took;
 
-	PROPS props;
-	props.nIter = 1000;
-	props.matrixFormats = (SPM_GPUFORMATS *)malloc(sizeof(SPM_GPUFORMATS));
-#ifdef OPENCL
-	props.matrixFormats->format[0] = SPM_GPUFORMAT_ELR; 
-	props.matrixFormats->format[1] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats->format[2] = SPM_GPUFORMAT_ELR;
-	props.matrixFormats->T[0] = 1;
-	props.matrixFormats->T[1] = 1;
-	props.matrixFormats->T[2] = 1;
-#else
-	props.matrixFormats = NULL;
-#endif
+	int nIter = 1000;
 
-	getOptions(argc,argv,&props);
-	if (argc==optind) {
-		usage();
-		exit(EXIT_FAILURE);
-	}
 	// keep result vector on devic and eperform y <- y + A*x
-	int options = SPMVM_OPTION_KEEPRESULT | SPMVM_OPTION_AXPY;
+	int options = GHOST_OPTION_KEEPRESULT | GHOST_OPTION_AXPY;
 
-	me      = ghost_init(argc,argv,options);       // basic initialization
-	LCRP_TYPE *lcrp = ghost_createCRS ( argv[optind],props.matrixFormats);
+	ghost_mtraits_t trait = {.format="CRS", .flags=GHOST_SPM_DEFAULT, .aux = NULL};
+	ghost_mtraits_t traits[3] = {trait,trait,trait};
+	
+	ghost_init(argc,argv,options);       // basic initialization
+	
+	ctx  = ghost_createContext(argv[1],traits,3,GHOST_CONTEXT_DEFAULT);
+	vnew = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
+	r0   = ghost_createVector(context,GHOST_VEC_GLOBAL,rhsVal); 
+	
+	ghost_normalizeVector(r0); // normalize the global vector r0
 
-
-
-	r0 = ghost_createGlobalHostVector(lcrp->nrows,rhsVal);
-	ghost_normalizeHostVector(r0);
-
-
+	vold = ghost_distributeVector(context->communicator,r0); // scatter r0 to vold
+	
 #ifdef OPENCL
 
 #ifdef DOUBLE
