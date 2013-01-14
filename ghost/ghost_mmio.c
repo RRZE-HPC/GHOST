@@ -16,7 +16,7 @@
 
 #include "ghost_util.h"
 
-#include "mmio.h"
+#include "ghost_mmio.h"
 
 int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
                 double **val_, int **I_, int **J_)

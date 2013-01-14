@@ -2,11 +2,11 @@
 #include "ghost_mat.h"
 #include "ghost.h"
 #include "ghost_util.h"
+#include "ghost_mmio.h"
 
 #include <string.h>
 #include <libgen.h>
 #include <complex.h>
-#include <mmio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
