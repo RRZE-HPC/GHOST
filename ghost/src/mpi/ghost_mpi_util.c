@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "mpihelper.h"
+#include "ghost_mpi_util.h"
 #include "ghost.h"
 #include "ghost_util.h"
 #include "ghost_spmformats.h"
@@ -920,8 +920,8 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 		DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
 				me, lcrp->lnrows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
-		CR_TYPE *localCR;
-		CR_TYPE *remoteCR;
+		//CR_TYPE *localCR;
+		//CR_TYPE *remoteCR;
 
 
 		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");

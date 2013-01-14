@@ -1,16 +1,15 @@
-#include <ghost_mat.h>
 #include <mpi.h>
 #include <omp.h>
 #include <sys/types.h>
+
+#include "ghost_util.h"
 
 #ifdef LIKWID
 #include <likwid.h>
 #endif
 
-#include "kernel_helper.h"
-#include "kernel.h"
-
-void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions){
+void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
+{
 
 	/*****************************************************************************
 	 ********               Kernel ir -- lc|csw  -- nl                    ********

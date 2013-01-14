@@ -1,8 +1,7 @@
-#include <ghost_mat.h>
 #include <mpi.h>
-#include "kernel_helper.h"
-#include "kernel.h"
 #include <stdio.h>
+
+#include "ghost_util.h"
 
 void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
 {

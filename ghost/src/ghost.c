@@ -7,7 +7,7 @@
 
 #ifdef MPI
 #include <mpi.h>
-#include "mpihelper.h"
+#include "ghost_mpi_util.h"
 #endif
 
 #include <stdio.h>

@@ -6,9 +6,6 @@
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
-#ifdef MPI
-#include <mpihelper.h>
-#endif
 
 #ifdef LIKWID
 #include <likwid.h>

@@ -5,6 +5,7 @@
 
 #ifdef MPI
 #include <mpi.h>
+#include "ghost_mpi_util.h"
 #endif
 
 #ifdef OPENCL
