@@ -233,7 +233,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	BJDS(mat)->nrows = cr->nrows;
 	BJDS(mat)->nnz = cr->nEnts;
 	BJDS(mat)->nEnts = 0;
-	BJDS(mat)->nrowsPadded = pad(BJDS(mat)->nrows,BJDS_LEN);
+	BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS_LEN);
 
 	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS_LEN;
 	BJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"BJDS(mat)->chunkStart");

@@ -70,7 +70,7 @@ int isMMfile(const char *filename)
 	return cmp==0?1:0;
 }
 
-int pad(int nrows, int padding) 
+int ghost_pad(int nrows, int padding) 
 {
 	int nrowsPadded;
 

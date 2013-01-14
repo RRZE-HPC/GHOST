@@ -220,7 +220,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 	TBJDS(mat)->nrows = cr->nrows;
 	TBJDS(mat)->nnz = cr->nEnts;
 	TBJDS(mat)->nEnts = 0;
-	TBJDS(mat)->nrowsPadded = pad(TBJDS(mat)->nrows,BJDS_LEN);
+	TBJDS(mat)->nrowsPadded = ghost_pad(TBJDS(mat)->nrows,BJDS_LEN);
 	ghost_midx_t nChunks = TBJDS(mat)->nrowsPadded/BJDS_LEN;
 	TBJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"TBJDS(mat)->chunkStart");
 	TBJDS(mat)->chunkMin = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"TBJDS(mat)->chunkMin");
@@ -252,7 +252,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 
 		if ((i+1)%BJDS_LEN == 0) {
 #ifdef MIC
-			TBJDS(mat)->nEnts = pad(TBJDS(mat)->nEnts,16); // MIC has to be 512-bit aligned
+			TBJDS(mat)->nEnts = ghost_pad(TBJDS(mat)->nEnts,16); // MIC has to be 512-bit aligned
 #endif
 			TBJDS(mat)->chunkStart[curChunk] = TBJDS(mat)->nEnts;
 			TBJDS(mat)->chunkMin[curChunk-1] = chunkMin;

@@ -54,6 +54,6 @@ int compareNZEPerRow( const void*, const void*);
 void CRStoBJDS(CR_TYPE *cr, ghost_mtraits_t, ghost_mat_t **matrix);
 void CRStoTBJDS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
 void CRStoCRS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
-int pad(int nrows, int padding);
+int ghost_pad(int nrows, int padding);
 
 #endif

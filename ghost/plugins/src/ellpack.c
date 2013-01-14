@@ -240,13 +240,13 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 		ELLPACK(mat)->T = *(ghost_midx_t *)(mat->traits->aux);
 
 
-	ELLPACK(mat)->maxRowLen = pad(ELLPACK(mat)->maxRowLen,ELLPACK(mat)->T);
+	ELLPACK(mat)->maxRowLen = ghost_pad(ELLPACK(mat)->maxRowLen,ELLPACK(mat)->T);
 
 
 
 	ELLPACK(mat)->nrows = cr->nrows;
 	ELLPACK(mat)->nnz = cr->nEnts;
-	ELLPACK(mat)->nrowsPadded = pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
+	ELLPACK(mat)->nrowsPadded = ghost_pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
 	ELLPACK(mat)->nEnts = ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen;
 	ELLPACK(mat)->rowLen = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(ghost_midx_t),"rowLen");
 	ELLPACK(mat)->col = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_midx_t),"col");
@@ -283,7 +283,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 				ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded] = cr->col[cr->rpt[i]+j];
 			}
 		}
-		ELLPACK(mat)->rowLen[i] = pad(ELLPACK(mat)->rowLen[i],ELLPACK(mat)->T); // has to be done after copying!!
+		ELLPACK(mat)->rowLen[i] = ghost_pad(ELLPACK(mat)->rowLen[i],ELLPACK(mat)->T); // has to be done after copying!!
 	}
 
 	free( rowSort );
