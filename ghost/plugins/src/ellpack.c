@@ -1,7 +1,6 @@
 #include "spm_format_ellpack.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
-#include "kernel.h"
 
 #include <strings.h>
 #include <immintrin.h>

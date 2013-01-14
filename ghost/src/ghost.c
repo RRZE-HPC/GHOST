@@ -10,7 +10,6 @@
 #include "mpihelper.h"
 #endif
 
-#include "kernel.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/param.h>
@@ -457,7 +456,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
 
-		context->solvers[GHOST_MODE_NOMPI] = &hybrid_kernel_0;
+		context->solvers[GHOST_MODE_NOMPI] = &ghost_solver_nompi;
 		context->solvers[GHOST_MODE_VECTORMODE] = NULL;
 		context->solvers[GHOST_MODE_GOODFAITH] = NULL;
 		context->solvers[GHOST_MODE_TASKMODE] = NULL;

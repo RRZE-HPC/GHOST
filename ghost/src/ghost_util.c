@@ -3,7 +3,6 @@
 #include "ghost.h"
 #include "ghost_vec.h"
 #include "ghost_mat.h"
-#include "kernel.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -12,7 +11,7 @@
 #endif
 
 #ifdef OPENCL
-#include "cl_ghost_mat.h"
+#include "cl_matricks.h"
 #endif
 
 #ifdef LIKWID
@@ -271,10 +270,9 @@ void ghost_printSysInfo()
 #endif
 		ghost_printFooter();
 	}
-
-
-
-
+#ifdef OPENCL
+	destroyCLdeviceInfo(devInfo);
+#endif
 
 }
 
@@ -330,9 +328,6 @@ printf("Likwid Marker API                :      enabled\n");
 		ghost_printFooter();
 
 	}
-#ifdef OPENCL
-	destroyCLdeviceInfo(devInfo);
-#endif
 
 
 }

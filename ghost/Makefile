@@ -15,6 +15,7 @@ FORMATS = $(notdir $(wildcard $(PLUGINDIR)/include/*.h))
 
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DMPI
+IPATH += -I./include/mpi
 OBJS  += $(MPIOBJS)
 endif
 
@@ -36,7 +37,7 @@ endif
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 PREFIX+= cl
-IPATH += -I$(CUDA_HOME)/include
+IPATH += -I$(CUDA_HOME)/include -I./include/cl
 OBJS  += $(CLOBJS)
 endif
 

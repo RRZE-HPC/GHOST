@@ -1,5 +1,5 @@
 #include "ghost_util.h"
-#include "cl_ghost_mat.h"
+#include "cl_matricks.h"
 #include "cl_kernel.h"
 #include "ghost_mat.h"
 //#include "mpihelper.h"
