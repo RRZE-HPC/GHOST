@@ -120,8 +120,8 @@ $(TYPES_H):
 
 $(FORMATS_H):  
 	@echo "==> Generate formats header"
-	@echo "#ifndef __GHOST_FORMATS_H__" > $(FORMATS_H)
-	@echo -e "#define __GHOST_FORMATS_H__\n" >> $(FORMATS_H)
+	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
+	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)
 	@(for format in $(FORMATS); do \
 	echo "#include <$$format>" >> $(FORMATS_H); done)
 	@echo -e "\n#endif" >> $(FORMATS_H)

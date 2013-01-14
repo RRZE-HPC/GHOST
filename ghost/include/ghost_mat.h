@@ -1,5 +1,5 @@
-#ifndef _MATRICKS_H_
-#define _MATRICKS_H_
+#ifndef __GHOST_MAT_H__
+#define __GHOST_MAT_H__
 
 #include "ghost.h"
 #include "ghost_spmformats.h"
@@ -56,4 +56,4 @@ void CRStoTBJDS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
 void CRStoCRS(CR_TYPE *cr, ghost_mtraits_t trait, ghost_mat_t **matrix);
 int pad(int nrows, int padding);
 
-#endif /* _MATRICKS_H_ */
+#endif

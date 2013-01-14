@@ -1,5 +1,5 @@
-#ifndef _SPMVM_H_
-#define _SPMVM_H_
+#ifndef __GHOST_H__
+#define __GHOST_H__
 
 #ifndef GHOST_CLKERNEL
 #include <stdlib.h>
