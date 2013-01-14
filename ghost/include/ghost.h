@@ -164,7 +164,7 @@ struct ghost_mtraits_t
 /******************************************************************************/
 
 /******************************************************************************
- * Initialize the basic functionality of the library. This includes:
+ * Initializes the basic functionality of the ghost. This includes:
  *   - initialize MPI
  *   - create and commit custom MPI datatypes (if necessary)
  *   - pin threads to CPU cores (if defined)
@@ -229,13 +229,13 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
 
 
 /******************************************************************************
- * Create a distributed vector with specified values in order to use it for 
+ * Creates a distributed vector with specified values in order to use it for 
  * SpMVM. Depending on the type, the length of the vector may differ.
  * If OpenCL is enabled, the vector is also being created and initialized on
  * the device.
  *
  * Arguments:
- *   - ghost_comm_t *lcrp
+ *   - ghost_context_t *lcrp
  *     The local CRS matrix portion to use with the vector.
  *   - int type
  *     Specifies whether the vector is a right hand side vector 
@@ -279,7 +279,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, gho
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
 int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int kernel);
+		int mode);
 
 ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);

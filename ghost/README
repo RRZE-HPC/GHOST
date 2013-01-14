@@ -1,0 +1,48 @@
+== INTRODUCTION ==
+
+
+== INSTALLATION ==
+  Edit config.mk in order to fit your system and requirements.
+  Then, run make install in order to install the library and headers to the
+  specified location.
+
+
+== HEADER FILES ==
+  There are 2 headers which you may need in your programs:
+  1) ghost.h
+     This header includes the most basic data structures, prototypes and macros 
+	 you will need in any case.
+  2) ghost_util.h
+     This header includes utility functions and macros that may be helpful
+	 when using LibSpMVM in certain cases. 
+	 This includes, e.g., functions for setting up and using vector types, 
+	 printing information about the matrix, plugging in user-defined kernels,
+	 and many more.
+
+
+== FUNCTIONS ==
+  The functions are documented in the according header file.
+
+
+== INPUT DATA ==
+  There are two matrix file formats which are supported:
+    1) Matrix Market
+	   This is an ASCII format for matrices which is documented here:
+	   http://math.nist.gov/MatrixMarket/formats.html
+    2) binary CRS
+	   This format stores the matrix as CRS (binary) and looks as 
+	   follows:
+	     1) 4 bytes: an integer defining the datatype for the matrix entries.
+		      Available datatypes:
+		       0: float (4 bytes per entry)
+		       1: double (8 bytes per entry)
+		       2: complex float (8 bytes per entry)
+		       3: complex double (16 bytes per entry)
+		 2) 4 bytes: an integer telling the number of rows (N) of the matrix
+		 3) 4 bytes: an integer telling the number of columns (M) of the matrix
+		 4) 4 bytes: an integer telling the number of nonzero entries (E) of the
+		      matrix
+		 5) (N+1)*4 bytes: the row pointers (integer) of the CRS matrix
+		 6) E*4 bytes: the columns indices of the matrix entries
+		 7) E*sizeof(datatype) bytes: the values of the matrix entries
+
