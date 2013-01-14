@@ -11,3 +11,5 @@ tags
 *stdout*
 *stderr*
 types_c.taghl
+ghost/include/ghost_spmformats.h
+ghost/include/ghost_types_gen.h
