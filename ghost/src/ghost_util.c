@@ -37,7 +37,7 @@
 
 static int allocatedMem;
 
-static double wctime()
+static double ghost_wctime()
 {
 	struct timeval tp;
 	gettimeofday(&tp, NULL);
@@ -134,7 +134,6 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 	}
 }
 
-
 void ghost_printOptionsInfo(int options)
 {
 	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
@@ -150,7 +149,6 @@ void ghost_printOptionsInfo(int options)
 	ghost_printFooter();
 
 }
-
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
@@ -268,7 +266,6 @@ void ghost_printSysInfo()
 #endif
 
 }
-
 
 void ghost_printGhostInfo() 
 {
@@ -415,7 +412,6 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 	}
 }	
 
-
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
 	if(comm) {
@@ -435,7 +431,6 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 		free(comm);
 	}
 }
-
 
 char * ghost_modeName(int mode) 
 {
@@ -734,7 +729,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #endif
 
 	for( it = 0; it < nIter; it++ ) {
-		time = wctime();
+		time = ghost_wctime();
 		solver(res,context,invec,options);
 
 #ifdef OPENCL
@@ -743,7 +738,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #ifdef MPI
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
-		time = wctime()-time;
+		time = ghost_wctime()-time;
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
