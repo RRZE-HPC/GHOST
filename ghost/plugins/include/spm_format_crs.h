@@ -39,6 +39,14 @@ typedef struct
 } 
 CR_TYPE;
 
+typedef struct 
+{
+	ghost_midx_t row, col, nThEntryInRow;
+	ghost_mdat_t val;
+} 
+NZE_TYPE;
+
+
 typedef struct{
 	ghost_mat_t *mat;
 	char *matrixPath;

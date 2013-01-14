@@ -14,40 +14,18 @@
 #include <sys/types.h>
 
 
-int compareNZEPos( const void* a, const void* b ) 
-{
-
-	/* comparison function for sorting of matrix entries;
-	 * sort lesser row id first, then lesser column id first;
-	 * if MAIN_DIAGONAL_FIRST is defined sort diagonal 
-	 * before lesser column id */
-
-	int aRow = ((NZE_TYPE*)a)->row,
-		bRow = ((NZE_TYPE*)b)->row,
-		aCol = ((NZE_TYPE*)a)->col,
-		bCol = ((NZE_TYPE*)b)->col;
-
-	if( aRow == bRow ) {
-#ifdef MAIN_DIAGONAL_FIRST
-		if( aRow == aCol ) aCol = -1;
-		if( bRow == bCol ) bCol = -1;
-#endif /* MAIN_DIAGONAL_FIRST */
-		return aCol - bCol;
-	}
-	else return aRow - bRow;
-}
 
 int compareNZEOrgPos( const void* a, const void* b ) 
 {
-	return  ((JD_SORT_TYPE*)a)->row - ((JD_SORT_TYPE*)b)->row;
+	return  ((ghost_sorting_t*)a)->row - ((ghost_sorting_t*)b)->row;
 }
 
 int compareNZEPerRow( const void* a, const void* b ) 
 {
-	/* comparison function for JD_SORT_TYPE; 
+	/* comparison function for ghost_sorting_t; 
 	 * sorts rows with higher number of non-zero elements first */
 
-	return  ((JD_SORT_TYPE*)b)->nEntsInRow - ((JD_SORT_TYPE*)a)->nEntsInRow;
+	return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
 
 int isMMfile(const char *filename) 
@@ -70,3 +48,83 @@ int isMMfile(const char *filename)
 	return cmp==0?1:0;
 }
 
+ghost_mm_t * readMMFile(const char* filename ) 
+{
+	MM_typecode matcode;
+	FILE *f;
+	ghost_midx_t i;
+	ghost_mm_t* mm = (ghost_mm_t*) malloc( sizeof( ghost_mm_t ) );
+
+	if ((f = fopen(filename, "r")) == NULL) 
+		exit(1);
+
+	if (mm_read_banner(f, &matcode) != 0)
+	{
+		printf("Could not process Matrix Market banner.\n");
+		exit(1);
+	}
+
+#ifdef GHOST_MAT_COMPLEX
+	if (!mm_is_complex(matcode))
+		DEBUG_LOG(0,"Warning! The library has been built for complex data "
+				"but the MM file contains real data. Casting...");
+#else
+	if (mm_is_complex(matcode))
+		DEBUG_LOG(0,"Warning! The library has been built for real data "
+				"but the MM file contains complex data. Casting...");
+#endif
+
+
+
+	if ((mm_read_mtx_crd_size(f, &mm->nrows, &mm->ncols, &mm->nEnts)) !=0)
+		exit(1);
+
+
+	mm->nze = (NZE_TYPE *)malloc(mm->nEnts*sizeof(NZE_TYPE));
+
+	if (!mm_is_complex(matcode)) {
+		for (i=0; i<mm->nEnts; i++)
+		{
+#ifdef GHOST_MAT_DP
+			double re;
+			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re);
+#else
+			float re;
+			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %g\n", &mm->nze[i].row, &mm->nze[i].col, &re);
+#endif
+#ifdef GHOST_MAT_COMPLEX
+			mm->nze[i].val = re+I*0;
+#else
+			mm->nze[i].val = re;
+#endif
+			mm->nze[i].col--;  // adjust from 1-based to 0-based 
+			mm->nze[i].row--;
+		}
+	} else {
+
+		for (i=0; i<mm->nEnts; i++)
+		{
+#ifdef GHOST_MAT_DP
+			double re,im;
+			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %lg %lg\n", &mm->nze[i].row, &mm->nze[i].col, &re,
+					&im);
+#else
+			float re,im;
+			fscanf(f, "%"PRmatIDX" %"PRmatIDX" %g %g\n", &mm->nze[i].row, &mm->nze[i].col, &re,
+					&im);
+#endif
+#ifdef GHOST_MAT_COMPLEX	
+			mm->nze[i].val = re+I*im;
+#else
+			mm->nze[i].val = re;
+#endif
+			mm->nze[i].col--; //  adjust from 1-based to 0-based
+			mm->nze[i].row--;
+		}
+
+	}
+
+
+	if (f !=stdin) fclose(f);
+	return mm;
+}

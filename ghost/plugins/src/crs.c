@@ -3,6 +3,7 @@
 #include "spm_format_crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+#include "ghost_mmio.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -32,6 +33,7 @@ static void CRS_readRpt(void *arg);
 static void CRS_readColValOffset(void *args);
 static void CRS_readHeader(void *vargs);
 static void CRS_upload(ghost_mat_t *mat);
+static int compareNZEPos( const void* a, const void* b ); 
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -359,6 +361,28 @@ static void CRS_upload(ghost_mat_t *mat)
 #endif
 }
 
+int compareNZEPos( const void* a, const void* b ) 
+{
+
+	/* comparison function for sorting of matrix entries;
+	 * sort lesser row id first, then lesser column id first;
+	 * if MAIN_DIAGONAL_FIRST is defined sort diagonal 
+	 * before lesser column id */
+
+	int aRow = ((NZE_TYPE*)a)->row,
+		bRow = ((NZE_TYPE*)b)->row,
+		aCol = ((NZE_TYPE*)a)->col,
+		bCol = ((NZE_TYPE*)b)->col;
+
+	if( aRow == bRow ) {
+#ifdef MAIN_DIAGONAL_FIRST
+		if( aRow == aCol ) aCol = -1;
+		if( bRow == bCol ) bCol = -1;
+#endif /* MAIN_DIAGONAL_FIRST */
+		return aCol - bCol;
+	}
+	else return aRow - bRow;
+}
 
 
 
@@ -666,7 +690,7 @@ DEBUG_LOG(1,"Matrix read in successfully");*/
 
 static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {
-	MM_TYPE * mm = readMMFile(matrixPath);
+	ghost_mm_t * mm = readMMFile(matrixPath);
 
 	ghost_midx_t* nEntsInRow;
 	ghost_midx_t i, e, pos;

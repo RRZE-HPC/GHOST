@@ -147,7 +147,7 @@ static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 {
 	ghost_midx_t i,j,c;
-	JD_SORT_TYPE* rowSort = NULL;
+	ghost_sorting_t* rowSort = NULL;
 	ghost_midx_t *rowPerm = NULL, *invRowPerm = NULL;
 	unsigned int flags;
 
@@ -170,7 +170,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 			sortBlock = cr->nrows;
 
 		/* get max number of entries in one row ###########################*/
-		rowSort = (JD_SORT_TYPE*) allocateMemory( cr->nrows * sizeof( JD_SORT_TYPE ),
+		rowSort = (ghost_sorting_t*) allocateMemory( cr->nrows * sizeof( ghost_sorting_t ),
 				"rowSort" );
 
 		for (c=0; c<cr->nrows/sortBlock; c++)  
@@ -181,7 +181,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 				rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
 			} 
 
-			qsort( rowSort+c*sortBlock, sortBlock, sizeof( JD_SORT_TYPE  ), compareNZEPerRow );
+			qsort( rowSort+c*sortBlock, sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 		}
 		for( i = c*sortBlock; i < cr->nrows; i++ ) 
 		{ // remainder
@@ -200,7 +200,7 @@ static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
 			++i;
 
 			DEBUG_LOG(1,"sorting over %i rows (%i): %i - %i\n",i-start,j, start, i-1);
-			qsort( &rowSort[start], i-start, sizeof(JD_SORT_TYPE), compareNZEOrgPos );
+			qsort( &rowSort[start], i-start, sizeof(ghost_sorting_t), compareNZEOrgPos );
 			}
 
 			for(i=1; i < cr->nrows; ++i) {
