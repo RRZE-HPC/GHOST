@@ -1,6 +1,8 @@
-apps/lanczos/
-apps/benchshell/
-apps/spmvm/
-test/
-bench/
-TODO
+apps/lanczos/ export-ignore
+apps/benchshell/ export-ignore
+apps/spmvm/ export-ignore
+test/ export-ignore
+bench/ export-ignore
+TODO export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
