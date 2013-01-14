@@ -671,6 +671,17 @@ size_t ghost_sizeofDataType(int dt)
 	return size;
 }
 
+int ghost_pad(int nrows, int padding) 
+{
+	int nrowsPadded;
+
+	if(  nrows % padding != 0) {
+		nrowsPadded = nrows + padding - nrows % padding;
+	} else {
+		nrowsPadded = nrows;
+	}
+	return nrowsPadded;
+}
 
 void* allocateMemory( const size_t size, const char* desc ) 
 {

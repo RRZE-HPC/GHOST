@@ -156,6 +156,8 @@ char * ghost_workdistName(int options);
 char * ghost_modeName(int mode);
 char * ghost_datatypeName(int datatype);
 
+int ghost_pad(int nrows, int padding);
+
 void* allocateMemory( const size_t size, const char* desc );
 void freeMemory(size_t, const char*, void*);
 
