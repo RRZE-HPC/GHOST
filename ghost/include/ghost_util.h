@@ -1,9 +1,14 @@
-#ifndef _SPMVM_UTIL_H_
-#define _SPMVM_UTIL_H_
+#ifndef __GHOST_UTIL_H__
+#define __GHOST_UTIL_H__
 
 #include "ghost.h"
+
 #ifdef MPI
 #include <mpi.h>
+#endif
+
+#ifdef OPENCL
+#include "ghost_cl_util.h"
 #endif
 
 /******************************************************************************/
@@ -78,98 +83,59 @@
 #endif
 
 #define MPI_safecall(call) {\
-  int mpierr = call ;\
-  if( MPI_SUCCESS != mpierr ){\
-    fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
-      __FILE__, __LINE__, mpierr);\
-    fflush(stderr);\
-  }\
-  }
+	int mpierr = call ;\
+	if( MPI_SUCCESS != mpierr ){\
+		fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
+				__FILE__, __LINE__, mpierr);\
+		fflush(stderr);\
+	}\
+}
 
 #ifdef MPI
 #define CL_safecall(call) {\
-  cl_int clerr = call ;\
-  if( CL_SUCCESS != clerr ){\
-	int __me;\
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-      __me, __FILE__, __LINE__, CL_errorString(clerr));\
-    fflush(stderr);\
-  }\
-  }
+	cl_int clerr = call ;\
+	if( CL_SUCCESS != clerr ){\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__me, __FILE__, __LINE__, CL_errorString(clerr));\
+		fflush(stderr);\
+	}\
+}
 
 #define CL_checkerror(clerr) do{\
-  if( CL_SUCCESS != clerr ){\
-	int __me;\
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-      __me, __FILE__, __LINE__, CL_errorString(clerr));\
-    fflush(stdout);\
-  }\
-  } while(0)
+	if( CL_SUCCESS != clerr ){\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__me, __FILE__, __LINE__, CL_errorString(clerr));\
+		fflush(stdout);\
+	}\
+} while(0)
 
 #else
 
 #define CL_safecall(call) {\
-  cl_int clerr = call ;\
-  if( CL_SUCCESS != clerr ){\
-    fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-      __FILE__, __LINE__, CL_errorString(clerr));\
-    fflush(stderr);\
-  }\
-  }
+	cl_int clerr = call ;\
+	if( CL_SUCCESS != clerr ){\
+		fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__FILE__, __LINE__, CL_errorString(clerr));\
+		fflush(stderr);\
+	}\
+}
 
 #define CL_checkerror(clerr) do{\
-  if( CL_SUCCESS != clerr ){\
-    fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-      __FILE__, __LINE__, CL_errorString(clerr));\
-    fflush(stdout);\
-  }\
-  } while(0)
+	if( CL_SUCCESS != clerr ){\
+		fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__FILE__, __LINE__, CL_errorString(clerr));\
+		fflush(stdout);\
+	}\
+} while(0)
 #endif
 
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
-#ifdef OPENCL
-
-
-void CL_init();
-cl_program CL_registerProgram(const char *filename, const char *options);
-void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
-
-//CL_uploadCRS (MATRIY_TYPE *lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
-void CL_uploadVector( ghost_vec_t *vec );
-void CL_downloadVector( ghost_vec_t *vec );
-
-cl_mem CL_allocDeviceMemory( size_t );
-cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag );
-cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr );
-void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
-void CL_copyDeviceToHost( void*, cl_mem, size_t );
-cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem,
-	   	size_t bytesize );
-void CL_copyHostToDevice( cl_mem, void*, size_t );
-void CL_copyHostToDeviceOffset( cl_mem, void*, size_t, size_t);
-void CL_freeDeviceMemory( cl_mem );
-void freeHostMemory( void* );
-void CL_finish();
-
-void CL_SpMVM(cl_mem rhsVec, cl_mem resVec, int type); 
-void CL_vecscal(cl_mem a, ghost_mdat_t s, int nrows);
-void CL_axpy(cl_mem a, cl_mem b, ghost_mdat_t s, int nrows);
-void CL_dotprod(cl_mem a, cl_mem b, ghost_mdat_t *out, int nrows);
-//void CL_context_communication(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int);
-//GPUghost_mat_t * CL_createMatrix(ghost_comm_t* lcrp, GHOST_SPM_GPUFORMATS *matrixFormats, int spmvmOptions);
-void CL_enqueueKernel(cl_kernel kernel, cl_uint dim, size_t *gSize, size_t *lSize);
-const char * CL_errorString(cl_int err);
- 
-size_t CL_getLocalSize(cl_kernel kernel);
-CL_DEVICE_INFO * CL_getDeviceInfo();
-void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
-void CL_barrier();
-const char * CL_getVersion();
-#endif
 
 
 void ghost_printHeader(const char *fmt, ...);
