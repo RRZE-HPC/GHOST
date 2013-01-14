@@ -36,7 +36,6 @@ endif
 
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
-PREFIX+= cl
 IPATH += -I$(CUDA_HOME)/include -I./include/cl
 OBJS  += $(CLOBJS)
 endif
@@ -81,7 +80,7 @@ ifeq ($(strip $(LIBTYPE)),shared)
 SUFFIX=so
 endif
 
-LIBSPMVM=lib$(PREFIX)ghost.$(SUFFIX)
+LIBGHOST=libghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
 MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
@@ -109,7 +108,7 @@ $(OBJDIR)/%.o: %.f
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBSPMVM) $(PLUGINS)
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBGHOST) $(PLUGINS)
 
 $(TYPES_H):  
 	@echo "==> Generate types header"
@@ -130,14 +129,14 @@ $(OBJDIR):
 	@mkdir $(OBJDIR)
 
 ifeq ($(strip $(LIBTYPE)),static)
-$(LIBSPMVM): $(OBJS)
-	@echo "==> Create static library $(LIBSPMVM)"
-	@ar rcs  $(LIBSPMVM) $^
+$(LIBGHOST): $(OBJS)
+	@echo "==> Create static library $(LIBGHOST)"
+	@ar rcs  $(LIBGHOST) $^
 endif
 ifeq ($(strip $(LIBTYPE)),shared)
-$(LIBSPMVM): $(OBJS)
-	@echo "==> Create shared library $(LIBSPMVM)"
-	@$(CC) $(CFLAGS) -shared -o $(LIBSPMVM) $^
+$(LIBGHOST): $(OBJS)
+	@echo "==> Create shared library $(LIBGHOST)"
+	@$(CC) $(CFLAGS) -shared -o $(LIBGHOST) $^
 endif
 
 clean:
@@ -156,7 +155,7 @@ install: all
 	@mkdir -p $(strip $(GHOSTPATH))/include/ghost
 	@mkdir -p $(strip $(GHOSTPATH))/lib/ghost
 	@echo "==> Install library to $(strip $(GHOSTPATH))/lib/"
-	@cp -f $(LIBSPMVM) $(strip $(GHOSTPATH))/lib
+	@cp -f $(LIBGHOST) $(strip $(GHOSTPATH))/lib
 	@echo "==> Install headers to $(strip $(GHOSTPATH))/include/ghost/"
 	@cp -rf include/* $(strip $(GHOSTPATH))/include/ghost
 	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost/"
