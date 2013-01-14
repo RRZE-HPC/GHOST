@@ -2,7 +2,7 @@
 #define _KERNEL_H_
 
 #include "ghost.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 
 void hybrid_kernel_0   (ghost_vec_t*, ghost_context_t*, ghost_vec_t*, int);
 void kern_glob_CRS_0(ghost_vec_t* res, CR_TYPE* cr, ghost_vec_t* invec, int spmvmOptions);

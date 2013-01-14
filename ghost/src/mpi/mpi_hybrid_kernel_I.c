@@ -1,4 +1,4 @@
-#include <matricks.h>
+#include <ghost_mat.h>
 #include <mpi.h>
 #include "kernel_helper.h"
 #include "kernel.h"

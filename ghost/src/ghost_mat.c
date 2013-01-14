@@ -1,5 +1,5 @@
 #define _XOPEN_SOURCE 600
-#include "matricks.h"
+#include "ghost_mat.h"
 #include "ghost.h"
 #include "ghost_util.h"
 

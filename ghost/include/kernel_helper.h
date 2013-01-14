@@ -3,7 +3,7 @@
 
 #include "ghost.h"
 #include "ghost_util.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 
 
 #include <stdbool.h>

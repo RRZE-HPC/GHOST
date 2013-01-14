@@ -1,7 +1,7 @@
 #define _XOPEN_SOURCE 500
 
 #include "spm_format_crs.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 #include "ghost_util.h"
 
 #include <unistd.h>

@@ -1,5 +1,5 @@
 #include "spm_format_ellpack.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 #include "ghost_util.h"
 #include "kernel.h"
 

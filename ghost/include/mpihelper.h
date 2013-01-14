@@ -2,7 +2,7 @@
 #define _MPI_HELPER_H_
 
 #include "ghost.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 
 #include <mpi.h>
 

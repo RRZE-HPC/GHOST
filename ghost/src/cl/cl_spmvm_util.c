@@ -1,7 +1,7 @@
 #include "ghost_util.h"
-#include "cl_matricks.h"
+#include "cl_ghost_mat.h"
 #include "cl_kernel.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 //#include "mpihelper.h"
 #include <string.h>
 #include <stdlib.h>

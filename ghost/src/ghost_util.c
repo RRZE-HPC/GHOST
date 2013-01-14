@@ -2,7 +2,7 @@
 #include "ghost_util.h"
 #include "ghost.h"
 #include "ghost_vec.h"
-#include "matricks.h"
+#include "ghost_mat.h"
 #include "kernel.h"
 #include <sys/param.h>
 #include <libgen.h>
@@ -12,7 +12,7 @@
 #endif
 
 #ifdef OPENCL
-#include "cl_matricks.h"
+#include "cl_ghost_mat.h"
 #endif
 
 #ifdef LIKWID
