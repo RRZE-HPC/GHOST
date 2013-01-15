@@ -118,6 +118,7 @@ int main( int argc, char* argv[] )
 		imtql1_(&n,falphas,fbetas,&ferr);
 		if(ferr != 0) printf("Error: the %d. ev could not be determined\n",ferr);
 		printf("e: %f",	falphas[0]);
+		fflush(stdout);
 	}
 	printf("\n");
 
