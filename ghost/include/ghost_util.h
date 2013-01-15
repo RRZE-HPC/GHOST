@@ -73,6 +73,7 @@
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, ANSI_COLOR_RESET"\n");\
 	fflush(stderr);\
+	MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
 }
 #else
 #define ABORT(msg, ...) {\
@@ -80,6 +81,7 @@
 	fprintf(stderr,msg, ##__VA_ARGS__);\
 	fprintf(stderr, ANSI_COLOR_RESET"\n");\
 	fflush(stderr);\
+	exit(EXIT_FAILURE);\
 }
 #endif
 

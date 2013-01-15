@@ -162,7 +162,7 @@ static void CRS_readHeader(void *vargs)
 	fread(&symmetry, 4, 1, file);
 	if (!ghost_symmetryValid(symmetry))
 		ABORT("Symmetry is invalid! (%d)",symmetry);
-	if (symmetry != GHOST_BINCRS_SYMM_GENERAL && symmetry != GHOST_BINCRS_SYMM_SYMMETRIC)
+	if (symmetry != GHOST_BINCRS_SYMM_GENERAL)
 		ABORT("Can not handle symmetry different to general at the moment!");
 	mat->symmetry = symmetry;
 
