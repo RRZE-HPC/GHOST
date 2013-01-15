@@ -271,8 +271,25 @@ void ghost_printGhostInfo()
 {
 
 	if (ghost_getRank()==0) {
+		int nDataformats;
+		char *availDataformats = NULL;
+		char *avDF = NULL;
+		size_t avDFlen = 0;
+		ghost_getAvailableDataFormats(&availDataformats,&nDataformats);
+		int i;
+		for (i=0; i<nDataformats; i++) {
+			char *curFormat = availDataformats+i*GHOST_DATAFORMAT_NAME_MAX;
+			avDFlen += strlen(curFormat)+1;
+			avDF = realloc(avDF,avDFlen);
+			strncpy(avDF+avDFlen-strlen(curFormat)-1,curFormat,strlen(curFormat));
+			strncpy(avDF+avDFlen-1,",",1);
+		}
+		avDF[strlen(avDF)-1] = 0; 
+
+
 		ghost_printHeader("%s", GHOST_NAME);
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
+		ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
 		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
@@ -785,4 +802,37 @@ int ghost_getSpmvmModeIdx(int spmvmOptions)
 		return GHOST_SPMVM_MODE_TASKMODE_IDX;
 
 	return 0;
+}
+
+void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
+{
+	char pluginPath[PATH_MAX];
+	DIR * pluginDir = opendir(PLUGINPATH);
+	struct dirent * dirEntry;
+	ghost_spmf_plugin_t myPlugin;
+
+	*nDataformats=0;
+
+
+	if (pluginDir) {
+		while (0 != (dirEntry = readdir(pluginDir))) {
+			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
+			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
+			if (!myPlugin.so) {
+				continue;
+			}
+
+			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
+			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
+
+			(*nDataformats)++;
+			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
+			strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
+
+		}
+		closedir(pluginDir);
+	} else {
+		ABORT("The plugin directory does not exist");
+	}
+
 }

@@ -14,6 +14,8 @@
 #define GHOST_SUCCESS 0
 #define GHOST_FAILURE 1
 
+#define GHOST_DATAFORMAT_NAME_MAX 16
+
 
 #define GHOST_IO_MPI (0)
 #define GHOST_IO_STD (1)
