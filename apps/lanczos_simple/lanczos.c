@@ -26,8 +26,8 @@ static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, ghost_vdat_t *res, int n)
 	int i;
 	ghost_mdat_t sum = 0;
 #pragma omp parallel for private(i) reduction(+:sum)
-		for (i=0; i<n; i++)
-			sum += v1->val[i]*v2->val[i];
+	for (i=0; i<n; i++)
+		sum += v1->val[i]*v2->val[i];
 	*res = sum;
 }
 
@@ -35,8 +35,8 @@ static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, ghost_vdat_t s, int n)
 {
 	int i;
 #pragma omp parallel for private(i)
-		for (i=0; i<n; i++)
-			v1->val[i] = v1->val[i] + s*v2->val[i];
+	for (i=0; i<n; i++)
+		v1->val[i] = v1->val[i] + s*v2->val[i];
 
 }
 
@@ -44,8 +44,8 @@ static void vecscal(ghost_vec_t *vec, ghost_vdat_t s, int n)
 {
 	int i;
 #pragma omp parallel for private(i)
-		for (i=0; i<n; i++)
-			vec->val[i] = s*vec->val[i];
+	for (i=0; i<n; i++)
+		vec->val[i] = s*vec->val[i];
 }
 
 
@@ -63,7 +63,7 @@ static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t
 
 static ghost_vdat_t rhsVal (int i)
 {
-	return i+ (ghost_vdat_t)1.0;
+	return i + (ghost_vdat_t)1.0;
 }
 
 int main( int argc, char* argv[] )
@@ -79,19 +79,19 @@ int main( int argc, char* argv[] )
 
 	int iteration, nIter = 500;
 	char *matrixPath = argv[1];
-	
+
 	int ghostOptions = GHOST_OPTION_NONE;
-	
+
 	ghost_mtraits_t trait = {.format="CRS",
 		.flags=GHOST_SPM_DEFAULT,
 		.aux=NULL};
 
 	ghost_init(argc,argv,ghostOptions);       // basic initialization
-	
+
 	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_DEFAULT);
 	vnew  = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
 	r0    = ghost_createVector(context,GHOST_VEC_DEFAULT,rhsVal); 
-	
+
 	ghost_normalizeVector(r0); // normalize the global vector r0
 
 	vold = ghost_cloneVector(r0); 
@@ -100,7 +100,7 @@ int main( int argc, char* argv[] )
 	ghost_mdat_t *betas   = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
 	ghost_mdat_t *falphas = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
 	ghost_mdat_t *fbetas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
-	
+
 	betas[0] = beta;
 
 	for(iteration = 0, n=1; 
@@ -117,10 +117,12 @@ int main( int argc, char* argv[] )
 		memcpy(falphas,alphas,n*sizeof(ghost_mdat_t)); // alphas and betas will be destroyed in imtql
 		memcpy(fbetas,betas,n*sizeof(ghost_mdat_t));
 
+		// TODO evaluate headers in fortran files
 		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
 			imtql1f_(&n,falphas,fbetas,&ferr);
 		} else
 			imtql1_(&n,falphas,fbetas,&ferr);
+
 		if(ferr != 0) printf("Error: the %d. ev could not be determined\n",ferr);
 		printf("minimal eigenvalue: %f", falphas[0]);
 		fflush(stdout);
