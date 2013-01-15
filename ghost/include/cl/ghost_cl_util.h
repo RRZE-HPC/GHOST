@@ -1,6 +1,14 @@
 #ifndef __GHOST_CL_UTIL_H__
 #define __GHOST_CL_UTIL_H__
 
+typedef struct
+{
+	int nDistinctDevices;
+	int *nDevices;
+	char **names;
+} 
+ghost_cl_devinfo_t;
+
 void CL_init();
 cl_program CL_registerProgram(const char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
@@ -24,8 +32,8 @@ void CL_enqueueKernel(cl_kernel kernel, cl_uint dim, size_t *gSize, size_t *lSiz
 const char * CL_errorString(cl_int err);
  
 size_t CL_getLocalSize(cl_kernel kernel);
-CL_DEVICE_INFO * CL_getDeviceInfo();
-void destroyCLdeviceInfo(CL_DEVICE_INFO * di);
+ghost_cl_devinfo_t * CL_getDeviceInfo();
+void destroyCLdeviceInfo(ghost_cl_devinfo_t * di);
 void CL_barrier();
 const char * CL_getVersion();
 

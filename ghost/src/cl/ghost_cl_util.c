@@ -571,9 +571,9 @@ static int stringcmp(const void *x, const void *y)
 	return (strcmp((char *)x, (char *)y));
 }
 
-CL_DEVICE_INFO *CL_getDeviceInfo() 
+ghost_cl_devinfo_t *CL_getDeviceInfo() 
 {
-	CL_DEVICE_INFO *devInfo = allocateMemory(sizeof(CL_DEVICE_INFO),"devInfo");
+	ghost_cl_devinfo_t *devInfo = allocateMemory(sizeof(ghost_cl_devinfo_t),"devInfo");
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -649,7 +649,7 @@ CL_DEVICE_INFO *CL_getDeviceInfo()
 	return devInfo;
 }
 
-void destroyCLdeviceInfo(CL_DEVICE_INFO * di) 
+void destroyCLdeviceInfo(ghost_cl_devinfo_t * di) 
 {
 
 	if (di) {	

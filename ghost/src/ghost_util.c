@@ -211,7 +211,7 @@ void ghost_printSysInfo()
 	int nnodes = ghost_getNumberOfNodes();
 
 #ifdef OPENCL
-	CL_DEVICE_INFO * devInfo = CL_getDeviceInfo();
+	ghost_cl_devinfo_t * devInfo = CL_getDeviceInfo();
 #endif
 
 	if (ghost_getRank()==0) {
