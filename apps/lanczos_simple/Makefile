@@ -17,11 +17,11 @@ LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost
 
-%.o: %.c 
+%.o: %.c ../../ghost/config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
-%.o: %.f 
+%.o: %.f ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 

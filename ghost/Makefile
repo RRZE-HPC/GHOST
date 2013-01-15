@@ -104,20 +104,16 @@ $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-$(OBJDIR)/%.o: %.f 
-	@echo "==> Compile $< -> $@"
-	@$(FC) $(FFLAGS) -o $@ -c $<
-
 all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBGHOST) $(PLUGINS)
 
-$(TYPES_H):  
+$(TYPES_H): config.mk  
 	@echo "==> Generate types header"
 	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
 	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
 	@echo -e $(TYPES) >> $(TYPES_H)
 	@echo -e "\n#endif" >> $(TYPES_H)
 
-$(FORMATS_H):  
+$(FORMATS_H): config.mk
 	@echo "==> Generate formats header"
 	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
 	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)

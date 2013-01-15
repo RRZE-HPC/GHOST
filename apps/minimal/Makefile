@@ -7,12 +7,12 @@ LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost
 
-%.o: %.c  
+%.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
-minimal.x: minimal.o ../../ghost/config.mk
+minimal.x: minimal.o
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 
