@@ -4,7 +4,7 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 .PHONY:clean distclean
 
 FC	= gfortran
-FFLAGS  =-O3 -warn -openmp  
+FFLAGS  =-O3 -openmp  
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
