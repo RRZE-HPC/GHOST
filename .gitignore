@@ -4,6 +4,7 @@ pbshosts*
 *.a
 *.so
 *.tar
+*.tar.gz
 obj/
 jobscripts/
 bench/
