@@ -327,10 +327,10 @@ void CL_finish()
 {
 
 	// TODO
-	/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+	/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_SOLVERS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
 		}
-		if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) {
+		if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_SOLVERS)) {
 		CL_safecall(clReleaseKernel(kernel[GHOST_LOCAL_MAT_IDX]));
 		CL_safecall(clReleaseKernel(kernel[GHOST_REMOTE_MAT_IDX]));
 
@@ -350,12 +350,12 @@ void CL_finish()
 
   CL_createMatrix(matrix,matrixFormats,spmvmOptions);
 
-  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_SOLVERS)) { // combined computation
   CL_bindMatrixToKernel(gpum->fullMatrix,gpum->fullFormat,
   matrixFormats->T[GHOST_FULL_MAT_IDX],GHOST_FULL_MAT_IDX, spmvmOptions);
   }
 
-  if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+  if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
   CL_bindMatrixToKernel(gpum->localMatrix,gpum->localFormat,
   matrixFormats->T[GHOST_LOCAL_MAT_IDX],GHOST_LOCAL_MAT_IDX, spmvmOptions);
   CL_bindMatrixToKernel(gpum->remoteMatrix,gpum->remoteFormat,
@@ -391,7 +391,7 @@ void CL_finish()
   DEBUG_LOG(1,"Creating device matrices");
 
 
-  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_KERNELS)) { // combined computation
+  if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_SOLVERS)) { // combined computation
   gpum->fullT = matrixFormats->T[GHOST_FULL_MAT_IDX];
 
   switch (matrixFormats->format[0]) {
@@ -438,7 +438,7 @@ void CL_finish()
 
   }
 
-if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
 	gpum->localT = matrixFormats->T[GHOST_LOCAL_MAT_IDX];
 	gpum->remoteT = matrixFormats->T[GHOST_REMOTE_MAT_IDX];
 

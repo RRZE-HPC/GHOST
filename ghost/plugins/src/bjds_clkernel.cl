@@ -38,7 +38,7 @@ kernel void BJDS_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhs
 			tmp += value*rhs;
 #endif
 		}
-		if (options & GHOST_OPTION_AXPY)
+		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] += tmp;
 		else 
 			lhs[i] = tmp;

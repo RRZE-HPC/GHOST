@@ -28,7 +28,7 @@ kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhs
 			tmp += val[j]*rhs;
 #endif
 		}
-		if (options & GHOST_OPTION_AXPY)
+		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] += tmp;
 		else 
 			lhs[i] = tmp;

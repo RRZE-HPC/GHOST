@@ -180,7 +180,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 					hlp1 = hlp1 + (ghost_vdat_t)localCR->val[j] * invec->val[localCR->col[j]]; 
 				}
 
-				if (spmvmOptions & GHOST_OPTION_AXPY) 
+				if (spmvmOptions & GHOST_SPMVM_AXPY) 
 					res->val[i] += hlp1;
 				else
 					res->val[i] = hlp1;
@@ -207,7 +207,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			invec->val+context->lnrows(context), context->communicator->halo_elements*sizeof(ghost_vdat_t),
 			context->lnrows(context)*sizeof(ghost_vdat_t));
 #endif
-	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_OPTION_AXPY);
+	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

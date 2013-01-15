@@ -33,7 +33,7 @@ kernel void ELLPACK_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *
 			tmp += value*rhs;
 #endif
 		}
-		if (options & GHOST_OPTION_AXPY)
+		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] += tmp;
 		else 
 			lhs[i] = tmp;
@@ -84,7 +84,7 @@ kernel void ELLPACKT_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t 
 #endif
 
 		if (idb==0) {
-			if (options & GHOST_OPTION_AXPY)
+			if (options & GHOST_SPMVM_AXPY)
 				lhs[i] += shared[get_local_id(0)*T]+shared[get_local_id(0)*T+1];
 			else 
 				lhs[i] = shared[get_local_id(0)*T]+shared[get_local_id(0)*T+1];

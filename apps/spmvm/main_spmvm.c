@@ -36,7 +36,7 @@ int main( int argc, char* argv[] )
 	ghost_vdat_t mytol;
 #endif
 
-	int options = GHOST_OPTION_AXPY; // TODO remote kernel immer axpy
+	int options = GHOST_SPMVM_AXPY; // TODO remote kernel immer axpy
 	int kernels[] = {GHOST_MODE_NOMPI,
 		GHOST_MODE_VECTORMODE,
 		GHOST_MODE_GOODFAITH,

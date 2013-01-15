@@ -904,7 +904,7 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 	/****************************************************************************
 	 *******        Setup the variant using local/non-local arrays        *******
 	 ***************************************************************************/
-	if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) { // split computation
+	if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
 
 
 		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;

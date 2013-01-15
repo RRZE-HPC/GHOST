@@ -141,7 +141,7 @@ void ghost_printOptionsInfo(int options)
 	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
 
 	ghost_printHeader("Options");
-	ghost_printLine("Equation",NULL,"%s",options&GHOST_OPTION_AXPY?"y <- y+A*x":"y <- A*x");
+	ghost_printLine("Equation",NULL,"%s",options&GHOST_SPMVM_AXPY?"y <- y+A*x":"y <- A*x");
 	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
 	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
 	if (pin)
@@ -376,7 +376,7 @@ void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx
 				hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]];
 		
 				if (i!=col[j]) {	
-					if (spmvmOptions & GHOST_OPTION_AXPY) { 
+					if (spmvmOptions & GHOST_SPMVM_AXPY) { 
 #pragma omp atomic
 						res[col[j]] += (ghost_vdat_t)val[j] * rhs[i];
 					} else {
@@ -386,7 +386,7 @@ void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx
 				}
 
 			}
-			if (spmvmOptions & GHOST_OPTION_AXPY) {
+			if (spmvmOptions & GHOST_SPMVM_AXPY) {
 				res[i] += hlp1;
 			} else {
 				res[i] = hlp1;
@@ -405,7 +405,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 		for (j=rpt[i]; j<rpt[i+1]; j++){
 			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; // TODO do not multiply with zero if different datatypes 
 		}
-		if (spmvmOptions & GHOST_OPTION_AXPY) 
+		if (spmvmOptions & GHOST_SPMVM_AXPY) 
 			res[i] += hlp1;
 		else
 			res[i] = hlp1;

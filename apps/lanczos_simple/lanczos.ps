@@ -80,7 +80,7 @@ int main( int argc, char* argv[] )
 
 	int iteration, nIter = 500;
 	char *matrixPath = argv[1];
-	int options = GHOST_OPTION_AXPY;
+	int options = GHOST_SPMVM_AXPY;
 	ghost_mtraits_t trait = {.format="CRS",
 		.flags=GHOST_SPM_DEFAULT,
 		.aux=NULL};

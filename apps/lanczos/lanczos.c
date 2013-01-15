@@ -195,7 +195,7 @@ int main( int argc, char* argv[] )
 	int nIter = 1000;
 
 	// keep result vector on devic and eperform y <- y + A*x
-	int options = GHOST_OPTION_KEEPRESULT | GHOST_OPTION_AXPY;
+	int options = GHOST_SPMVM_KEEPRESULT | GHOST_SPMVM_AXPY;
 
 	ghost_mtraits_t trait = {.format="CRS", .flags=GHOST_SPM_DEFAULT, .aux = NULL};
 	ghost_mtraits_t traits[3] = {trait,trait,trait};

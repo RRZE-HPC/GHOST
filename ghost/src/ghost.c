@@ -358,7 +358,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		DEBUG_LOG(1,"Creating vector on OpenCL device");
 		int flag;
 		if (flags & GHOST_VEC_LHS) {
-			if (options & GHOST_OPTION_AXPY)
+			if (options & GHOST_SPMVM_AXPY)
 				flag = CL_MEM_READ_WRITE;
 			else
 				flag = CL_MEM_WRITE_ONLY;
@@ -418,8 +418,8 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{ // distributed matrix
 #ifdef MPI
-		if (!(options & GHOST_OPTION_NO_SPLIT_KERNELS)) {
-			if (!(options & GHOST_OPTION_NO_COMBINED_KERNELS)) {
+		if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) {
+			if (!(options & GHOST_OPTION_NO_COMBINED_SOLVERS)) {
 				if (nTraits != 3) {
 					ABORT("The number of traits has to be THREE (is: %d) if all distributed kernels are enabled",nTraits);
 				}

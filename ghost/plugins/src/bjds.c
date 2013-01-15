@@ -423,7 +423,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		}
 		for (i=0; i<BJDS_LEN; i++)
 		{
-			if (options & GHOST_OPTION_AXPY)
+			if (options & GHOST_SPMVM_AXPY)
 				lhs->val[c*BJDS_LEN+i] += tmp[i];
 			else
 				lhs->val[c*BJDS_LEN+i] = tmp[i];
@@ -454,7 +454,7 @@ static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 			rhs    = _mm_loadh_pd(rhs,&invec->val[(BJDS(mat)->col[offs++])]);
 			tmp    = _mm_add_pd(tmp,_mm_mul_pd(val,rhs));           // accumulate
 		}
-		if (options & GHOST_OPTION_AXPY) {
+		if (options & GHOST_SPMVM_AXPY) {
 			_mm_store_pd(&lhs->val[c*BJDS_LEN],_mm_add_pd(tmp,_mm_load_pd(&lhs->val[c*BJDS_LEN])));
 		} else {
 			_mm_stream_pd(&lhs->val[c*BJDS_LEN],tmp);
@@ -493,7 +493,7 @@ static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 			rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
 			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
 		}
-		if (spmvmOptions & GHOST_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_SPMVM_AXPY) {
 			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm256_stream_pd(&res->val[c*BJDS_LEN],tmp);
@@ -535,7 +535,7 @@ static void BJDS_kernel_MIC(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 
 			offs += 8;
 		}
-		if (spmvmOptions & GHOST_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_SPMVM_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		} else {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);
@@ -576,7 +576,7 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 
 			offs += 8;
 		}
-		if (spmvmOptions & GHOST_OPTION_AXPY) {
+		if (spmvmOptions & GHOST_SPMVM_AXPY) {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
 		} else {

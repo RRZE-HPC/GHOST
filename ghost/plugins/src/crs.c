@@ -826,7 +826,7 @@ lhs->val[col] += val * rhs->val[i];  // FIXME non-axpy case maybe doesnt work
 }
 
 }
-if (options & GHOST_OPTION_AXPY) {
+if (options & GHOST_SPMVM_AXPY) {
 lhs->val[i] += hlp1;
 } else {
 lhs->val[i] = hlp1;
@@ -844,7 +844,7 @@ lhs->val[i] = hlp1;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * rhs->val[cr->col[j]];
 		}
-		if (options & GHOST_OPTION_AXPY) 
+		if (options & GHOST_SPMVM_AXPY) 
 			lhs->val[i] += hlp1;
 		else
 			lhs->val[i] = hlp1;

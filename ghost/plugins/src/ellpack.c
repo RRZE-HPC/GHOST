@@ -363,7 +363,7 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 			tmp += (ghost_vdat_t)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
 				rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
-		if (options & GHOST_OPTION_AXPY)
+		if (options & GHOST_SPMVM_AXPY)
 			lhs->val[i] += tmp;
 		else
 			lhs->val[i] = tmp;

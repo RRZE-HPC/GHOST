@@ -253,7 +253,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, gho
  *
  * Arguments:
  *   - ghost_vec_t *res 
- *     The result vector. Its values are being accumulated if GHOST_OPTION_AXPY
+ *     The result vector. Its values are being accumulated if GHOST_SPMVM_AXPY
  *     is defined.  
  *   - ghost_comm_t *lcrp
  *     The local CRS matrix part.
