@@ -1,9 +1,9 @@
 *.swp
-spmvm_type.h
 pbshosts*
 *.o
 *.a
 *.so
+*.tar
 obj/
 jobscripts/
 bench/
