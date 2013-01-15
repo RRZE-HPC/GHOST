@@ -5,14 +5,6 @@
 /*----  SpMVM modes  ---------------------------------------------------------*/
 /******************************************************************************/
 #define GHOST_NUM_MODES       (4)
-#define GHOST_MODE_NOMPI      (0)
-#define GHOST_MODE_VECTORMODE (1)
-#define GHOST_MODE_GOODFAITH  (2)
-#define GHOST_MODE_TASKMODE   (3)
-
-#define GHOST_MODES_COMBINED (GHOST_MODE_NOMPI | GHOST_MODE_VECTORMODE)
-#define GHOST_MODES_SPLIT    (GHOST_MODE_GOODFAITH | GHOST_MODE_TASKMODE)
-#define GHOST_MODES_ALL      (GHOST_MODES_COMBINED | GHOST_MODES_SPLIT)
 
 #define GHOST_FULL_MAT_IDX   0
 #define GHOST_LOCAL_MAT_IDX  1
@@ -71,6 +63,19 @@
 #define GHOST_SPMVM_AXPY       (0x1<<0) // perform y = y+A*x instead of y = A*x
 #define GHOST_SPMVM_RHSPRESENT (0x1<<1) // assume that RHS vector is on device
 #define GHOST_SPMVM_KEEPRESULT (0x1<<2) // keep result on the device
+#define GHOST_SPMVM_MODE_NOMPI      (0x1<<3)
+#define GHOST_SPMVM_MODE_VECTORMODE (0x1<<4)
+#define GHOST_SPMVM_MODE_GOODFAITH  (0x1<<5)
+#define GHOST_SPMVM_MODE_TASKMODE   (0x1<<6)
+
+#define GHOST_SPMVM_MODE_NOMPI_IDX      0
+#define GHOST_SPMVM_MODE_VECTORMODE_IDX 1
+#define GHOST_SPMVM_MODE_GOODFAITH_IDX  2
+#define GHOST_SPMVM_MODE_TASKMODE_IDX   3
+
+#define GHOST_SPMVM_MODES_COMBINED (GHOST_SPMVM_MODE_NOMPI | GHOST_SPMVM_MODE_VECTORMODE)
+#define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
+#define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_COMBINED | GHOST_SPMVM_MODES_SPLIT)
 /******************************************************************************/
 
 

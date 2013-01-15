@@ -432,20 +432,18 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 	}
 }
 
-char * ghost_modeName(int mode) 
+char * ghost_modeName(int spmvmOptions) 
 {
-	switch (mode) {
-		case GHOST_MODE_NOMPI:
+	if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
 			return "non-MPI";
-		case GHOST_MODE_VECTORMODE:
+	if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
 			return "vector mode";
-		case GHOST_MODE_GOODFAITH:
+	if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
 			return "g/f hybrid";
-		case GHOST_MODE_TASKMODE:
+	if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
 			return "task mode";
-		default:
 			return "invalid";
-	}
+
 }
 
 int ghost_symmetryValid(int symmetry)
@@ -720,14 +718,14 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 }
 
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int kernel, int options, int nIter)
+		int spmvmOptions, int nIter)
 {
 	int it;
 	double time = 0;
 	double oldtime=1e9;
 
 	ghost_solver_t solver = NULL;
-	solver = context->solvers[kernel];
+	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
 
 	if (!solver)
 		return -1.0;
@@ -741,7 +739,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 	for( it = 0; it < nIter; it++ ) {
 		time = ghost_wctime();
-		solver(res,context,invec,options);
+		solver(res,context,invec,spmvmOptions);
 
 #ifdef OPENCL
 		CL_barrier();
@@ -759,9 +757,9 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	CL_downloadVector(res);
 #endif
 
-	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
+	if ( spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
 		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
-	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
+	} else if ( spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
 		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
 		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
@@ -775,3 +773,16 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 }
 
+int ghost_getSpmvmModeIdx(int spmvmOptions)
+{
+	if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
+		return GHOST_SPMVM_MODE_NOMPI_IDX;
+	if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
+		return GHOST_SPMVM_MODE_VECTORMODE_IDX;
+	if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
+		return GHOST_SPMVM_MODE_GOODFAITH_IDX;
+	if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
+		return GHOST_SPMVM_MODE_TASKMODE_IDX;
+
+	return 0;
+}

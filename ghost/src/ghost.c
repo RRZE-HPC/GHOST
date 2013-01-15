@@ -146,7 +146,7 @@ static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
 #endif
 #endif
 
-int ghost_init(int argc, char **argv, int spmvmOptions)
+int ghost_init(int argc, char **argv, int ghostOptions)
 {
 	int me;
 
@@ -195,14 +195,14 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 	UNUSED(argc);
 	UNUSED(argv);
 	me = 0;
-	spmvmOptions |= GHOST_OPTION_SERIAL_IO; // important for createMatrix()
+	ghostOptions |= GHOST_OPTION_SERIAL_IO; // important for createMatrix()
 
 #endif // ifdef MPI
 
-	if (spmvmOptions & GHOST_OPTION_PIN || spmvmOptions & GHOST_OPTION_PIN_SMT) {
+	if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
 		int nCores;
 		int nPhysCores = ghost_getNumberOfPhysicalCores();
-		if (spmvmOptions & GHOST_OPTION_PIN)
+		if (ghostOptions & GHOST_OPTION_PIN)
 			nCores = nPhysCores;
 		else
 			nCores = ghost_getNumberOfHwThreads();
@@ -214,7 +214,7 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 			int error;
 			int coreNumber;
 
-			if (spmvmOptions & GHOST_OPTION_PIN_SMT)
+			if (ghostOptions & GHOST_OPTION_PIN_SMT)
 				coreNumber = omp_get_thread_num()/2+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
 			else
 				coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
@@ -244,7 +244,7 @@ int ghost_init(int argc, char **argv, int spmvmOptions)
 	CL_init();
 #endif
 
-	options = spmvmOptions;
+	options = ghostOptions;
 
 
 
@@ -357,7 +357,8 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 #ifdef OPENCL
 		DEBUG_LOG(1,"Creating vector on OpenCL device");
 		int flag;
-		if (flags & GHOST_VEC_LHS) {
+		flag = CL_MEM_READ_WRITE;
+/*		if (flags & GHOST_VEC_LHS) {
 			if (options & GHOST_SPMVM_AXPY)
 				flag = CL_MEM_READ_WRITE;
 			else
@@ -366,7 +367,8 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 			flag = CL_MEM_READ_ONLY;
 		} else {
 			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-		}
+		}*/
+		// TODO
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
 #endif
@@ -431,10 +433,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		else
 			ghost_createDistributedContext(context, matrixPath, options, traits);
 
-		context->solvers[GHOST_MODE_NOMPI] = NULL;
-		context->solvers[GHOST_MODE_VECTORMODE] = &hybrid_kernel_I;
-		context->solvers[GHOST_MODE_GOODFAITH] = &hybrid_kernel_II;
-		context->solvers[GHOST_MODE_TASKMODE] = &hybrid_kernel_III;
+		context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = NULL;
+		context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
+		context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
+		context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
 #endif
 	} 
 	else 
@@ -456,10 +458,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));
 
-		context->solvers[GHOST_MODE_NOMPI] = &ghost_solver_nompi;
-		context->solvers[GHOST_MODE_VECTORMODE] = NULL;
-		context->solvers[GHOST_MODE_GOODFAITH] = NULL;
-		context->solvers[GHOST_MODE_TASKMODE] = NULL;
+		context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
+		context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = NULL;
+		context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = NULL;
+		context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 	}
 
 	//#endif
@@ -527,19 +529,16 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 
 }
 
-
-
 int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int kernel)
+		int spmvmOptions)
 {
-
 	ghost_solver_t solver = NULL;
-	solver = context->solvers[kernel];
+	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
 
 	if (!solver)
 		return GHOST_FAILURE;
 
-	solver(res,context,invec,options);
+	solver(res,context,invec,spmvmOptions);
 
 	return GHOST_SUCCESS;
 }

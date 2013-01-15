@@ -13,29 +13,29 @@ int main( int argc, char* argv[] )
 {
 	int nIter = 100;
 	double time;
-	int mode = GHOST_MODE_NOMPI;
-	int options = GHOST_SPMVM_AXPY;
+	int ghostOptions = GHOST_OPTION_NONE;
+	int spmvmOptions = GHOST_SPMVM_AXPY | GHOST_SPMVM_MODE_NOMPI;
 	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .aux = NULL};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
 	ghost_vec_t *rhs;
 
-	ghost_init(argc,argv,options);
+	ghost_init(argc,argv,ghostOptions);
 	ctx = ghost_createContext(argv[1],&trait,1,GHOST_CONTEXT_DEFAULT);
 	rhs = ghost_createVector(ctx,GHOST_VEC_RHS,rhsVal); // RHS vec
 	lhs = ghost_createVector(ctx,GHOST_VEC_LHS,NULL);   // LHS vec (=0)
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
-	ghost_printOptionsInfo(options);
+	ghost_printOptionsInfo(ghostOptions);
 	ghost_printContextInfo(ctx);
 	
 	ghost_printHeader("Performance");
 	
-	time = ghost_bench_spmvm(lhs,ctx,rhs,mode,options,nIter);
+	time = ghost_bench_spmvm(lhs,ctx,rhs,spmvmOptions,nIter);
 	if (time > 0)
-		ghost_printLine(ghost_modeName(mode),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
+		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 
 	ghost_printFooter();
 

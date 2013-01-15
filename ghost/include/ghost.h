@@ -261,10 +261,10 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, gho
  *     The left hand side vector.
  *   - int kernel
  *     The kernel which should be used. This has to be one out of
- *       + GHOST_MODE_NOMPI
- *       + GHOST_MODE_VECTORMODE
- *       + GHOST_MODE_GOODFAITH
- *       + GHOST_MODE_TASKMODE
+ *       + GHOST_SPMVM_MODE_NOMPI
+ *       + GHOST_SPMVM_MODE_VECTORMODE
+ *       + GHOST_SPMVM_MODE_GOODFAITH
+ *       + GHOST_SPMVM_MODE_TASKMODE
  *   - int nIter
  *     The number of iterations to run.
  *     

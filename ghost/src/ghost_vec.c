@@ -104,9 +104,9 @@ void ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec, ghost_vec_
 	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
 	int me = ghost_getRank();
-	if ( 0x1<<kernel & GHOST_MODES_COMBINED)  {
+	if ( 0x1<<kernel & GHOST_SPMVM_MODES_COMBINED)  {
 		ghost_permuteVector(vec->val,context->fullMatrix->invRowPerm,context->communicator->lnrows[me]);
-	} else if ( 0x1<<kernel & GHOST_MODES_SPLIT ) {
+	} else if ( 0x1<<kernel & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
 		ghost_permuteVector(vec->val,context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
 		ghost_permuteVector(vec->val,context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);

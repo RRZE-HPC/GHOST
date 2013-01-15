@@ -53,7 +53,7 @@ static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t
 		ghost_mdat_t *alpha, ghost_mdat_t *beta)
 {
 	vecscal(vnew,-*beta,context->lnrows(context));
-	ghost_spmvm(vnew, context, vold, GHOST_MODE_NOMPI);
+	ghost_spmvm(vnew, context, vold, GHOST_SPMVM_MODE_NOMPI|GHOST_SPMVM_AXPY);
 	dotprod(vnew,vold,alpha,context->lnrows(context));
 	axpy(vnew,vold,-(*alpha),context->lnrows(context));
 	dotprod(vnew,vnew,beta,context->lnrows(context));
@@ -79,12 +79,14 @@ int main( int argc, char* argv[] )
 
 	int iteration, nIter = 500;
 	char *matrixPath = argv[1];
-	int options = GHOST_SPMVM_AXPY;
+	
+	int ghostOptions = GHOST_OPTION_NONE;
+	
 	ghost_mtraits_t trait = {.format="CRS",
 		.flags=GHOST_SPM_DEFAULT,
 		.aux=NULL};
 
-	ghost_init(argc,argv,options);       // basic initialization
+	ghost_init(argc,argv,ghostOptions);       // basic initialization
 	
 	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_GLOBAL);
 	vnew  = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);

@@ -3,8 +3,15 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
 
+
+ifeq ($(strip $(COMPILER)),GCC)
 FC	= gfortran
-FFLAGS  =-O3 -openmp  
+FFLAGS  =-O3 -openmp
+endif
+ifeq ($(strip $(COMPILER)),ICC)
+FC	= ifort
+FFLAGS  =-O3 -fopenmp
+endif
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost

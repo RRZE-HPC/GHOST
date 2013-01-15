@@ -153,8 +153,8 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 
-char * ghost_workdistName(int options);
-char * ghost_modeName(int mode);
+char * ghost_workdistName(int ghostOptions);
+char * ghost_modeName(int spmvmOptions);
 char * ghost_datatypeName(int datatype);
 char * ghost_symmetryName(int symmetry);
 
@@ -176,6 +176,8 @@ size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
 
+int ghost_getSpmvmModeIdx(int spmvmOptions);
+
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int kernel, int options, int nIter);
+		int spmvmOptions, int nIter);
 #endif
