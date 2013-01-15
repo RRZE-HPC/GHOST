@@ -2,7 +2,7 @@
 c
       integer i,j,l,m,n,ii,mml,ierr
       real d(n),e(n)
-      real b,c,f,g,p,r,s,tst1,tst2,pythag
+      real b,c,f,g,p,r,s,tst1,tst2,pythagf
 c
 c     this subroutine is a translation of the algol procedure imtql1,
 c     num. math. 12, 377-383(1968) by martin and wilkinson,
@@ -79,7 +79,7 @@ c     .......... for i=m-1 step -1 until l do -- ..........
             i = m - ii
             f = s * e(i)
             b = c * e(i)
-            r = pythag(f,g)
+            r = pythagf(f,g)
             e(i+1) = r
             if (r .eq. 0.0e0) go to 210
             s = f / r

@@ -141,7 +141,6 @@ void ghost_printOptionsInfo(int options)
 	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
 
 	ghost_printHeader("Options");
-	ghost_printLine("Equation",NULL,"%s",options&GHOST_SPMVM_AXPY?"y <- y+A*x":"y <- A*x");
 	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
 	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
 	if (pin)

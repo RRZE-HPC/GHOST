@@ -12,7 +12,7 @@
 #include <mpi.h>
 #endif
 
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
 extern int optind;
 
@@ -21,14 +21,14 @@ static ghost_vdat_t rhsVal (int i)
 #ifdef GHOST_VEC_COMPLEX
 	return (ghost_vdat_el_t)(i+1.0) + I*(ghost_vdat_el_t)(i+1.5);
 #else
-	return i+1.0 ;
+	return i+(ghost_vdat_t)1.0 ;
 #endif
 }
 
 int main( int argc, char* argv[] ) 
 {
 
-	int  kernel, nIter = 50;
+	int  mode, nIter = 50;
 	double time;
 
 #ifdef CHECK
@@ -36,13 +36,14 @@ int main( int argc, char* argv[] )
 	ghost_vdat_t mytol;
 #endif
 
-	int options = GHOST_SPMVM_AXPY; // TODO remote kernel immer axpy
-	int kernels[] = {GHOST_MODE_NOMPI,
-		GHOST_MODE_VECTORMODE,
-		GHOST_MODE_GOODFAITH,
-		GHOST_MODE_TASKMODE};
-	int nKernels = sizeof(kernels)/sizeof(int);
+	int ghostOptions = GHOST_SPMVM_AXPY; // TODO remote mode immer axpy
+	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
+		GHOST_SPMVM_MODE_VECTORMODE,
+		GHOST_SPMVM_MODE_GOODFAITH,
+		GHOST_SPMVM_MODE_TASKMODE};
+	int nModes = sizeof(modes)/sizeof(int);
 
+	int spmvmOptions = GHOST_SPMVM_AXPY;
 
 	ghost_vec_t *lhs; // lhs vector
 	ghost_vec_t *rhs; // rhs vector
@@ -67,25 +68,27 @@ int main( int argc, char* argv[] )
 	ghost_mtraits_t traits[3] = {trait,trait,trait};
 
 
-	ghost_init(argc,argv,options);       // basic initialization
+	ghost_init(argc,argv,ghostOptions);       // basic initialization
 	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DEFAULT);
 	lhs   = ghost_createVector(context,GHOST_VEC_LHS,NULL);
 	rhs   = ghost_createVector(context,GHOST_VEC_RHS,rhsVal);
 
 #ifdef CHECK	
-	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,options);	
+	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,ghostOptions);	
 #endif
+	ghost_printSysInfo();
+	ghost_printGhostInfo();
+	ghost_printOptionsInfo(ghostOptions);
+	ghost_printContextInfo(context);
 
-	ghost_printEnvInfo();
-	ghost_printContextInfo(context,options);
 	ghost_printHeader("Performance");
 
-	for (kernel=0; kernel < nKernels; kernel++){
+	for (mode=0; mode < nModes; mode++){
 
-		time = ghost_spmvm(lhs,context,rhs,kernels[kernel],nIter);
+		time = ghost_bench_spmvm(lhs,context,rhs,spmvmOptions|modes[mode],nIter);
 
 		if (time < 0.) {
-			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"SKIPPED");
+			ghost_printLine(ghost_modeName(modes[mode]),NULL,"SKIPPED");
 			continue;
 		}
 
@@ -111,13 +114,13 @@ int main( int argc, char* argv[] )
 		totalerrors = errcount;
 #endif
 		if (totalerrors)
-			ghost_printLine(ghost_modeName(kernels[kernel]),NULL,"FAILED");
+			ghost_printLine(ghost_modeName(modes[mode]),NULL,"FAILED");
 		else
-			ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
+			ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
 					FLOPS_PER_ENTRY*1.e-9*
 					(double)context->gnnz(context)/time);
 #else
-		ghost_printLine(ghost_modeName(kernels[kernel]),"GF/s","%f",
+		ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
 				FLOPS_PER_ENTRY*1.e-9*
 				(double)context->gnnz(context)/time);
 #endif

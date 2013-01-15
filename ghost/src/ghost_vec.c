@@ -2,6 +2,7 @@
 #include "ghost_util.h"
 
 #include <stdio.h>
+#include <string.h>
 
 void ghost_zeroVector(ghost_vec_t *vec) 
 {
@@ -146,7 +147,7 @@ void ghost_normalizeVector( ghost_vec_t *vec)
 	for (i=0; i<vec->nrows; i++)	
 		sum += vec->val[i]*vec->val[i];
 
-	ghost_vdat_t f = (ghost_vdat_t)1/VSQRT(VABS(sum));
+	ghost_vdat_t f = (ghost_vdat_t)1./VSQRT(VABS(sum));
 
 	for (i=0; i<vec->nrows; i++)	
 		vec->val[i] *= f;
@@ -209,3 +210,12 @@ int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b, double tol)
 	return 1;
 
 }
+
+ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
+{
+	ghost_vec_t *new = ghost_newVector(src->nrows, src->flags);
+	memcpy(new->val, src->val, src->nrows*sizeof(ghost_vdat_t));
+
+	return new;
+}
+

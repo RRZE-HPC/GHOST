@@ -13,5 +13,6 @@ void         ghost_collectVectors(ghost_context_t *context, ghost_vec_t *vec,	gh
 void         ghost_freeVector( ghost_vec_t* const vec );
 void         ghost_permuteVector( ghost_vdat_t* vec, ghost_vidx_t* perm, ghost_vidx_t len);
 int          ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b, double tol);
+ghost_vec_t *ghost_cloneVector(ghost_vec_t *src);
 
 #endif

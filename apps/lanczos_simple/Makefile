@@ -17,6 +17,13 @@ LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost
 
+
+ifeq ($(strip $(MATDATA)),s)
+	OBJS = imtql1f.o pythagf.o
+else
+	OBJS = imtql1.o pythag.o
+endif
+
 %.o: %.c ../../ghost/config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
@@ -26,7 +33,7 @@ LIBS+=  -lghost
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
 
-$(PREFIX)lanczos.x: lanczos.o imtql1.o pythag.o
+lanczos.x: lanczos.o $(OBJS)
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
 

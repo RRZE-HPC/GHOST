@@ -1,21 +1,13 @@
-include ../../libspmvm/config.mk
-include ../../libspmvm/include_$(strip $(COMPILER)).mk
+include ../../ghost/config.mk
+include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
 
-CUDA_INC=-I$(CUDA_HOME)/include
-CUDA_LIB=-L$(CUDA_HOME)/lib64 -L$(CUDA_DRIVERDIR)/lib
-
-GHOSTPATH=$(HOME)/local
-
-LPATH+= -L$(strip $(GHOSTPATH))/lib
-IPATH+= -I$(strip $(GHOSTPATH))/include
-LIBS+=-l$(PREFIX)ghost
-
 .PHONY:clean distclean all
 
-#CC=icc
-#CFLAGS= -g -O3 -fno-alias -openmp -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981 
+LPATH+= -L$(strip $(GHOSTPATH))/lib
+IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
+LIBS+=  -lghost
 
 ifeq ($(WDDT),1)
 LIBS+= $(DDT)/lib/64/libdmallocth.a 
@@ -34,7 +26,6 @@ endif
 
 ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
-PREFIX= cl
 #LIBS  += -lintelocl #-lOpenCL
 LIBS  += -lOpenCL
 IPATH += ${CUDA_INC}
@@ -47,7 +38,7 @@ endif
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< $(LIBS) 
 
 
-$(PREFIX)spmvm.x: main_spmvm.o
+spmvm.x: main_spmvm.o
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
 

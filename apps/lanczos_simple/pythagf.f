@@ -15,6 +15,6 @@ c
          p = u*p
          r = (s/u)**2 * r
       go to 10
-   20 pythag = p
+   20 pythagf = p
       return
       end
