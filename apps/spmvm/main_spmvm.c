@@ -28,7 +28,7 @@ static ghost_vdat_t rhsVal (int i)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 50;
+	int  mode, nIter = 100;
 	double time;
 
 #ifdef CHECK

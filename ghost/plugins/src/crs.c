@@ -131,6 +131,8 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 {
 	DEBUG_LOG(1,"Creating CRS matrix");
 	CR_TYPE *cr = (CR_TYPE*)crs;
+	ghost_midx_t i,j;
+
 
 	mat->data = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"CR(mat)");
 	CR(mat)->nrows = cr->nrows;
@@ -141,11 +143,17 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	CR(mat)->col = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"col");
 	CR(mat)->val = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"val");
 
-	memcpy(CR(mat)->rpt,cr->rpt,(cr->nrows+1)*sizeof(ghost_midx_t));
-	memcpy(CR(mat)->col,cr->col,cr->nEnts*sizeof(ghost_midx_t));
-	memcpy(CR(mat)->val,cr->val,cr->nEnts*sizeof(ghost_mdat_t));
+#pragma omp parallel for schedule(runtime) private(j)
+	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		CR(mat)->rpt[i] = cr->rpt[i];
 
-	// TODO OpenCL
+		for(j = cr->rpt[i]; j < cr->rpt[i+1] ; j++) {
+			CR(mat)->col[j] = cr->col[j];
+			CR(mat)->val[j] = cr->val[j];
+		}
+	}
+
+	// TODO OpenCL upload
 
 }
 	

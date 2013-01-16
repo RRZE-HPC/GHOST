@@ -181,19 +181,22 @@ void ghost_printContextInfo(ghost_context_t *context)
 	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
 	ghost_printLine("Global CRS size","MB","%lu",ws);
-
-	ghost_printLine("Symmetry (full matrix)",NULL,"%s",ghost_symmetryName(context->fullMatrix->symmetry));
-	ghost_printLine("Full   host matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
+	
+	ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
-		ghost_printLine("Local  host matrix format",NULL,"%s",context->localMatrix->formatName(context->fullMatrix));
-		ghost_printLine("Remote host matrix format",NULL,"%s",context->remoteMatrix->formatName(context->fullMatrix));
+		ghost_printLine("Local  matrix format",NULL,"%s",context->localMatrix->formatName(context->fullMatrix));
+		ghost_printLine("Remote matrix format",NULL,"%s",context->remoteMatrix->formatName(context->fullMatrix));
+		ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(context->localMatrix->symmetry));
+	} else {
+		ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(context->fullMatrix->symmetry));
 	}
-	ghost_printLine("Full   host matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
+
+	ghost_printLine("Full   matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
-		ghost_printLine("Local  host matrix size (rank 0)","MB","%u",context->localMatrix->byteSize(context->localMatrix)/(1024*1024));
-		ghost_printLine("Remote host matrix size (rank 0)","MB","%u",context->remoteMatrix->byteSize(context->remoteMatrix)/(1024*1024));
+		ghost_printLine("Local  matrix size (rank 0)","MB","%u",context->localMatrix->byteSize(context->localMatrix)/(1024*1024));
+		ghost_printLine("Remote matrix size (rank 0)","MB","%u",context->remoteMatrix->byteSize(context->remoteMatrix)/(1024*1024));
 	}
 
 	if (context->flags & GHOST_CONTEXT_GLOBAL)

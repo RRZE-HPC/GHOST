@@ -181,23 +181,17 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 {
 	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
-	/* Counting and auxilliary variables */
 	ghost_midx_t i;
 
 	/* Processor rank (MPI-process) */
 	int me = ghost_getRank(); 
 
-	ghost_comm_t *lcrp;
+	ghost_comm_t *comm;
 
-	ghost_mat_t *CRSfullMatrix/*, *CRSlocalMatrix, *CRSremoteMatrix*/;
+	ghost_mat_t *CRSfullMatrix;
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
-/*	MPI_Info info = MPI_INFO_NULL;
-	MPI_File file_handle;
-	MPI_Offset offset_in_file;
-	MPI_Status status;
-*/
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
 	 ***************************************************************************/
@@ -206,263 +200,83 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	DEBUG_LOG(1,"Entering context_communication_parallel");
 
-	lcrp = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "lcrp");
-	context->communicator = lcrp;
+	comm = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "comm");
+	context->communicator = comm;
 
-
-/*	context->fullMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	context->localMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	context->remoteMatrix = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"fullMatrix");
-	
-	*context->fullMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[0]);
-	*context->localMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[1]);
-	*context->remoteMatrix = (ghost_mat_t)MATRIX_INIT(.trait=traits[2]);
-*/
 	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
 	CRSfullMatrix = ghost_initMatrix(&crsTraits);
-//	CRSlocalMatrix = ghost_initMatrix(&crsTraits);
-//	CRSremoteMatrix = ghost_initMatrix(&crsTraits);
-	UNUSED(traits);
-/*	context->fullMatrix = ghost_initMatrix(&traits[0]);
-	context->localMatrix = ghost_initMatrix(&traits[1]);
-	context->remoteMatrix = ghost_initMatrix(&traits[2]);*/
 
 	CRS_readRpt_args_t args = {.mat=CRSfullMatrix,.matrixPath=matrixPath};
-	CRSfullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_HEADER](&args);  // read header
 	
+	CRSfullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_HEADER](&args);  // read header
+
 	if (ghost_getRank() == 0) {
 		CRSfullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_RPT](&args);  // read rpt
 	}
 	
-	lcrp->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->wishes" ); 
-	lcrp->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->dues" ); 
+	comm->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->wishes" ); 
+	comm->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->dues" ); 
 
-	ghost_createDistribution(CRSfullMatrix->data,options,lcrp);
+	ghost_createDistribution(CRSfullMatrix->data,options,comm);
 
-	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",lcrp->lnrows[me]);
-	
-/*
-	int *tmp = (int *)malloc((CRSfullMatrix->nrows(CRSfullMatrix)+1)*sizeof(int));
-	if (ghost_getRank() == 0) {
-
-		memcpy(tmp,((CR_TYPE *)(CRSfullMatrix->data))->rpt,(CRSfullMatrix->nrows(CRSfullMatrix)+1)*sizeof(int));
-	}
-	((CR_TYPE *)(CRSfullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));*/
+	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",comm->lnrows[me]);
 	
 	if (ghost_getRank() != 0) {
-		((CR_TYPE *)(CRSfullMatrix->data))->rpt = (ghost_midx_t *)malloc((lcrp->lnrows[me]+1)*sizeof(int));
-//#pragma omp parallel for schedule(runtime)
-//		for (i=0; i<lcrp->lnrows[me]+1; i++) ((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] = 0;
+		((CR_TYPE *)(CRSfullMatrix->data))->rpt = (ghost_midx_t *)malloc((comm->lnrows[me]+1)*sizeof(int));
 	}
 
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
 	MPI_safecall(MPI_Scatterv(
 				((CR_TYPE *)(CRSfullMatrix->data))->rpt, 
-			//	tmp, 
-				(int *)lcrp->lnrows, 
-				(int *)lcrp->lfRow, 
+				(int *)comm->lnrows, 
+				(int *)comm->lfRow, 
 				MPI_INTEGER,
 				((CR_TYPE *)(CRSfullMatrix->data))->rpt,
-				(int)lcrp->lnrows[me],
+				(int)comm->lnrows[me],
 				MPI_INTEGER, 0, MPI_COMM_WORLD));
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));	
 
 	DEBUG_LOG(1,"Adjusting row pointers");
 
-	for (i=0;i<lcrp->lnrows[me]+1;i++)
-		((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] =  ((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] - lcrp->lfEnt[me]; 
+	for (i=0;i<comm->lnrows[me]+1;i++)
+		((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] =  ((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] - comm->lfEnt[me]; 
 
 	/* last entry of row_ptr holds the local number of entries */
-	((CR_TYPE *)(CRSfullMatrix->data))->rpt[lcrp->lnrows[me]] = lcrp->lnEnts[me]; 
+	((CR_TYPE *)(CRSfullMatrix->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me]; 
 		
-	DEBUG_LOG(1,"local rows          = %"PRmatIDX,lcrp->lnrows[me]);
-	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,lcrp->lfRow[me]);
-	DEBUG_LOG(1,"local entries          = %"PRmatNNZ,lcrp->lnEnts[me]);
-	DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,lcrp->lfEnt[me]);
+	DEBUG_LOG(1,"local rows          = %"PRmatIDX,comm->lnrows[me]);
+	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,comm->lfRow[me]);
+	DEBUG_LOG(1,"local entries          = %"PRmatNNZ,comm->lnEnts[me]);
+	DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,comm->lfEnt[me]);
 
 	CRS_readColValOffset_args_t cvargs = {
 		.mat=CRSfullMatrix,
 		.matrixPath=matrixPath,
-		.nEnts = lcrp->lnEnts[me],
-		.offsetEnts = lcrp->lfEnt[me],
-		.offsetRows = lcrp->lfRow[me],
-		.nRows = lcrp->lnrows[me],
+		.nEnts = comm->lnEnts[me],
+		.offsetEnts = comm->lfEnt[me],
+		.offsetRows = comm->lfRow[me],
+		.nRows = comm->lnrows[me],
 		.IOtype = GHOST_IO_STD};
 	CRSfullMatrix->extraFun[GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET](&cvargs); // read col and val
 
 	DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
-	((CR_TYPE *)(CRSfullMatrix->data))->nrows = lcrp->lnrows[me];
-	((CR_TYPE *)(CRSfullMatrix->data))->nEnts = lcrp->lnEnts[me];
-
-
-
-	/****************************************************************************
-	 *******   Allocate memory for matrix in distributed CRS storage      *******
-	 ***************************************************************************/
-
-	//CR_TYPE *fullCR;
-	//fullCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
-
-	//fullCR->val = (ghost_mdat_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_mdat_t ),"fullMatrix->val" );
-	//fullCR->col = (ghost_midx_t*) allocateMemory(lcrp->lnEnts[me]*sizeof( ghost_midx_t ),"fullMatrix->col" ); 
-	//fullCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"fullMatrix->rpt" ); 
-	//fullCR->nrows = lcrp->lnrows[me];
-	//fullCR->nEnts = lcrp->lnEnts[me];
-	//context->fullMatrix->data = fullCR;
-	//context->fullMatrix->nnz = lcrp->lnEnts[me];
-	//context->fullMatrix->nrows = lcrp->lnrows[me];
-
-	/****************************************************************************
-	 *******   Fill all fields with their corresponding values            *******
-	 ***************************************************************************/
-
-/*
-#pragma omp parallel for schedule(runtime)
-	for (i=0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = 0.0;
-
-#pragma omp parallel for schedule(runtime)
-	for (i=0; i<lcrp->lnEnts[me]; i++) fullCR->col[i] = 0.0;
-
-#pragma omp parallel for schedule(runtime)
-	for (i=0; i<lcrp->lnrows[me]; i++) fullCR->rpt[i] = 0.0;
-
-	DEBUG_LOG(1,"Opening file %s for parallel read-in",matrixPath);
-	MPI_safecall(MPI_File_open(MPI_COMM_WORLD, matrixPath, MPI_MODE_RDONLY, info, &file_handle));
-
-	int datatype;
-	MPI_safecall(MPI_File_seek(file_handle,0,MPI_SEEK_SET));
-	MPI_safecall(MPI_File_read(file_handle,&datatype,1,MPI_INTEGER,&status));
-
-	offset_in_file = (4+cr->nrows+1)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(int);
-	DEBUG_LOG(1,"Read col -- offset=%lu | %"PRmatNNZ,(size_t)offset_in_file,lcrp->lfEnt[me]);
-	MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-	MPI_safecall(MPI_File_read(file_handle, fullCR->col, lcrp->lnEnts[me], MPI_INTEGER, &status));
-
-	if (datatype != GHOST_MY_MDATATYPE) {
-		if (me==0) {
-			DEBUG_LOG(0,"Warning The library has been built for %s data but"
-					" the file contains %s data. Casting...",
-					ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
-		}
-		switch(datatype) {
-			case GHOST_DATATYPE_S:
-				{
-					float *tmp = (float *)allocateMemory(lcrp->lnEnts[me]*sizeof(float), "tmp");
-					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(float);
-					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
-					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_FLOAT, &status));
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
-					free(tmp);
-					break;
-				}
-			case GHOST_DATATYPE_D:
-				{
-					double *tmp = (double *)allocateMemory(lcrp->lnEnts[me]*sizeof(double), "tmp");
-					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(double);
-					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
-
-					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], MPI_DOUBLE, &status));
-					for (i = 0; i<lcrp->lnEnts[me]; i++)
-						fullCR->val[i] = (ghost_mdat_t) tmp[i];
-					free(tmp);
-					break;
-				}
-			case GHOST_DATATYPE_Z:
-				{
-					_Complex double *tmp = (_Complex double *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex double), "tmp");
-					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex double);
-					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
-
-					MPI_Datatype tmpDT;
-					MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&tmpDT));
-					MPI_safecall(MPI_Type_commit(&tmpDT));
-
-					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
-
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
-
-					free(tmp);
-					MPI_safecall(MPI_Type_free(&tmpDT));
-					break;
-				}
-			case GHOST_DATATYPE_C:
-				{
-					_Complex float *tmp = (_Complex float *)allocateMemory(lcrp->lnEnts[me]*sizeof(_Complex float), "tmp");
-					offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(_Complex float);
-					DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
-
-					MPI_Datatype tmpDT;
-					MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&tmpDT));
-					MPI_safecall(MPI_Type_commit(&tmpDT));
-
-					MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-					MPI_safecall(MPI_File_read(file_handle, tmp, lcrp->lnEnts[me], tmpDT, &status));
-
-					for (i = 0; i<lcrp->lnEnts[me]; i++) fullCR->val[i] = (ghost_mdat_t) tmp[i];
-
-					free(tmp);
-					MPI_safecall(MPI_Type_free(&tmpDT));
-					break;
-				}
-
-		}
-	} else {
-
-		offset_in_file = (4+cr->nrows+1)*sizeof(int) + (cr->nEnts)*sizeof(int) + (lcrp->lfEnt[me])*sizeof(ghost_mdat_t);
-		DEBUG_LOG(1,"Read val -- offset=%lu",(size_t)offset_in_file);
-		MPI_safecall(MPI_File_seek(file_handle, offset_in_file, MPI_SEEK_SET));
-		MPI_safecall(MPI_File_read(file_handle, fullCR->val, lcrp->lnEnts[me], ghost_mpi_dt_mdat, &status));
-	}
-
-	MPI_safecall(MPI_File_close(&file_handle));
-*/
-
-	/*MPI_safecall(MPI_Scatterv ( cr->rpt, (int *)lcrp->lnrows, (int *)lcrp->lfRow, MPI_INTEGER,
-			fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
-*/
+	((CR_TYPE *)(CRSfullMatrix->data))->nrows = comm->lnrows[me];
+	((CR_TYPE *)(CRSfullMatrix->data))->nEnts = comm->lnEnts[me];
 
 	CR_TYPE *locCR = NULL;
 	CR_TYPE *remCR = NULL;
 
-//	ghost_createCommunication((CR_TYPE *)(CRSfullMatrix->data),(CR_TYPE *)(CRSlocalMatrix->data),(CR_TYPE *)(CRSremoteMatrix->data),options,context);
 	ghost_createCommunication((CR_TYPE *)(CRSfullMatrix->data),&locCR,&remCR,options,context);
 
-	context->fullMatrix = ghost_initMatrix(&crsTraits);
+	context->fullMatrix = ghost_initMatrix(&traits[0]);
 	context->fullMatrix->fromCRS(context->fullMatrix,CRSfullMatrix->data);
 	
-	context->localMatrix = ghost_initMatrix(&crsTraits);
+	context->localMatrix = ghost_initMatrix(&traits[1]);
+	context->localMatrix->symmetry = CRSfullMatrix->symmetry;
 	context->localMatrix->fromCRS(context->localMatrix,locCR);
 
-	context->remoteMatrix = ghost_initMatrix(&crsTraits);
+	context->remoteMatrix = ghost_initMatrix(&traits[2]);
 	context->remoteMatrix->fromCRS(context->remoteMatrix,remCR);
-//	context->fullMatrix = CRSfullMatrix;
-//	context->localMatrix = CRSlocalMatrix;
-//	context->remoteMatrix = CRSremoteMatrix;
-	
-/*	ghost_mtraits_t ELLRtraits = {.format="ELLPACK",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
-	context->fullMatrix = ghost_initMatrix(&ELLRtraits);
-	context->fullMatrix->fromCRS(context->fullMatrix, CRSfullMatrix->data);
-//	CRSfullMatrix->destroy(CRSfullMatrix);
 
-//	UNUSED(CRSlocalMatrix);
-//	UNUSED(CRSremoteMatrix);
-
-	context->fullMatrix->CLupload(context->fullMatrix);
-
-	context->localMatrix = ghost_initMatrix(&ELLRtraits);
-	context->localMatrix->fromCRS(context->localMatrix, CRSlocalMatrix->data);
-	
-	context->remoteMatrix = ghost_initMatrix(&ELLRtraits);
-	context->remoteMatrix->fromCRS(context->remoteMatrix, CRSremoteMatrix->data);
-
-	context->localMatrix->CLupload(context->localMatrix);
-	context->remoteMatrix->CLupload(context->remoteMatrix);
-*/
-	
-
+	// TODO clean up
 }
 
 void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
