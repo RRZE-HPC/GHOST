@@ -611,15 +611,17 @@ int ghost_getNumberOfThreads()
 	return nthreads;
 }
 
-int ghost_getNumberOfNodes() 
-{
-#ifndef MPI
-	return 1;
-#else
-	static int stringcmp(const void *x, const void *y)
+static int stringcmp(const void *x, const void *y)
 	{
 		return (strcmp((char *)x, (char *)y));
 	}
+
+int ghost_getNumberOfNodes() 
+{
+#ifndef MPI
+	UNUSED(stringcmp);
+	return 1;
+#else
 
 	int nameLen,me,size,i,distinctNames = 1;
 	char name[MPI_MAX_PROCESSOR_NAME];
