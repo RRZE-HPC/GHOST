@@ -36,7 +36,7 @@ int main( int argc, char* argv[] )
 	ghost_vdat_t mytol;
 #endif
 
-	int ghostOptions = GHOST_SPMVM_AXPY; // TODO remote mode immer axpy
+	int ghostOptions = GHOST_OPTION_NONE; // TODO remote part immer axpy
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
 		GHOST_SPMVM_MODE_GOODFAITH,
@@ -74,7 +74,7 @@ int main( int argc, char* argv[] )
 	rhs   = ghost_createVector(context,GHOST_VEC_RHS,rhsVal);
 
 #ifdef CHECK	
-	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,ghostOptions);	
+	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,spmvmOptions);	
 #endif
 	ghost_printSysInfo();
 	ghost_printGhostInfo();

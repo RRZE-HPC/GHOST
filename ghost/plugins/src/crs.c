@@ -10,6 +10,7 @@
 
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
@@ -29,6 +30,7 @@ static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readRpt(void *arg);
 static void CRS_readColValOffset(void *args);
 static void CRS_readHeader(void *vargs);
@@ -48,6 +50,7 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 
 	mat->fromBin = &CRS_fromBin;
 	mat->fromMM = &CRS_fromMM;
+	mat->fromCRS = &CRS_fromCRS;
 	mat->printInfo = &CRS_printInfo;
 	mat->formatName = &CRS_formatName;
 	mat->rowLen   = &CRS_rowLen;
@@ -122,6 +125,31 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
 	return (size_t)((CR(mat)->nrows+1)*sizeof(ghost_mnnz_t) + 
 			CR(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
 }
+
+
+static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
+{
+	DEBUG_LOG(1,"Creating CRS matrix");
+	CR_TYPE *cr = (CR_TYPE*)crs;
+
+	mat->data = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"CR(mat)");
+	CR(mat)->nrows = cr->nrows;
+	CR(mat)->ncols = cr->ncols;
+	CR(mat)->nEnts = cr->nEnts;
+
+	CR(mat)->rpt = (ghost_midx_t *)allocateMemory((cr->nrows+1)*sizeof(ghost_midx_t),"rpt");
+	CR(mat)->col = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"col");
+	CR(mat)->val = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"val");
+
+	memcpy(CR(mat)->rpt,cr->rpt,(cr->nrows+1)*sizeof(ghost_midx_t));
+	memcpy(CR(mat)->col,cr->col,cr->nEnts*sizeof(ghost_midx_t));
+	memcpy(CR(mat)->val,cr->val,cr->nEnts*sizeof(ghost_mdat_t));
+
+	// TODO OpenCL
+
+}
+	
+
 
 static void CRS_readHeader(void *vargs)
 {
@@ -383,9 +411,6 @@ int compareNZEPos( const void* a, const void* b )
 	}
 	else return aRow - bRow;
 }
-
-
-
 
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
@@ -686,7 +711,6 @@ ABORT("Device matrix cannot be created without OpenCL");
 
 DEBUG_LOG(1,"Matrix read in successfully");*/
 }
-
 
 static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {

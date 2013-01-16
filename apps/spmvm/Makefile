@@ -33,12 +33,12 @@ IPATH += ${CUDA_INC}
 LPATH += ${CUDA_LIB}
 endif
 
-%.o: %.c  
+%.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< $(LIBS) 
 
 
-spmvm.x: main_spmvm.o
+spmvm.x: main_spmvm.o 
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS) 
 

@@ -189,7 +189,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	ghost_comm_t *lcrp;
 
-	ghost_mat_t *CRSfullMatrix, *CRSlocalMatrix, *CRSremoteMatrix;
+	ghost_mat_t *CRSfullMatrix/*, *CRSlocalMatrix, *CRSremoteMatrix*/;
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
@@ -220,8 +220,8 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 */
 	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
 	CRSfullMatrix = ghost_initMatrix(&crsTraits);
-	CRSlocalMatrix = ghost_initMatrix(&crsTraits);
-	CRSremoteMatrix = ghost_initMatrix(&crsTraits);
+//	CRSlocalMatrix = ghost_initMatrix(&crsTraits);
+//	CRSremoteMatrix = ghost_initMatrix(&crsTraits);
 	UNUSED(traits);
 /*	context->fullMatrix = ghost_initMatrix(&traits[0]);
 	context->localMatrix = ghost_initMatrix(&traits[1]);
@@ -424,9 +424,25 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 			fullCR->rpt, (int)lcrp->lnrows[me],  MPI_INTEGER, 0, MPI_COMM_WORLD));
 */
 
-	ghost_createCommunication((CR_TYPE *)(CRSfullMatrix->data),(CR_TYPE *)(CRSlocalMatrix->data),(CR_TYPE *)(CRSremoteMatrix->data),options,context);
+	CR_TYPE *locCR = NULL;
+	CR_TYPE *remCR = NULL;
+
+//	ghost_createCommunication((CR_TYPE *)(CRSfullMatrix->data),(CR_TYPE *)(CRSlocalMatrix->data),(CR_TYPE *)(CRSremoteMatrix->data),options,context);
+	ghost_createCommunication((CR_TYPE *)(CRSfullMatrix->data),&locCR,&remCR,options,context);
+
+	context->fullMatrix = ghost_initMatrix(&crsTraits);
+	context->fullMatrix->fromCRS(context->fullMatrix,CRSfullMatrix->data);
 	
-	ghost_mtraits_t ELLRtraits = {.format="ELLPACK",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
+	context->localMatrix = ghost_initMatrix(&crsTraits);
+	context->localMatrix->fromCRS(context->localMatrix,locCR);
+
+	context->remoteMatrix = ghost_initMatrix(&crsTraits);
+	context->remoteMatrix->fromCRS(context->remoteMatrix,remCR);
+//	context->fullMatrix = CRSfullMatrix;
+//	context->localMatrix = CRSlocalMatrix;
+//	context->remoteMatrix = CRSremoteMatrix;
+	
+/*	ghost_mtraits_t ELLRtraits = {.format="ELLPACK",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
 	context->fullMatrix = ghost_initMatrix(&ELLRtraits);
 	context->fullMatrix->fromCRS(context->fullMatrix, CRSfullMatrix->data);
 //	CRSfullMatrix->destroy(CRSfullMatrix);
@@ -444,7 +460,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 
 	context->localMatrix->CLupload(context->localMatrix);
 	context->remoteMatrix->CLupload(context->remoteMatrix);
-
+*/
 	
 
 }
@@ -650,7 +666,7 @@ void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp)
 
 }
 
-void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remoteCR, int options, ghost_context_t *context)
+void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context)
 {
 	DEBUG_LOG(1,"Setting up communication");
 	
@@ -906,7 +922,6 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 	 ***************************************************************************/
 	if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
 
-
 		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
 
 		lnEnts_l=0;
@@ -924,25 +939,25 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 		//CR_TYPE *remoteCR;
 
 
-		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
-		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
+		(*localCR) = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
+		(*remoteCR) = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-		localCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
-		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
-		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
+		(*localCR)->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
+		(*localCR)->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
+		(*localCR)->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
 
-		remoteCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
-		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
-		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
+		(*remoteCR)->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
+		(*remoteCR)->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
+		(*remoteCR)->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 
 		//context->localMatrix->data = localCR;
 		//context->remoteMatrix->data = remoteCR;
 
-		localCR->nrows = lcrp->lnrows[me];
-		localCR->nEnts = lnEnts_l;
-
-		remoteCR->nrows = lcrp->lnrows[me];
-		remoteCR->nEnts = lnEnts_r;
+		(*localCR)->nrows = lcrp->lnrows[me];
+		(*localCR)->nEnts = lnEnts_l;
+		
+		(*remoteCR)->nrows = lcrp->lnrows[me];
+		(*remoteCR)->nEnts = lnEnts_r;
 
 		//context->localMatrix->data = localCR;
 		//context->localMatrix->nnz = lnEnts_l;
@@ -953,20 +968,20 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 		//context->localMatrix->nrows = lcrp->lnrows[me];
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_l; i++) localCR->val[i] = 0.0;
+		for (i=0; i<lnEnts_l; i++) (*localCR)->val[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_l; i++) localCR->col[i] = 0.0;
+		for (i=0; i<lnEnts_l; i++) (*localCR)->col[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_r; i++) remoteCR->val[i] = 0.0;
+		for (i=0; i<lnEnts_r; i++) (*remoteCR)->val[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_r; i++) remoteCR->col[i] = 0.0;
+		for (i=0; i<lnEnts_r; i++) (*remoteCR)->col[i] = 0.0;
 
 
-		localCR->rpt[0] = 0;
-		remoteCR->rpt[0] = 0;
+		(*localCR)->rpt[0] = 0;
+		(*remoteCR)->rpt[0] = 0;
 
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 		DEBUG_LOG(1,"PE%d: lnrows=%"PRmatIDX" row_ptr=%"PRmatIDX"..%"PRmatIDX,
@@ -983,31 +998,31 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE *localCR, CR_TYPE *remot
 
 				if (fullCR->col[j]<lcrp->lnrows[me]){
 					/* local element */
-					localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j]; 
-					localCR->val[ localCR->rpt[i]+current_l ] = fullCR->val[j]; 
+					(*localCR)->col[ (*localCR)->rpt[i]+current_l ] = fullCR->col[j]; 
+					(*localCR)->val[ (*localCR)->rpt[i]+current_l ] = fullCR->val[j]; 
 					current_l++;
 				}
 				else{
 					/* remote element */
-					remoteCR->col[ remoteCR->rpt[i]+current_r ] = fullCR->col[j];
-					remoteCR->val[ remoteCR->rpt[i]+current_r ] = fullCR->val[j];
+					(*remoteCR)->col[ (*remoteCR)->rpt[i]+current_r ] = fullCR->col[j];
+					(*remoteCR)->val[ (*remoteCR)->rpt[i]+current_r ] = fullCR->val[j];
 					current_r++;
 				}
 
 			}  
 
-			localCR->rpt[i+1] = localCR->rpt[i] + current_l;
-			remoteCR->rpt[i+1] = remoteCR->rpt[i] + current_r;
+			(*localCR)->rpt[i+1] = (*localCR)->rpt[i] + current_l;
+			(*remoteCR)->rpt[i+1] = (*remoteCR)->rpt[i] + current_r;
 		}
 
 		IF_DEBUG(2){
 			for (i=0; i<lcrp->lnrows[me]+1; i++)
 				DEBUG_LOG(2,"--Row_ptrs-- PE %d: i=%"PRmatIDX" local=%"PRmatIDX" remote=%"PRmatIDX, 
-						me, i, localCR->rpt[i], remoteCR->rpt[i]);
-			for (i=0; i<localCR->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(2,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, localCR->col[i]);
-			for (i=0; i<remoteCR->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(2,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, remoteCR->col[i]);
+						me, i, (*localCR)->rpt[i], (*remoteCR)->rpt[i]);
+			for (i=0; i<(*localCR)->rpt[lcrp->lnrows[me]]; i++)
+				DEBUG_LOG(2,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*localCR)->col[i]);
+			for (i=0; i<(*remoteCR)->rpt[lcrp->lnrows[me]]; i++)
+				DEBUG_LOG(2,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*remoteCR)->col[i]);
 		}
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
