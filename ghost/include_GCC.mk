@@ -5,6 +5,7 @@ CC = gcc
 endif
 
 CFLAGS = -fopenmp -fPIC -std=c99
+SHAREDFLAG = -shared
 LIBS = -ldl -lm
 
 ifneq ($(strip $(DEBUG)),0)

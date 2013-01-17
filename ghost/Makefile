@@ -98,7 +98,7 @@ FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))
 
 $(PLUGINDIR)/%.so: %.c config.mk
 	@echo "==> Create plugin $< -> $@"
-	@$(CC) -shared $(CFLAGS) ${MAKROS} ${IPATH} -o $@ $<
+	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
@@ -132,7 +132,7 @@ endif
 ifeq ($(strip $(LIBTYPE)),shared)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create shared library $(LIBGHOST)"
-	@$(CC) $(CFLAGS) -shared -o $(LIBGHOST) $^
+	@$(CC) $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
 endif
 
 clean:
