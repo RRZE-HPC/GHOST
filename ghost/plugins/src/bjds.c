@@ -2,7 +2,12 @@
 #include "ghost_mat.h"
 #include "ghost_util.h"
 
+#if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
+#endif
+#if defined(VSX)
+#include <altivec.h>
+#endif
 
 #define BJDS(mat) ((BJDS_TYPE *)(mat->data))
 
@@ -36,6 +41,9 @@ static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, 
 #ifdef OPENCL
 static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
+#ifdef VSX
+static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
+#endif
 
 //static ghost_mat_t *thisMat;
 //static BJDS_TYPE *BJDS(mat);
@@ -59,6 +67,9 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 #endif
 #ifdef AVX
 	mat->kernel   = &BJDS_kernel_AVX;
+#endif
+#ifdef VSX
+	mat->kernel = &BJDS_kernel_VSX;
 #endif
 #ifdef MIC
 	mat->kernel   = &BJDS_kernel_MIC_16;
@@ -598,5 +609,37 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	size_t lSize = BJDS_LEN;
 
 	CL_enqueueKernel(mat->clkernel,1,&gSize,&lSize);
+}
+#endif
+
+#ifdef VSX
+static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
+{
+	ghost_midx_t c,j;
+	ghost_mnnz_t offs;
+	vector double tmp;
+	vector double val;
+	vector double rhs;
+
+
+#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
+	for (c=0; c<BJDS(mat)->nrowsPadded>>1; c++) 
+	{ // loop over chunks
+		tmp = vec_splats(0.);
+		offs = BJDS(mat)->chunkStart[c];
+
+		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>1; j++) 
+		{ // loop inside chunk
+			val = vec_xld2(offs*sizeof(ghost_mdat_t),BJDS(mat)->val);                      // load values
+			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,0);
+			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,1);
+			tmp = vec_madd(val,rhs,tmp);
+		}
+		if (options & GHOST_SPMVM_AXPY) {
+			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val)),c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+		} else {
+			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+		}
+	}
 }
 #endif

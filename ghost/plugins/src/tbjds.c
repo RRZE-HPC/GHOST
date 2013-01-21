@@ -2,7 +2,9 @@
 #include "ghost_mat.h"
 #include "ghost_util.h"
 
+#if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
+#endif
 
 #define TBJDS(mat) ((TBJDS_TYPE *)(mat->data))
 

@@ -13,6 +13,8 @@
 #define BJDS_LEN 2
 #elif defined (OPENCL)
 #define BJDS_LEN 256
+#elif defined (VSX)
+#define BJDS_LEN 2
 #else
 #define BJDS_LEN 1
 #endif

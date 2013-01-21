@@ -65,7 +65,8 @@ int main( int argc, char* argv[] )
 		trait.flags = GHOST_SPM_DEFAULT;//GHOST_SPM_SORTED|GHOST_SPM_PERMUTECOLIDX;
 		trait.aux = NULL;//&aux;
 	}
-	ghost_mtraits_t traits[3] = {trait,trait,trait};
+	ghost_mtraits_t traits[3];
+	traits[0] = trait; traits[1] = trait; traits[2] = trait;
 
 
 	ghost_init(argc,argv,ghostOptions);       // basic initialization

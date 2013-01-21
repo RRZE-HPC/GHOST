@@ -21,17 +21,18 @@ endif
 
 ifeq ($(strip $(AVX)),1)
 MAKROS+= -DAVX
-OBJS  += $(AVXOBJS)
 endif
 
 ifeq ($(strip $(SSE)),1)
 MAKROS+= -DSSE
-OBJS  += $(SSEOBJS)
 endif
 
 ifeq ($(strip $(MIC)),1)
 MAKROS+= -DMIC
-OBJS  += $(MICOBJS)
+endif
+
+ifeq ($(strip $(VSX)),1)
+MAKROS+= -DVSX
 endif
 
 ifeq ($(strip $(OPENCL)),1)
@@ -90,9 +91,6 @@ PLUGINS = $(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(P
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
-#MICOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mic/*.c))))
-#AVXOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/avx/*.c))))
-SSEOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/sse/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
 

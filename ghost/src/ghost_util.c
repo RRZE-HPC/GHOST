@@ -20,6 +20,9 @@
 #include <sys/time.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 
 //#define PRETTYPRINT
@@ -839,4 +842,12 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 		ABORT("The plugin directory does not exist");
 	}
 
+}
+
+unsigned char ghost_archIsBigEndian()
+{
+	int test = 1;
+	unsigned char *endiantest = (unsigned char *)&test;
+
+	return (endiantest[0] == 0);
 }

@@ -11,11 +11,11 @@ static ghost_vdat_t rhsVal (int i)
 
 int main( int argc, char* argv[] ) 
 {
-	int nIter = 100;
+	int nIter = 1;
 	double time;
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY | GHOST_SPMVM_MODE_NOMPI;
-	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .aux = NULL};
+	ghost_mtraits_t trait = {.format = "BJDS", .flags = GHOST_SPM_DEFAULT, .aux = NULL};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;

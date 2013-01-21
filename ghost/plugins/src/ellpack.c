@@ -3,7 +3,9 @@
 #include "ghost_util.h"
 
 #include <strings.h>
+#if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
+#endif
 
 #define ELLPACK(mat) ((ELLPACK_TYPE *)(mat->data))
 

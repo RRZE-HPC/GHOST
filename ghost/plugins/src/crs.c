@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <byteswap.h>
 
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
@@ -39,6 +40,8 @@ static int compareNZEPos( const void* a, const void* b );
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
+
+static int swapReq = 0;
 
 
 ghost_mat_t *init(ghost_mtraits_t *traits)
@@ -156,7 +159,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	// TODO OpenCL upload
 
 }
-	
+
 
 
 static void CRS_readHeader(void *vargs)
@@ -183,19 +186,32 @@ static void CRS_readHeader(void *vargs)
 	fseek(file,0L,SEEK_SET);
 
 
+
 	fread(&endianess, 4, 1, file);
-	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
-		ABORT("Big endian currently not supported!");
+	//	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
+	//		ABORT("Big endian currently not supported!");
+	if (endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+		DEBUG_LOG(1,"Need to convert from little to big endian.");
+		swapReq = 1;
+	} else if (endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+		DEBUG_LOG(1,"Need to convert from big to little endian.");
+		swapReq = 1;
+	} else {
+		DEBUG_LOG(1,"OK, file and library have same endianess.");
+	}
 
 	fread(&fileVersion, 4, 1, file);
+	if (swapReq) fileVersion = bswap_32(fileVersion);
 	if (fileVersion != 1)
 		ABORT("Can not read version %d of binary CRS format!",fileVersion);
 
 	fread(&base, 4, 1, file);
+	if (swapReq) base = bswap_32(base);
 	if (base != 0)
 		ABORT("Can not read matrix with %d-based indices!",base);
 
 	fread(&symmetry, 4, 1, file);
+	if (swapReq) symmetry = bswap_32(symmetry);
 	if (!ghost_symmetryValid(symmetry))
 		ABORT("Symmetry is invalid! (%d)",symmetry);
 	if (symmetry != GHOST_BINCRS_SYMM_GENERAL)
@@ -203,12 +219,23 @@ static void CRS_readHeader(void *vargs)
 	mat->symmetry = symmetry;
 
 	fread(&datatype, 4, 1, file);
+	if (swapReq) datatype = bswap_32(datatype);
 	if (!ghost_datatypeValid(datatype))
 		ABORT("Datatype is invalid! (%d)",datatype);
 
-	fread(&CR(mat)->nrows, 8, 1, file);
-	fread(&CR(mat)->ncols, 8, 1, file);
-	fread(&CR(mat)->nEnts, 8, 1, file);
+	int64_t nr, nc, ne;
+
+	fread(&nr, 8, 1, file);
+	if (swapReq)  nr  = bswap_64(nr);
+	CR(mat)->nrows = (ghost_midx_t)nr;
+
+	fread(&nc, 8, 1, file);
+	if (swapReq)  nc  = bswap_64(nc);
+	CR(mat)->ncols = (ghost_midx_t)nc;
+
+	fread(&ne, 8, 1, file);
+	if (swapReq)  ne  = bswap_64(ne);
+	CR(mat)->nEnts = (ghost_midx_t)ne;
 
 	long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
 		(CR(mat)->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
@@ -246,16 +273,31 @@ static void CRS_readRpt(void *vargs)
 
 	DEBUG_LOG(2,"Reading array with row-offsets");
 #ifdef LONGIDX
-	pread(file,&CR(mat)->rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER);
+	if (swapReq) {
+		int64_t tmp;
+		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+			pread(file,&tmp, GHOST_BINCRS_SIZE_RPT_EL, GHOST_BINCRS_SIZE_HEADER+i*8);
+			tmp = bswap_64(tmp);
+			CR(mat)->rpt[i] = tmp;
+		}
+	} else {
+		pread(file,&CR(mat)->rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER);
+	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
-	int64_t tmp;
-	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
-		pread(file,&tmp, GHOST_BINCRS_SIZE_RPT_EL, GHOST_BINCRS_SIZE_HEADER+i*8);
-		CR(mat)->rpt[i] = (ghost_midx_t)tmp;
+	int64_t *tmp = (int64_t *)malloc((CR(mat)->nrows+1)*8);
+	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER );
+
+	if (swapReq) {
+		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+			CR(mat)->rpt[i] = (ghost_midx_t)(bswap_64(tmp[i]));
+		}
+	} else {
+		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+			CR(mat)->rpt[i] = (ghost_midx_t)(tmp[i]);
+		}
 	}
 #endif
-
 }
 
 static void CRS_readColValOffset(void *vargs)
@@ -287,6 +329,7 @@ static void CRS_readColValOffset(void *vargs)
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 	pread(file, &datatype, sizeof(int), 16);
+	if (swapReq) datatype = bswap_32(datatype);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
@@ -309,19 +352,34 @@ static void CRS_readColValOffset(void *vargs)
 		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
 		GHOST_BINCRS_SIZE_COL_EL*offsetEnts;
 #ifdef LONGIDX
-	pread(file,&CR(mat)->col[0], GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+	if (swapReq) {
+		int64_t *tmp = (int64_t *)malloc(nEnts*8);
+		pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+		for( i = 0; i < nEnts; i++ ) {
+			CR(mat)->col[i] = bswap_64(tmp[i]);
+		}
+	} else {
+		pread(file,&CR(mat)->col[0], GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
 	int64_t *tmp = (int64_t *)malloc(nEnts*8);
 	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
-#pragma omp parallel for schedule(runtime) private(j)
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
-			CR(mat)->col[j] = (ghost_midx_t)tmp[j];
+			if (swapReq) CR(mat)->col[j] = (ghost_midx_t)(bswap_64(tmp[j]));
+			else CR(mat)->col[j] = (ghost_midx_t)tmp[j];
 		}
 	}
 	free(tmp);
 #endif
+		// minimal size of value
+		size_t valSize = sizeof(float);
+		if (datatype & GHOST_BINCRS_DT_DOUBLE)
+			valSize *= 2;
+
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			valSize *= 2;
 
 
 	DEBUG_LOG(1,"Reading array with values");
@@ -331,25 +389,86 @@ static void CRS_readColValOffset(void *vargs)
 		ghost_sizeofDataType(datatype)*offsetEnts;
 
 	if (datatype == GHOST_MY_MDATATYPE) {
-		pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs);
+		if (swapReq) {
+		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
+		pread(file,tmpval, nEnts*valSize, offs);
+		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+				for (i = 0; i<nEnts; i++) {
+					uint32_t *a = (uint32_t *)tmpval;
+					uint32_t rswapped = bswap_32(a[2*i]);
+					uint32_t iswapped = bswap_32(a[2*i+1]);
+					memcpy(&(CR(mat)->val[i]),&rswapped,4);
+					memcpy(&(CR(mat)->val[i])+4,&iswapped,4);
+				}
+			} else {
+				for (i = 0; i<nEnts; i++) {
+					uint64_t *a = (uint64_t *)tmpval;
+					uint64_t rswapped = bswap_64(a[2*i]);
+					uint64_t iswapped = bswap_64(a[2*i+1]);
+					memcpy(&(CR(mat)->val[i]),&rswapped,8);
+					memcpy(&(CR(mat)->val[i])+8,&iswapped,8);
+				}
+			}
+		} else {
+			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+				for (i = 0; i<nEnts; i++) {
+					uint32_t *a = (uint32_t *)tmpval;
+					uint32_t swapped = bswap_32(a[i]);
+					memcpy(&(CR(mat)->val[i]),&swapped,4);
+				}
+			} else {
+				for (i = 0; i<nEnts; i++) {
+					uint64_t *a = (uint64_t *)tmpval;
+					uint64_t swapped = bswap_64(a[i]);
+					memcpy(&(CR(mat)->val[i]),&swapped,8);
+				}
+			}
+
+		}
+		} else {
+			pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs );
+		}
 	} else {
 
 		WARNING_LOG("This %s build is configured for %s data but"
 				" the file contains %s data. Casting...",GHOST_NAME,
 				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
 
-		// minimal size of value
-		size_t valSize = sizeof(float);
-		if (datatype & GHOST_BINCRS_DT_DOUBLE)
-			valSize *= 2;
-
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			valSize *= 2;
 
 		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
 		pread(file,tmpval, nEnts*valSize, offs);
-					
-		for (i = 0; i<nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmpval[i*valSize];
+
+		if (swapReq) {
+			ABORT("Not yet supported!");
+			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+					for (i = 0; i<nEnts; i++) {
+						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_32(tmpval[i*valSize]))+
+							I*(bswap_32(tmpval[i*valSize+valSize/2])));
+					}
+				} else {
+					for (i = 0; i<nEnts; i++) {
+						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_64(tmpval[i*valSize]))+
+							I*(bswap_64(tmpval[i*valSize+valSize/2])));
+					}
+				}
+			} else {
+				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+					for (i = 0; i<nEnts; i++) {
+						CR(mat)->val[i] = (ghost_mdat_el_t) (bswap_32(tmpval[i*valSize]));
+					}
+				} else {
+					for (i = 0; i<nEnts; i++) {
+						CR(mat)->val[i] = (ghost_mdat_el_t) (bswap_64(tmpval[i*valSize]));
+					}
+				}
+
+			}
+
+		} else {
+			for (i = 0; i<nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmpval[i*valSize];
+		}
 
 		free(tmpval);
 	}
@@ -406,9 +525,9 @@ int compareNZEPos( const void* a, const void* b )
 	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
-		bRow = ((NZE_TYPE*)b)->row,
-		aCol = ((NZE_TYPE*)a)->col,
-		bCol = ((NZE_TYPE*)b)->col;
+	    bRow = ((NZE_TYPE*)b)->row,
+	    aCol = ((NZE_TYPE*)a)->col,
+	    bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
 #ifdef MAIN_DIAGONAL_FIRST
@@ -784,7 +903,7 @@ static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 
 	for( e = 0; e < mm->nEnts; e++ ) {
 		const int row = mm->nze[e].row,
-			  col = mm->nze[e].col;
+		      col = mm->nze[e].col;
 		const ghost_mdat_t val = mm->nze[e].val;
 		pos = CR(mat)->rpt[row] + nEntsInRow[row];
 		CR(mat)->col[pos] = col;
@@ -869,8 +988,8 @@ lhs->val[i] = hlp1;
 	ghost_midx_t i, j;
 	ghost_vdat_t hlp1;
 	CR_TYPE *cr = CR(mat);
-
-#pragma omp	parallel for schedule(runtime) private (hlp1, j)
+	
+#pragma omp parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){

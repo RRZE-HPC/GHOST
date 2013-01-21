@@ -177,6 +177,7 @@ int ghost_getNumberOfProcesses();
 size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
+char ghost_archIsBigEndian();
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
