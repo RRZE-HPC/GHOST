@@ -17,7 +17,6 @@
 #include <dirent.h>
 #include <linux/limits.h>
 
-
 #include <string.h>
 #include <sched.h>
 #include <omp.h>
@@ -245,8 +244,6 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 #endif
 
 	options = ghostOptions;
-
-
 
 	return me;
 }
@@ -521,6 +518,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 		ABORT("There is no such plugin providing %s",traits->format);
 
 	} else {
+		closedir(pluginDir);
 		ABORT("The plugin directory does not exist");
 	}
 

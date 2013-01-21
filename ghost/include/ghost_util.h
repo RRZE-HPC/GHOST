@@ -30,9 +30,7 @@
 	if(DEBUG >= level) {\
 		int __me;\
 		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stderr,"PE%d at %s:%d: ",__me,__FILE__,__LINE__);\
-		fprintf(stderr,msg, ##__VA_ARGS__);\
-		fprintf(stderr, "\n");\
+		fprintf(stderr,"PE%d at %s:%d: "msg"\n",__me,__FILE__,__LINE__,##__VA_ARGS__);\
 		fflush(stderr);\
 	}\
 }
@@ -51,9 +49,7 @@
 #define WARNING_LOG(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: " ,__me,__FILE__,__LINE__);\
-	fprintf(stderr,msg, ##__VA_ARGS__);\
-	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
 	fflush(stderr);\
 }
 #else
@@ -69,9 +65,7 @@
 #define ABORT(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: " ,__me,__FILE__,__LINE__);\
-	fprintf(stderr,msg, ##__VA_ARGS__);\
-	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
 	fflush(stderr);\
 	MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
 }

@@ -23,7 +23,7 @@ CFLAGS += -mmic
 endif
 
 ifneq ($(strip $(DEBUG)),0)
-CFLAGS += -g -O0
+CFLAGS += -g -O0 -check-pointers=rw
 else
 CFLAGS += -O3 -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981
 endif

@@ -230,7 +230,7 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 				(int *)comm->lnrows, 
 				(int *)comm->lfRow, 
 				MPI_INTEGER,
-				((CR_TYPE *)(CRSfullMatrix->data))->rpt,
+				MPI_IN_PLACE,
 				(int)comm->lnrows[me],
 				MPI_INTEGER, 0, MPI_COMM_WORLD));
 
