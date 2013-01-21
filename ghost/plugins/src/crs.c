@@ -146,11 +146,14 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	CR(mat)->col = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"col");
 	CR(mat)->val = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"val");
 
-#pragma omp parallel for schedule(runtime) private(j)
+#pragma omp parallel for schedule(runtime)
 	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
 		CR(mat)->rpt[i] = cr->rpt[i];
+	}
 
-		for(j = cr->rpt[i]; j < cr->rpt[i+1] ; j++) {
+#pragma omp parallel for schedule(runtime) private(j)
+	for( i = 0; i < CR(mat)->nrows; i++ ) {
+		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
 			CR(mat)->col[j] = cr->col[j];
 			CR(mat)->val[j] = cr->val[j];
 		}

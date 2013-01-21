@@ -17,7 +17,6 @@
 #include <dirent.h>
 #include <linux/limits.h>
 
-
 #include <string.h>
 #include <sched.h>
 #include <omp.h>
@@ -246,8 +245,6 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 
 	options = ghostOptions;
 
-
-
 	return me;
 }
 
@@ -388,12 +385,12 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	CR_TYPE *cr = NULL;
 
 	// copy is needed because basename() changes the string
-	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
-	strncpy(matrixPathCopy,matrixPath,strlen(matrixPath));
+	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
+	strcpy(matrixPathCopy,matrixPath);
 
 	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
 	context->flags = context_flags;
-	context->matrixName = strtok(basename(matrixPathCopy),".");
+	context->matrixName = basename(matrixPathCopy);
 
 #ifdef MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
@@ -487,6 +484,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	ghost_spmf_plugin_t myPlugin;
 
 
+
 	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
 	if (pluginDir) {
 		while (0 != (dirEntry = readdir(pluginDir))) {
@@ -521,6 +519,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 		ABORT("There is no such plugin providing %s",traits->format);
 
 	} else {
+		closedir(pluginDir);
 		ABORT("The plugin directory does not exist");
 	}
 

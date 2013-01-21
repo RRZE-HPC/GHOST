@@ -289,7 +289,7 @@ void ghost_printGhostInfo()
 			strncpy(avDF+avDFlen-strlen(curFormat)-1,curFormat,strlen(curFormat));
 			strncpy(avDF+avDFlen-1,",",1);
 		}
-		avDF[strlen(avDF)-1] = 0; 
+		avDF[avDFlen-1] = '\0'; // skip trailing comma 
 
 
 		ghost_printHeader("%s", GHOST_NAME);
