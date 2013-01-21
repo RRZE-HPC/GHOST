@@ -4,7 +4,7 @@ else
 CC = icc
 endif
 
-CFLAGS  = -openmp -fPIC -std=c99 
+CFLAGS  = -openmp -fPIC -std=c99 -fno-alias 
 FFLAGS  = -openmp -fPIC -nogen-interface -cpp
 
 LIBS = -limf -lm
@@ -23,7 +23,7 @@ CFLAGS += -mmic
 endif
 
 ifneq ($(strip $(DEBUG)),0)
-CFLAGS += -g -O0 -check-pointers=rw
+CFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
 else
 CFLAGS += -O3 -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981
 endif

@@ -385,12 +385,12 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	CR_TYPE *cr = NULL;
 
 	// copy is needed because basename() changes the string
-	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath),"matrixPathCopy");
-	strncpy(matrixPathCopy,matrixPath,strlen(matrixPath));
+	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
+	strcpy(matrixPathCopy,matrixPath);
 
 	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
 	context->flags = context_flags;
-	context->matrixName = strtok(basename(matrixPathCopy),".");
+	context->matrixName = basename(matrixPathCopy);
 
 #ifdef MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
@@ -482,6 +482,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry;
 	ghost_spmf_plugin_t myPlugin;
+
 
 
 	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
