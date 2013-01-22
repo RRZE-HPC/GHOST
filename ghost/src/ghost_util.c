@@ -844,10 +844,60 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 
 }
 
-unsigned char ghost_archIsBigEndian()
+int ghost_archIsBigEndian()
 {
 	int test = 1;
 	unsigned char *endiantest = (unsigned char *)&test;
 
 	return (endiantest[0] == 0);
+}
+
+int ghost_getCoreNumbering()
+{
+	int i,j;
+	int fd;
+	char cpuFile[1024];
+	char siblings[32];
+	char sblPhysicalFirst[32];
+
+	int physFirst = 0;
+	int smtFirst = 0;
+	char sblSmtFirst[32];
+
+	int nSMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
+
+	for (i=0; i<ghost_getNumberOfHwThreads(); i++)
+	{
+		sprintf(cpuFile,"/sys/devices/system/cpu/cpu%d/topology/thread_siblings_list",i);
+		fd = open(cpuFile,O_RDONLY);
+		read(fd,siblings,31);
+		close(fd);
+
+		strtok(siblings,"\n");
+
+		sblPhysicalFirst[0] = '\0';
+		for (j=0; j<nSMT; j++) {
+			sprintf(sblPhysicalFirst+strlen(sblPhysicalFirst),"%d,",
+					i+ghost_getNumberOfPhysicalCores()*(j-i/ghost_getNumberOfPhysicalCores()));
+		}
+		sblPhysicalFirst[strlen(sblPhysicalFirst)-1] = '\0';
+
+		sprintf(sblSmtFirst,"%d-%d",i-i%nSMT,i+(nSMT-i%nSMT)-1);
+		printf("%s %s %s\n",cpuFile,sblSmtFirst,sblPhysicalFirst);
+
+		if (!strcmp(siblings,sblPhysicalFirst))
+			physFirst++;
+		else if (!strcmp(siblings,sblSmtFirst))
+			smtFirst++;
+
+
+	}
+
+	if (physFirst == ghost_getNumberOfHwThreads())
+		return GHOST_CORENUMBERING_PHYSICAL_FIRST;
+	else if (smtFirst == ghost_getNumberOfHwThreads())
+		return GHOST_CORENUMBERING_SMT_FIRST;
+	else
+		return GHOST_CORENUMBERING_INVALID;
+
 }

@@ -6,7 +6,6 @@ endif
 
 CFLAGS  = -openmp -fPIC -std=c99 
 SHAREDFLAG = -shared
-FFLAGS  = -openmp -fPIC -nogen-interface -cpp
 
 LIBS = -limf -lm
 
