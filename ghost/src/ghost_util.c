@@ -749,6 +749,8 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	double oldtime=1e9;
 
 	ghost_solver_t solver = NULL;
+
+	ghost_pickSpMVMMode(context,&spmvmOptions);
 	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
 
 	if (!solver)
@@ -790,10 +792,23 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	}
 
 	return time;
+}
 
+void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
+{
+	if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
+		DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default...");
+#ifdef MPI
+		if (context->flags & GHOST_CONTEXT_GLOBAL)
+			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+		else
+			*spmvmOptions |= GHOST_SPMVM_MODE_TASKMODE;
+#else
+		UNUSED(context);
+		*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+#endif
 
-
-
+	}
 
 }
 

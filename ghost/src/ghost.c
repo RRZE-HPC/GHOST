@@ -539,6 +539,7 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 		int spmvmOptions)
 {
 	ghost_solver_t solver = NULL;
+	ghost_pickSpMVMMode(context,&spmvmOptions);
 	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
 
 	if (!solver)
