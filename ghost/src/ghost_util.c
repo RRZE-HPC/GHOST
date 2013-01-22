@@ -883,7 +883,6 @@ int ghost_getCoreNumbering()
 		sblPhysicalFirst[strlen(sblPhysicalFirst)-1] = '\0';
 
 		sprintf(sblSmtFirst,"%d-%d",i-i%nSMT,i+(nSMT-i%nSMT)-1);
-		printf("%s %s %s\n",cpuFile,sblSmtFirst,sblPhysicalFirst);
 
 		if (!strcmp(siblings,sblPhysicalFirst))
 			physFirst++;
