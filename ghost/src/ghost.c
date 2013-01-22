@@ -207,14 +207,16 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 			nCores = ghost_getNumberOfHwThreads();
 
 		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
+		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
 		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
+		
 #pragma omp parallel
 		{
 			int error;
 			int coreNumber;
 
 			if (ghostOptions & GHOST_OPTION_PIN_SMT)
-				coreNumber = omp_get_thread_num()/2+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%2)*nPhysCores;
+				coreNumber = omp_get_thread_num()/SMT+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%SMT)*nPhysCores;
 			else
 				coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
 

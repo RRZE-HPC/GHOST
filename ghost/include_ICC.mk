@@ -4,12 +4,8 @@ else
 CC = icc
 endif
 
-<<<<<<< HEAD:ghost/include_ICC.mk
 CFLAGS  = -openmp -fPIC -std=c99 
 SHAREDFLAG = -shared
-=======
-CFLAGS  = -openmp -fPIC -std=c99 -fno-alias 
->>>>>>> fb6e93433357ebb21bc81dc637387cfff39b0d9b:ghost/include_ICC.mk
 FFLAGS  = -openmp -fPIC -nogen-interface -cpp
 
 LIBS = -limf -lm
