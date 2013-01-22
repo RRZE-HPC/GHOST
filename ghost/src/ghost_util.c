@@ -742,7 +742,7 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 }
 
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int spmvmOptions, int nIter)
+		int *spmvmOptions, int nIter)
 {
 	int it;
 	double time = 0;
@@ -750,8 +750,8 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 	ghost_solver_t solver = NULL;
 
-	ghost_pickSpMVMMode(context,&spmvmOptions);
-	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
+	ghost_pickSpMVMMode(context,spmvmOptions);
+	solver = context->solvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
 	if (!solver)
 		return -1.0;
@@ -765,7 +765,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 	for( it = 0; it < nIter; it++ ) {
 		time = ghost_wctime();
-		solver(res,context,invec,spmvmOptions);
+		solver(res,context,invec,*spmvmOptions);
 
 #ifdef OPENCL
 		CL_barrier();
@@ -783,9 +783,9 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	CL_downloadVector(res);
 #endif
 
-	if ( spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
+	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
 		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
-	} else if ( spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
+	} else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
 		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
 		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
@@ -802,7 +802,7 @@ void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 		else
-			*spmvmOptions |= GHOST_SPMVM_MODE_TASKMODE;
+			*spmvmOptions |= GHOST_SPMVM_MODE_VECTORMODE;
 #else
 		UNUSED(context);
 		*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;

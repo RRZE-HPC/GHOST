@@ -33,7 +33,7 @@ int main( int argc, char* argv[] )
 
 	ghost_printHeader("Performance");
 	
-	time = ghost_bench_spmvm(lhs,ctx,rhs,spmvmOptions,nIter);
+	time = ghost_bench_spmvm(lhs,ctx,rhs,&spmvmOptions,nIter);
 	if (time > 0)
 		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 

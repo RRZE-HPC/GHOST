@@ -8,6 +8,8 @@
 #include <likwid.h>
 #endif
 
+// TODO other formats than CRS
+
 void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
 {
 

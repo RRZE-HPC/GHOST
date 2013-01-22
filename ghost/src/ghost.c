@@ -427,7 +427,15 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) {
 			if (!(options & GHOST_OPTION_NO_COMBINED_SOLVERS)) {
 				if (nTraits != 3) {
-					ABORT("The number of traits has to be THREE (is: %d) if all distributed kernels are enabled",nTraits);
+					ghost_mtraits_t trait_0 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					ghost_mtraits_t trait_1 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					ghost_mtraits_t trait_2 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					traits = (ghost_mtraits_t *)malloc(3*sizeof(ghost_mtraits_t));
+					traits[0] = trait_0;
+					traits[1] = trait_1;
+					traits[2] = trait_2;
+					nTraits = 3;
+					DEBUG_LOG(1,"There was only one matrix trait given. Assuming the same trait for the local and remote part!");
 				}
 			}
 		}
@@ -536,16 +544,16 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 }
 
 int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int spmvmOptions)
+		int *spmvmOptions)
 {
 	ghost_solver_t solver = NULL;
-	ghost_pickSpMVMMode(context,&spmvmOptions);
-	solver = context->solvers[ghost_getSpmvmModeIdx(spmvmOptions)];
+	ghost_pickSpMVMMode(context,spmvmOptions);
+	solver = context->solvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
 	if (!solver)
 		return GHOST_FAILURE;
 
-	solver(res,context,invec,spmvmOptions);
+	solver(res,context,invec,*spmvmOptions);
 
 	return GHOST_SUCCESS;
 }

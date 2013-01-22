@@ -20,7 +20,7 @@ static char * TBJDS_formatName(ghost_mat_t *mat);
 static ghost_midx_t TBJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static ghost_mdat_t TBJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t TBJDS_byteSize (ghost_mat_t *mat);
-static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void TBJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void TBJDS_fromBin(ghost_mat_t *mat, char *);
 static void TBJDS_free(ghost_mat_t *mat);
 static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
@@ -48,6 +48,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->entry    = &TBJDS_entry;
 	mat->byteSize = &TBJDS_byteSize;
 	mat->kernel   = &TBJDS_kernel_plain;
+	mat->fromCRS  = &TBJDS_fromCRS;
 #ifdef SSE
 	mat->kernel   = &TBJDS_kernel_SSE;
 #endif
@@ -146,8 +147,9 @@ static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	TBJDS_fromCRS(mat,crsMat->data);
 }
 
-static void TBJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
+static void TBJDS_fromCRS(ghost_mat_t *mat, void *crs)
 {
+	CR_TYPE *cr = (CR_TYPE*)crs;
 	ghost_midx_t i,j,c;
 	ghost_sorting_t* rowSort = NULL;
 	ghost_midx_t *rowPerm = NULL, *invRowPerm = NULL;

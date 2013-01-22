@@ -272,7 +272,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, gho
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
 int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int mode);
+		int *spmvmOptions);
 
 ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);

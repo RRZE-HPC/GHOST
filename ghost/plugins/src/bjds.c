@@ -23,7 +23,7 @@ static char * BJDS_formatName(ghost_mat_t *mat);
 static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr);
+static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
 static void BJDS_fromBin(ghost_mat_t *mat, char *);
 static void BJDS_free(ghost_mat_t *mat);
@@ -62,6 +62,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->entry      = &BJDS_entry;
 	mat->byteSize   = &BJDS_byteSize;
 	mat->kernel     = &BJDS_kernel_plain;
+	mat->fromCRS    = &BJDS_fromCRS;
 #ifdef SSE
 	mat->kernel   = &BJDS_kernel_SSE;
 #endif
@@ -162,9 +163,10 @@ static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	BJDS_fromCRS(mat,crsMat->data);
 }
 
-static void BJDS_fromCRS(ghost_mat_t *mat, CR_TYPE *cr)
+static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 {
 	DEBUG_LOG(1,"Creating BJDS matrix");
+	CR_TYPE *cr = (CR_TYPE*)crs;
 	ghost_midx_t i,j,c;
 	unsigned int flags = mat->traits->flags;
 

@@ -179,5 +179,5 @@ int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
 
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int spmvmOptions, int nIter);
+		int *spmvmOptions, int nIter);
 #endif
