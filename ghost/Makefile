@@ -158,8 +158,8 @@ install: all
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
-	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.a
-	@rm -f $(strip $(GHOSTPATH))/lib/lib*ghost.so
+	@rm -f $(strip $(GHOSTPATH))/lib/libghost.a
+	@rm -f $(strip $(GHOSTPATH))/lib/libghost.so
 	@rm -rf $(strip $(GHOSTPATH))/include/ghost/
 	@rm -rf $(strip $(GHOSTPATH))/lib/ghost/ 
 

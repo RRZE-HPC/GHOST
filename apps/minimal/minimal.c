@@ -30,7 +30,7 @@ int main( int argc, char* argv[] )
 	ghost_printGhostInfo();
 	ghost_printOptionsInfo(ghostOptions);
 	ghost_printContextInfo(ctx);
-	
+
 	ghost_printHeader("Performance");
 	
 	time = ghost_bench_spmvm(lhs,ctx,rhs,spmvmOptions,nIter);
