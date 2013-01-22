@@ -199,6 +199,7 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 #endif // ifdef MPI
 
 	if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
+		int numbering = ghost_getCoreNumbering();
 		int nCores;
 		int nPhysCores = ghost_getNumberOfPhysicalCores();
 		if (ghostOptions & GHOST_OPTION_PIN)
@@ -215,10 +216,14 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 			int error;
 			int coreNumber;
 
-			if (ghostOptions & GHOST_OPTION_PIN_SMT)
+			if (ghostOptions & GHOST_OPTION_PIN_SMT) {
 				coreNumber = omp_get_thread_num()/SMT+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%SMT)*nPhysCores;
-			else
-				coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
+			} else {
+				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
+					coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
+				else
+					coreNumber = omp_get_thread_num()*SMT+(offset*(ghost_getLocalRank()));
+			}
 
 			DEBUG_LOG(1,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
 			cpu_set_t cpu_set;
