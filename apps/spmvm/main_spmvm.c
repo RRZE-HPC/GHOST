@@ -86,7 +86,8 @@ int main( int argc, char* argv[] )
 
 	for (mode=0; mode < nModes; mode++){
 
-		time = ghost_bench_spmvm(lhs,context,rhs,spmvmOptions|modes[mode],nIter);
+		int argOptions = spmvmOptions | modes[mode];
+		time = ghost_bench_spmvm(lhs,context,rhs,&argOptions,nIter);
 
 		if (time < 0.) {
 			ghost_printLine(ghost_modeName(modes[mode]),NULL,"SKIPPED");
