@@ -105,7 +105,8 @@ static ghost_midx_t BJDS_ncols(ghost_mat_t *mat)
 static void BJDS_printInfo(ghost_mat_t *mat)
 {
 	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
-	ghost_printLine("Row length oscillation nu",NULL,"%f",BJDS(mat)->nu);
+	ghost_printLine("Nu",NULL,"%f",BJDS(mat)->nu);
+	ghost_printLine("Mu",NULL,"%f",BJDS(mat)->mu);
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		ghost_printLine("Sorted",NULL,"yes");
 		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->traits->aux));
@@ -257,8 +258,10 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 	ghost_midx_t chunkMin = cr->ncols;
 	ghost_midx_t chunkLen = 0;
+	double chunkAvg = 0.;
 	ghost_midx_t curChunk = 1;
 	BJDS(mat)->nu = 0.;
+	BJDS(mat)->mu = 0.;
 
 	for (i=0; i<BJDS(mat)->nrowsPadded; i++) {
 		if (i<cr->nrows) {
@@ -273,21 +276,27 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 		chunkMin = BJDS(mat)->rowLen[i]<chunkMin?BJDS(mat)->rowLen[i]:chunkMin;
 		chunkLen = BJDS(mat)->rowLen[i]>chunkLen?BJDS(mat)->rowLen[i]:chunkLen;
+		chunkAvg += BJDS(mat)->rowLen[i];
 
 		if ((i+1)%BJDS_LEN == 0) {
+			chunkAvg /= BJDS_LEN;
+
 			BJDS(mat)->nEnts += BJDS_LEN*chunkLen;
 			BJDS(mat)->chunkStart[curChunk] = BJDS(mat)->nEnts;
 			BJDS(mat)->chunkMin[curChunk-1] = chunkMin;
 			BJDS(mat)->chunkLen[curChunk-1] = chunkLen;
 
 			BJDS(mat)->nu += (double)chunkMin/chunkLen;
+			BJDS(mat)->mu += (double)chunkAvg/chunkLen;
 
 			chunkMin = cr->ncols;
 			chunkLen = 0;
+			chunkAvg = 0;
 			curChunk++;
 		}
 	}
 	BJDS(mat)->nu /= (double)nChunks;
+	BJDS(mat)->mu /= (double)nChunks;
 
 	BJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");

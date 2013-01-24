@@ -16,7 +16,7 @@
 #elif defined (VSX)
 #define BJDS_LEN 2
 #else
-#define BJDS_LEN 1
+#define BJDS_LEN 16
 #endif
 
 typedef struct 
@@ -43,6 +43,7 @@ typedef struct
 	ghost_mnnz_t nnz;
 	ghost_mnnz_t nEnts;
 	double nu;
+	double mu;
 	ghost_midx_t *chunkMin; // for version with remainder loop
 	ghost_midx_t *chunkLen; // for version with remainder loop
 	ghost_midx_t *rowLen;   // for version with remainder loop
