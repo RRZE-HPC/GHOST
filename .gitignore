@@ -8,6 +8,7 @@ pbshosts*
 obj/
 jobscripts/
 bench/
+meas/
 tags
 *stdout*
 *stderr*
