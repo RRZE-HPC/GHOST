@@ -1,6 +1,7 @@
 #include "spm_format_ellpack.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+#include "private/ellpack_cukernel.h"
 
 #include <strings.h>
 #if defined(SSE) || defined(AVX) || defined(MIC)
@@ -22,10 +23,14 @@ static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
 static void ELLPACK_upload(ghost_mat_t *mat);
+static void ELLPACK_CUupload(ghost_mat_t *mat);
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs);
 static void ELLPACK_fromBin(ghost_mat_t *mat, char *);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+#ifdef CUDA
+static void ELLPACK_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+#endif
 #ifdef OPENCL
 static void ELLPACK_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
@@ -49,7 +54,13 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->destroy  = &ELLPACK_free;
 	mat->fromCRS  = &ELLPACK_fromCRS;
 	mat->CLupload = &ELLPACK_upload;
-#ifdef OPENCL
+	mat->CUupload = &ELLPACK_CUupload;
+#ifdef CUDA
+	if (traits->flags & GHOST_SPM_HOST)
+		mat->kernel   = &ELLPACK_kernel_plain;
+	else
+		mat->kernel   = &ELLPACK_kernel_CU;
+#elif defined(OPENCL)
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &ELLPACK_kernel_plain;
 	else
@@ -338,6 +349,34 @@ static void ELLPACK_upload(ghost_mat_t *mat)
 #endif
 }
 
+static void ELLPACK_CUupload(ghost_mat_t *mat)
+{
+	DEBUG_LOG(1,"Uploading ELLPACK matrix to CUDA device");
+
+#ifdef CUDA
+	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
+		DEBUG_LOG(1,"Creating matrix on CUDA device");
+		ELLPACK(mat)->cumat = (CU_ELLPACK_TYPE *)allocateMemory(sizeof(CU_ELLPACK_TYPE),"CU_ELLPACK");
+		ELLPACK(mat)->cumat->rowLen = CU_allocDeviceMemory((ELLPACK(mat)->nrows)*sizeof(ghost_midx_t));
+		ELLPACK(mat)->cumat->col = CU_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_midx_t));
+		ELLPACK(mat)->cumat->val = CU_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_mdat_t));
+
+		ELLPACK(mat)->cumat->nrows       = ELLPACK(mat)->nrows;
+		ELLPACK(mat)->cumat->nrowsPadded = ELLPACK(mat)->nrowsPadded;
+		ELLPACK(mat)->cumat->maxRowLen	 = ELLPACK(mat)->maxRowLen;
+
+		CU_copyHostToDevice(ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->rowLen, ELLPACK(mat)->nrows*sizeof(ghost_midx_t));
+		CU_copyHostToDevice(ELLPACK(mat)->cumat->col,    ELLPACK(mat)->col,    ELLPACK(mat)->nEnts*sizeof(ghost_midx_t));
+		CU_copyHostToDevice(ELLPACK(mat)->cumat->val,    ELLPACK(mat)->val,    ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t));
+	}
+
+#else
+	if (mat->traits->flags & GHOST_SPM_DEVICE) {
+		ABORT("Device matrix cannot be created without CUDA");
+	}
+#endif
+}
+
 static void ELLPACK_free(ghost_mat_t *mat)
 {
 	free(ELLPACK(mat)->rowLen);
@@ -372,6 +411,16 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 	}
 
 }
+
+#ifdef CUDA
+static void ELLPACK_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	DEBUG_LOG(1,"Calling ELLPACK CUDA kernel");
+	
+	ELLPACK_kernel_wrap(lhs->CU_val, rhs->CU_val, options, ELLPACK(mat)->cumat->nrows, ELLPACK(mat)->cumat->nrowsPadded, ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->cumat->col, ELLPACK(mat)->cumat->val);
+
+}
+#endif
 
 #ifdef OPENCL
 static void ELLPACK_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)

@@ -782,6 +782,10 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	DEBUG_LOG(1,"Downloading result from OpenCL device");
 	CL_downloadVector(res);
 #endif
+#ifdef CUDA
+	DEBUG_LOG(1,"Downloading result from CUDA device");
+	CU_downloadVector(res);
+#endif
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
 		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));

@@ -249,6 +249,9 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 #ifdef OPENCL
 	CL_init();
 #endif
+#ifdef CUDA
+	CU_init();
+#endif
 
 	options = ghostOptions;
 
@@ -376,6 +379,11 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
 #endif
+#ifdef CUDA
+		vec->CU_val = CU_allocDeviceMemory(size_val);
+		CU_uploadVector(vec);
+#endif
+
 
 	} else {
 		DEBUG_LOG(1,"Host-only vector created successfully");
@@ -466,6 +474,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 #ifdef OPENCL
 		if (!(traits[0].flags & GHOST_SPM_HOST))
 			context->fullMatrix->CLupload(context->fullMatrix);
+#endif
+#ifdef CUDA
+		if (!(traits[0].flags & GHOST_SPM_HOST))
+			context->fullMatrix->CUupload(context->fullMatrix);
 #endif
 
 		DEBUG_LOG(1,"Created global %s matrix",context->fullMatrix->formatName(context->fullMatrix));

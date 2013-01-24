@@ -40,6 +40,9 @@ typedef struct
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif
+#ifdef CUDA
+	void * CU_val;
+#endif
 } 
 ghost_vec_t;
 
@@ -96,6 +99,7 @@ struct ghost_mat_t
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	void       (*CLupload)(ghost_mat_t *);
+	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
 	ghost_dummyfun_t *extraFun;

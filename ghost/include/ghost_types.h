@@ -189,10 +189,10 @@ typedef float ghost_cl_vdat_t;
 // TODO adjust
 
 #ifdef GHOST_VEC_DP
-#define EPSILON 1
+#define EPSILON 1e-9
 #endif
 #ifdef GHOST_VEC_SP
-#define EPSILON 1 // TODO
+#define EPSILON 1e-5 // TODO
 #endif
 #define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<EPSILON && MABS(MIMAG(a)-MIMAG(b))<EPSILON)
 

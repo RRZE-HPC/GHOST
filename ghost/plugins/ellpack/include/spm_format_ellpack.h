@@ -21,6 +21,19 @@ CL_ELLPACK_TYPE;
 
 typedef struct 
 {
+#ifdef CUDA
+	ghost_mdat_t * val;
+	ghost_midx_t * col;
+	ghost_midx_t * rowLen;
+	ghost_midx_t nrows;
+	ghost_midx_t nrowsPadded;
+	ghost_midx_t maxRowLen;
+#endif
+} 
+CU_ELLPACK_TYPE;
+
+typedef struct 
+{
 	ghost_mdat_t *val;
 	ghost_midx_t *col;
 	ghost_midx_t *rowLen;
@@ -32,6 +45,7 @@ typedef struct
 	ghost_midx_t T;
 
 	CL_ELLPACK_TYPE *clmat;
+	CU_ELLPACK_TYPE *cumat;
 } 
 ELLPACK_TYPE;
 

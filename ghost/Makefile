@@ -1,17 +1,18 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
+include include_NVCC.mk
 
 .PHONY: clean distclean install uninstall all header
 
-VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/mic/ ./src/avx/ ./src/sse/ ./src/spm_formats/ ./plugins/src/
+VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
 PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
-IPATH     += -I./include/ -I./plugins/include/
+IPATH     += -I./include/
 
-OBJS	=	$(COBJS) $(FOBJS)
-FORMATS = $(notdir $(wildcard $(PLUGINDIR)/include/*.h))
+OBJS	=	$(COBJS) $(FOBJS) 
+FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))
 
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DMPI
@@ -39,6 +40,12 @@ ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 IPATH += -I$(CUDA_HOME)/include -I./include/cl
 OBJS  += $(CLOBJS)
+endif
+
+ifeq ($(strip $(CUDA)),1)
+MAKROS+= -DCUDA
+IPATH += -I$(CUDA_HOME)/include -I./include/cu
+OBJS  += $(CUOBJS)
 endif
 
 ifeq ($(strip $(LIKWID)),1)
@@ -87,22 +94,35 @@ MAKROS+= -DDEBUG=$(DEBUG)
 MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
 MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
 
-PLUGINS = $(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(PLUGINDIR)/src/*.c))))
+IPATH += $(addsuffix include/, $(addprefix -I, $(wildcard $(PLUGINDIR)/*/)))
+VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
+
+PLUGINS = $(addsuffix .so, $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/))))
+PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
+PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
+CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST) 
 
-$(PLUGINDIR)/%.so: %.c config.mk
-	@echo "==> Create plugin $< -> $@"
-	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $<
+$(PLUGINS): $(PLUGINOBJS)
+	$(eval objs := $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c, %.o, $(wildcard $(basename $@)/src/*.c)))))
+	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/*.cu)))))
+	@echo "==> Create plugin $(objs) -> $@"
+	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
+	
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(LIBGHOST) $(PLUGINS)
+$(OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+
 
 $(TYPES_H): config.mk  
 	@echo "==> Generate types header"
@@ -154,7 +174,7 @@ install: all
 	@cp -rf include/* $(strip $(GHOSTPATH))/include/ghost
 	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost/"
 	@cp -f $(PLUGINDIR)/*.so $(strip $(GHOSTPATH))/lib/ghost
-	@cp -f $(PLUGINDIR)/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
+	@cp -f $(PLUGINDIR)/*/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
