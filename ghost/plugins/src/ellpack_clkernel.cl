@@ -10,7 +10,7 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#include <ghost_cl_types.h>
+#include <cl/ghost_cl_types.h>
 #include <ghost_constants.h>
 
 kernel void ELLPACK_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val)

@@ -28,9 +28,9 @@ ifeq ($(strip $(OPENCL)),1)
 MAKROS+= -DOPENCL
 #LIBS  += -lintelocl #-lOpenCL
 LIBS  += -lOpenCL
-IPATH += ${CUDA_INC}
+IPATH += -I$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cl
 #LPATH += -L/usr/lib64/OpenCL/vendors/intel #${CUDA_LIB}
-LPATH += ${CUDA_LIB}
+LPATH +=  -L$(CUDA_DRIVERDIR)/lib
 endif
 
 %.o: %.c ../../ghost/config.mk 

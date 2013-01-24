@@ -36,7 +36,7 @@ int main( int argc, char* argv[] )
 	ghost_vdat_t mytol;
 #endif
 
-	int ghostOptions = GHOST_OPTION_PIN; // TODO remote part immer axpy
+	int ghostOptions = GHOST_OPTION_NONE; // TODO remote part immer axpy
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
 		GHOST_SPMVM_MODE_GOODFAITH,

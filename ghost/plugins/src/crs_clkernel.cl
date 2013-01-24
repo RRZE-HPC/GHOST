@@ -10,7 +10,7 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-#include <ghost_cl_types.h>
+#include <cl/ghost_cl_types.h>
 #include <ghost_constants.h>
 
 kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, int nrows, global int *rpt, global int *col, global ghost_cl_mdat_t *val) 

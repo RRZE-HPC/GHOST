@@ -85,7 +85,7 @@ LIBGHOST=libghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
 MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
-MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/\"
+MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
 
 PLUGINS = $(addprefix $(PLUGINDIR)/,$(notdir $(patsubst %.c,%.so, $(wildcard $(PLUGINDIR)/src/*.c))))
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
