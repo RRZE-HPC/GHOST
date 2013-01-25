@@ -573,7 +573,7 @@ static int stringcmp(const void *x, const void *y)
 
 ghost_cl_devinfo_t *CL_getDeviceInfo() 
 {
-	ghost_cl_devinfo_t *devInfo = allocateMemory(sizeof(ghost_cl_devinfo_t),"devInfo");
+	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_cl_devinfo_t),"devInfo");
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;

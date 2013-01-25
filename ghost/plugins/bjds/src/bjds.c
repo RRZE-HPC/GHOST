@@ -1,6 +1,7 @@
 #include "spm_format_bjds.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+#include "private/bjds_cukernel.h"
 
 #if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
@@ -25,6 +26,7 @@ static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j
 static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
+static void BJDS_CUupload(ghost_mat_t *mat);
 static void BJDS_fromBin(ghost_mat_t *mat, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -41,6 +43,9 @@ static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, 
 #ifdef OPENCL
 static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
+#ifdef CUDA
+static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+#endif
 #ifdef VSX
 static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 #endif
@@ -55,6 +60,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
 
 	mat->CLupload = &BJDS_upload;
+	mat->CUupload = &BJDS_CUupload;
 	mat->fromBin = &BJDS_fromBin;
 	mat->printInfo = &BJDS_printInfo;
 	mat->formatName = &BJDS_formatName;
@@ -79,6 +85,10 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 #ifdef OPENCL
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &BJDS_kernel_CL;
+#endif
+#ifdef CUDA
+	if (!(traits->flags & GHOST_SPM_HOST))
+		mat->kernel   = &BJDS_kernel_CU;
 #endif
 	mat->nnz      = &BJDS_nnz;
 	mat->nrows    = &BJDS_nrows;
@@ -162,6 +172,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 	mat->symmetry = crsMat->symmetry;
 	BJDS_fromCRS(mat,crsMat->data);
+	crsMat->destroy(crsMat);
 }
 
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
@@ -348,6 +359,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 
 
+
 	DEBUG_LOG(1,"Successfully created BJDS");
 
 
@@ -402,6 +414,33 @@ static void BJDS_upload(ghost_mat_t* mat)
 #endif
 }
 
+static void BJDS_CUupload(ghost_mat_t* mat) 
+{
+	DEBUG_LOG(1,"Uploading BJDS matrix to CUDA device");
+#ifdef CUDA
+	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
+		DEBUG_LOG(1,"Creating matrix on CUDA device");
+		BJDS(mat)->cumat = (CU_BJDS_TYPE *)allocateMemory(sizeof(CU_BJDS_TYPE),"CU_CRS");
+		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
+		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
+		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_mdat_t));
+		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
+		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
+	
+		BJDS(mat)->cumat->nrows = BJDS(mat)->nrows;
+		BJDS(mat)->cumat->nrowsPadded = BJDS(mat)->nrowsPadded;
+		CU_copyHostToDevice(BJDS(mat)->cumat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_midx_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_midx_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_mdat_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
+	}
+#else
+	if (mat->traits->flags & GHOST_SPM_DEVICE) {
+		ABORT("Device matrix cannot be created without CUDA");
+	}
+#endif
+}
 
 
 static void BJDS_free(ghost_mat_t *mat)
@@ -606,6 +645,16 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],tmp2);
 		}
 	}
+}
+#endif
+
+#ifdef CUDA
+static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	DEBUG_LOG(1,"Calling ELLPACK CUDA kernel");
+	
+	BJDS_kernel_wrap(lhs->CU_val, rhs->CU_val, options, BJDS(mat)->cumat->nrows, BJDS(mat)->cumat->nrowsPadded, BJDS(mat)->cumat->rowLen, BJDS(mat)->cumat->col, BJDS(mat)->cumat->val, BJDS(mat)->cumat->chunkStart, BJDS(mat)->cumat->chunkLen);
+
 }
 #endif
 

@@ -112,9 +112,7 @@
 		fflush(stdout);\
 	}\
 } while(0)
-
 #else
-
 #define CL_safecall(call) {\
 	cl_int clerr = call ;\
 	if( CL_SUCCESS != clerr ){\
@@ -131,6 +129,29 @@
 		fflush(stdout);\
 	}\
 } while(0)
+#endif
+
+#ifdef MPI
+
+#else
+
+#define CU_safecall(call) {\
+	cudaError_t __cuerr = call ;\
+	if( cudaSuccess != __cuerr ){\
+		fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+		fflush(stdout);\
+	}\
+}
+
+#define CU_checkerror() {\
+	cudaError_t __cuerr = cudaGetLastError();\
+	if( cudaSuccess != __cuerr ){\
+		fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+		fflush(stdout);\
+	}\
+}
 #endif
 
 #define UNUSED(x) (void)(x)

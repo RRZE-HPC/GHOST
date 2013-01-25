@@ -6,102 +6,16 @@
 #include <unistd.h>
 #include <sys/param.h>
 #include <cuda_runtime.h>
+#include <cuda.h>
 
-#define CL_MAX_DEVICE_NAME_LEN 500
+#define CU_MAX_DEVICE_NAME_LEN 500
+
+
+#define CU_DEVICE 0
 
 void CU_init()
 {
-	/*cl_uint numPlatforms;
-	cl_platform_id *platformIDs;
-	cl_int err;
-	unsigned int platformNum, device;
-	char devicename[CL_MAX_DEVICE_NAME_LEN];
-	int takedevice;
-	int rank = ghost_getLocalRank();
-	cl_uint numDevices = 0;
-	cl_device_id *deviceIDs;
-	cl_device_id deviceID;
-
-
-
-	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
-	DEBUG_LOG(1,"There are %u OpenCL platforms",numPlatforms);
-	platformIDs = (cl_platform_id *)allocateMemory(
-			sizeof(cl_platform_id)*numPlatforms,"platformIDs");
-	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, NULL));
-
-	for (platformNum=0; platformNum<numPlatforms; platformNum++) {
-		err = clGetDeviceIDs(platformIDs[platformNum],CL_MY_DEVICE_TYPE, 0, NULL,
-				&numDevices);
-		if (err != CL_DEVICE_NOT_FOUND) // not an actual error => no print
-			CL_checkerror(err);
-
-		if (numDevices > 0) { // correct platform has been found
-			platform = platformIDs[platformNum];
-			break;
-		}
-	}
-	if (numDevices == 0)
-		ABORT("No suitable OpenCL device found.");
-
-	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,
-			"deviceIDs");
-	CL_safecall(clGetDeviceIDs(platformIDs[platformNum],CL_MY_DEVICE_TYPE, numDevices,
-				deviceIDs, &numDevices));
-
-	DEBUG_LOG(1,"OpenCL platform: %u, no. devices of desired type: %u", platformNum, numDevices);
-
-	IF_DEBUG(1) {
-		for( device = 0; device < numDevices; ++device) {
-			CL_safecall(clGetDeviceInfo(deviceIDs[device],CL_DEVICE_NAME,
-						sizeof(devicename),devicename,NULL));
-			DEBUG_LOG(1,"Device %u: %s", device, devicename);
-		}
-	}
-
-	takedevice = rank%numDevices;
-	deviceID = deviceIDs[takedevice];
-
-	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
-	DEBUG_LOG(1,"Selecting device %d: %s", takedevice, devicename);
-
-#ifdef GHOST_CL_DEVICE_FISSION
-	DEBUG_LOG(1,"Create subdevices...");
-	cl_uint numSubDevices;
-	cl_device_partition_property_ext props[3];
-	props[0] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT;
-	props[1] = CL_AFFINITY_DOMAIN_L3_CACHE_EXT;
-	props[2] = 0;
-
-	CL_safecall(clCreateSubDevicesEXT(deviceID,props,0,NULL,&numSubDevices));
-	DEBUG_LOG(1,"There are %u subdevices",numSubDevices);
-
-	cl_device_id *subdeviceIDs = (cl_device_id *)malloc(numSubDevices*sizeof(cl_device_id));
-	CL_safecall(clCreateSubDevicesEXT(deviceID,props,numSubDevices,subdeviceIDs,&numSubDevices));
-
-	deviceID = subdeviceIDs[0]
-#endif
-
-	cl_uint nCores;
-	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_MAX_COMPUTE_UNITS,sizeof(cl_uint),&nCores,NULL));
-	DEBUG_LOG(1,"The (sub-)device has %u cores",nCores);
-
-
-	DEBUG_LOG(1,"Creating OpenCL context...");
-	cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};
-	context = clCreateContext(cprops,1,&deviceID,&pfn_notify,NULL,&err);
-	CL_checkerror(err);
-
-
-	DEBUG_LOG(1,"Creating OpenCL command queue...");
-	queue = clCreateCommandQueue(context,deviceID,
-			CL_QUEUE_PROFILING_ENABLE|CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
-			&err);
-	CL_checkerror(err);
-
-
-	free(deviceIDs);
-	free(platformIDs);*/
+	CU_safecall(cudaSetDevice(0));
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
@@ -110,14 +24,14 @@ void * CU_allocDeviceMemory( size_t bytesize )
 		return NULL;
 
 	void *ret;
-	cudaMalloc(&ret,bytesize);
+	CU_safecall(cudaMalloc(&ret,bytesize));
 
 	return ret;
 }
 
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
 {
-	cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost);
+	CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
 }
 
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
@@ -132,35 +46,22 @@ void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
 
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
 {
-	cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice);
+	CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
 }
 
 void CU_freeDeviceMemory(void * mem)
 {
-	cudaFree(mem);
+	CU_safecall(cudaFree(mem));
 }
 
 void CU_barrier()
 {
-	/*CL_safecall(clEnqueueBarrier(queue));
-	CL_safecall(clFinish(queue));*/
+	CU_safecall(cudaDeviceSynchronize());
 }
 
 void CU_finish() 
 {
 
-	// TODO
-	/*	if (!(spmvmOptions & GHOST_OPTION_NO_COMBINED_SOLVERS)) {
-		CL_safecall(clReleaseKernel(kernel[GHOST_FULL_MAT_IDX]));
-		}
-		if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_SOLVERS)) {
-		CL_safecall(clReleaseKernel(kernel[GHOST_LOCAL_MAT_IDX]));
-		CL_safecall(clReleaseKernel(kernel[GHOST_REMOTE_MAT_IDX]));
-
-		}
-
-		CL_safecall(clReleaseCommandQueue(queue));
-		CL_safecall(clReleaseContext(context));*/
 }
 
 
@@ -174,11 +75,96 @@ void CU_downloadVector( ghost_vec_t *vec )
 	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->nrows*sizeof(ghost_vdat_t));
 }
 
-const char * CU_getVersion()
+static int stringcmp(const void *x, const void *y)
 {
-	char *version = (char *)malloc(1024); // TODO as parameter, else: leak
-//	CL_safecall(clGetPlatformInfo(platform,CL_PLATFORM_VERSION,1024,version,NULL));
-	return version;
+	return (strcmp((char *)x, (char *)y));
 }
 
+ghost_acc_info_t *CU_getDeviceInfo() 
+{
+	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_acc_info_t),"devInfo");
+	devInfo->nDistinctDevices = 1;
 
+	int me,size,i;
+	char name[CU_MAX_DEVICE_NAME_LEN];
+	char *names = NULL;
+
+	me = ghost_getRank();
+	size = ghost_getNumberOfProcesses();
+
+	struct cudaDeviceProp devProp;
+
+	CU_safecall(cudaGetDeviceProperties(&devProp,CU_DEVICE));
+
+	strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
+
+
+	if (me==0) {
+		names = (char *)allocateMemory(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char),
+				"names");
+	}
+
+
+#ifdef MPI
+	MPI_safecall(MPI_Gather(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+				CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+#else
+	strncpy(names,name,CU_MAX_DEVICE_NAME_LEN);
+#endif
+
+	if (me==0) {
+		qsort(names,size,CU_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
+		for (i=1; i<size; i++) {
+			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
+						names+i*CU_MAX_DEVICE_NAME_LEN)) {
+				devInfo->nDistinctDevices++;
+			}
+		}
+	}
+
+#ifdef MPI
+	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
+#endif
+
+	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
+	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
+	for (i=0; i<devInfo->nDistinctDevices; i++)
+		devInfo->names[i] = allocateMemory(sizeof(char)*CU_MAX_DEVICE_NAME_LEN,"device names");
+
+	if (me==0) {
+		strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
+		devInfo->nDevices[0] = 1;
+
+		int distIdx = 0;
+		for (i=1; i<size; i++) {
+			devInfo->nDevices[distIdx]++;
+			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
+						names+i*CU_MAX_DEVICE_NAME_LEN)) {
+				strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
+				distIdx++;
+			}
+		}
+
+		free(names);
+	}
+
+#ifdef MPI
+	MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
+
+	for (i=0; i<devInfo->nDistinctDevices; i++)
+		MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+#endif
+
+
+	return devInfo;
+}
+
+const char * CU_getVersion()
+{
+	int rtVersion, drVersion;
+	CU_safecall(cudaRuntimeGetVersion(&rtVersion));
+	CU_safecall(cudaDriverGetVersion(&drVersion));
+	char *version = (char *)malloc(1024); // TODO as parameter, else: leak
+	snprintf(version,1024,"Runtime: %d, Driver: %d",rtVersion,drVersion);
+	return version;
+}

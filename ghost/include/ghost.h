@@ -10,6 +10,10 @@
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif
+
+#ifdef CUDA
+#include <cuda.h>
+#endif
 #endif
 
 #include "ghost_types.h"
@@ -153,6 +157,14 @@ struct ghost_mtraits_t
 	int flags;
 	void * aux;
 }; 
+
+typedef struct
+{
+	int nDistinctDevices;
+	int *nDevices;
+	char **names;
+} 
+ghost_acc_info_t;
 
 /******************************************************************************/
 

@@ -923,6 +923,7 @@ static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 
 static void CRS_free(ghost_mat_t * mat)
 {
+	DEBUG_LOG(1,"Freeing CRS matrix");
 #ifdef OPENCL
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
 		CL_freeDeviceMemory(CR(mat)->clmat->rpt);

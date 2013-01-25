@@ -89,7 +89,7 @@ static ghost_midx_t ELLPACK_ncols(ghost_mat_t *mat)
 
 static void ELLPACK_printInfo(ghost_mat_t *mat)
 {
-#ifdef OPENCL
+#if defined (OPENCL) || defined (CUDA)
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		ghost_printLine("Work-items per row",NULL,"%u",ELLPACK(mat)->T);
 		ghost_printLine("Work-group size",NULL,"%ux%u",ELLPACK_WGXSIZE,ELLPACK(mat)->T);
@@ -146,6 +146,7 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
 	crsMat->fromBin(crsMat,matrixPath);
 
 	ELLPACK_fromCRS(mat,crsMat->data);
+	crsMat->destroy(crsMat);
 }
 
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
@@ -368,6 +369,7 @@ static void ELLPACK_CUupload(ghost_mat_t *mat)
 		CU_copyHostToDevice(ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->rowLen, ELLPACK(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(ELLPACK(mat)->cumat->col,    ELLPACK(mat)->col,    ELLPACK(mat)->nEnts*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(ELLPACK(mat)->cumat->val,    ELLPACK(mat)->val,    ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t));
+		DEBUG_LOG(1,"ELLPACK matrix successfully created on CUDA device");
 	}
 
 #else

@@ -145,6 +145,7 @@ static void TBJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	crsMat->fromBin(crsMat,matrixPath);
 
 	TBJDS_fromCRS(mat,crsMat->data);
+	crsMat->destroy(crsMat);
 }
 
 static void TBJDS_fromCRS(ghost_mat_t *mat, void *crs)

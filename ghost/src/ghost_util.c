@@ -24,7 +24,6 @@
 #include <fcntl.h>
 
 
-
 //#define PRETTYPRINT
 
 #define PRINTWIDTH 80
@@ -215,10 +214,6 @@ void ghost_printSysInfo()
 	int nproc = ghost_getNumberOfProcesses();
 	int nnodes = ghost_getNumberOfNodes();
 
-#ifdef OPENCL
-	ghost_cl_devinfo_t * devInfo = CL_getDeviceInfo();
-#endif
-
 	if (ghost_getRank()==0) {
 		int nthreads;
 		int nphyscores = ghost_getNumberOfPhysicalCores();
@@ -257,8 +252,18 @@ void ghost_printSysInfo()
 		ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
+	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
 		ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
 		ghost_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
+		int i;
+		for (i=1; i<devInfo->nDistinctDevices; i++) {
+			ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
+		}
+#endif
+#ifdef CUDA
+	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
+		ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
+		ghost_printLine("CUDA devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
 		int i;
 		for (i=1; i<devInfo->nDistinctDevices; i++) {
 			ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
@@ -320,9 +325,14 @@ void ghost_printGhostInfo()
 		ghost_printLine("MPI support",NULL,"disabled");
 #endif
 #ifdef OPENCL
-		ghost_printLine("OpenCL support",NULL,"enabled");
+	ghost_printLine("OpenCL support",NULL,"enabled");
 #else
-		ghost_printLine("OpenCL support",NULL,"disabled");
+	ghost_printLine("OpenCL support",NULL,"disabled");
+#endif
+#ifdef CUDA
+	ghost_printLine("CUDA support",NULL,"enabled");
+#else
+	ghost_printLine("CUDA support",NULL,"disabled");
 #endif
 #ifdef LIKWID
 		ghost_printLine("Likwid support",NULL,"enabled");
@@ -769,6 +779,9 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 #ifdef OPENCL
 		CL_barrier();
+#endif
+#ifdef CUDA
+		CU_barrier();
 #endif
 #ifdef MPI
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));

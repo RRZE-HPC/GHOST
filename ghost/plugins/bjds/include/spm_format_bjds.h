@@ -11,7 +11,7 @@
 #define BJDS_LEN 4 // TODO single/double precision
 #elif defined (SSE)
 #define BJDS_LEN 2
-#elif defined (OPENCL)
+#elif defined (OPENCL) || defined (CUDA)
 #define BJDS_LEN 256
 #elif defined (VSX)
 #define BJDS_LEN 2
@@ -35,6 +35,20 @@ CL_BJDS_TYPE;
 
 typedef struct 
 {
+#ifdef CUDA
+	ghost_mdat_t * val;
+	ghost_midx_t * col;
+	ghost_midx_t * rowLen;
+	ghost_mnnz_t * chunkStart;
+	ghost_midx_t * chunkLen;
+	ghost_midx_t nrows;
+	ghost_midx_t nrowsPadded;
+#endif
+} 
+CU_BJDS_TYPE;
+
+typedef struct 
+{
 	ghost_mdat_t *val;
 	ghost_midx_t *col;
 	ghost_mnnz_t *chunkStart;
@@ -49,6 +63,7 @@ typedef struct
 	ghost_midx_t *rowLen;   // for version with remainder loop
 	
 	CL_BJDS_TYPE *clmat;
+	CU_BJDS_TYPE *cumat;
 } 
 BJDS_TYPE;
 

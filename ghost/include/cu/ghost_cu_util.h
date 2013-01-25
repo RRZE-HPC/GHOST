@@ -1,6 +1,8 @@
 #ifndef __GHOST_CU_UTIL_H__
 #define __GHOST_CU_UTIL_H__
 
+#include <ghost.h>
+
 
 void CU_init();
 void * CU_allocDeviceMemory( size_t bytesize );
@@ -13,5 +15,6 @@ void CU_finish();
 void CU_uploadVector( ghost_vec_t *vec );
 void CU_downloadVector( ghost_vec_t *vec );
 const char * CU_getVersion();
+ghost_acc_info_t *CU_getDeviceInfo();
 
 #endif

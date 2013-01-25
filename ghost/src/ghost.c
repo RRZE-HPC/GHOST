@@ -210,7 +210,7 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
 		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
 		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
-		
+
 #pragma omp parallel
 		{
 			int error;
@@ -365,16 +365,16 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		DEBUG_LOG(1,"Creating vector on OpenCL device");
 		int flag;
 		flag = CL_MEM_READ_WRITE;
-/*		if (flags & GHOST_VEC_LHS) {
-			if (options & GHOST_SPMVM_AXPY)
+		/*		if (flags & GHOST_VEC_LHS) {
+				if (options & GHOST_SPMVM_AXPY)
 				flag = CL_MEM_READ_WRITE;
-			else
+				else
 				flag = CL_MEM_WRITE_ONLY;
-		} else if (flags & GHOST_VEC_RHS) {
-			flag = CL_MEM_READ_ONLY;
-		} else {
-			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-		}*/
+				} else if (flags & GHOST_VEC_RHS) {
+				flag = CL_MEM_READ_ONLY;
+				} else {
+				ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
+				}*/
 		// TODO
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
@@ -572,23 +572,21 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 
 void ghost_freeContext(ghost_context_t *context)
 {
-	/*	if (context) {
-		if (context->fullMatrix && context->fullMatrix->destroy)
-		context->fullMatrix->destroy(context->fullMatrix);
+	if (context) {
+		if (context->fullMatrix)
+			context->fullMatrix->destroy(context->fullMatrix);
 
-		if (context->localMatrix && context->localMatrix->destroy)
-		context->localMatrix->destroy(context->localMatrix);
+		if (context->localMatrix)
+			context->localMatrix->destroy(context->localMatrix);
 
-		if (context->remoteMatrix && context->remoteMatrix->destroy)
-		context->remoteMatrix->destroy(context->remoteMatrix);
+		if (context->remoteMatrix)
+			context->remoteMatrix->destroy(context->remoteMatrix);
 
 		free(context->solvers);
 
 		if (context->communicator)
-		ghost_freeCommunicator(context->communicator);
+			ghost_freeCommunicator(context->communicator);
 
 		free(context);
-		}*/
-	UNUSED(context);
-	//TODO
+	}
 }
