@@ -1,6 +1,5 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
-include include_NVCC.mk
 
 .PHONY: clean distclean install uninstall all header
 
@@ -43,6 +42,7 @@ OBJS  += $(CLOBJS)
 endif
 
 ifeq ($(strip $(CUDA)),1)
+include include_NVCC.mk
 MAKROS+= -DCUDA
 IPATH += -I$(CUDA_HOME)/include -I./include/cu
 OBJS  += $(CUOBJS)
@@ -99,7 +99,9 @@ VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
 
 PLUGINS = $(addsuffix .so, $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/))))
 PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
+ifeq ($(strip $(CUDA)),1)
 PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
+endif
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
@@ -110,7 +112,9 @@ all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval objs := $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c, %.o, $(wildcard $(basename $@)/src/*.c)))))
+ifeq ($(strip $(CUDA)),1)
 	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/*.cu)))))
+endif
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
 	
@@ -119,9 +123,11 @@ $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
+ifeq ($(strip $(CUDA)),1)
 $(OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile $< -> $@"
 	@$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+endif
 
 
 $(TYPES_H): config.mk  
