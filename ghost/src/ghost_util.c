@@ -116,7 +116,7 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 	if (ghost_getRank() == 0) {
 		va_list args;
 		va_start(args,fmt);
-		char dummy[1024];
+		char dummy[1025];
 		vsnprintf(dummy,1024,fmt,args);
 		va_end(args);
 
@@ -160,7 +160,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
 			context->gnnz(context)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
 
-	char *matrixLocation = (char *)allocateMemory(64,"matrixLocation");
+	char *matrixLocation;
 	if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
 		matrixLocation = "Device";
 	else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
@@ -168,7 +168,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 	else
 		matrixLocation = "Default";
 
-	char *matrixPlacement = (char *)allocateMemory(64,"matrixPlacement");
+	char *matrixPlacement;
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 		matrixPlacement = "Distributed";
 	else if (context->flags & GHOST_CONTEXT_GLOBAL)
@@ -348,6 +348,9 @@ printf("Likwid Marker API                :      enabled\n");
 		ghost_printLine("Likwid support",NULL,"disabled");
 #endif
 		ghost_printFooter();
+
+		free(avDF);
+		free(availDataformats);
 
 	}
 
@@ -867,7 +870,7 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 			(*nDataformats)++;
 			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
 			strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
-
+			dlclose(myPlugin.so);
 		}
 		closedir(pluginDir);
 	} else {

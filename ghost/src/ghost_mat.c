@@ -45,6 +45,7 @@ int isMMfile(const char *filename)
 	int cmp = strcmp(readkw,keyword);
 
 	free(readkw);
+	fclose(file);
 	return cmp==0?1:0;
 }
 

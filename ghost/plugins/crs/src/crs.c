@@ -249,6 +249,8 @@ static void CRS_readHeader(void *vargs)
 		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+
+	fclose(file);
 }
 
 static void CRS_readRpt(void *vargs)
@@ -300,6 +302,7 @@ static void CRS_readRpt(void *vargs)
 			CR(mat)->rpt[i] = (ghost_midx_t)(tmp[i]);
 		}
 	}
+	free(tmp);
 #endif
 }
 
