@@ -2,6 +2,7 @@ include ../../ghost/config.mk
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
+WTV=1
 
 .PHONY:clean distclean all
 
@@ -11,6 +12,9 @@ LIBS+=  -lghost
 
 ifeq ($(WDDT),1)
 LIBS+= $(DDT)/lib/64/libdmallocth.a 
+endif
+ifeq ($(WDDT),1)
+LIBS+= /apps/toolworks/totalview.8.9.0-0/linux-x86-64/lib/libdbfork_64.a 
 endif
 
 ifeq ($(strip $(MIC)),1)

@@ -935,3 +935,13 @@ int ghost_getCoreNumbering()
 		return GHOST_CORENUMBERING_INVALID;
 
 }
+
+void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)
+{
+	if (plugin) {
+		dlclose(plugin->so);
+		free(plugin);
+	}
+
+
+}

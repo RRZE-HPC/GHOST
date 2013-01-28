@@ -184,6 +184,7 @@ void* allocateMemory( const size_t size, const char* desc );
 void freeMemory(size_t, const char*, void*);
 
 void ghost_freeCommunicator( ghost_comm_t* const );
+void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin);
 int ghost_getNumberOfPhysicalCores();
 int ghost_getRank();
 int ghost_getLocalRank();

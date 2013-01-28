@@ -13,6 +13,8 @@
 #include <string.h>
 #include <byteswap.h>
 
+#include <dlfcn.h>
+
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
 const char name[] = "CRS plugin for ghost";
@@ -942,6 +944,7 @@ static void CRS_free(ghost_mat_t * mat)
 	free(mat->rowPerm);
 	free(mat->invRowPerm);
 	free(mat->extraFun);
+
 
 	free(mat);
 }

@@ -405,8 +405,6 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 
 	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
 	context->flags = context_flags;
-	context->plugins = NULL;
-	context->nPlugins = 0;
 
 	char *mname = basename(matrixPathCopy);
 	context->matrixName = (char *)malloc(strlen(mname)+1);
@@ -470,7 +468,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		if (nTraits != 1)
 			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
 		UNUSED(cr); // TODO
-		context->fullMatrix = ghost_initMatrix(context,&traits[0]);
+		context->fullMatrix = ghost_initMatrix(&traits[0]);
 
 		if (isMMfile(matrixPath))
 			context->fullMatrix->fromMM(context->fullMatrix,matrixPath);
@@ -513,26 +511,12 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	return context;
 }
 
-ghost_mat_t * ghost_initMatrix(ghost_context_t *context, ghost_mtraits_t *traits)
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
-	ghost_spmf_plugin_t myPlugin;
-	int i;
-
-	DEBUG_LOG(1,"Searching in already registered plugins for plugin providing %s",traits->format);
-	for (i=0; i<context->nPlugins; i++) {
-			if (!strcasecmp(traits->format,context->plugins[i].formatID)) {
-				myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
-				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
-				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
-				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-
-				return myPlugin.init(traits);
-			}
-	}
-
+	ghost_spmf_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL, .formatID = NULL};
 	char pluginPath[PATH_MAX];
 	DIR * pluginDir = opendir(PLUGINPATH);
-	struct dirent * dirEntry;
+	struct dirent * dirEntry = NULL;
 
 	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
 	if (pluginDir) {
@@ -564,9 +548,9 @@ ghost_mat_t * ghost_initMatrix(ghost_context_t *context, ghost_mtraits_t *traits
 				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
 
 				closedir(pluginDir);
-				context->plugins = realloc(context->plugins,++context->nPlugins*sizeof(ghost_spmf_plugin_t));
-				context->plugins[context->nPlugins-1] = myPlugin;
-				return myPlugin.init(traits);
+				ghost_mat_t *mat = myPlugin.init(traits);
+				mat->so = myPlugin.so;
+				return mat;
 			} else {
 				dlclose(myPlugin.so);
 				DEBUG_LOG(2,"Skipping plugin: %s",myPlugin.formatID);
@@ -605,30 +589,27 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 void ghost_freeContext(ghost_context_t *context)
 {
 	if (context != NULL) {
-		if (context->fullMatrix != NULL)
+		if (context->fullMatrix != NULL) {
 			context->fullMatrix->destroy(context->fullMatrix);
+			dlclose(context->fullMatrix->so);
+		}
 
-		if (context->localMatrix != NULL)
+		if (context->localMatrix != NULL) {
 			context->localMatrix->destroy(context->localMatrix);
+			dlclose(context->localMatrix->so);
+		}
 
-		if (context->remoteMatrix != NULL)
+		if (context->remoteMatrix != NULL) {
 			context->remoteMatrix->destroy(context->remoteMatrix);
+			dlclose(context->remoteMatrix->so);
+		}
 
 		free(context->solvers);
 		free(context->matrixName);
 
+
 		ghost_freeCommunicator(context->communicator);
 		
-		int i;
-
-		for (i=0; i<context->nPlugins; i++) {
-			DEBUG_LOG(1,"Closing shared object for %s",context->plugins[i].formatID);
-			if (dlclose(context->plugins[i].so))
-				WARNING_LOG("Could not close %s: %s",dlerror());
-		}
-
-		free(context->plugins);
-
 		free(context);
 	}
 }

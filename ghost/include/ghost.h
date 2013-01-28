@@ -112,6 +112,7 @@ struct ghost_mat_t
 #ifdef OPENCL
 	cl_kernel clkernel;
 #endif
+	void *so;
 
 	ghost_midx_t *rowPerm;     // may be NULL
 	ghost_midx_t *invRowPerm;  // may be NULL
@@ -150,8 +151,6 @@ struct ghost_context_t
 
 	int flags;
 
-	ghost_spmf_plugin_t *plugins;
-	int nPlugins;
 };
 
 struct ghost_mtraits_t
@@ -294,7 +293,7 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 		int *spmvmOptions);
 
 ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
-ghost_mat_t * ghost_initMatrix(ghost_context_t * context, ghost_mtraits_t *traits);
+	ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
 
