@@ -213,6 +213,13 @@ void ghost_printSysInfo()
 {
 	int nproc = ghost_getNumberOfProcesses();
 	int nnodes = ghost_getNumberOfNodes();
+	
+#ifdef CUDA
+	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
+#endif
+#ifdef OPENCL
+	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
+#endif
 
 	if (ghost_getRank()==0) {
 		int nthreads;
@@ -252,7 +259,6 @@ void ghost_printSysInfo()
 		ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 #ifdef OPENCL
-	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
 		ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
 		ghost_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
 		int i;
@@ -261,7 +267,6 @@ void ghost_printSysInfo()
 		}
 #endif
 #ifdef CUDA
-	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
 		ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
 		ghost_printLine("CUDA devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
 		int i;

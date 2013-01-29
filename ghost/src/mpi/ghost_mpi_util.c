@@ -287,6 +287,23 @@ void ghost_createDistributedContext(ghost_context_t * context, char * matrixPath
 	context->remoteMatrix = ghost_initMatrix(&traits[2]);
 	context->remoteMatrix->fromCRS(context->remoteMatrix,remCR);
 
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			context->fullMatrix->CLupload(context->fullMatrix);
+		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+			context->localMatrix->CLupload(context->localMatrix);
+		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+			context->remoteMatrix->CLupload(context->remoteMatrix);
+#endif
+#ifdef CUDA
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			context->fullMatrix->CUupload(context->fullMatrix);
+		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+			context->localMatrix->CUupload(context->localMatrix);
+		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+			context->remoteMatrix->CUupload(context->remoteMatrix);
+#endif
+
 	// TODO clean up
 }
 
@@ -840,14 +857,14 @@ void ghost_createCommunication(CR_TYPE *fullCR, CR_TYPE **localCR, CR_TYPE **rem
 			(*remoteCR)->rpt[i+1] = (*remoteCR)->rpt[i] + current_r;
 		}
 
-		IF_DEBUG(2){
+		IF_DEBUG(3){
 			for (i=0; i<lcrp->lnrows[me]+1; i++)
-				DEBUG_LOG(2,"--Row_ptrs-- PE %d: i=%"PRmatIDX" local=%"PRmatIDX" remote=%"PRmatIDX, 
+				DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%"PRmatIDX" local=%"PRmatIDX" remote=%"PRmatIDX, 
 						me, i, (*localCR)->rpt[i], (*remoteCR)->rpt[i]);
 			for (i=0; i<(*localCR)->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(2,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*localCR)->col[i]);
+				DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*localCR)->col[i]);
 			for (i=0; i<(*remoteCR)->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(2,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*remoteCR)->col[i]);
+				DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*remoteCR)->col[i]);
 		}
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));

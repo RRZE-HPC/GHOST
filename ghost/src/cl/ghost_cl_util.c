@@ -588,16 +588,27 @@ ghost_cl_devinfo_t *CL_getDeviceInfo()
 				sizeof(cl_device_id),&deviceID,NULL));
 	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,
 				CL_MAX_DEVICE_NAME_LEN*sizeof(char),name,NULL));
+	
+	int *displs;
+	int *recvcounts;
 
 	if (me==0) {
 		names = (char *)allocateMemory(size*CL_MAX_DEVICE_NAME_LEN*sizeof(char),
 				"names");
+		recvcounts = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		displs = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		
+		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
+			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
+			displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
+
+		}
 	}
 
 
 #ifdef MPI
-	MPI_safecall(MPI_Gather(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-				CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+				recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
 	strncpy(names,name,CL_MAX_DEVICE_NAME_LEN);
 #endif
@@ -618,23 +629,24 @@ ghost_cl_devinfo_t *CL_getDeviceInfo()
 
 	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
 	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
-	for (i=0; i<devInfo->nDistinctDevices; i++)
-		devInfo->names[i] = allocateMemory(sizeof(char)*CL_MAX_DEVICE_NAME_LEN,"device names");
+	for (i=0; i<devInfo->nDistinctDevices; i++) {
+		devInfo->names[i] = allocateMemory(sizeof(char)*CU_MAX_DEVICE_NAME_LEN,"device names");
+		devInfo->nDevices[i] = 1;
+	}
 
 	if (me==0) {
-		strncpy(devInfo->names[0],names,CL_MAX_DEVICE_NAME_LEN);
-		devInfo->nDevices[0] = 1;
+		strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
 
-		int distIdx = 0;
+		int distIdx = 1;
 		for (i=1; i<size; i++) {
-			devInfo->nDevices[distIdx]++;
-			if (strcmp(names+(i-1)*CL_MAX_DEVICE_NAME_LEN,
-						names+i*CL_MAX_DEVICE_NAME_LEN)) {
-				strncpy(devInfo->names[distIdx],names+i*CL_MAX_DEVICE_NAME_LEN,CL_MAX_DEVICE_NAME_LEN);
+			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
+						names+i*CU_MAX_DEVICE_NAME_LEN)) {
+				strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
 				distIdx++;
+			} else {
+				devInfo->nDevices[distIdx-1]++;
 			}
 		}
-
 		free(names);
 	}
 

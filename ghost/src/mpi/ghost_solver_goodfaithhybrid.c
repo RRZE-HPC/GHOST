@@ -157,7 +157,6 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 #endif
 
 	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
-//	spmvmKernAll( context->remoteMatrix->data, invec, res, spmvmOptions|GHOST_SPMVM_AXPY );
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

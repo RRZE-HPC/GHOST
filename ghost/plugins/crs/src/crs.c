@@ -485,7 +485,6 @@ static void CRS_readColValOffset(void *vargs)
 
 
 
-	DEBUG_LOG(1,"Matrix read in successfully");
 }
 
 static void CRS_upload(ghost_mat_t *mat)

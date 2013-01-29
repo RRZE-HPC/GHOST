@@ -126,7 +126,7 @@ $(OBJDIR)/%.o: %.c config.mk
 ifeq ($(strip $(CUDA)),1)
 $(OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	@$(NVCC) $(NVCCFLAGS) ${IPATH} -o $@ -c $<
 endif
 
 

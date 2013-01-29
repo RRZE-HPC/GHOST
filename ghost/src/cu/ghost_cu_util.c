@@ -11,11 +11,21 @@
 #define CU_MAX_DEVICE_NAME_LEN 500
 
 
-#define CU_DEVICE 0
+static int device;
 
 void CU_init()
 {
-	CU_safecall(cudaSetDevice(0));
+	int nDevs;
+	CU_safecall(cudaGetDeviceCount(&nDevs));
+
+	if (nDevs < ghost_getNumberOfRanksOnNode()) {
+		ABORT("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
+	}
+
+	device = ghost_getLocalRank();
+
+	DEBUG_LOG(1,"Selecting CUDA device %d",device);
+	CU_safecall(cudaSetDevice(device));
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
@@ -94,20 +104,30 @@ ghost_acc_info_t *CU_getDeviceInfo()
 
 	struct cudaDeviceProp devProp;
 
-	CU_safecall(cudaGetDeviceProperties(&devProp,CU_DEVICE));
+	CU_safecall(cudaGetDeviceProperties(&devProp,device));
 
 	strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
 
+	int *displs;
+	int *recvcounts;
 
 	if (me==0) {
 		names = (char *)allocateMemory(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char),
 				"names");
+		recvcounts = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		displs = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		
+		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
+			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
+			displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
+
+		}
 	}
 
 
 #ifdef MPI
-	MPI_safecall(MPI_Gather(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-				CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+				recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
 	strncpy(names,name,CU_MAX_DEVICE_NAME_LEN);
 #endif
@@ -128,23 +148,24 @@ ghost_acc_info_t *CU_getDeviceInfo()
 
 	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
 	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
-	for (i=0; i<devInfo->nDistinctDevices; i++)
+	for (i=0; i<devInfo->nDistinctDevices; i++) {
 		devInfo->names[i] = allocateMemory(sizeof(char)*CU_MAX_DEVICE_NAME_LEN,"device names");
+		devInfo->nDevices[i] = 1;
+	}
 
 	if (me==0) {
 		strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
-		devInfo->nDevices[0] = 1;
 
-		int distIdx = 0;
+		int distIdx = 1;
 		for (i=1; i<size; i++) {
-			devInfo->nDevices[distIdx]++;
 			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
 						names+i*CU_MAX_DEVICE_NAME_LEN)) {
 				strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
 				distIdx++;
+			} else {
+				devInfo->nDevices[distIdx-1]++;
 			}
 		}
-
 		free(names);
 	}
 

@@ -515,6 +515,9 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
 	ghost_spmf_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL, .formatID = NULL};
 	char pluginPath[PATH_MAX];
+#ifndef PLUGINPATH
+	ABORT("The plugin installation path is not defined.");
+#endif
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry = NULL;
 
@@ -552,8 +555,8 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 				mat->so = myPlugin.so;
 				return mat;
 			} else {
-				dlclose(myPlugin.so);
 				DEBUG_LOG(2,"Skipping plugin: %s",myPlugin.formatID);
+				dlclose(myPlugin.so);
 			}
 
 		}

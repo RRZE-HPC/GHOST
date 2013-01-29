@@ -132,6 +132,27 @@
 #endif
 
 #ifdef MPI
+#define CU_safecall(call) {\
+	cudaError_t __cuerr = call ;\
+	if( cudaSuccess != __cuerr ){\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+		fflush(stdout);\
+	}\
+}
+
+#define CU_checkerror() {\
+	cudaError_t __cuerr = cudaGetLastError();\
+	if( cudaSuccess != __cuerr ){\
+		int __me;\
+		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+		fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+				__me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+		fflush(stdout);\
+	}\
+}
 
 #else
 

@@ -38,9 +38,9 @@ int main( int argc, char* argv[] )
 
 	int ghostOptions = GHOST_OPTION_NONE; // TODO remote part immer axpy
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
-		GHOST_SPMVM_MODE_VECTORMODE,
+		GHOST_SPMVM_MODE_VECTORMODE/*,
 		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE};
+		GHOST_SPMVM_MODE_TASKMODE*/};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY;

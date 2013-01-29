@@ -265,9 +265,11 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 	ELLPACK(mat)->rowLen = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(ghost_midx_t),"rowLen");
 	ELLPACK(mat)->col = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_midx_t),"col");
 	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
-	
 
-#pragma omp parallel for private(i)	
+	DEBUG_LOG(1,"The ELLPACK matrix has %d rows (padded to %d) and a maximum row length of %d",
+		ELLPACK(mat)->nrows, ELLPACK(mat)->nrowsPadded,ELLPACK(mat)->maxRowLen);	
+
+#pragma omp parallel for private(j)	
 	for( i=0; i < ELLPACK(mat)->nrowsPadded; ++i) {
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
 			ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded] = 0;
@@ -303,6 +305,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 	free( rowSort );
 
 	DEBUG_LOG(1,"Successfully created ELLPACK");
+
 }
 
 static void ELLPACK_upload(ghost_mat_t *mat)
