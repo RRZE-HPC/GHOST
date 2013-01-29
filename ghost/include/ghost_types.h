@@ -189,7 +189,7 @@ typedef float ghost_cl_vdat_t;
 // TODO adjust
 
 #ifdef GHOST_VEC_DP
-#define EPSILON 1e-9
+#define EPSILON 1e-7
 #endif
 #ifdef GHOST_VEC_SP
 #define EPSILON 1e-5 // TODO
