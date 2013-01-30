@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <cuda_runtime.h> // TODO in cu_util
+
 void ghost_zeroVector(ghost_vec_t *vec) 
 {
 	DEBUG_LOG(1,"Zeroing vector");
@@ -18,6 +20,9 @@ void ghost_zeroVector(ghost_vec_t *vec)
 
 #ifdef OPENCL
 	CL_uploadVector(vec);
+#endif
+#ifdef CUDA
+	CU_uploadVector(vec);
 #endif
 
 
@@ -52,6 +57,9 @@ ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 	//vec->val = CL_mapBuffer(vec->CL_val_gpu,size_val);
 	//printf("after: %p\n",vec->val);
 	//CL_uploadVector(vec);
+#endif
+#ifdef CUDA
+	vec->CU_val = CU_allocDeviceMemory(size_val);
 #endif
 
 	return vec;
@@ -90,6 +98,9 @@ ghost_vec_t * ghost_distributeVector(ghost_comm_t *comm, ghost_vec_t *vec)
 
 #ifdef OPENCL // TODO depending on flag
 	CL_uploadVector(nodeVec);
+#endif
+#ifdef CUDA // TODO depending on flag
+	CU_uploadVector(nodeVec);
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");
@@ -136,6 +147,11 @@ void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 	v1->CL_val_gpu = v2->CL_val_gpu;
 	v2->CL_val_gpu = tmp;
 #endif
+#ifdef OPENCL
+	dtmp = v1->CU_val;
+	v1->CU_val = v2->CU_val;
+	v2->CU_val = dtmp;
+#endif
 
 }
 
@@ -155,16 +171,28 @@ void ghost_normalizeVector( ghost_vec_t *vec)
 #ifdef OPENCL
 	CL_uploadVector(vec);
 #endif
+#ifdef CUDA
+	CU_uploadVector(vec);
+#endif
 }
 
 void ghost_freeVector( ghost_vec_t* const vec ) 
 {
 	if( vec ) {
+#ifdef CUDA_PINNEDMEM
+		if (vec->flags & GHOST_VEC_DEVICE)
+			CU_safecall(cudaFreeHost(vec->val));
+#else
 		free(vec->val);
+#endif
 //		freeMemory( (size_t)(vec->nrows*sizeof(ghost_mdat_t)), "vec->val",  vec->val );
 #ifdef OPENCL
 		if (vec->flags & GHOST_VEC_DEVICE)
 			CL_freeDeviceMemory( vec->CL_val_gpu );
+#endif
+#ifdef CUDA
+		if (vec->flags & GHOST_VEC_DEVICE)
+			CU_freeDeviceMemory( vec->CU_val );
 #endif
 		free( vec );
 	}

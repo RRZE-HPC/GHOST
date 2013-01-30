@@ -256,18 +256,18 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 
 	ELLPACK(mat)->maxRowLen = ghost_pad(ELLPACK(mat)->maxRowLen,ELLPACK(mat)->T);
 
-
-
 	ELLPACK(mat)->nrows = cr->nrows;
 	ELLPACK(mat)->nnz = cr->nEnts;
 	ELLPACK(mat)->nrowsPadded = ghost_pad(ELLPACK(mat)->nrows,ELLPACK_PAD);
+	DEBUG_LOG(1,"The ELLPACK matrix has %d rows (padded to %d) and a maximum row length of %d",
+		ELLPACK(mat)->nrows, ELLPACK(mat)->nrowsPadded,ELLPACK(mat)->maxRowLen);	
+
+
 	ELLPACK(mat)->nEnts = ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen;
 	ELLPACK(mat)->rowLen = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(ghost_midx_t),"rowLen");
 	ELLPACK(mat)->col = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_midx_t),"col");
 	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
 
-	DEBUG_LOG(1,"The ELLPACK matrix has %d rows (padded to %d) and a maximum row length of %d",
-		ELLPACK(mat)->nrows, ELLPACK(mat)->nrowsPadded,ELLPACK(mat)->maxRowLen);	
 
 #pragma omp parallel for private(j)	
 	for( i=0; i < ELLPACK(mat)->nrowsPadded; ++i) {

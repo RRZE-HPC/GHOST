@@ -27,6 +27,7 @@
 /*----  Global definitions  --------------------------------------------------*/
 /******************************************************************************/
 #define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
+//#define CUDA_PINNEDMEM
 /******************************************************************************/
 
 
@@ -45,7 +46,7 @@ typedef struct
 	cl_mem CL_val_gpu;
 #endif
 #ifdef CUDA
-	void * CU_val;
+	ghost_vdat_t * CU_val;
 #endif
 } 
 ghost_vec_t;

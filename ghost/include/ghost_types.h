@@ -2,6 +2,11 @@
 #define __GHOST_TYPES_H__
 
 #include "ghost_types_gen.h"
+
+#ifdef CUDAKERNEL
+#undef MPI // TODO
+#endif
+
 #ifdef MPI
 #include <mpi.h>
 #endif

@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/syscall.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <sys/stat.h>
@@ -939,6 +940,23 @@ int ghost_getCoreNumbering()
 	else
 		return GHOST_CORENUMBERING_INVALID;
 
+}
+
+int ghost_getCore()
+{
+    cpu_set_t  cpu_set;
+    CPU_ZERO(&cpu_set);
+    sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
+    int processorId;
+
+    for (processorId=0;processorId<128;processorId++)
+    {
+        if (CPU_ISSET(processorId,&cpu_set))
+        {
+            break;
+        }
+    }
+    return processorId;
 }
 
 void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)

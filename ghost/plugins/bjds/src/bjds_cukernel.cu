@@ -1,3 +1,4 @@
+#define CUDAKERNEL
 #include <ghost.h>
 #include <stdio.h>
 #include <cuda_runtime.h>

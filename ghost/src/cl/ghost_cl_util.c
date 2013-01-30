@@ -571,9 +571,9 @@ static int stringcmp(const void *x, const void *y)
 	return (strcmp((char *)x, (char *)y));
 }
 
-ghost_cl_devinfo_t *CL_getDeviceInfo() 
+ghost_acc_info_t *CL_getDeviceInfo() 
 {
-	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_cl_devinfo_t),"devInfo");
+	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_acc_info_t),"devInfo");
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -599,15 +599,15 @@ ghost_cl_devinfo_t *CL_getDeviceInfo()
 		displs = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
 		
 		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
-			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
-			displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
+			recvcounts[i] = CL_MAX_DEVICE_NAME_LEN;
+			displs[i] = i*CL_MAX_DEVICE_NAME_LEN;
 
 		}
 	}
 
 
 #ifdef MPI
-	MPI_safecall(MPI_Gatherv(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+	MPI_safecall(MPI_Gatherv(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
 				recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
 	strncpy(names,name,CL_MAX_DEVICE_NAME_LEN);
@@ -630,18 +630,18 @@ ghost_cl_devinfo_t *CL_getDeviceInfo()
 	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
 	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
 	for (i=0; i<devInfo->nDistinctDevices; i++) {
-		devInfo->names[i] = allocateMemory(sizeof(char)*CU_MAX_DEVICE_NAME_LEN,"device names");
+		devInfo->names[i] = allocateMemory(sizeof(char)*CL_MAX_DEVICE_NAME_LEN,"device names");
 		devInfo->nDevices[i] = 1;
 	}
 
 	if (me==0) {
-		strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
+		strncpy(devInfo->names[0],names,CL_MAX_DEVICE_NAME_LEN);
 
 		int distIdx = 1;
 		for (i=1; i<size; i++) {
-			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
-						names+i*CU_MAX_DEVICE_NAME_LEN)) {
-				strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
+			if (strcmp(names+(i-1)*CL_MAX_DEVICE_NAME_LEN,
+						names+i*CL_MAX_DEVICE_NAME_LEN)) {
+				strncpy(devInfo->names[distIdx],names+i*CL_MAX_DEVICE_NAME_LEN,CL_MAX_DEVICE_NAME_LEN);
 				distIdx++;
 			} else {
 				devInfo->nDevices[distIdx-1]++;
@@ -661,7 +661,8 @@ ghost_cl_devinfo_t *CL_getDeviceInfo()
 	return devInfo;
 }
 
-void destroyCLdeviceInfo(ghost_cl_devinfo_t * di) 
+
+void destroyCLdeviceInfo(ghost_acc_info_t * di) 
 {
 
 	if (di) {	

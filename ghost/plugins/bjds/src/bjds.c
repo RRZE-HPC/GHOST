@@ -351,7 +351,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 					BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-				//	printf("%f ",BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]);
+			//	printf("%f ",BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]);
 
 
 			}

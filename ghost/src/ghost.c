@@ -25,6 +25,8 @@
 #include <likwid.h>
 #endif
 
+#include <cuda_runtime.h>
+
 static int options;
 #ifdef MPI
 static int MPIwasInitialized;
@@ -237,6 +239,11 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 						coreNumber, error, strerror(error));
 			}
 		}
+	} else {
+#pragma omp parallel
+		{
+		DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
+		}
 	}
 
 #ifdef LIKWID_PERFMON
@@ -327,7 +334,11 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 
 		size_val = (size_t)( nrows * sizeof(ghost_vdat_t) );
 
+#ifdef CUDA_PINNEDMEM
+		CU_safecall(cudaHostAlloc((void **)&val,size_val,cudaHostAllocDefault));
+#else
 		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
+#endif
 		nrows = nrows;
 
 		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX"+%"PRmatIDX" rows",lcrp->lnrows[me],lcrp->halo_elements);
@@ -380,7 +391,11 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		CL_uploadVector(vec);
 #endif
 #ifdef CUDA
+#ifdef CUDA_PINNEDMEM
+		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+#else
 		vec->CU_val = CU_allocDeviceMemory(size_val);
+#endif
 		CU_uploadVector(vec);
 #endif
 
@@ -609,7 +624,6 @@ void ghost_freeContext(ghost_context_t *context)
 
 		free(context->solvers);
 		free(context->matrixName);
-
 
 		ghost_freeCommunicator(context->communicator);
 		

@@ -219,6 +219,7 @@ int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
 int ghost_archIsBigEndian();
 int ghost_getCoreNumbering();
+int ghost_getCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
