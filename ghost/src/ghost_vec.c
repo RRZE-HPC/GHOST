@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef CUDA
 #include <cuda_runtime.h> // TODO in cu_util
+#endif
 
 void ghost_zeroVector(ghost_vec_t *vec) 
 {

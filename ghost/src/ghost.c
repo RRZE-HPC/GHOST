@@ -25,7 +25,9 @@
 #include <likwid.h>
 #endif
 
+#ifdef CUDA
 #include <cuda_runtime.h>
+#endif
 
 static int options;
 #ifdef MPI
