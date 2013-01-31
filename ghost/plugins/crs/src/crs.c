@@ -242,10 +242,12 @@ static void CRS_readHeader(void *vargs)
 	if (swapReq)  ne  = bswap_64(ne);
 	CR(mat)->nEnts = (ghost_midx_t)ne;
 
+	DEBUG_LOG(1,"Matrix has %d rows, %d columns and %d nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+
 	long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
-		(CR(mat)->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
-		CR(mat)->nEnts * GHOST_BINCRS_SIZE_COL_EL +
-		CR(mat)->nEnts * ghost_sizeofDataType(datatype);
+		(long)(CR(mat)->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
+		(long)CR(mat)->nEnts * GHOST_BINCRS_SIZE_COL_EL +
+		(long)CR(mat)->nEnts * ghost_sizeofDataType(datatype);
 
 	if (filesize != rightFilesize)
 		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
