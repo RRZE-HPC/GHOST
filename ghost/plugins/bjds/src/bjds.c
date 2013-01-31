@@ -462,6 +462,10 @@ static void BJDS_free(ghost_mat_t *mat)
 
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
+	UNUSED(mat);
+	UNUSED(lhs);
+	UNUSED(rhs);
+	UNUSED(options);
 	//	sse_kernel_0_intr(lhs, BJDS(mat), rhs, options);	
 	ghost_midx_t c,j,i;
 	ghost_vdat_t tmp[BJDS_LEN]; 
@@ -484,10 +488,12 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		}
 		for (i=0; i<BJDS_LEN; i++)
 		{
-			if (options & GHOST_SPMVM_AXPY)
-				lhs->val[c*BJDS_LEN+i] += tmp[i];
-			else
-				lhs->val[c*BJDS_LEN+i] = tmp[i];
+			if (c*BJDS_LEN+i < BJDS(mat)->nrows) {
+				if (options & GHOST_SPMVM_AXPY)
+					lhs->val[c*BJDS_LEN+i] += tmp[i];
+				else
+					lhs->val[c*BJDS_LEN+i] = tmp[i];
+			}
 
 		}
 	}

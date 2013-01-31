@@ -36,7 +36,7 @@ ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( nrows * sizeof(ghost_vdat_t) );
+	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
 	vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
 
 

@@ -12,7 +12,7 @@
 #include <mpi.h>
 #endif
 
-#define CHECK // compare with reference solution
+//#define CHECK // compare with reference solution
 
 extern int optind;
 

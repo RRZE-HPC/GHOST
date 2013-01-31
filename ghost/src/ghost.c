@@ -296,7 +296,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 
 	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (flags & GHOST_VEC_GLOBAL))
 	{
-		size_val = (size_t)matrix->nrows(matrix)*sizeof(ghost_vdat_t);
+		size_val = (size_t)(ghost_pad(matrix->nrows(matrix),VEC_PAD))*sizeof(ghost_vdat_t);
 		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
 		nrows = matrix->nrows(matrix);
 
@@ -334,7 +334,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		else
 			ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
-		size_val = (size_t)( nrows * sizeof(ghost_vdat_t) );
+		size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
 
 #ifdef CUDA_PINNEDMEM
 		CU_safecall(cudaHostAlloc((void **)&val,size_val,cudaHostAllocDefault));

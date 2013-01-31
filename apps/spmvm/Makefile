@@ -2,7 +2,7 @@ include ../../ghost/config.mk
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
-WTV=1
+WTV=0
 
 .PHONY:clean distclean all
 
