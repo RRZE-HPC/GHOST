@@ -250,9 +250,9 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
+#pragma omp parallel
+	LIKWID_MARKER_THREADINIT;
 
-	//#pragma omp parallel
-	//	LIKWID_MARKER_THREADINIT;
 #endif
 
 #ifdef OPENCL

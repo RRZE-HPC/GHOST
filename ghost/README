@@ -51,7 +51,7 @@
          10) E*8 bytes: the columns indices of the matrix entries
          11) E*sizeof(datatype) bytes: the values of the matrix entries
         
-        NOTE: In the case of any set symmetry flag except 'general', only the
+        NOTE: In the case of any set symmetry flag except 'general', only the right
               part of the matrix is to be stored. The number of entries and row
               row pointers always relate to the _stored_ matrix and not to the
               full one (if symmetric). Due to this constraint, the stored
