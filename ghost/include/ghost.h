@@ -38,8 +38,9 @@
 
 typedef struct 
 {
-	unsigned int flags;
+	int flags;
 	int nrows;
+	int datatype;
 	ghost_vdat_t* val;
 
 #ifdef OPENCL
@@ -159,6 +160,7 @@ struct ghost_mtraits_t
 	const char * format;
 	int flags;
 	void * aux;
+	int datatype;
 }; 
 
 typedef struct

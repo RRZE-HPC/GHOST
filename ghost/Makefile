@@ -1,7 +1,7 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
 
-.PHONY: clean distclean install uninstall all header
+.PHONY: clean distclean install uninstall all header 
 
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
@@ -97,8 +97,15 @@ MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
 IPATH += $(addsuffix include/, $(addprefix -I, $(wildcard $(PLUGINDIR)/*/)))
 VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
 
-PLUGINS = $(addsuffix .so, $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/))))
-PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
+PLUGINS = $(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/c_*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/d_*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/s_*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/z_*/))))))
+PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/c_*/src/*.c)))) \
+	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/d_*/src/*.c)))) \
+	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/s_*/src/*.c)))) \
+	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/z_*/src/*.c))))
+
 ifeq ($(strip $(CUDA)),1)
 PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
 endif
@@ -108,15 +115,17 @@ CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST) 
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval objs := $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c, %.o, $(wildcard $(basename $@)/src/*.c)))))
-ifeq ($(strip $(CUDA)),1)
-	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/*.cu)))))
-endif
+#ifeq ($(strip $(CUDA)),1)
+#	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/c_*.cu)))))
+#endif
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
+	@echo "==> Clean up specialized files"
+	rm -r $(PLUGINDIR)/$(notdir $(basename $@))
 	
 
 $(OBJDIR)/%.o: %.c config.mk
@@ -169,6 +178,10 @@ distclean: clean
 	@echo "==> Distclean"
 	@rm -f *.a *.so
 	@rm -f $(PLUGINDIR)/*.so
+	@rm -rf $(PLUGINDIR)/c_*
+	@rm -rf $(PLUGINDIR)/d_*
+	@rm -rf $(PLUGINDIR)/s_*
+	@rm -rf $(PLUGINDIR)/z_*
 
 install: all
 	@mkdir -p $(strip $(GHOSTPATH))/lib

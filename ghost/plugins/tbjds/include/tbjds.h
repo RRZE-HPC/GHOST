@@ -2,6 +2,20 @@
 #define __GHOST_SPMFORMAT_TBJDS__
 
 #include "ghost.h"
+#ifdef MIC
+//#define BJDS_LEN 8
+#define BJDS_LEN 16
+#elif defined (AVX)
+#define BJDS_LEN 4 // TODO single/double precision
+#elif defined (SSE)
+#define BJDS_LEN 2
+#elif defined (OPENCL) || defined (CUDA)
+#define BJDS_LEN 256
+#elif defined (VSX)
+#define BJDS_LEN 2
+#else
+#define BJDS_LEN 1
+#endif
 
 typedef struct 
 {

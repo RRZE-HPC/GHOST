@@ -2,7 +2,7 @@
 #define __GHOST_MAT_H__
 
 #include "ghost.h"
-#include "ghost_spmformats.h"
+#include "crs.h"
 
 #include <stdio.h>
 #include <stdlib.h>

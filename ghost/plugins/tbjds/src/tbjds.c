@@ -1,4 +1,4 @@
-#include "spm_format_tbjds.h"
+#include "DATATYPECHAR_tbjds.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 

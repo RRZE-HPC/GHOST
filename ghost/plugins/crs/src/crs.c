@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 500
 
-#include "spm_format_crs.h"
+#include "DATATYPECHAR_crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "ghost_mmio.h"
@@ -59,7 +59,7 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->printInfo = &CRS_printInfo;
 	mat->formatName = &CRS_formatName;
 	mat->rowLen   = &CRS_rowLen;
-	mat->entry    = &CRS_entry;
+//	mat->entry    = &CRS_entry;
 	mat->byteSize = &CRS_byteSize;
 	mat->nnz      = &CRS_nnz;
 	mat->nrows    = &CRS_nrows;
@@ -996,6 +996,8 @@ lhs->val[i] = hlp1;
 }
 
 } else {*/
+
+
 	ghost_midx_t i, j;
 	ghost_vdat_t hlp1;
 	CR_TYPE *cr = CR(mat);
@@ -1010,8 +1012,9 @@ lhs->val[i] = hlp1;
 			lhs->val[i] += hlp1;
 		else
 			lhs->val[i] = hlp1;
-		//	}
-}
+	}
+
+//}
 }
 
 #ifdef OPENCL

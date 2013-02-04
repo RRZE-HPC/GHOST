@@ -381,11 +381,13 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 		int iter;
 
 		if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
-			for (iter=0; iter<nIter; iter++)
-				ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			for (iter=0; iter<nIter; iter++) {
+				//ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			}
 		} else if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
-			for (iter=0; iter<nIter; iter++)
-				ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			for (iter=0; iter<nIter; iter++) {
+				//ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			}
 		}
 
 		ghost_freeVector(globRHS);

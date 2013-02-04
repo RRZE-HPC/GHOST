@@ -1,4 +1,4 @@
-#include "spm_format_bjds.h"
+#include "DATATYPECHAR_bjds.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "private/bjds_cukernel.h"
@@ -65,7 +65,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->printInfo = &BJDS_printInfo;
 	mat->formatName = &BJDS_formatName;
 	mat->rowLen     = &BJDS_rowLen;
-	mat->entry      = &BJDS_entry;
+//	mat->entry      = &BJDS_entry;
 	mat->byteSize   = &BJDS_byteSize;
 	mat->kernel     = &BJDS_kernel_plain;
 	mat->fromCRS    = &BJDS_fromCRS;
@@ -462,11 +462,6 @@ static void BJDS_free(ghost_mat_t *mat)
 
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	UNUSED(mat);
-	UNUSED(lhs);
-	UNUSED(rhs);
-	UNUSED(options);
-	//	sse_kernel_0_intr(lhs, BJDS(mat), rhs, options);	
 	ghost_midx_t c,j,i;
 	ghost_vdat_t tmp[BJDS_LEN]; 
 

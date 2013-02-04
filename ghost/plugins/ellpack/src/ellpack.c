@@ -1,4 +1,4 @@
-#include "spm_format_ellpack.h"
+#include "DATATYPECHAR_ellpack.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "private/ellpack_cukernel.h"
@@ -45,7 +45,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->printInfo = &ELLPACK_printInfo;
 	mat->formatName = &ELLPACK_formatName;
 	mat->rowLen     = &ELLPACK_rowLen;
-	mat->entry      = &ELLPACK_entry;
+//	mat->entry      = &ELLPACK_entry;
 	mat->byteSize   = &ELLPACK_byteSize;
 	mat->kernel     = &ELLPACK_kernel_plain;
 	mat->nnz      = &ELLPACK_nnz;
