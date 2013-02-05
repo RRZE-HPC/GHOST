@@ -36,10 +36,10 @@ static void         ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
-static ghost_vdat_t *ghost_vecVal(ghost_vec_t *vec);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
+	ghost_vidx_t i;
 	ghost_vec_t *vec = (ghost_vec_t *)allocateMemory(sizeof(ghost_vec_t),"vector");
 	vec->traits = traits;
 
@@ -54,7 +54,22 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->permute = &ghost_permuteVector;
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
-	vec->val = &ghost_vecVal;
+
+	vec->val = (ghost_vdat_t *)allocateMemory(traits->nrows*sizeof(ghost_vdat_t),"vec->val");
+		if (traits->initFun) {
+#pragma omp parallel for schedule(runtime)
+			for (i=0; i<traits->nrows; i++) 
+				traits->initFun(i,&VAL(vec)[i]);
+		}else {
+#ifdef GHOST_VEC_COMPLEX
+#pragma omp parallel for schedule(runtime)
+			for (i=0; i<traits->nrows; i++) VAL(vec)[i] = 0.+I*0.;
+#else
+#pragma omp parallel for schedule(runtime)
+			for (i=0; i<traits->nrows; i++) VAL(vec)[i] = 0.;
+#endif
+		}
+
 
 	return vec;
 }
@@ -301,10 +316,4 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_vdat_t));
 
 	return new;
-}
-
-static ghost_vdat_t *ghost_vecVal(ghost_vec_t *vec)
-{
-
-	return (ghost_vdat_t *)vec->val;
 }

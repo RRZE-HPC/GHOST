@@ -299,7 +299,11 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, vo
 			nrows += context->communicator->halo_elements;
 	}
 	
-	ghost_vtraits_t traits = {.datatype=GHOST_BINCRS_DT_DOUBLE,.flags = flags,.aux=NULL,.nrows = nrows};
+	ghost_vtraits_t traits = {.datatype=GHOST_BINCRS_DT_DOUBLE,
+		.flags = flags,
+		.aux=NULL,
+		.nrows = nrows,
+		.initFun = fp};
 
 	ghost_vec_t *vec = ghost_initVector(&traits);
 /*	ghost_vdat_t *val;
@@ -637,11 +641,13 @@ ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
 				DEBUG_LOG(2,"Could not open shared file %s: %s",pluginPath,dlerror());
 				continue;
 			}
+				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
+			if (!strncasecmp("Vector plugin for ghost",myPlugin.name,strlen(myPlugin.name))) 
+			{
 
 				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
 
 				myPlugin.init = (ghost_vec_init_t)dlsym(myPlugin.so,"init");
-				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
 				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
 
 				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
@@ -650,6 +656,10 @@ ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
 				ghost_vec_t *vec = myPlugin.init(traits);
 				vec->so = myPlugin.so;
 				return vec;
+			} else {
+				DEBUG_LOG(2,"Skipping plugin because it does not provide a vector functions %s",myPlugin.name);
+				dlclose(myPlugin.so);
+			}
 
 		}
 		dlclose(myPlugin.so);

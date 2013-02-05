@@ -387,7 +387,7 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 	DEBUG_LOG(2,"Calling plain TBJDS kernel");
 	ghost_midx_t c,j,i;
 	ghost_mnnz_t offs = 0;
-	ghost_vdat_t tmp[BJDS_LEN]; 
+	double tmp[BJDS_LEN]; 
    double *rhsv = (double *)rhs->val;	
    double *lhsv = (double *)lhs->val;	
 
@@ -405,7 +405,7 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 		{ // loop inside chunk
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
+				tmp[i] += (double)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
 				offs++;
 			}
 
@@ -414,7 +414,7 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 		{
 			for (j=TBJDS(mat)->chunkMin[c]; j<TBJDS(mat)->rowLen[c*BJDS_LEN+i]; j++)
 			{
-				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
+				tmp[i] += (double)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
 				offs++;
 			}
 		}

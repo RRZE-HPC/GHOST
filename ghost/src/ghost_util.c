@@ -873,7 +873,10 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 			}
 
 			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
-			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
+			if (!myPlugin.formatID) {
+				dlclose(myPlugin.so);
+				continue;
+			}
 
 			(*nDataformats)++;
 			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);

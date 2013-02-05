@@ -76,6 +76,8 @@ struct ghost_vtraits_t
 	void * aux;
 	int datatype;
 	int nrows;
+	void (*initFun)(int,void *);
+
 }; 
 
 typedef struct 

@@ -2,7 +2,9 @@
 #include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+#ifdef CUDA
 #include "private/ellpack_cukernel.h"
+#endif
 
 #include <strings.h>
 #if defined(SSE) || defined(AVX) || defined(MIC)
@@ -403,13 +405,13 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
    double *rhsv = (double *)rhs->val;	
    double *lhsv = (double *)lhs->val;	
 	ghost_midx_t j,i;
-	ghost_vdat_t tmp; 
+	double tmp; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {
 		tmp = 0;
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
-			tmp += (ghost_vdat_t)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
+			tmp += (double)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
 				rhsv[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
 		if (options & GHOST_SPMVM_AXPY)

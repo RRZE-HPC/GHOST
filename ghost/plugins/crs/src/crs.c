@@ -58,7 +58,7 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->printInfo = &CRS_printInfo;
 	mat->formatName = &CRS_formatName;
 	mat->rowLen   = &CRS_rowLen;
-//	mat->entry    = &CRS_entry;
+	//	mat->entry    = &CRS_entry;
 	mat->byteSize = &CRS_byteSize;
 	mat->nnz      = &CRS_nnz;
 	mat->nrows    = &CRS_nrows;
@@ -382,13 +382,13 @@ static void CRS_readColValOffset(void *vargs)
 	}
 	free(tmp);
 #endif
-		// minimal size of value
-		size_t valSize = sizeof(float);
-		if (datatype & GHOST_BINCRS_DT_DOUBLE)
-			valSize *= 2;
+	// minimal size of value
+	size_t valSize = sizeof(float);
+	if (datatype & GHOST_BINCRS_DT_DOUBLE)
+		valSize *= 2;
 
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			valSize *= 2;
+	if (datatype & GHOST_BINCRS_DT_COMPLEX)
+		valSize *= 2;
 
 
 	DEBUG_LOG(1,"Reading array with values");
@@ -399,42 +399,42 @@ static void CRS_readColValOffset(void *vargs)
 
 	if (datatype == GHOST_MY_MDATATYPE) {
 		if (swapReq) {
-		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
-		pread(file,tmpval, nEnts*valSize, offs);
-		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-				for (i = 0; i<nEnts; i++) {
-					uint32_t *a = (uint32_t *)tmpval;
-					uint32_t rswapped = bswap_32(a[2*i]);
-					uint32_t iswapped = bswap_32(a[2*i+1]);
-					memcpy(&(CR(mat)->val[i]),&rswapped,4);
-					memcpy(&(CR(mat)->val[i])+4,&iswapped,4);
+			uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
+			pread(file,tmpval, nEnts*valSize, offs);
+			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+					for (i = 0; i<nEnts; i++) {
+						uint32_t *a = (uint32_t *)tmpval;
+						uint32_t rswapped = bswap_32(a[2*i]);
+						uint32_t iswapped = bswap_32(a[2*i+1]);
+						memcpy(&(CR(mat)->val[i]),&rswapped,4);
+						memcpy(&(CR(mat)->val[i])+4,&iswapped,4);
+					}
+				} else {
+					for (i = 0; i<nEnts; i++) {
+						uint64_t *a = (uint64_t *)tmpval;
+						uint64_t rswapped = bswap_64(a[2*i]);
+						uint64_t iswapped = bswap_64(a[2*i+1]);
+						memcpy(&(CR(mat)->val[i]),&rswapped,8);
+						memcpy(&(CR(mat)->val[i])+8,&iswapped,8);
+					}
 				}
 			} else {
-				for (i = 0; i<nEnts; i++) {
-					uint64_t *a = (uint64_t *)tmpval;
-					uint64_t rswapped = bswap_64(a[2*i]);
-					uint64_t iswapped = bswap_64(a[2*i+1]);
-					memcpy(&(CR(mat)->val[i]),&rswapped,8);
-					memcpy(&(CR(mat)->val[i])+8,&iswapped,8);
+				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+					for (i = 0; i<nEnts; i++) {
+						uint32_t *a = (uint32_t *)tmpval;
+						uint32_t swapped = bswap_32(a[i]);
+						memcpy(&(CR(mat)->val[i]),&swapped,4);
+					}
+				} else {
+					for (i = 0; i<nEnts; i++) {
+						uint64_t *a = (uint64_t *)tmpval;
+						uint64_t swapped = bswap_64(a[i]);
+						memcpy(&(CR(mat)->val[i]),&swapped,8);
+					}
 				}
-			}
-		} else {
-			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-				for (i = 0; i<nEnts; i++) {
-					uint32_t *a = (uint32_t *)tmpval;
-					uint32_t swapped = bswap_32(a[i]);
-					memcpy(&(CR(mat)->val[i]),&swapped,4);
-				}
-			} else {
-				for (i = 0; i<nEnts; i++) {
-					uint64_t *a = (uint64_t *)tmpval;
-					uint64_t swapped = bswap_64(a[i]);
-					memcpy(&(CR(mat)->val[i]),&swapped,8);
-				}
-			}
 
-		}
+			}
 		} else {
 			pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs );
 		}
@@ -454,12 +454,12 @@ static void CRS_readColValOffset(void *vargs)
 				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
 						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_32(tmpval[i*valSize]))+
-							I*(bswap_32(tmpval[i*valSize+valSize/2])));
+								I*(bswap_32(tmpval[i*valSize+valSize/2])));
 					}
 				} else {
 					for (i = 0; i<nEnts; i++) {
 						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_64(tmpval[i*valSize]))+
-							I*(bswap_64(tmpval[i*valSize+valSize/2])));
+								I*(bswap_64(tmpval[i*valSize+valSize/2])));
 					}
 				}
 			} else {
@@ -533,9 +533,9 @@ int compareNZEPos( const void* a, const void* b )
 	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
-	    bRow = ((NZE_TYPE*)b)->row,
-	    aCol = ((NZE_TYPE*)a)->col,
-	    bCol = ((NZE_TYPE*)b)->col;
+		bRow = ((NZE_TYPE*)b)->row,
+		aCol = ((NZE_TYPE*)a)->col,
+		bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
 #ifdef MAIN_DIAGONAL_FIRST
@@ -851,77 +851,77 @@ static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {
 	/*ghost_mm_t * mm = readMMFile(matrixPath);
 
-	ghost_midx_t* nEntsInRow;
-	ghost_midx_t i, e, pos;
+	  ghost_midx_t* nEntsInRow;
+	  ghost_midx_t i, e, pos;
 
-	size_t size_rpt, size_col, size_val, size_nEntsInRow;
-
-
-	DEBUG_LOG(1,"Converting MM to CRS matrix");
+	  size_t size_rpt, size_col, size_val, size_nEntsInRow;
 
 
-	size_rpt  = (size_t)( (mm->nrows+1) * sizeof( ghost_midx_t ) );
-	size_col        = (size_t)( mm->nEnts     * sizeof( ghost_midx_t ) );
-	size_val        = (size_t)( mm->nEnts     * sizeof( ghost_mdat_t) );
-	size_nEntsInRow = (size_t)(  mm->nrows    * sizeof( ghost_midx_t) );
-
-	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-
-	CR(mat)->rpt = (ghost_midx_t*)     allocateMemory( size_rpt,    "rpt" );
-	CR(mat)->col = (ghost_midx_t*)     allocateMemory( size_col,          "col" );
-	CR(mat)->val = (ghost_mdat_t*)  allocateMemory( size_val,          "val" );
-	nEntsInRow = (ghost_midx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
+	  DEBUG_LOG(1,"Converting MM to CRS matrix");
 
 
-	CR(mat)->nrows = mm->nrows;
-	CR(mat)->ncols = mm->ncols;
-	CR(mat)->nEnts = mm->nEnts;
-	for( i = 0; i < mm->nrows; i++ ) nEntsInRow[i] = 0;
+	  size_rpt  = (size_t)( (mm->nrows+1) * sizeof( ghost_midx_t ) );
+	  size_col        = (size_t)( mm->nEnts     * sizeof( ghost_midx_t ) );
+	  size_val        = (size_t)( mm->nEnts     * sizeof( ghost_mdat_t) );
+	  size_nEntsInRow = (size_t)(  mm->nrows    * sizeof( ghost_midx_t) );
 
-	qsort( mm->nze, (size_t)(mm->nEnts), sizeof( NZE_TYPE ), compareNZEPos );
+	  mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
 
-	for( e = 0; e < mm->nEnts; e++ ) nEntsInRow[mm->nze[e].row]++;
+	  CR(mat)->rpt = (ghost_midx_t*)     allocateMemory( size_rpt,    "rpt" );
+	  CR(mat)->col = (ghost_midx_t*)     allocateMemory( size_col,          "col" );
+	  CR(mat)->val = (ghost_mdat_t*)  allocateMemory( size_val,          "val" );
+	  nEntsInRow = (ghost_midx_t*)     allocateMemory( size_nEntsInRow,   "nEntsInRow" );
 
-	pos = 0;
-	CR(mat)->rpt[0] = pos;
+
+	  CR(mat)->nrows = mm->nrows;
+	  CR(mat)->ncols = mm->ncols;
+	  CR(mat)->nEnts = mm->nEnts;
+	  for( i = 0; i < mm->nrows; i++ ) nEntsInRow[i] = 0;
+
+	  qsort( mm->nze, (size_t)(mm->nEnts), sizeof( NZE_TYPE ), compareNZEPos );
+
+	  for( e = 0; e < mm->nEnts; e++ ) nEntsInRow[mm->nze[e].row]++;
+
+	  pos = 0;
+	  CR(mat)->rpt[0] = pos;
 #pragma omp parallel for schedule(runtime)
-	for( i = 0; i < mm->nrows; i++ ) {
-		CR(mat)->rpt[i] = 0;
-	}
+for( i = 0; i < mm->nrows; i++ ) {
+CR(mat)->rpt[i] = 0;
+}
 
-	for( i = 0; i < mm->nrows; i++ ) {
-		CR(mat)->rpt[i] = pos;
-		pos += nEntsInRow[i];
-	}
-	CR(mat)->rpt[mm->nrows] = pos;
+for( i = 0; i < mm->nrows; i++ ) {
+CR(mat)->rpt[i] = pos;
+pos += nEntsInRow[i];
+}
+CR(mat)->rpt[mm->nrows] = pos;
 
-	for( i = 0; i < mm->nrows; i++ ) nEntsInRow[i] = 0;
+for( i = 0; i < mm->nrows; i++ ) nEntsInRow[i] = 0;
 
 #pragma omp parallel for schedule(runtime)
-	for(i=0; i<CR(mat)->nrows; ++i) {
-		ghost_midx_t start = CR(mat)->rpt[i];
-		ghost_midx_t end = CR(mat)->rpt[i+1];
-		ghost_midx_t j;
-		for(j=start; j<end; j++) {
-			CR(mat)->val[j] = 0.0;
-			CR(mat)->col[j] = 0;
-		}
-	}
+for(i=0; i<CR(mat)->nrows; ++i) {
+ghost_midx_t start = CR(mat)->rpt[i];
+ghost_midx_t end = CR(mat)->rpt[i+1];
+ghost_midx_t j;
+for(j=start; j<end; j++) {
+CR(mat)->val[j] = 0.0;
+CR(mat)->col[j] = 0;
+}
+}
 
-	for( e = 0; e < mm->nEnts; e++ ) {
-		const int row = mm->nze[e].row,
-		      col = mm->nze[e].col;
-		const ghost_mdat_t val = mm->nze[e].val;
-		pos = CR(mat)->rpt[row] + nEntsInRow[row];
-		CR(mat)->col[pos] = col;
+for( e = 0; e < mm->nEnts; e++ ) {
+const int row = mm->nze[e].row,
+col = mm->nze[e].col;
+const ghost_mdat_t val = mm->nze[e].val;
+pos = CR(mat)->rpt[row] + nEntsInRow[row];
+CR(mat)->col[pos] = col;
 
-		CR(mat)->val[pos] = val;
+CR(mat)->val[pos] = val;
 
-		nEntsInRow[row]++;
-	}
-	free( nEntsInRow );
+nEntsInRow[row]++;
+}
+free( nEntsInRow );
 
-	DEBUG_LOG(1,"CR matrix created from MM successfully" );*/
+DEBUG_LOG(1,"CR matrix created from MM successfully" );*/
 
 }
 
@@ -996,17 +996,17 @@ lhs->val[i] = hlp1;
 } else {*/
 
 
-   double *rhsv = (double *)rhs->val;	
-   double *lhsv = (double *)lhs->val;	
+	double *rhsv = (double *)rhs->val;	
+	double *lhsv = (double *)lhs->val;	
 	ghost_midx_t i, j;
-	ghost_vdat_t hlp1;
+	double hlp1;
 	CR_TYPE *cr = CR(mat);
-	
+
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * rhsv[cr->col[j]];
+			hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
 		}
 		if (options & GHOST_SPMVM_AXPY) 
 			lhsv[i] += hlp1;
@@ -1014,7 +1014,7 @@ lhs->val[i] = hlp1;
 			lhsv[i] = hlp1;
 	}
 
-//}
+	//}
 }
 
 #ifdef OPENCL

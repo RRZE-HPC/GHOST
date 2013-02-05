@@ -1,15 +1,16 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
 
+#.NOTPARALLEL:
+
 .PHONY: clean distclean install uninstall all header 
 
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
-C_OBJDIR   = ./plugins/c_obj
-D_OBJDIR   = ./plugins/d_obj
-S_OBJDIR   = ./plugins/s_obj
-Z_OBJDIR   = ./plugins/z_obj
-PLOBJDIR   =  $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR)
+C_OBJDIR   = ./obj/c
+D_OBJDIR   = ./obj/d
+S_OBJDIR   = ./obj/s
+Z_OBJDIR   = ./obj/z
 PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
@@ -120,12 +121,12 @@ CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLOBJDIR) $(PLUGINS) $(LIBGHOST)
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
-	$(eval dt := `echo $(notdir $@) | cut -c 1`)
-	$(eval pl := `echo $(basename $(notdir $@)) | cut -c 3-`)
-	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./plugins/$(dt)_obj/%f " | sed 's/\.c/\.o/g'))
+	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
+	$(eval pl := $(shell echo $(basename $(notdir $@)) | cut -c 3-))
+	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./obj/$(dt)/%f " | sed 's/\.c/\.o/g'))
 #	echo $(wildcard $(PLUGINDIR)/$(pl)/src/*.c)
 #	$(eval objs := $(addprefix ./plugins/$(dt)_objs/,$(notdir $(patsubst %.c, %.o, $(wildcard $(PLUGINDIR)/$(pl)/src/*.c)))))
 #ifeq ($(strip $(CUDA)),1)
@@ -178,8 +179,17 @@ $(FORMATS_H): config.mk
 	echo "#include <$$format>" >> $(FORMATS_H); done)
 	@echo -e "\n#endif" >> $(FORMATS_H)
 
-$(PLOBJDIR):
-	@mkdir $(PLOBJDIR)
+$(C_OBJDIR):
+	@mkdir -p $(C_OBJDIR)
+
+$(D_OBJDIR):
+	@mkdir -p $(D_OBJDIR)
+
+$(S_OBJDIR):
+	@mkdir -p $(S_OBJDIR)
+
+$(Z_OBJDIR):
+	@mkdir -p $(Z_OBJDIR)
 
 $(OBJDIR):
 	@mkdir $(OBJDIR)
