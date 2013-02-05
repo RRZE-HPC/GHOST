@@ -3,7 +3,6 @@
 #include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
-#include "ghost_mmio.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -850,7 +849,7 @@ DEBUG_LOG(1,"Matrix read in successfully");*/
 
 static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 {
-	ghost_mm_t * mm = readMMFile(matrixPath);
+	/*ghost_mm_t * mm = readMMFile(matrixPath);
 
 	ghost_midx_t* nEntsInRow;
 	ghost_midx_t i, e, pos;
@@ -858,7 +857,6 @@ static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 	size_t size_rpt, size_col, size_val, size_nEntsInRow;
 
 
-	/* allocate memory ######################################################## */
 	DEBUG_LOG(1,"Converting MM to CRS matrix");
 
 
@@ -923,7 +921,7 @@ static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath)
 	}
 	free( nEntsInRow );
 
-	DEBUG_LOG(1,"CR matrix created from MM successfully" );
+	DEBUG_LOG(1,"CR matrix created from MM successfully" );*/
 
 }
 
@@ -998,6 +996,8 @@ lhs->val[i] = hlp1;
 } else {*/
 
 
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 	ghost_midx_t i, j;
 	ghost_vdat_t hlp1;
 	CR_TYPE *cr = CR(mat);
@@ -1006,12 +1006,12 @@ lhs->val[i] = hlp1;
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * rhs->val[cr->col[j]];
+			hlp1 = hlp1 + (ghost_vdat_t)cr->val[j] * rhsv[cr->col[j]];
 		}
 		if (options & GHOST_SPMVM_AXPY) 
-			lhs->val[i] += hlp1;
+			lhsv[i] += hlp1;
 		else
-			lhs->val[i] = hlp1;
+			lhsv[i] = hlp1;
 	}
 
 //}

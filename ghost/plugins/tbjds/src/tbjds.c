@@ -1,4 +1,5 @@
 #include "tbjds.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 
@@ -387,6 +388,8 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 	ghost_midx_t c,j,i;
 	ghost_mnnz_t offs = 0;
 	ghost_vdat_t tmp[BJDS_LEN]; 
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,offs)
 	for (c=0; c<TBJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
@@ -402,7 +405,7 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 		{ // loop inside chunk
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhs->val[TBJDS(mat)->col[offs]];
+				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
 				offs++;
 			}
 
@@ -411,16 +414,16 @@ static void TBJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t
 		{
 			for (j=TBJDS(mat)->chunkMin[c]; j<TBJDS(mat)->rowLen[c*BJDS_LEN+i]; j++)
 			{
-				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhs->val[TBJDS(mat)->col[offs]];
+				tmp[i] += (ghost_vdat_t)TBJDS(mat)->val[offs] * rhsv[TBJDS(mat)->col[offs]];
 				offs++;
 			}
 		}
 		for (i=0; i<BJDS_LEN; i++)
 		{
 			if (options & GHOST_SPMVM_AXPY)
-				lhs->val[c*BJDS_LEN+i] += tmp[i];
+				lhsv[c*BJDS_LEN+i] += tmp[i];
 			else
-				lhs->val[c*BJDS_LEN+i] = tmp[i];
+				lhsv[c*BJDS_LEN+i] = tmp[i];
 
 		}
 	}

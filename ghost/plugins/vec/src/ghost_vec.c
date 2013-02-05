@@ -16,9 +16,9 @@
 #endif
 #else
 #ifdef GHOST_VEC_DP
-#define VAL(vec) ((complex *)(vec->val))
+#define VAL(vec) ((double *)(vec->val))
 #else
-#define VAL(vec) ((complex *)(vec->val))
+#define VAL(vec) ((float *)(vec->val))
 #endif
 #endif
 
@@ -35,7 +35,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 static void         ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
-static void ghost_cloneVector(ghost_vec_t *src, ghost_vec_t *dst);
+static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
+static ghost_vdat_t *ghost_vecVal(ghost_vec_t *vec);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
@@ -53,6 +54,7 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->permute = &ghost_permuteVector;
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
+	vec->val = &ghost_vecVal;
 
 	return vec;
 }
@@ -91,7 +93,7 @@ static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 
 	VAL(vec) = (ghost_vdat_t*) allocateMemory( size_val, "VAL(vec)");
 	vec->traits->nrows = nrows;
-	vec->flags = flags;
+	vec->traits->flags = flags;
 
 #pragma omp parallel for schedule(runtime) 
 	for( i = 0; i < nrows; i++ ) 
@@ -124,27 +126,27 @@ static ghost_vec_t * ghost_distributeVector(ghost_vec_t *vec, ghost_comm_t *comm
 
 	ghost_vidx_t nrows;
 
-	MPI_safecall(MPI_Bcast(&(vec->flags),1,MPI_INT,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(vec->traits->flags),1,MPI_INT,0,MPI_COMM_WORLD));
 
-	if (vec->flags & GHOST_VEC_RHS)
+	if (vec->traits->flags & GHOST_VEC_RHS)
 		nrows = comm->lnrows[me]+comm->halo_elements;
-	else if (vec->flags & GHOST_VEC_LHS)
+	else if (vec->traits->flags & GHOST_VEC_LHS)
 		nrows = comm->lnrows[me];
 	else
 		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
 
 	DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
-	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->flags ); 
+	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->traits->flags ); 
 
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_vdat,
-				nodeVec->val, (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
+				VAL(nodeVec), (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
-	ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->flags ); 
+	ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
 	int i;
-	for (i=0; i<vec->traits->nrows; i++) nodeVec->val[i] = VAL(vec)[i];
+	for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];
 #endif
 
 #ifdef OPENCL // TODO depending on flag
@@ -179,10 +181,10 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_vdat,0,MPI_COMM_WORLD));
 #else
 	int i;
-	UNUSED(kernel);
-	ghost_permuteVector(VAL(vec),context->fullMatrix->invRowPerm,context->fullMatrix->nrows(context->fullMatrix));
-	for (i=0; i<totalVec->nrows; i++) 
-		totalVec->val[i] = VAL(vec)[i];
+//	UNUSED(kernel);
+	vec->permute(vec,context->fullMatrix->invRowPerm);
+	for (i=0; i<totalVec->traits->nrows; i++) 
+		VAL(totalVec)[i] = VAL(vec)[i];
 #endif
 }
 
@@ -232,18 +234,18 @@ static void ghost_freeVector( ghost_vec_t* const vec )
 {
 	if( vec ) {
 #ifdef CUDA_PINNEDMEM
-		if (vec->flags & GHOST_VEC_DEVICE)
+		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CU_safecall(cudaFreeHost(VAL(vec)));
 #else
 		free(VAL(vec));
 #endif
 //		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_mdat_t)), "VAL(vec)",  VAL(vec) );
 #ifdef OPENCL
-		if (vec->flags & GHOST_VEC_DEVICE)
+		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
 #ifdef CUDA
-		if (vec->flags & GHOST_VEC_DEVICE)
+		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CU_freeDeviceMemory( vec->CU_val );
 #endif
 		free( vec );
@@ -284,8 +286,8 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 {
 	double tol = 1e-5;
 	int i;
-	for (i=0; i<a->nrows; i++) {
-		if (VREAL(VABS(a->val[i]-b->val[i])) > tol || VIMAG(VABS(a->val[i]-b->val[i])) > tol)
+	for (i=0; i<a->traits->nrows; i++) {
+		if (VREAL(VABS(VAL(a)[i]-VAL(b)[i])) > tol || VIMAG(VABS(VAL(a)[i]-VAL(b)[i])) > tol)
 			return 0;
 	}
 
@@ -293,11 +295,16 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 
 }
 
-static void ghost_cloneVector(ghost_vec_t *src, ghost_vec_t *dst)
+static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 {
-	ghost_vec_t *new = ghost_newVector(src->nrows, src->flags);
-	memcpy(new->val, src->val, src->nrows*sizeof(ghost_vdat_t));
+	ghost_vec_t *new = ghost_newVector(src->traits->nrows, src->traits->flags);
+	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_vdat_t));
 
 	return new;
 }
 
+static ghost_vdat_t *ghost_vecVal(ghost_vec_t *vec)
+{
+
+	return (ghost_vdat_t *)vec->val;
+}

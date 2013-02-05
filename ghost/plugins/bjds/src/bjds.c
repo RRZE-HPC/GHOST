@@ -467,7 +467,9 @@ static void BJDS_free(ghost_mat_t *mat)
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	ghost_midx_t c,j,i;
-	ghost_vdat_t tmp[BJDS_LEN]; 
+	ghost_vdat_t tmp[BJDS_LEN];
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
@@ -481,7 +483,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		{ // loop inside chunk
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tmp[i] += (ghost_vdat_t)BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] * rhs->val[BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]];
+				tmp[i] += (ghost_vdat_t)BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] * rhsv[BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]];
 			}
 
 		}
@@ -489,9 +491,9 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		{
 			if (c*BJDS_LEN+i < BJDS(mat)->nrows) {
 				if (options & GHOST_SPMVM_AXPY)
-					lhs->val[c*BJDS_LEN+i] += tmp[i];
+					lhsv[c*BJDS_LEN+i] += tmp[i];
 				else
-					lhs->val[c*BJDS_LEN+i] = tmp[i];
+					lhsv[c*BJDS_LEN+i] = tmp[i];
 			}
 
 		}

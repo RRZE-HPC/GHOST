@@ -58,7 +58,7 @@ struct ghost_vec_t
 	void          (*destroy) (ghost_vec_t *);
 	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
 	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
-	void          (*clone) (ghost_vec_t *, ghost_vec_t *);
+	ghost_vec_t * (*clone) (ghost_vec_t *);
 
 	void *so;
 

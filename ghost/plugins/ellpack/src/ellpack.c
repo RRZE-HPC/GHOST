@@ -1,4 +1,5 @@
 #include "ellpack.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "private/ellpack_cukernel.h"
@@ -399,6 +400,8 @@ static void ELLPACK_free(ghost_mat_t *mat)
 
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 	ghost_midx_t j,i;
 	ghost_vdat_t tmp; 
 
@@ -407,12 +410,12 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 		tmp = 0;
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
 			tmp += (ghost_vdat_t)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
-				rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
+				rhsv[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
 		if (options & GHOST_SPMVM_AXPY)
-			lhs->val[i] += tmp;
+			lhsv[i] += tmp;
 		else
-			lhs->val[i] = tmp;
+			lhsv[i] = tmp;
 	}
 
 }
