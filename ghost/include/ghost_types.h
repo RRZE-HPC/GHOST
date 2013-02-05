@@ -1,7 +1,7 @@
 #ifndef __GHOST_TYPES_H__
 #define __GHOST_TYPES_H__
 
-#include "ghost_types_gen.h"
+//#include "ghost_types_gen.h"
 
 #ifdef CUDAKERNEL
 #undef MPI // TODO

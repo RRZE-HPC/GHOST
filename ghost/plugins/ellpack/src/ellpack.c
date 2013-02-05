@@ -1,4 +1,4 @@
-#include "DATATYPECHAR_ellpack.h"
+#include "ellpack.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "private/ellpack_cukernel.h"

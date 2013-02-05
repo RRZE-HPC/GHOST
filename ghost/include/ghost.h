@@ -41,7 +41,8 @@ typedef struct
 	int flags;
 	int nrows;
 	int datatype;
-	ghost_vdat_t* val;
+	//ghost_vdat_t* val;
+	void* val;
 
 	void          (*zero) (ghost_vec_t *);
 	ghost_vec_t * (*distribute) (ghost_vec_t *, ghost_comm_t *comm);
@@ -112,7 +113,7 @@ struct ghost_mat_t
 	ghost_midx_t  (*nrows) (ghost_mat_t *);
 	ghost_midx_t  (*ncols) (ghost_mat_t *);
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
-	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
+//	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
 	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
@@ -278,7 +279,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, ghost_vdat_t (*fp)(int));
+ghost_vec_t *ghost_createVector(ghost_context_t *context, int type, void (*rhs)(int));
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a

@@ -1,4 +1,4 @@
-#include "DATATYPECHAR_bjds.h"
+#include "bjds.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "private/bjds_cukernel.h"

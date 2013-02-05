@@ -5,6 +5,11 @@ include include_$(strip $(COMPILER)).mk
 
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
+C_OBJDIR   = ./plugins/c_obj
+D_OBJDIR   = ./plugins/d_obj
+S_OBJDIR   = ./plugins/s_obj
+Z_OBJDIR   = ./plugins/z_obj
+PLOBJDIR   =  $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR)
 PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
@@ -101,10 +106,10 @@ PLUGINS = $(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %,
 	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/d_*/)))))) \
 	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/s_*/)))))) \
 	$(addsuffix .so, $(addprefix $(PLUGINDIR)/, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/z_*/))))))
-PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/c_*/src/*.c)))) \
-	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/d_*/src/*.c)))) \
-	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/s_*/src/*.c)))) \
-	$(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/z_*/src/*.c))))
+PLUGINOBJS = $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(D_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
 
 ifeq ($(strip $(CUDA)),1)
 PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
@@ -115,7 +120,7 @@ CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST)
+all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLOBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval objs := $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c, %.o, $(wildcard $(basename $@)/src/*.c)))))
@@ -124,9 +129,24 @@ $(PLUGINS): $(PLUGINOBJS)
 #endif
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
-	@echo "==> Clean up specialized files"
-	@rm -r $(PLUGINDIR)/$(notdir $(basename $@))
+#	@echo "==> Clean up specialized files"
+#	@rm -r $(PLUGINDIR)/$(notdir $(basename $@))
 	
+$(C_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile complex float variant $< -> $@"
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+
+$(D_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile double variant $< -> $@"
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
+
+$(S_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile single variant $< -> $@"
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+
+$(Z_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile complex double variant $< -> $@"
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
@@ -154,6 +174,9 @@ $(FORMATS_H): config.mk
 	echo "#include <$$format>" >> $(FORMATS_H); done)
 	@echo -e "\n#endif" >> $(FORMATS_H)
 
+$(PLOBJDIR):
+	@mkdir $(PLOBJDIR)
+
 $(OBJDIR):
 	@mkdir $(OBJDIR)
 
@@ -170,7 +193,8 @@ endif
 
 clean:
 	@echo "==> Clean"
-	@rm -rf obj/
+	@rm -rf $(OBJDIR)
+	@rm -rf $(PLOBJDIR)
 	@rm -rf $(TYPES_H)
 	@rm -rf $(FORMATS_H)
 
@@ -178,10 +202,6 @@ distclean: clean
 	@echo "==> Distclean"
 	@rm -f *.a *.so
 	@rm -f $(PLUGINDIR)/*.so
-	@rm -rf $(PLUGINDIR)/c_*
-	@rm -rf $(PLUGINDIR)/d_*
-	@rm -rf $(PLUGINDIR)/s_*
-	@rm -rf $(PLUGINDIR)/z_*
 
 install: all
 	@mkdir -p $(strip $(GHOSTPATH))/lib

@@ -1,4 +1,4 @@
-#include "DATATYPECHAR_tbjds.h"
+#include "tbjds.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 

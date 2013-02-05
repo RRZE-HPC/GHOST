@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 500
 
-#include "DATATYPECHAR_crs.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
 #include "ghost_mmio.h"
