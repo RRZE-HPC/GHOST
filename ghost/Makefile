@@ -125,7 +125,7 @@ $(PLUGINS): $(PLUGINOBJS)
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
 	@echo "==> Clean up specialized files"
-	rm -r $(PLUGINDIR)/$(notdir $(basename $@))
+	@rm -r $(PLUGINDIR)/$(notdir $(basename $@))
 	
 
 $(OBJDIR)/%.o: %.c config.mk

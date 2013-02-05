@@ -542,9 +542,14 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	if (pluginDir) {
 		while (0 != (dirEntry = readdir(pluginDir))) {
 			if ('.' == dirEntry->d_name[0]) {
-				DEBUG_LOG(2,"Skipping file: %s",dirEntry->d_name);
+				DEBUG_LOG(2,"Skipping file %s because it starts with a '.'",dirEntry->d_name);
 				continue;
 			}
+			if (ghost_datatypePrefix(traits->datatype) != dirEntry->d_name[0]) {
+				DEBUG_LOG(2,"Skipping file %s because the datatype does not match",dirEntry->d_name);
+				continue;
+			}
+
 
 			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
 			DEBUG_LOG(2,"Trying %s",pluginPath);
@@ -572,7 +577,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 				mat->so = myPlugin.so;
 				return mat;
 			} else {
-				DEBUG_LOG(2,"Skipping plugin: %s",myPlugin.formatID);
+				DEBUG_LOG(2,"Skipping plugin because of data format mismatch: %s",myPlugin.formatID);
 				dlclose(myPlugin.so);
 			}
 

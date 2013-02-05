@@ -15,7 +15,10 @@ int main( int argc, char* argv[] )
 	double time;
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t trait = {.format = "BJDS", .flags = GHOST_SPM_DEFAULT, .aux = NULL};
+	ghost_mtraits_t trait = {.format = "CRS", 
+		.flags = GHOST_SPM_DEFAULT, 
+		.aux = NULL, 
+		.datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;

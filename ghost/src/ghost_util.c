@@ -970,3 +970,24 @@ void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)
 
 
 }
+
+char ghost_datatypePrefix(int dt)
+{
+	char p;
+
+	if (dt & GHOST_BINCRS_DT_FLOAT) {
+		if (dt & GHOST_BINCRS_DT_COMPLEX)
+			p = 'c';
+		else
+			p = 's';
+	} else {
+		if (dt & GHOST_BINCRS_DT_COMPLEX)
+			p = 'z';
+		else
+			p = 'd';
+	}
+
+	return p;
+
+
+}

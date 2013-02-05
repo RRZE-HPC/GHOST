@@ -43,6 +43,18 @@ typedef struct
 	int datatype;
 	ghost_vdat_t* val;
 
+	void          (*zero) (ghost_vec_t *);
+	ghost_vec_t * (*distribute) (ghost_vec_t *, ghost_comm_t *comm);
+	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
+	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
+	void          (*normalize) (ghost_vec_t *);
+	void          (*destroy) (ghost_vec_t *);
+	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
+	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
+	void          (*clone) (ghost_vec_t *, ghost_vec_t *);
+
+	void *so;
+
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif

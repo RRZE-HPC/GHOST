@@ -45,7 +45,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->printInfo = &TBJDS_printInfo;
 	mat->formatName = &TBJDS_formatName;
 	mat->rowLen   = &TBJDS_rowLen;
-	mat->entry    = &TBJDS_entry;
+//	mat->entry    = &TBJDS_entry;
 	mat->byteSize = &TBJDS_byteSize;
 	mat->kernel   = &TBJDS_kernel_plain;
 	mat->fromCRS  = &TBJDS_fromCRS;
