@@ -134,19 +134,19 @@ $(PLUGINS): $(PLUGINOBJS)
 	
 $(C_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex float variant $< -> $@"
-	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
 
 $(D_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile double variant $< -> $@"
-	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
 
 $(S_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile single variant $< -> $@"
-	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
 
 $(Z_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex double variant $< -> $@"
-	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
+	$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"

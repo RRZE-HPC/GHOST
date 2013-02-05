@@ -285,10 +285,24 @@ void ghost_finish()
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, ghost_vdat_t (*fp)(int))
+ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, void (*fp)(int,void *))
 {
+	ghost_vidx_t nrows;
+	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (flags & GHOST_VEC_GLOBAL))
+	{
+		nrows = context->gnrows(context);
+	} 
+	else 
+	{
+		nrows = context->lnrows(context);
+		if (flags & GHOST_VEC_RHS)
+			nrows += context->communicator->halo_elements;
+	}
+	
+	ghost_vtraits_t traits = {.datatype=GHOST_BINCRS_DT_DOUBLE,.flags = flags,.aux=NULL,.nrows = nrows};
 
-	ghost_vdat_t *val;
+	ghost_vec_t *vec = ghost_initVector(&traits);
+/*	ghost_vdat_t *val;
 	ghost_vidx_t nrows;
 	size_t size_val;
 	ghost_mat_t *matrix = context->fullMatrix;
@@ -307,7 +321,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
 			for (i=0; i<matrix->nrows(matrix); i++) 
-				val[i] = fp(i);
+				fp(i,&val[i]);
 		}else {
 #ifdef GHOST_VEC_COMPLEX
 #pragma omp parallel for schedule(runtime)
@@ -348,10 +362,10 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		if (fp) {
 #pragma omp parallel for schedule(runtime)
 			for (i=0; i<lcrp->lnrows[me]; i++) 
-				val[i] = fp(lcrp->lfRow[me]+i);
+				fp(lcrp->lfRow[me]+i,&val[i]);
 #pragma omp parallel for schedule(runtime)
 			for (i=lcrp->lnrows[me]; i<nrows; i++) 
-				val[i] = fp(lcrp->lfRow[me]+i);
+				fp(lcrp->lfRow[me]+i,&val[i]);
 		}else {
 #ifdef GHOST_VEC_COMPLEX
 #pragma omp parallel for schedule(runtime)
@@ -378,16 +392,16 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 		DEBUG_LOG(1,"Creating vector on OpenCL device");
 		int flag;
 		flag = CL_MEM_READ_WRITE;
-		/*		if (flags & GHOST_VEC_LHS) {
-				if (options & GHOST_SPMVM_AXPY)
-				flag = CL_MEM_READ_WRITE;
-				else
-				flag = CL_MEM_WRITE_ONLY;
-				} else if (flags & GHOST_VEC_RHS) {
-				flag = CL_MEM_READ_ONLY;
-				} else {
-				ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-				}*/
+		//		if (flags & GHOST_VEC_LHS) {
+		//		if (options & GHOST_SPMVM_AXPY)
+		//		flag = CL_MEM_READ_WRITE;
+		//		else
+		//		flag = CL_MEM_WRITE_ONLY;
+		//		} else if (flags & GHOST_VEC_RHS) {
+		//		flag = CL_MEM_READ_ONLY;
+		//		} else {
+		//		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
+		//		}
 		// TODO
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
 		CL_uploadVector(vec);
@@ -404,7 +418,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, gh
 
 	} else {
 		DEBUG_LOG(1,"Host-only vector created successfully");
-	}
+	}*/
 
 	return vec;
 
@@ -414,7 +428,6 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 {
 	DEBUG_LOG(1,"Creating context");
 	ghost_context_t *context;
-	CR_TYPE *cr = NULL;
 
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
@@ -469,9 +482,10 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 			}
 		}
 
-		if (options & GHOST_OPTION_SERIAL_IO) 
-			ghost_createDistributedContextSerial(context, cr, options, traits);
-		else
+		if (options & GHOST_OPTION_SERIAL_IO) {
+			// TODO delete serial version
+			//ghost_createDistributedContextSerial(context, cr, options, traits);
+		} else
 			ghost_createDistributedContext(context, matrixPath, options, traits);
 
 		context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = NULL;
@@ -484,7 +498,6 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	{ // global matrix
 		if (nTraits != 1)
 			DEBUG_LOG(1,"Warning! Ignoring all but the first given matrix traits for the global matrix.");
-		UNUSED(cr); // TODO
 		context->fullMatrix = ghost_initMatrix(&traits[0]);
 
 		if (isMMfile(matrixPath))
@@ -592,9 +605,66 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	}
 
 	return NULL;
-
-
 }
+
+ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
+{
+	ghost_vec_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL};
+	char pluginPath[PATH_MAX];
+#ifndef PLUGINPATH
+	ABORT("The plugin installation path is not defined.");
+#endif
+	DIR * pluginDir = opendir(PLUGINPATH);
+	struct dirent * dirEntry = NULL;
+
+	DEBUG_LOG(1,"Searching in %s for suitable vector plugin",PLUGINPATH);
+	if (pluginDir) {
+		while (0 != (dirEntry = readdir(pluginDir))) {
+			if ('.' == dirEntry->d_name[0]) {
+				DEBUG_LOG(2,"Skipping file %s because it starts with a '.'",dirEntry->d_name);
+				continue;
+			}
+			if (ghost_datatypePrefix(traits->datatype) != dirEntry->d_name[0]) {
+				DEBUG_LOG(2,"Skipping file %s because the datatype does not match",dirEntry->d_name);
+				continue;
+			}
+
+
+			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
+			DEBUG_LOG(2,"Trying %s",pluginPath);
+			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
+			if (!myPlugin.so) {
+				DEBUG_LOG(2,"Could not open shared file %s: %s",pluginPath,dlerror());
+				continue;
+			}
+
+				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
+
+				myPlugin.init = (ghost_vec_init_t)dlsym(myPlugin.so,"init");
+				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
+				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
+
+				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
+
+				closedir(pluginDir);
+				ghost_vec_t *vec = myPlugin.init(traits);
+				vec->so = myPlugin.so;
+				return vec;
+
+		}
+		dlclose(myPlugin.so);
+		closedir(pluginDir);
+		ABORT("There is no such plugin");
+
+	} else {
+		closedir(pluginDir);
+		ABORT("The plugin directory does not exist");
+	}
+
+	return NULL;
+}
+
+
 
 int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
 		int *spmvmOptions)

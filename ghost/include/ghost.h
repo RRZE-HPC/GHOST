@@ -35,12 +35,18 @@
 /******************************************************************************/
 /*----  Type definitions  ----------------------------------------------------*/
 /******************************************************************************/
+typedef struct ghost_vec_t ghost_vec_t;
+typedef struct ghost_mat_t ghost_mat_t;
+typedef struct ghost_context_t ghost_context_t;
+typedef struct ghost_comm_t ghost_comm_t;
+typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
+typedef struct ghost_vec_plugin_t ghost_vec_plugin_t;
+typedef struct ghost_mtraits_t ghost_mtraits_t;
+typedef struct ghost_vtraits_t ghost_vtraits_t;
 
-typedef struct 
+struct ghost_vec_t 
 {
-	int flags;
-	int nrows;
-	int datatype;
+	ghost_vtraits_t *traits;
 	//ghost_vdat_t* val;
 	void* val;
 
@@ -62,8 +68,15 @@ typedef struct
 #ifdef CUDA
 	ghost_vdat_t * CU_val;
 #endif
-} 
-ghost_vec_t;
+};
+
+struct ghost_vtraits_t
+{
+	int flags;
+	void * aux;
+	int datatype;
+	int nrows;
+}; 
 
 typedef struct 
 {
@@ -73,16 +86,12 @@ typedef struct
 GHOST_SPM_GPUFORMATS;
 
 
-typedef struct ghost_mat_t ghost_mat_t;
-typedef struct ghost_context_t ghost_context_t;
-typedef struct ghost_comm_t ghost_comm_t;
-typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
-typedef struct ghost_mtraits_t ghost_mtraits_t;
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_context_t *context, ghost_vec_t*, int);
 typedef void (*ghost_dummyfun_t)(void *);
 typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
+typedef ghost_vec_t * (*ghost_vec_init_t) (ghost_vtraits_t *);
 
 struct ghost_comm_t 
 {
@@ -144,6 +153,14 @@ struct ghost_spmf_plugin_t
 	char *name;
 	char *version;
 	char *formatID;
+};
+
+struct ghost_vec_plugin_t
+{
+	void *so;
+	ghost_vec_init_t init;
+	char *name;
+	char *version;
 };
 
 struct ghost_context_t
@@ -279,7 +296,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, int type, void (*rhs)(int));
+ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, void (*fp)(int,void *));
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
@@ -309,7 +326,8 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 		int *spmvmOptions);
 
 ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
-	ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
+ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
 

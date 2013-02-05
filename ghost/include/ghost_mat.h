@@ -2,7 +2,7 @@
 #define __GHOST_MAT_H__
 
 #include "ghost.h"
-#include "crs.h"
+//#include "crs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,13 +11,13 @@
 #define DIAG_OK (char)1
 #define DIAG_INVALID (char)2
 
-typedef struct 
+/*typedef struct 
 {
 	ghost_midx_t nrows, ncols;
 	ghost_mnnz_t nEnts;
 	NZE_TYPE* nze;
 } 
-ghost_mm_t;
+ghost_mm_t;*/
 
 typedef struct 
 {
@@ -26,7 +26,7 @@ typedef struct
 ghost_sorting_t;
 
 int isMMfile(const char *filename);
-ghost_mm_t * readMMFile(const char* filename );
+//ghost_mm_t * readMMFile(const char* filename );
 
 int compareNZEOrgPos( const void* a, const void* b ); 
 int compareNZEPerRow( const void*, const void*);

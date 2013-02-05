@@ -159,7 +159,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 
 
 	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
-			context->gnnz(context)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
+			context->gnnz(context)*(ghost_sizeofDataType(context->fullMatrix->traits->datatype)+sizeof(ghost_midx_t)))/(1024*1024);
 
 	char *matrixLocation;
 	if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
@@ -308,8 +308,8 @@ void ghost_printGhostInfo()
 		ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
-		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
+//		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
+//		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -362,7 +362,7 @@ printf("Likwid Marker API                :      enabled\n");
 
 
 }
-
+/*
 ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
 {
 
@@ -453,7 +453,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 		else
 			res[i] = hlp1;
 	}
-}	
+}	*/
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
@@ -812,11 +812,11 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #endif
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
-		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
+		res->permute(res,context->fullMatrix->invRowPerm);
 	} else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
-		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
-		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
+		res->permute(res,context->localMatrix->invRowPerm);
+		res->permute(res,context->remoteMatrix->invRowPerm);
 	}
 
 	return time;

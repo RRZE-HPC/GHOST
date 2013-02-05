@@ -1,4 +1,4 @@
-COMPILER=GCC    # one of: ICC, GCC, XLC
+COMPILER=ICC    # one of: ICC, GCC, XLC
 LIBTYPE=shared  # static or shared
 MATDATA=d       # s = float, d = double, c = complex float, z = complex double
 VECDATA=d       # s = float, d = double, c = complex float, z = complex double

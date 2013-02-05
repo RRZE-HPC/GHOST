@@ -1,7 +1,11 @@
 #include "bjds.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+
+#ifdef CUDA
 #include "private/bjds_cukernel.h"
+#endif
 
 #if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
