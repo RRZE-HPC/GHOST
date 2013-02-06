@@ -306,6 +306,9 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, vo
 		.initFun = fp};
 
 	ghost_vec_t *vec = ghost_initVector(&traits);
+
+	if (fp != NULL)
+			vec->fromFP(vec,context->communicator,fp);	
 /*	ghost_vdat_t *val;
 	ghost_vidx_t nrows;
 	size_t size_val;

@@ -1,5 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
+#include <string.h>
+
 
 #include "ghost_util.h"
 
@@ -100,9 +102,11 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 	}
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp parallel for private(j)
-		for (j=0; j<context->communicator->dues[to_PE]*sizeofRHS; j++){
-			work[to_PE][j] = ((char *)(invec->val))[context->communicator->duelist[to_PE][j/sizeofRHS]];
+//#pragma omp parallel for private(j)
+		for (j=0; j<context->communicator->dues[to_PE]; j++){
+			memcpy(&work[to_PE][j*sizeofRHS],&((char *)(invec->val))[context->communicator->duelist[to_PE][j]*sizeofRHS],sizeofRHS);
+			//printf("%d->%d: %f [%d] -> %f ... %p->%p\n",ghost_getRank(),to_PE, ((double *)(invec->val))[context->communicator->duelist[to_PE][j]],context->communicator->duelist[to_PE][j],(double)(work[to_PE][j*sizeofRHS]),&((char *)(invec->val))[context->communicator->duelist[to_PE][j]*sizeofRHS],&work[to_PE][j*sizeofRHS]);
+		//	work[to_PE][j] = ((char *)(invec->val))[context->communicator->duelist[to_PE][j/sizeofRHS]];
 			//work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
 		}
 		if (context->communicator->dues[to_PE]>0){

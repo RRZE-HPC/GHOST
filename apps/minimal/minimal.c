@@ -38,13 +38,17 @@ int main( int argc, char* argv[] )
 	ghost_printHeader("Performance");
 	
 	time = ghost_bench_spmvm(lhs,ctx,rhs,&spmvmOptions,nIter);
+	int i;
+	for (i=0; i<ctx->lnrows(ctx); i++)
+		printf("%d: %d: %f\n",ghost_getRank(), i, ((double *)(lhs->val))[i]);
 	if (time > 0)
 		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 
 	ghost_printFooter();
 
-	lhs->destroy(lhs);
-	rhs->destroy(rhs);
+
+//	lhs->destroy(lhs);
+//	rhs->destroy(rhs);
 	ghost_freeContext(ctx);
 
 	ghost_finish();

@@ -1227,7 +1227,6 @@ static void CRS_free(ghost_mat_t * mat)
 	free(mat->data);
 	free(mat->rowPerm);
 	free(mat->invRowPerm);
-	free(mat->extraFun);
 
 
 	free(mat);
@@ -1292,6 +1291,7 @@ lhs->val[i] = hlp1;
 		hlp1 = 0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 			hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
+	//		printf("%d: %d: %f*%f (%d) = %f\n",ghost_getRank(),i,cr->val[j],rhsv[cr->col[j]],cr->col[j],hlp1);
 		}
 		if (options & GHOST_SPMVM_AXPY) 
 			lhsv[i] += hlp1;

@@ -26,6 +26,7 @@
 const char name[] = "Vector plugin for ghost";
 const char version[] = "0.1a";
 
+static void vec_fromFP(ghost_vec_t *vec, ghost_comm_t *comm, void (*fp)(int,void *));
 static void         ghost_zeroVector(ghost_vec_t *vec);
 static ghost_vec_t *ghost_newVector( const int nrows, unsigned int flags );
 static void         ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
@@ -45,6 +46,7 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 
 	DEBUG_LOG(1,"Initializing vector");
 
+	vec->fromFP = &vec_fromFP;
 	vec->zero = &ghost_zeroVector;
 	vec->distribute = &ghost_distributeVector;
 	vec->collect = &ghost_collectVectors;
@@ -56,23 +58,23 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->clone = &ghost_cloneVector;
 
 	vec->val = (ghost_vdat_t *)allocateMemory(traits->nrows*sizeof(ghost_vdat_t),"vec->val");
-		if (traits->initFun) {
-#pragma omp parallel for schedule(runtime)
-			for (i=0; i<traits->nrows; i++) 
-				traits->initFun(i,&VAL(vec)[i]);
-		}else {
-#ifdef GHOST_VEC_COMPLEX
-#pragma omp parallel for schedule(runtime)
-			for (i=0; i<traits->nrows; i++) VAL(vec)[i] = 0.+I*0.;
-#else
-#pragma omp parallel for schedule(runtime)
-			for (i=0; i<traits->nrows; i++) VAL(vec)[i] = 0.;
-#endif
-		}
+
 
 
 	return vec;
 }
+
+static void vec_fromFP(ghost_vec_t *vec, ghost_comm_t *comm, void (*fp)(int,void *))
+{
+	int me = ghost_getRank();
+	int i;
+
+#pragma omp parallel for schedule(runtime)
+	for (i=0; i<vec->traits->nrows; i++) {
+		fp(i+comm->lfRow[me],&VAL(vec)[i]);
+	}
+}
+
 
 static void ghost_zeroVector(ghost_vec_t *vec) 
 {
@@ -186,17 +188,17 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	int me = ghost_getRank();
 	//TODO permute
 	/*if ( 0x1<<kernel & GHOST_SPMVM_MODES_COMBINED)  {
-		ghost_permuteVector(VAL(vec),context->fullMatrix->invRowPerm,context->communicator->lnrows[me]);
-	} else if ( 0x1<<kernel & GHOST_SPMVM_MODES_SPLIT ) {
-		// one of those must return immediately
-		ghost_permuteVector(VAL(vec),context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
-		ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
+	  ghost_permuteVector(VAL(vec),context->fullMatrix->invRowPerm,context->communicator->lnrows[me]);
+	  } else if ( 0x1<<kernel & GHOST_SPMVM_MODES_SPLIT ) {
+	// one of those must return immediately
+	ghost_permuteVector(VAL(vec),context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
+	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}*/
 	MPI_safecall(MPI_Gatherv(VAL(vec),(int)context->communicator->lnrows[me],ghost_mpi_dt_vdat,totalVec->val,
 				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_vdat,0,MPI_COMM_WORLD));
 #else
 	int i;
-//	UNUSED(kernel);
+	//	UNUSED(kernel);
 	vec->permute(vec,context->fullMatrix->invRowPerm);
 	for (i=0; i<totalVec->traits->nrows; i++) 
 		VAL(totalVec)[i] = VAL(vec)[i];
@@ -245,16 +247,16 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 #endif
 }
 
-static void ghost_freeVector( ghost_vec_t* const vec ) 
+static void ghost_freeVector( ghost_vec_t* vec ) 
 {
 	if( vec ) {
 #ifdef CUDA_PINNEDMEM
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CU_safecall(cudaFreeHost(VAL(vec)));
 #else
-		free(VAL(vec));
+		free(vec->val);
 #endif
-//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_mdat_t)), "VAL(vec)",  VAL(vec) );
+		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_mdat_t)), "VAL(vec)",  VAL(vec) );
 #ifdef OPENCL
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CL_freeDeviceMemory( vec->CL_val_gpu );
@@ -263,7 +265,7 @@ static void ghost_freeVector( ghost_vec_t* const vec )
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CU_freeDeviceMemory( vec->CU_val );
 #endif
-		free( vec );
+		free(vec);
 	}
 }
 

@@ -50,6 +50,7 @@ struct ghost_vec_t
 	//ghost_vdat_t* val;
 	void* val;
 
+	void          (*fromFP) (ghost_vec_t *, ghost_comm_t *, void (*fp)(int,void *));
 	void          (*zero) (ghost_vec_t *);
 	ghost_vec_t * (*distribute) (ghost_vec_t *, ghost_comm_t *comm);
 	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
