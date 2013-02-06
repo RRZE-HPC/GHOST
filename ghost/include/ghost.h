@@ -88,6 +88,40 @@ typedef struct
 GHOST_SPM_GPUFORMATS;
 
 
+/*typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+} CRS_readRpt_args_t;
+
+typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+	ghost_mnnz_t offsetEnts;
+	ghost_midx_t offsetRows;
+	ghost_midx_t nRows;
+	ghost_mnnz_t nEnts;
+	int IOtype;
+} CRS_readColValOffset_args_t;
+
+typedef struct {
+	ghost_mat_t *mat;
+	int options;
+	ghost_comm_t *lcrp;
+} CRS_createDistribution_args_t;
+
+typedef struct {
+	ghost_mat_t *mat;
+	ghost_mat_t *lmat;
+	ghost_mat_t *rmat;
+	int options;
+	ghost_context_t *context;
+} CRS_createCommunication_args_t;
+
+#define GHOST_CRS_EXTRAFUN_READ_RPT 0
+#define GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET 1
+#define GHOST_CRS_EXTRAFUN_READ_HEADER 2
+#define GHOST_CRS_EXTRAFUN_CREATE_DISTRIBUTION 3
+#define GHOST_CRS_EXTRAFUN_CREATE_COMMUNICATION 4*/
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_context_t *context, ghost_vec_t*, int);
@@ -126,7 +160,7 @@ struct ghost_mat_t
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
 //	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	void       (*CLupload)(ghost_mat_t *);
 	void       (*CUupload)(ghost_mat_t *);

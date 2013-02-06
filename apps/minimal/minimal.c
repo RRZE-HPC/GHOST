@@ -19,7 +19,7 @@ int main( int argc, char* argv[] )
 	ghost_mtraits_t mtraits = {.format = "CRS", 
 		.flags = GHOST_SPM_DEFAULT, 
 		.aux = NULL, 
-		.datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX};
+		.datatype = GHOST_BINCRS_DT_DOUBLE};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;

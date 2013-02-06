@@ -47,26 +47,9 @@ typedef struct
 NZE_TYPE;
 
 
-typedef struct{
-	ghost_mat_t *mat;
-	char *matrixPath;
-} CRS_readRpt_args_t;
-
-typedef struct{
-	ghost_mat_t *mat;
-	char *matrixPath;
-	ghost_mnnz_t offsetEnts;
-	ghost_midx_t offsetRows;
-	ghost_midx_t nRows;
-	ghost_mnnz_t nEnts;
-	int IOtype;
-} CRS_readColValOffset_args_t;
 
 ghost_mat_t * init(ghost_mtraits_t *);
 
-#define GHOST_CRS_EXTRAFUN_READ_RPT 0
-#define GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET 1
-#define GHOST_CRS_EXTRAFUN_READ_HEADER 2
 
 #endif
 

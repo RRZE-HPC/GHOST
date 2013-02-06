@@ -463,10 +463,28 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= GHOST_OPTION_SERIAL_IO;
 	}
+				if (nTraits != 3) {
+					ghost_mtraits_t trait_0 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					ghost_mtraits_t trait_1 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					ghost_mtraits_t trait_2 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+					traits = (ghost_mtraits_t *)malloc(3*sizeof(ghost_mtraits_t));
+					traits[0] = trait_0;
+					traits[1] = trait_1;
+					traits[2] = trait_2;
+					nTraits = 3;
+				}
 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
+	
+	context->fullMatrix = ghost_initMatrix(&traits[0]);
+	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options);
+		
+	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = NULL;
+	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
+	//context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
+	//context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
 
-
+/*
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{ // distributed matrix
 #ifdef MPI
@@ -528,7 +546,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = NULL;
 		context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = NULL;
 		context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
-	}
+	}*/
 
 	//#endif
 	context->lnnz = &context_lnnz;
