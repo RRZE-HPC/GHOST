@@ -285,30 +285,37 @@ void ghost_finish()
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, void (*fp)(int,void *))
+ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits)
 {
 	ghost_vidx_t nrows;
-	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (flags & GHOST_VEC_GLOBAL))
+	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
 	{
 		nrows = context->gnrows(context);
 	} 
 	else 
 	{
 		nrows = context->lnrows(context);
-		if (flags & GHOST_VEC_RHS)
+		if (traits->flags & GHOST_VEC_RHS)
 			nrows += context->communicator->halo_elements;
 	}
 	
-	ghost_vtraits_t traits = {.datatype=GHOST_BINCRS_DT_DOUBLE,
-		.flags = flags,
-		.aux=NULL,
-		.nrows = nrows,
-		.initFun = fp};
+	traits->nrows = nrows;
+	
+	ghost_vec_t *vec = ghost_initVector(traits);
 
-	ghost_vec_t *vec = ghost_initVector(&traits);
+/*	vec->sisters = (ghost_vec_t *)malloc(ghost_getNumberOfProcesses()*sizeof(ghost_vec_t));
+	
+	int sizeofVec = sizeof(ghost_vec_t);
+	int i = ghost_getRank();
+	DEBUG_LOG(0,"sisters[%d] = %p",i,vec);
+	vec->sisters[i] = *vec;
 
-	if (fp != NULL)
-			vec->fromFP(vec,context->communicator,fp);	
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(&(vec->sisters[i]),sizeofVec,MPI_BYTE,i,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+	
+	DEBUG_LOG(0,"%d",vec->sisters[0].traits->nrows);*/
+
 /*	ghost_vdat_t *val;
 	ghost_vidx_t nrows;
 	size_t size_val;

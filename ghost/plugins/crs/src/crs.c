@@ -24,11 +24,10 @@ static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options);
-static void CRS_fromMM(ghost_mat_t *mat, char *matrixPath);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
+//static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -39,7 +38,7 @@ static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
 static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context);
 static void CRS_upload(ghost_mat_t *mat);
-static int compareNZEPos( const void* a, const void* b ); 
+//static int compareNZEPos( const void* a, const void* b ); 
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -118,7 +117,7 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 	return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
 }
 
-static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
+/*static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
 	ghost_midx_t e;
 	for (e=CR(mat)->rpt[i]; e<CR(mat)->rpt[i+1]; e++) {
@@ -126,7 +125,7 @@ static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 			return CR(mat)->val[e];
 	}
 	return 0.;
-}
+}*/
 
 static size_t CRS_byteSize (ghost_mat_t *mat)
 {
@@ -1165,13 +1164,8 @@ static void CRS_upload(ghost_mat_t *mat)
 #endif
 }
 
-int compareNZEPos( const void* a, const void* b ) 
+/*int compareNZEPos( const void* a, const void* b ) 
 {
-
-	/* comparison function for sorting of matrix entries;
-	 * sort lesser row id first, then lesser column id first;
-	 * if MAIN_DIAGONAL_FIRST is defined sort diagonal 
-	 * before lesser column id */
 
 	int aRow = ((NZE_TYPE*)a)->row,
 		bRow = ((NZE_TYPE*)b)->row,
@@ -1179,14 +1173,10 @@ int compareNZEPos( const void* a, const void* b )
 		bCol = ((NZE_TYPE*)b)->col;
 
 	if( aRow == bRow ) {
-#ifdef MAIN_DIAGONAL_FIRST
-		if( aRow == aCol ) aCol = -1;
-		if( bRow == bCol ) bCol = -1;
-#endif /* MAIN_DIAGONAL_FIRST */
 		return aCol - bCol;
 	}
 	else return aRow - bRow;
-}
+}*/
 
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options)
 {
@@ -1200,11 +1190,6 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx
 	} else {
 		DEBUG_LOG(1,"Reading in a distributed context");
 		CRS_createDistributedContext(ctx,matrixPath,options,mat->traits);
-
-		printf("//// %f\n",((CR_TYPE*)(ctx->fullMatrix->data))->val[0]);
-		printf("//// %f\n",((CR_TYPE*)(ctx->localMatrix->data))->val[0]);
-		printf("//// %f\n",((CR_TYPE*)(ctx->remoteMatrix->data))->val[0]);
-
 	}
 	DEBUG_LOG(1,"Matrix read in successfully");
 

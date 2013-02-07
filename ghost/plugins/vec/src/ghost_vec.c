@@ -26,6 +26,9 @@
 const char name[] = "Vector plugin for ghost";
 const char version[] = "0.1a";
 
+static void vec_print(ghost_vec_t *vec);
+static void vec_scale(ghost_vec_t *vec, void *scale);
+static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
 static void vec_fromFP(ghost_vec_t *vec, ghost_comm_t *comm, void (*fp)(int,void *));
 static void         ghost_zeroVector(ghost_vec_t *vec);
 static ghost_vec_t *ghost_newVector( const int nrows, unsigned int flags );
@@ -40,12 +43,14 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
-	ghost_vidx_t i;
 	ghost_vec_t *vec = (ghost_vec_t *)allocateMemory(sizeof(ghost_vec_t),"vector");
 	vec->traits = traits;
 
 	DEBUG_LOG(1,"Initializing vector");
 
+	vec->dotProduct = &vec_dotprod;
+	vec->scale = &vec_scale;
+	vec->print = &vec_print;
 	vec->fromFP = &vec_fromFP;
 	vec->zero = &ghost_zeroVector;
 	vec->distribute = &ghost_distributeVector;
@@ -64,6 +69,56 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	return vec;
 }
 
+static void ghost_normalizeVector( ghost_vec_t *vec)
+{
+	ghost_vdat_t s;
+    vec_dotprod(vec,vec,&s);
+	s = 1./VSQRT(s);
+	vec_scale(vec,&s);
+
+#ifdef OPENCL
+	CL_uploadVector(vec);
+#endif
+#ifdef CUDA
+	CU_uploadVector(vec);
+#endif
+}
+
+static void vec_print(ghost_vec_t *vec)
+{
+	ghost_vidx_t i;
+	for (i=0; i<vec->traits->nrows; i++) {
+		printf("vec[%d] = %f\n",i,VAL(vec)[i]);
+	}
+
+}
+
+static void vec_scale(ghost_vec_t *vec, void *scale)
+{
+	ghost_vidx_t i;
+	ghost_vdat_t s = *(ghost_vdat_t *)scale;
+
+#pragma omp parallel for 
+	for (i=0; i<vec->traits->nrows; i++) {
+		VAL(vec)[i] *= s;
+	}
+
+
+}
+
+static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+{
+	ghost_vdat_t sum;
+	ghost_vidx_t i;
+
+#pragma omp parallel for reduction(+:sum)
+	for (i=0; i<vec->traits->nrows; i++) {
+		sum += VAL(vec)[i]*VAL(vec2)[i];
+	}
+
+	*(ghost_vdat_t *)res = sum;
+}
+
 static void vec_fromFP(ghost_vec_t *vec, ghost_comm_t *comm, void (*fp)(int,void *))
 {
 	int me = ghost_getRank();
@@ -74,7 +129,6 @@ static void vec_fromFP(ghost_vec_t *vec, ghost_comm_t *comm, void (*fp)(int,void
 		fp(i+comm->lfRow[me],&VAL(vec)[i]);
 	}
 }
-
 
 static void ghost_zeroVector(ghost_vec_t *vec) 
 {
@@ -100,8 +154,10 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 
 static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 
 {
-	ghost_vec_t* vec;
-	size_t size_val;
+	UNUSED(nrows);
+	UNUSED(flags);
+	ghost_vec_t* vec = NULL;
+	/*size_t size_val;
 	int i;
 
 	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
@@ -131,7 +187,7 @@ static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 #ifdef CUDA
 	vec->CU_val = CU_allocDeviceMemory(size_val);
 #endif
-
+*/
 	return vec;
 }
 
@@ -226,26 +282,6 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 
 }
 
-static void ghost_normalizeVector( ghost_vec_t *vec)
-{
-	int i;
-	ghost_vdat_t sum = 0;
-
-	for (i=0; i<vec->traits->nrows; i++)	
-		sum += VAL(vec)[i]*VAL(vec)[i];
-
-	ghost_vdat_t f = (ghost_vdat_t)1./VSQRT(VABS(sum));
-
-	for (i=0; i<vec->traits->nrows; i++)	
-		VAL(vec)[i] *= f;
-
-#ifdef OPENCL
-	CL_uploadVector(vec);
-#endif
-#ifdef CUDA
-	CU_uploadVector(vec);
-#endif
-}
 
 static void ghost_freeVector( ghost_vec_t* vec ) 
 {

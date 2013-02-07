@@ -991,6 +991,6 @@ char ghost_datatypePrefix(int dt)
 	}
 
 	return p;
-
-
 }
+
+

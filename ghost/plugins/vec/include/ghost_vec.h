@@ -20,5 +20,4 @@
 
 ghost_vec_t * init(ghost_vtraits_t *);
 
-
 #endif

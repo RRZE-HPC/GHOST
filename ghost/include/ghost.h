@@ -60,8 +60,13 @@ struct ghost_vec_t
 	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
 	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
 	ghost_vec_t * (*clone) (ghost_vec_t *);
+	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
+	void          (*scale) (ghost_vec_t *, void *);
+	void          (*print) (ghost_vec_t *);
 
 	void *so;
+
+	ghost_vec_t *sisters;
 
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
@@ -77,8 +82,6 @@ struct ghost_vtraits_t
 	void * aux;
 	int datatype;
 	int nrows;
-	void (*initFun)(int,void *);
-
 }; 
 
 typedef struct 
@@ -333,7 +336,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int flags, void (*fp)(int,void *));
+ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits);
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
