@@ -35,8 +35,10 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
-//static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
-//static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context);
+#ifdef MPI
+static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
+static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context);
+#endif
 static void CRS_upload(ghost_mat_t *mat);
 //static int compareNZEPos( const void* a, const void* b ); 
 #ifdef OPENCL

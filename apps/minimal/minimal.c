@@ -7,7 +7,7 @@ typedef double vecdt;
 
 static void rhsVal (int i, void *val) 
 {
-	*(double *)val = i + (vecdt)1.0;
+	*(vecdt *)val = i + (vecdt)1.0;
 }
 
 int main( int argc, char* argv[] ) 
@@ -15,7 +15,7 @@ int main( int argc, char* argv[] )
 	int nIter = 1;
 	double time;
 	int ghostOptions = GHOST_OPTION_NONE;
-	int spmvmOptions = GHOST_SPMVM_AXPY;
+	int spmvmOptions = GHOST_SPMVM_AXPY|GHOST_SPMVM_MODE_GOODFAITH;
 	ghost_mtraits_t mtraits = {.format = "CRS",
 		.flags = GHOST_SPM_DEFAULT, 
 		.aux = NULL, 
@@ -45,7 +45,7 @@ int main( int argc, char* argv[] )
 
 	ghost_normalizeVec(lhs);
 	
-	vecdt n;
+	/*vecdt n;
 	ghost_dotProduct(lhs,lhs,&n);
 	lhs->toFile(lhs,"/tmp/lhs.dump",0,0);
 	lhs->fromFile(lhs,"/tmp/lhs.dump",0);
@@ -54,7 +54,7 @@ int main( int argc, char* argv[] )
 	ghost_vecToFile(lhs,"/tmp/lhs_global.dump",ctx);
 	ghost_vecFromFile(lhs,"/tmp/lhs_global.dump",ctx);
 
-	lhs->print(lhs);
+	lhs->print(lhs);*/
 
 
 	if (time > 0)

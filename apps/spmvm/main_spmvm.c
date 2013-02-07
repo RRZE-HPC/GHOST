@@ -1,6 +1,5 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <ghost_vec.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -13,16 +12,12 @@
 #endif
 
 //#define CHECK // compare with reference solution
+typedef double vecdt;
+#define VECDT GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL
 
-extern int optind;
-
-static ghost_vdat_t rhsVal (int i) 
+static void rhsVal (int i, void *val) 
 {
-#ifdef GHOST_VEC_COMPLEX
-	return (ghost_vdat_el_t)(i+1.0) + I*(ghost_vdat_el_t)(i+1.5);
-#else
-	return i+(ghost_vdat_t)1.0 ;
-#endif
+	*(vecdt *)val = i + (vecdt)1.0;
 }
 
 int main( int argc, char* argv[] ) 
@@ -33,14 +28,14 @@ int main( int argc, char* argv[] )
 
 #ifdef CHECK
 	ghost_midx_t i, errcount = 0;
-	ghost_vdat_t mytol;
+	double mytol;
 #endif
 
 	int ghostOptions = GHOST_OPTION_NONE; // TODO remote part immer axpy
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
-		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE};
+		GHOST_SPMVM_MODE_GOODFAITH/*,
+		GHOST_SPMVM_MODE_TASKMODE*/};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY;
@@ -68,11 +63,13 @@ int main( int argc, char* argv[] )
 	ghost_mtraits_t traits[3];
 	traits[0] = trait; traits[1] = trait; traits[2] = trait;
 
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
 
 	ghost_init(argc,argv,ghostOptions);       // basic initialization
 	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DEFAULT);
-	lhs   = ghost_createVector(context,GHOST_VEC_LHS,NULL);
-	rhs   = ghost_createVector(context,GHOST_VEC_RHS,rhsVal);
+	lhs   = ghost_createVector(context,&lvtraits);
+	rhs   = ghost_createVector(context,&rvtraits);
 
 #ifdef CHECK	
 	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,spmvmOptions);	
@@ -127,13 +124,13 @@ int main( int argc, char* argv[] )
 				(double)context->gnnz(context)/time);
 #endif
 
-		ghost_zeroVector(lhs);
+		lhs->zero(lhs);
 
 	}
 	ghost_printFooter();
 
-	ghost_freeVector( lhs );
-	ghost_freeVector( rhs );
+	lhs->destroy(lhs);
+	rhs->destroy(rhs);
 	ghost_freeContext( context );
 
 #ifdef CHECK
