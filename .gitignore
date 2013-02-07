@@ -9,6 +9,7 @@ obj/
 jobscripts/
 bench/
 meas/
+_attic/
 tags
 *stdout*
 *stderr*
