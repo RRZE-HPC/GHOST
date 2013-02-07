@@ -15,11 +15,11 @@ int main( int argc, char* argv[] )
 	int nIter = 1;
 	double time;
 	int ghostOptions = GHOST_OPTION_NONE;
-	int spmvmOptions = GHOST_SPMVM_AXPY|GHOST_SPMVM_MODE_GOODFAITH;
+	int spmvmOptions = GHOST_SPMVM_AXPY;
 	ghost_mtraits_t mtraits = {.format = "CRS",
 		.flags = GHOST_SPM_DEFAULT, 
 		.aux = NULL, 
-		.datatype = GHOST_BINCRS_DT_DOUBLE};
+		.datatype = GHOST_BINCRS_DT_FLOAT};
 	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
 	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
 

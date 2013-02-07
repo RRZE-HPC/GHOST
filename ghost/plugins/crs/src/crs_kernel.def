@@ -1,0 +1,23 @@
+#define PASTE(name, type) name ##_## type
+#define FUNCTION_NAME(name, type) PASTE(name, type)
+
+static void FUNCTION_NAME(CRS_kernel_plain,vecdt) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	vecdt *rhsv = (vecdt *)rhs->val;	
+	vecdt *lhsv = (vecdt *)lhs->val;	
+	ghost_midx_t i, j;
+	vecdt hlp1;
+	CR_TYPE *cr = CR(mat);
+
+#pragma omp parallel for schedule(runtime) private (hlp1, j)
+	for (i=0; i<cr->nrows; i++){
+		hlp1 = 0.0;
+		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+			hlp1 = hlp1 + (vecdt)cr->val[j] * rhsv[cr->col[j]];
+		}
+		if (options & GHOST_SPMVM_AXPY) 
+			lhsv[i] += hlp1;
+		else
+			lhsv[i] = hlp1;
+	}
+}

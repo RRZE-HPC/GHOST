@@ -13,8 +13,15 @@
 #include <byteswap.h>
 
 #include <dlfcn.h>
-
 #define CR(mat) ((CR_TYPE *)(mat->data))
+
+#define vecdt float
+#include "crs.def"
+#undef vecdt
+#define vecdt double
+#include "crs.def"
+#undef vecdt
+
 
 const char name[] = "CRS plugin for ghost";
 const char version[] = "0.1a";
@@ -1263,8 +1270,9 @@ lhs->val[i] = hlp1;
 }
 }
 
-} else {*/
+} else {
 
+	DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
 	double *rhsv = (double *)rhs->val;	
 	double *lhsv = (double *)lhs->val;	
@@ -1284,6 +1292,13 @@ lhs->val[i] = hlp1;
 		else
 			lhsv[i] = hlp1;
 	}
+*/
+	DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
+	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT)
+		CRS_kernel_plain_float(mat,lhs,rhs,options);
+	else
+		CRS_kernel_plain_double(mat,lhs,rhs,options);
+
 
 	//}
 }
