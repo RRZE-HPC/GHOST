@@ -51,8 +51,8 @@ int main( int argc, char* argv[] )
 	lhs->fromFile(lhs,"/tmp/lhs.dump",0);
 
 	lhs->print(lhs);
-	ghost_vecToFile(lhs,"lhs_global.dump",ctx);
-	ghost_vecFromFile(lhs,"lhs_global.dump",ctx);
+	ghost_vecToFile(lhs,"/tmp/lhs_global.dump",ctx);
+	ghost_vecFromFile(lhs,"/tmp/lhs_global.dump",ctx);
 
 	lhs->print(lhs);
 
