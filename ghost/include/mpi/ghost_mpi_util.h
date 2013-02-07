@@ -12,6 +12,7 @@ void ghost_createDistributedContext(ghost_context_t *, char *, int, ghost_mtrait
 //void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp);
 //void ghost_createCommunication(CR_TYPE *, CR_TYPE **, CR_TYPE **, int options, ghost_context_t *context);
 MPI_Comm getSingleNodeComm();
+int ghost_mpi_dataType(int datatype);
 
 void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
 void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);

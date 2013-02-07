@@ -11,11 +11,13 @@
 
 
 typedef double vecdt;
-#define VECDT GHOST_BINCRS_DT_DOUBLE
+#define VECDT GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL
+
+static ghost_context_t *ctx;
 
 static void rhsVal (int i, void *val) 
 {
-	*(double *)val = i + (vecdt)1.0;
+	*(double *)val = ctx->communicator->lfRow[ghost_getRank()]+ i + (vecdt)1.0;
 }
 
 int main( int argc, char* argv[] ) 
@@ -31,7 +33,6 @@ int main( int argc, char* argv[] )
 	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
 	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
 
-	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
 	ghost_vec_t *rhs;
 
@@ -40,7 +41,7 @@ int main( int argc, char* argv[] )
 	rhs = ghost_createVector(ctx,&rvtraits); // RHS vec
 	lhs = ghost_createVector(ctx,&lvtraits);   // LHS vec (=0)
 
-	rhs->fromFP(rhs,ctx->communicator,rhsVal);	
+	rhs->fromFunc(rhs,rhsVal);
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -51,19 +52,18 @@ int main( int argc, char* argv[] )
 	
 	time = ghost_bench_spmvm(lhs,ctx,rhs,&spmvmOptions,nIter);
 
-	vecdt n;
-	lhs->dotProduct(lhs,lhs,&n);
-#ifdef MPI
-	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, &n, 1, MPI_VECDT, MPI_SUM, MPI_COMM_WORLD));
-#endif
-	n = 1/sqrt(n);
-	lhs->scale(lhs,&n);
+	ghost_normalizeVec(lhs);
 	
-	lhs->dotProduct(lhs,lhs,&n);
-#ifdef MPI
-	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, &n, 1, MPI_VECDT, MPI_SUM, MPI_COMM_WORLD));
-#endif
-	printf("%f should be 1.0\n",n);
+	vecdt n;
+	ghost_dotProduct(lhs,lhs,&n);
+	lhs->toFile(lhs,"/tmp/lhs.dump",0,0);
+	lhs->fromFile(lhs,"/tmp/lhs.dump",0);
+
+	lhs->print(lhs);
+	ghost_vecToFile(lhs,"lhs_global.dump",ctx);
+	ghost_vecFromFile(lhs,"lhs_global.dump",ctx);
+
+	lhs->print(lhs);
 
 
 	if (time > 0)

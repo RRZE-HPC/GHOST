@@ -102,6 +102,22 @@ void setupSingleNodeComm()
 	free( all_hn_mem );
 	free( all_hostnames );
 }
+
+int ghost_mpi_dataType(int datatype)
+{
+	if (datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return 0; // TODO
+		else
+			return MPI_FLOAT;
+	} else {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return 0;
+		else
+			return MPI_DOUBLE;
+	}
+}
+
 /*
 void ghost_createDistributedContextSerial(ghost_context_t * context, CR_TYPE* cr, int options, ghost_mtraits_t *traits)
 {

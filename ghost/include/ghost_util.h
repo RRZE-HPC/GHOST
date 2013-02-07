@@ -222,6 +222,7 @@ int ghost_getCoreNumbering();
 int ghost_getCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 char ghost_datatypePrefix(int dt);
+int ghost_dataTypeIdx(int datatype);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);

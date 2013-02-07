@@ -6,6 +6,7 @@
 #include <complex.h>
 #include <math.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
@@ -50,7 +51,12 @@ struct ghost_vec_t
 	//ghost_vdat_t* val;
 	void* val;
 
-	void          (*fromFP) (ghost_vec_t *, ghost_comm_t *, void (*fp)(int,void *));
+	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,void *));
+	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *);
+	void          (*fromFile) (ghost_vec_t *, char *path, off_t);
+	void          (*fromRand) (ghost_vec_t *);
+	void          (*fromScalar) (ghost_vec_t *, void *);
+
 	void          (*zero) (ghost_vec_t *);
 	ghost_vec_t * (*distribute) (ghost_vec_t *, ghost_comm_t *comm);
 	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
@@ -62,7 +68,9 @@ struct ghost_vec_t
 	ghost_vec_t * (*clone) (ghost_vec_t *);
 	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*scale) (ghost_vec_t *, void *);
+	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*print) (ghost_vec_t *);
+	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
 
 	void *so;
 
@@ -240,6 +248,12 @@ typedef struct
 	char **names;
 } 
 ghost_acc_info_t;
+
+
+void ghost_normalizeVec(ghost_vec_t *);
+void ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
+void ghost_vecToFile(ghost_vec_t *, char *, ghost_context_t *);
+void ghost_vecFromFile(ghost_vec_t *, char *, ghost_context_t *);
 
 /******************************************************************************/
 
