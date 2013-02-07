@@ -16,10 +16,10 @@
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
 #define vecdt float
-#include "crs.def"
+#include "crs_kernel.def"
 #undef vecdt
 #define vecdt double
-#include "crs.def"
+#include "crs_kernel.def"
 #undef vecdt
 
 

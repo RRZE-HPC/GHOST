@@ -31,6 +31,23 @@
 //#define CUDA_PINNEDMEM
 /******************************************************************************/
 
+#define GHOST_REGISTER_DT_D(name) \
+	typedef double name ## _t; \
+	const int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_S(name) \
+	typedef float name ## _t; \
+	const int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_C(name) \
+	typedef complex float name ## _t; \
+	const int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
+
+#define GHOST_REGISTER_DT_Z(name) \
+	typedef complex double name ## _t; \
+	const int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
+
+
 
 
 /******************************************************************************/

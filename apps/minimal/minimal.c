@@ -2,12 +2,11 @@
 #include <ghost.h>
 #include <ghost_util.h>
 
-typedef double vecdt;
-#define VECDT GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL
+GHOST_REGISTER_DT_D(vecdt)
 
 static void rhsVal (int i, void *val) 
 {
-	*(vecdt *)val = i + (vecdt)1.0;
+	*(vecdt_t *)val = i + (vecdt_t)1.0;
 }
 
 int main( int argc, char* argv[] ) 
@@ -20,8 +19,8 @@ int main( int argc, char* argv[] )
 		.flags = GHOST_SPM_DEFAULT, 
 		.aux = NULL, 
 		.datatype = GHOST_BINCRS_DT_FLOAT};
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = vecdt};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = vecdt};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
