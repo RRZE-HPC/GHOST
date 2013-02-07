@@ -1,7 +1,7 @@
-#define PASTE(name, type) name ##_## type
+#define PASTE(name, type) type ##_## name
 #define FUNCTION_NAME(name, type) PASTE(name, type)
 
-static void FUNCTION_NAME(CRS_kernel_plain,vecdt) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+static void FUNCTION_NAME(CRS_kernel_plain,prefix) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	vecdt *rhsv = (vecdt *)rhs->val;	
 	vecdt *lhsv = (vecdt *)lhs->val;	

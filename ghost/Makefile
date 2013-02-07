@@ -63,17 +63,17 @@ ifeq ($(strip $(LONGIDX)),1)
 TYPES:= $(TYPES)"\#define GHOST_LONGIDX \n"
 endif
 
-ifeq ($(strip $(MATDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-else ifeq ($(strip $(MATDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-else ifeq ($(strip $(MATDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-else ifeq ($(strip $(MATDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-endif
+#ifeq ($(strip $(MATDATA)),s)
+#TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
+#else ifeq ($(strip $(MATDATA)),d)
+#TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
+#else ifeq ($(strip $(MATDATA)),c)
+#TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
+#TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
+#else ifeq ($(strip $(MATDATA)),z)
+#TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
+#TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
+#endif
 
 ifeq ($(strip $(VECDATA)),s)
 TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
@@ -139,19 +139,19 @@ $(PLUGINS): $(PLUGINOBJS)
 	
 $(C_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex float variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP -DGHOST_VEC_COMPLEX -DGHOST_VEC_SP ${IPATH} -o $@ -c $<
 
 $(D_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_DP -DGHOST_VEC_DP ${IPATH} -o $@ -c $<
 
 $(S_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile single variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_SP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_SP -DGHOST_VEC_SP ${IPATH} -o $@ -c $<
 
 $(Z_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_VEC_DP -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP -DGHOST_VEC_COMPLEX -DGHOST_VEC_DP ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"

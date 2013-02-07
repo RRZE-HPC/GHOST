@@ -2,11 +2,12 @@
 #include <ghost.h>
 #include <ghost_util.h>
 
-GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_Z(vecdt)
 
 static void rhsVal (int i, void *val) 
 {
-	*(vecdt_t *)val = i + (vecdt_t)1.0;
+	UNUSED(i);
+	*(vecdt_t *)val = 1+I*1;//i + (vecdt_t)1.0 + I*i;
 }
 
 int main( int argc, char* argv[] ) 
@@ -15,12 +16,9 @@ int main( int argc, char* argv[] )
 	double time;
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = {.format = "CRS",
-		.flags = GHOST_SPM_DEFAULT, 
-		.aux = NULL, 
-		.datatype = GHOST_BINCRS_DT_FLOAT};
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = vecdt};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = vecdt};
+	ghost_mtraits_t mtraits = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_FLOAT};
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
@@ -28,8 +26,8 @@ int main( int argc, char* argv[] )
 
 	ghost_init(argc,argv,ghostOptions);
 	ctx = ghost_createContext(argv[1],&mtraits,1,GHOST_CONTEXT_DEFAULT);
-	rhs = ghost_createVector(ctx,&rvtraits); // RHS vec
-	lhs = ghost_createVector(ctx,&lvtraits);   // LHS vec (=0)
+	rhs = ghost_createVector(ctx,&rvtraits);
+	lhs = ghost_createVector(ctx,&lvtraits);
 
 	rhs->fromFunc(rhs,rhsVal);
 
@@ -39,28 +37,12 @@ int main( int argc, char* argv[] )
 	ghost_printContextInfo(ctx);
 
 	ghost_printHeader("Performance");
-	
 	time = ghost_bench_spmvm(lhs,ctx,rhs,&spmvmOptions,nIter);
 
-	ghost_normalizeVec(lhs);
-	
-	/*vecdt n;
-	ghost_dotProduct(lhs,lhs,&n);
-	lhs->toFile(lhs,"/tmp/lhs.dump",0,0);
-	lhs->fromFile(lhs,"/tmp/lhs.dump",0);
-
-	lhs->print(lhs);
-	ghost_vecToFile(lhs,"/tmp/lhs_global.dump",ctx);
-	ghost_vecFromFile(lhs,"/tmp/lhs_global.dump",ctx);
-
-	lhs->print(lhs);*/
-
-
-	if (time > 0)
+	if (time > 0.)
 		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 
 	ghost_printFooter();
-
 
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);

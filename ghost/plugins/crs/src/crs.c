@@ -16,12 +16,28 @@
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
 #define vecdt float
+#define prefix s
 #include "crs_kernel.def"
 #undef vecdt
-#define vecdt double
-#include "crs_kernel.def"
-#undef vecdt
+#undef prefix
 
+#define vecdt double
+#define prefix d
+#include "crs_kernel.def"
+#undef vecdt
+#undef prefix
+
+#define vecdt complex double
+#define prefix z
+#include "crs_kernel.def"
+#undef vecdt
+#undef prefix
+
+#define vecdt complex float
+#define prefix c
+#include "crs_kernel.def"
+#undef vecdt
+#undef prefix
 
 const char name[] = "CRS plugin for ghost";
 const char version[] = "0.1a";
@@ -1293,12 +1309,19 @@ lhs->val[i] = hlp1;
 			lhsv[i] = hlp1;
 	}
 */
-	DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
-	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT)
-		CRS_kernel_plain_float(mat,lhs,rhs,options);
-	else
-		CRS_kernel_plain_double(mat,lhs,rhs,options);
+	DEBUG_LOG(1,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
+	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			c_CRS_kernel_plain(mat,lhs,rhs,options);
+		else
+			s_CRS_kernel_plain(mat,lhs,rhs,options);
+	} else {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			z_CRS_kernel_plain(mat,lhs,rhs,options);
+		else
+			d_CRS_kernel_plain(mat,lhs,rhs,options);
+	}
 
 	//}
 }

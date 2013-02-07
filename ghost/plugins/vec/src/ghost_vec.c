@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE 500 
+#include "ghost_types.h"
 #include "ghost_vec.h"
 #include "ghost_util.h"
 
@@ -95,7 +96,7 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 {
 	ghost_vdat_t s;
     vec_dotprod(vec,vec,&s);
-	s = 1./VSQRT(s);
+	s = (ghost_vdat_t)1./VSQRT(s);
 	vec_scale(vec,&s);
 
 #ifdef OPENCL
@@ -110,7 +111,11 @@ static void vec_print(ghost_vec_t *vec)
 {
 	ghost_vidx_t i;
 	for (i=0; i<vec->traits->nrows; i++) {
+#ifdef GHOST_VEC_COMPLEX
+		printf("vec[%d] = %f + %fi\n",i,VREAL(VAL(vec)[i]),VIMAG(VAL(vec)[i]));
+#else
 		printf("vec[%d] = %f\n",i,VAL(vec)[i]);
+#endif
 	}
 
 }
