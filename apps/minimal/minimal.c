@@ -2,22 +2,12 @@
 #include <ghost.h>
 #include <ghost_util.h>
 
-#define MPI
-
-#ifdef MPI
-#include <mpi.h>
-#define MPI_VECDT MPI_DOUBLE
-#endif
-
-
 typedef double vecdt;
 #define VECDT GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL
 
-static ghost_context_t *ctx;
-
 static void rhsVal (int i, void *val) 
 {
-	*(double *)val = ctx->communicator->lfRow[ghost_getRank()]+ i + (vecdt)1.0;
+	*(double *)val = i + (vecdt)1.0;
 }
 
 int main( int argc, char* argv[] ) 
@@ -33,6 +23,7 @@ int main( int argc, char* argv[] )
 	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
 	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
 
+	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
 	ghost_vec_t *rhs;
 

@@ -490,12 +490,14 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 
 	context->fullMatrix = ghost_initMatrix(&traits[0]);
-	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options);
+	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options); // TODO eigener call für local und remote
 
-	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = NULL;
+	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
+#ifdef MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
-	//context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
-	//context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
+//	context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
+//	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
+#endif
 
 	/*
 	   if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
@@ -821,10 +823,16 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 
 
 	}
-	vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank()],1);
+	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank()],1);
+	else
+		vec->toFile(vec,path,0,1);
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 {
-	vec->fromFile(vec,path,ctx->communicator->lfRow[ghost_getRank()]);
+	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+		vec->fromFile(vec,path,ctx->communicator->lfRow[ghost_getRank()]);
+	else
+		vec->fromFile(vec,path,0);
 }
