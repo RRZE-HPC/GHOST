@@ -27,7 +27,8 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define IF_DEBUG(level) if( DEBUG >= level )
-//extern int DEBUG_IDT = 0;
+//#define DEBUG_IDT 0
+//extern int DEBUG_IDT;
 
 //#define DEBUG_INDENT DEBUG_IDT+=2
 //#define DEBUG_OUTDENT DEBUG_IDT-=2

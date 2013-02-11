@@ -63,30 +63,6 @@ ifeq ($(strip $(LONGIDX)),1)
 TYPES:= $(TYPES)"\#define GHOST_LONGIDX \n"
 endif
 
-#ifeq ($(strip $(MATDATA)),s)
-#TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-#else ifeq ($(strip $(MATDATA)),d)
-#TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-#else ifeq ($(strip $(MATDATA)),c)
-#TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-#TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-#else ifeq ($(strip $(MATDATA)),z)
-#TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-#TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-#endif
-
-ifeq ($(strip $(VECDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
-else ifeq ($(strip $(VECDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
-else ifeq ($(strip $(VECDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
-else ifeq ($(strip $(VECDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
-endif
-
 ifeq ($(strip $(LIBTYPE)),static)
 SUFFIX=a
 endif
@@ -121,7 +97,7 @@ CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
+all:  $(FORMATS_H) $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
@@ -164,12 +140,12 @@ $(OBJDIR)/%.cu.o: %.cu config.mk
 endif
 
 
-$(TYPES_H): config.mk 
-	@echo "==> Generate types header"
-	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
-	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
-	@echo -e $(TYPES) >> $(TYPES_H)
-	@echo -e "\n#endif" >> $(TYPES_H)
+#$(TYPES_H): config.mk 
+#	@echo "==> Generate types header"
+#	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
+#	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
+#	@echo -e $(TYPES) >> $(TYPES_H)
+#	@echo -e "\n#endif" >> $(TYPES_H)
 
 $(FORMATS_H): config.mk
 	@echo "==> Generate formats header"

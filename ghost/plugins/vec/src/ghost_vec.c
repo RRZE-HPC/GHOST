@@ -81,13 +81,14 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
 
+	DEBUG_LOG(1,"The vector has %d rows and %lu bytes per entry",traits->nrows,sizeof(ghost_vdat_t));
 	vec->val = (ghost_vdat_t *)allocateMemory(traits->nrows*sizeof(ghost_vdat_t),"vec->val");
 
 	ghost_vidx_t i;
 
-#pragma omp parallel
+#pragma omp parallel for
 	for (i=0; i<traits->nrows; i++)
-		VAL(vec)[i] = 0.;
+		VAL(vec)[i] = 0.+I*0.;
 
 	return vec;
 }
