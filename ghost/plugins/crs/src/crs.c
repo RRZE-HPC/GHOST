@@ -60,7 +60,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
-static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context);
+static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context_t *context, ghost_mtraits_t *);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
 //static int compareNZEPos( const void* a, const void* b ); 
@@ -91,6 +91,9 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->ncols    = &CRS_ncols;
 	mat->destroy  = &CRS_free;
 	mat->CLupload = &CRS_upload;
+#ifdef MPI
+	mat->split = &CRS_createCommunication;
+#endif
 #ifdef OPENCL
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &CRS_kernel_plain;
@@ -273,45 +276,22 @@ static void CRS_createDistributedContext(ghost_context_t * context, char * matri
 	((CR_TYPE *)(CRSfullMatrix->data))->nrows = comm->lnrows[me];
 	((CR_TYPE *)(CRSfullMatrix->data))->nEnts = comm->lnEnts[me];
 
-	CR_TYPE *locCR = NULL;
-	CR_TYPE *remCR = NULL;
-
-	CRS_createCommunication(CRSfullMatrix,&locCR,&remCR,options,context);
-
 	context->fullMatrix = ghost_initMatrix(&traits[0]);
 	context->fullMatrix->fromCRS(context->fullMatrix,CRSfullMatrix->data);
+//	CR_TYPE *locCR = NULL;
+//	CR_TYPE *remCR = NULL;
 
-	context->localMatrix = ghost_initMatrix(&traits[1]);
-	context->localMatrix->symmetry = CRSfullMatrix->symmetry;
-	context->localMatrix->fromCRS(context->localMatrix,locCR);
+//	CRS_createCommunication(CRSfullMatrix,&locCR,&remCR,options,context);
 
-	context->remoteMatrix = ghost_initMatrix(&traits[2]);
-	context->remoteMatrix->fromCRS(context->remoteMatrix,remCR);
-
-#ifdef OPENCL
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			context->fullMatrix->CLupload(context->fullMatrix);
-		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
-			context->localMatrix->CLupload(context->localMatrix);
-		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
-			context->remoteMatrix->CLupload(context->remoteMatrix);
-#endif
-#ifdef CUDA
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			context->fullMatrix->CUupload(context->fullMatrix);
-		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
-			context->localMatrix->CUupload(context->localMatrix);
-		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
-			context->remoteMatrix->CUupload(context->remoteMatrix);
-#endif
 
 	// TODO clean up
 }
 
 
-static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE **remoteCR, int options, ghost_context_t *context)
+static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context_t *context, ghost_mtraits_t *traits)
 {
 	CR_TYPE *fullCR = CR(mat);
+	CR_TYPE *localCR = NULL, *remoteCR = NULL;
 	DEBUG_LOG(1,"Setting up communication");
 
 	int hlpi;
@@ -533,29 +513,29 @@ static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE
 		DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
 				me, lcrp->lnrows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
 
-		//CR_TYPE *localCR;
-		//CR_TYPE *remoteCR;
+		//CR_TYPE localCR;
+		//CR_TYPE remoteCR;
 
 
-		(*localCR) = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
-		(*remoteCR) = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
+		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
+		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-		(*localCR)->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
-		(*localCR)->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
-		(*localCR)->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
+		localCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
+		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
+		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
 
-		(*remoteCR)->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
-		(*remoteCR)->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
-		(*remoteCR)->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
+		remoteCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
+		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
+		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 
 		//context->localMatrix->data = localCR;
 		//context->remoteMatrix->data = remoteCR;
 
-		(*localCR)->nrows = lcrp->lnrows[me];
-		(*localCR)->nEnts = lnEnts_l;
+		localCR->nrows = lcrp->lnrows[me];
+		localCR->nEnts = lnEnts_l;
 
-		(*remoteCR)->nrows = lcrp->lnrows[me];
-		(*remoteCR)->nEnts = lnEnts_r;
+		remoteCR->nrows = lcrp->lnrows[me];
+		remoteCR->nEnts = lnEnts_r;
 
 		//context->localMatrix->data = localCR;
 		//context->localMatrix->nnz = lnEnts_l;
@@ -566,20 +546,20 @@ static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE
 		//context->localMatrix->nrows = lcrp->lnrows[me];
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_l; i++) (*localCR)->val[i] = 0.0;
+		for (i=0; i<lnEnts_l; i++) localCR->val[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_l; i++) (*localCR)->col[i] = 0.0;
+		for (i=0; i<lnEnts_l; i++) localCR->col[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_r; i++) (*remoteCR)->val[i] = 0.0;
+		for (i=0; i<lnEnts_r; i++) remoteCR->val[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_r; i++) (*remoteCR)->col[i] = 0.0;
+		for (i=0; i<lnEnts_r; i++) remoteCR->col[i] = 0.0;
 
 
-		(*localCR)->rpt[0] = 0;
-		(*remoteCR)->rpt[0] = 0;
+		localCR->rpt[0] = 0;
+		remoteCR->rpt[0] = 0;
 
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 		DEBUG_LOG(1,"PE%d: lnrows=%"PRmatIDX" row_ptr=%"PRmatIDX"..%"PRmatIDX,
@@ -595,30 +575,30 @@ static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE
 			for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++){
 
 				if (fullCR->col[j]<lcrp->lnrows[me]){
-					(*localCR)->col[ (*localCR)->rpt[i]+current_l ] = fullCR->col[j]; 
-					(*localCR)->val[ (*localCR)->rpt[i]+current_l ] = fullCR->val[j]; 
+					localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j]; 
+					localCR->val[ localCR->rpt[i]+current_l ] = fullCR->val[j]; 
 					current_l++;
 				}
 				else{
-					(*remoteCR)->col[ (*remoteCR)->rpt[i]+current_r ] = fullCR->col[j];
-					(*remoteCR)->val[ (*remoteCR)->rpt[i]+current_r ] = fullCR->val[j];
+					remoteCR->col[ remoteCR->rpt[i]+current_r ] = fullCR->col[j];
+					remoteCR->val[ remoteCR->rpt[i]+current_r ] = fullCR->val[j];
 					current_r++;
 				}
 
 			}  
 
-			(*localCR)->rpt[i+1] = (*localCR)->rpt[i] + current_l;
-			(*remoteCR)->rpt[i+1] = (*remoteCR)->rpt[i] + current_r;
+			localCR->rpt[i+1] = localCR->rpt[i] + current_l;
+			remoteCR->rpt[i+1] = remoteCR->rpt[i] + current_r;
 		}
 
 		IF_DEBUG(3){
 			for (i=0; i<lcrp->lnrows[me]+1; i++)
 				DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%"PRmatIDX" local=%"PRmatIDX" remote=%"PRmatIDX, 
-						me, i, (*localCR)->rpt[i], (*remoteCR)->rpt[i]);
-			for (i=0; i<(*localCR)->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*localCR)->col[i]);
-			for (i=0; i<(*remoteCR)->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, (*remoteCR)->col[i]);
+						me, i, localCR->rpt[i], remoteCR->rpt[i]);
+			for (i=0; i<localCR->rpt[lcrp->lnrows[me]]; i++)
+				DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, localCR->col[i]);
+			for (i=0; i<remoteCR->rpt[lcrp->lnrows[me]]; i++)
+				DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, remoteCR->col[i]);
 		}
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -631,6 +611,31 @@ static void CRS_createCommunication(ghost_mat_t *mat, CR_TYPE **localCR, CR_TYPE
 	freeMemory ( size_a2ai, "tmp_transfers",   tmp_transfers);
 	freeMemory ( size_nint, "wishlist_counts", wishlist_counts);
 	freeMemory ( size_nint, "item_from",       item_from);
+	
+
+	context->localMatrix = ghost_initMatrix(&traits[1]);
+	context->localMatrix->symmetry = mat->symmetry;
+	context->localMatrix->fromCRS(context->localMatrix,localCR);
+
+	context->remoteMatrix = ghost_initMatrix(&traits[2]);
+	context->remoteMatrix->fromCRS(context->remoteMatrix,remoteCR);
+
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			context->fullMatrix->CLupload(context->fullMatrix);
+		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+			context->localMatrix->CLupload(context->localMatrix);
+		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+			context->remoteMatrix->CLupload(context->remoteMatrix);
+#endif
+#ifdef CUDA
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			context->fullMatrix->CUupload(context->fullMatrix);
+		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+			context->localMatrix->CUupload(context->localMatrix);
+		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+			context->remoteMatrix->CUupload(context->remoteMatrix);
+#endif
 
 
 
@@ -1222,6 +1227,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx
 static void CRS_free(ghost_mat_t * mat)
 {
 	DEBUG_LOG(1,"Freeing CRS matrix");
+	if (mat) {
 #ifdef OPENCL
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
 		CL_freeDeviceMemory(CR(mat)->clmat->rpt);
@@ -1239,6 +1245,8 @@ static void CRS_free(ghost_mat_t * mat)
 
 
 	free(mat);
+	}
+	DEBUG_LOG(1,"CRS matrix freed successfully");
 }
 
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
@@ -1309,7 +1317,7 @@ lhs->val[i] = hlp1;
 			lhsv[i] = hlp1;
 	}
 */
-	DEBUG_LOG(1,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
+	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
 	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)

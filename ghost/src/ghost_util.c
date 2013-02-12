@@ -362,26 +362,34 @@ printf("Likwid Marker API                :      enabled\n");
 
 
 }
-/*
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
+
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
 	int me = ghost_getRank();
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
+	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = distContext->fullMatrix->traits->datatype};
+	ghost_context_t *context;
+	
+	context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
+	ghost_vtraits_t rtraits = {.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+	ghost_vec_t *globRHS = ghost_createVector(context,&rtraits);
+	rhs->collect(rhs,globRHS,distContext);
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing reference solution");
-		ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
-		ghost_context_t *context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
-		globLHS = ghost_createVector(context,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 
-		ghost_vec_t *globRHS = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_HOST,rhsVal);
 
-		CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
+		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+
+		globLHS = ghost_createVector(context,&ltraits); 
+
+		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
 		if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
 			for (iter=0; iter<nIter; iter++) {
+				context->fullMatrix->kernel(context->fullMatrix,globLHS,globRHS,spmvmOptions);
 				//ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 			}
 		} else if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
@@ -390,22 +398,25 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 			}
 		}
 
-		ghost_freeVector(globRHS);
+		globRHS->destroy(globRHS);
 		ghost_freeContext(context);
 	} else {
-		globLHS = ghost_newVector(0,GHOST_VEC_LHS|GHOST_VEC_HOST);
+		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype};
+		globLHS = ghost_createVector(context,&ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vec_t *res = ghost_distributeVector(distContext->communicator,globLHS);
+	ghost_vtraits_t nltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype};
+	ghost_vec_t *nodeLHS = ghost_createVector(distContext,&nltraits);
+	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
 
-	ghost_freeVector(globLHS);
+	globLHS->destroy(globLHS);
 
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
-	return res;
+	return nodeLHS;
 
 }
-
+/*
 // FIXME
 void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
@@ -453,7 +464,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 		else
 			res[i] = hlp1;
 	}
-}	*/
+}*/	
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
@@ -765,6 +776,7 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
 		int *spmvmOptions, int nIter)
 {
+	DEBUG_LOG(1,"Benchmarking the SpMVM");
 	int it;
 	double time = 0;
 	double oldtime=1e9;
@@ -774,8 +786,10 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	ghost_pickSpMVMMode(context,spmvmOptions);
 	solver = context->solvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
-	if (!solver)
+	if (!solver) {
+		DEBUG_LOG(1,"The solver for the specified is not available, skipping");
 		return -1.0;
+	}
 
 #ifdef MPI
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -1009,3 +1023,10 @@ char ghost_datatypePrefix(int dt)
 }
 
 
+ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
+{
+	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+		return ctx->communicator->lfRow[ghost_getRank()] + lidx;
+
+	return lidx;	
+}

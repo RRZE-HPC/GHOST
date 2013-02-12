@@ -100,12 +100,15 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 	 *******       Local assembly of halo-elements  & Communication       ********
 	 ****************************************************************************/
 
+#pragma omp parallel private(to_PE,i) reduction(+:send_messages)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp parallel for 
+#pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
 //			work[to_PE][i] = invec->val[context->communicator->duelist[to_PE][i]];
 			memcpy(&work[to_PE][i*sizeofRHS],&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
+	}
+	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 		if (context->communicator->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE]*sizeofRHS, 
 					MPI_CHAR, to_PE, me, MPI_COMM_WORLD, 

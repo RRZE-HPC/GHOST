@@ -76,8 +76,12 @@ typedef double ghost_vdat_el_t;
 typedef double2 ghost_cl_vdat_t;
 #endif
 #ifdef MPI
-MPI_Datatype ghost_mpi_dt_vdat;
-MPI_Op ghost_mpi_sum_vdat;
+//MPI_Datatype ghost_mpi_dt_vdat;
+//MPI_Op ghost_mpi_sum_vdat;
+//#define ghost_mpi_dt_vdat GHOST_MPI_DT_Z
+//#define ghost_mpi_sum_vdat GHOST_MPI_OP_SUM_Z
+#define ghost_mpi_dt_vdat MPI_DOUBLE_COMPLEX
+#define ghost_mpi_sum_vdat MPI_SUM
 #endif
 #define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
 #else // GHOST_VEC_COMPLEX

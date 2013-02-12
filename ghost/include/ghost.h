@@ -53,6 +53,7 @@
 /******************************************************************************/
 /*----  Type definitions  ----------------------------------------------------*/
 /******************************************************************************/
+
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_context_t ghost_context_t;
@@ -73,9 +74,8 @@ struct ghost_vec_t
 	void          (*fromFile) (ghost_vec_t *, char *path, off_t);
 	void          (*fromRand) (ghost_vec_t *);
 	void          (*fromScalar) (ghost_vec_t *, void *);
-
 	void          (*zero) (ghost_vec_t *);
-	ghost_vec_t * (*distribute) (ghost_vec_t *, ghost_comm_t *comm);
+	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *comm);
 	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
 	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
 	void          (*normalize) (ghost_vec_t *);
@@ -88,6 +88,7 @@ struct ghost_vec_t
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*print) (ghost_vec_t *);
 	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
+	void          (*entry) (ghost_vec_t *, int,  void *);
 
 	void *so;
 
@@ -195,6 +196,7 @@ struct ghost_mat_t
 	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
+	void       (*split)(ghost_mat_t *, int options, ghost_context_t *, ghost_mtraits_t *traits);
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	ghost_kernel_t kernel;

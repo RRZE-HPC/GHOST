@@ -11,19 +11,19 @@
 #include <mpi.h>
 #endif
 
-//#define CHECK // compare with reference solution
-typedef double vecdt;
-#define VECDT GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL
+#define CHECK // compare with reference solution
+
+GHOST_REGISTER_DT_Z(vecdt)
 
 static void rhsVal (int i, void *val) 
 {
-	*(vecdt *)val = i + (vecdt)1.0;
+	UNUSED(i);
+	*(vecdt_t *)val = 1+I*1;//i + (vecdt_t)1.0 + I*i;
 }
-
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 
 #ifdef CHECK
@@ -59,20 +59,24 @@ int main( int argc, char* argv[] )
 		trait.format = "CRS";
 		trait.flags = GHOST_SPM_DEFAULT;//GHOST_SPM_SORTED|GHOST_SPM_PERMUTECOLIDX;
 		trait.aux = NULL;//&aux;
+		trait.datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL;
 	}
 	ghost_mtraits_t traits[3];
 	traits[0] = trait; traits[1] = trait; traits[2] = trait;
 
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = VECDT};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = VECDT};
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS,.aux = NULL,.datatype = vecdt};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS,.aux = NULL,.datatype = vecdt};
 
 	ghost_init(argc,argv,ghostOptions);       // basic initialization
 	context = ghost_createContext(matrixPath,traits,3,GHOST_CONTEXT_DEFAULT);
 	lhs   = ghost_createVector(context,&lvtraits);
 	rhs   = ghost_createVector(context,&rvtraits);
 
+	rhs->fromFunc(rhs,rhsVal);
+//	rhs->fromRand(rhs);
+
 #ifdef CHECK	
-	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhsVal,nIter,spmvmOptions);	
+	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,context,rhs,nIter,spmvmOptions);	
 #endif
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -93,16 +97,21 @@ int main( int argc, char* argv[] )
 
 #ifdef CHECK
 		errcount=0;
+		vecdt_t res,ref;
 		for (i=0; i<context->lnrows(context); i++){
-			mytol = EPSILON * VABS(goldLHS->val[i]); 
-			if (VREAL(VABS(goldLHS->val[i]-lhs->val[i])) > VREAL(mytol) ||
-					VIMAG(VABS(goldLHS->val[i]-lhs->val[i])) > VIMAG(mytol)){
-				printf( "PE%d: error in row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(), i, VREAL(goldLHS->val[i]),
-						VIMAG(goldLHS->val[i]),
-						VREAL(lhs->val[i]),
-						VIMAG(lhs->val[i]),
-						VREAL(mytol),VIMAG(mytol),VREAL(VABS(goldLHS->val[i]-lhs->val[i])));
+			goldLHS->entry(goldLHS,i,&ref);
+			lhs->entry(lhs,i,&res);
+		
+			mytol = 1e-16 * context->fullMatrix->rowLen(context->fullMatrix,i);
+//			printf("%f + %fi vs. %f + %fi\n",creal(ref),cimag(ref),creal(res),cimag(res));
+			if (creal(cabs(ref-res)) > creal(mytol) ||
+					cimag(cabs(ref-res)) > cimag(mytol)){
+				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
+						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(),ghost_modeName(modes[mode]), i, creal(ref),
+						cimag(ref),
+						creal(res),
+						cimag(res),
+						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
 			}
 		}
@@ -134,7 +143,7 @@ int main( int argc, char* argv[] )
 	ghost_freeContext( context );
 
 #ifdef CHECK
-	ghost_freeVector( goldLHS );
+	goldLHS->destroy(goldLHS);
 #endif
 
 	ghost_finish();

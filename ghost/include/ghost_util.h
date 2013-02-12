@@ -5,7 +5,7 @@
 
 #ifdef MPI
 #include <mpi.h>
-#include "ghost_mpi_util.h"
+#include "mpi/ghost_mpi_util.h"
 #endif
 
 #ifdef OPENCL
@@ -183,6 +183,10 @@
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
+MPI_Datatype GHOST_MPI_DT_C;
+MPI_Op GHOST_MPI_OP_SUM_C;
+MPI_Datatype GHOST_MPI_DT_Z;
+MPI_Op GHOST_MPI_OP_SUM_Z;
 
 
 void ghost_printHeader(const char *fmt, ...);
@@ -195,7 +199,7 @@ void ghost_printGhostInfo();
 
 
 void ghost_solver_nompi(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
-//ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext,  ghost_vdat_t (*fp)(int), int nIter, int spmvmOptions);
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
 //void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 //void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 
@@ -228,6 +232,7 @@ int ghost_getCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
+ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);

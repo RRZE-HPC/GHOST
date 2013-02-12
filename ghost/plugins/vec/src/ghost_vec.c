@@ -44,15 +44,16 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val);
 static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset);
 static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int);
 static void         ghost_zeroVector(ghost_vec_t *vec);
-static ghost_vec_t *ghost_newVector( const int nrows, unsigned int flags );
+//static ghost_vec_t *ghost_newVector( const int nrows, unsigned int flags );
 static void         ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
 static void         ghost_normalizeVector( ghost_vec_t *vec);
-static ghost_vec_t * ghost_distributeVector(ghost_vec_t *vec, ghost_comm_t *comm);
+static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm);
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_context_t *context);
 static void         ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
+static void vec_entry(ghost_vec_t *, int, void *);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
@@ -80,6 +81,7 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->permute = &ghost_permuteVector;
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
+	vec->entry = &vec_entry;
 
 	DEBUG_LOG(1,"The vector has %d rows and %lu bytes per entry",traits->nrows,sizeof(ghost_vdat_t));
 	vec->val = (ghost_vdat_t *)allocateMemory(traits->nrows*sizeof(ghost_vdat_t),"vec->val");
@@ -171,13 +173,18 @@ static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 	*(ghost_vdat_t *)res = sum;
 }
 
+static void vec_entry(ghost_vec_t * vec, int i, void *val)
+{
+	*((ghost_vdat_t *)val) = VAL(vec)[i];
+}
+
 static void vec_fromRand(ghost_vec_t *vec)
 {
 	int i;
 
 #pragma omp parallel for schedule(runtime)
 	for (i=0; i<vec->traits->nrows; i++) {
-		VAL(vec)[i] = rand()*(ghost_vdat_t)1./RAND_MAX;
+		VAL(vec)[i] = (ghost_vdat_t)(rand()*(ghost_vdat_t)1./RAND_MAX + I*rand()*(ghost_vdat_t)1./RAND_MAX);
 	}
 
 }
@@ -307,13 +314,13 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 
 
 }
-
+/*
 static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 
 {
 	UNUSED(nrows);
 	UNUSED(flags);
 	ghost_vec_t* vec = NULL;
-	/*size_t size_val;
+	size_t size_val;
 	int i;
 
 	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
@@ -343,17 +350,17 @@ static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 #ifdef CUDA
 	vec->CU_val = CU_allocDeviceMemory(size_val);
 #endif
-*/
-	return vec;
-}
 
-static ghost_vec_t * ghost_distributeVector(ghost_vec_t *vec, ghost_comm_t *comm)
+	return vec;
+}*/
+
+static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm)
 {
 	DEBUG_LOG(1,"Distributing vector");
 #ifdef MPI
 	int me = ghost_getRank();
 
-	ghost_vidx_t nrows;
+/*	ghost_vidx_t nrows;
 
 	MPI_safecall(MPI_Bcast(&(vec->traits->flags),1,MPI_INT,0,MPI_COMM_WORLD));
 
@@ -366,16 +373,15 @@ static ghost_vec_t * ghost_distributeVector(ghost_vec_t *vec, ghost_comm_t *comm
 
 
 	DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
-	ghost_vec_t *nodeVec = ghost_newVector( nrows, vec->traits->flags ); 
-
+*/
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_vdat,
-				VAL(nodeVec), (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_vdat, VAL((*nodeVec)), (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
-	ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
+	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
 	int i;
-	for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];
+	for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];*/
+	*nodeVec = vec->clone(vec);
 #endif
 
 #ifdef OPENCL // TODO depending on flag
@@ -386,7 +392,6 @@ static ghost_vec_t * ghost_distributeVector(ghost_vec_t *vec, ghost_comm_t *comm
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");
-	return nodeVec;
 }
 
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_context_t *context) 

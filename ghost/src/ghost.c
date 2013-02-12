@@ -152,6 +152,43 @@ static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
 #endif
 #endif
 
+typedef struct 
+{
+	float x;
+	float y;
+} 
+MPI_c;
+
+static void MPI_add_c(MPI_c *invec, MPI_c *inoutvec, int *len)
+{
+	int i;
+	MPI_c c;
+
+	for (i=0; i<*len; i++, invec++, inoutvec++){
+		c.x = invec->x + inoutvec->x;
+		c.y = invec->y + inoutvec->y;
+		*inoutvec = c;
+	}
+}
+typedef struct 
+{
+	double x;
+	double y;
+} 
+MPI_z;
+
+static void MPI_add_z(MPI_z *invec, MPI_z *inoutvec, int *len)
+{
+	int i;
+	MPI_z c;
+
+	for (i=0; i<*len; i++, invec++, inoutvec++){
+		c.x = invec->x + inoutvec->x;
+		c.y = invec->y + inoutvec->y;
+		*inoutvec = c;
+	}
+}
+
 int ghost_init(int argc, char **argv, int ghostOptions)
 {
 	int me;
@@ -173,7 +210,14 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 	me = ghost_getRank();;
 
 	setupSingleNodeComm();
-
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_MPI_OP_SUM_C));
+	
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
+/*
 #ifdef GHOST_MAT_COMPLEX
 	if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
 		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
@@ -195,7 +239,7 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 		MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_vdat));
 		MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_vComplAdd,1,&ghost_mpi_sum_vdat));
 	} 
-#endif
+#endif*/
 
 #else // ifdef MPI
 	UNUSED(argc);
@@ -291,7 +335,9 @@ void ghost_finish()
 ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits)
 {
 	ghost_vidx_t nrows;
-	if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
+	if (traits->flags & GHOST_VEC_DUMMY) {
+		nrows = 0;
+	} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
 	{
 		nrows = context->gnrows(context);
 	} 
@@ -445,6 +491,7 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 {
 	DEBUG_LOG(1,"Creating context");
 	ghost_context_t *context;
+	int i;
 
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
@@ -487,16 +534,25 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 		nTraits = 3;
 	}
 
-	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
-
 	context->fullMatrix = ghost_initMatrix(&traits[0]);
-	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options); // TODO eigener call für local und remote
+	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options);
 
-	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		context->fullMatrix->split(context->fullMatrix,options,context,traits);
+	} else {
+		context->localMatrix = NULL;
+		context->remoteMatrix = NULL;
+		context->communicator = NULL;
+	}
+
+	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
+	for (i=0; i<GHOST_NUM_MODES; i++) context->solvers[i] = NULL;
 #ifdef MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
 	context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
 //	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
+#else
+	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
 
 	/*
@@ -726,6 +782,7 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 
 void ghost_freeContext(ghost_context_t *context)
 {
+	DEBUG_LOG(1,"Freeing context");
 	if (context != NULL) {
 		if (context->fullMatrix != NULL) {
 			context->fullMatrix->destroy(context->fullMatrix);
@@ -749,6 +806,7 @@ void ghost_freeContext(ghost_context_t *context)
 
 		free(context);
 	}
+	DEBUG_LOG(1,"Context freed successfully");
 }
 
 

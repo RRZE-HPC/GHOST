@@ -1,7 +1,7 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
 
-#.NOTPARALLEL:
+.NOTPARALLEL: $(PLUGINS)
 
 .PHONY: clean distclean install uninstall all header 
 

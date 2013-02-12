@@ -2,7 +2,7 @@
 #include <ghost.h>
 #include <ghost_util.h>
 
-GHOST_REGISTER_DT_Z(vecdt)
+GHOST_REGISTER_DT_D(vecdt)
 
 static void rhsVal (int i, void *val) 
 {
