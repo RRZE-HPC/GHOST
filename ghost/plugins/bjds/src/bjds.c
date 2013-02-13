@@ -26,7 +26,7 @@ static ghost_midx_t BJDS_ncols(ghost_mat_t *mat);
 static void BJDS_printInfo(ghost_mat_t *mat);
 static char * BJDS_formatName(ghost_mat_t *mat);
 static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-//static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
+//static ghost_dt BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
@@ -144,7 +144,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 	return BJDS(mat)->rowLen[i];
 }
 
-/*static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
+/*static ghost_dt BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
 	ghost_midx_t e;
 
@@ -165,7 +165,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 static size_t BJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t) + 
-			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
+			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
 static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options)
@@ -313,7 +313,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->nu /= (double)nChunks;
 	BJDS(mat)->mu /= (double)nChunks;
 
-	BJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
@@ -379,7 +379,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat = (CL_BJDS_TYPE *)allocateMemory(sizeof(CL_BJDS_TYPE),"CL_CRS");
 		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
-		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_dt));
 		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
 		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
 	
@@ -387,7 +387,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CL_copyHostToDevice(BJDS(mat)->clmat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_cl_midx_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_cl_midx_t));
-		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_dt));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
 		char options[32];
@@ -427,7 +427,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat = (CU_BJDS_TYPE *)allocateMemory(sizeof(CU_BJDS_TYPE),"CU_CRS");
 		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
-		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_mdat_t));
+		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_dt));
 		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	
@@ -435,7 +435,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CU_copyHostToDevice(BJDS(mat)->cumat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_midx_t));
-		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_mdat_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_dt));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	}
@@ -699,15 +699,15 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 
 		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>1; j++) 
 		{ // loop inside chunk
-			val = vec_xld2(offs*sizeof(ghost_mdat_t),BJDS(mat)->val);                      // load values
+			val = vec_xld2(offs*sizeof(ghost_dt),BJDS(mat)->val);                      // load values
 			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,0);
 			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,1);
 			tmp = vec_madd(val,rhs,tmp);
 		}
 		if (options & GHOST_SPMVM_AXPY) {
-			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val)),c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_dt),lhs->val)),c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
 		} else {
-			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
 		}
 	}
 }

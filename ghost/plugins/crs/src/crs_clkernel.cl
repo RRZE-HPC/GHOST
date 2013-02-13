@@ -13,11 +13,11 @@
 #include <cl/ghost_cl_types.h>
 #include <ghost_constants.h>
 
-kernel void CRS_kernel (global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, int nrows, global int *rpt, global int *col, global ghost_cl_mdat_t *val) 
+kernel void CRS_kernel (global ghost_cl_dt *lhs, global ghost_cl_dt *rhsVec, int options, int nrows, global int *rpt, global int *col, global ghost_cl_dt *val) 
 {
 	unsigned int i = get_global_id(0);
 	if (i < nrows) {
-		ghost_cl_vdat_t tmp = 0.0, rhs = 0.0;
+		ghost_cl_dt tmp = 0.0, rhs = 0.0;
 		for(unsigned int j=rpt[i]; j<rpt[i+1]; ++j) {
 			rhs = rhsVec[col[j]];
 

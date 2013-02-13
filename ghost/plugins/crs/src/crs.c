@@ -50,7 +50,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-//static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
+//static ghost_dt CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -139,7 +139,7 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 	return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
 }
 
-/*static ghost_mdat_t CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
+/*static ghost_dt CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
 	ghost_midx_t e;
 	for (e=CR(mat)->rpt[i]; e<CR(mat)->rpt[i+1]; e++) {
@@ -152,7 +152,7 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 static size_t CRS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((CR(mat)->nrows+1)*sizeof(ghost_mnnz_t) + 
-			CR(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
+			CR(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
 
@@ -170,7 +170,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 
 	CR(mat)->rpt = (ghost_midx_t *)allocateMemory((cr->nrows+1)*sizeof(ghost_midx_t),"rpt");
 	CR(mat)->col = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"col");
-	CR(mat)->val = (ghost_mdat_t *)allocateMemory(cr->nEnts*sizeof(ghost_mdat_t),"val");
+	CR(mat)->val = (ghost_dt *)allocateMemory(cr->nEnts*sizeof(ghost_dt),"val");
 
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
@@ -520,11 +520,11 @@ static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context
 		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-		localCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_l*sizeof( ghost_mdat_t ),"localMatrix->val" ); 
+		localCR->val = (ghost_dt*) allocateMemory(lnEnts_l*sizeof( ghost_dt ),"localMatrix->val" ); 
 		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
 		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
 
-		remoteCR->val = (ghost_mdat_t*) allocateMemory(lnEnts_r*sizeof( ghost_mdat_t ),"remoteMatrix->val" ); 
+		remoteCR->val = (ghost_dt*) allocateMemory(lnEnts_r*sizeof( ghost_dt ),"remoteMatrix->val" ); 
 		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
 		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 
@@ -1008,7 +1008,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
 	CR(mat)->col       = (ghost_midx_t *) allocateMemory( nEnts * sizeof(ghost_midx_t),  "col" );
-	CR(mat)->val       = (ghost_mdat_t *) allocateMemory( nEnts * sizeof(ghost_mdat_t),  "val" );
+	CR(mat)->val       = (ghost_dt *) allocateMemory( nEnts * sizeof(ghost_dt),  "val" );
 
 	DEBUG_LOG(2,"NUMA-placement for CR(mat)->val and CR(mat)->col");
 #pragma omp parallel for schedule(runtime) private(j)
@@ -1061,12 +1061,12 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 		GHOST_BINCRS_SIZE_COL_EL*CR(mat)->nEnts+
 		ghost_sizeofDataType(datatype)*offsetEnts;
 
-	if (datatype == GHOST_MY_MDATATYPE) {
+	if (datatype == GHOST_MY_DT) {
 		if (swapReq) {
 			uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
 			pread(file,tmpval, nEnts*valSize, offs);
-			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+			if (GHOST_MY_DT & GHOST_BINCRS_DT_COMPLEX) {
+				if (GHOST_MY_DT & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
 						uint32_t *a = (uint32_t *)tmpval;
 						uint32_t rswapped = bswap_32(a[2*i]);
@@ -1084,7 +1084,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 					}
 				}
 			} else {
-				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+				if (GHOST_MY_DT & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
 						uint32_t *a = (uint32_t *)tmpval;
 						uint32_t swapped = bswap_32(a[i]);
@@ -1106,7 +1106,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 		WARNING_LOG("This %s build is configured for %s data but"
 				" the file contains %s data. Casting...",GHOST_NAME,
-				ghost_datatypeName(GHOST_MY_MDATATYPE),ghost_datatypeName(datatype));
+				ghost_datatypeName(GHOST_MY_DT),ghost_datatypeName(datatype));
 
 
 		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
@@ -1114,33 +1114,33 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 		if (swapReq) {
 			ABORT("Not yet supported!");
-			if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+			if (GHOST_MY_DT & GHOST_BINCRS_DT_COMPLEX) {
+				if (GHOST_MY_DT & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_32(tmpval[i*valSize]))+
+						CR(mat)->val[i] = (ghost_dt) ((bswap_32(tmpval[i*valSize]))+
 								I*(bswap_32(tmpval[i*valSize+valSize/2])));
 					}
 				} else {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (ghost_mdat_t) ((bswap_64(tmpval[i*valSize]))+
+						CR(mat)->val[i] = (ghost_dt) ((bswap_64(tmpval[i*valSize]))+
 								I*(bswap_64(tmpval[i*valSize+valSize/2])));
 					}
 				}
 			} else {
-				if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+				if (GHOST_MY_DT & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (ghost_mdat_el_t) (bswap_32(tmpval[i*valSize]));
+						CR(mat)->val[i] = (ghost_dt_el) (bswap_32(tmpval[i*valSize]));
 					}
 				} else {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (ghost_mdat_el_t) (bswap_64(tmpval[i*valSize]));
+						CR(mat)->val[i] = (ghost_dt_el) (bswap_64(tmpval[i*valSize]));
 					}
 				}
 
 			}
 
 		} else {
-			for (i = 0; i<nEnts; i++) CR(mat)->val[i] = (ghost_mdat_t) tmpval[i*valSize];
+			for (i = 0; i<nEnts; i++) CR(mat)->val[i] = (ghost_dt) tmpval[i*valSize];
 		}
 
 		free(tmpval);
@@ -1161,12 +1161,12 @@ static void CRS_upload(ghost_mat_t *mat)
 		CR(mat)->clmat = (CL_CR_TYPE *)allocateMemory(sizeof(CL_CR_TYPE),"CL_CRS");
 		CR(mat)->clmat->rpt = CL_allocDeviceMemory((CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
 		CR(mat)->clmat->col = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_midx_t));
-		CR(mat)->clmat->val = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+		CR(mat)->clmat->val = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_dt));
 
 		CR(mat)->clmat->nrows = CR(mat)->nrows;
 		CL_copyHostToDevice(CR(mat)->clmat->rpt, CR(mat)->rpt, (CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(CR(mat)->clmat->col, CR(mat)->col, CR(mat)->nEnts*sizeof(ghost_cl_midx_t));
-		CL_copyHostToDevice(CR(mat)->clmat->val, CR(mat)->val, CR(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+		CL_copyHostToDevice(CR(mat)->clmat->val, CR(mat)->val, CR(mat)->nEnts*sizeof(ghost_cl_dt));
 
 		cl_int err;
 		cl_uint numKernels;
@@ -1253,9 +1253,9 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t *
 {
 	/*	if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
 		ghost_midx_t i, j;
-		ghost_vdat_t hlp1;
+		ghost_dt hlp1;
 		ghost_midx_t col;
-		ghost_mdat_t val;
+		ghost_dt val;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j, col, val)
 for (i=0; i<CR(mat)->nrows; i++){

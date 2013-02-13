@@ -97,37 +97,30 @@ CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all:  $(FORMATS_H) $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
+all: $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
 	$(eval pl := $(shell echo $(basename $(notdir $@)) | cut -c 3-))
 	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./obj/$(dt)/%f " | sed 's/\.c/\.o/g'))
-#	echo $(wildcard $(PLUGINDIR)/$(pl)/src/*.c)
-#	$(eval objs := $(addprefix ./plugins/$(dt)_objs/,$(notdir $(patsubst %.c, %.o, $(wildcard $(PLUGINDIR)/$(pl)/src/*.c)))))
-#ifeq ($(strip $(CUDA)),1)
-#	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/c_*.cu)))))
-#endif
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
-#	@echo "==> Clean up specialized files"
-#	@rm -r $(PLUGINDIR)/$(notdir $(basename $@))
 	
 $(C_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex float variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_SP -DGHOST_VEC_COMPLEX -DGHOST_VEC_SP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
 
 $(D_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_DP -DGHOST_VEC_DP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
 
 $(S_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile single variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_SP -DGHOST_VEC_SP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_S  ${IPATH} -o $@ -c $<
 
 $(Z_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_MAT_COMPLEX -DGHOST_MAT_DP -DGHOST_VEC_COMPLEX -DGHOST_VEC_DP ${IPATH} -o $@ -c $<
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"

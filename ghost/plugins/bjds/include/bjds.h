@@ -36,7 +36,7 @@ CL_BJDS_TYPE;
 typedef struct 
 {
 #ifdef CUDA
-	ghost_mdat_t * val;
+	ghost_dt * val;
 	ghost_midx_t * col;
 	ghost_midx_t * rowLen;
 	ghost_mnnz_t * chunkStart;
@@ -49,7 +49,7 @@ CU_BJDS_TYPE;
 
 typedef struct 
 {
-	ghost_mdat_t *val;
+	ghost_dt *val;
 	ghost_midx_t *col;
 	ghost_mnnz_t *chunkStart;
 	ghost_midx_t nrows;

@@ -14,7 +14,7 @@
 #include <ghost_constants.h>
 
 
-kernel void BJDS_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, global unsigned int *chunkStart, global unsigned int *chunkLen)
+kernel void BJDS_kernel(global ghost_cl_dt *lhs, global ghost_cl_dt *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_dt *val, global unsigned int *chunkStart, global unsigned int *chunkLen)
 { 
 	unsigned int i = get_global_id(0);
 
@@ -22,7 +22,7 @@ kernel void BJDS_kernel(global ghost_cl_mdat_t *lhs, global ghost_cl_mdat_t *rhs
 		unsigned int cs = chunkStart[get_group_id(0)];
 		unsigned int li = get_local_id(0);
 
-		ghost_cl_mdat_t tmp = 0.0, value = 0.0, rhs = 0.0; 
+		ghost_cl_dt tmp = 0.0, value = 0.0, rhs = 0.0; 
 		unsigned int max = rowLen[i]; 
 		int colidx;
 

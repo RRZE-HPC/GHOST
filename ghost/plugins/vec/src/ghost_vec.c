@@ -15,20 +15,7 @@
 #include <cuda_runtime.h> // TODO in cu_util
 #endif
 
-#ifdef GHOST_VEC_COMPLEX
-#ifdef GHOST_VEC_DP
-#define VAL(vec) ((double complex *)(vec->val))
-#else
-#define VAL(vec) ((float complex *)(vec->val))
-#endif
-#else
-#ifdef GHOST_VEC_DP
-#define VAL(vec) ((double *)(vec->val))
-#else
-#define VAL(vec) ((float *)(vec->val))
-#endif
-#endif
-
+#define VAL(vec) ((ghost_dt *)(vec->val))
 
 const char name[] = "Vector plugin for ghost";
 const char version[] = "0.1a";
@@ -83,8 +70,8 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
 
-	DEBUG_LOG(1,"The vector has %d rows and %lu bytes per entry",traits->nrows,sizeof(ghost_vdat_t));
-	vec->val = (ghost_vdat_t *)allocateMemory(traits->nrows*sizeof(ghost_vdat_t),"vec->val");
+	DEBUG_LOG(1,"The vector has %d rows and %lu bytes per entry",traits->nrows,sizeof(ghost_dt));
+	vec->val = (ghost_dt *)allocateMemory(traits->nrows*sizeof(ghost_dt),"vec->val");
 
 	ghost_vidx_t i;
 
@@ -97,9 +84,9 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 
 static void ghost_normalizeVector( ghost_vec_t *vec)
 {
-	ghost_vdat_t s;
+	ghost_dt s;
     vec_dotprod(vec,vec,&s);
-	s = (ghost_vdat_t)1./VSQRT(s);
+	s = (ghost_dt)1./SQRT(s);
 	vec_scale(vec,&s);
 
 #ifdef OPENCL
@@ -114,8 +101,8 @@ static void vec_print(ghost_vec_t *vec)
 {
 	ghost_vidx_t i;
 	for (i=0; i<vec->traits->nrows; i++) {
-#ifdef GHOST_VEC_COMPLEX
-		printf("vec[%d] = %f + %fi\n",i,VREAL(VAL(vec)[i]),VIMAG(VAL(vec)[i]));
+#if GHOST_MY_DT & GHOST_BINCRS_DT_COMPLEX
+		printf("vec[%d] = %f + %fi\n",i,REAL(VAL(vec)[i]),IMAG(VAL(vec)[i]));
 #else
 		printf("vec[%d] = %f\n",i,VAL(vec)[i]);
 #endif
@@ -137,7 +124,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2)
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
 	ghost_vidx_t i;
-	ghost_vdat_t s = *(ghost_vdat_t *)scale;
+	ghost_dt s = *(ghost_dt *)scale;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
 #pragma omp parallel for 
@@ -149,7 +136,7 @@ static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 static void vec_scale(ghost_vec_t *vec, void *scale)
 {
 	ghost_vidx_t i;
-	ghost_vdat_t s = *(ghost_vdat_t *)scale;
+	ghost_dt s = *(ghost_dt *)scale;
 
 #pragma omp parallel for 
 	for (i=0; i<vec->traits->nrows; i++) {
@@ -161,7 +148,7 @@ static void vec_scale(ghost_vec_t *vec, void *scale)
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
-	ghost_vdat_t sum;
+	ghost_dt sum;
 	ghost_vidx_t i;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
@@ -170,12 +157,12 @@ static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 		sum += VAL(vec)[i]*VAL(vec2)[i];
 	}
 
-	*(ghost_vdat_t *)res = sum;
+	*(ghost_dt *)res = sum;
 }
 
 static void vec_entry(ghost_vec_t * vec, int i, void *val)
 {
-	*((ghost_vdat_t *)val) = VAL(vec)[i];
+	*((ghost_dt *)val) = VAL(vec)[i];
 }
 
 static void vec_fromRand(ghost_vec_t *vec)
@@ -184,7 +171,7 @@ static void vec_fromRand(ghost_vec_t *vec)
 
 #pragma omp parallel for schedule(runtime)
 	for (i=0; i<vec->traits->nrows; i++) {
-		VAL(vec)[i] = (ghost_vdat_t)(rand()*(ghost_vdat_t)1./RAND_MAX + I*rand()*(ghost_vdat_t)1./RAND_MAX);
+		VAL(vec)[i] = (ghost_dt)(rand()*(ghost_dt)1./RAND_MAX + I*rand()*(ghost_dt)1./RAND_MAX);
 	}
 
 }
@@ -195,7 +182,7 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 
 #pragma omp parallel for schedule(runtime)
 	for (i=0; i<vec->traits->nrows; i++) {
-		VAL(vec)[i] = *(ghost_vdat_t *)val;
+		VAL(vec)[i] = *(ghost_dt *)val;
 	}
 }
 
@@ -230,7 +217,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 		offs = 4*sizeof(int32_t)+2*sizeof(int64_t); 
 	}
 
-	pwrite(file,vec->val,sizeof(ghost_vdat_t)*vec->traits->nrows,offs+offset*sizeof(ghost_vdat_t));
+	pwrite(file,vec->val,sizeof(ghost_dt)*vec->traits->nrows,offs+offset*sizeof(ghost_dt));
 
 	close(file);
 
@@ -277,7 +264,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 	if (ncols != 1)
 		ABORT("The number of columns has to be 1!");
 	
-	pread(file,vec->val,sizeof(ghost_vdat_t)*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeof(ghost_vdat_t));
+	pread(file,vec->val,sizeof(ghost_dt)*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeof(ghost_dt));
 
 	close(file);
 	
@@ -323,11 +310,11 @@ static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags )
 	size_t size_val;
 	int i;
 
-	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
+	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_dt) );
 	vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
 
 
-	VAL(vec) = (ghost_vdat_t*) allocateMemory( size_val, "VAL(vec)");
+	VAL(vec) = (ghost_dt*) allocateMemory( size_val, "VAL(vec)");
 	vec->traits->nrows = nrows;
 	vec->traits->flags = flags;
 
@@ -375,7 +362,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
 */
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt_vdat, VAL((*nodeVec)), (int)comm->lnrows[me], ghost_mpi_dt_vdat, 0, MPI_COMM_WORLD ));
+	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt, VAL((*nodeVec)), (int)comm->lnrows[me], ghost_mpi_dt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
@@ -411,8 +398,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	ghost_permuteVector(VAL(vec),context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
 	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}*/
-	MPI_safecall(MPI_Gatherv(VAL(vec),(int)context->communicator->lnrows[me],ghost_mpi_dt_vdat,totalVec->val,
-				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt_vdat,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(VAL(vec),(int)context->communicator->lnrows[me],ghost_mpi_dt,totalVec->val,
+				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt,0,MPI_COMM_WORLD));
 #else
 	int i;
 	//	UNUSED(kernel);
@@ -424,7 +411,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 
 static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
 {
-	ghost_vdat_t *dtmp;
+	ghost_dt *dtmp;
 
 	dtmp = v1->val;
 	v1->val = v2->val;
@@ -453,7 +440,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #else
 		free(vec->val);
 #endif
-		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_mdat_t)), "VAL(vec)",  VAL(vec) );
+		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_dt)), "VAL(vec)",  VAL(vec) );
 #ifdef OPENCL
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CL_freeDeviceMemory( vec->CL_val_gpu );
@@ -472,7 +459,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	ghost_midx_t i;
 	ghost_vidx_t len = vec->traits->nrows;
-	ghost_vdat_t* tmp;
+	ghost_dt* tmp;
 
 	if (perm == NULL) {
 		DEBUG_LOG(1,"Permutation vector is NULL, returning.");
@@ -482,7 +469,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 	}
 
 
-	tmp = (ghost_vdat_t*)allocateMemory(sizeof(ghost_vdat_t)*len, "permute tmp");
+	tmp = (ghost_dt*)allocateMemory(sizeof(ghost_dt)*len, "permute tmp");
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {
@@ -502,7 +489,7 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 	double tol = 1e-5;
 	int i;
 	for (i=0; i<a->traits->nrows; i++) {
-		if (VREAL(VABS(VAL(a)[i]-VAL(b)[i])) > tol || VIMAG(VABS(VAL(a)[i]-VAL(b)[i])) > tol)
+		if (REAL(ABS(VAL(a)[i]-VAL(b)[i])) > tol || IMAG(ABS(VAL(a)[i]-VAL(b)[i])) > tol)
 			return 0;
 	}
 
@@ -522,7 +509,7 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 	new->fromVec(new,src);
  
 //	= ghost_newVector(src->traits->nrows, src->traits->flags);
-//	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_vdat_t));
+//	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));
 
 	return new;
 }

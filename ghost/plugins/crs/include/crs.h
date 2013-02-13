@@ -7,7 +7,7 @@ typedef struct
 {
 	ghost_midx_t len;
 	ghost_midx_t idx;
-	ghost_mdat_t val;
+	ghost_dt val;
 	ghost_midx_t minRow;
 	ghost_midx_t maxRow;
 }
@@ -31,7 +31,7 @@ typedef struct
 	ghost_mnnz_t  nEnts;
 	ghost_midx_t  *rpt;
 	ghost_midx_t  *col;
-	ghost_mdat_t *val;
+	ghost_dt *val;
 
 	CL_CR_TYPE *clmat;
 	ghost_midx_t nConstDiags;
@@ -42,7 +42,7 @@ CR_TYPE;
 typedef struct 
 {
 	ghost_midx_t row, col, nThEntryInRow;
-	ghost_mdat_t val;
+	ghost_dt val;
 } 
 NZE_TYPE;
 
