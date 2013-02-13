@@ -183,11 +183,12 @@
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
+#ifdef MPI
 MPI_Datatype GHOST_MPI_DT_C;
 MPI_Op GHOST_MPI_OP_SUM_C;
 MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
-
+#endif
 
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 

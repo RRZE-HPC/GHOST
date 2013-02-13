@@ -152,6 +152,7 @@ static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
 #endif
 #endif
 
+#ifdef MPI
 typedef struct 
 {
 	float x;
@@ -188,6 +189,7 @@ static void MPI_add_z(MPI_z *invec, MPI_z *inoutvec, int *len)
 		*inoutvec = c;
 	}
 }
+#endif
 
 int ghost_init(int argc, char **argv, int ghostOptions)
 {
