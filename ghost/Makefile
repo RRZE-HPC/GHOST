@@ -140,13 +140,13 @@ endif
 #	@echo -e $(TYPES) >> $(TYPES_H)
 #	@echo -e "\n#endif" >> $(TYPES_H)
 
-$(FORMATS_H): config.mk
-	@echo "==> Generate formats header"
-	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
-	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)
-	@(for format in $(FORMATS); do \
-	echo "#include <$$format>" >> $(FORMATS_H); done)
-	@echo -e "\n#endif" >> $(FORMATS_H)
+#$(FORMATS_H): config.mk
+#	@echo "==> Generate formats header"
+#	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
+#	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)
+#	@(for format in $(FORMATS); do \
+#	echo "#include <$$format>" >> $(FORMATS_H); done)
+#	@echo -e "\n#endif" >> $(FORMATS_H)
 
 $(C_OBJDIR):
 	@mkdir -p $(C_OBJDIR)
