@@ -10,7 +10,9 @@ jobscripts/
 bench/
 meas/
 _attic/
-apps/kpspm/
+apps/*/
+!apps/minimal/
+!apps/spmvm/
 tags
 *stdout*
 *stderr*
