@@ -9,6 +9,10 @@ obj/
 jobscripts/
 bench/
 meas/
+_attic/
+apps/*/
+!apps/minimal/
+!apps/spmvm/
 tags
 *stdout*
 *stderr*
