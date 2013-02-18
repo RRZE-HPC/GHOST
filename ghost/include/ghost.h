@@ -93,6 +93,11 @@ struct ghost_vec_t
 	ghost_vec_t * (*extract) (ghost_vec_t *, int, int);
 	ghost_vec_t * (*view) (ghost_vec_t *, int, int);
 
+	void          (*CUupload) (ghost_vec_t *);
+	void          (*CUdownload) (ghost_vec_t *);
+	void          (*CLupload) (ghost_vec_t *);
+	void          (*CLdownload) (ghost_vec_t *);
+
 	void *so;
 	
 	int isView;

@@ -17,10 +17,10 @@ __global__ void BJDS_kernel(ghost_cu_dt *lhs, ghost_cu_dt *rhs, int options, int
 		ghost_cu_dt tmp = ZERO;
 
 		for (j=0; j<rowlen[i]; j++) {
-			tmp += MUL(val[cs + threadIdx.x + j*BJDS_LEN], rhs[col[cs + threadIdx.x + j*BJDS_LEN]]);
+			tmp = ADD(tmp, MUL(val[cs + threadIdx.x + j*BJDS_LEN], rhs[col[cs + threadIdx.x + j*BJDS_LEN]]));
 		}
 		if (options & GHOST_SPMVM_AXPY)
-			lhs[i] += tmp;
+			lhs[i] = ADD(lhs[i],tmp);
 		else 
 			lhs[i] = tmp;
 

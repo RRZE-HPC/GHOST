@@ -822,7 +822,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #endif
 #ifdef CUDA
 	DEBUG_LOG(1,"Downloading result from CUDA device");
-	CU_downloadVector(res);
+	res->CUdownload(res);
 #endif
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
