@@ -13,6 +13,10 @@
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif
+#ifdef CUDA
+#include <cuComplex.h>
+#endif
+
 
 #ifdef GHOST_DT_S
 #define ABS(a) fabsf(a)
@@ -23,6 +27,9 @@ typedef float ghost_dt;
 typedef float ghost_dt_el;
 #ifdef OPENCL
 typedef float ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef float ghost_cu_dt;
 #endif
 #ifdef MPI
 #define ghost_mpi_dt MPI_FLOAT
@@ -41,6 +48,11 @@ typedef double ghost_dt_el;
 #ifdef OPENCL
 typedef double ghost_cl_dt;
 #endif
+#ifdef CUDA
+typedef double ghost_cu_dt;
+#define MUL(a,b) a*b
+#define ZERO 0.d
+#endif
 #ifdef MPI
 #define ghost_mpi_dt MPI_DOUBLE
 #define ghost_mpi_sum MPI_SUM
@@ -58,6 +70,11 @@ typedef float ghost_dt_el;
 #ifdef OPENCL
 typedef float2 ghost_cl_dt;
 #endif
+#ifdef CUDA
+typedef cuFloatComplex ghost_cu_dt;
+#define MUL(a,b) cuCmulf(a,b)
+#define ZERO make_cuFloatComplex(0.,0.)
+#endif
 #ifdef MPI
 #define ghost_mpi_dt GHOST_MPI_DT_C
 #define ghost_mpi_sum GHOST_MPI_OP_SUM_C
@@ -74,6 +91,9 @@ typedef _Complex double ghost_dt;
 typedef double ghost_dt_el;
 #ifdef OPENCL
 typedef double2 ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef cuDoubleComplex ghost_cu_dt;
 #endif
 #ifdef MPI
 #define ghost_mpi_dt GHOST_MPI_DT_Z

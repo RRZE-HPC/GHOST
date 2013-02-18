@@ -372,10 +372,10 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 #endif
 
 #ifdef OPENCL // TODO depending on flag
-	CL_uploadVector(nodeVec);
+	CL_uploadVector(*nodeVec);
 #endif
 #ifdef CUDA // TODO depending on flag
-	CU_uploadVector(nodeVec);
+	CU_uploadVector(*nodeVec);
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");

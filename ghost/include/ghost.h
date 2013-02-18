@@ -98,7 +98,7 @@ struct ghost_vec_t
 	cl_mem CL_val_gpu;
 #endif
 #ifdef CUDA
-	ghost_vdat_t * CU_val;
+	void * CU_val;
 #endif
 };
 

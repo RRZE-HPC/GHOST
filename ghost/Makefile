@@ -50,7 +50,7 @@ endif
 ifeq ($(strip $(CUDA)),1)
 include include_NVCC.mk
 MAKROS+= -DCUDA
-IPATH += -I$(CUDA_HOME)/include -I./include/cu
+IPATH += -isystem $(CUDA_HOME)/include -I./include/cu
 OBJS  += $(CUOBJS)
 endif
 
@@ -89,8 +89,12 @@ PLUGINOBJS = $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard pl
 	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
 
 ifeq ($(strip $(CUDA)),1)
-PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
+PLUGINOBJS += $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(D_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
 endif
+
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
@@ -127,9 +131,18 @@ $(OBJDIR)/%.o: %.c config.mk
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 ifeq ($(strip $(CUDA)),1)
-$(OBJDIR)/%.cu.o: %.cu config.mk
-	@echo "==> Compile $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+$(C_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile complex float variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
+$(D_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile double variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
+$(S_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile float variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_S ${IPATH} -o $@ -c $<
+$(Z_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile complex double variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 endif
 
 
