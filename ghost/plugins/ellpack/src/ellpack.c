@@ -149,6 +149,8 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t
 	mat->symmetry = crsMat->symmetry;
 	ELLPACK_fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
+
+	mat->CUupload(mat);
 }
 
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)

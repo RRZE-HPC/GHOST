@@ -107,6 +107,7 @@ $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
 	$(eval pl := $(shell echo $(basename $(notdir $@)) | cut -c 3-))
 	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./obj/$(dt)/%f " | sed 's/\.c/\.o/g'))
+	$(eval objs += $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.cu" -printf "./obj/$(dt)/%f " | sed 's/\.cu/\.cu.o/g'))
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
 	

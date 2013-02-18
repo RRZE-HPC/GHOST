@@ -261,6 +261,20 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 			VAL(vec)[v*vec->traits->nrows+i] = *(ghost_dt *)val;
 		}
 	}
+	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
+#ifdef CUDA
+#ifdef CUDA_PINNEDMEM
+		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+#else
+		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt));
+#endif
+		vec->CUupload(vec);
+#endif
+#ifdef OPENCL
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),vec->val,flag );
+		vec->CLupload(vec);
+#endif
+	}	
 }
 
 static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeader)
@@ -360,6 +374,23 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 			fp(i,v,&VAL(vec)[v*vec->traits->nrows+i]);
 		}
 	}
+
+	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
+#ifdef CUDA
+#ifdef CUDA_PINNEDMEM
+		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+#else
+		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt));
+#endif
+		vec->CUupload(vec);
+#endif
+#ifdef OPENCL
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),vec->val,flag );
+		vec->CLupload(vec);
+#endif
+	}	
+		
+
 }
 
 static void ghost_zeroVector(ghost_vec_t *vec) 
