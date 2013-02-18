@@ -895,6 +895,8 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 
 	if (pluginDir) {
 		while (0 != (dirEntry = readdir(pluginDir))) {
+			if (dirEntry->d_name[0] == 'd') 
+			{ // only use double variant ==> only count each format once
 			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
 			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
 			if (!myPlugin.so) {
@@ -911,6 +913,7 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
 			strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
 			dlclose(myPlugin.so);
+			}
 		}
 		closedir(pluginDir);
 	} else {
