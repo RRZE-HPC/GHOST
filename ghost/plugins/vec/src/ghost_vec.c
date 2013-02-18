@@ -41,7 +41,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm);
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 static void vec_entry(ghost_vec_t *, int, void *);
-static ghost_vec_t * vec_subvec (ghost_vec_t * mv, int k, int n);
+static ghost_vec_t * vec_extract (ghost_vec_t * mv, int k, int n);
 static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
@@ -71,7 +71,7 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
-	vec->subvec = &vec_subvec;
+	vec->extract = &vec_extract;
 	vec->view = &vec_view;
 	
 	vec->val = NULL;
@@ -108,7 +108,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n)
 	return new;
 }
 	
-ghost_vec_t * vec_subvec (ghost_vec_t * src, int k, int n)
+ghost_vec_t * vec_extract (ghost_vec_t * src, int k, int n)
 {
 	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
 	ghost_vec_t *new;
@@ -560,7 +560,8 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 {
-	ghost_vec_t *new;
+	return src->extract(src,0,src->traits->nvecs);
+/*	ghost_vec_t *new;
 	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
 	newTraits->flags = src->traits->flags;
 	newTraits->nrows = src->traits->nrows;
@@ -572,5 +573,5 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 //	= ghost_newVector(src->traits->nrows, src->traits->flags);
 //	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));
 
-	return new;
+	return new;*/
 }

@@ -34,13 +34,14 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,rhsVal);
 	
 	rhs->print(rhs);
-
-	ghost_vec_t *foo = rhs->subvec(rhs,2,1);
+	ghost_vec_t *foo = rhs->extract(rhs,2,1);
+	foo->print(foo);
+	foo->destroy(foo);
+	foo = rhs->clone(rhs);
 	foo->print(foo);
 	ghost_vec_t *bar = rhs->view(rhs,1,3);
 	bar->print(bar);
 	bar->destroy(bar);
-
 	rhs->print(rhs);
 
 	ghost_printSysInfo();

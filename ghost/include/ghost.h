@@ -90,7 +90,7 @@ struct ghost_vec_t
 	void          (*entry) (ghost_vec_t *, int,  void *);
 
 	ghost_vec_t * (*clone) (ghost_vec_t *);
-	ghost_vec_t * (*subvec) (ghost_vec_t *, int, int);
+	ghost_vec_t * (*extract) (ghost_vec_t *, int, int);
 	ghost_vec_t * (*view) (ghost_vec_t *, int, int);
 
 	void *so;
