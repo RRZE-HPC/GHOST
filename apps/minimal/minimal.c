@@ -13,11 +13,12 @@ int main( int argc, char* argv[] )
 {
 	int nIter = 1;
 	double time;
+	double zero = 0.;
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
 	ghost_mtraits_t mtraits = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_FLOAT};
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 2};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 2};
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 4};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 4};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
@@ -29,12 +30,18 @@ int main( int argc, char* argv[] )
 	lhs = ghost_createVector(ctx,&lvtraits);
 
 
+	lhs->fromScalar(lhs,&zero);
 	rhs->fromFunc(rhs,rhsVal);
 	
 	rhs->print(rhs);
 
-	ghost_vec_t *foo = rhs->subvec(rhs,1,1);
+	ghost_vec_t *foo = rhs->subvec(rhs,2,1);
 	foo->print(foo);
+	ghost_vec_t *bar = rhs->view(rhs,1,3);
+	bar->print(bar);
+	bar->destroy(bar);
+
+	rhs->print(rhs);
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();

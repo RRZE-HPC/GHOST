@@ -41,7 +41,8 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm);
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 static void vec_entry(ghost_vec_t *, int, void *);
-ghost_vec_t * vec_subvec (ghost_vec_t * mv, int k, int n);
+static ghost_vec_t * vec_subvec (ghost_vec_t * mv, int k, int n);
+static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
@@ -71,11 +72,13 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
 	vec->subvec = &vec_subvec;
+	vec->view = &vec_view;
 	
+	vec->val = NULL;
+	vec->isView = 0;
 
 	DEBUG_LOG(1,"The vector has %d sub-vectors with %d rows and %lu bytes per entry",traits->nvecs,traits->nrows,sizeof(ghost_dt));
-	vec->val = (ghost_dt *)allocateMemory(traits->nvecs*traits->nrows*sizeof(ghost_dt),"vec->val");
-
+/*
 	ghost_vidx_t i,v;
 
 #pragma omp parallel for
@@ -84,8 +87,25 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 			VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
 		}
 	}
-
+*/
 	return vec;
+}
+
+static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n)
+{
+	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
+	ghost_vec_t *new;
+	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
+	newTraits->flags = src->traits->flags;
+	newTraits->nrows = src->traits->nrows;
+	newTraits->nvecs = n;
+	newTraits->datatype = src->traits->datatype;
+
+	new = ghost_initVector(newTraits);
+	new->val = &(VAL(src)[k*src->traits->nrows]);
+
+	new->isView = 1;
+	return new;
 }
 	
 ghost_vec_t * vec_subvec (ghost_vec_t * src, int k, int n)
@@ -139,10 +159,11 @@ static void vec_print(ghost_vec_t *vec)
 
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs2, int nv)
 {
+	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
-#pragma omp parallel for 
+#pragma omp parallel for private(i) 
 	for (v=0; v<nv; v++) {
 		for (i=0; i<nr; i++) {
 			VAL(vec)[(offs1+v)*vec->traits->nrows+i] = VAL(vec2)[(offs2+v)*vec2->traits->nrows+i];
@@ -196,6 +217,7 @@ static void vec_entry(ghost_vec_t * vec, int i, void *val)
 
 static void vec_fromRand(ghost_vec_t *vec)
 {
+	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i;
 
 #pragma omp parallel for schedule(runtime)
@@ -207,11 +229,14 @@ static void vec_fromRand(ghost_vec_t *vec)
 
 static void vec_fromScalar(ghost_vec_t *vec, void *val)
 {
-	int i;
+	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
+	int i,v;
 
-#pragma omp parallel for schedule(runtime)
-	for (i=0; i<vec->traits->nrows; i++) {
-		VAL(vec)[i] = *(ghost_dt *)val;
+#pragma omp parallel for schedule(runtime) private(i)
+	for (v=0; v<vec->traits->nvecs; v++) {
+		for (i=0; i<vec->traits->nrows; i++) {
+			VAL(vec)[v*vec->traits->nrows+i] = *(ghost_dt *)val;
+		}
 	}
 }
 
@@ -254,6 +279,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 
 static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 {
+	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	DEBUG_LOG(1,"Reading vector from file %s",path);
 	int file;
 
@@ -302,9 +328,10 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 {
 	DEBUG_LOG(1,"Filling vector via function");
+	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime) private(i)
 	for (v=0; v<vec->traits->nvecs; v++) {
 		for (i=0; i<vec->traits->nrows; i++) {
 			fp(i,v,&VAL(vec)[v*vec->traits->nrows+i]);
@@ -466,12 +493,14 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 static void ghost_freeVector( ghost_vec_t* vec ) 
 {
 	if( vec ) {
+		if (!vec->isView) {
 #ifdef CUDA_PINNEDMEM
-		if (vec->traits->flags & GHOST_VEC_DEVICE)
-			CU_safecall(cudaFreeHost(VAL(vec)));
+			if (vec->traits->flags & GHOST_VEC_DEVICE)
+				CU_safecall(cudaFreeHost(VAL(vec)));
 #else
-		free(vec->val);
+				free(vec->val);
 #endif
+		}
 		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_dt)), "VAL(vec)",  VAL(vec) );
 #ifdef OPENCL
 		if (vec->traits->flags & GHOST_VEC_DEVICE)

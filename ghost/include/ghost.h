@@ -82,7 +82,6 @@ struct ghost_vec_t
 	void          (*destroy) (ghost_vec_t *);
 	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
 	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
-	ghost_vec_t * (*clone) (ghost_vec_t *);
 	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*scale) (ghost_vec_t *, void *);
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
@@ -90,11 +89,13 @@ struct ghost_vec_t
 	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
 	void          (*entry) (ghost_vec_t *, int,  void *);
 
+	ghost_vec_t * (*clone) (ghost_vec_t *);
 	ghost_vec_t * (*subvec) (ghost_vec_t *, int, int);
+	ghost_vec_t * (*view) (ghost_vec_t *, int, int);
 
 	void *so;
-
-	ghost_vec_t *sisters;
+	
+	int isView;
 
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
