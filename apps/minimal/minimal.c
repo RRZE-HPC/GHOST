@@ -4,21 +4,21 @@
 
 GHOST_REGISTER_DT_D(vecdt)
 
-static void rhsVal (int i, int v, void *val) 
+static void rhsVal (int i, void *val) 
 {
-	*(vecdt_t *)val = v+1+i*0.1+I*1;//i + (vecdt_t)1.0 + I*i;
+	UNUSED(i);
+	*(vecdt_t *)val = 1+I*1;//i + (vecdt_t)1.0 + I*i;
 }
 
 int main( int argc, char* argv[] ) 
 {
 	int nIter = 1;
 	double time;
-	double zero = 0.;
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
 	ghost_mtraits_t mtraits = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_FLOAT};
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 4};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 4};
+	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt};
+	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt};
 
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs;
@@ -29,20 +29,7 @@ int main( int argc, char* argv[] )
 	rhs = ghost_createVector(ctx,&rvtraits);
 	lhs = ghost_createVector(ctx,&lvtraits);
 
-
-	lhs->fromScalar(lhs,&zero);
 	rhs->fromFunc(rhs,rhsVal);
-	
-	rhs->print(rhs);
-	ghost_vec_t *foo = rhs->extract(rhs,2,1);
-	foo->print(foo);
-	foo->destroy(foo);
-	foo = rhs->clone(rhs);
-	foo->print(foo);
-	ghost_vec_t *bar = rhs->view(rhs,1,3);
-	bar->print(bar);
-	bar->destroy(bar);
-	rhs->print(rhs);
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -56,8 +43,6 @@ int main( int argc, char* argv[] )
 		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
 
 	ghost_printFooter();
-
-	lhs->print(lhs);
 
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);
