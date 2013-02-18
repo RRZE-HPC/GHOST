@@ -69,8 +69,8 @@ struct ghost_vec_t
 	//ghost_vdat_t* val;
 	void* val;
 
-	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,void *));
-	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *);
+	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
+	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, int, int, int);
 	void          (*fromFile) (ghost_vec_t *, char *path, off_t);
 	void          (*fromRand) (ghost_vec_t *);
 	void          (*fromScalar) (ghost_vec_t *, void *);
@@ -90,6 +90,8 @@ struct ghost_vec_t
 	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
 	void          (*entry) (ghost_vec_t *, int,  void *);
 
+	ghost_vec_t * (*subvec) (ghost_vec_t *, int, int);
+
 	void *so;
 
 	ghost_vec_t *sisters;
@@ -108,6 +110,7 @@ struct ghost_vtraits_t
 	void * aux;
 	int datatype;
 	int nrows;
+	int nvecs;
 }; 
 
 typedef struct 

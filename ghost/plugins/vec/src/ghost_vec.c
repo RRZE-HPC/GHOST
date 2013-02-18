@@ -24,8 +24,8 @@ static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
-static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,void *));
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2);
+static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs2, int nv);
 static void vec_fromRand(ghost_vec_t *vec);
 static void vec_fromScalar(ghost_vec_t *vec, void *val);
 static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset);
@@ -41,6 +41,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm);
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 static void vec_entry(ghost_vec_t *, int, void *);
+ghost_vec_t * vec_subvec (ghost_vec_t * mv, int k, int n);
 
 ghost_vec_t *init(ghost_vtraits_t *traits)
 {
@@ -69,17 +70,39 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
+	vec->subvec = &vec_subvec;
+	
 
-	DEBUG_LOG(1,"The vector has %d rows and %lu bytes per entry",traits->nrows,sizeof(ghost_dt));
-	vec->val = (ghost_dt *)allocateMemory(traits->nrows*sizeof(ghost_dt),"vec->val");
+	DEBUG_LOG(1,"The vector has %d sub-vectors with %d rows and %lu bytes per entry",traits->nvecs,traits->nrows,sizeof(ghost_dt));
+	vec->val = (ghost_dt *)allocateMemory(traits->nvecs*traits->nrows*sizeof(ghost_dt),"vec->val");
 
-	ghost_vidx_t i;
+	ghost_vidx_t i,v;
 
 #pragma omp parallel for
-	for (i=0; i<traits->nrows; i++)
-		VAL(vec)[i] = 0.+I*0.;
+	for (v=0; v<traits->nvecs; v++) {
+		for (i=0; i<traits->nrows; i++) {
+			VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
+		}
+	}
 
 	return vec;
+}
+	
+ghost_vec_t * vec_subvec (ghost_vec_t * src, int k, int n)
+{
+	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
+	ghost_vec_t *new;
+	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
+	newTraits->flags = src->traits->flags;
+	newTraits->nrows = src->traits->nrows;
+	newTraits->nvecs = n;
+	newTraits->datatype = src->traits->datatype;
+
+	new = ghost_initVector(newTraits);
+	new->fromVec(new,src,0,k,n);
+
+	return new;
+
 }
 
 static void ghost_normalizeVector( ghost_vec_t *vec)
@@ -99,25 +122,31 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 
 static void vec_print(ghost_vec_t *vec)
 {
-	ghost_vidx_t i;
+	ghost_vidx_t i,v;
 	for (i=0; i<vec->traits->nrows; i++) {
+		printf("vec[%d] = ",i);
+		for (v=0; v<vec->traits->nvecs; v++) {
 #if GHOST_MY_DT & GHOST_BINCRS_DT_COMPLEX
-		printf("vec[%d] = %f + %fi\n",i,REAL(VAL(vec)[i]),IMAG(VAL(vec)[i]));
+			printf("%f + %f\t",REAL(VAL(vec)[v*vec->traits->nrows+i]),IMAG(VAL(vec)[v*vec->traits->nrows+i]));
 #else
-		printf("vec[%d] = %f\n",i,VAL(vec)[i]);
+			printf("%f\t",VAL(vec)[v*vec->traits->nrows+i]);
 #endif
+		}
+		printf("\n");
 	}
 
 }
 
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2)
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs2, int nv)
 {
-	ghost_vidx_t i;
+	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
 #pragma omp parallel for 
-	for (i=0; i<nr; i++) {
-		VAL(vec)[i] = VAL(vec2)[i];
+	for (v=0; v<nv; v++) {
+		for (i=0; i<nr; i++) {
+			VAL(vec)[(offs1+v)*vec->traits->nrows+i] = VAL(vec2)[(offs2+v)*vec2->traits->nrows+i];
+		}
 	}
 }
 
@@ -270,13 +299,16 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 	
 }
 
-static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,void *))
+static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 {
-	int i;
+	DEBUG_LOG(1,"Filling vector via function");
+	int i,v;
 
 #pragma omp parallel for schedule(runtime)
-	for (i=0; i<vec->traits->nrows; i++) {
-		fp(i,&VAL(vec)[i]);
+	for (v=0; v<vec->traits->nvecs; v++) {
+		for (i=0; i<vec->traits->nrows; i++) {
+			fp(i,v,&VAL(vec)[v*vec->traits->nrows+i]);
+		}
 	}
 }
 
@@ -506,7 +538,7 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 	newTraits->datatype = src->traits->datatype;
 
 	new = ghost_initVector(newTraits);
-	new->fromVec(new,src);
+	new->fromVec(new,src,0,0,1);
  
 //	= ghost_newVector(src->traits->nrows, src->traits->flags);
 //	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));

@@ -3,21 +3,25 @@
 
 static void FUNCTION_NAME(CRS_kernel_plain,prefix) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	vecdt *rhsv = (vecdt *)rhs->val;	
-	vecdt *lhsv = (vecdt *)lhs->val;	
-	ghost_midx_t i, j;
+	vecdt *rhsv;	
+	vecdt *lhsv;	
+	ghost_midx_t i, j, v;
 	vecdt hlp1;
 	CR_TYPE *cr = CR(mat);
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
+#pragma omp parallel for schedule(runtime) private (hlp1, j, v, rhsv, lhsv)
 	for (i=0; i<cr->nrows; i++){
-		hlp1 = 0.0;
-		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + (vecdt)cr->val[j] * rhsv[cr->col[j]];
+		for (v=0; v<rhs->traits->nvecs; v++) {
+			rhsv = &(((vecdt *)rhs->val)[rhs->traits->nrows*v]);
+			lhsv = &(((vecdt *)lhs->val)[lhs->traits->nrows*v]);
+			hlp1 = 0.0;
+			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+				hlp1 = hlp1 + (vecdt)cr->val[j] * rhsv[cr->col[j]];
+			}
+			if (options & GHOST_SPMVM_AXPY) 
+				lhsv[i] += hlp1;
+			else
+				lhsv[i] = hlp1;
 		}
-		if (options & GHOST_SPMVM_AXPY) 
-			lhsv[i] += hlp1;
-		else
-			lhsv[i] = hlp1;
 	}
 }
