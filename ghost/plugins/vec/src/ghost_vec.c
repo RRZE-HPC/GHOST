@@ -82,8 +82,10 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->extract = &vec_extract;
 	vec->view = &vec_view;
 
+#ifdef CUDA
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
+#endif
 	
 	vec->val = NULL;
 	vec->isView = 0;
@@ -102,6 +104,7 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	return vec;
 }
 
+#ifdef CUDA
 static void vec_CUupload (ghost_vec_t *vec)
 {
 	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*sizeof(ghost_dt));
@@ -113,6 +116,7 @@ static void vec_CUdownload (ghost_vec_t *vec)
 	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*sizeof(ghost_dt));
 
 }
+#endif
 
 static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n)
 {
