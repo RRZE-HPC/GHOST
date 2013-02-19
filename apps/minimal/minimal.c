@@ -19,7 +19,7 @@ int main( int argc, char* argv[] )
 
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = {.format = "ELLPACK", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_FLOAT};
+	ghost_mtraits_t mtraits = {.format = "BJDS", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL};
 	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 1};
 	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 1};
 

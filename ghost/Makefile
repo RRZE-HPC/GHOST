@@ -120,7 +120,7 @@ $(D_OBJDIR)/%.o: %.c config.mk
 	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
 
 $(S_OBJDIR)/%.o: %.c config.mk
-	@echo "==> Compile single variant $< -> $@"
+	@echo "==> Compile float variant $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_S  ${IPATH} -o $@ -c $<
 
 $(Z_OBJDIR)/%.o: %.c config.mk

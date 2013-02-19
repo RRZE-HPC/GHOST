@@ -150,7 +150,10 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t
 	ELLPACK_fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
 
-	mat->CUupload(mat);
+#ifdef CUDA
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CUupload(mat);
+#endif
 }
 
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
