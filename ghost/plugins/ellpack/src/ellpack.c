@@ -427,9 +427,19 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 static void ELLPACK_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(1,"Calling ELLPACK CUDA kernel");
-	
-	ELLPACK_kernel_wrap(lhs->CU_val, rhs->CU_val, options, ELLPACK(mat)->cumat->nrows, ELLPACK(mat)->cumat->nrowsPadded, ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->cumat->col, ELLPACK(mat)->cumat->val);
+	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
+	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			c_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+		else
+			s_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+	} else {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			z_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+		else
+			d_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+	}
 }
 #endif
 

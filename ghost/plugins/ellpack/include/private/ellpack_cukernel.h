@@ -3,7 +3,10 @@
 
 #include <ghost.h>
 
-void ELLPACK_kernel_wrap(ghost_dt *lhs, ghost_dt *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, ghost_dt *val);
+void c_ELLPACK_kernel_wrap(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+void d_ELLPACK_kernel_wrap(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+void s_ELLPACK_kernel_wrap(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+void z_ELLPACK_kernel_wrap(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
 
 #endif
 

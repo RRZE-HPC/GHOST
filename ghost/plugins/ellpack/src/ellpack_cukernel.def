@@ -1,0 +1,57 @@
+#define PASTE(name, type) type ##_## name
+#define FUNCTION_NAME(name, type) PASTE(name, type)
+
+__global__ void FUNCTION_NAME(ELLPACK_kernel,prefix)(vecdt *lhs, vecdt *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, ghost_cu_dt *val)
+{
+	int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (i<nrows) {
+		int j;
+		vecdt tmp = FUNCTION_NAME(ZERO,prefix);
+
+		for (j=0; j<rowlen[i]; j++) {
+			tmp = FUNCTION_NAME(ADD,prefix)(
+					tmp, FUNCTION_NAME(MUL,prefix)(FUNCTION_NAME(INIT,prefix)(CUREAL(val[i + j*nrowspadded]),CUIMAG(val[i + j*nrowspadded])), rhs[col[i + j*nrowspadded]]));
+		}
+		if (options & GHOST_SPMVM_AXPY)
+			lhs[i] = FUNCTION_NAME(ADD,prefix)(lhs[i], tmp);
+		else 
+			lhs[i] = tmp;
+
+	}
+
+
+}
+
+
+
+extern "C" void FUNCTION_NAME(ELLPACK_kernel_wrap,prefix) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	DEBUG_LOG(1,"In ELLPACK CUDA wrapper");
+	CU_ELLPACK_TYPE * cumat = ((ELLPACK_TYPE *)(mat->data))->cumat;
+	FUNCTION_NAME(ELLPACK_kernel,prefix)<<<cumat->nrowsPadded/ELLPACK_WGXSIZE,ELLPACK_WGXSIZE>>>((vecdt *)lhs->CU_val, (vecdt *)rhs->CU_val, options, cumat->nrows, cumat->nrowsPadded, cumat->rowLen, cumat->col, cumat->val);
+	CU_checkerror();
+
+}
+/*	vecdt *rhsv;	
+	vecdt *lhsv;	
+	ghost_midx_t i, j, v;
+	vecdt hlp1;
+	CR_TYPE *cr = CR(mat);
+
+#pragma omp parallel for schedule(runtime) private (hlp1, j, v, rhsv, lhsv)
+	for (i=0; i<cr->nrows; i++){
+		for (v=0; v<rhs->traits->nvecs; v++) {
+			rhsv = &(((vecdt *)rhs->val)[rhs->traits->nrows*v]);
+			lhsv = &(((vecdt *)lhs->val)[lhs->traits->nrows*v]);
+			hlp1 = 0.0;
+			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+				hlp1 = hlp1 + (vecdt)cr->val[j] * rhsv[cr->col[j]];
+			}
+			if (options & GHOST_SPMVM_AXPY) 
+				lhsv[i] += hlp1;
+			else
+				lhsv[i] = hlp1;
+		}
+	}
+}*/

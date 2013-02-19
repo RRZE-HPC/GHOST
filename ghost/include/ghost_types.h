@@ -30,9 +30,8 @@ typedef float ghost_cl_dt;
 #endif
 #ifdef CUDA
 typedef float ghost_cu_dt;
-#define ADD(a,b) a+b
-#define MUL(a,b) a*b
-#define ZERO 0.f
+#define CUREAL(a) a
+#define CUIMAG(a) 0 
 #endif
 #ifdef MPI
 #define ghost_mpi_dt MPI_FLOAT
@@ -53,9 +52,8 @@ typedef double ghost_cl_dt;
 #endif
 #ifdef CUDA
 typedef double ghost_cu_dt;
-#define ADD(a,b) a+b
-#define MUL(a,b) a*b
-#define ZERO 0.
+#define CUREAL(a) a
+#define CUIMAG(a) 0 
 #endif
 #ifdef MPI
 #define ghost_mpi_dt MPI_DOUBLE
@@ -76,9 +74,8 @@ typedef float2 ghost_cl_dt;
 #endif
 #ifdef CUDA
 typedef cuFloatComplex ghost_cu_dt;
-#define ADD(a,b) cuCaddf(a,b)
-#define MUL(a,b) cuCmulf(a,b)
-#define ZERO make_cuFloatComplex(0.,0.)
+#define CUREAL(a) cuCrealf(a)
+#define CUIMAG(a) cuCimagf(a)
 #endif
 #ifdef MPI
 #define ghost_mpi_dt GHOST_MPI_DT_C
@@ -99,9 +96,8 @@ typedef double2 ghost_cl_dt;
 #endif
 #ifdef CUDA
 typedef cuDoubleComplex ghost_cu_dt;
-#define ADD(a,b) cuCadd(a,b)
-#define MUL(a,b) cuCmul(a,b)
-#define ZERO make_cuDoubleComplex(0.,0.)
+#define CUREAL(a) cuCreal(a)
+#define CUIMAG(a) cuCimag(a)
 #endif
 #ifdef MPI
 #define ghost_mpi_dt GHOST_MPI_DT_Z
