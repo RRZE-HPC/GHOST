@@ -5,7 +5,7 @@
 
 #ifdef MPI
 #include <mpi.h>
-#include "ghost_mpi_util.h"
+#include "mpi/ghost_mpi_util.h"
 #endif
 
 #ifdef OPENCL
@@ -27,6 +27,11 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #define IF_DEBUG(level) if( DEBUG >= level )
+//#define DEBUG_IDT 0
+//extern int DEBUG_IDT;
+
+//#define DEBUG_INDENT DEBUG_IDT+=2
+//#define DEBUG_OUTDENT DEBUG_IDT-=2
 
 #ifdef MPI
 #define DEBUG_LOG(level,msg, ...) {\
@@ -178,7 +183,12 @@
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
-
+#ifdef MPI
+MPI_Datatype GHOST_MPI_DT_C;
+MPI_Op GHOST_MPI_OP_SUM_C;
+MPI_Datatype GHOST_MPI_DT_Z;
+MPI_Op GHOST_MPI_OP_SUM_Z;
+#endif
 
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
@@ -190,9 +200,9 @@ void ghost_printGhostInfo();
 
 
 void ghost_solver_nompi(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext,  ghost_vdat_t (*fp)(int), int nIter, int spmvmOptions);
-void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
-void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+//void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
+//void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 
 char * ghost_workdistName(int ghostOptions);
 char * ghost_modeName(int spmvmOptions);
@@ -221,6 +231,9 @@ int ghost_archIsBigEndian();
 int ghost_getCoreNumbering();
 int ghost_getCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
+char ghost_datatypePrefix(int dt);
+int ghost_dataTypeIdx(int datatype);
+ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);

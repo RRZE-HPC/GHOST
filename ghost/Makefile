@@ -1,10 +1,16 @@
 include config.mk
 include include_$(strip $(COMPILER)).mk
 
-.PHONY: clean distclean install uninstall all header
+.NOTPARALLEL: $(PLUGINS)
+
+.PHONY: clean distclean install uninstall all header 
 
 VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
+C_OBJDIR   = ./obj/c
+D_OBJDIR   = ./obj/d
+S_OBJDIR   = ./obj/s
+Z_OBJDIR   = ./obj/z
 PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
@@ -44,7 +50,7 @@ endif
 ifeq ($(strip $(CUDA)),1)
 include include_NVCC.mk
 MAKROS+= -DCUDA
-IPATH += -I$(CUDA_HOME)/include -I./include/cu
+IPATH += -isystem $(CUDA_HOME)/include -I./include/cu
 OBJS  += $(CUOBJS)
 endif
 
@@ -55,30 +61,6 @@ endif
 
 ifeq ($(strip $(LONGIDX)),1)
 TYPES:= $(TYPES)"\#define GHOST_LONGIDX \n"
-endif
-
-ifeq ($(strip $(MATDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-else ifeq ($(strip $(MATDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-else ifeq ($(strip $(MATDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_MAT_SP \n"
-TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-else ifeq ($(strip $(MATDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_MAT_DP \n"
-TYPES:= $(TYPES)"\#define GHOST_MAT_COMPLEX \n"
-endif
-
-ifeq ($(strip $(VECDATA)),s)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
-else ifeq ($(strip $(VECDATA)),d)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
-else ifeq ($(strip $(VECDATA)),c)
-TYPES:= $(TYPES)"\#define GHOST_VEC_SP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
-else ifeq ($(strip $(VECDATA)),z)
-TYPES:= $(TYPES)"\#define GHOST_VEC_DP \n"
-TYPES:= $(TYPES)"\#define GHOST_VEC_COMPLEX \n"
 endif
 
 ifeq ($(strip $(LIBTYPE)),static)
@@ -97,53 +79,94 @@ MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
 IPATH += $(addsuffix include/, $(addprefix -I, $(wildcard $(PLUGINDIR)/*/)))
 VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
 
-PLUGINS = $(addsuffix .so, $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/))))
-PLUGINOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
+PLUGINS = $(addsuffix .so, $(addprefix $(PLUGINDIR)/c_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/d_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/s_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
+	$(addsuffix .so, $(addprefix $(PLUGINDIR)/z_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/))))))
+PLUGINOBJS = $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(D_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
+	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
+
 ifeq ($(strip $(CUDA)),1)
-PLUGINOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
+PLUGINOBJS += $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(D_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
+	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu))))
 endif
+
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
 
-all: $(TYPES_H) $(FORMATS_H) $(OBJDIR) $(PLUGINS) $(LIBGHOST) 
+all: $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
-	$(eval objs := $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c, %.o, $(wildcard $(basename $@)/src/*.c)))))
+	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
+	$(eval pl := $(shell echo $(basename $(notdir $@)) | cut -c 3-))
+	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./obj/$(dt)/%f " | sed 's/\.c/\.o/g'))
 ifeq ($(strip $(CUDA)),1)
-	$(eval objs += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu, %.cu.o, $(wildcard $(basename $@)/src/*.cu)))))
+	$(eval objs += $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.cu" -printf "./obj/$(dt)/%f " | sed 's/\.cu/\.cu.o/g'))
 endif
 	@echo "==> Create plugin $(objs) -> $@"
 	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
 	
+$(C_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile complex float variant $< -> $@"
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
+
+$(D_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile double variant $< -> $@"
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
+
+$(S_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile float variant $< -> $@"
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_S  ${IPATH} -o $@ -c $<
+
+$(Z_OBJDIR)/%.o: %.c config.mk
+	@echo "==> Compile complex double variant $< -> $@"
+	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 ifeq ($(strip $(CUDA)),1)
-$(OBJDIR)/%.cu.o: %.cu config.mk
-	@echo "==> Compile $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+$(C_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile complex float variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
+$(D_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile double variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
+$(S_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile float variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_S ${IPATH} -o $@ -c $<
+$(Z_OBJDIR)/%.cu.o: %.cu config.mk
+	@echo "==> Compile complex double variant $< -> $@"
+	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 endif
 
+#$(FORMATS_H): config.mk
+#	@echo "==> Generate formats header"
+#	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
+#	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)
+#	@(for format in $(FORMATS); do \
+#	echo "#include <$$format>" >> $(FORMATS_H); done)
+#	@echo -e "\n#endif" >> $(FORMATS_H)
 
-$(TYPES_H): config.mk  
-	@echo "==> Generate types header"
-	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
-	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
-	@echo -e $(TYPES) >> $(TYPES_H)
-	@echo -e "\n#endif" >> $(TYPES_H)
+$(C_OBJDIR):
+	@mkdir -p $(C_OBJDIR)
 
-$(FORMATS_H): config.mk
-	@echo "==> Generate formats header"
-	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
-	@echo -e "#define __GHOST_SPMFORMATS_H__\n" >> $(FORMATS_H)
-	@(for format in $(FORMATS); do \
-	echo "#include <$$format>" >> $(FORMATS_H); done)
-	@echo -e "\n#endif" >> $(FORMATS_H)
+$(D_OBJDIR):
+	@mkdir -p $(D_OBJDIR)
+
+$(S_OBJDIR):
+	@mkdir -p $(S_OBJDIR)
+
+$(Z_OBJDIR):
+	@mkdir -p $(Z_OBJDIR)
 
 $(OBJDIR):
 	@mkdir $(OBJDIR)
@@ -161,7 +184,8 @@ endif
 
 clean:
 	@echo "==> Clean"
-	@rm -rf obj/
+	@rm -rf $(OBJDIR)
+	@rm -rf $(PLOBJDIR)
 	@rm -rf $(TYPES_H)
 	@rm -rf $(FORMATS_H)
 

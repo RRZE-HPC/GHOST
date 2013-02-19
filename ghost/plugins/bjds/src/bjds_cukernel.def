@@ -1,0 +1,32 @@
+#define PASTE(name, type) type ##_## name
+#define FUNCTION_NAME(name, type) PASTE(name, type)
+
+
+__global__ void FUNCTION_NAME(BJDS_kernel,prefix)(vecdt *lhs, vecdt *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, ghost_cu_dt *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
+{
+	int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (i<nrows) {
+		int cs = chunkstart[blockIdx.x];
+		int j;
+		vecdt tmp = FUNCTION_NAME(ZERO,prefix);
+
+		for (j=0; j<rowlen[i]; j++) {
+			tmp = FUNCTION_NAME(ADD,prefix)(tmp, FUNCTION_NAME(MUL,prefix)(FUNCTION_NAME(INIT,prefix)(CUREAL(val[cs + threadIdx.x + j*BJDS_LEN]),CUIMAG(val[cs + threadIdx.x + j*BJDS_LEN])), rhs[col[cs + threadIdx.x + j*BJDS_LEN]]));
+		}
+		if (options & GHOST_SPMVM_AXPY)
+			lhs[i] = FUNCTION_NAME(ADD,prefix)(lhs[i],tmp);
+		else 
+			lhs[i] = tmp;
+
+	}
+}	
+
+extern "C" void FUNCTION_NAME(BJDS_kernel_wrap,prefix) (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+{
+	DEBUG_LOG(1,"In BJDS CUDA wrapper");
+	CU_BJDS_TYPE * cumat = ((BJDS_TYPE *)(mat->data))->cumat;
+	FUNCTION_NAME(BJDS_kernel,prefix)<<<cumat->nrowsPadded/BJDS_LEN,BJDS_LEN>>>((vecdt *)lhs->CU_val, (vecdt *)rhs->CU_val, options, cumat->nrows, cumat->nrowsPadded, cumat->rowLen, cumat->col, cumat->val, cumat->chunkStart, cumat->chunkLen);
+	CU_checkerror();
+
+}

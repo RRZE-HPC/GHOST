@@ -2,7 +2,6 @@
 #include "ghost_mat.h"
 #include "ghost.h"
 #include "ghost_util.h"
-#include "ghost_mmio.h"
 
 #include <string.h>
 #include <libgen.h>
@@ -49,7 +48,7 @@ int isMMfile(const char *filename)
 	return cmp==0?1:0;
 }
 
-ghost_mm_t * readMMFile(const char* filename ) 
+/*ghost_mm_t * readMMFile(const char* filename ) 
 {
 	MM_typecode matcode;
 	FILE *f;
@@ -128,4 +127,4 @@ ghost_mm_t * readMMFile(const char* filename )
 
 	if (f !=stdin) fclose(f);
 	return mm;
-}
+}*/

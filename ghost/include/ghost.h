@@ -6,6 +6,7 @@
 #include <complex.h>
 #include <math.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
@@ -30,26 +31,93 @@
 //#define CUDA_PINNEDMEM
 /******************************************************************************/
 
+#define GHOST_REGISTER_DT_D(name) \
+	typedef double name ## _t; \
+	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_S(name) \
+	typedef float name ## _t; \
+	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_C(name) \
+	typedef complex float name ## _t; \
+	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
+
+#define GHOST_REGISTER_DT_Z(name) \
+	typedef complex double name ## _t; \
+	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
+
+
 
 
 /******************************************************************************/
 /*----  Type definitions  ----------------------------------------------------*/
 /******************************************************************************/
 
-typedef struct 
+typedef struct ghost_vec_t ghost_vec_t;
+typedef struct ghost_mat_t ghost_mat_t;
+typedef struct ghost_context_t ghost_context_t;
+typedef struct ghost_comm_t ghost_comm_t;
+typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
+typedef struct ghost_vec_plugin_t ghost_vec_plugin_t;
+typedef struct ghost_mtraits_t ghost_mtraits_t;
+typedef struct ghost_vtraits_t ghost_vtraits_t;
+
+struct ghost_vec_t 
 {
-	unsigned int flags;
-	int nrows;
-	ghost_vdat_t* val;
+	ghost_vtraits_t *traits;
+	//ghost_vdat_t* val;
+	void* val;
+
+	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
+	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, int, int, int);
+	void          (*fromFile) (ghost_vec_t *, char *path, off_t);
+	void          (*fromRand) (ghost_vec_t *);
+	void          (*fromScalar) (ghost_vec_t *, void *);
+	void          (*zero) (ghost_vec_t *);
+	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *comm);
+	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
+	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
+	void          (*normalize) (ghost_vec_t *);
+	void          (*destroy) (ghost_vec_t *);
+	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
+	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
+	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
+	void          (*scale) (ghost_vec_t *, void *);
+	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
+	void          (*print) (ghost_vec_t *);
+	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
+	void          (*entry) (ghost_vec_t *, int,  void *);
+
+	ghost_vec_t * (*clone) (ghost_vec_t *);
+	ghost_vec_t * (*extract) (ghost_vec_t *, int, int);
+	ghost_vec_t * (*view) (ghost_vec_t *, int, int);
+
+	void          (*CUupload) (ghost_vec_t *);
+	void          (*CUdownload) (ghost_vec_t *);
+	void          (*CLupload) (ghost_vec_t *);
+	void          (*CLdownload) (ghost_vec_t *);
+
+	void *so;
+	
+	int isView;
 
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
 #endif
 #ifdef CUDA
-	ghost_vdat_t * CU_val;
+	void * CU_val;
 #endif
-} 
-ghost_vec_t;
+};
+
+struct ghost_vtraits_t
+{
+	int flags;
+	void * aux;
+	int datatype;
+	int nrows;
+	int nvecs;
+}; 
 
 typedef struct 
 {
@@ -59,16 +127,46 @@ typedef struct
 GHOST_SPM_GPUFORMATS;
 
 
-typedef struct ghost_mat_t ghost_mat_t;
-typedef struct ghost_context_t ghost_context_t;
-typedef struct ghost_comm_t ghost_comm_t;
-typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
-typedef struct ghost_mtraits_t ghost_mtraits_t;
+/*typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+} CRS_readRpt_args_t;
+
+typedef struct{
+	ghost_mat_t *mat;
+	char *matrixPath;
+	ghost_mnnz_t offsetEnts;
+	ghost_midx_t offsetRows;
+	ghost_midx_t nRows;
+	ghost_mnnz_t nEnts;
+	int IOtype;
+} CRS_readColValOffset_args_t;
+
+typedef struct {
+	ghost_mat_t *mat;
+	int options;
+	ghost_comm_t *lcrp;
+} CRS_createDistribution_args_t;
+
+typedef struct {
+	ghost_mat_t *mat;
+	ghost_mat_t *lmat;
+	ghost_mat_t *rmat;
+	int options;
+	ghost_context_t *context;
+} CRS_createCommunication_args_t;
+
+#define GHOST_CRS_EXTRAFUN_READ_RPT 0
+#define GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET 1
+#define GHOST_CRS_EXTRAFUN_READ_HEADER 2
+#define GHOST_CRS_EXTRAFUN_CREATE_DISTRIBUTION 3
+#define GHOST_CRS_EXTRAFUN_CREATE_COMMUNICATION 4*/
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_context_t *context, ghost_vec_t*, int);
 typedef void (*ghost_dummyfun_t)(void *);
 typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
+typedef ghost_vec_t * (*ghost_vec_init_t) (ghost_vtraits_t *);
 
 struct ghost_comm_t 
 {
@@ -99,14 +197,15 @@ struct ghost_mat_t
 	ghost_midx_t  (*nrows) (ghost_mat_t *);
 	ghost_midx_t  (*ncols) (ghost_mat_t *);
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
-	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
+//	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	void       (*CLupload)(ghost_mat_t *);
 	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
+	void       (*split)(ghost_mat_t *, int options, ghost_context_t *, ghost_mtraits_t *traits);
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	ghost_kernel_t kernel;
@@ -130,6 +229,14 @@ struct ghost_spmf_plugin_t
 	char *name;
 	char *version;
 	char *formatID;
+};
+
+struct ghost_vec_plugin_t
+{
+	void *so;
+	ghost_vec_init_t init;
+	char *name;
+	char *version;
 };
 
 struct ghost_context_t
@@ -159,6 +266,7 @@ struct ghost_mtraits_t
 	const char * format;
 	int flags;
 	void * aux;
+	int datatype;
 }; 
 
 typedef struct
@@ -168,6 +276,12 @@ typedef struct
 	char **names;
 } 
 ghost_acc_info_t;
+
+
+void ghost_normalizeVec(ghost_vec_t *);
+void ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
+void ghost_vecToFile(ghost_vec_t *, char *, ghost_context_t *);
+void ghost_vecFromFile(ghost_vec_t *, char *, ghost_context_t *);
 
 /******************************************************************************/
 
@@ -264,7 +378,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, unsigned int type, ghost_vdat_t (*fp)(int));
+ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits);
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
@@ -294,7 +408,8 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 		int *spmvmOptions);
 
 ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
-	ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
+ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
+ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
 

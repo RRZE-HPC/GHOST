@@ -1,7 +1,10 @@
-#include "spm_format_ellpack.h"
+#include "ellpack.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+#ifdef CUDA
 #include "private/ellpack_cukernel.h"
+#endif
 
 #include <strings.h>
 #if defined(SSE) || defined(AVX) || defined(MIC)
@@ -20,12 +23,12 @@ static ghost_midx_t ELLPACK_ncols(ghost_mat_t *mat);
 static void ELLPACK_printInfo(ghost_mat_t *mat);
 static char * ELLPACK_formatName(ghost_mat_t *mat);
 static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
+//static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t ELLPACK_byteSize (ghost_mat_t *mat);
 static void ELLPACK_upload(ghost_mat_t *mat);
 static void ELLPACK_CUupload(ghost_mat_t *mat);
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs);
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *);
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx, int options);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef CUDA
@@ -45,7 +48,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->printInfo = &ELLPACK_printInfo;
 	mat->formatName = &ELLPACK_formatName;
 	mat->rowLen     = &ELLPACK_rowLen;
-	mat->entry      = &ELLPACK_entry;
+//	mat->entry      = &ELLPACK_entry;
 	mat->byteSize   = &ELLPACK_byteSize;
 	mat->kernel     = &ELLPACK_kernel_plain;
 	mat->nnz      = &ELLPACK_nnz;
@@ -113,7 +116,7 @@ static ghost_midx_t ELLPACK_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 
 	return ELLPACK(mat)->rowLen[i];
 }
-
+/*
 static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
 	ghost_midx_t e;
@@ -129,24 +132,28 @@ static ghost_mdat_t ELLPACK_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_
 			return ELLPACK(mat)->val[e];
 	}
 	return 0.;
-}
+}*/
 
 static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((ELLPACK(mat)->nrowsPadded)*sizeof(ghost_midx_t) + 
-			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
+			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *matrixPath)
+static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t *ctx, int options)
 {
-	// TODO
-
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath);
+	crsMat->fromBin(crsMat,matrixPath, ctx, options);
 
+	mat->symmetry = crsMat->symmetry;
 	ELLPACK_fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
+
+#ifdef CUDA
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CUupload(mat);
+#endif
 }
 
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
@@ -266,7 +273,7 @@ static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs)
 	ELLPACK(mat)->nEnts = ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen;
 	ELLPACK(mat)->rowLen = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nrowsPadded*sizeof(ghost_midx_t),"rowLen");
 	ELLPACK(mat)->col = (ghost_midx_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_midx_t),"col");
-	ELLPACK(mat)->val = (ghost_mdat_t *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t),"val");
+	ELLPACK(mat)->val = (ghost_dt *)allocateMemory(ELLPACK(mat)->nEnts*sizeof(ghost_dt),"val");
 
 
 #pragma omp parallel for private(j)	
@@ -363,7 +370,7 @@ static void ELLPACK_CUupload(ghost_mat_t *mat)
 		ELLPACK(mat)->cumat = (CU_ELLPACK_TYPE *)allocateMemory(sizeof(CU_ELLPACK_TYPE),"CU_ELLPACK");
 		ELLPACK(mat)->cumat->rowLen = CU_allocDeviceMemory((ELLPACK(mat)->nrows)*sizeof(ghost_midx_t));
 		ELLPACK(mat)->cumat->col = CU_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_midx_t));
-		ELLPACK(mat)->cumat->val = CU_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_mdat_t));
+		ELLPACK(mat)->cumat->val = CU_allocDeviceMemory((ELLPACK(mat)->nEnts)*sizeof(ghost_dt));
 
 		ELLPACK(mat)->cumat->nrows       = ELLPACK(mat)->nrows;
 		ELLPACK(mat)->cumat->nrowsPadded = ELLPACK(mat)->nrowsPadded;
@@ -371,7 +378,7 @@ static void ELLPACK_CUupload(ghost_mat_t *mat)
 
 		CU_copyHostToDevice(ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->rowLen, ELLPACK(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(ELLPACK(mat)->cumat->col,    ELLPACK(mat)->col,    ELLPACK(mat)->nEnts*sizeof(ghost_midx_t));
-		CU_copyHostToDevice(ELLPACK(mat)->cumat->val,    ELLPACK(mat)->val,    ELLPACK(mat)->nEnts*sizeof(ghost_mdat_t));
+		CU_copyHostToDevice(ELLPACK(mat)->cumat->val,    ELLPACK(mat)->val,    ELLPACK(mat)->nEnts*sizeof(ghost_dt));
 		DEBUG_LOG(1,"ELLPACK matrix successfully created on CUDA device");
 	}
 
@@ -399,20 +406,22 @@ static void ELLPACK_free(ghost_mat_t *mat)
 
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 	ghost_midx_t j,i;
-	ghost_vdat_t tmp; 
+	double tmp; 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp)
 	for( i=0; i < ELLPACK(mat)->nrows; ++i) {
 		tmp = 0;
 		for( j=0; j < ELLPACK(mat)->maxRowLen; ++j) {
-			tmp += (ghost_vdat_t)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
-				rhs->val[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
+			tmp += (double)ELLPACK(mat)->val[i+j*ELLPACK(mat)->nrowsPadded] * 
+				rhsv[ELLPACK(mat)->col[i+j*ELLPACK(mat)->nrowsPadded]];
 		}
 		if (options & GHOST_SPMVM_AXPY)
-			lhs->val[i] += tmp;
+			lhsv[i] += tmp;
 		else
-			lhs->val[i] = tmp;
+			lhsv[i] = tmp;
 	}
 
 }
@@ -421,9 +430,19 @@ static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec
 static void ELLPACK_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(1,"Calling ELLPACK CUDA kernel");
-	
-	ELLPACK_kernel_wrap(lhs->CU_val, rhs->CU_val, options, ELLPACK(mat)->cumat->nrows, ELLPACK(mat)->cumat->nrowsPadded, ELLPACK(mat)->cumat->rowLen, ELLPACK(mat)->cumat->col, ELLPACK(mat)->cumat->val);
+	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
+	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			c_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+		else
+			s_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+	} else {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			z_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+		else
+			d_ELLPACK_kernel_wrap(mat, lhs, rhs, options);
+	}
 }
 #endif
 

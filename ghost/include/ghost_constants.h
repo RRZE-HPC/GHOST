@@ -46,6 +46,7 @@
 #define GHOST_VEC_HOST   (0x1<<2)
 #define GHOST_VEC_DEVICE (0x1<<3)
 #define GHOST_VEC_GLOBAL (0x1<<4)
+#define GHOST_VEC_DUMMY  (0x1<<5)
 /******************************************************************************/
 
 
@@ -113,5 +114,12 @@
 #define GHOST_BINCRS_DT_COMPLEX (0x1<<3)
 /******************************************************************************/
 
+#define GHOST_BINVEC_ORDER_COL_FIRST 0
+#define GHOST_BINVEC_ORDER_ROW_FIRST 1
+
+#define GHOST_DT_S_IDX 0
+#define GHOST_DT_D_IDX 1
+#define GHOST_DT_C_IDX 2
+#define GHOST_DT_Z_IDX 3
 
 #endif

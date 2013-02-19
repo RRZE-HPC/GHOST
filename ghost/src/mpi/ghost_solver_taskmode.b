@@ -28,7 +28,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	static unsigned int nprocs;
 
 	static ghost_midx_t max_dues;
-	static ghost_vdat_t *work_mem, **work;
+	static char *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 
@@ -46,6 +46,7 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 	unsigned int tid;
 
 	size_t size_request, size_status, size_work, size_mem;
+	size_t sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
 	/*****************************************************************************
 	 *******            ........ Executable statements ........           ********
@@ -79,8 +80,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
 
-		work_mem = (ghost_vdat_t*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (ghost_vdat_t**) allocateMemory( size_work, "work" );
+		work_mem = (char*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (char**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
 
@@ -119,9 +120,10 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
+			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, MPI_COMM_WORLD,&request[recv_messages] ));
+			/*MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
 						ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, 
-						&request[recv_messages] ));
+						&request[recv_messages] ));*/
 			recv_messages++;
 		}
 	}
@@ -141,7 +143,8 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 		for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for
 				for (j=0; j<context->communicator->dues[to_PE]; j++){
-					work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
+					memcpy(&work[to_PE][i*sizeofRHS],&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
+			//		work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
 				}
 		}
 
@@ -152,8 +155,11 @@ void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* 
 			for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 
 				if (context->communicator->dues[to_PE]>0){
-					MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], ghost_mpi_dt_vdat,
-								to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
+			//		MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], ghost_mpi_dt_vdat,
+			//					to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
+			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE]*sizeofRHS, 
+					MPI_CHAR, to_PE, me, MPI_COMM_WORLD, 
+					&request[recv_messages+send_messages] ));
 					send_messages++;
 				}
 			}

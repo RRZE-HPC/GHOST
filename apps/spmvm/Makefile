@@ -2,7 +2,7 @@ include ../../ghost/config.mk
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
-WTV=0
+WTV=1
 
 .PHONY:clean distclean all
 
@@ -43,6 +43,11 @@ LIBS  += -lcudart
 IPATH += -I$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cu
 LPATH +=  -L$(CUDA_HOME)/lib64
 endif
+
+ifeq ($(strip $(MPI)),1)
+MAKROS+= -DMPI
+endif
+
 %.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< $(LIBS) 

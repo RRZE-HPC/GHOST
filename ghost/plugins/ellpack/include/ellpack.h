@@ -22,7 +22,7 @@ CL_ELLPACK_TYPE;
 typedef struct 
 {
 #ifdef CUDA
-	ghost_mdat_t * val;
+	ghost_cu_dt * val;
 	ghost_midx_t * col;
 	ghost_midx_t * rowLen;
 	ghost_midx_t nrows;
@@ -34,7 +34,7 @@ CU_ELLPACK_TYPE;
 
 typedef struct 
 {
-	ghost_mdat_t *val;
+	ghost_dt *val;
 	ghost_midx_t *col;
 	ghost_midx_t *rowLen;
 	ghost_midx_t nrows;

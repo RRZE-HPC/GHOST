@@ -1,5 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
+#include <string.h>
+
 
 #include "ghost_util.h"
 
@@ -14,7 +16,8 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 
 	static int init_kernel=1; 
 	static ghost_mnnz_t max_dues;
-	static ghost_vdat_t *work_mem, **work;
+	//static ghost_vdat_t *work_mem, **work;
+	static char *work_mem, **work;
 	static double hlp_sent;
 	static double hlp_recv;
 	static unsigned int nprocs;
@@ -29,6 +32,7 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 	//static MPI_Request *send_request, *recv_request;
 	//static MPI_Status  *send_status,  *recv_status;
 
+	size_t sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
 	size_t size_request, size_status, size_work, size_mem;
 
@@ -51,13 +55,17 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 
 
 
-		size_mem     = (size_t)( max_dues*nprocs * sizeof( ghost_vdat_t  ) );
-		size_work    = (size_t)( nprocs          * sizeof( ghost_vdat_t* ) );
+		//size_mem     = (size_t)( max_dues*nprocs * sizeof( ghost_vdat_t  ) );
+		//size_work    = (size_t)( nprocs          * sizeof( ghost_vdat_t* ) );
+		size_mem     = (size_t)( max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype) );
+		size_work    = (size_t)( nprocs          * sizeof( void * ) );
 		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
 		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
 
-		work_mem = (ghost_vdat_t*)  allocateMemory( size_mem,  "work_mem" );
-		work     = (ghost_vdat_t**) allocateMemory( size_work, "work" );
+		work_mem = (char*)  allocateMemory( size_mem,  "work_mem" );
+		work     = (char**) allocateMemory( size_work, "work" );
+	//	work_mem = (ghost_vdat_t*)  allocateMemory( size_mem,  "work_mem" );
+	//	work     = (ghost_vdat_t**) allocateMemory( size_work, "work" );
 
 		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
 
@@ -85,22 +93,29 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
-					ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, 
-					&request[recv_messages] ));
+			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, MPI_COMM_WORLD,&request[recv_messages] ));
+			//MPI_safecall(MPI_Irecv(&invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
+			//		ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, 
+			//		&request[recv_messages] ));
 			recv_messages++;
 		}
 	}
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp parallel for private(j)
+//#pragma omp parallel for private(j)
 		for (j=0; j<context->communicator->dues[to_PE]; j++){
-			work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
+			memcpy(&work[to_PE][j*sizeofRHS],&((char *)(invec->val))[context->communicator->duelist[to_PE][j]*sizeofRHS],sizeofRHS);
+			//printf("%d->%d: %f [%d] -> %f ... %p->%p\n",ghost_getRank(),to_PE, ((double *)(invec->val))[context->communicator->duelist[to_PE][j]],context->communicator->duelist[to_PE][j],(double)(work[to_PE][j*sizeofRHS]),&((char *)(invec->val))[context->communicator->duelist[to_PE][j]*sizeofRHS],&work[to_PE][j*sizeofRHS]);
+		//	work[to_PE][j] = ((char *)(invec->val))[context->communicator->duelist[to_PE][j/sizeofRHS]];
+			//work[to_PE][j] = invec->val[context->communicator->duelist[to_PE][j]];
 		}
 		if (context->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], 
-					ghost_mpi_dt_vdat, to_PE, me, MPI_COMM_WORLD, 
+			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE]*sizeofRHS, 
+					MPI_CHAR, to_PE, me, MPI_COMM_WORLD, 
 					&request[recv_messages+send_messages] ));
+			//MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE], 
+			//		ghost_mpi_dt_vdat, to_PE, me, MPI_COMM_WORLD, 
+			//		&request[recv_messages+send_messages] ));
 			send_messages++;
 		}
 	}

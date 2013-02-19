@@ -1,7 +1,11 @@
-#include "spm_format_bjds.h"
+#include "bjds.h"
+#include "crs.h"
 #include "ghost_mat.h"
 #include "ghost_util.h"
+
+#ifdef CUDA
 #include "private/bjds_cukernel.h"
+#endif
 
 #if defined(SSE) || defined(AVX) || defined(MIC)
 #include <immintrin.h>
@@ -22,12 +26,12 @@ static ghost_midx_t BJDS_ncols(ghost_mat_t *mat);
 static void BJDS_printInfo(ghost_mat_t *mat);
 static char * BJDS_formatName(ghost_mat_t *mat);
 static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
+//static ghost_dt BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
 static void BJDS_CUupload(ghost_mat_t *mat);
-static void BJDS_fromBin(ghost_mat_t *mat, char *);
+static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx, int options);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef SSE
@@ -65,7 +69,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->printInfo = &BJDS_printInfo;
 	mat->formatName = &BJDS_formatName;
 	mat->rowLen     = &BJDS_rowLen;
-	mat->entry      = &BJDS_entry;
+//	mat->entry      = &BJDS_entry;
 	mat->byteSize   = &BJDS_byteSize;
 	mat->kernel     = &BJDS_kernel_plain;
 	mat->fromCRS    = &BJDS_fromCRS;
@@ -140,7 +144,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 	return BJDS(mat)->rowLen[i];
 }
 
-static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
+/*static ghost_dt BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
 {
 	ghost_midx_t e;
 
@@ -156,23 +160,28 @@ static ghost_mdat_t BJDS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j
 			return BJDS(mat)->val[e];
 	}
 	return 0.;
-}
+}*/
 
 static size_t BJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t) + 
-			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_mdat_t)));
+			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath)
+static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options)
 {
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath);
+	crsMat->fromBin(crsMat,matrixPath, ctx, options);
 
 	mat->symmetry = crsMat->symmetry;
 	BJDS_fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
+
+#ifdef CUDA
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CUupload(mat);
+#endif
 }
 
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
@@ -309,7 +318,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->nu /= (double)nChunks;
 	BJDS(mat)->mu /= (double)nChunks;
 
-	BJDS(mat)->val = (ghost_mdat_t *)allocateMemory(sizeof(ghost_mdat_t)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
@@ -375,7 +384,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat = (CL_BJDS_TYPE *)allocateMemory(sizeof(CL_BJDS_TYPE),"CL_CRS");
 		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
-		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_mdat_t));
+		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_dt));
 		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
 		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
 	
@@ -383,7 +392,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CL_copyHostToDevice(BJDS(mat)->clmat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_cl_midx_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_cl_midx_t));
-		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_mdat_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_dt));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
 		char options[32];
@@ -423,7 +432,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat = (CU_BJDS_TYPE *)allocateMemory(sizeof(CU_BJDS_TYPE),"CU_CRS");
 		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
-		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_mdat_t));
+		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_dt));
 		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	
@@ -431,7 +440,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CU_copyHostToDevice(BJDS(mat)->cumat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_midx_t));
-		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_mdat_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_dt));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	}
@@ -460,15 +469,14 @@ static void BJDS_free(ghost_mat_t *mat)
 
 }
 
+
+
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	UNUSED(mat);
-	UNUSED(lhs);
-	UNUSED(rhs);
-	UNUSED(options);
-	//	sse_kernel_0_intr(lhs, BJDS(mat), rhs, options);	
 	ghost_midx_t c,j,i;
-	ghost_vdat_t tmp[BJDS_LEN]; 
+	double tmp[BJDS_LEN];
+   double *rhsv = (double *)rhs->val;	
+   double *lhsv = (double *)lhs->val;	
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
@@ -482,7 +490,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		{ // loop inside chunk
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tmp[i] += (ghost_vdat_t)BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] * rhs->val[BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]];
+				tmp[i] += (double)BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] * rhsv[BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]];
 			}
 
 		}
@@ -490,9 +498,9 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		{
 			if (c*BJDS_LEN+i < BJDS(mat)->nrows) {
 				if (options & GHOST_SPMVM_AXPY)
-					lhs->val[c*BJDS_LEN+i] += tmp[i];
+					lhsv[c*BJDS_LEN+i] += tmp[i];
 				else
-					lhs->val[c*BJDS_LEN+i] = tmp[i];
+					lhsv[c*BJDS_LEN+i] = tmp[i];
 			}
 
 		}
@@ -657,9 +665,21 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 #ifdef CUDA
 static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	DEBUG_LOG(1,"Calling ELLPACK CUDA kernel");
+	DEBUG_LOG(1,"Calling BJDS CUDA kernel");
+	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
+
+	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			c_BJDS_kernel_wrap(mat, lhs, rhs, options);
+		else
+			s_BJDS_kernel_wrap(mat, lhs, rhs, options);
+	} else {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+			z_BJDS_kernel_wrap(mat, lhs, rhs, options);
+		else
+			d_BJDS_kernel_wrap(mat, lhs, rhs, options);
+	}
 	
-	BJDS_kernel_wrap(lhs->CU_val, rhs->CU_val, options, BJDS(mat)->cumat->nrows, BJDS(mat)->cumat->nrowsPadded, BJDS(mat)->cumat->rowLen, BJDS(mat)->cumat->col, BJDS(mat)->cumat->val, BJDS(mat)->cumat->chunkStart, BJDS(mat)->cumat->chunkLen);
 
 }
 #endif
@@ -696,15 +716,15 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 
 		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>1; j++) 
 		{ // loop inside chunk
-			val = vec_xld2(offs*sizeof(ghost_mdat_t),BJDS(mat)->val);                      // load values
+			val = vec_xld2(offs*sizeof(ghost_dt),BJDS(mat)->val);                      // load values
 			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,0);
 			rhs = vec_insert(invec->val[BJDS(mat)->col[offs++]],rhs,1);
 			tmp = vec_madd(val,rhs,tmp);
 		}
 		if (options & GHOST_SPMVM_AXPY) {
-			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val)),c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_dt),lhs->val)),c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
 		} else {
-			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_vdat_t),lhs->val);
+			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
 		}
 	}
 }

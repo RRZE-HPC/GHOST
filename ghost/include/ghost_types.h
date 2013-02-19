@@ -1,7 +1,7 @@
 #ifndef __GHOST_TYPES_H__
 #define __GHOST_TYPES_H__
 
-#include "ghost_types_gen.h"
+//#include "ghost_types_gen.h"
 
 #ifdef CUDAKERNEL
 #undef MPI // TODO
@@ -13,175 +13,104 @@
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif
+#ifdef CUDA
+#include <cuComplex.h>
+#endif
 
-#ifdef GHOST_MAT_DP
-#ifdef GHOST_MAT_COMPLEX
-typedef _Complex double ghost_mdat_t;
-typedef double ghost_mdat_el_t;
-#ifdef OPENCL
-typedef double2 ghost_cl_mdat_t;
-#endif
-#ifdef MPI
-MPI_Datatype ghost_mpi_dt_mdat;
-MPI_Op ghost_mpi_sum_mdat;
-#endif
-#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
-#else // GHOST_MAT_COMPLEX
-typedef double ghost_mdat_t;
-typedef double ghost_mdat_el_t;
-#ifdef OPENCL
-typedef double ghost_cl_mdat_t;
-#endif
-#ifdef MPI
-#define ghost_mpi_dt_mdat MPI_DOUBLE
-#define ghost_mpi_sum_mdat MPI_SUM
-#endif
-#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
-#endif // GHOST_MAT_COMPLEX
-#define PRmatDAT "lg"
-#endif // GHOST_MAT_DP
 
-#ifdef GHOST_MAT_SP
-#ifdef GHOST_MAT_COMPLEX
-typedef _Complex float ghost_mdat_t;
-typedef float ghost_mdat_el_t;
+#ifdef GHOST_DT_S
+#define ABS(a) fabsf(a)
+#define REAL(a) a
+#define IMAG(a) 0.0
+#define SQRT(a) sqrtf(a)
+typedef float ghost_dt;
+typedef float ghost_dt_el;
 #ifdef OPENCL
-typedef float2 ghost_cl_mdat_t;
+typedef float ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef float ghost_cu_dt;
+#define CUREAL(a) a
+#define CUIMAG(a) 0 
 #endif
 #ifdef MPI
-MPI_Datatype ghost_mpi_dt_mdat;
-MPI_Op ghost_mpi_sum_mdat;
+#define ghost_mpi_dt MPI_FLOAT
+#define ghost_mpi_sum MPI_SUM
 #endif
-#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
-#else // GHOST_MAT_COMPLEX
-typedef float ghost_mdat_t;
-typedef float ghost_mdat_el_t;
-#ifdef OPENCL
-typedef float ghost_cl_mdat_t;
+#define GHOST_MY_DT (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
 #endif
-#ifdef MPI
-#define ghost_mpi_dt_mdat MPI_FLOAT
-#define ghost_mpi_sum_mdat MPI_SUM
-#endif
-#define GHOST_MY_MDATATYPE (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
-#endif // GHOST_MAT_COMPLEX
-#define PRmatDAT "g"
-#endif // GHOST_MAT_SP
 
-#ifdef GHOST_VEC_DP
-#ifdef GHOST_VEC_COMPLEX
-typedef _Complex double ghost_vdat_t;
-typedef double ghost_vdat_el_t;
+#ifdef GHOST_DT_D
+#define ABS(a) fabs(a)
+#define REAL(a) a
+#define IMAG(a) 0.0
+#define SQRT(a) sqrt(a)
+typedef double ghost_dt;
+typedef double ghost_dt_el;
 #ifdef OPENCL
-typedef double2 ghost_cl_vdat_t;
+typedef double ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef double ghost_cu_dt;
+#define CUREAL(a) a
+#define CUIMAG(a) 0 
 #endif
 #ifdef MPI
-MPI_Datatype ghost_mpi_dt_vdat;
-MPI_Op ghost_mpi_sum_vdat;
+#define ghost_mpi_dt MPI_DOUBLE
+#define ghost_mpi_sum MPI_SUM
 #endif
-#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
-#else // GHOST_VEC_COMPLEX
-typedef double ghost_vdat_t;
-typedef double ghost_vdat_el_t;
-#ifdef OPENCL
-typedef double ghost_cl_vdat_t;
+#define GHOST_MY_DT (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
 #endif
-#ifdef MPI
-#define ghost_mpi_dt_vdat MPI_DOUBLE
-#define ghost_mpi_sum_vdat MPI_SUM
-#endif
-#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_REAL)
-#endif // GHOST_VEC_COMPLEX
-#define PRvecDAT "lg"
-#endif // GHOST_VEC_DP
 
-#ifdef GHOST_VEC_SP
-#ifdef GHOST_VEC_COMPLEX
-typedef _Complex float ghost_vdat_t;
-typedef float ghost_vdat_el_t;
+#ifdef GHOST_DT_C
+#define ABS(a) cabsf(a)
+#define REAL(a) crealf(a)
+#define IMAG(a) cimagf(a)
+#define SQRT(a) csqrtf(a)
+typedef _Complex float ghost_dt;
+typedef float ghost_dt_el;
 #ifdef OPENCL
-typedef float2 ghost_cl_vdat_t;
+typedef float2 ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef cuFloatComplex ghost_cu_dt;
+#define CUREAL(a) cuCrealf(a)
+#define CUIMAG(a) cuCimagf(a)
 #endif
 #ifdef MPI
-MPI_Datatype ghost_mpi_dt_vdat;
-MPI_Op ghost_mpi_sum_vdat;
+#define ghost_mpi_dt GHOST_MPI_DT_C
+#define ghost_mpi_sum GHOST_MPI_OP_SUM_C
 #endif
-#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
-#else // GHOST_VEC_COMPLEX
-typedef float ghost_vdat_t;
-typedef float ghost_vdat_el_t;
-#ifdef OPENCL
-typedef float ghost_cl_vdat_t;
+#define GHOST_MY_DT (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_COMPLEX)
 #endif
-#ifdef MPI
-#define ghost_mpi_dt_vdat MPI_FLOAT
-#define ghost_mpi_sum_vdat MPI_SUM
-#endif
-#define GHOST_MY_VDATATYPE  (GHOST_BINCRS_DT_FLOAT | GHOST_BINCRS_DT_REAL)
-#endif // GHOST_VEC_COMPLEX
-#define PRvecDAT "g"
-#endif // GHOST_VEC_SP
 
+#ifdef GHOST_DT_Z
+#define ABS(a) cabs(a)
+#define REAL(a) creal(a)
+#define IMAG(a) cimag(a)
+#define SQRT(a) csqrt(a)
+typedef _Complex double ghost_dt;
+typedef double ghost_dt_el;
+#ifdef OPENCL
+typedef double2 ghost_cl_dt;
+#endif
+#ifdef CUDA
+typedef cuDoubleComplex ghost_cu_dt;
+#define CUREAL(a) cuCreal(a)
+#define CUIMAG(a) cuCimag(a)
+#endif
+#ifdef MPI
+#define ghost_mpi_dt GHOST_MPI_DT_Z
+#define ghost_mpi_sum GHOST_MPI_OP_SUM_Z
+#endif
+#define GHOST_MY_DT (GHOST_BINCRS_DT_DOUBLE | GHOST_BINCRS_DT_COMPLEX)
+#endif
+
+// TODO
 #if defined(GHOST_MAT_COMPLEX) || defined(GHOST_VEC_COMPLEX)
 #define FLOPS_PER_ENTRY 8.0
 #else
 #define FLOPS_PER_ENTRY 2.0
-#endif
-
-#ifdef GHOST_MAT_DP
-#ifdef GHOST_MAT_COMPLEX
-#define MABS(a) cabs(a)
-#define MREAL(a) creal(a)
-#define MIMAG(a) cimag(a)
-#define MSQRT(a) csqrt(a)
-#else
-#define MABS(a) fabs(a)
-#define MREAL(a) a
-#define MIMAG(a) 0.0
-#define MSQRT(a) sqrt(a)
-#endif
-#endif
-
-#ifdef GHOST_MAT_SP
-#ifdef GHOST_MAT_COMPLEX
-#define MABS(a) cabsf(a)
-#define MREAL(a) crealf(a)
-#define MIMAG(a) cimagf(a)
-#define MSQRT(a) csqrtf(a)
-#else
-#define MABS(a) fabsf(a)
-#define MREAL(a) a
-#define MIMAG(a) 0.0
-#define MSQRT(a) sqrtf(a)
-#endif
-#endif
-
-#ifdef GHOST_VEC_DP
-#ifdef GHOST_VEC_COMPLEX
-#define VABS(a) cabs(a)
-#define VREAL(a) creal(a)
-#define VIMAG(a) cimag(a)
-#define VSQRT(a) csqrt(a)
-#else
-#define VABS(a) fabs(a)
-#define VREAL(a) a
-#define VIMAG(a) 0.0
-#define VSQRT(a) sqrt(a)
-#endif
-#endif
-
-#ifdef GHOST_VEC_SP
-#ifdef GHOST_VEC_COMPLEX
-#define VABS(a) cabsf(a)
-#define VREAL(a) crealf(a)
-#define VIMAG(a) cimagf(a)
-#define VSQRT(a) csqrtf(a)
-#else
-#define VABS(a) fabsf(a)
-#define VREAL(a) a
-#define VIMAG(a) 0.0
-#define VSQRT(a) sqrtf(a)
-#endif
 #endif
 
 #ifndef MIN

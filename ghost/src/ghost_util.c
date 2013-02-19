@@ -159,7 +159,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 
 
 	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
-			context->gnnz(context)*(sizeof(ghost_mdat_t)+sizeof(ghost_midx_t)))/(1024*1024);
+			context->gnnz(context)*(ghost_sizeofDataType(context->fullMatrix->traits->datatype)+sizeof(ghost_midx_t)))/(1024*1024);
 
 	char *matrixLocation;
 	if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
@@ -308,8 +308,8 @@ void ghost_printGhostInfo()
 		ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
-		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
+//		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
+//		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -363,47 +363,60 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vdat_t (*rhsVal)(int), int nIter, int spmvmOptions)
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
 	int me = ghost_getRank();
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
+	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = distContext->fullMatrix->traits->datatype};
+	ghost_context_t *context;
+	
+	context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
+	ghost_vtraits_t rtraits = {.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+	ghost_vec_t *globRHS = ghost_createVector(context,&rtraits);
+	rhs->collect(rhs,globRHS,distContext);
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing reference solution");
-		ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL};
-		ghost_context_t *context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
-		globLHS = ghost_createVector(context,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL); 
-		ghost_vec_t *globRHS = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_HOST,rhsVal);
 
-		CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
+		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+
+		globLHS = ghost_createVector(context,&ltraits); 
+
+		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
 		if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
-			for (iter=0; iter<nIter; iter++)
-				ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			for (iter=0; iter<nIter; iter++) {
+				context->fullMatrix->kernel(context->fullMatrix,globLHS,globRHS,spmvmOptions);
+				//ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			}
 		} else if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
-			for (iter=0; iter<nIter; iter++)
-				ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			for (iter=0; iter<nIter; iter++) {
+				//ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
+			}
 		}
 
-		ghost_freeVector(globRHS);
+		globRHS->destroy(globRHS);
 		ghost_freeContext(context);
 	} else {
-		globLHS = ghost_newVector(0,GHOST_VEC_LHS|GHOST_VEC_HOST);
+		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype};
+		globLHS = ghost_createVector(context,&ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vec_t *res = ghost_distributeVector(distContext->communicator,globLHS);
+	ghost_vtraits_t nltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype};
+	ghost_vec_t *nodeLHS = ghost_createVector(distContext,&nltraits);
+	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
 
-	ghost_freeVector(globLHS);
+	globLHS->destroy(globLHS);
 
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
-	return res;
+	return nodeLHS;
 
 }
-
+/*
 // FIXME
 void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
@@ -451,7 +464,7 @@ void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *r
 		else
 			res[i] = hlp1;
 	}
-}	
+}*/	
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
@@ -763,6 +776,7 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
 		int *spmvmOptions, int nIter)
 {
+	DEBUG_LOG(1,"Benchmarking the SpMVM");
 	int it;
 	double time = 0;
 	double oldtime=1e9;
@@ -772,8 +786,10 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 	ghost_pickSpMVMMode(context,spmvmOptions);
 	solver = context->solvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
-	if (!solver)
+	if (!solver) {
+		DEBUG_LOG(1,"The solver for the specified is not available, skipping");
 		return -1.0;
+	}
 
 #ifdef MPI
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -806,15 +822,15 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #endif
 #ifdef CUDA
 	DEBUG_LOG(1,"Downloading result from CUDA device");
-	CU_downloadVector(res);
+	res->CUdownload(res);
 #endif
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
-		ghost_permuteVector(res->val,context->fullMatrix->invRowPerm,context->lnrows(context));
+		res->permute(res,context->fullMatrix->invRowPerm);
 	} else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
-		ghost_permuteVector(res->val,context->localMatrix->invRowPerm,context->lnrows(context));
-		ghost_permuteVector(res->val,context->remoteMatrix->invRowPerm,context->lnrows(context));
+		res->permute(res,context->localMatrix->invRowPerm);
+		res->permute(res,context->remoteMatrix->invRowPerm);
 	}
 
 	return time;
@@ -823,7 +839,6 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 {
 	if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
-		DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default...");
 #ifdef MPI
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
@@ -833,6 +848,7 @@ void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 		UNUSED(context);
 		*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 #endif
+		DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default, namely %s",ghost_modeName(*spmvmOptions));
 
 	}
 
@@ -851,6 +867,21 @@ int ghost_getSpmvmModeIdx(int spmvmOptions)
 
 	return 0;
 }
+int ghost_dataTypeIdx(int datatype)
+{
+	if (datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return GHOST_DT_C_IDX;
+		else
+			return GHOST_DT_S_IDX;
+	} else {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return GHOST_DT_Z_IDX;
+		else
+			return GHOST_DT_D_IDX;
+	}
+}
+
 
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 {
@@ -864,6 +895,8 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 
 	if (pluginDir) {
 		while (0 != (dirEntry = readdir(pluginDir))) {
+			if (dirEntry->d_name[0] == 'd') 
+			{ // only use double variant ==> only count each format once
 			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
 			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
 			if (!myPlugin.so) {
@@ -871,12 +904,16 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 			}
 
 			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
-			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
+			if (!myPlugin.formatID) {
+				dlclose(myPlugin.so);
+				continue;
+			}
 
 			(*nDataformats)++;
 			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
 			strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
 			dlclose(myPlugin.so);
+			}
 		}
 		closedir(pluginDir);
 	} else {
@@ -967,4 +1004,32 @@ void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)
 	}
 
 
+}
+
+char ghost_datatypePrefix(int dt)
+{
+	char p;
+
+	if (dt & GHOST_BINCRS_DT_FLOAT) {
+		if (dt & GHOST_BINCRS_DT_COMPLEX)
+			p = 'c';
+		else
+			p = 's';
+	} else {
+		if (dt & GHOST_BINCRS_DT_COMPLEX)
+			p = 'z';
+		else
+			p = 'd';
+	}
+
+	return p;
+}
+
+
+ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
+{
+	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+		return ctx->communicator->lfRow[ghost_getRank()] + lidx;
+
+	return lidx;	
 }
