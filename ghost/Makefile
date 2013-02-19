@@ -148,14 +148,6 @@ $(Z_OBJDIR)/%.cu.o: %.cu config.mk
 	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 endif
 
-
-#$(TYPES_H): config.mk 
-#	@echo "==> Generate types header"
-#	@echo "#ifndef __GHOST_TYPES_GEN_H__" > $(TYPES_H)
-#	@echo -e "#define __GHOST_TYPES_GEN_H__\n" >> $(TYPES_H)
-#	@echo -e $(TYPES) >> $(TYPES_H)
-#	@echo -e "\n#endif" >> $(TYPES_H)
-
 #$(FORMATS_H): config.mk
 #	@echo "==> Generate formats header"
 #	@echo "#ifndef __GHOST_SPMFORMATS_H__" > $(FORMATS_H)
