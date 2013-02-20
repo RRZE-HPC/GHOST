@@ -31,7 +31,7 @@ static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
 static void BJDS_CUupload(ghost_mat_t *mat);
-static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx);
+static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef SSE
@@ -65,7 +65,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 
 	mat->CLupload = &BJDS_upload;
 	mat->CUupload = &BJDS_CUupload;
-	mat->fromBin = &BJDS_fromBin;
+	mat->fromFile = &BJDS_fromBin;
 	mat->printInfo = &BJDS_printInfo;
 	mat->formatName = &BJDS_formatName;
 	mat->rowLen     = &BJDS_rowLen;
@@ -171,12 +171,12 @@ static size_t BJDS_byteSize (ghost_mat_t *mat)
 			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx)
+static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	DEBUG_LOG(1,"Creating BJDS matrix from binary file");
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath, ctx);
+	crsMat->fromFile(crsMat,ctx,matrixPath);
 
 	printf("11111 %p\n",crsMat->data);
 #ifdef MPI

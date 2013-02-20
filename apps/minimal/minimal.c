@@ -19,9 +19,9 @@ int main( int argc, char* argv[] )
 
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = {.format = "CRS", .flags = GHOST_SPM_DEFAULT, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL};
-	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 1};
-	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 1};
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT();
+	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
+	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 
 	ghost_matfile_header_t fileheader;
 	ghost_context_t *ctx;
@@ -37,7 +37,7 @@ int main( int argc, char* argv[] )
 	rhs = ghost_createVector(&rvtraits);
 	lhs = ghost_createVector(&lvtraits);
 
-	mat->fromBin(mat,argv[1],ctx);
+	mat->fromFile(mat,ctx,argv[1]);
 	lhs->fromScalar(lhs,ctx,&zero);
 	rhs->fromFunc(rhs,ctx,rhsVal);
 

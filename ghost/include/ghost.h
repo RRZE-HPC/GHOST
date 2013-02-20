@@ -119,6 +119,7 @@ struct ghost_vtraits_t
 	int nrows;
 	int nvecs;
 }; 
+#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nvecs = 1, ## __VA_ARGS__ }
 
 typedef struct 
 {
@@ -200,7 +201,7 @@ struct ghost_mat_t
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
 //	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx);
+	void       (*fromFile)(ghost_mat_t *, ghost_context_t *ctx, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	void       (*CLupload)(ghost_mat_t *);
 	void       (*CUupload)(ghost_mat_t *);
@@ -275,6 +276,7 @@ struct ghost_mtraits_t
 	void * aux;
 	int datatype;
 }; 
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = "CRS", ## __VA_ARGS__ }
 
 typedef struct
 {

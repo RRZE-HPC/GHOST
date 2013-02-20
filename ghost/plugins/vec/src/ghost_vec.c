@@ -261,7 +261,9 @@ static void vec_entry(ghost_vec_t * vec, int i, void *val)
 
 static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 {
-	getNrowsFromContext(vec,ctx);
+	if (vec->traits->nrows == 0)
+		getNrowsFromContext(vec,ctx);
+
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i;
 
@@ -274,7 +276,9 @@ static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 
 static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 {
-	getNrowsFromContext(vec,ctx);
+	if (vec->traits->nrows == 0)
+		getNrowsFromContext(vec,ctx);
+
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 
@@ -339,7 +343,9 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 
 static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, off_t offset)
 {
-	getNrowsFromContext(vec,ctx);
+	if (vec->traits->nrows == 0)
+		getNrowsFromContext(vec,ctx);
+
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	DEBUG_LOG(1,"Reading vector from file %s",path);
 	int file;
@@ -389,7 +395,9 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int,int,void *))
 {
 	DEBUG_LOG(1,"Filling vector via function");
-	getNrowsFromContext(vec,ctx);
+	if (vec->traits->nrows == 0)
+		getNrowsFromContext(vec,ctx);
+
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 

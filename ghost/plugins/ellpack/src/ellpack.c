@@ -28,7 +28,7 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat);
 static void ELLPACK_upload(ghost_mat_t *mat);
 static void ELLPACK_CUupload(ghost_mat_t *mat);
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs);
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx);
+static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *, char *);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef CUDA
@@ -44,7 +44,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mat->traits = traits;
 
-	mat->fromBin = &ELLPACK_fromBin;
+	mat->fromFile = &ELLPACK_fromBin;
 	mat->printInfo = &ELLPACK_printInfo;
 	mat->formatName = &ELLPACK_formatName;
 	mat->rowLen     = &ELLPACK_rowLen;
@@ -140,11 +140,11 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t *ctx)
+static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath, ctx);
+	crsMat->fromFile(crsMat,ctx,matrixPath);
 
 	mat->symmetry = crsMat->symmetry;
 	

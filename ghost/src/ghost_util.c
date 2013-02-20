@@ -380,7 +380,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_GLOBAL);
 	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
-	mat->fromBin(mat,matrixPath,context);
+	mat->fromFile(mat,context,matrixPath);
 	ghost_vtraits_t rtraits = {.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
 	ghost_vec_t *globRHS = ghost_createVector(&rtraits);
 	rhs->collect(rhs,globRHS,distContext,mat);

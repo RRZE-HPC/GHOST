@@ -46,7 +46,7 @@ const char formatID[] = "CRS";
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx);
+static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *, char *matrixPath);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -78,7 +78,7 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 
 	DEBUG_LOG(1,"Initializing CRS functions");
 
-	mat->fromBin = &CRS_fromBin;
+	mat->fromFile = &CRS_fromBin;
 //	mat->fromMM = &CRS_fromMM;
 	mat->fromCRS = &CRS_fromCRS;
 	mat->printInfo = &CRS_printInfo;
@@ -1168,7 +1168,7 @@ static void CRS_upload(ghost_mat_t *mat)
 	else return aRow - bRow;
 }*/
 
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx)
+static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	DEBUG_LOG(1,"Reading CRS matrix from file");
 
