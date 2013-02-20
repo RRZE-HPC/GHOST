@@ -230,10 +230,12 @@ int ghost_symmetryValid(int symmetry);
 int ghost_archIsBigEndian();
 int ghost_getCoreNumbering();
 int ghost_getCore();
+void ghost_setCore(int core);
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
 ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
+void ghost_pinThreads(int options, char *procList);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);

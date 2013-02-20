@@ -19,6 +19,11 @@
 #define GHOST_CORENUMBERING_INVALID 2
 
 
+#define GHOST_PIN_PHYS   (0x1<<4) // pin threads to physical cores
+#define GHOST_PIN_SMT    (0x1<<5) // pin threads to _all_ cores
+#define GHOST_PIN_MANUAL (0x1<<6) // pin threads manually
+
+
 #define GHOST_DATAFORMAT_NAME_MAX 16
 
 
@@ -59,8 +64,6 @@
 /******************************************************************************/
 #define GHOST_OPTION_NONE       (0x0)    // no special options applied
 #define GHOST_OPTION_SERIAL_IO  (0x1<<3) // read matrix with one process only
-#define GHOST_OPTION_PIN        (0x1<<4) // pin threads to physical cores
-#define GHOST_OPTION_PIN_SMT    (0x1<<5) // pin threads to _all_ cores
 /******************************************************************************/
 
 

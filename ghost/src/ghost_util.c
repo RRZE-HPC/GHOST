@@ -140,15 +140,15 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 
 void ghost_printOptionsInfo(int options)
 {
-	int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
-		1:0;
-	char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
+	//int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
+	//	1:0;
+	//char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
 
 	ghost_printHeader("Options");
 	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
-	ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
-	if (pin)
-		ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
+	//ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
+	//if (pin)
+	//	ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
 	ghost_printFooter();
 
 }
@@ -1103,4 +1103,95 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
 
 	fclose(file);
+}
+
+void ghost_setCore(int coreNumber)
+{
+	DEBUG_LOG(2,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
+	cpu_set_t cpu_set;
+	CPU_ZERO(&cpu_set);
+	CPU_SET(coreNumber, &cpu_set);
+
+	int error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
+	if (error != 0) {
+		WARNING_LOG("Pinning thread to core %d failed (%d): %s", 
+				coreNumber, error, strerror(error));
+	}
+
+}
+
+
+void ghost_pinThreads(int options, char *procList)
+{
+	if (procList != NULL) {
+		char *list = strdup(procList);
+		DEBUG_LOG(1,"Setting number of threads and pinning them to cores %s",list);
+
+		const char delim[] = ",";
+		char *coreStr;
+		int *cores = NULL;
+		int nCores = 0;
+
+		coreStr = strtok(list,delim);
+		while(coreStr != NULL) 
+		{
+			nCores++;
+			cores = (int *)realloc(cores,nCores*sizeof(int));
+			cores[nCores-1] = atoi(coreStr);
+			coreStr = strtok(NULL,delim);
+		}
+
+		DEBUG_LOG(1,"Adjusting number of threads to %d",nCores);
+		omp_set_num_threads(nCores);
+
+#pragma omp parallel
+		ghost_setCore(cores[omp_get_thread_num()]);
+		
+
+	} else {
+		DEBUG_LOG(1,"Trying to automatically pin threads");
+		int numbering = ghost_getCoreNumbering();
+		if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST) {
+			DEBUG_LOG(1,"The core numbering seems to be 'physical cores first'");
+		} else {
+			DEBUG_LOG(1,"The core numbering seems to be 'SMT threads first'");
+		}
+
+		int nCores;
+		int nPhysCores = ghost_getNumberOfPhysicalCores();
+		if (options & GHOST_PIN_PHYS)
+			nCores = nPhysCores;
+		else
+			nCores = ghost_getNumberOfHwThreads();
+
+		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
+		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
+		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
+
+#pragma omp parallel
+		{
+			int coreNumber;
+
+			if (options & GHOST_PIN_SMT) {
+				coreNumber = omp_get_thread_num()/SMT+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%SMT)*nPhysCores;
+			} else {
+				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
+					coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
+				else
+					coreNumber = omp_get_thread_num()*SMT+(offset*(ghost_getLocalRank()));
+			}
+
+			ghost_setCore(coreNumber);
+
+
+		}
+
+	}
+#pragma omp parallel
+	{
+			DEBUG_LOG(1,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
+
+	}
+
+
 }

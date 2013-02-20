@@ -21,7 +21,6 @@
 #include <fcntl.h>
 
 #include <string.h>
-#include <sched.h>
 #include <omp.h>
 
 #ifdef LIKWID_PERFMON
@@ -251,51 +250,13 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 
 #endif // ifdef MPI
 
-	if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
-		int numbering = ghost_getCoreNumbering();
-		int nCores;
-		int nPhysCores = ghost_getNumberOfPhysicalCores();
-		if (ghostOptions & GHOST_OPTION_PIN)
-			nCores = nPhysCores;
-		else
-			nCores = ghost_getNumberOfHwThreads();
-
-		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
-		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
-
-#pragma omp parallel
-		{
-			int error;
-			int coreNumber;
-
-			if (ghostOptions & GHOST_OPTION_PIN_SMT) {
-				coreNumber = omp_get_thread_num()/SMT+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%SMT)*nPhysCores;
-			} else {
-				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
-					coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
-				else
-					coreNumber = omp_get_thread_num()*SMT+(offset*(ghost_getLocalRank()));
-			}
-
-			DEBUG_LOG(1,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
-			cpu_set_t cpu_set;
-			CPU_ZERO(&cpu_set);
-			CPU_SET(coreNumber, &cpu_set);
-
-			error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
-
-			if (error != 0) {
-				DEBUG_LOG(0,"Pinning thread to core %d failed (%d): %s", 
-						coreNumber, error, strerror(error));
-			}
-		}
+	/*if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
 	} else {
 #pragma omp parallel
 		{
 			DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
 		}
-	}
+	}*/
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
