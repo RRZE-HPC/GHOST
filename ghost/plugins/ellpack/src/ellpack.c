@@ -145,14 +145,36 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrix
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
+#ifdef MPI
+	
+	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
+	mat->localPart = ghost_initMatrix(&mat->traits[1]);
+	mat->localPart->symmetry = mat->symmetry;
+	mat->localPart->fromCRS(mat->localPart,crsMat->localPart->data);
+
+	mat->remotePart = ghost_initMatrix(&mat->traits[2]);
+	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
+
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			mat->CLupload(mat);
+		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+			mat->localPart->CLupload(mat->localPart);
+		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+			mat->remotePart->CLupload(mat->remotePart);
+#endif
+#ifdef CUDA
+		if (!(mat->traits->flags & GHOST_SPM_HOST))
+			mat->CUupload(mat);
+		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+			mat->localPart->CUupload(mat->localPart);
+		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+			mat->remotePart->CUupload(mat->remotePart);
+#endif
+#endif
 
 	mat->symmetry = crsMat->symmetry;
-	
 	mat->fromCRS(mat,crsMat->data);
-#ifdef MPI
-	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		crsMat->split(crsMat,ctx,mat->traits);
-#endif
 
 	crsMat->destroy(crsMat);
 

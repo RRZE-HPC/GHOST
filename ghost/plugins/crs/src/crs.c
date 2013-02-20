@@ -60,7 +60,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
-static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context, ghost_mtraits_t *);
+static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
 //static int compareNZEPos( const void* a, const void* b ); 
@@ -196,7 +196,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 }
 
 #ifdef MPI
-static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * context, char * matrixPath, ghost_mtraits_t *traits)
+static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * context, char * matrixPath)
 {
 	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
@@ -296,7 +296,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 }
 
 
-static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context, ghost_mtraits_t *traits)
+static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 {
 	CR_TYPE *fullCR = CR(mat);
 	CR_TYPE *localCR = NULL, *remoteCR = NULL;
@@ -1180,8 +1180,8 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 	} else {
 #ifdef MPI
 		DEBUG_LOG(1,"Reading in a distributed context");
-		CRS_createDistributedContext(&mat,ctx,matrixPath,mat->traits);
-		mat->split(mat,ctx,mat->traits);
+		CRS_createDistributedContext(&mat,ctx,matrixPath);
+		mat->split(mat,ctx);
 #else
 		ABORT("Trying to create a distributed context without MPI!");
 #endif

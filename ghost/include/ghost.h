@@ -207,7 +207,7 @@ struct ghost_mat_t
 	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
-	void       (*split)(ghost_mat_t *, ghost_context_t *, ghost_mtraits_t *traits);
+	void       (*split)(ghost_mat_t *, ghost_context_t *);
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	ghost_kernel_t kernel;

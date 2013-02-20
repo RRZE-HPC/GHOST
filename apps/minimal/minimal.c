@@ -13,7 +13,7 @@ static void rhsVal (int i, int v, void *val)
 
 int main( int argc, char* argv[] ) 
 {
-	int nIter = 1;
+	int nIter = 100;
 	double time;
 	double zero = 0.;
 

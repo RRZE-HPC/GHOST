@@ -178,10 +178,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 
-	printf("11111 %p\n",crsMat->data);
 #ifdef MPI
-	//if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-	//	crsMat->split(crsMat,ctx,mat->traits);
 	
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_initMatrix(&mat->traits[1]);
