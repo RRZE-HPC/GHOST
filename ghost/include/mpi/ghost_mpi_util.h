@@ -14,8 +14,8 @@ void ghost_createDistributedContext(ghost_context_t *, char *, int, ghost_mtrait
 MPI_Comm getSingleNodeComm();
 int ghost_mpi_dataType(int datatype);
 
-void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
-void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
-void hybrid_kernel_III(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
+void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
+void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
+void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
 
 #endif

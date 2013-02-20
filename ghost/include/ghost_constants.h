@@ -28,6 +28,10 @@
 #define GHOST_CONTEXT_DEFAULT       (0)
 #define GHOST_CONTEXT_GLOBAL        (0x1<<0)
 #define GHOST_CONTEXT_DISTRIBUTED   (0x1<<1)
+#define GHOST_CONTEXT_WORKDIST_NZE  (0x1<<2) // distribute by # of nonzeros
+#define GHOST_CONTEXT_WORKDIST_LNZE (0x1<<3) // distribute by # of loc nonzeros
+#define GHOST_CONTEXT_NO_COMBINED_SOLVERS (0x1<<4) // not configure comb. kernels
+#define GHOST_CONTEXT_NO_SPLIT_SOLVERS    (0x1<<5) // not configure split kernels
 
 #define GHOST_SPM_DEFAULT       (0)
 #define GHOST_SPM_HOST          (0x1<<0)
@@ -54,13 +58,9 @@
 /*----  Options for ghost  ---------------------------------------------------*/
 /******************************************************************************/
 #define GHOST_OPTION_NONE       (0x0)    // no special options applied
-#define GHOST_OPTION_NO_COMBINED_SOLVERS (0x1<<1) // not configure comb. kernels
-#define GHOST_OPTION_NO_SPLIT_SOLVERS    (0x1<<2) // not configure split kernels
 #define GHOST_OPTION_SERIAL_IO  (0x1<<3) // read matrix with one process only
 #define GHOST_OPTION_PIN        (0x1<<4) // pin threads to physical cores
 #define GHOST_OPTION_PIN_SMT    (0x1<<5) // pin threads to _all_ cores
-#define GHOST_OPTION_WORKDIST_NZE   (0x1<<6) // distribute by # of nonzeros
-#define GHOST_OPTION_WORKDIST_LNZE  (0x1<<7) // distribute by # of loc nonzeros
 /******************************************************************************/
 
 

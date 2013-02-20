@@ -5,7 +5,7 @@
 
 #include "ghost_util.h"
 
-void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
+void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
 	/*****************************************************************************
@@ -142,7 +142,7 @@ void hybrid_kernel_I(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* in
 #endif
 
 
-	context->fullMatrix->kernel(context->fullMatrix,res,invec,spmvmOptions);	
+	mat->kernel(mat,res,invec,spmvmOptions);	
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

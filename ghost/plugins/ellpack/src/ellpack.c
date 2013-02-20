@@ -28,7 +28,7 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat);
 static void ELLPACK_upload(ghost_mat_t *mat);
 static void ELLPACK_CUupload(ghost_mat_t *mat);
 static void ELLPACK_fromCRS(ghost_mat_t *mat, void *crs);
-static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx, int options);
+static void ELLPACK_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx);
 static void ELLPACK_free(ghost_mat_t *mat);
 static void ELLPACK_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef CUDA
@@ -140,14 +140,20 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 			ELLPACK(mat)->nrowsPadded*ELLPACK(mat)->maxRowLen*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t *ctx, int options)
+static void ELLPACK_fromBin(ghost_mat_t *mat, char * matrixPath, ghost_context_t *ctx)
 {
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath, ctx, options);
+	crsMat->fromBin(crsMat,matrixPath, ctx);
 
 	mat->symmetry = crsMat->symmetry;
-	ELLPACK_fromCRS(mat,crsMat->data);
+	
+	mat->fromCRS(mat,crsMat->data);
+#ifdef MPI
+	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+		crsMat->split(crsMat,ctx,mat->traits);
+#endif
+
 	crsMat->destroy(crsMat);
 
 #ifdef CUDA

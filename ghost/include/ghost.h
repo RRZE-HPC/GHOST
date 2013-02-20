@@ -69,14 +69,15 @@ struct ghost_vec_t
 	//ghost_vdat_t* val;
 	void* val;
 
-	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
+	void          (*fromFunc) (ghost_vec_t *, ghost_context_t *, void (*fp)(int,int,void *));
 	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, int, int, int);
-	void          (*fromFile) (ghost_vec_t *, char *path, off_t);
-	void          (*fromRand) (ghost_vec_t *);
-	void          (*fromScalar) (ghost_vec_t *, void *);
+	void          (*fromFile) (ghost_vec_t *, ghost_context_t *, char *path, off_t);
+	void          (*fromRand) (ghost_vec_t *, ghost_context_t *);
+	void          (*fromScalar) (ghost_vec_t *, ghost_context_t *, void *);
+
 	void          (*zero) (ghost_vec_t *);
 	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *comm);
-	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
+	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *, ghost_mat_t *);
 	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
 	void          (*normalize) (ghost_vec_t *);
 	void          (*destroy) (ghost_vec_t *);
@@ -163,7 +164,7 @@ typedef struct {
 #define GHOST_CRS_EXTRAFUN_CREATE_COMMUNICATION 4*/
 
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
-typedef void (*ghost_solver_t)(ghost_vec_t*, ghost_context_t *context, ghost_vec_t*, int);
+typedef void (*ghost_solver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
 typedef void (*ghost_dummyfun_t)(void *);
 typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
 typedef ghost_vec_t * (*ghost_vec_init_t) (ghost_vtraits_t *);
@@ -199,13 +200,13 @@ struct ghost_mat_t
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
 //	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
+	void       (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
 	void       (*CLupload)(ghost_mat_t *);
 	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
-	void       (*split)(ghost_mat_t *, int options, ghost_context_t *, ghost_mtraits_t *traits);
+	void       (*split)(ghost_mat_t *, ghost_context_t *, ghost_mtraits_t *traits);
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	ghost_kernel_t kernel;
@@ -218,6 +219,11 @@ struct ghost_mat_t
 	ghost_midx_t *invRowPerm;  // may be NULL
 
 	int symmetry;
+
+	ghost_mat_t *localPart;
+	ghost_mat_t *remotePart;
+
+	char *name;
 
 	void *data;
 }; 
@@ -244,19 +250,20 @@ struct ghost_context_t
 	ghost_solver_t *solvers;
 
 	ghost_comm_t *communicator; // TODO shorter
-	ghost_mat_t *fullMatrix; // TODO array
-	ghost_mat_t *localMatrix;
-	ghost_mat_t *remoteMatrix;
-
+//	ghost_mat_t *fullMatrix; // TODO array
+//	ghost_mat_t *localMatrix;
+//	ghost_mat_t *remoteMatrix;
+/*
 	ghost_mnnz_t  (*gnnz) (ghost_context_t *);
 	ghost_midx_t  (*gnrows) (ghost_context_t *);
 	ghost_midx_t  (*gncols) (ghost_context_t *);
 	ghost_mnnz_t  (*lnnz) (ghost_context_t *);
 	ghost_midx_t  (*lnrows) (ghost_context_t *);
-	ghost_midx_t  (*lncols) (ghost_context_t *);
+	ghost_midx_t  (*lncols) (ghost_context_t *);*/
 
-	char *matrixName;
+//	char *matrixName;
 
+	ghost_midx_t gnrows;
 	int flags;
 
 };
@@ -276,6 +283,19 @@ typedef struct
 	char **names;
 } 
 ghost_acc_info_t;
+
+
+typedef struct
+{
+	int32_t endianess;
+	int32_t version;
+	int32_t base;
+	int32_t symmetry;
+	int32_t datatype;
+	int64_t nrows;
+	int64_t ncols;
+	int64_t nnz;
+} ghost_matfile_header_t;
 
 
 void ghost_normalizeVec(ghost_vec_t *);
@@ -329,32 +349,6 @@ int ghost_init(int argc, char **argv, int options);
 void ghost_finish();
 
 /******************************************************************************
- * Create a distributed CRS matrix from a given path. The matrix is read-in
- * from the processes in a parallel way (unless defined differently via
- * GHOST_OPTION_SERIAL_IO) and necessary data structures for communication are
- * created. 
- * If OpenCL is enabled, the matrices are also converted into a GPU-friendly
- * format (as defined by the second argument) and uploaded to the device.
- *
- * Arguments:
- *   - char *matrixPath
- *     The full path to the matrix which is to be read. The matrix may either
- *     be present in the ASCII Matrix Market format as explained in
- *       http://math.nist.gov/MatrixMarket/formats.html
- *     or in a binary CRS format as explained in the README file.
- *   - void *deviceFormats
- *     If OpenCL is disabled, this argument has to be NULL.
- *     If OpenCL is enabled, this has to be a pointer to a GHOST_SPM_GPUFORMATS
- *     structure as defined above.
- *
- * Returns:
- *   a pointer to an ghost_comm_t structure which holds the local matrix data as
- *   well as the necessary data structures for communication.
- *****************************************************************************/
-ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
-
-
-/******************************************************************************
  * Creates a distributed vector with specified values in order to use it for 
  * SpMVM. Depending on the type, the length of the vector may differ.
  * If OpenCL is enabled, the vector is also being created and initialized on
@@ -378,7 +372,7 @@ ghost_comm_t * ghost_createCRS (char *matrixPath, void *deviceFormats);
  *   a pointer to an ghost_comm_t structure which holds the local matrix data as
  *   well as the necessary data structures for communication.
  *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits);
+ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits);
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a
@@ -404,10 +398,12 @@ ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *trait
  * Returns:
  *   the wallclock time (in seconds) the kernel execution took. 
  *****************************************************************************/
-int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
-ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *trait, int nTraits, unsigned int); 
+ghost_context_t *ghost_createContext(int64_t, int);
+//ghost_mat_t *ghost_createMatrix(ghost_context_t * context, char *matrixPath, ghost_mtraits_t *traits, int nTraits);
+ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);

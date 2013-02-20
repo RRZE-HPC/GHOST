@@ -37,7 +37,7 @@ static int options;
 static int MPIwasInitialized;
 #endif
 
-
+/*
 static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 {
 	ghost_mnnz_t gnnz;
@@ -105,7 +105,7 @@ static ghost_mnnz_t context_gncols (ghost_context_t * context)
 static ghost_mnnz_t context_lncols (ghost_context_t * context)
 {
 	return context->fullMatrix->ncols(context->fullMatrix);
-}
+}*/
 
 #ifdef MPI
 #ifdef GHOST_VEC_COMPLEX
@@ -334,23 +334,23 @@ void ghost_finish()
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_context_t *context, ghost_vtraits_t *traits)
+ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits)
 {
-	ghost_vidx_t nrows;
+/*	ghost_vidx_t nrows;
 	if (traits->flags & GHOST_VEC_DUMMY) {
 		nrows = 0;
 	} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
 	{
-		nrows = context->gnrows(context);
+		nrows = context->gnrows;
 	} 
 	else 
 	{
-		nrows = context->lnrows(context);
+		nrows = context->communicator->lnrows[ghost_getRank()];
 		if (traits->flags & GHOST_VEC_RHS)
 			nrows += context->communicator->halo_elements;
 	}
 
-	traits->nrows = nrows;
+	traits->nrows = nrows;*/
 
 	ghost_vec_t *vec = ghost_initVector(traits);
 
@@ -489,23 +489,54 @@ return vec;
 
 }
 
-ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, int nTraits, unsigned int context_flags) 
+ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 {
-	DEBUG_LOG(1,"Creating context");
+	ghost_mat_t *mat;
+	if (nTraits != 3) {
+		ghost_mtraits_t trait_0 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+		ghost_mtraits_t trait_1 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+		ghost_mtraits_t trait_2 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
+		traits = (ghost_mtraits_t *)malloc(3*sizeof(ghost_mtraits_t));
+		traits[0] = trait_0;
+		traits[1] = trait_1;
+		traits[2] = trait_2;
+		nTraits = 3;
+	}
+
+
+	mat = ghost_initMatrix(&traits[0]);
+/*	mat->fromBin(mat,matrixPath,context,options);
+
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		mat->split(mat,options,context,traits);
+	} else {
+		mat->localPart = NULL;
+		mat->remotePart = NULL;
+		context->communicator = NULL;
+	}*/
+
+
+	return mat;
+}
+
+ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags) 
+{
+	DEBUG_LOG(1,"Creating context with %ld rows",gnrows);
 	ghost_context_t *context;
 	int i;
 
-	// copy is needed because basename() changes the string
-	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
-	strcpy(matrixPathCopy,matrixPath);
 
 	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
 	context->flags = context_flags;
-
+	context->gnrows = (ghost_midx_t)gnrows;
+/*
+	// copy is needed because basename() changes the string
+	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
+	strcpy(matrixPathCopy,matrixPath);
 	char *mname = basename(matrixPathCopy);
 	context->matrixName = (char *)malloc(strlen(mname)+1);
 	strcpy(context->matrixName,mname);
-	free(matrixPathCopy);
+	free(matrixPathCopy);*/
 
 #ifdef MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
@@ -524,27 +555,6 @@ ghost_context_t *ghost_createContext(char *matrixPath, ghost_mtraits_t *traits, 
 	if (context_flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
 		options |= GHOST_OPTION_SERIAL_IO;
-	}
-	if (nTraits != 3) {
-		ghost_mtraits_t trait_0 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		ghost_mtraits_t trait_1 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		ghost_mtraits_t trait_2 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		traits = (ghost_mtraits_t *)malloc(3*sizeof(ghost_mtraits_t));
-		traits[0] = trait_0;
-		traits[1] = trait_1;
-		traits[2] = trait_2;
-		nTraits = 3;
-	}
-
-	context->fullMatrix = ghost_initMatrix(&traits[0]);
-	context->fullMatrix->fromBin(context->fullMatrix,matrixPath,context,options);
-
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-		context->fullMatrix->split(context->fullMatrix,options,context,traits);
-	} else {
-		context->localMatrix = NULL;
-		context->remoteMatrix = NULL;
-		context->communicator = NULL;
 	}
 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
@@ -622,14 +632,14 @@ context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 }*/
 
 	//#endif
-	context->lnnz = &context_lnnz;
+	/*context->lnnz = &context_lnnz;
 	context->lnrows = &context_lnrows;
 	context->lncols = &context_lncols;
 	context->gnnz = &context_gnnz;
 	context->gnrows = &context_gnrows;
 	context->gncols = &context_gncols;
 
-	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));
+	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));*/
 
 
 	DEBUG_LOG(1,"Context created successfully");
@@ -767,7 +777,7 @@ ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
 
 
 
-int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions)
 {
 	ghost_solver_t solver = NULL;
@@ -777,7 +787,7 @@ int ghost_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec,
 	if (!solver)
 		return GHOST_FAILURE;
 
-	solver(res,context,invec,*spmvmOptions);
+	solver(context,res,mat,invec,*spmvmOptions);
 
 	return GHOST_SUCCESS;
 }
@@ -786,7 +796,7 @@ void ghost_freeContext(ghost_context_t *context)
 {
 	DEBUG_LOG(1,"Freeing context");
 	if (context != NULL) {
-		if (context->fullMatrix != NULL) {
+		/*if (context->fullMatrix != NULL) {
 			context->fullMatrix->destroy(context->fullMatrix);
 			dlclose(context->fullMatrix->so);
 		}
@@ -799,10 +809,10 @@ void ghost_freeContext(ghost_context_t *context)
 		if (context->remoteMatrix != NULL) {
 			context->remoteMatrix->destroy(context->remoteMatrix);
 			dlclose(context->remoteMatrix->so);
-		}
+		}*/
 
 		free(context->solvers);
-		free(context->matrixName);
+	//	free(context->matrixName);
 
 		ghost_freeCommunicator(context->communicator);
 
@@ -892,7 +902,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 {
 	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		vec->fromFile(vec,path,ctx->communicator->lfRow[ghost_getRank()]);
+		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank()]);
 	else
-		vec->fromFile(vec,path,0);
+		vec->fromFile(vec,ctx,path,0);
 }

@@ -199,8 +199,8 @@ void ghost_printSysInfo();
 void ghost_printGhostInfo();
 
 
-void ghost_solver_nompi(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions);
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
 //void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 //void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 
@@ -238,6 +238,6 @@ ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
 
-double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
-		int *spmvmOptions, int nIter);
+double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
+void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
 #endif

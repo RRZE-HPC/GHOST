@@ -6,6 +6,7 @@
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <byteswap.h>
 
 #ifdef LIKWID
 #include <likwid.h>
@@ -154,6 +155,8 @@ void ghost_printOptionsInfo(int options)
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
+	UNUSED(context);
+	/*
 
 	size_t ws;
 
@@ -207,7 +210,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 		context->fullMatrix->printInfo(context->fullMatrix);
 	}
 	ghost_printFooter();
-
+*/
 }
 
 void ghost_printSysInfo()
@@ -363,36 +366,41 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
 	int me = ghost_getRank();
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
-	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = distContext->fullMatrix->traits->datatype};
+	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
 	ghost_context_t *context;
 	
-	context = ghost_createContext(matrixPath, &trait, 1, GHOST_CONTEXT_GLOBAL);
+	ghost_matfile_header_t fileheader;
+	ghost_readMatFileHeader(matrixPath,&fileheader);
+	
+	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_GLOBAL);
+	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
+	mat->fromBin(mat,matrixPath,context);
 	ghost_vtraits_t rtraits = {.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
-	ghost_vec_t *globRHS = ghost_createVector(context,&rtraits);
-	rhs->collect(rhs,globRHS,distContext);
+	ghost_vec_t *globRHS = ghost_createVector(&rtraits);
+	rhs->collect(rhs,globRHS,distContext,mat);
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing reference solution");
 
 		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
 
-		globLHS = ghost_createVector(context,&ltraits); 
+		globLHS = ghost_createVector(&ltraits); 
 
 		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
-		if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
+		if (mat->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
 			for (iter=0; iter<nIter; iter++) {
-				context->fullMatrix->kernel(context->fullMatrix,globLHS,globRHS,spmvmOptions);
+				mat->kernel(mat,globLHS,globRHS,spmvmOptions);
 				//ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 			}
-		} else if (context->fullMatrix->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
+		} else if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
 			for (iter=0; iter<nIter; iter++) {
 				//ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 			}
@@ -402,12 +410,15 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, ghost_context_t *distContex
 		ghost_freeContext(context);
 	} else {
 		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype};
-		globLHS = ghost_createVector(context,&ltraits);
+		globLHS = ghost_createVector(&ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
 	ghost_vtraits_t nltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype};
-	ghost_vec_t *nodeLHS = ghost_createVector(distContext,&nltraits);
+	ghost_vec_t *nodeLHS = ghost_createVector(&nltraits);
+
+	complex double zero = 0.+I*0.; // TODO das ist unschoen
+	nodeLHS->fromScalar(nodeLHS,distContext,&zero);
 	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
 
 	globLHS->destroy(globLHS);
@@ -572,9 +583,9 @@ char * ghost_datatypeName(int datatype)
 
 char * ghost_workdistName(int options)
 {
-	if (options & GHOST_OPTION_WORKDIST_NZE)
+	if (options & GHOST_CONTEXT_WORKDIST_NZE)
 		return "equal nze";
-	else if (options & GHOST_OPTION_WORKDIST_LNZE)
+	else if (options & GHOST_CONTEXT_WORKDIST_LNZE)
 		return "equal lnze";
 	else
 		return "equal rows";
@@ -773,7 +784,7 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 
 }
 
-double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t *invec, 
+double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions, int nIter)
 {
 	DEBUG_LOG(1,"Benchmarking the SpMVM");
@@ -800,7 +811,7 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 
 	for( it = 0; it < nIter; it++ ) {
 		time = ghost_wctime();
-		solver(res,context,invec,*spmvmOptions);
+		solver(context,res,mat,invec,*spmvmOptions);
 
 #ifdef OPENCL
 		CL_barrier();
@@ -826,11 +837,11 @@ double ghost_bench_spmvm(ghost_vec_t *res, ghost_context_t *context, ghost_vec_t
 #endif
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
-		res->permute(res,context->fullMatrix->invRowPerm);
+		res->permute(res,mat->invRowPerm);
 	} else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
-		res->permute(res,context->localMatrix->invRowPerm);
-		res->permute(res,context->remoteMatrix->invRowPerm);
+		res->permute(res,mat->localPart->invRowPerm);
+		res->permute(res,mat->remotePart->invRowPerm);
 	}
 
 	return time;
@@ -1032,4 +1043,64 @@ ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 		return ctx->communicator->lfRow[ghost_getRank()] + lidx;
 
 	return lidx;	
+}
+
+void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
+{
+	FILE* file;
+	long filesize;
+	int swapReq = 0;
+
+	DEBUG_LOG(1,"Reading header from %s",matrixPath);
+
+	if ((file = fopen(matrixPath, "rb"))==NULL){
+		ABORT("Could not open binary CRS file %s",matrixPath);
+	}
+
+	fseek(file,0L,SEEK_END);
+	filesize = ftell(file);
+	fseek(file,0L,SEEK_SET);
+
+	fread(&header->endianess, 4, 1, file);
+	if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+		DEBUG_LOG(1,"Need to convert from little to big endian.");
+		swapReq = 1;
+	} else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+		DEBUG_LOG(1,"Need to convert from big to little endian.");
+		swapReq = 1;
+	} else {
+		DEBUG_LOG(1,"OK, file and library have same endianess.");
+	}
+	
+	fread(&header->version, 4, 1, file);
+	if (swapReq) header->version = bswap_32(header->version);
+
+	fread(&header->base, 4, 1, file);
+	if (swapReq) header->base = bswap_32(header->base);
+
+	fread(&header->symmetry, 4, 1, file);
+	if (swapReq) header->symmetry = bswap_32(header->symmetry);
+
+	fread(&header->datatype, 4, 1, file);
+	if (swapReq) header->datatype = bswap_32(header->datatype);
+
+	fread(&header->nrows, 8, 1, file);
+	if (swapReq) header->nrows  = bswap_64(header->nrows);
+
+	fread(&header->ncols, 8, 1, file);
+	if (swapReq)  header->ncols  = bswap_64(header->ncols);
+
+	fread(&header->nnz, 8, 1, file);
+	if (swapReq)  header->nnz  = bswap_64(header->nnz);
+
+
+	long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
+		(long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
+		(long)header->nnz * GHOST_BINCRS_SIZE_COL_EL +
+		(long)header->nnz * ghost_sizeofDataType(header->datatype);
+
+	if (filesize != rightFilesize)
+		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
+
+	fclose(file);
 }

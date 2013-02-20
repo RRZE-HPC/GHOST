@@ -23,17 +23,23 @@ int main( int argc, char* argv[] )
 	ghost_vtraits_t lvtraits = {.flags = GHOST_VEC_LHS, .datatype = vecdt, .nvecs = 1};
 	ghost_vtraits_t rvtraits = {.flags = GHOST_VEC_RHS, .datatype = vecdt, .nvecs = 1};
 
+	ghost_matfile_header_t fileheader;
 	ghost_context_t *ctx;
-	ghost_vec_t *lhs;
-	ghost_vec_t *rhs;
+	ghost_vec_t *lhs, *rhs;
+	ghost_mat_t *mat;
 
 	ghost_init(argc,argv,ghostOptions);
-	ctx = ghost_createContext(argv[1],&mtraits,1,GHOST_CONTEXT_DEFAULT);
-	rhs = ghost_createVector(ctx,&rvtraits);
-	lhs = ghost_createVector(ctx,&lvtraits);
 
-	lhs->fromScalar(lhs,&zero);
-	rhs->fromFunc(rhs,rhsVal);
+	ghost_readMatFileHeader(argv[1],&fileheader);
+
+	ctx = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
+	mat = ghost_createMatrix(&mtraits,1);
+	rhs = ghost_createVector(&rvtraits);
+	lhs = ghost_createVector(&lvtraits);
+
+	mat->fromBin(mat,argv[1],ctx);
+	lhs->fromScalar(lhs,ctx,&zero);
+	rhs->fromFunc(rhs,ctx,rhsVal);
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -41,10 +47,10 @@ int main( int argc, char* argv[] )
 	ghost_printContextInfo(ctx);
 
 	ghost_printHeader("Performance");
-	time = ghost_bench_spmvm(lhs,ctx,rhs,&spmvmOptions,nIter);
+	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
 
 	if (time > 0.)
-		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ctx->gnnz(ctx)/time);
+		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*mat->nnz(mat)/time);
 
 	ghost_printFooter();
 

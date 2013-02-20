@@ -46,7 +46,7 @@ const char formatID[] = "CRS";
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options);
+static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -60,7 +60,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
-static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context_t *context, ghost_mtraits_t *);
+static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context, ghost_mtraits_t *);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
 //static int compareNZEPos( const void* a, const void* b ); 
@@ -103,8 +103,12 @@ ghost_mat_t *init(ghost_mtraits_t *traits)
 	mat->kernel   = &CRS_kernel_plain;
 #endif
 	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	
 	mat->rowPerm = NULL;
 	mat->invRowPerm = NULL;
+	mat->localPart = NULL;
+	mat->remotePart = NULL;
+	
 	return mat;
 
 }
@@ -185,12 +189,14 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 		}
 	}
 
+	DEBUG_LOG(1,"Successfully created CRS matrix from CRS data");
+
 	// TODO OpenCL upload
 
 }
 
 #ifdef MPI
-static void CRS_createDistributedContext(ghost_context_t * context, char * matrixPath, int options, ghost_mtraits_t *traits)
+static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * context, char * matrixPath, ghost_mtraits_t *traits)
 {
 	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
@@ -201,7 +207,7 @@ static void CRS_createDistributedContext(ghost_context_t * context, char * matri
 
 	ghost_comm_t *comm;
 
-	ghost_mat_t *CRSfullMatrix;
+//	ghost_mat_t *CRSfullMatrix;
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
@@ -216,30 +222,30 @@ static void CRS_createDistributedContext(ghost_context_t * context, char * matri
 	comm = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "comm");
 	context->communicator = comm;
 
-	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
-	CRSfullMatrix = ghost_initMatrix(&crsTraits);
+//	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
+//	CRSfullMatrix = ghost_initMatrix(&crsTraits);
 
 
-	CRS_readHeader(CRSfullMatrix,matrixPath);  // read header
+	CRS_readHeader(*mat,matrixPath);  // read header
 
 	if (ghost_getRank() == 0) {
-		CRS_readRpt(CRSfullMatrix,matrixPath);  // read rpt
+		CRS_readRpt((*mat),matrixPath);  // read rpt
 	}
 
 	comm->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->wishes" ); 
 	comm->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->dues" ); 
 
-	CRS_createDistribution(CRSfullMatrix,options,comm);
+	CRS_createDistribution((*mat),context->flags,comm);
 
 	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",comm->lnrows[me]);
 
 	if (ghost_getRank() != 0) {
-		((CR_TYPE *)(CRSfullMatrix->data))->rpt = (ghost_midx_t *)malloc((comm->lnrows[me]+1)*sizeof(int));
+		((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)malloc((comm->lnrows[me]+1)*sizeof(int));
 	}
 
 	if (ghost_getRank() == 0) {
 		MPI_safecall(MPI_Scatterv(
-					((CR_TYPE *)(CRSfullMatrix->data))->rpt, 
+					((CR_TYPE *)((*mat)->data))->rpt, 
 					(int *)comm->lnrows, 
 					(int *)comm->lfRow, 
 					MPI_INTEGER,
@@ -248,11 +254,11 @@ static void CRS_createDistributedContext(ghost_context_t * context, char * matri
 					MPI_INTEGER, 0, MPI_COMM_WORLD));
 	} else {
 		MPI_safecall(MPI_Scatterv(
-					((CR_TYPE *)(CRSfullMatrix->data))->rpt, 
+					((CR_TYPE *)((*mat)->data))->rpt, 
 					(int *)comm->lnrows, 
 					(int *)comm->lfRow, 
 					MPI_INTEGER,
-					((CR_TYPE *)(CRSfullMatrix->data))->rpt,
+					((CR_TYPE *)((*mat)->data))->rpt,
 					(int)comm->lnrows[me],
 					MPI_INTEGER, 0, MPI_COMM_WORLD));
 	}
@@ -260,39 +266,41 @@ static void CRS_createDistributedContext(ghost_context_t * context, char * matri
 	DEBUG_LOG(1,"Adjusting row pointers");
 
 	for (i=0;i<comm->lnrows[me]+1;i++)
-		((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] =  ((CR_TYPE *)(CRSfullMatrix->data))->rpt[i] - comm->lfEnt[me]; 
+		((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - comm->lfEnt[me]; 
 
 	/* last entry of row_ptr holds the local number of entries */
-	((CR_TYPE *)(CRSfullMatrix->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me]; 
+	((CR_TYPE *)((*mat)->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me]; 
 
 	DEBUG_LOG(1,"local rows          = %"PRmatIDX,comm->lnrows[me]);
 	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,comm->lfRow[me]);
 	DEBUG_LOG(1,"local entries          = %"PRmatNNZ,comm->lnEnts[me]);
 	DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,comm->lfEnt[me]);
 
-	CRS_readColValOffset(CRSfullMatrix,matrixPath, comm->lfEnt[me], comm->lfRow[me], comm->lnrows[me], comm->lnEnts[me], GHOST_IO_STD);
+	CRS_readColValOffset((*mat),matrixPath, comm->lfEnt[me], comm->lfRow[me], comm->lnrows[me], comm->lnEnts[me], GHOST_IO_STD);
 
 	DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
-	((CR_TYPE *)(CRSfullMatrix->data))->nrows = comm->lnrows[me];
-	((CR_TYPE *)(CRSfullMatrix->data))->nEnts = comm->lnEnts[me];
+	((CR_TYPE *)((*mat)->data))->nrows = comm->lnrows[me];
+	((CR_TYPE *)((*mat)->data))->nEnts = comm->lnEnts[me];
 
-	context->fullMatrix = ghost_initMatrix(&traits[0]);
-	context->fullMatrix->fromCRS(context->fullMatrix,CRSfullMatrix->data);
+//	*mat = ghost_initMatrix(&traits[0]);
+
+//	(*mat)->fromCRS(*mat,(*mat)->data);
+//	printf("$$$ %p %p\n",CR((*mat)),CR((*mat))->col);
 //	CR_TYPE *locCR = NULL;
 //	CR_TYPE *remCR = NULL;
 
-//	CRS_createCommunication(CRSfullMatrix,&locCR,&remCR,options,context);
+//	CRS_createCommunication((*mat),&locCR,&remCR,options,context);
 
 
 	// TODO clean up
 }
 
 
-static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context_t *context, ghost_mtraits_t *traits)
+static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context, ghost_mtraits_t *traits)
 {
 	CR_TYPE *fullCR = CR(mat);
 	CR_TYPE *localCR = NULL, *remoteCR = NULL;
-	DEBUG_LOG(1,"Setting up communication");
+	DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
 
 	int hlpi;
 	ghost_mnnz_t j;
@@ -498,7 +506,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context
 					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
 	}
 
-	if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
+	if (!(context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
 		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
 
@@ -611,8 +619,14 @@ static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context
 	freeMemory ( size_a2ai, "tmp_transfers",   tmp_transfers);
 	freeMemory ( size_nint, "wishlist_counts", wishlist_counts);
 	freeMemory ( size_nint, "item_from",       item_from);
-	
 
+	mat->localPart = ghost_initMatrix(&mat->traits[0]);
+	mat->localPart->fromCRS(mat->localPart,localCR);
+
+	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
+	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
+	
+/*
 	context->localMatrix = ghost_initMatrix(&traits[1]);
 	context->localMatrix->symmetry = mat->symmetry;
 	context->localMatrix->fromCRS(context->localMatrix,localCR);
@@ -635,7 +649,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, int options, ghost_context
 			context->localMatrix->CUupload(context->localMatrix);
 		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
 			context->remoteMatrix->CUupload(context->remoteMatrix);
-#endif
+#endif*/
 
 
 
@@ -662,7 +676,7 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 	 ***************************************************************************/
 	if (me==0){
 
-		if (options & GHOST_OPTION_WORKDIST_NZE){
+		if (options & GHOST_CONTEXT_WORKDIST_NZE){
 			DEBUG_LOG(1,"Distribute Matrix with EQUAL_NZE on each PE");
 			ghost_mnnz_t target_nnz;
 
@@ -681,12 +695,12 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 			}
 
 		}
-		else if (options & GHOST_OPTION_WORKDIST_LNZE){
+		else if (options & GHOST_CONTEXT_WORKDIST_LNZE){
 			if (!(options & GHOST_OPTION_SERIAL_IO)) {
 				DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
 						"implemented for parallel IO! Switching to "
 						"GHOST_OPTION_WORKDIST_NZE");
-				options |= GHOST_OPTION_WORKDIST_NZE;
+				options |= GHOST_CONTEXT_WORKDIST_NZE;
 			} else {
 				DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
 				ghost_mnnz_t *loc_count;
@@ -847,89 +861,41 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath)
 {
-	FILE* file;
-	long filesize;
-	int32_t endianess;
-	int32_t fileVersion;
-	int32_t base;
-	int32_t symmetry;
-	int32_t datatype;
+	ghost_matfile_header_t header;
 
-	DEBUG_LOG(1,"Reading header from %s",matrixPath);
+	ghost_readMatFileHeader(matrixPath,&header);
 
-	if ((file = fopen(matrixPath, "rb"))==NULL){
-		ABORT("Could not open binary CRS file %s",matrixPath);
-	}
-
-	fseek(file,0L,SEEK_END);
-	filesize = ftell(file);
-	fseek(file,0L,SEEK_SET);
-
-
-
-	fread(&endianess, 4, 1, file);
-	//	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
-	//		ABORT("Big endian currently not supported!");
-	if (endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+	if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
 		DEBUG_LOG(1,"Need to convert from little to big endian.");
 		swapReq = 1;
-	} else if (endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+	} else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
 		DEBUG_LOG(1,"Need to convert from big to little endian.");
 		swapReq = 1;
 	} else {
 		DEBUG_LOG(1,"OK, file and library have same endianess.");
 	}
 
-	fread(&fileVersion, 4, 1, file);
-	if (swapReq) fileVersion = bswap_32(fileVersion);
-	if (fileVersion != 1)
-		ABORT("Can not read version %d of binary CRS format!",fileVersion);
+	if (header.version != 1)
+		ABORT("Can not read version %d of binary CRS format!",header.version);
 
-	fread(&base, 4, 1, file);
-	if (swapReq) base = bswap_32(base);
-	if (base != 0)
-		ABORT("Can not read matrix with %d-based indices!",base);
+	if (header.base != 0)
+		ABORT("Can not read matrix with %d-based indices!",header.base);
 
-	fread(&symmetry, 4, 1, file);
-	if (swapReq) symmetry = bswap_32(symmetry);
-	if (!ghost_symmetryValid(symmetry))
-		ABORT("Symmetry is invalid! (%d)",symmetry);
-	if (symmetry != GHOST_BINCRS_SYMM_GENERAL)
+	if (!ghost_symmetryValid(header.symmetry))
+		ABORT("Symmetry is invalid! (%d)",header.symmetry);
+	if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL)
 		ABORT("Can not handle symmetry different to general at the moment!");
-	mat->symmetry = symmetry;
+	mat->symmetry = header.symmetry;
 
-	fread(&datatype, 4, 1, file);
-	if (swapReq) datatype = bswap_32(datatype);
-	if (!ghost_datatypeValid(datatype))
-		ABORT("Datatype is invalid! (%d)",datatype);
+	if (!ghost_datatypeValid(header.datatype))
+		ABORT("Datatype is invalid! (%d)",header.datatype);
 
-	int64_t nr, nc, ne;
-
-	fread(&nr, 8, 1, file);
-	if (swapReq)  nr  = bswap_64(nr);
-	CR(mat)->nrows = (ghost_midx_t)nr;
-
-	fread(&nc, 8, 1, file);
-	if (swapReq)  nc  = bswap_64(nc);
-	CR(mat)->ncols = (ghost_midx_t)nc;
-
-	fread(&ne, 8, 1, file);
-	if (swapReq)  ne  = bswap_64(ne);
-	CR(mat)->nEnts = (ghost_midx_t)ne;
-
-	DEBUG_LOG(1,"Matrix has %d rows, %d columns and %d nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
-
-	long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
-		(long)(CR(mat)->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
-		(long)CR(mat)->nEnts * GHOST_BINCRS_SIZE_COL_EL +
-		(long)CR(mat)->nEnts * ghost_sizeofDataType(datatype);
-
-	if (filesize != rightFilesize)
-		ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
+	CR(mat)->nrows = (ghost_midx_t)header.nrows;
+	CR(mat)->ncols = (ghost_midx_t)header.ncols;
+	CR(mat)->nEnts = (ghost_midx_t)header.nnz;
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
-	fclose(file);
 }
 
 static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
@@ -1202,7 +1168,7 @@ static void CRS_upload(ghost_mat_t *mat)
 	else return aRow - bRow;
 }*/
 
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options)
+static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx)
 {
 	DEBUG_LOG(1,"Reading CRS matrix from file");
 
@@ -1214,9 +1180,9 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx
 	} else {
 #ifdef MPI
 		DEBUG_LOG(1,"Reading in a distributed context");
-		CRS_createDistributedContext(ctx,matrixPath,options,mat->traits);
+		CRS_createDistributedContext(&mat,ctx,matrixPath,mat->traits);
+		mat->split(mat,ctx,mat->traits);
 #else
-		UNUSED(options);
 		ABORT("Trying to create a distributed context without MPI!");
 #endif
 	}

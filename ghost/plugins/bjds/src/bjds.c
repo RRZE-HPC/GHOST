@@ -31,7 +31,7 @@ static size_t BJDS_byteSize (ghost_mat_t *mat);
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 static void BJDS_upload(ghost_mat_t* mat); 
 static void BJDS_CUupload(ghost_mat_t *mat);
-static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx, int options);
+static void BJDS_fromBin(ghost_mat_t *mat, char *, ghost_context_t *ctx);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef SSE
@@ -98,6 +98,9 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->nrows    = &BJDS_nrows;
 	mat->ncols    = &BJDS_ncols;
 	mat->destroy  = &BJDS_free;
+
+	mat->localPart = NULL;
+	mat->remotePart = NULL;
 
 	return mat;
 }
@@ -168,20 +171,57 @@ static size_t BJDS_byteSize (ghost_mat_t *mat)
 			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
 }
 
-static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx, int options)
+static void BJDS_fromBin(ghost_mat_t *mat, char *matrixPath, ghost_context_t *ctx)
 {
+	DEBUG_LOG(1,"Creating BJDS matrix from binary file");
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromBin(crsMat,matrixPath, ctx, options);
+	crsMat->fromBin(crsMat,matrixPath, ctx);
+
+	printf("11111 %p\n",crsMat->data);
+#ifdef MPI
+	//if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
+	//	crsMat->split(crsMat,ctx,mat->traits);
+	
+	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
+	mat->localPart = ghost_initMatrix(&mat->traits[1]);
+	mat->localPart->symmetry = mat->symmetry;
+	mat->localPart->fromCRS(mat->localPart,crsMat->localPart->data);
+
+	mat->remotePart = ghost_initMatrix(&mat->traits[2]);
+	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
+
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			mat->CLupload(mat);
+		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+			mat->localPart->CLupload(mat->localPart);
+		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+			mat->remotePart->CLupload(mat->remotePart);
+#endif
+#ifdef CUDA
+		if (!(mat->traits->flags & GHOST_SPM_HOST))
+			mat->CUupload(mat);
+		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+			mat->localPart->CUupload(mat->localPart);
+		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+			mat->remotePart->CUupload(mat->remotePart);
+#endif
+#endif
+	
 
 	mat->symmetry = crsMat->symmetry;
-	BJDS_fromCRS(mat,crsMat->data);
+	mat->fromCRS(mat,crsMat->data);
+
+
+
 	crsMat->destroy(crsMat);
 
 #ifdef CUDA
 	if (!(mat->traits->flags & GHOST_SPM_HOST))
 		mat->CUupload(mat);
 #endif
+	DEBUG_LOG(1,"BJDS matrix successfully created");
 }
 
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)

@@ -5,7 +5,7 @@
 
 #include "ghost_util.h"
 
-void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* invec, int spmvmOptions)
+void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
 	/*****************************************************************************
@@ -136,7 +136,7 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 	CU_copyHostToDevice(invec->CU_val, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
 #endif
 
-	context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
+	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
 	//spmvmKernAll( context->localMatrix->data, invec, res, spmvmOptions);
 
 #ifdef LIKWID_MARKER_FINE
@@ -173,7 +173,7 @@ void hybrid_kernel_II(ghost_vec_t* res, ghost_context_t* context, ghost_vec_t* i
 			&invec->val[context->lnrows(context)], context->communicator->halo_elements*sizeof(ghost_vdat_t));
 #endif
 
-	context->remoteMatrix->kernel(context->remoteMatrix,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
+	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
