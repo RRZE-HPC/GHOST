@@ -152,6 +152,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
 
 	ghost_printHeader(mat->name);
+	ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
 	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,ghost_getMatNrows(mat));
 	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,ghost_getMatNnz(mat));
