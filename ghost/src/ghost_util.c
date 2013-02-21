@@ -1195,3 +1195,20 @@ void ghost_pinThreads(int options, char *procList)
 
 
 }
+
+ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat, ghost_context_t *ctx)
+{
+	ghost_mnnz_t nnz;
+	ghost_mnnz_t lnnz = mat->nnz(mat);
+
+	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
+		nnz = lnnz;
+	} else {
+		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+	}
+
+	return nnz;
+
+
+
+}

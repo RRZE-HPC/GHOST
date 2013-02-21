@@ -239,6 +239,7 @@ void ghost_pinThreads(int options, char *procList);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
+ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat, ghost_context_t *ctx);
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
 void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
