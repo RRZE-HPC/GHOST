@@ -452,19 +452,9 @@ return vec;
 ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 {
 	ghost_mat_t *mat;
-	if (nTraits != 3) {
-		ghost_mtraits_t trait_0 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		ghost_mtraits_t trait_1 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		ghost_mtraits_t trait_2 = {.format = traits[0].format, .flags = traits[0].flags, .aux = traits[0].aux};
-		traits = (ghost_mtraits_t *)malloc(3*sizeof(ghost_mtraits_t));
-		traits[0] = trait_0;
-		traits[1] = trait_1;
-		traits[2] = trait_2;
-		nTraits = 3;
-	}
+	UNUSED(nTraits);
 
-
-	mat = ghost_initMatrix(&traits[0]);
+	mat = ghost_initMatrix(traits);
 /*	mat->fromBin(mat,matrixPath,context,options);
 
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
@@ -774,7 +764,8 @@ void ghost_freeContext(ghost_context_t *context)
 		free(context->solvers);
 	//	free(context->matrixName);
 
-		ghost_freeCommunicator(context->communicator);
+		// TODO
+//		ghost_freeCommunicator(context->communicator);
 
 		free(context);
 	}

@@ -13,8 +13,8 @@
 
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_Z(vecdt)
-GHOST_REGISTER_DT_Z(matdt)
+GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(matdt)
 
 static void rhsVal (int i, int v, void *val) 
 {
@@ -26,7 +26,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 1;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 
@@ -105,7 +105,7 @@ int main( int argc, char* argv[] )
 			goldLHS->entry(goldLHS,i,&ref);
 			lhs->entry(lhs,i,&res);
 		
-			mytol = 1e-16 * mat->rowLen(mat,i);
+			mytol = 1e-8 * mat->rowLen(mat,i);
 //			printf("%f + %fi vs. %f + %fi\n",creal(ref),cimag(ref),creal(res),cimag(res));
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){

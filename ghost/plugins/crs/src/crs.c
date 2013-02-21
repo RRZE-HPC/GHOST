@@ -1074,9 +1074,8 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 		}
 	} else {
 
-		WARNING_LOG("This %s build is configured for %s data but"
-				" the file contains %s data. Casting...",GHOST_NAME,
-				ghost_datatypeName(GHOST_MY_DT),ghost_datatypeName(datatype));
+		WARNING_LOG("This matrix is supposed to be of %s data but"
+				" the file contains %s data. Casting...",ghost_datatypeName(GHOST_MY_DT),ghost_datatypeName(datatype));
 
 
 		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
