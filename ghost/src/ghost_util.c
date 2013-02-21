@@ -138,20 +138,6 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 	}
 }
 
-void ghost_printOptionsInfo(int options)
-{
-	//int pin = (options & GHOST_OPTION_PIN || options & GHOST_OPTION_PIN_SMT)?
-	//	1:0;
-	//char *pinStrategy = options & GHOST_OPTION_PIN?"phys. cores":"virt. cores";
-
-	ghost_printHeader("Options");
-	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
-	//ghost_printLine("Automatic pinning",NULL,"%s",pin?"enabled":"disabled");
-	//if (pin)
-	//	ghost_printLine("Pinning threads to ",NULL,"%s",pinStrategy);
-	ghost_printFooter();
-
-}
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
@@ -186,6 +172,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
 	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
+	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
 	ghost_printLine("Global CRS size","MB","%lu",ws);
 	
 	ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));

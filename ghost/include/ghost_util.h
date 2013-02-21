@@ -194,7 +194,6 @@ void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
 void ghost_printLine(const char *label, const char *unit, const char *format, ...);
 void ghost_printContextInfo(ghost_context_t *context);
-void ghost_printOptionsInfo(int options);
 void ghost_printSysInfo();
 void ghost_printGhostInfo();
 

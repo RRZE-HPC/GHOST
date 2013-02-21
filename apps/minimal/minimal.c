@@ -18,7 +18,6 @@ int main( int argc, char* argv[] )
 	double time;
 	vecdt_t zero = 0.;
 
-	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
 	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.datatype = matdt);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
@@ -46,7 +45,6 @@ int main( int argc, char* argv[] )
 	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
-	ghost_printOptionsInfo(ghostOptions);
 	ghost_printContextInfo(ctx);
 
 	ghost_printHeader("Performance");
