@@ -625,6 +625,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
 	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
+
 	
 /*
 	context->localMatrix = ghost_initMatrix(&traits[1]);
@@ -1283,19 +1284,34 @@ lhs->val[i] = hlp1;
 			lhsv[i] = hlp1;
 	}
 */
-	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
+	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
 
-	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-			c_CRS_kernel_plain(mat,lhs,rhs,options);
-		else
-			s_CRS_kernel_plain(mat,lhs,rhs,options);
+	if (lhs->traits->nvecs == 1) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				c_CRS_kernel_plain(mat,lhs,rhs,options);
+			else
+				s_CRS_kernel_plain(mat,lhs,rhs,options);
+		} else {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				z_CRS_kernel_plain(mat,lhs,rhs,options);
+			else
+				d_CRS_kernel_plain(mat,lhs,rhs,options);
+		}
 	} else {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-			z_CRS_kernel_plain(mat,lhs,rhs,options);
-		else
-			d_CRS_kernel_plain(mat,lhs,rhs,options);
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				c_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+			else
+				s_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+		} else {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				z_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+			else
+				d_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+		}
 	}
+
 
 	//}
 }

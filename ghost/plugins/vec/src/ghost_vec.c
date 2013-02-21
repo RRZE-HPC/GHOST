@@ -86,23 +86,23 @@ ghost_vec_t *init(ghost_vtraits_t *traits)
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
 #endif
-	
+
 	vec->val = NULL;
 	vec->isView = 0;
 
 	DEBUG_LOG(1,"The vector has %d sub-vectors with %d rows and %lu bytes per entry",traits->nvecs,traits->nrows,sizeof(ghost_dt));
-/*
-	ghost_vidx_t i,v;
+	/*
+	   ghost_vidx_t i,v;
 
 #pragma omp parallel for
-	for (v=0; v<traits->nvecs; v++) {
-		for (i=0; i<traits->nrows; i++) {
-			VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
-		}
-	}
-*/
-	return vec;
+for (v=0; v<traits->nvecs; v++) {
+for (i=0; i<traits->nrows; i++) {
+VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
 }
+}
+	 */
+	return vec;
+	}
 
 #ifdef CUDA
 static void vec_CUupload (ghost_vec_t *vec)
@@ -134,7 +134,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n)
 	new->isView = 1;
 	return new;
 }
-	
+
 ghost_vec_t * vec_extract (ghost_vec_t * src, int k, int n)
 {
 	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
@@ -155,7 +155,7 @@ ghost_vec_t * vec_extract (ghost_vec_t * src, int k, int n)
 static void ghost_normalizeVector( ghost_vec_t *vec)
 {
 	ghost_dt s;
-    vec_dotprod(vec,vec,&s);
+	vec_dotprod(vec,vec,&s);
 	s = (ghost_dt)1./SQRT(s);
 	vec_scale(vec,&s);
 
@@ -282,12 +282,20 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 
+	if (vec->traits->nvecs > 1) {
 #pragma omp parallel for schedule(runtime) private(i)
-	for (v=0; v<vec->traits->nvecs; v++) {
+		for (v=0; v<vec->traits->nvecs; v++) {
+			for (i=0; i<vec->traits->nrows; i++) {
+				VAL(vec)[v*vec->traits->nrows+i] = *(ghost_dt *)val;
+			}
+		}
+	} else {
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			VAL(vec)[v*vec->traits->nrows+i] = *(ghost_dt *)val;
+			VAL(vec)[i] = *(ghost_dt *)val;
 		}
 	}
+
 	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
 #ifdef CUDA
 #ifdef CUDA_PINNEDMEM
@@ -314,7 +322,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 	}
 
 	int offs;
-   
+
 	if (!skipHeader) {
 		offs = 0;
 		int32_t endianess = ghost_archIsBigEndian();
@@ -358,7 +366,7 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	int32_t version;
 	int32_t order;
 	int32_t datatype;
-	
+
 	int64_t nrows;
 	int64_t ncols;
 
@@ -367,14 +375,14 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	pread(file,&endianess,sizeof(endianess),offs);
 	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
 		ABORT("Cannot read big endian vectors");
-	
+
 	pread(file,&version,sizeof(version),offs+=sizeof(endianess));
 	if (version != 1)
 		ABORT("Cannot read vector files with format != 1");
-	
+
 	pread(file,&order,sizeof(order),offs+=sizeof(version));
 	// Order does not matter for vectors
-	
+
 	pread(file,&datatype,sizeof(datatype),offs+=sizeof(order));
 	if (datatype != vec->traits->datatype)
 		ABORT("The data types don't match!");
@@ -385,11 +393,11 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	pread(file,&ncols,sizeof(ncols),offs+=sizeof(nrows));
 	if (ncols != 1)
 		ABORT("The number of columns has to be 1!");
-	
+
 	pread(file,vec->val,sizeof(ghost_dt)*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeof(ghost_dt));
 
 	close(file);
-	
+
 }
 
 static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int,int,void *))
@@ -401,12 +409,20 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 
+	if (vec->traits->nvecs > 1) {
 #pragma omp parallel for schedule(runtime) private(i)
-	for (v=0; v<vec->traits->nvecs; v++) {
+		for (v=0; v<vec->traits->nvecs; v++) {
+			for (i=0; i<vec->traits->nrows; i++) {
+				fp(i,v,&VAL(vec)[v*vec->traits->nrows+i]);
+			}
+		}
+	} else {
+#pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			fp(i,v,&VAL(vec)[v*vec->traits->nrows+i]);
+			fp(i,v,&VAL(vec)[i]);
 		}
 	}
+
 
 	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
 #ifdef CUDA
@@ -422,7 +438,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 		vec->CLupload(vec);
 #endif
 	}	
-		
+
 
 }
 
@@ -448,43 +464,43 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 
 }
 /*
-static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 
-{
-	UNUSED(nrows);
-	UNUSED(flags);
-	ghost_vec_t* vec = NULL;
-	size_t size_val;
-	int i;
+   static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 
+   {
+   UNUSED(nrows);
+   UNUSED(flags);
+   ghost_vec_t* vec = NULL;
+   size_t size_val;
+   int i;
 
-	size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_dt) );
-	vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
+   size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_dt) );
+   vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
 
 
-	VAL(vec) = (ghost_dt*) allocateMemory( size_val, "VAL(vec)");
-	vec->traits->nrows = nrows;
-	vec->traits->flags = flags;
+   VAL(vec) = (ghost_dt*) allocateMemory( size_val, "VAL(vec)");
+   vec->traits->nrows = nrows;
+   vec->traits->flags = flags;
 
 #pragma omp parallel for schedule(runtime) 
-	for( i = 0; i < nrows; i++ ) 
-		VAL(vec)[i] = 0.0;
+for( i = 0; i < nrows; i++ ) 
+VAL(vec)[i] = 0.0;
 
 #ifdef OPENCL
 #ifdef CL_IMAGE
-	vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,VAL(vec) );
+vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,VAL(vec) );
 #else
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,VAL(vec),CL_MEM_READ_WRITE );
+vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,VAL(vec),CL_MEM_READ_WRITE );
 #endif
-	//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
-	//printf("before: %p\n",VAL(vec));
-	//VAL(vec) = CL_mapBuffer(vec->CL_val_gpu,size_val);
-	//printf("after: %p\n",VAL(vec));
-	//CL_uploadVector(vec);
+//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
+//printf("before: %p\n",VAL(vec));
+//VAL(vec) = CL_mapBuffer(vec->CL_val_gpu,size_val);
+//printf("after: %p\n",VAL(vec));
+//CL_uploadVector(vec);
 #endif
 #ifdef CUDA
-	vec->CU_val = CU_allocDeviceMemory(size_val);
+vec->CU_val = CU_allocDeviceMemory(size_val);
 #endif
 
-	return vec;
+return vec;
 }*/
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm)
@@ -493,27 +509,27 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 #ifdef MPI
 	int me = ghost_getRank();
 
-/*	ghost_vidx_t nrows;
+	/*	ghost_vidx_t nrows;
 
-	MPI_safecall(MPI_Bcast(&(vec->traits->flags),1,MPI_INT,0,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Bcast(&(vec->traits->flags),1,MPI_INT,0,MPI_COMM_WORLD));
 
-	if (vec->traits->flags & GHOST_VEC_RHS)
+		if (vec->traits->flags & GHOST_VEC_RHS)
 		nrows = comm->lnrows[me]+comm->halo_elements;
-	else if (vec->traits->flags & GHOST_VEC_LHS)
+		else if (vec->traits->flags & GHOST_VEC_LHS)
 		nrows = comm->lnrows[me];
-	else
+		else
 		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
 
 
-	DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
-*/
+		DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
+	 */
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt, VAL((*nodeVec)), (int)comm->lnrows[me], ghost_mpi_dt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
-	int i;
-	for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];*/
+	  int i;
+	  for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];*/
 	*nodeVec = vec->clone(vec);
 #endif
 
@@ -587,7 +603,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 			if (vec->traits->flags & GHOST_VEC_DEVICE)
 				CU_safecall(cudaFreeHost(VAL(vec)));
 #else
-				free(vec->val);
+			free(vec->val);
 #endif
 		}
 		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_dt)), "VAL(vec)",  VAL(vec) );
@@ -650,17 +666,17 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 {
 	return src->extract(src,0,src->traits->nvecs);
-/*	ghost_vec_t *new;
-	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
-	newTraits->flags = src->traits->flags;
-	newTraits->nrows = src->traits->nrows;
-	newTraits->datatype = src->traits->datatype;
+	/*	ghost_vec_t *new;
+		ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
+		newTraits->flags = src->traits->flags;
+		newTraits->nrows = src->traits->nrows;
+		newTraits->datatype = src->traits->datatype;
 
-	new = ghost_initVector(newTraits);
-	new->fromVec(new,src,0,0,1);
- 
-//	= ghost_newVector(src->traits->nrows, src->traits->flags);
-//	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));
+		new = ghost_initVector(newTraits);
+		new->fromVec(new,src,0,0,1);
+
+	//	= ghost_newVector(src->traits->nrows, src->traits->flags);
+	//	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));
 
 	return new;*/
 }

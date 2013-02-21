@@ -3,6 +3,7 @@
 #include <ghost_util.h>
 
 GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(matdt)
 
 static void rhsVal (int i, int v, void *val) 
 {
@@ -19,7 +20,7 @@ int main( int argc, char* argv[] )
 
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT();
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.datatype = matdt);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 
@@ -27,6 +28,7 @@ int main( int argc, char* argv[] )
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs, *rhs;
 	ghost_mat_t *mat;
+
 
 	ghost_init(argc,argv,ghostOptions);
 
@@ -40,7 +42,7 @@ int main( int argc, char* argv[] )
 	mat->fromFile(mat,ctx,argv[1]);
 	lhs->fromScalar(lhs,ctx,&zero);
 	rhs->fromFunc(rhs,ctx,rhsVal);
-
+	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printOptionsInfo(ghostOptions);
@@ -51,6 +53,7 @@ int main( int argc, char* argv[] )
 
 	if (time > 0.)
 		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*mat->nnz(mat)/time);
+
 
 	ghost_printFooter();
 
