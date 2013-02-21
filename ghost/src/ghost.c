@@ -215,7 +215,7 @@ int ghost_init(int argc, char **argv)
 	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_MPI_OP_SUM_C));
 	
-	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
 /*

@@ -84,13 +84,11 @@ void ghost_printHeader(const char *fmt, ...)
 #else
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 		printf("\n");
-		printf(ANSI_COLOR_BLUE);
 		for (i=0; i<nDash; i++) printf("-");
 		for (i=0; i<spacing; i++) printf(" ");
 		printf("%s",label);
 		for (i=0; i<spacing+rem; i++) printf(" ");
 		for (i=0; i<nDash; i++) printf("-");
-		printf(ANSI_COLOR_RESET);
 		printf("\n");
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 		printf("\n");
@@ -400,7 +398,9 @@ printf("Likwid Marker API                :      enabled\n");
 ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
+	DEBUG_LOG(1,"Computing reference solution");
 	int me = ghost_getRank();
+	complex double zero = 0.+I*0.; // TODO das ist unschoen
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
@@ -412,16 +412,22 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_GLOBAL);
 	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
 	mat->fromFile(mat,context,matrixPath);
-	ghost_vtraits_t rtraits = {.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 	ghost_vec_t *globRHS = ghost_createVector(&rtraits);
+	globRHS->fromScalar(globRHS,context,&zero);
+
+
+	DEBUG_LOG(2,"Collection RHS vector for reference solver");
 	rhs->collect(rhs,globRHS,distContext,mat);
 
 	if (me==0) {
-		DEBUG_LOG(1,"Computing reference solution");
+		DEBUG_LOG(1,"Computing actual reference solution with one process");
+				
 
-		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype};
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 
 		globLHS = ghost_createVector(&ltraits); 
+		globLHS->fromScalar(globLHS,context,&zero);
 
 		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
@@ -440,15 +446,14 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 		globRHS->destroy(globRHS);
 		ghost_freeContext(context);
 	} else {
-		ghost_vtraits_t ltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype};
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype);
 		globLHS = ghost_createVector(&ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vtraits_t nltraits = {.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype};
+	ghost_vtraits_t nltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype);
 	ghost_vec_t *nodeLHS = ghost_createVector(&nltraits);
 
-	complex double zero = 0.+I*0.; // TODO das ist unschoen
 	nodeLHS->fromScalar(nodeLHS,distContext,&zero);
 	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
 
@@ -558,22 +563,22 @@ int ghost_symmetryValid(int symmetry)
 char * ghost_symmetryName(int symmetry)
 {
 	if (symmetry & GHOST_BINCRS_SYMM_GENERAL)
-		return "general";
+		return "General";
 	
 	if (symmetry & GHOST_BINCRS_SYMM_SYMMETRIC)
-		return "symmetric";
+		return "Symmetric";
 
 	if (symmetry & GHOST_BINCRS_SYMM_SKEW_SYMMETRIC) {
 		if (symmetry & GHOST_BINCRS_SYMM_HERMITIAN)
-			return "skew-hermitian";
+			return "Skew-hermitian";
 		else
-			return "skew-symmetric";
+			return "Skew-symmetric";
 	} else {
 		if (symmetry & GHOST_BINCRS_SYMM_HERMITIAN)
-			return "hermitian";
+			return "Hermitian";
 	}
 
-	return "invalid";
+	return "Invalid";
 }
 
 int ghost_datatypeValid(int datatype)
@@ -615,11 +620,11 @@ char * ghost_datatypeName(int datatype)
 char * ghost_workdistName(int options)
 {
 	if (options & GHOST_CONTEXT_WORKDIST_NZE)
-		return "equal nze";
+		return "Equal no. of nonzeros";
 	else if (options & GHOST_CONTEXT_WORKDIST_LNZE)
-		return "equal lnze";
+		return "Equal no. of local nonzeros";
 	else
-		return "equal rows";
+		return "Equal no. of rows";
 }
 
 int ghost_getRank() 
