@@ -139,12 +139,35 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 }
 
 
+void ghost_printMatrixInfo(ghost_mat_t *mat)
+{
+
+	char *matrixLocation;
+	if (mat->traits->flags & GHOST_SPM_DEVICE)
+		matrixLocation = "Device";
+	else if (mat->traits->flags & GHOST_SPM_HOST)
+		matrixLocation = "Host";
+	else
+		matrixLocation = "Default";
+
+
+	ghost_printHeader(mat->name);
+	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
+	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,ghost_getMatNrows(mat));
+	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,ghost_getMatNnz(mat));
+	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)ghost_getMatNnz(mat)/ghost_getMatNrows(mat));
+	ghost_printFooter();
+
+
+
+}
+
 void ghost_printContextInfo(ghost_context_t *context)
 {
 	UNUSED(context);
-	/*
+	
 
-	size_t ws;
+/*	size_t ws;
 
 
 	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
@@ -156,24 +179,24 @@ void ghost_printContextInfo(ghost_context_t *context)
 	else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
 		matrixLocation = "Host";
 	else
-		matrixLocation = "Default";
+		matrixLocation = "Default";*/
 
-	char *matrixPlacement;
+	char *contextType;
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-		matrixPlacement = "Distributed";
+		contextType = "Distributed";
 	else if (context->flags & GHOST_CONTEXT_GLOBAL)
-		matrixPlacement = "Global";
+		contextType = "Global";
 
 
 	ghost_printHeader("Context");
-	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
-	ghost_printLine("Dimension",NULL,"%"PRmatIDX,context->gnrows(context));
-	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
-	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
-	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-	ghost_printLine("Matrix placement",NULL,"%s",matrixPlacement);
-	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(options));
-	ghost_printLine("Global CRS size","MB","%lu",ws);
+//	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
+	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
+//	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
+//	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
+//	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
+	ghost_printLine("Type",NULL,"%s",contextType);
+	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
+/*	ghost_printLine("Global CRS size","MB","%lu",ws);
 	
 	ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
@@ -195,9 +218,9 @@ void ghost_printContextInfo(ghost_context_t *context)
 	if (context->flags & GHOST_CONTEXT_GLOBAL)
 	{ //additional information depending on format
 		context->fullMatrix->printInfo(context->fullMatrix);
-	}
+	}*/
 	ghost_printFooter();
-*/
+
 }
 
 void ghost_printSysInfo()
@@ -1183,19 +1206,30 @@ void ghost_pinThreads(int options, char *procList)
 
 }
 
-ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat, ghost_context_t *ctx)
+ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
+{
+	ghost_mnnz_t nrows;
+	ghost_mnnz_t lnrows = mat->nrows(mat);
+
+	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
+		nrows = lnrows;
+	} else {
+		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+	}
+
+	return nrows;
+}
+
+ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 {
 	ghost_mnnz_t nnz;
 	ghost_mnnz_t lnnz = mat->nnz(mat);
 
-	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
+	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nnz = lnnz;
 	} else {
 		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
 	}
 
 	return nnz;
-
-
-
 }

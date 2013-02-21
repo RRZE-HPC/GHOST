@@ -224,8 +224,9 @@ struct ghost_mat_t
 	ghost_mat_t *localPart;
 	ghost_mat_t *remotePart;
 
-	char *name;
+	ghost_context_t *context;
 
+	char *name;
 	void *data;
 }; 
 

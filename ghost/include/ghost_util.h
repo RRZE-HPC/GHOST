@@ -194,6 +194,7 @@ void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
 void ghost_printLine(const char *label, const char *unit, const char *format, ...);
 void ghost_printContextInfo(ghost_context_t *context);
+void ghost_printMatrixInfo(ghost_mat_t *matrix);
 void ghost_printSysInfo();
 void ghost_printGhostInfo();
 
@@ -238,7 +239,8 @@ void ghost_pinThreads(int options, char *procList);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
-ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat, ghost_context_t *ctx);
+ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat);
+ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
 void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);

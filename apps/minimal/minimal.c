@@ -46,13 +46,14 @@ int main( int argc, char* argv[] )
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(ctx);
+	ghost_printMatrixInfo(mat);
 
 	ghost_printHeader("Performance");
 	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
 
 
 	if (time > 0.)
-		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ghost_getMatNnz(mat,ctx)/time);
+		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ghost_getMatNnz(mat)/time);
 
 
 	ghost_printFooter();

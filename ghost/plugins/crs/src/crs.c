@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <libgen.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -697,12 +698,14 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 
 		}
 		else if (options & GHOST_CONTEXT_WORKDIST_LNZE){
-			if (!(options & GHOST_OPTION_SERIAL_IO)) {
+			WARNING_LOG("Distribution by LNZE is currently not supported");
+			options |= GHOST_CONTEXT_WORKDIST_NZE;
+			/*if (!(options & GHOST_OPTION_SERIAL_IO)) {
 				DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
 						"implemented for parallel IO! Switching to "
 						"GHOST_OPTION_WORKDIST_NZE");
 				options |= GHOST_CONTEXT_WORKDIST_NZE;
-			} else {
+			} else {*/
 				DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
 				ghost_mnnz_t *loc_count;
 				int target_lnze;
@@ -821,7 +824,7 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 					DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, p, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
 
 				free(loc_count);
-			}
+			//}
 		}
 		else {
 
@@ -1172,6 +1175,8 @@ static void CRS_upload(ghost_mat_t *mat)
 static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	DEBUG_LOG(1,"Reading CRS matrix from file");
+	mat->name = basename(matrixPath);
+	mat->context = ctx;
 
 	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Reading in a global context");
