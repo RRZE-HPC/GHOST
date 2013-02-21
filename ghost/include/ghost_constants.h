@@ -62,8 +62,8 @@
 /******************************************************************************/
 /*----  Options for ghost  ---------------------------------------------------*/
 /******************************************************************************/
-#define GHOST_OPTION_NONE       (0x0)    // no special options applied
-#define GHOST_OPTION_SERIAL_IO  (0x1<<3) // read matrix with one process only
+//#define GHOST_OPTION_NONE       (0x0)    // no special options applied
+//#define GHOST_OPTION_SERIAL_IO  (0x1<<3) // read matrix with one process only
 /******************************************************************************/
 
 

@@ -16,7 +16,7 @@ int main( int argc, char* argv[] )
 {
 	int nIter = 100;
 	double time;
-	double zero = 0.;
+	vecdt_t zero = 0.;
 
 	int ghostOptions = GHOST_OPTION_NONE;
 	int spmvmOptions = GHOST_SPMVM_AXPY;
@@ -30,7 +30,8 @@ int main( int argc, char* argv[] )
 	ghost_mat_t *mat;
 
 
-	ghost_init(argc,argv,ghostOptions);
+	ghost_init(argc,argv);
+	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 
 	ghost_readMatFileHeader(argv[1],&fileheader);
 

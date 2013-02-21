@@ -338,7 +338,7 @@ void ghost_vecFromFile(ghost_vec_t *, char *, ghost_context_t *);
  *
  * The call to ghost_init() has to be done before any other ghost_*() call.
  *****************************************************************************/
-int ghost_init(int argc, char **argv, int options);
+int ghost_init(int argc, char **argv);
 
 /******************************************************************************
  * Clean up and finalize before termination. This includes:

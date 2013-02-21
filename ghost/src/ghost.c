@@ -31,7 +31,7 @@
 #include <cuda_runtime.h>
 #endif
 
-static int options;
+//static int options;
 #ifdef MPI
 static int MPIwasInitialized;
 #endif
@@ -190,7 +190,7 @@ static void MPI_add_z(MPI_z *invec, MPI_z *inoutvec, int *len)
 }
 #endif
 
-int ghost_init(int argc, char **argv, int ghostOptions)
+int ghost_init(int argc, char **argv)
 {
 	int me;
 
@@ -246,7 +246,6 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 	UNUSED(argc);
 	UNUSED(argv);
 	me = 0;
-	ghostOptions |= GHOST_OPTION_SERIAL_IO; // important for createMatrix()
 
 #endif // ifdef MPI
 
@@ -272,7 +271,7 @@ int ghost_init(int argc, char **argv, int ghostOptions)
 	CU_init();
 #endif
 
-	options = ghostOptions;
+//	options = ghostOptions;
 
 	return me;
 }
@@ -514,8 +513,8 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 #endif
 
 	if (context_flags & GHOST_CONTEXT_GLOBAL) {
-		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
-		options |= GHOST_OPTION_SERIAL_IO;
+//		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
+//		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
