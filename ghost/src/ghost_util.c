@@ -84,11 +84,13 @@ void ghost_printHeader(const char *fmt, ...)
 #else
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 		printf("\n");
+		printf(ANSI_COLOR_BLUE);
 		for (i=0; i<nDash; i++) printf("-");
 		for (i=0; i<spacing; i++) printf(" ");
 		printf("%s",label);
 		for (i=0; i<spacing+rem; i++) printf(" ");
 		for (i=0; i<nDash; i++) printf("-");
+		printf(ANSI_COLOR_RESET);
 		printf("\n");
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 		printf("\n");
@@ -156,6 +158,25 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,ghost_getMatNrows(mat));
 	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,ghost_getMatNnz(mat));
 	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)ghost_getMatNnz(mat)/ghost_getMatNrows(mat));
+	
+	ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
+	if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+	{
+		ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+		ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+		ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->symmetry));
+	} else {
+		ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->symmetry));
+	}
+	
+	ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
+	if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+	{
+		ghost_printLine("Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+		ghost_printLine("Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+	}
+
+	mat->printInfo(mat);
 	ghost_printFooter();
 
 
