@@ -171,12 +171,11 @@ static void vec_print(ghost_vec_t *vec)
 {
 	ghost_vidx_t i,v;
 	for (i=0; i<vec->traits->nrows; i++) {
-		printf("vec[%d] = ",i);
 		for (v=0; v<vec->traits->nvecs; v++) {
 #if GHOST_MY_DT & GHOST_BINCRS_DT_COMPLEX
-			printf("%f + %f\t",REAL(VAL(vec)[v*vec->traits->nrows+i]),IMAG(VAL(vec)[v*vec->traits->nrows+i]));
+			printf("PE%d: vec[%d] = %f + %f\t",ghost_getRank(),i,REAL(VAL(vec)[v*vec->traits->nrows+i]),IMAG(VAL(vec)[v*vec->traits->nrows+i]));
 #else
-			printf("%f\t",VAL(vec)[v*vec->traits->nrows+i]);
+			printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,VAL(vec)[v*vec->traits->nrows+i]);
 #endif
 		}
 		printf("\n");
@@ -186,6 +185,7 @@ static void vec_print(ghost_vec_t *vec)
 
 static void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 {
+	DEBUG_LOG(1,"Computing the number of vector rows from the context");
 	if (vec->traits->flags & GHOST_VEC_DUMMY) {
 		vec->traits->nrows = 0;
 	} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
@@ -198,6 +198,7 @@ static void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 		if (vec->traits->flags & GHOST_VEC_RHS)
 			vec->traits->nrows += context->communicator->halo_elements;
 	}
+	DEBUG_LOG(1,"The vector has %d rows",vec->traits->nrows);
 }
 
 
@@ -261,6 +262,7 @@ static void vec_entry(ghost_vec_t * vec, int i, void *val)
 
 static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 {
+	DEBUG_LOG(1,"Filling vector with random values");
 	if (vec->traits->nrows == 0)
 		getNrowsFromContext(vec,ctx);
 
@@ -279,6 +281,7 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 	if (vec->traits->nrows == 0)
 		getNrowsFromContext(vec,ctx);
 
+	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
 	vec->val = (ghost_dt *)allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeof(ghost_dt),"vec->val");
 	int i,v;
 

@@ -627,7 +627,6 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
 	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
 
-	
 /*
 	context->localMatrix = ghost_initMatrix(&traits[1]);
 	context->localMatrix->symmetry = mat->symmetry;
@@ -1289,6 +1288,8 @@ lhs->val[i] = hlp1;
 	}
 */
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
+//	lhs->print(lhs);
+	rhs->print(rhs);
 
 	if (lhs->traits->nvecs == 1) {
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {

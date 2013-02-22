@@ -89,9 +89,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, MPI_COMM_WORLD,&request[recv_messages] ));
-			/*MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], 
-					ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, 
-					&request[recv_messages] ));*/
+			/*MPI_safecall(MPI_Irecv( &invec->val[context->communicator->hput_pos[from_PE]], context->communicator->wishes[from_PE], ghost_mpi_dt_vdat, from_PE, from_PE, MPI_COMM_WORLD, &request[recv_messages] ));*/
 			recv_messages++;
 		}
 	}
@@ -100,15 +98,19 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	 *******       Local assembly of halo-elements  & Communication       ********
 	 ****************************************************************************/
 
-#pragma omp parallel private(to_PE,i) reduction(+:send_messages)
+//#pragma omp parallel private(to_PE,i) reduction(+:send_messages)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
+//#pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
 //			work[to_PE][i] = invec->val[context->communicator->duelist[to_PE][i]];
-			memcpy(&work[to_PE][i*sizeofRHS],&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
+			memcpy(&(work[to_PE][i*sizeofRHS]),&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
+			printf("copy %d->%d: %f [%d] -> %f ... %p->%p %lu bytes\n",ghost_getRank(),to_PE, ((double *)(invec->val))[context->communicator->duelist[to_PE][i]],context->communicator->duelist[to_PE][i],((double **)(work))[to_PE][i],&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],&work[to_PE][i*sizeofRHS],sizeofRHS);
 		}
 	}
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+		DEBUG_LOG(1,"No. dues ->%d: %d",to_PE,context->communicator->dues[to_PE]);
+		for (i=0; i<context->communicator->dues[to_PE]; i++)
+			printf("send %d->%d: %f %p\n",ghost_getRank(),to_PE,((double **)work)[to_PE][i],&((double **)work)[to_PE][i] );
 		if (context->communicator->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( &work[to_PE][0], context->communicator->dues[to_PE]*sizeofRHS, 
 					MPI_CHAR, to_PE, me, MPI_COMM_WORLD, 
