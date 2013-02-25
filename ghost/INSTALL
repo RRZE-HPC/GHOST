@@ -1,0 +1,9 @@
+1) CONFIGURATION
+----------------
+   Edit config.mk in order to fit your system and requirements.
+
+
+2) INSTALLATION
+---------------
+   Invoke make install to install the ghost library and headers to the location 
+   specified in config.mk.

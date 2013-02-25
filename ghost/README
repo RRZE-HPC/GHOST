@@ -1,12 +1,6 @@
 == INTRODUCTION ==
 
 
-== INSTALLATION ==
-  Edit config.mk in order to fit your system and requirements.
-  Then, run make install in order to install the the ghost library and header
-  files to the specified location.
-
-
 == HEADER FILES ==
 
 
