@@ -11,7 +11,7 @@
 #include <mpi.h>
 #endif
 
-#define CHECK // compare with reference solution
+//#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -81,7 +81,7 @@ int main( int argc, char* argv[] )
 #ifdef CHECK	
 	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
-	ghost_printSysInfo();
+//	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(context);
 	ghost_printMatrixInfo(mat);

@@ -1289,7 +1289,7 @@ lhs->val[i] = hlp1;
 */
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
 //	lhs->print(lhs);
-	rhs->print(rhs);
+//	rhs->print(rhs);
 
 	if (lhs->traits->nvecs == 1) {
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
