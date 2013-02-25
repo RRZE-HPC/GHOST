@@ -19,57 +19,31 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	static ghost_mnnz_t max_dues;
 	static char *work;
 	static int nprocs;
-	static double hlp_sent;
-	static double hlp_recv;
 
 	static int me; 
 	int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 
-	//static MPI_Request *send_request, *recv_request;
-	//static MPI_Status  *send_status,  *recv_status;
 	static MPI_Request *request;
 	static MPI_Status  *status;
 
-	size_t size_request, size_status, size_mem;
-	size_t sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
-
+	size_t sizeofRHS;
 
 	if (init_kernel==1){
-		DEBUG_LOG(1,"In g/f hybrid solver");
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD, &me));
+		me = ghost_getRank();
 		nprocs = ghost_getNumberOfProcesses();
+		sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
 		max_dues = 0;
 		for (i=0;i<nprocs;i++)
 			if (context->communicator->dues[i]>max_dues) 
 				max_dues = context->communicator->dues[i];
 
-		hlp_sent = 0.0;
-		hlp_recv = 0.0;
-		for (i=0;i<nprocs; i++){
-			hlp_sent += context->communicator->dues[i];
-			hlp_recv += context->communicator->wishes[i];
-		}
-
-
-		size_mem     = (size_t)( max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype) );
-		size_request = (size_t)( 2*nprocs          * sizeof( MPI_Request ) );
-		size_status  = (size_t)( 2*nprocs          * sizeof( MPI_Status ) );
-
-//		work     = (char**) allocateMemory( size_work, "work" );
-		work = (char *)allocateMemory(size_mem,"work");
-//		for (i=0; i<nprocs; i++) work[i] = &work_mem[context->communicator->due_displ[i]];
-
-		/*send_request = (MPI_Request*) allocateMemory( size_request, "send_request" );
-		recv_request = (MPI_Request*) allocateMemory( size_request, "recv_request" );
-		send_status  = (MPI_Status*)  allocateMemory( size_status,  "send_status" );
-		recv_status  = (MPI_Status*)  allocateMemory( size_status,  "recv_status" );*/
-		request = (MPI_Request*) allocateMemory( size_request, "request" );
-		status  = (MPI_Status*)  allocateMemory( size_status,  "status" );
+		work = (char *)allocateMemory(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype), "work");
+		request = (MPI_Request*) allocateMemory( 2*nprocs*sizeof(MPI_Request), "request" );
+		status  = (MPI_Status*)  allocateMemory( 2*nprocs*sizeof(MPI_Status),  "status" );
 
 		init_kernel = 0;
-		DEBUG_LOG(1,"Max. no. of dues: %d, sizeof work = max_dues*sizeofRHS*nprocs = %lu, work: %p..%p",max_dues,size_mem,work,work+size_mem);
 	}
 
 
@@ -97,18 +71,19 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	 *******       Local assembly of halo-elements  & Communication       ********
 	 ****************************************************************************/
 
-//#pragma omp parallel private(to_PE,i) reduction(+:send_messages)
+#pragma omp parallel private(to_PE,i)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-//#pragma omp for 
+#pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
 			memcpy(work+to_PE*max_dues*sizeofRHS+i*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
+
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-			if (context->communicator->dues[to_PE]>0){
-				MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
-				send_messages++;
-			}
+		if (context->communicator->dues[to_PE]>0){
+			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, MPI_COMM_WORLD, &request[recv_messages+send_messages] ));
+			send_messages++;
+		}
 	}
 
 	/****************************************************************************
@@ -143,8 +118,8 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
 	{
-	likwid_markerStopRegion("Kernel 2 -- communication");
-	likwid_markerStartRegion("Kernel 2 -- remote computation");
+		likwid_markerStopRegion("Kernel 2 -- communication");
+		likwid_markerStartRegion("Kernel 2 -- remote computation");
 	}
 #endif
 

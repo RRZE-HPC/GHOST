@@ -36,7 +36,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	int modes[] = {//GHOST_SPMVM_MODE_NOMPI,
-		//GHOST_SPMVM_MODE_VECTORMODE,
+		GHOST_SPMVM_MODE_VECTORMODE,
 		GHOST_SPMVM_MODE_GOODFAITH/*,
 		GHOST_SPMVM_MODE_TASKMODE*/};
 	int nModes = sizeof(modes)/sizeof(int);
