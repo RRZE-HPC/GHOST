@@ -5,8 +5,9 @@ include include_$(strip $(COMPILER)).mk
 
 .PHONY: clean distclean install uninstall all header 
 
-VPATH      = ./src/ ./src/cl/ ./src/mpi/ ./src/cu/ 
+VPATH      = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./src/cu/ 
 OBJDIR     = ./obj
+MODDIR     = ./mod
 C_OBJDIR   = ./obj/c
 D_OBJDIR   = ./obj/d
 S_OBJDIR   = ./obj/s
@@ -14,9 +15,9 @@ Z_OBJDIR   = ./obj/z
 PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
-IPATH     += -I./include/
+IPATH     += -I./include/ -I./include/fortran/
 
-OBJS	=	$(COBJS) $(FOBJS) 
+OBJS	=	$(COBJS) $(FMODULES) $(FOBJS) 
 FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))
 
 ifeq ($(strip $(MPI)),1)
@@ -99,9 +100,10 @@ COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
-FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.f,%.o, $(wildcard src/*.f))))
+FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.F90,%.o, $(wildcard src/fortran/*.F90))))
+FMODULES = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.F90,%.o, $(wildcard src/fortran/modules/*.F90))))
 
-all: $(OBJDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
+all: $(OBJDIR) $(MODDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
@@ -132,6 +134,14 @@ $(Z_OBJDIR)/%.o: %.c config.mk
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+
+$(OBJDIR)/%.o: %.F90 config.mk
+	@echo "==> Compile $< -> $@"
+	@$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+
+$(OBJDIR)/%.mod.o: %.F90 config.mk
+	@echo "==> Compile module $< -> $@"
+	@$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 ifeq ($(strip $(CUDA)),1)
 $(C_OBJDIR)/%.cu.o: %.cu config.mk
@@ -171,6 +181,9 @@ $(Z_OBJDIR):
 $(OBJDIR):
 	@mkdir $(OBJDIR)
 
+$(MODDIR):
+	@mkdir $(MODDIR)
+
 ifeq ($(strip $(LIBTYPE)),static)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create static library $(LIBGHOST)"
@@ -185,6 +198,7 @@ endif
 clean:
 	@echo "==> Clean"
 	@rm -rf $(OBJDIR)
+	@rm -rf $(MODDIR)
 	@rm -rf $(PLOBJDIR)
 	@rm -rf $(TYPES_H)
 	@rm -rf $(FORMATS_H)
