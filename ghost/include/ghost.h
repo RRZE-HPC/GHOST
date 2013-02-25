@@ -191,6 +191,18 @@ struct ghost_comm_t
 struct ghost_mat_t 
 {
 	ghost_mtraits_t *traits; // TODO rename
+	void *so;
+	ghost_midx_t *rowPerm;     // may be NULL
+	ghost_midx_t *invRowPerm;  // may be NULL
+	int symmetry;
+	ghost_mat_t *localPart;
+	ghost_mat_t *remotePart;
+	ghost_context_t *context;
+	char *name;
+	void *data;
+	ghost_dummyfun_t *extraFun;
+	// TODO MPI-IO
+	ghost_kernel_t kernel;
 
 	// access functions
 	void       (*destroy) (ghost_mat_t *);
@@ -208,26 +220,9 @@ struct ghost_mat_t
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
 	void       (*split)(ghost_mat_t *, ghost_context_t *);
-	ghost_dummyfun_t *extraFun;
-	// TODO MPI-IO
-	ghost_kernel_t kernel;
 #ifdef OPENCL
 	cl_kernel clkernel;
 #endif
-	void *so;
-
-	ghost_midx_t *rowPerm;     // may be NULL
-	ghost_midx_t *invRowPerm;  // may be NULL
-
-	int symmetry;
-
-	ghost_mat_t *localPart;
-	ghost_mat_t *remotePart;
-
-	ghost_context_t *context;
-
-	char *name;
-	void *data;
 }; 
 
 struct ghost_spmf_plugin_t
@@ -411,5 +406,9 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
+void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *, void *s);
+void ghost_vecFromFunc(ghost_vec_t *v, ghost_context_t *, void (*func)(int,int,void*));
+void ghost_freeVec(ghost_vec_t *vec);
+void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
 
 #endif

@@ -857,3 +857,22 @@ void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 	else
 		vec->fromFile(vec,ctx,path,0);
 }
+void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *c, void *s)
+{
+	v->fromScalar(v,c,s);
+}
+
+void ghost_vecFromFunc(ghost_vec_t *v, ghost_context_t *c, void (*func)(int,int,void*))
+{
+	v->fromFunc(v,c,func);
+}
+
+void ghost_freeVec(ghost_vec_t *vec)
+{
+	vec->destroy(vec);
+}
+
+void ghost_matFromFile(ghost_mat_t *m, ghost_context_t *c, char *p)
+{
+	m->fromFile(m,c,p);
+}

@@ -1241,7 +1241,11 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nrows = lnrows;
 	} else {
+#ifdef MPI
 		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+#else
+		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
+#endif
 	}
 
 	return nrows;
@@ -1255,7 +1259,11 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nnz = lnnz;
 	} else {
+#ifdef MPI
 		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+#else
+		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");
+#endif
 	}
 
 	return nnz;
