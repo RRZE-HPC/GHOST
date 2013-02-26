@@ -40,7 +40,7 @@ endif
 ifeq ($(strip $(CUDA)),1)
 MAKROS+= -DCUDA
 LIBS  += -lcudart
-IPATH += -I$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cu
+IPATH += -isystem $(CUDA_HOME)/include -I $(strip $(GHOSTPATH))/include/ghost/cu
 LPATH +=  -L$(CUDA_HOME)/lib64
 endif
 

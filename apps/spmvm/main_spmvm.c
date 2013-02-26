@@ -78,7 +78,7 @@ int main( int argc, char* argv[] )
 #ifdef CHECK	
 	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
-//	ghost_printSysInfo();
+	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(context);
 	ghost_printMatrixInfo(mat);
