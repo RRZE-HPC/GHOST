@@ -8,7 +8,7 @@ WTV=0
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
-LIBS+=  -lghost
+LIBS+=  -lghost -lifcore
 
 ifeq ($(WDDT),1)
 LIBS+= $(DDT)/lib/64/libdmallocth.a 

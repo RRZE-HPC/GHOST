@@ -5,7 +5,7 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
-LIBS+=  -lghost
+LIBS+=  -lghost -lifcore
 
 ifeq ($(strip $(CUDA)),1)
 MAKROS+= -DCUDA
