@@ -219,6 +219,8 @@ install: all
 	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost/"
 	@cp -f $(PLUGINDIR)/*.so $(strip $(GHOSTPATH))/lib/ghost
 	@cp -f $(PLUGINDIR)/*/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
+	@echo "==> Install module files to $(strip $(GHOSTPATH))/lib/ghost/"
+	@cp -f $(MODDIR)/*.mod $(strip $(GHOSTPATH))/lib/ghost
 
 uninstall: 
 	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
