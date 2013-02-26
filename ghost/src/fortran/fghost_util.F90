@@ -32,15 +32,16 @@ INTEGER(c_int) FUNCTION ghost_getMatNnz(mat) BIND(C, name='ghost_getMatNnz')
 END FUNCTION ghost_getMatNnz
 
 !SUBROUTINE ghost_printHeader(string)
-REAL(c_double) FUNCTION ghost_bench_spmvm(lhs,ctx,rhs,spmvmOptions,nIter) &
+REAL(c_double) FUNCTION ghost_bench_spmvm(ctx,lhs,mat,rhs,spmvmOptions,nIter) &
         BIND(C,name='ghost_bench_spmvm')
   USE ghost_types
   USE, INTRINSIC :: iso_c_binding
   IMPLICIT NONE
+  TYPE(ghost_mat_t), intent(in) :: mat
   TYPE(ghost_vec_t), intent(in) :: rhs
   TYPE(ghost_vec_t), intent(out) :: lhs
   TYPE(ghost_context_t), intent(in) :: ctx
-  TYPE(c_ptr), value :: spmvmOptions
+  INTEGER(c_int) :: spmvmOptions
   INTEGER(c_int), value :: nIter
 END FUNCTION ghost_bench_spmvm
 
