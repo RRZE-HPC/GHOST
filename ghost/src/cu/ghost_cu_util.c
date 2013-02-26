@@ -75,15 +75,15 @@ void CU_finish()
 }
 
 
-/*void CU_uploadVector( ghost_vec_t *vec )
+void CU_uploadVector( ghost_vec_t *vec )
 {
-	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*sizeof(ghost_vdat_t));
+	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 void CU_downloadVector( ghost_vec_t *vec )
 {
-	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*sizeof(ghost_vdat_t));
-}*/
+	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+}
 
 static int stringcmp(const void *x, const void *y)
 {
