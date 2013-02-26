@@ -139,10 +139,6 @@ $(OBJDIR)/%.o: %.F90 config.mk
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-$(OBJDIR)/%.mod.o: %.F90 config.mk
-	@echo "==> Compile module $< -> $@"
-	@$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
-
 ifeq ($(strip $(CUDA)),1)
 $(C_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile complex float variant $< -> $@"

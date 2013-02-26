@@ -1,5 +1,6 @@
 ifeq ($(strip $(MPI)),1)
 CC = mpicc
+FC = mpiifort
 else
 CC = icc
 FC = ifort
@@ -29,5 +30,5 @@ CFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
 FFLAGS += -g -O0
 else
 CFLAGS += -O3 -Wall -Werror-all -Wremarks -Wcheck -diag-disable 981
-FFLAGS += -O3 -Wall -Werror-all -Wremarks -Wchec
+FFLAGS += -O3 -warn all
 endif

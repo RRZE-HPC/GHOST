@@ -27,7 +27,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	static MPI_Request *request;
 	static MPI_Status  *status;
 
-	size_t sizeofRHS;
+	static size_t sizeofRHS;
 
 	if (init_kernel==1){
 		me = ghost_getRank();
