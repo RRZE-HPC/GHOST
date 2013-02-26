@@ -145,14 +145,15 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrix
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
+	mat->context = ctx;
 #ifdef MPI
 	
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
-	mat->localPart = ghost_initMatrix(&mat->traits[1]);
+	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO traits[1]
 	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->fromCRS(mat->localPart,crsMat->localPart->data);
 
-	mat->remotePart = ghost_initMatrix(&mat->traits[2]);
+	mat->remotePart = ghost_initMatrix(&mat->traits[0]); // TODO traits[2]
 	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
 
 #ifdef OPENCL
