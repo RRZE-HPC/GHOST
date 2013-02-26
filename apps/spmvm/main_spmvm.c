@@ -26,7 +26,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 2;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 
@@ -67,7 +67,6 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
-	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 	
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);

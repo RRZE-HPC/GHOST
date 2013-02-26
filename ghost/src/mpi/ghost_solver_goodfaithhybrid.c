@@ -75,7 +75,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
-			memcpy(work+to_PE*max_dues*sizeofRHS+i*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
+			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
 
