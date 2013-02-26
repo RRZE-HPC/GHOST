@@ -73,13 +73,13 @@ INTEGER(c_int) :: isView
 
 ! TODO
 #ifdef OPENCL
-#error "not implemented in Fortran interface"
-cl_mem CL_val_gpu;
+!#error "not implemented in Fortran interface"
+!cl_mem CL_val_gpu;
 #endif
         
 #ifdef CUDA
-#error "not implemented in Fortran interface"
-void * CU_val;
+!#error "not implemented in Fortran interface"
+!void * CU_val;
 #endif
 END TYPE ghost_vec_t
 
