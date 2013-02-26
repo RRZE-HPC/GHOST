@@ -67,6 +67,7 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
+	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 	
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
