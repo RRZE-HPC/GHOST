@@ -41,7 +41,8 @@ void * CU_allocDeviceMemory( size_t bytesize )
 
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
 {
-	CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
+	if (bytesize > 0)
+		CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
 }
 
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
@@ -56,7 +57,8 @@ void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
 
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
 {
-	CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
+	if (bytesize > 0)
+		CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
 }
 
 void CU_freeDeviceMemory(void * mem)

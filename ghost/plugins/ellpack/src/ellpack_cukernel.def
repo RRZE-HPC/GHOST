@@ -10,17 +10,13 @@ __global__ void FUNCTION_NAME(ELLPACK_kernel,prefix)(vecdt *lhs, vecdt *rhs, int
 		vecdt tmp = FUNCTION_NAME(ZERO,prefix);
 
 		for (j=0; j<rowlen[i]; j++) {
-			tmp = FUNCTION_NAME(ADD,prefix)(
-					tmp, FUNCTION_NAME(MUL,prefix)(FUNCTION_NAME(INIT,prefix)(CUREAL(val[i + j*nrowspadded]),CUIMAG(val[i + j*nrowspadded])), rhs[col[i + j*nrowspadded]]));
+			tmp = FUNCTION_NAME(ADD,prefix)(tmp, FUNCTION_NAME(MUL,prefix)(FUNCTION_NAME(INIT,prefix)(CUREAL(val[i + j*nrowspadded]),CUIMAG(val[i + j*nrowspadded])), rhs[col[i + j*nrowspadded]]));
 		}
 		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] = FUNCTION_NAME(ADD,prefix)(lhs[i], tmp);
 		else 
 			lhs[i] = tmp;
-
 	}
-
-
 }
 
 

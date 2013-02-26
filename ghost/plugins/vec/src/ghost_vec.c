@@ -536,11 +536,13 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	*nodeVec = vec->clone(vec);
 #endif
 
-#ifdef OPENCL // TODO depending on flag
-	CL_uploadVector(*nodeVec);
+#ifdef OPENCL
+	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
+		CL_uploadVector(*nodeVec);
 #endif
-#ifdef CUDA // TODO depending on flag
-	vec->CUupload(*nodeVec);
+#ifdef CUDA
+	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
+		vec->CUupload(*nodeVec);
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");

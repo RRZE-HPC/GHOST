@@ -12,8 +12,8 @@ void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize);
 void CU_freeDeviceMemory(void * mem);
 void CU_barrier();
 void CU_finish();
-//void CU_uploadVector( ghost_vec_t *vec );
-//void CU_downloadVector( ghost_vec_t *vec );
+void CU_uploadVector( ghost_vec_t *vec );
+void CU_downloadVector( ghost_vec_t *vec );
 const char * CU_getVersion();
 ghost_acc_info_t *CU_getDeviceInfo();
 

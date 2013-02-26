@@ -3,6 +3,8 @@
 #include "ghost_mat.h"
 #include "ghost_util.h"
 
+#include <libgen.h>
+
 #ifdef CUDA
 #include "private/bjds_cukernel.h"
 #endif
@@ -107,10 +109,14 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 
 static ghost_mnnz_t BJDS_nnz(ghost_mat_t *mat)
 {
+	if (mat->data == NULL)
+		return -1;
 	return BJDS(mat)->nnz;
 }
 static ghost_midx_t BJDS_nrows(ghost_mat_t *mat)
 {
+	if (mat->data == NULL)
+		return -1;
 	return BJDS(mat)->nrows;
 }
 static ghost_midx_t BJDS_ncols(ghost_mat_t *mat)
@@ -178,6 +184,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 	mat->context = ctx;
+	mat->name = basename(matrixPath);
 
 #ifdef MPI
 	
@@ -189,36 +196,34 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]); // TODO traits[2]
 	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
 
+
 #ifdef OPENCL
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			mat->CLupload(mat);
 		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 			mat->localPart->CLupload(mat->localPart);
 		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
 			mat->remotePart->CLupload(mat->remotePart);
 #endif
 #ifdef CUDA
-		if (!(mat->traits->flags & GHOST_SPM_HOST))
-			mat->CUupload(mat);
 		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 			mat->localPart->CUupload(mat->localPart);
 		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
 			mat->remotePart->CUupload(mat->remotePart);
 #endif
 #endif
-	
 
 	mat->symmetry = crsMat->symmetry;
 	mat->fromCRS(mat,crsMat->data);
-
-
-
 	crsMat->destroy(crsMat);
-
-#ifdef CUDA
-	if (!(mat->traits->flags & GHOST_SPM_HOST))
-		mat->CUupload(mat);
+	
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			mat->CLupload(mat);
 #endif
+#ifdef CUDA
+		if (!(mat->traits->flags & GHOST_SPM_HOST))
+			mat->CUupload(mat);
+#endif
+
 	DEBUG_LOG(1,"BJDS matrix successfully created");
 }
 

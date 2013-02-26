@@ -142,6 +142,7 @@ static size_t ELLPACK_byteSize (ghost_mat_t *mat)
 
 static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
+	DEBUG_LOG(1,"Creating ELLPACK matrix from binary file");
 	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
@@ -156,17 +157,15 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrix
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]); // TODO traits[2]
 	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
 
+
 #ifdef OPENCL
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			mat->CLupload(mat);
 		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 			mat->localPart->CLupload(mat->localPart);
 		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
 			mat->remotePart->CLupload(mat->remotePart);
 #endif
 #ifdef CUDA
-		if (!(mat->traits->flags & GHOST_SPM_HOST))
-			mat->CUupload(mat);
+	DEBUG_LOG(1,"Uploading the matrices to the CUDA device");
 		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 			mat->localPart->CUupload(mat->localPart);
 		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
@@ -174,14 +173,19 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrix
 #endif
 #endif
 
+
 	mat->symmetry = crsMat->symmetry;
 	mat->fromCRS(mat,crsMat->data);
-
 	crsMat->destroy(crsMat);
 
+#ifdef OPENCL
+		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+			mat->CLupload(mat);
+#endif
 #ifdef CUDA
-	if (!(mat->traits->flags & GHOST_SPM_HOST))
-		mat->CUupload(mat);
+	DEBUG_LOG(1,"Uploading the matrices to the CUDA device");
+		if (!(mat->traits->flags & GHOST_SPM_HOST))
+			mat->CUupload(mat);
 #endif
 }
 
