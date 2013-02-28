@@ -1,0 +1,49 @@
+2013 - 02 - xx  Moritz Kreutzer  <moritz.kreutzer@fau.de>
+	
+	Release Version 0.2
+
+
+	+ Arbitrary data types at runtime (currently only test with CRS for CPUs 
+			and BJDS for CUDA)
+
+	+ Initial Fortran support (thanks to Jonas)
+
+	+ Initial support for the IBM Power architecture
+
+	+ Vectors:
+		+ Vectors now have a 'class-like' structure just as matrices
+		+ Added vector I/O
+		+ Added several initialization functions: fromScalar, fromFunc, 
+			fromFile, fromRand
+		+ Generalization of vectors to multi-vectors (further generaliztation
+			to dense matrices to come)
+
+	+ De-coupling of matrix from context
+
+	+ MPI-enabled operations
+		+ spMVM
+		+ dot product
+		+ normalize vector
+
+	+ CUDA+MPI-enabled operations
+		+ spMVM
+
+	+ Utility functions
+		+ ghost_pinThreads
+		+ ghost_printMatrixInfo
+		- ghost_printOptionsInfo
+
+	+ Utility macros
+		+ Manage data types: GHOST_REGISTER_DT_S/D/Z/C
+		+ Create matrix/vector traits: GHOST_M/VTRAITS_INIT
+
+	+ Many bugfixes and small improvements (check git log for details)
+
+
+
+2013 - 01 - 15  Moritz Kreutzer  <moritz.kreutzer@fau.de>
+	
+	Release Version 0.1a
+
+
+	+ Initial release
