@@ -12,4 +12,4 @@ LIKWID=0        # 0 = no instrumentation    | 1 = Likwid Marker API instrumentat
 DEBUG=0         # 0 = no DEBUG output       | >0 = level of DEBUG output
 
 GHOSTPATH=$(HOME)/local      # where to install ghost
-LIKWIDPATH=$(HOME)/local     # path to LIKWID installation (if enabled)
+LIKWIDPATH=/usr/local/     # path to LIKWID installation (if enabled)

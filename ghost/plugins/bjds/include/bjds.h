@@ -16,7 +16,7 @@
 #elif defined (VSX)
 #define BJDS_LEN 2
 #else
-#define BJDS_LEN 1
+#define BJDS_LEN 4
 #endif
 
 typedef struct 

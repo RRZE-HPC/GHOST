@@ -18,6 +18,30 @@
 
 #define BJDS(mat) ((BJDS_TYPE *)(mat->data))
 
+#define vecdt float
+#define prefix s
+#include "bjds_kernel.def"
+#undef vecdt
+#undef prefix
+
+#define vecdt double
+#define prefix d
+#include "bjds_kernel.def"
+#undef vecdt
+#undef prefix
+
+#define vecdt complex double
+#define prefix z
+#include "bjds_kernel.def"
+#undef vecdt
+#undef prefix
+
+#define vecdt complex float
+#define prefix c
+#include "bjds_kernel.def"
+#undef vecdt
+#undef prefix
+
 char name[] = "BJDS plugin for ghost";
 char version[] = "0.1a";
 char formatID[] = "BJDS";
@@ -516,37 +540,23 @@ static void BJDS_free(ghost_mat_t *mat)
 
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	ghost_midx_t c,j,i;
-	double tmp[BJDS_LEN];
-   double *rhsv = (double *)rhs->val;	
-   double *lhsv = (double *)lhs->val;	
 
-#pragma omp parallel for schedule(runtime) private(j,tmp,i)
-	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
-	{ // loop over chunks
-		for (i=0; i<BJDS_LEN; i++)
-		{
-			tmp[i] = 0;
+	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
+
+	if (lhs->traits->nvecs == 1) {
+		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				c_BJDS_kernel_plain(mat,lhs,rhs,options);
+			else
+				s_BJDS_kernel_plain(mat,lhs,rhs,options);
+		} else {
+			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+				z_BJDS_kernel_plain(mat,lhs,rhs,options);
+			else
+				d_BJDS_kernel_plain(mat,lhs,rhs,options);
 		}
-
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])/BJDS_LEN; j++) 
-		{ // loop inside chunk
-			for (i=0; i<BJDS_LEN; i++)
-			{
-				tmp[i] += (double)BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] * rhsv[BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]];
-			}
-
-		}
-		for (i=0; i<BJDS_LEN; i++)
-		{
-			if (c*BJDS_LEN+i < BJDS(mat)->nrows) {
-				if (options & GHOST_SPMVM_AXPY)
-					lhsv[c*BJDS_LEN+i] += tmp[i];
-				else
-					lhsv[c*BJDS_LEN+i] = tmp[i];
-			}
-
-		}
+	} else {
+		ABORT("There is no multivec variant for BJDS");
 	}
 }
 
