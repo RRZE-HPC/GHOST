@@ -3,6 +3,8 @@ Version 0.3
 - generalization of intrinsics kernels for arbitrary data types
 - first implementation of optionally asynchronous offload mechanism 
 	(test case: task mode spMVM kernel)
+	pthread_create-like call to start thread (supplying a function and a void pointer, returning handle)
+	use OpenMP threads for now
 - add shift to matrix and apply at spMVM, option: GHOST_SPM_(NO)SHIFT
 (- threaded incomplete factorization)
 - sparse matrix addition with a pre-factor
