@@ -1,7 +1,7 @@
 COMPILER=ICC    # one of: ICC, GCC, XLC
 LIBTYPE=shared  # static or shared (default)
 LONGIDX=0       # 0/1 = indices are 32/64 bit integers
-MPI=0           # 0 = no MPI support        | 1 = with MPI support
+MPI=1           # 0 = no MPI support        | 1 = with MPI support
 VSX=0           # 0 = no VSX kernels        | 1 = build VSX kernels
 MIC=0           # 0 = no MIC kernels        | 1 = build MIC kernels
 AVX=0           # 0 = no AVX kernels        | 1 = build AVX kernels
