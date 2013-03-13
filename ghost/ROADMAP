@@ -3,8 +3,20 @@ Version 0.3
 - generalization of intrinsics kernels for arbitrary data types
 - first implementation of optionally asynchronous offload mechanism 
 	(test case: task mode spMVM kernel)
-	pthread_create-like call to start thread (supplying a function and a void pointer, returning handle)
-	use OpenMP threads for now
+	- pthread_create-like call to start thread (supplying a function and a void pointer, returning handle)
+	- use OpenMP threads for now
+		+ bitfield: GHOST_THREAD_ASYNC/_SYNC
+		+ function pointer
+		+ void pointer
+		+ string about what's done
+		+ return: integer (handle), unimport of sync
+		+ if SYNC: just call 
+
+	- problem: ghost_spawn cannot return for only one thread if it spawns two threads
+	- pure OpenMP seems impossible
+	- check whether it is safe and reliable to have an openmp parallel region inside a spawned pthread
+	- add another layer of abstraction, setting the flag when then lower function (the one calling pthread_create) has returned
+
 - add shift to matrix and apply at spMVM, option: GHOST_SPM_(NO)SHIFT
 (- threaded incomplete factorization)
 - sparse matrix addition with a pre-factor
@@ -12,6 +24,7 @@ Version 0.3
 - GitLab
 - vec->fromFunc: add a version where the loop is in the user-defined function
 	also: global instead of local index
+- instrumentation: prefix all region names with a number according to the level of instrumentation
 
 
 - support of special matrix structuresvec->fromFunc: add a version where the loop is in the user-defined function
