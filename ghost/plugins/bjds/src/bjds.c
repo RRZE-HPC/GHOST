@@ -154,6 +154,7 @@ static void BJDS_printInfo(ghost_mat_t *mat)
 	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
 	ghost_printLine("Nu",NULL,"%f",BJDS(mat)->nu);
 	ghost_printLine("Mu",NULL,"%f",BJDS(mat)->mu);
+	ghost_printLine("Beta",NULL,"%f",BJDS(mat)->beta);
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		ghost_printLine("Sorted",NULL,"yes");
 		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->traits->aux));
@@ -345,10 +346,12 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 	ghost_midx_t chunkMin = cr->ncols;
 	ghost_midx_t chunkLen = 0;
+	ghost_midx_t chunkEnts = 0;
 	double chunkAvg = 0.;
 	ghost_midx_t curChunk = 1;
 	BJDS(mat)->nu = 0.;
 	BJDS(mat)->mu = 0.;
+	BJDS(mat)->beta = 0.;
 
 	for (i=0; i<BJDS(mat)->nrowsPadded; i++) {
 		if (i<cr->nrows) {
@@ -364,6 +367,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		chunkMin = BJDS(mat)->rowLen[i]<chunkMin?BJDS(mat)->rowLen[i]:chunkMin;
 		chunkLen = BJDS(mat)->rowLen[i]>chunkLen?BJDS(mat)->rowLen[i]:chunkLen;
 		chunkAvg += BJDS(mat)->rowLen[i];
+		chunkEnts += BJDS(mat)->rowLen[i];
 
 		if ((i+1)%BJDS_LEN == 0) {
 			chunkAvg /= BJDS_LEN;
@@ -375,15 +379,18 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 			BJDS(mat)->nu += (double)chunkMin/chunkLen;
 			BJDS(mat)->mu += (double)chunkAvg/chunkLen;
+			BJDS(mat)->beta += chunkEnts*1.0/(chunkLen*BJDS_LEN);
 
 			chunkMin = cr->ncols;
 			chunkLen = 0;
 			chunkAvg = 0;
 			curChunk++;
+			chunkEnts = 0;
 		}
 	}
 	BJDS(mat)->nu /= (double)nChunks;
 	BJDS(mat)->mu /= (double)nChunks;
+	BJDS(mat)->beta /= (double)nChunks;
 
 	BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
@@ -705,8 +712,10 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 			offs += 8;
 		}
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
+		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
+		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
+			_mm512_store_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
+			_mm512_store_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
 		} else {
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp1);
 			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],tmp2);
