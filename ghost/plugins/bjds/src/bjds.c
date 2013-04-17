@@ -300,6 +300,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 			rowSort[i].row = i;
 			rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
 		}
+		qsort( rowSort+c*sortBlock, cr->nrows-c*sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 
 		/* sort within same rowlength with asceding row number #################### */
 		/*i=0;
@@ -379,7 +380,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 			BJDS(mat)->nu += (double)chunkMin/chunkLen;
 			BJDS(mat)->mu += (double)chunkAvg/chunkLen;
-			BJDS(mat)->beta += chunkEnts*1.0/(chunkLen*BJDS_LEN);
+			BJDS(mat)->beta += (double)chunkEnts/(chunkLen*BJDS_LEN);
 
 			chunkMin = cr->ncols;
 			chunkLen = 0;
@@ -687,8 +688,9 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 	__m512d val;
 	__m512d rhs;
 	__m512i idx;
+	UNUSED(invec);
 
-#pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,val,rhs,idx,offs)
+#pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,idx,val,rhs,offs)
 	for (c=0; c<BJDS(mat)->nrowsPadded>>4; c++) 
 	{ // loop over chunks
 		tmp1 = _mm512_setzero_pd(); // tmp1 = 0
@@ -700,6 +702,7 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
 			idx = _mm512_load_epi32(&BJDS(mat)->col[offs]);
 			rhs = _mm512_i32logather_pd(idx,invec->val,8);
+			//rhs = _mm512_set1_pd(invec->val[j]);
 			tmp1 = _mm512_add_pd(tmp1,_mm512_mul_pd(val,rhs));
 
 			offs += 8;
@@ -707,6 +710,7 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
 			idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
 			rhs = _mm512_i32logather_pd(idx,invec->val,8);
+			//rhs = _mm512_set1_pd(invec->val[j]);
 			tmp2 = _mm512_add_pd(tmp2,_mm512_mul_pd(val,rhs));
 
 			offs += 8;
