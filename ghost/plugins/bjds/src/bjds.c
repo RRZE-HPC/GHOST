@@ -348,6 +348,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_midx_t chunkMin = cr->ncols;
 	ghost_midx_t chunkLen = 0;
 	ghost_midx_t chunkEnts = 0;
+	ghost_mnnz_t nnz = 0;
 	double chunkAvg = 0.;
 	ghost_midx_t curChunk = 1;
 	BJDS(mat)->nu = 0.;
@@ -363,6 +364,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		} else {
 			BJDS(mat)->rowLen[i] = 0;
 		}
+		nnz += BJDS(mat)->rowLen[i];
 
 
 		chunkMin = BJDS(mat)->rowLen[i]<chunkMin?BJDS(mat)->rowLen[i]:chunkMin;
@@ -371,7 +373,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		chunkEnts += BJDS(mat)->rowLen[i];
 
 		if ((i+1)%BJDS_LEN == 0) {
-			chunkAvg /= BJDS_LEN;
+			chunkAvg /= (double)BJDS_LEN;
 
 			BJDS(mat)->nEnts += BJDS_LEN*chunkLen;
 			BJDS(mat)->chunkStart[curChunk] = BJDS(mat)->nEnts;
@@ -379,8 +381,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 			BJDS(mat)->chunkLen[curChunk-1] = chunkLen;
 
 			BJDS(mat)->nu += (double)chunkMin/chunkLen;
-			BJDS(mat)->mu += (double)chunkAvg/chunkLen;
-			BJDS(mat)->beta += (double)chunkEnts/(chunkLen*BJDS_LEN);
+			BJDS(mat)->mu += (double)chunkAvg*1.0/(double)chunkLen;
 
 			chunkMin = cr->ncols;
 			chunkLen = 0;
@@ -391,7 +392,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 	BJDS(mat)->nu /= (double)nChunks;
 	BJDS(mat)->mu /= (double)nChunks;
-	BJDS(mat)->beta /= (double)nChunks;
+	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
 	BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
@@ -611,7 +612,7 @@ static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 	__m256d rhs;
 	__m128d rhstmp;
 
-#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs,rhstmp)
+#pragma omp parallel for schedule(runtime) private(j,tmp,val,offs,rhs,rhstmp)
 	for (c=0; c<BJDS(mat)->nrowsPadded>>2; c++) 
 	{ // loop over chunks
 		tmp = _mm256_setzero_pd(); // tmp = 0
