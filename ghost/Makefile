@@ -16,6 +16,7 @@ PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
 IPATH     += -I./include/ -I./include/fortran/
+Q          = @ 
 
 OBJS	=	$(COBJS) $(FMODULES) $(FOBJS) 
 FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))
@@ -73,7 +74,7 @@ endif
 
 LIBGHOST=libghost.$(SUFFIX)
 
-MAKROS+= -DDEBUG=$(DEBUG)
+MAKROS+= -DDEBUG=$(strip $(DEBUG))
 MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
 MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
 
@@ -113,45 +114,45 @@ ifeq ($(strip $(CUDA)),1)
 	$(eval objs += $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.cu" -printf "./obj/$(dt)/%f " | sed 's/\.cu/\.cu.o/g'))
 endif
 	@echo "==> Create plugin $(objs) -> $@"
-	@$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
+	${Q}$(CC) $(CFLAGS) $(SHAREDFLAG) ${MAKROS} ${IPATH} -o $@ $(objs)
 	
 $(C_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex float variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
+	${Q}$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
 
 $(D_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
+	${Q}$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
 
 $(S_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile float variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_S  ${IPATH} -o $@ -c $<
+	${Q}$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_S  ${IPATH} -o $@ -c $<
 
 $(Z_OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile complex double variant $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
+	${Q}$(CC) $(CFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
-	@$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	${Q}$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.F90 config.mk
 	@echo "==> Compile $< -> $@"
-	@$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	${Q}$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 ifeq ($(strip $(CUDA)),1)
 $(C_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile complex float variant $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
+	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
 $(D_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile double variant $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
+	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_D ${IPATH} -o $@ -c $<
 $(S_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile float variant $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_S ${IPATH} -o $@ -c $<
+	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_S ${IPATH} -o $@ -c $<
 $(Z_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile complex double variant $< -> $@"
-	@$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
+	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_Z ${IPATH} -o $@ -c $<
 endif
 
 #$(FORMATS_H): config.mk
@@ -183,12 +184,12 @@ $(MODDIR):
 ifeq ($(strip $(LIBTYPE)),static)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create static library $(LIBGHOST)"
-	@ar rcs  $(LIBGHOST) $^
+	${Q}ar rcs  $(LIBGHOST) $^
 endif
 ifeq ($(strip $(LIBTYPE)),shared)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create shared library $(LIBGHOST)"
-	@$(CC) $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
+	${Q}$(CC) $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
 endif
 
 clean:
