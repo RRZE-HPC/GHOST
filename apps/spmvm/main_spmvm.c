@@ -13,7 +13,7 @@
 
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_S(vecdt)
+GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 static void rhsVal (int i, int v, void *val) 
@@ -102,7 +102,7 @@ int main( int argc, char* argv[] )
 			goldLHS->entry(goldLHS,i,&ref);
 			lhs->entry(lhs,i,&res);
 		
-			mytol = 1e-8 * mat->rowLen(mat,i);
+			mytol = 1e-7 * mat->rowLen(mat,i);
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){
 				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
