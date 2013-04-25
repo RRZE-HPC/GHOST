@@ -21,11 +21,12 @@ Version 0.3
 (- threaded incomplete factorization)
 - sparse matrix addition with a pre-factor
 	special x-macro versions for +/-1
-- GitLab
+- GitLab or something similar
 - vec->fromFunc: add a version where the loop is in the user-defined function
 	also: global instead of local index
 - instrumentation: prefix all region names with a number according to the level of instrumentation
 
 
-- support of special matrix structuresvec->fromFunc: add a version where the loop is in the user-defined function
-	also: global instead of local index(const. diagonals etc.)
+Version x.x
+
+- support of special matrix structures
