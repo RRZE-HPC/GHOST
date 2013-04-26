@@ -1,0 +1,22 @@
+#%Module
+#
+# development version of ghost
+#
+
+proc ModulesHelp { } {
+        puts stderr "\tSets up the environment for the development version of the ghost library\n"
+        puts stderr "\t- LD_LIBRARY_PATH"
+}
+
+module-whatis   "sets up the environment for the development version of the ghost library"
+
+set          pkghome          /apps/ghost/devel
+
+setenv       GHOST_LIBDIR    "$pkghome/lib"
+setenv       GHOST_LIB       "-L${pkghome}/lib"
+setenv       GHOST_INCDIR    "$pkghome/include"
+setenv       GHOST_INC       "-I${pkghome}/include/ghost"
+
+prepend-path LD_LIBRARY_PATH  $pkghome/lib
+
+source $env(MODULESHOME)/modincludes/info_logging.tcl
