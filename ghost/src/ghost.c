@@ -36,6 +36,8 @@
 static int MPIwasInitialized;
 #endif
 
+extern ghost_threadstate_t *threadpool;
+
 /*
 static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 {
@@ -272,6 +274,17 @@ int ghost_init(int argc, char **argv)
 #endif
 
 //	options = ghostOptions;
+
+	ghost_setCore(0);
+
+
+	threadpool = (ghost_threadstate_t *)allocateMemory(sizeof(ghost_threadstate_t)*ghost_getNumberOfThreads(),"threadpool");
+	threadpool[0].state = GHOST_THREAD_RUNNING;
+	threadpool[0].desc = "main";
+	for (int i=1; i<ghost_getNumberOfThreads(); i++) {
+		threadpool[i].state = GHOST_THREAD_HALTED;
+	}
+
 
 	return me;
 }

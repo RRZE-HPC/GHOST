@@ -41,6 +41,11 @@
 
 static int allocatedMem;
 
+ghost_threadstate_t* threadpool = NULL;
+static ghost_task_t *tasklist = NULL;
+static int nTasks = 0;
+
+
 static double ghost_wctime()
 {
 	struct timeval tp;
@@ -1267,4 +1272,78 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	}
 
 	return nnz;
+}
+
+static void *ghost_enterTask(void *arg)
+{
+	ghost_task_args_t *args = (ghost_task_args_t *)arg;
+
+	omp_set_num_threads(args->nThreads);
+
+#pragma omp parallel
+	ghost_setCore(args->coreList[omp_get_thread_num()]);	
+	
+	args->func(args->arg);
+
+
+	return NULL;
+}
+
+
+ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, int *coreList, char *desc, int flags)
+{
+
+	DEBUG_LOG(0,"There are %d threads available",ghost_getNumberOfThreads());
+	DEBUG_LOG(0,"Starting %s task %s which requires %d threads",flags&GHOST_TASK_ASYNC?"asynchronous":"synchronous",desc,nThreads);
+
+
+	int i;
+
+	if (coreList == NULL) {
+		DEBUG_LOG(0,"Selecting cores for this task");
+		coreList = (int *)allocateMemory(sizeof(int)*nThreads,"coreList");
+
+		int c = 0;
+
+		for (i=0; i<ghost_getNumberOfThreads() && c<nThreads; i++) {
+			if (threadpool[i].state == GHOST_THREAD_HALTED) {
+				DEBUG_LOG(0,"Thread %d running on core %d",c,i);
+				coreList[c++] = i;
+			}
+		}
+
+	}
+	pthread_t tid;
+	ghost_task_args_t *args = (ghost_task_args_t *)malloc(sizeof(ghost_task_args_t));
+	args->nThreads = nThreads;
+	args->func = func;
+	args->arg = arg;
+	args->coreList = coreList;
+
+	pthread_create(&tid,NULL,&ghost_enterTask,args);
+
+
+	nTasks++;
+	tasklist = realloc(tasklist,sizeof(ghost_task_t)*nTasks);
+	tasklist[nTasks-1].desc = desc;
+	tasklist[nTasks-1].flags = flags;
+	tasklist[nTasks-1].tid = tid;
+
+	
+
+	if (flags & GHOST_TASK_SYNC)
+		pthread_join(tid,NULL);
+
+
+	// register task
+
+	return tasklist[nTasks-1];
+
+}
+
+void ghost_waitTask(ghost_task_t *task)
+{
+	pthread_join(task->tid,NULL);
+
+
 }

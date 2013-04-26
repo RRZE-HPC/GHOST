@@ -2,6 +2,9 @@
 #include <ghost.h>
 #include <ghost_util.h>
 
+#include <omp.h>
+#include <unistd.h>
+
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
@@ -10,6 +13,19 @@ static void rhsVal (int i, int v, void *val)
 	UNUSED(i);
 	UNUSED(v);
 	*(vecdt_t *)val = 1+I*1;//i + (vecdt_t)1.0 + I*i;
+}
+
+static void *mywork(void *nt)
+{
+	sleep(2);
+	printf("in mywork after sleeping with arg %d\n",*(int *)nt);
+
+#pragma omp parallel 
+	printf("in mywork: openmp thread no. %d on core %d\n",omp_get_thread_num(),ghost_getCore());
+
+	return NULL;
+
+
 }
 
 int main( int argc, char* argv[] ) 
@@ -31,6 +47,9 @@ int main( int argc, char* argv[] )
 
 	ghost_init(argc,argv);
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
+
+	int arg = 42;
+	ghost_task_t mytask = ghost_spawnTask(&mywork,&arg,3,NULL,"mytask",GHOST_TASK_ASYNC);
 
 	ghost_readMatFileHeader(argv[1],&fileheader);
 
@@ -63,6 +82,7 @@ int main( int argc, char* argv[] )
 	ghost_freeContext(ctx);
 
 	ghost_finish();
+	ghost_waitTask(&mytask);
 
 	return EXIT_SUCCESS;
 }

@@ -7,6 +7,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <pthread.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
@@ -127,6 +128,28 @@ typedef struct
 	int T[3];
 } 
 GHOST_SPM_GPUFORMATS;
+
+typedef struct
+{
+	int state;
+	char *desc;
+} ghost_threadstate_t;
+
+typedef struct
+{
+	void *(*func) (void *);
+	void *arg;
+   	int nThreads;
+	int *coreList;
+} ghost_task_args_t;
+
+typedef struct
+{
+	char *desc;
+	int flags;
+	pthread_t tid;
+} ghost_task_t;
+	
 
 
 /*typedef struct{
