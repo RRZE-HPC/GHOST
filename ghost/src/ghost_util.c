@@ -1327,6 +1327,7 @@ ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, vo
 			for (i=0; i<ghost_getNumberOfThreads() && c<nThreads; i++) {
 				if (flags & GHOST_TASK_EXCLUSIVE && threadpool[i].state == GHOST_THREAD_RUNNING)
 					continue;
+
 				DEBUG_LOG(2,"Thread %d running on core %d",c,i);
 				args->coreList[c++] = i;
 			}
