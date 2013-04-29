@@ -148,6 +148,8 @@ typedef struct
 	char *desc;
 	int flags;
 	pthread_t tid;
+	int *coreList;
+	int nThreads;
 } ghost_task_t;
 	
 
