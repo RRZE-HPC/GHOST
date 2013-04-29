@@ -96,7 +96,7 @@ int main( int argc, char* argv[] )
 	lhs->fromScalar(lhs,ctx,&zero);
 	rhs->fromFunc(rhs,ctx,rhsVal);*/
 	createDataArgs args = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = argv[1], .lhsInit = &zero, .rhsInit = rhsVal};
-	ghost_task_t cdTask = ghost_spawnTask(&createDataTask,&args,4,NULL,"create data structures",GHOST_TASK_ASYNC);
+	ghost_task_t cdTask = ghost_spawnTask(&createDataTask,&args,6,NULL,"create data structures",GHOST_TASK_ASYNC);
 	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();

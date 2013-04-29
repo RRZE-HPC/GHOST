@@ -1325,10 +1325,10 @@ ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, vo
 			int c = 0;
 
 			for (i=0; i<ghost_getNumberOfThreads() && c<nThreads; i++) {
-				if (threadpool[i].state == GHOST_THREAD_HALTED) {
-					DEBUG_LOG(0,"Thread %d running on core %d",c,i);
-					args->coreList[c++] = i;
-				}
+				if (flags & GHOST_TASK_EXCLUSIVE && threadpool[i].state == GHOST_THREAD_RUNNING)
+					continue;
+				DEBUG_LOG(2,"Thread %d running on core %d",c,i);
+				args->coreList[c++] = i;
 			}
 		} else {
 			args->coreList = (int *)affinity;
