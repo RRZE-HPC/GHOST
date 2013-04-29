@@ -1355,7 +1355,7 @@ ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, vo
 	if (flags & GHOST_TASK_SYNC)
 		ghost_waitTask(&tasklist[nTasks-1]);
 
-	omp_set_num_threads(ghost_getNumberOfThreads()-nThreads);
+	//omp_set_num_threads(ghost_getNumberOfThreads()-nThreads);
 
 	// register task
 

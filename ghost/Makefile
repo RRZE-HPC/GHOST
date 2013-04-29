@@ -43,20 +43,32 @@ IPATH += -I./include/mpi
 OBJS  += $(MPIOBJS)
 endif
 
-ifeq ($(AVX),2)
+ifeq ($(AVX),1)
 MAKROS+= -DAVX
 endif
+ifeq ($(AVX),2)
+MAKROS+= -DAVX_INTR
+endif
 
-ifeq ($(SSE),2)
+ifeq ($(SSE),1)
 MAKROS+= -DSSE
 endif
-
-ifeq ($(MIC),2)
-MAKROS+= -DMIC
+ifeq ($(SSE),2)
+MAKROS+= -DSSE_INTR
 endif
 
-ifeq ($(VSX),2)
+ifeq ($(MIC),1)
+MAKROS+= -DMIC
+endif
+ifeq ($(MIC),2)
+MAKROS+= -DMIC_INTR
+endif
+
+ifeq ($(VSX),1)
 MAKROS+= -DVSX
+endif
+ifeq ($(VSX),2)
+MAKROS+= -DVSX_INTR
 endif
 
 ifeq ($(OPENCL),1)

@@ -60,13 +60,13 @@ static void BJDS_CUupload(ghost_mat_t *mat);
 static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#ifdef SSE
+#ifdef SSE_INTR
 static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
-#ifdef AVX
+#ifdef AVX_INTR
 static void BJDS_kernel_AVX (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
-#ifdef MIC
+#ifdef MIC_INTR
 static void BJDS_kernel_MIC (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -76,7 +76,7 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 #ifdef CUDA
 static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
-#ifdef VSX
+#ifdef VSX_INTR
 static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 #endif
 
@@ -99,16 +99,16 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 	mat->byteSize   = &BJDS_byteSize;
 	mat->kernel     = &BJDS_kernel_plain;
 	mat->fromCRS    = &BJDS_fromCRS;
-#ifdef SSE
+#ifdef SSE_INTR
 	mat->kernel   = &BJDS_kernel_SSE;
 #endif
-#ifdef AVX
+#ifdef AVX_INTR
 	mat->kernel   = &BJDS_kernel_AVX;
 #endif
-#ifdef VSX
+#ifdef VSX_INTR
 	mat->kernel = &BJDS_kernel_VSX;
 #endif
-#ifdef MIC
+#ifdef MIC_INTR
 	mat->kernel   = &BJDS_kernel_MIC_16;
 	UNUSED(&BJDS_kernel_MIC);
 #endif
@@ -569,7 +569,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 	}
 }
 
-#ifdef SSE
+#ifdef SSE_INTR
 static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
 	ghost_midx_t c,j;
@@ -602,7 +602,7 @@ static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 }
 #endif
 
-#ifdef AVX
+#ifdef AVX_INTR
 static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
 	ghost_midx_t c,j;
@@ -639,7 +639,7 @@ static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 }
 #endif
 
-#ifdef MIC
+#ifdef MIC_INTR
 static void BJDS_kernel_MIC(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
 	ghost_midx_t c,j;
@@ -765,7 +765,7 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 }
 #endif
 
-#ifdef VSX
+#ifdef VSX_INTR
 static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
 	ghost_midx_t c,j;
