@@ -1,5 +1,21 @@
 include config.mk
-include include_$(strip $(COMPILER)).mk
+
+COMPILER:=$(strip $(COMPILER))
+LIBTYPE:=$(strip $(LIBTYPE))
+LONGIDX:=$(strip $(LONGIDX))
+MPI:=$(strip $(MPI))
+VSX:=$(strip $(VSX))
+MIC:=$(strip $(MIC))
+AVX:=$(strip $(AVX))
+SSE:=$(strip $(SSE))
+OPENCL:=$(strip $(OPENCL))
+CUDA:=$(strip $(CUDA))
+LIKWID:=$(strip $(LIKWID))
+DEBUG:=$(strip $(DEBUG))
+GHOSTPATH:=$(strip $(GHOSTPATH))
+LIKWIDPATH:=$(strip $(LIKWIDPATH))
+
+include include_$(COMPILER).mk
 
 .NOTPARALLEL: $(PLUGINS)
 
@@ -16,67 +32,67 @@ PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
 IPATH     += -I./include/ -I./include/fortran/
-Q          = @ 
+Q          =  
 
 OBJS	=	$(COBJS) $(FMODULES) $(FOBJS) 
 FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))
 
-ifeq ($(strip $(MPI)),1)
+ifeq ($(MPI),1)
 MAKROS+= -DMPI
 IPATH += -I./include/mpi
 OBJS  += $(MPIOBJS)
 endif
 
-ifeq ($(strip $(AVX)),1)
+ifeq ($(AVX),2)
 MAKROS+= -DAVX
 endif
 
-ifeq ($(strip $(SSE)),1)
+ifeq ($(SSE),2)
 MAKROS+= -DSSE
 endif
 
-ifeq ($(strip $(MIC)),1)
+ifeq ($(MIC),2)
 MAKROS+= -DMIC
 endif
 
-ifeq ($(strip $(VSX)),1)
+ifeq ($(VSX),2)
 MAKROS+= -DVSX
 endif
 
-ifeq ($(strip $(OPENCL)),1)
+ifeq ($(OPENCL),1)
 MAKROS+= -DOPENCL
 IPATH += -I$(CUDA_HOME)/include -I./include/cl
 OBJS  += $(CLOBJS)
 endif
 
-ifeq ($(strip $(CUDA)),1)
+ifeq ($(CUDA),1)
 include include_NVCC.mk
 MAKROS+= -DCUDA
 IPATH += -isystem $(CUDA_HOME)/include -I./include/cu
 OBJS  += $(CUOBJS)
 endif
 
-ifeq ($(strip $(LIKWID)),1)
+ifeq ($(LIKWID),1)
 MAKROS+= -DLIKWID_PERFMON
-IPATH += -I$(strip $(LIKWIDPATH))/include
+IPATH += -I$(LIKWIDPATH)/include
 endif
 
-ifeq ($(strip $(LONGIDX)),1)
+ifeq ($(LONGIDX),1)
 TYPES:= $(TYPES)"\#define GHOST_LONGIDX \n"
 endif
 
-ifeq ($(strip $(LIBTYPE)),static)
+ifeq ($(LIBTYPE),static)
 SUFFIX=a
 endif
-ifeq ($(strip $(LIBTYPE)),shared)
+ifeq ($(LIBTYPE),shared)
 SUFFIX=so
 endif
 
 LIBGHOST=libghost.$(SUFFIX)
 
-MAKROS+= -DDEBUG=$(strip $(DEBUG))
-MAKROS+= -DPLUGINPATH=\"$(strip $(GHOSTPATH))/lib/ghost/\"
-MAKROS+= -DHEADERPATH=\"$(strip $(GHOSTPATH))/include/ghost/\"
+MAKROS+= -DDEBUG=$(DEBUG)
+MAKROS+= -DPLUGINPATH=\"$(GHOSTPATH)/lib/ghost/\"
+MAKROS+= -DHEADERPATH=\"$(GHOSTPATH)/include/ghost/\"
 
 IPATH += $(addsuffix include/, $(addprefix -I, $(wildcard $(PLUGINDIR)/*/)))
 VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
@@ -90,7 +106,7 @@ PLUGINOBJS = $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard pl
 	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c)))) \
 	$(addprefix $(Z_OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard plugins/*/src/*.c))))
 
-ifeq ($(strip $(CUDA)),1)
+ifeq ($(CUDA),1)
 PLUGINOBJS += $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
 	$(addprefix $(D_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
 	$(addprefix $(S_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard plugins/*/src/*.cu)))) \
@@ -110,7 +126,7 @@ $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
 	$(eval pl := $(shell echo $(basename $(notdir $@)) | cut -c 3-))
 	$(eval objs := $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.c" -printf "./obj/$(dt)/%f " | sed 's/\.c/\.o/g'))
-ifeq ($(strip $(CUDA)),1)
+ifeq ($(CUDA),1)
 	$(eval objs += $(shell find $(PLUGINDIR)/$(pl)/src/ -name "*.cu" -printf "./obj/$(dt)/%f " | sed 's/\.cu/\.cu.o/g'))
 endif
 	@echo "==> Create plugin $(objs) -> $@"
@@ -140,7 +156,7 @@ $(OBJDIR)/%.o: %.F90 config.mk
 	@echo "==> Compile $< -> $@"
 	${Q}$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-ifeq ($(strip $(CUDA)),1)
+ifeq ($(CUDA),1)
 $(C_OBJDIR)/%.cu.o: %.cu config.mk
 	@echo "==> Compile complex float variant $< -> $@"
 	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} -DGHOST_DT_C ${IPATH} -o $@ -c $<
@@ -181,12 +197,12 @@ $(OBJDIR):
 $(MODDIR):
 	@mkdir $(MODDIR)
 
-ifeq ($(strip $(LIBTYPE)),static)
+ifeq ($(LIBTYPE),static)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create static library $(LIBGHOST)"
 	${Q}ar rcs  $(LIBGHOST) $^
 endif
-ifeq ($(strip $(LIBTYPE)),shared)
+ifeq ($(LIBTYPE),shared)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create shared library $(LIBGHOST)"
 	${Q}$(CC) $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
@@ -206,23 +222,23 @@ distclean: clean
 	@rm -f $(PLUGINDIR)/*.so
 
 install: all
-	@mkdir -p $(strip $(GHOSTPATH))/lib
-	@mkdir -p $(strip $(GHOSTPATH))/include/ghost
-	@mkdir -p $(strip $(GHOSTPATH))/lib/ghost
-	@echo "==> Install library to $(strip $(GHOSTPATH))/lib/"
-	@cp -f $(LIBGHOST) $(strip $(GHOSTPATH))/lib
-	@echo "==> Install headers to $(strip $(GHOSTPATH))/include/ghost/"
-	@cp -rf include/* $(strip $(GHOSTPATH))/include/ghost
-	@echo "==> Install plugins to $(strip $(GHOSTPATH))/lib/ghost/"
-	@cp -f $(PLUGINDIR)/*.so $(strip $(GHOSTPATH))/lib/ghost
-	@cp -f $(PLUGINDIR)/*/src/*.cl $(strip $(GHOSTPATH))/lib/ghost
-	@echo "==> Install module files to $(strip $(GHOSTPATH))/lib/ghost/"
-	@cp -f $(MODDIR)/*.mod $(strip $(GHOSTPATH))/lib/ghost
+	@mkdir -p $(GHOSTPATH)/lib
+	@mkdir -p $(GHOSTPATH)/include/ghost
+	@mkdir -p $(GHOSTPATH)/lib/ghost
+	@echo "==> Install library to $(GHOSTPATH)/lib/"
+	@cp -f $(LIBGHOST) $(GHOSTPATH)/lib
+	@echo "==> Install headers to $(GHOSTPATH)/include/ghost/"
+	@cp -rf include/* $(GHOSTPATH)/include/ghost
+	@echo "==> Install plugins to $(GHOSTPATH)/lib/ghost/"
+	@cp -f $(PLUGINDIR)/*.so $(GHOSTPATH)/lib/ghost
+	@cp -f $(PLUGINDIR)/*/src/*.cl $(GHOSTPATH)/lib/ghost
+	@echo "==> Install module files to $(GHOSTPATH)/lib/ghost/"
+	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost
 
 uninstall: 
-	@echo "==> Uninstall from $(strip $(GHOSTPATH))"
-	@rm -f $(strip $(GHOSTPATH))/lib/libghost.a
-	@rm -f $(strip $(GHOSTPATH))/lib/libghost.so
-	@rm -rf $(strip $(GHOSTPATH))/include/ghost/
-	@rm -rf $(strip $(GHOSTPATH))/lib/ghost/ 
+	@echo "==> Uninstall from $(GHOSTPATH)"
+	@rm -f $(GHOSTPATH)/lib/libghost.a
+	@rm -f $(GHOSTPATH)/lib/libghost.so
+	@rm -rf $(GHOSTPATH)/include/ghost/
+	@rm -rf $(GHOSTPATH)/lib/ghost/ 
 
