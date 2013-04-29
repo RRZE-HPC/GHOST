@@ -1,4 +1,4 @@
-ifeq ($(strip $(MPI)),1)
+ifeq ($(MPI),1)
 CC = mpicc
 FC = mpiifort
 else
@@ -13,19 +13,19 @@ SHAREDFLAG = -shared
 LIBS = -limf -lm
 
 
-ifeq ($(strip $(AVX)),1)
+ifeq ($(AVX),1)
 CFLAGS += -mavx
 endif
 
-ifeq ($(strip $(SSE)),1)
+ifeq ($(SSE),1)
 CFLAGS += -msse4.2
 endif
 
-ifeq ($(strip $(MIC)),1)
+ifeq ($(MIC),1)
 CFLAGS += -mmic
 endif
 
-ifneq ($(strip $(DEBUG)),0)
+ifneq ($(DEBUG),0)
 CFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
 FFLAGS += -g -O0
 else
