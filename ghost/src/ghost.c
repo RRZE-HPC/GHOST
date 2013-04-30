@@ -279,7 +279,7 @@ int ghost_init(int argc, char **argv)
 	threadpool = (ghost_threadstate_t *)allocateMemory(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads(),"threadpool");
 	threadpool[0].state = GHOST_THREAD_RUNNING;
 	threadpool[0].desc = "main";
-	for (int i=1; i<ghost_getNumberOfThreads(); i++) {
+	for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
 		threadpool[i].state = GHOST_THREAD_HALTED;
 	}
 
@@ -523,7 +523,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 #ifdef MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
 	context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
-//	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
+	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
 #else
 	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
