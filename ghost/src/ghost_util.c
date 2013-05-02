@@ -1302,33 +1302,23 @@ void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, in
 
 	int i;
 
-	/*	if (task->nThreads == GHOST_TASK_ALIKE)
-	{
-		task->nThreads = ((ghost_task_t *)affinity)->nThreads;
-		task->coreList = ((ghost_task_t *)affinity)->coreList;
+	if (task->coreList == NULL) {
+		DEBUG_LOG(1,"Auto-selecting cores for this task");
+		task->coreList = (int *)allocateMemory(sizeof(int)*task->nThreads,"coreList");
 
-		DEBUG_LOG(1,"Setting same number of threads and cores as in given task: %d",args->nThreads);
-	} else	
-	{*/
-	
-		if (task->coreList == NULL) {
-			DEBUG_LOG(1,"Auto-selecting cores for this task");
-			task->coreList = (int *)allocateMemory(sizeof(int)*task->nThreads,"coreList");
+		int c = 0;
 
-			int c = 0;
-
-			for (i=0; i<ghost_getNumberOfThreads() && c<task->nThreads; i++) {
-				if ((task->flags & GHOST_TASK_EXCLUSIVE) && (threadpool[i].state == GHOST_THREAD_RUNNING)) {
-					DEBUG_LOG(2,"Skipping core %d %d",i,threadpool[i].state);
-					continue;
-				}
-
-				DEBUG_LOG(2,"Thread %d running on core %d",c,i);
-				task->coreList[c++] = i;
+		for (i=0; i<ghost_getNumberOfThreads() && c<task->nThreads; i++) {
+			if ((task->flags & GHOST_TASK_EXCLUSIVE) && (threadpool[i].state == GHOST_THREAD_RUNNING)) {
+				DEBUG_LOG(2,"Skipping core %d %d",i,threadpool[i].state);
+				continue;
 			}
-		}
 
-//	}
+			DEBUG_LOG(2,"Thread %d running on core %d",c,i);
+			task->coreList[c++] = i;
+		}
+	}
+
 
 	DEBUG_LOG(2,"Calling pthread_create");	
 

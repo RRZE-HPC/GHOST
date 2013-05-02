@@ -125,6 +125,5 @@
 #define GHOST_TASK_ASYNC 1
 #define GHOST_TASK_SYNC 2
 #define GHOST_TASK_EXCLUSIVE 4
-#define GHOST_TASK_ALIKE -1
 
 #endif
