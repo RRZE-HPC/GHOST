@@ -277,7 +277,7 @@ int ghost_init(int argc, char **argv)
 
 	ghost_setCore(0);
 	threadpool = (ghost_threadstate_t *)allocateMemory(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads(),"threadpool");
-	threadpool[0].state = GHOST_THREAD_RUNNING;
+	threadpool[0].state = GHOST_THREAD_MGMT;
 	threadpool[0].desc = "main";
 	for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
 		threadpool[i].state = GHOST_THREAD_HALTED;

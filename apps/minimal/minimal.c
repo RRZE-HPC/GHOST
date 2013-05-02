@@ -31,19 +31,19 @@ typedef struct {
 	ghost_context_t *ctx;
 	ghost_mat_t *mat;
 	ghost_vec_t *lhs, *rhs;
-	char *matfile;
-	vecdt_t *lhsInit;
-	void (*rhsInit)(int,int,void*);
-} createDataArgs;
+	int *spmvmOptions;
+	int nIter;
+	double *time;
+} benchArgs;
 
 typedef struct {
 	ghost_context_t *ctx;
 	ghost_mat_t *mat;
 	ghost_vec_t *lhs, *rhs;
-	int *spmvmOptions;
-	int nIter;
-	double *time;
-} benchArgs;
+	char *matfile;
+	vecdt_t *lhsInit;
+	void (*rhsInit)(int,int,void*);
+} createDataArgs;
 
 
 static void *createDataTask(void *vargs)

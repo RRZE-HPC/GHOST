@@ -135,21 +135,16 @@ typedef struct
 	char *desc;
 } ghost_threadstate_t;
 
-typedef struct
-{
-	void *(*func) (void *);
-	void *arg;
-   	int nThreads;
-	int *coreList;
-} ghost_task_args_t;
 
 typedef struct
 {
-	char *desc;
+	const char *desc;
 	int flags;
 	pthread_t tid;
 	int *coreList;
 	int nThreads;
+	void *(*func) (void *);
+	void *arg;
 } ghost_task_t;
 	
 
