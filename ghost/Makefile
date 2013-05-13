@@ -47,28 +47,28 @@ ifeq ($(AVX),1)
 MAKROS+= -DAVX
 endif
 ifeq ($(AVX),2)
-MAKROS+= -DAVX_INTR
+MAKROS+= -DAVX -DAVX_INTR
 endif
 
 ifeq ($(SSE),1)
 MAKROS+= -DSSE
 endif
 ifeq ($(SSE),2)
-MAKROS+= -DSSE_INTR
+MAKROS+= -DSSE -DSSE_INTR
 endif
 
 ifeq ($(MIC),1)
 MAKROS+= -DMIC
 endif
 ifeq ($(MIC),2)
-MAKROS+= -DMIC_INTR
+MAKROS+= -DMIC -DMIC_INTR
 endif
 
 ifeq ($(VSX),1)
 MAKROS+= -DVSX
 endif
 ifeq ($(VSX),2)
-MAKROS+= -DVSX_INTR
+MAKROS+= -DVSX -DVSX_INTR
 endif
 
 ifeq ($(OPENCL),1)

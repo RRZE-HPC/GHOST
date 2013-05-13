@@ -108,10 +108,10 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 #ifdef VSX_INTR
 	mat->kernel = &BJDS_kernel_VSX;
 #endif
-#ifdef MIC_INTR
-	mat->kernel   = &BJDS_kernel_MIC_16;
-	UNUSED(&BJDS_kernel_MIC);
-#endif
+//#ifdef MIC_INTR
+//	mat->kernel   = &BJDS_kernel_MIC_16;
+//	UNUSED(&BJDS_kernel_MIC);
+//#endif
 #ifdef OPENCL
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &BJDS_kernel_CL;
@@ -556,13 +556,25 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
 				c_BJDS_kernel_plain(mat,lhs,rhs,options);
-			else
+			else {
 				s_BJDS_kernel_plain(mat,lhs,rhs,options);
+			}
 		} else {
 			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
 				z_BJDS_kernel_plain(mat,lhs,rhs,options);
-			else
+			else {
+#ifdef MIC_INTR
+				if ((mat->traits->datatype & GHOST_BINCRS_DT_REAL) && (mat->traits->datatype & GHOST_BINCRS_DT_DOUBLE)) {
+					UNUSED(&d_BJDS_kernel_plain);
+					BJDS_kernel_MIC_16(mat,lhs,rhs,options);
+				} else {
+					d_BJDS_kernel_plain(mat,lhs,rhs,options);
+				}
+
+#else
 				d_BJDS_kernel_plain(mat,lhs,rhs,options);
+#endif
+			}
 		}
 	} else {
 		ABORT("There is no multivec variant for BJDS");
@@ -673,9 +685,9 @@ static void BJDS_kernel_MIC(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 			offs += 8;
 		}
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&res->val[c*BJDS_LEN])));
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN])));
 		} else {
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],tmp);
 		}
 	}
 }
@@ -719,11 +731,11 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
 		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
-			_mm512_store_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
-			_mm512_store_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
+			_mm512_store_pd(&((double *)(res->val))[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN])));
+			_mm512_store_pd(&((double *)(res->val))[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN+8])));
 		} else {
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],tmp1);
-			_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],tmp2);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],tmp1);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN+8],tmp2);
 		}
 	}
 }

@@ -11,7 +11,7 @@
 #include <mpi.h>
 #endif
 
-#define CHECK // compare with reference solution
+//#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -25,7 +25,7 @@ typedef struct {
 	void (*rhsInit)(int,int,void*);
 } createDataArgs;
 
-
+/*
 static void *createDataTask(void *vargs)
 {
 	createDataArgs *args = (createDataArgs *)vargs;
@@ -34,7 +34,7 @@ static void *createDataTask(void *vargs)
 	args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
 
 	return NULL;
-}
+}*/
 
 static void rhsVal (int i, int v, void *val) 
 {
@@ -83,7 +83,7 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
-	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
+	//ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 	
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
@@ -91,15 +91,15 @@ int main( int argc, char* argv[] )
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);
 
-	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
+	//createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 	
-	int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
-	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
+	//int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
+	//ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
 
-	ghost_spawnTask(&cdTask);
-	/*mat->fromFile(mat,context,matrixPath);
+	//ghost_spawnTask(&cdTask);
+	mat->fromFile(mat,context,matrixPath);
 	lhs->fromScalar(lhs,context,&zero);
-	rhs->fromFunc(rhs,context,rhsVal);*/
+	rhs->fromFunc(rhs,context,rhsVal);
 
 #ifdef CHECK	
 	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
@@ -163,8 +163,8 @@ int main( int argc, char* argv[] )
 	}
 	ghost_printFooter();
 
-	lhs->destroy(lhs);
-	rhs->destroy(rhs);
+//	lhs->destroy(lhs);
+//	rhs->destroy(rhs);
 	ghost_freeContext( context );
 
 #ifdef CHECK

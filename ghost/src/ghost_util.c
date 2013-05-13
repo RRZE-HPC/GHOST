@@ -49,10 +49,31 @@ static int nTasks = 0;
 
 static double ghost_wctime()
 {
+/*	struct timespec ts;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
+	return (double)(ts.tv_sec + ts.tv_nsec/1.e9);*/
 	struct timeval tp;
 	gettimeofday(&tp, NULL);
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
+/*static double ghost_timediff(struct timespec start, struct timespec end)
+{
+	struct timespec tmp;
+	if (end.tv_nsec-start.tv_nsec < 0) {
+		tmp.tv_sec = end.tv_sec-start.tv_sec-1;
+		tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
+	} else {
+		tmp.tv_sec = end.tv_sec-start.tv_sec;
+		tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	
+	}
+
+	printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
+	return tmp.tv_sec + tmp.tv_nsec/1.e9;
+
+
+
+}*/
 
 void ghost_printHeader(const char *fmt, ...)
 {
@@ -834,6 +855,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 	int it;
 	double time = 0;
 	double oldtime=1e9;
+	//struct timespec end,start;
 
 	ghost_solver_t solver = NULL;
 
@@ -853,6 +875,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 #endif
 
 	for( it = 0; it < nIter; it++ ) {
+		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&start);
 		time = ghost_wctime();
 		solver(context,res,mat,invec,*spmvmOptions);
 
@@ -865,7 +888,11 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 #ifdef MPI
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
+		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
+		//time = ghost_timediff(start,end);
 		time = ghost_wctime()-time;
+		if (time < 0)
+			printf("dummy\n");
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
