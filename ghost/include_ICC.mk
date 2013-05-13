@@ -23,6 +23,7 @@ endif
 
 ifeq ($(MIC),1)
 CFLAGS += -mmic
+FFLAGS += -mmic
 endif
 
 ifneq ($(DEBUG),0)
