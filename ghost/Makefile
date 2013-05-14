@@ -32,7 +32,7 @@ PLUGINDIR  = ./plugins
 TYPES_H    = ./include/ghost_types_gen.h
 FORMATS_H  = ./include/ghost_spmformats.h
 IPATH     += -I./include/ -I./include/fortran/
-Q          = @ 
+Q          =  
 
 OBJS	=	$(COBJS) $(FMODULES) $(FOBJS) 
 FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))

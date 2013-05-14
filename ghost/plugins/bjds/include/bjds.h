@@ -69,5 +69,32 @@ typedef struct
 BJDS_TYPE;
 
 ghost_mat_t * init(ghost_mtraits_t *);
+#ifdef __cplusplus
+extern "C" {
+#endif
+void dd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void ds_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void ss_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cs_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zs_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+#ifdef __cplusplus
+}
+#endif
 
+void (*BJDS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{&ss_BJDS_kernel_plain,&sd_BJDS_kernel_plain,&sc_BJDS_kernel_plain,&sz_BJDS_kernel_plain},
+{&ds_BJDS_kernel_plain,&dd_BJDS_kernel_plain,&dc_BJDS_kernel_plain,&dz_BJDS_kernel_plain},
+{&cs_BJDS_kernel_plain,&cd_BJDS_kernel_plain,&cc_BJDS_kernel_plain,&cz_BJDS_kernel_plain},
+{&zs_BJDS_kernel_plain,&zd_BJDS_kernel_plain,&zc_BJDS_kernel_plain,&zz_BJDS_kernel_plain}};
 #endif

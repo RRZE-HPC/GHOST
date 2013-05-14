@@ -199,7 +199,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 static size_t BJDS_byteSize (ghost_mat_t *mat)
 {
 	return (size_t)((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t) + 
-			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+sizeof(ghost_dt)));
+			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
 static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
@@ -394,7 +394,8 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->mu /= (double)nChunks;
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
-	BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	//BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	BJDS(mat)->val = allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
@@ -508,7 +509,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat = (CU_BJDS_TYPE *)allocateMemory(sizeof(CU_BJDS_TYPE),"CU_CRS");
 		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
-		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_dt));
+		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
 		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	
@@ -516,7 +517,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CU_copyHostToDevice(BJDS(mat)->cumat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_midx_t));
-		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_dt));
+		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*ghost_sizeofDataType(mat->traits->datatype));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
 	}
@@ -551,7 +552,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 {
 
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
-
+/*
 	if (lhs->traits->nvecs == 1) {
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
@@ -563,6 +564,8 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
 				z_BJDS_kernel_plain(mat,lhs,rhs,options);
 			else {
+				printf("calling\n");
+				dd_BJDS_kernel_plain(mat,lhs,rhs,options);
 #ifdef MIC_INTR
 				if ((mat->traits->datatype & GHOST_BINCRS_DT_REAL) && (mat->traits->datatype & GHOST_BINCRS_DT_DOUBLE)) {
 					UNUSED(&d_BJDS_kernel_plain);
@@ -578,7 +581,10 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		}
 	} else {
 		ABORT("There is no multivec variant for BJDS");
-	}
+	}*/
+	printf("calling kernel[%d][%d]\n",ghost_dataTypeIdx(mat->traits->datatype),ghost_dataTypeIdx(lhs->traits->datatype));
+	printf("%p %p\n",&dd_BJDS_kernel_plain,&BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)]);
+	BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 }
 
 #ifdef SSE_INTR

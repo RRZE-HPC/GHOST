@@ -13,7 +13,7 @@
 
 //#define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_S(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 typedef struct {
