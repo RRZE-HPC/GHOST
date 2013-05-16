@@ -11,9 +11,9 @@
 #include <mpi.h>
 #endif
 
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_S(vecdt)
+GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 typedef struct {
@@ -46,7 +46,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-		int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 

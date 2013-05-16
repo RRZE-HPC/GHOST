@@ -16,35 +16,15 @@
 #include <altivec.h>
 #endif
 
-#define BJDS(mat) ((BJDS_TYPE *)(mat->data))
+void (*BJDS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{&ss_BJDS_kernel_plain,&sd_BJDS_kernel_plain,&sc_BJDS_kernel_plain,&sz_BJDS_kernel_plain},
+{&ds_BJDS_kernel_plain,&dd_BJDS_kernel_plain,&dc_BJDS_kernel_plain,&dz_BJDS_kernel_plain},
+{&cs_BJDS_kernel_plain,&cd_BJDS_kernel_plain,&cc_BJDS_kernel_plain,&cz_BJDS_kernel_plain},
+{&zs_BJDS_kernel_plain,&zd_BJDS_kernel_plain,&zc_BJDS_kernel_plain,&zz_BJDS_kernel_plain}};
 
-#define vecdt float
-#define prefix s
-#include "bjds_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt double
-#define prefix d
-#include "bjds_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt complex double
-#define prefix z
-#include "bjds_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt complex float
-#define prefix c
-#include "bjds_kernel.def"
-#undef vecdt
-#undef prefix
-
-char name[] = "BJDS plugin for ghost";
-char version[] = "0.1a";
-char formatID[] = "BJDS";
+//char name[] = "BJDS plugin for ghost";
+//char version[] = "0.1a";
+//char formatID[] = "BJDS";
 
 static ghost_mnnz_t BJDS_nnz(ghost_mat_t *mat);
 static ghost_midx_t BJDS_nrows(ghost_mat_t *mat);
@@ -87,7 +67,7 @@ ghost_mat_t * init(ghost_mtraits_t * traits)
 {
 	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mat->traits = traits;
-	DEBUG_LOG(1,"Setting functions for TBJDS matrix");
+	DEBUG_LOG(1,"Setting functions for BJDS matrix");
 
 	mat->CLupload = &BJDS_upload;
 	mat->CUupload = &BJDS_CUupload;
@@ -205,7 +185,7 @@ static size_t BJDS_byteSize (ghost_mat_t *mat)
 static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	DEBUG_LOG(1,"Creating BJDS matrix from binary file");
-	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,NULL};
+	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,.datatype=mat->traits->datatype};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 	mat->context = ctx;
@@ -254,7 +234,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 
 static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 {
-	DEBUG_LOG(1,"Creating BJDS matrix");
+/*	DEBUG_LOG(1,"Creating BJDS matrix");
 	CR_TYPE *cr = (CR_TYPE*)crs;
 	ghost_midx_t i,j,c;
 	unsigned int flags = mat->traits->flags;
@@ -281,7 +261,6 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",sortBlock);
 
-		/* get max number of entries in one row ###########################*/
 		rowSort = (ghost_sorting_t*) allocateMemory( cr->nrows * sizeof( ghost_sorting_t ),
 				"rowSort" );
 
@@ -302,27 +281,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		}
 		qsort( rowSort+c*sortBlock, cr->nrows-c*sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 
-		/* sort within same rowlength with asceding row number #################### */
-		/*i=0;
-		while(i < cr->nrows) {
-			ghost_midx_t start = i;
-
-			j = rowSort[start].nEntsInRow;
-			while( i<cr->nrows && rowSort[i].nEntsInRow >= j ) 
-				++i;
-
-			DEBUG_LOG(1,"sorting over %"PRmatIDX" rows (%"PRmatIDX"): %"PRmatIDX" - %"PRmatIDX,i-start,j, start, i-1);
-			qsort( &rowSort[start], i-start, sizeof(ghost_sorting_t), compareNZEOrgPos );
-		}
-
-		for(i=1; i < cr->nrows; ++i) {
-			if( rowSort[i].nEntsInRow == rowSort[i-1].nEntsInRow && rowSort[i].row < rowSort[i-1].row)
-				printf("Error in row %"PRmatIDX": descending row number\n",i);
-		}*/
 		for(i=0; i < cr->nrows; ++i) {
-			/* invRowPerm maps an index in the permuted system to the original index,
-			 * rowPerm gets the original index and returns the corresponding permuted position.
-			 */
 			if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
 
 			(invRowPerm)[i] = rowSort[i].row;
@@ -437,19 +396,13 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 					BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
 					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
-			//	printf("%f ",BJDS(mat)->val[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i]);
-
-
 			}
 		}
 	}
-
-
-
-	DEBUG_LOG(1,"Successfully created BJDS");
-
-
-
+	DEBUG_LOG(1,"Successfully created BJDS");*/
+		
+	d_BJDS_fromCRS(mat,crs);
+		
 }
 
 static void BJDS_upload(ghost_mat_t* mat) 
@@ -582,6 +535,8 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 	} else {
 		ABORT("There is no multivec variant for BJDS");
 	}*/
+	printf("calling kernel[%d][%d]\n",ghost_dataTypeIdx(mat->traits->datatype),ghost_dataTypeIdx(lhs->traits->datatype));
+	printf("%p %p\n",&dd_BJDS_kernel_plain,&BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)]);
 	BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 }
 

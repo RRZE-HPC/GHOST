@@ -25,10 +25,18 @@ typedef struct
 } 
 ghost_sorting_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int isMMfile(const char *filename);
 //ghost_mm_t * readMMFile(const char* filename );
 
 int compareNZEOrgPos( const void* a, const void* b ); 
 int compareNZEPerRow( const void*, const void*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

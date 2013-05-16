@@ -190,6 +190,10 @@ MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
 void ghost_printLine(const char *label, const char *unit, const char *format, ...);
@@ -247,4 +251,8 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
 void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

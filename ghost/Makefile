@@ -34,7 +34,7 @@ FORMATS_H  = ./include/ghost_spmformats.h
 IPATH     += -I./include/ -I./include/fortran/
 Q          =  
 
-OBJS	=	$(COBJS) $(FMODULES) $(FOBJS) 
+OBJS	=	$(COBJS) $(CPPOBJS) $(FMODULES) $(FOBJS) 
 FORMATS = $(notdir $(wildcard $(PLUGINDIR)/*/include/*.h))
 
 ifeq ($(MPI),1)
@@ -106,9 +106,6 @@ MAKROS+= -DDEBUG=$(DEBUG)
 MAKROS+= -DPLUGINPATH=\"$(GHOSTPATH)/lib/ghost/\"
 MAKROS+= -DHEADERPATH=\"$(GHOSTPATH)/include/ghost/\"
 
-IPATH += $(addsuffix include/, $(addprefix -I, $(wildcard $(PLUGINDIR)/*/)))
-VPATH += $(addsuffix src/, $(wildcard $(PLUGINDIR)/*/))
-
 PLUGINS = $(addsuffix .so, $(addprefix $(PLUGINDIR)/c_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
 	$(addsuffix .so, $(addprefix $(PLUGINDIR)/d_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
 	$(addsuffix .so, $(addprefix $(PLUGINDIR)/s_, $(notdir $(patsubst %/, %, $(filter %/, $(wildcard $(PLUGINDIR)/*/)))))) \
@@ -126,13 +123,14 @@ PLUGINOBJS += $(addprefix $(C_OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildca
 endif
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
+CPPOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cpp,%.o, $(wildcard src/*.cpp))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.F90,%.o, $(wildcard src/fortran/*.F90))))
 FMODULES = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.F90,%.o, $(wildcard src/fortran/modules/*.F90))))
 
-all: $(OBJDIR) $(MODDIR) $(C_OBJDIR) $(D_OBJDIR) $(S_OBJDIR) $(Z_OBJDIR) $(PLUGINS) $(LIBGHOST)
+all: $(OBJDIR) $(MODDIR) $(LIBGHOST)
 
 $(PLUGINS): $(PLUGINOBJS)
 	$(eval dt := $(shell echo $(notdir $@) | cut -c 1))
@@ -163,6 +161,10 @@ $(Z_OBJDIR)/%.o: %.c config.mk
 $(OBJDIR)/%.o: %.c config.mk
 	@echo "==> Compile $< -> $@"
 	${Q}$(CC) $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+
+$(OBJDIR)/%.o: %.cpp config.mk
+	@echo "==> Compile $< -> $@"
+	${Q}icpc $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.F90 config.mk
 	@echo "==> Compile $< -> $@"
@@ -217,7 +219,7 @@ endif
 ifeq ($(LIBTYPE),shared)
 $(LIBGHOST): $(OBJS)
 	@echo "==> Create shared library $(LIBGHOST)"
-	${Q}$(CC) $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
+	${Q}icpc $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
 endif
 
 clean:
@@ -241,9 +243,9 @@ install: all
 	@cp -f $(LIBGHOST) $(GHOSTPATH)/lib
 	@echo "==> Install headers to $(GHOSTPATH)/include/ghost/"
 	@cp -rf include/* $(GHOSTPATH)/include/ghost
-	@echo "==> Install plugins to $(GHOSTPATH)/lib/ghost/"
-	@cp -f $(PLUGINDIR)/*.so $(GHOSTPATH)/lib/ghost
-	@cp -f $(PLUGINDIR)/*/src/*.cl $(GHOSTPATH)/lib/ghost
+#	@echo "==> Install plugins to $(GHOSTPATH)/lib/ghost/"
+#	@cp -f $(PLUGINDIR)/*.so $(GHOSTPATH)/lib/ghost
+#	@cp -f $(PLUGINDIR)/*/src/*.cl $(GHOSTPATH)/lib/ghost
 	@echo "==> Install module files to $(GHOSTPATH)/lib/ghost/"
 	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost
 

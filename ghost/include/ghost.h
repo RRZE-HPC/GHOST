@@ -4,7 +4,9 @@
 #ifndef GHOST_CLKERNEL
 #include <stdlib.h>
 #include <complex.h>
+#ifndef __cplusplus
 #include <math.h>
+#endif
 #include <inttypes.h>
 #include <sys/types.h>
 #include <pthread.h>

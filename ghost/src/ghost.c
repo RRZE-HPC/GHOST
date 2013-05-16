@@ -4,6 +4,8 @@
 #include "ghost_util.h"
 #include "ghost_mat.h"
 #include "ghost_vec.h"
+#include "bjds.h"
+#include "crs.h"
 
 #ifdef MPI
 #include <mpi.h>
@@ -609,6 +611,7 @@ context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
+	/*
 	ghost_spmf_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL, .formatID = NULL};
 	char pluginPath[PATH_MAX];
 #ifndef PLUGINPATH
@@ -670,12 +673,19 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 		ABORT("The plugin directory does not exist");
 	}
 
-	return NULL;
+	return NULL;*/
+	ghost_mat_t* mat;
+	if (!(strcasecmp(traits->format,"CRS")))
+		mat = ghost_CRS_init(traits);
+	else
+		mat = init(traits);
+		
+   return mat;	
 }
 
 ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
 {
-	ghost_vec_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL};
+/*	ghost_vec_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL};
 	char pluginPath[PATH_MAX];
 #ifndef PLUGINPATH
 	ABORT("The plugin installation path is not defined.");
@@ -733,7 +743,9 @@ ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
 		ABORT("The plugin directory does not exist");
 	}
 
-	return NULL;
+	return NULL;*/
+	ghost_vec_t *vec = ghost_vec_init(traits);
+	return vec;
 }
 
 

@@ -347,7 +347,7 @@ void ghost_printGhostInfo()
 {
 
 	if (ghost_getRank()==0) {
-		int nDataformats;
+	/*	int nDataformats;
 		char *availDataformats = NULL;
 		char *avDF = NULL;
 		size_t avDFlen = 0;
@@ -360,12 +360,12 @@ void ghost_printGhostInfo()
 			strncpy(avDF+avDFlen-strlen(curFormat)-1,curFormat,strlen(curFormat));
 			strncpy(avDF+avDFlen-1,",",1);
 		}
-		avDF[avDFlen-1] = '\0'; // skip trailing comma 
+		avDF[avDFlen-1] = '\0'; // skip trailing comma */
 
 
 		ghost_printHeader("%s", GHOST_NAME);
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
-		ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
+	//	ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
 //		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
@@ -415,8 +415,8 @@ printf("Likwid Marker API                :      enabled\n");
 #endif
 		ghost_printFooter();
 
-		free(avDF);
-		free(availDataformats);
+	//	free(avDF);
+	//	free(availDataformats);
 
 	}
 
@@ -484,7 +484,6 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 
 	nodeLHS->fromScalar(nodeLHS,distContext,&zero);
 	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
-
 	globLHS->destroy(globLHS);
 
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
