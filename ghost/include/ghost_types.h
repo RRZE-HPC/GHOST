@@ -1,8 +1,6 @@
 #ifndef __GHOST_TYPES_H__
 #define __GHOST_TYPES_H__
 
-//#include "ghost_types_gen.h"
-
 #ifdef CUDAKERNEL
 #undef MPI // TODO
 #endif
@@ -18,7 +16,7 @@
 #endif
 
 
-#ifdef GHOST_DT_S
+/*#ifdef GHOST_DT_S
 #define ABS(a) fabsf(a)
 #define REAL(a) a
 #define IMAG(a) 0.0
@@ -111,7 +109,7 @@ typedef cuDoubleComplex ghost_cu_dt;
 #define FLOPS_PER_ENTRY 8.0
 #else
 #define FLOPS_PER_ENTRY 2.0
-#endif
+#endif*/
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -122,16 +120,16 @@ typedef cuDoubleComplex ghost_cu_dt;
 
 // TODO adjust
 
-#ifdef GHOST_VEC_DP
+/*#ifdef GHOST_VEC_DP
 #define EPSILON 1e-7
 #endif
 #ifdef GHOST_VEC_SP
 #define EPSILON 1e-5 // TODO
 #endif
-#define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<EPSILON && MABS(MIMAG(a)-MIMAG(b))<EPSILON)
+#define MEQUALS(a,b) (MABS(MREAL(a)-MREAL(b))<EPSILON && MABS(MIMAG(a)-MIMAG(b))<EPSILON)*/
 
 
-#ifdef GHOST_LONGIDX
+#ifdef LONGIDX
 typedef long int ghost_midx_t; // type for the index of the matrix
 typedef long int ghost_mnnz_t; // type for the number of nonzeros in the matrix
 
