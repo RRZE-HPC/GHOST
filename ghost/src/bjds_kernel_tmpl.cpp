@@ -198,7 +198,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		{
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0.;
+				((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = (m_t)0.;
 				BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
 			}
 		}
@@ -226,7 +226,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 					}
 
 				} else {
-					((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0.0;
+					((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = (m_t)0.0;
 					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
 				}
 			}

@@ -11,7 +11,8 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
 	v_t s;
 	ghost_vec_dotprod_tmpl<v_t>(vec,vec,&s);
-	s = (1./sqrt(s));
+	s = (v_t)sqrt(s);
+	s = (v_t)(((v_t)1.)/s);
 	ghost_vec_scale_tmpl<v_t>(vec,&s);
 
 #ifdef OPENCL
@@ -33,7 +34,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 	nthreads = omp_get_num_threads();
 
 	v_t partsums[nthreads];
-	for (i=0; i<nthreads; i++) partsums[i] = 0;
+	for (i=0; i<nthreads; i++) partsums[i] = (v_t)0.;
 
 #pragma omp parallel for 
 	for (i=0; i<nr; i++) {

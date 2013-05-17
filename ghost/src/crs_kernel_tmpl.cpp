@@ -15,7 +15,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
-			hlp1 = 0.0;
+			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 				hlp1 += (v_t)(cr->val[j*sizeof(m_t)]) * rhsv[cr->col[j]];
 			}
