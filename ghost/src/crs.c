@@ -1064,23 +1064,29 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 			if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (complex float) ((bswap_32(tmpval[i*valSize]))+
-								I*(bswap_32(tmpval[i*valSize+valSize/2])));
+						uint32_t re = bswap_32(tmpval[i*valSize]);
+						uint32_t im = bswap_32(tmpval[i*valSize+valSize/2]);
+						memcpy(&CR(mat)->val[i*sizeofdt],&re,4);
+						memcpy(&CR(mat)->val[i*sizeofdt+4],&im,4);
 					}
 				} else {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (complex double) ((bswap_64(tmpval[i*valSize]))+
-								I*(bswap_64(tmpval[i*valSize+valSize/2])));
+						uint32_t re = bswap_64(tmpval[i*valSize]);
+						uint32_t im = bswap_64(tmpval[i*valSize+valSize/2]);
+						memcpy(&CR(mat)->val[i*sizeofdt],&re,8);
+						memcpy(&CR(mat)->val[i*sizeofdt+8],&im,8);
 					}
 				}
 			} else {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (float) (bswap_32(tmpval[i*valSize]));
+						uint32_t val = bswap_32(tmpval[i*valSize]);
+						memcpy(&CR(mat)->val[i*sizeofdt],&val,4);
 					}
 				} else {
 					for (i = 0; i<nEnts; i++) {
-						CR(mat)->val[i] = (double) (bswap_64(tmpval[i*valSize]));
+						uint32_t val = bswap_64(tmpval[i*valSize]);
+						memcpy(&CR(mat)->val[i*sizeofdt],&val,8);
 					}
 				}
 
