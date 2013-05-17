@@ -23,7 +23,7 @@ WTV=0
 
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
-LIBS+=  -lghost -lifcore
+LIBS+= -lghost -lifcore
 
 ifeq ($(WDDT),1)
 LIBS+= $(DDT)/lib/64/libdmallocth.a 
@@ -49,14 +49,14 @@ MAKROS+= -DOPENCL
 LIBS  += -lOpenCL
 IPATH += -I$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cl
 #LPATH += -L/usr/lib64/OpenCL/vendors/intel #${CUDA_LIB}
-LPATH +=  -L$(CUDA_DRIVERDIR)/lib
+LPATH += -L$(CUDA_DRIVERDIR)/lib
 endif
 
 ifeq ($(strip $(CUDA)),1)
 MAKROS+= -DCUDA
 LIBS  += -lcudart
 IPATH += -isystem $(CUDA_HOME)/include -I $(strip $(GHOSTPATH))/include/ghost/cu
-LPATH +=  -L$(CUDA_HOME)/lib64
+LPATH += -L$(CUDA_HOME)/lib64
 endif
 
 ifeq ($(strip $(MPI)),1)

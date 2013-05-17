@@ -71,7 +71,7 @@ static void vec_CLupload (ghost_vec_t *);
 static void vec_CLdownload (ghost_vec_t *);
 #endif
 
-ghost_vec_t *ghost_vec_init(ghost_vtraits_t *traits)
+ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 {
 	ghost_vec_t *vec = (ghost_vec_t *)allocateMemory(sizeof(ghost_vec_t),"vector");
 	vec->traits = traits;

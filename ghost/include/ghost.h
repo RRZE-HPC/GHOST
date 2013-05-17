@@ -3,9 +3,11 @@
 
 #ifndef GHOST_CLKERNEL
 #include <stdlib.h>
-#include <complex.h>
 #ifndef __cplusplus
 #include <math.h>
+#include <complex.h>
+#else
+#include <complex>
 #endif
 #include <inttypes.h>
 #include <sys/types.h>
@@ -425,7 +427,6 @@ ghost_context_t *ghost_createContext(int64_t, int);
 //ghost_mat_t *ghost_createMatrix(ghost_context_t * context, char *matrixPath, ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
-ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
 void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *, void *s);

@@ -15,39 +15,11 @@
 
 #include <dlfcn.h>
 
-/*#define vecdt float
-#define prefix s
-#include "crs_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt double
-#define prefix d
-#include "crs_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt complex double
-#define prefix z
-#include "crs_kernel.def"
-#undef vecdt
-#undef prefix
-
-#define vecdt complex float
-#define prefix c
-#include "crs_kernel.def"
-#undef vecdt
-#undef prefix*/
-
 void (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
 {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
 {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
 {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
-
-const char name[] = "CRS plugin for ghost";
-const char version[] = "0.1a";
-const char formatID[] = "CRS";
 
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);

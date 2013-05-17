@@ -4,6 +4,9 @@
 #include <bjds.h>
 #include <stdio.h>
 #include <crs.h>
+#include "ghost_complex.h"
+
+using namespace std;
 
 template<typename m_t, typename v_t> void BJDS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
@@ -18,14 +21,14 @@ template<typename m_t, typename v_t> void BJDS_kernel_plain_tmpl(ghost_mat_t *ma
 	{ // loop over chunks
 		for (i=0; i<BJDS_LEN; i++)
 		{
-			tmp[i] = 0;
+			tmp[i] = (v_t)0;
 		}
 
 		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/BJDS_LEN; j++) 
 		{ // loop inside chunk
 			for (i=0; i<BJDS_LEN; i++)
 			{
-				tmp[i] += (v_t)((m_t *)(bjds->val))[bjds->chunkStart[c]+j*BJDS_LEN+i] * 
+				tmp[i] += (v_t)(bjds->val[(bjds->chunkStart[c]+j*BJDS_LEN+i)*sizeof(m_t)]) * 
 					rhsd[bjds->col[bjds->chunkStart[c]+j*BJDS_LEN+i]];
 			}
 		}
@@ -184,7 +187,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
 	//BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
-	BJDS(mat)->val = allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
+	BJDS(mat)->val = (char *)allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
 #pragma omp parallel for schedule(runtime) private(j,i)
@@ -234,61 +237,61 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 
 extern "C" void dd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<double,double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options); }
 
 extern "C" void ds_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<double,float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< double,float >(mat,lhs,rhs,options); }
 
 extern "C" void dc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<double,complex float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< double,ghost_complex< float > >(mat,lhs,rhs,options); }
 
 extern "C" void dz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<double,complex double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< double,ghost_complex<double> >(mat,lhs,rhs,options); }
 
 extern "C" void sd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<float,double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< float,double >(mat,lhs,rhs,options); }
 
 extern "C" void ss_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<float,float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< float,float >(mat,lhs,rhs,options); }
 
 extern "C" void sc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<float,complex float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< float,ghost_complex<float> >(mat,lhs,rhs,options); }
 
 extern "C" void sz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<float,complex double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< float,ghost_complex<double> >(mat,lhs,rhs,options); }
 
 extern "C" void cd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex float,double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,double >(mat,lhs,rhs,options); }
 
 extern "C" void cs_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex float,float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,float >(mat,lhs,rhs,options); }
 
 extern "C" void cc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex float,complex float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<float> >(mat,lhs,rhs,options); }
 
 extern "C" void cz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex float,complex double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<double> >(mat,lhs,rhs,options); }
 
 extern "C" void zd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex double,double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,double >(mat,lhs,rhs,options); }
 
 extern "C" void zs_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex double,float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,float >(mat,lhs,rhs,options); }
 
 extern "C" void zc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex double,complex float>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<float> >(mat,lhs,rhs,options); }
 
 extern "C" void zz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl<complex double,complex double>(mat,lhs,rhs,options); }
+{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
 
 extern "C" void d_BJDS_fromCRS(ghost_mat_t *mat, void *crs)
-{ return BJDS_fromCRS<double>(mat,crs); }
+{ return BJDS_fromCRS< double >(mat,crs); }
 
 extern "C" void s_BJDS_fromCRS(ghost_mat_t *mat, void *crs)
-{ return BJDS_fromCRS<float>(mat,crs); }
+{ return BJDS_fromCRS< float >(mat,crs); }
 
 extern "C" void z_BJDS_fromCRS(ghost_mat_t *mat, void *crs)
-{ return BJDS_fromCRS<complex double>(mat,crs); }
+{ return BJDS_fromCRS< ghost_complex<double> >(mat,crs); }
 
 extern "C" void c_BJDS_fromCRS(ghost_mat_t *mat, void *crs)
-{ return BJDS_fromCRS<complex float>(mat,crs); }
+{ return BJDS_fromCRS< ghost_complex<float> >(mat,crs); }

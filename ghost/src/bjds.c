@@ -63,7 +63,7 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rh
 //static ghost_mat_t *thisMat;
 //static BJDS_TYPE *BJDS(mat);
 
-ghost_mat_t * init(ghost_mtraits_t * traits)
+ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 {
 	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mat->traits = traits;

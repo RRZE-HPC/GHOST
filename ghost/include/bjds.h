@@ -49,7 +49,7 @@ CU_BJDS_TYPE;
 
 typedef struct 
 {
-	void *val;
+	char *val;
 	ghost_midx_t *col;
 	ghost_mnnz_t *chunkStart;
 	ghost_midx_t nrows;
@@ -70,7 +70,7 @@ BJDS_TYPE;
 
 #define BJDS(mat) ((BJDS_TYPE *)(mat->data))
 
-ghost_mat_t * init(ghost_mtraits_t *);
+ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t *);
 #ifdef __cplusplus
 template<typename m_t, typename v_t> void BJDS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs);

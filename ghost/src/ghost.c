@@ -611,144 +611,14 @@ context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
-	/*
-	ghost_spmf_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL, .formatID = NULL};
-	char pluginPath[PATH_MAX];
-#ifndef PLUGINPATH
-	ABORT("The plugin installation path is not defined.");
-#endif
-	DIR * pluginDir = opendir(PLUGINPATH);
-	struct dirent * dirEntry = NULL;
-
-	DEBUG_LOG(1,"Searching in %s for plugin providing %s",PLUGINPATH,traits->format);
-	if (pluginDir) {
-		while (0 != (dirEntry = readdir(pluginDir))) {
-			if ('.' == dirEntry->d_name[0]) {
-				DEBUG_LOG(2,"Skipping file %s because it starts with a '.'",dirEntry->d_name);
-				continue;
-			}
-			if (ghost_datatypePrefix(traits->datatype) != dirEntry->d_name[0]) {
-				DEBUG_LOG(2,"Skipping file %s because the datatype does not match",dirEntry->d_name);
-				continue;
-			}
-
-
-			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
-			DEBUG_LOG(2,"Trying %s",pluginPath);
-			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
-			if (!myPlugin.so) {
-				DEBUG_LOG(2,"Could not open shared file %s: %s",pluginPath,dlerror());
-				continue;
-			}
-
-			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
-			if (!myPlugin.formatID) ABORT("The plugin does not provide a formatID!");
-
-			if (!strcasecmp(traits->format,myPlugin.formatID)) 
-			{
-				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
-
-				myPlugin.init = (ghost_spmf_init_t)dlsym(myPlugin.so,"init");
-				myPlugin.name = (char *)dlsym(myPlugin.so,"name");
-				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
-
-				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-
-				closedir(pluginDir);
-				ghost_mat_t *mat = myPlugin.init(traits);
-				mat->so = myPlugin.so;
-				return mat;
-			} else {
-				DEBUG_LOG(2,"Skipping plugin because of data format mismatch: %s",myPlugin.formatID);
-				dlclose(myPlugin.so);
-			}
-
-		}
-		dlclose(myPlugin.so);
-		closedir(pluginDir);
-		ABORT("There is no such plugin providing %s",traits->format);
-
-	} else {
-		closedir(pluginDir);
-		ABORT("The plugin directory does not exist");
-	}
-
-	return NULL;*/
 	ghost_mat_t* mat;
 	if (!(strcasecmp(traits->format,"CRS")))
 		mat = ghost_CRS_init(traits);
-	else
-		mat = init(traits);
+	else if (!(strcasecmp(traits->format,"BJDS")))
+		mat = ghost_BJDS_init(traits);
 		
    return mat;	
 }
-
-ghost_vec_t * ghost_initVector(ghost_vtraits_t *traits)
-{
-/*	ghost_vec_plugin_t myPlugin = {.so = NULL, .init = NULL, .name = NULL, .version = NULL};
-	char pluginPath[PATH_MAX];
-#ifndef PLUGINPATH
-	ABORT("The plugin installation path is not defined.");
-#endif
-	DIR * pluginDir = opendir(PLUGINPATH);
-	struct dirent * dirEntry = NULL;
-
-	DEBUG_LOG(1,"Searching in %s for suitable vector plugin",PLUGINPATH);
-	if (pluginDir) {
-		while (0 != (dirEntry = readdir(pluginDir))) {
-			if ('.' == dirEntry->d_name[0]) {
-				DEBUG_LOG(2,"Skipping file %s because it starts with a '.'",dirEntry->d_name);
-				continue;
-			}
-			if (ghost_datatypePrefix(traits->datatype) != dirEntry->d_name[0]) {
-				DEBUG_LOG(2,"Skipping file %s because the datatype does not match",dirEntry->d_name);
-				continue;
-			}
-
-
-			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
-			DEBUG_LOG(2,"Trying %s",pluginPath);
-			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
-			if (!myPlugin.so) {
-				DEBUG_LOG(2,"Could not open shared file %s: %s",pluginPath,dlerror());
-				continue;
-			}
-			myPlugin.name = (char *)dlsym(myPlugin.so,"name");
-			if (!strncasecmp("Vector plugin for ghost",myPlugin.name,strlen(myPlugin.name))) 
-			{
-
-				DEBUG_LOG(1,"Found plugin: %s",pluginPath);
-
-				myPlugin.init = (ghost_vec_init_t)dlsym(myPlugin.so,"init");
-				myPlugin.version = (char *)dlsym(myPlugin.so,"version");
-
-				DEBUG_LOG(1,"Successfully registered %s v%s",myPlugin.name, myPlugin.version);
-
-				closedir(pluginDir);
-				ghost_vec_t *vec = myPlugin.init(traits);
-				vec->so = myPlugin.so;
-				return vec;
-			} else {
-				DEBUG_LOG(2,"Skipping plugin because it does not provide a vector functions %s",myPlugin.name);
-				dlclose(myPlugin.so);
-			}
-
-		}
-		dlclose(myPlugin.so);
-		closedir(pluginDir);
-		ABORT("There is no such plugin");
-
-	} else {
-		closedir(pluginDir);
-		ABORT("The plugin directory does not exist");
-	}
-
-	return NULL;*/
-	ghost_vec_t *vec = ghost_vec_init(traits);
-	return vec;
-}
-
-
 
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions)

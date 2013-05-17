@@ -13,7 +13,7 @@
 
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_Z(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 typedef struct {
@@ -150,11 +150,11 @@ int main( int argc, char* argv[] )
 			ghost_printLine(ghost_modeName(modes[mode]),NULL,"FAILED");
 		else
 			ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
-					FLOPS_PER_ENTRY*1.e-9*
+					2*1.e-9*
 					(double)ghost_getMatNnz(mat)/time);
 #else
 		ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
-				FLOPS_PER_ENTRY*1.e-9*
+				2*1.e-9*
 				(double)ghost_getMatNnz(mat)/time);
 #endif
 

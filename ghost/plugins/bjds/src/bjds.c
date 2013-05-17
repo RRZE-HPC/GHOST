@@ -42,10 +42,6 @@
 #undef vecdt
 #undef prefix
 
-char name[] = "BJDS plugin for ghost";
-char version[] = "0.1a";
-char formatID[] = "BJDS";
-
 static ghost_mnnz_t BJDS_nnz(ghost_mat_t *mat);
 static ghost_midx_t BJDS_nrows(ghost_mat_t *mat);
 static ghost_midx_t BJDS_ncols(ghost_mat_t *mat);
@@ -83,7 +79,7 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rh
 //static ghost_mat_t *thisMat;
 //static BJDS_TYPE *BJDS(mat);
 
-ghost_mat_t * init(ghost_mtraits_t * traits)
+ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 {
 	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
 	mat->traits = traits;
@@ -582,7 +578,9 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 	} else {
 		ABORT("There is no multivec variant for BJDS");
 	}*/
-	BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
+	BJDS_kernels_plain
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 }
 
 #ifdef SSE_INTR
