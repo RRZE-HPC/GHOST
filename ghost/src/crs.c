@@ -1093,7 +1093,8 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 			}
 
 		} else {
-			memcpy(&CR(mat)->val,tmpval,nEnts*sizeofdt);
+			for (i = 0; i<nEnts; i++)
+				memcpy(&CR(mat)->val[i*sizeofdt],&tmpval[i*valSize],sizeofdt);
 		}
 
 		free(tmpval);
