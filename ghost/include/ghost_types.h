@@ -111,12 +111,6 @@ typedef cuDoubleComplex ghost_cu_dt;
 #define FLOPS_PER_ENTRY 2.0
 #endif*/
 
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
-#ifndef MAX
-#define MAX(x,y) ((x)<(y)?(y):(x))
-#endif
 
 // TODO adjust
 
