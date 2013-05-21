@@ -20,6 +20,11 @@ void (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, in
 {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
 {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
 {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
+void (*CRS_castData_funcs[4][4]) (void *, void *, int) = 
+{{&ss_CRS_castData,&sd_CRS_castData,&sc_CRS_castData,&sz_CRS_castData},
+{&ds_CRS_castData,&dd_CRS_castData,&dc_CRS_castData,&dz_CRS_castData},
+{&cs_CRS_castData,&cd_CRS_castData,&cc_CRS_castData,&cz_CRS_castData},
+{&zs_CRS_castData,&zd_CRS_castData,&zc_CRS_castData,&zz_CRS_castData}};
 
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
@@ -1093,17 +1098,12 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 			}
 
 		} else {
-			for (i = 0; i<nEnts; i++)
-				memcpy(&CR(mat)->val[i*sizeofdt],&tmpval[i*valSize],sizeofdt);
+			CRS_castData_funcs[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(datatype)](CR(mat)->val,tmpval,nEnts);
 		}
 
 		free(tmpval);
 	}
 	close(file);
-
-
-
-
 }
 
 static void CRS_upload(ghost_mat_t *mat)

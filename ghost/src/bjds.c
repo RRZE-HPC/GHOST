@@ -22,6 +22,9 @@ void (*BJDS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, i
 {&cs_BJDS_kernel_plain,&cd_BJDS_kernel_plain,&cc_BJDS_kernel_plain,&cz_BJDS_kernel_plain},
 {&zs_BJDS_kernel_plain,&zd_BJDS_kernel_plain,&zc_BJDS_kernel_plain,&zz_BJDS_kernel_plain}};
 
+void (*BJDS_fromCRS_funcs[4]) (ghost_mat_t *, void *) = 
+{&s_BJDS_fromCRS, &d_BJDS_fromCRS, &c_BJDS_fromCRS, &z_BJDS_fromCRS}; 
+
 //char name[] = "BJDS plugin for ghost";
 //char version[] = "0.1a";
 //char formatID[] = "BJDS";
@@ -401,7 +404,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 	DEBUG_LOG(1,"Successfully created BJDS");*/
 		
-	d_BJDS_fromCRS(mat,crs);
+	BJDS_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
 		
 }
 
@@ -535,8 +538,6 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 	} else {
 		ABORT("There is no multivec variant for BJDS");
 	}*/
-	printf("calling kernel[%d][%d]\n",ghost_dataTypeIdx(mat->traits->datatype),ghost_dataTypeIdx(lhs->traits->datatype));
-	printf("%p %p\n",&dd_BJDS_kernel_plain,&BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)]);
 	BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 }
 

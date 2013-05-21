@@ -52,6 +52,7 @@ NZE_TYPE;*/
 ghost_mat_t * ghost_CRS_init(ghost_mtraits_t *);
 #ifdef __cplusplus
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
+template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts);
 extern "C" {
 #endif
 void dd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
@@ -70,6 +71,22 @@ void zd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int option
 void zs_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zz_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dd_CRS_castData(void *, void *, int);
+void ds_CRS_castData(void *, void *, int);
+void dc_CRS_castData(void *, void *, int);
+void dz_CRS_castData(void *, void *, int);
+void sd_CRS_castData(void *, void *, int);
+void ss_CRS_castData(void *, void *, int);
+void sc_CRS_castData(void *, void *, int);
+void sz_CRS_castData(void *, void *, int);
+void cd_CRS_castData(void *, void *, int);
+void cs_CRS_castData(void *, void *, int);
+void cc_CRS_castData(void *, void *, int);
+void cz_CRS_castData(void *, void *, int);
+void zd_CRS_castData(void *, void *, int);
+void zs_CRS_castData(void *, void *, int);
+void zc_CRS_castData(void *, void *, int);
+void zz_CRS_castData(void *, void *, int);
 #ifdef __cplusplus
 }
 #endif
