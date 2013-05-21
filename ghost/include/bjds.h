@@ -92,6 +92,24 @@ void zd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int optio
 void zs_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+#ifdef CUDA
+void dd_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void ds_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dc_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dz_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sd_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void ss_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sc_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void sz_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cd_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cs_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cc_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void cz_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zd_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zs_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zc_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void zz_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+#endif
 void d_BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 void s_BJDS_fromCRS(ghost_mat_t *mat, void *crs);
 void c_BJDS_fromCRS(ghost_mat_t *mat, void *crs);

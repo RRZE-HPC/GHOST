@@ -22,6 +22,14 @@ void (*BJDS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, i
 {&cs_BJDS_kernel_plain,&cd_BJDS_kernel_plain,&cc_BJDS_kernel_plain,&cz_BJDS_kernel_plain},
 {&zs_BJDS_kernel_plain,&zd_BJDS_kernel_plain,&zc_BJDS_kernel_plain,&zz_BJDS_kernel_plain}};
 
+#ifdef CUDA
+void (*BJDS_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{&ss_BJDS_kernel_CU,&sd_BJDS_kernel_CU,&sc_BJDS_kernel_CU,&sz_BJDS_kernel_CU},
+{&ds_BJDS_kernel_CU,&dd_BJDS_kernel_CU,&dc_BJDS_kernel_CU,&dz_BJDS_kernel_CU},
+{&cs_BJDS_kernel_CU,&cd_BJDS_kernel_CU,&cc_BJDS_kernel_CU,&cz_BJDS_kernel_CU},
+{&zs_BJDS_kernel_CU,&zd_BJDS_kernel_CU,&zc_BJDS_kernel_CU,&zz_BJDS_kernel_CU}};
+#endif
+
 void (*BJDS_fromCRS_funcs[4]) (ghost_mat_t *, void *) = 
 {&s_BJDS_fromCRS, &d_BJDS_fromCRS, &c_BJDS_fromCRS, &z_BJDS_fromCRS}; 
 
