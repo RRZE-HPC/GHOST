@@ -126,14 +126,13 @@ VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
 #ifdef CUDA
 static void vec_CUupload (ghost_vec_t *vec)
 {
-	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*sizeof(ghost_dt));
+	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 
 }
 
 static void vec_CUdownload (ghost_vec_t *vec)
 {
-	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*sizeof(ghost_dt));
-
+	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
 

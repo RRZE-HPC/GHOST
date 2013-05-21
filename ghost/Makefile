@@ -100,6 +100,7 @@ COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))
 CPPOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cpp,%.o, $(wildcard src/*.cpp))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))
+CUOBJS += $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cu,%.cu.o, $(wildcard src/cu/*.cu))))
 MPIOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/mpi/*.c))))
 FOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.F90,%.o, $(wildcard src/fortran/*.F90))))
 FMODULES = $(addprefix $(MODDIR)/,$(notdir $(patsubst %.F90,%.mod, $(wildcard src/fortran/modules/*.F90))))
@@ -117,6 +118,10 @@ $(OBJDIR)/%.o: %.cpp config.mk
 $(OBJDIR)/%.o: %.F90 config.mk $(FMODULES) 
 	@echo "==> Compile $< -> $@"
 	${Q}$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+
+$(OBJDIR)/%.cu.o: %.cu config.mk 
+	@echo "==> Compile $< -> $@"
+	${Q}$(NVCC) $(NVCCFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 $(MODDIR)/%.mod: %.F90 config.mk
 	$(eval target := $(addprefix $(OBJDIR)/,$(patsubst %.mod,%.o,$(notdir $@))))

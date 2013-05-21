@@ -6,7 +6,7 @@
 #include <libgen.h>
 
 #ifdef CUDA
-#include "private/bjds_cukernel.h"
+//#include "private/bjds_cukernel.h"
 #endif
 
 #if defined(SSE) || defined(AVX) || defined(MIC)
@@ -508,37 +508,9 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 {
 
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
-/*
-	if (lhs->traits->nvecs == 1) {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				c_BJDS_kernel_plain(mat,lhs,rhs,options);
-			else {
-				s_BJDS_kernel_plain(mat,lhs,rhs,options);
-			}
-		} else {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				z_BJDS_kernel_plain(mat,lhs,rhs,options);
-			else {
-				printf("calling\n");
-				dd_BJDS_kernel_plain(mat,lhs,rhs,options);
-#ifdef MIC_INTR
-				if ((mat->traits->datatype & GHOST_BINCRS_DT_REAL) && (mat->traits->datatype & GHOST_BINCRS_DT_DOUBLE)) {
-					UNUSED(&d_BJDS_kernel_plain);
-					BJDS_kernel_MIC_16(mat,lhs,rhs,options);
-				} else {
-					d_BJDS_kernel_plain(mat,lhs,rhs,options);
-				}
-
-#else
-				d_BJDS_kernel_plain(mat,lhs,rhs,options);
-#endif
-			}
-		}
-	} else {
-		ABORT("There is no multivec variant for BJDS");
-	}*/
-	BJDS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
+	BJDS_kernels_plain
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 }
 
 #ifdef SSE_INTR
@@ -707,7 +679,7 @@ static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	DEBUG_LOG(1,"Calling BJDS CUDA kernel");
 	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
-	if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+	/*if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
 			c_BJDS_kernel_wrap(mat, lhs, rhs, options);
 		else
@@ -717,7 +689,7 @@ static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 			z_BJDS_kernel_wrap(mat, lhs, rhs, options);
 		else
 			d_BJDS_kernel_wrap(mat, lhs, rhs, options);
-	}
+	}*/
 	
 
 }
