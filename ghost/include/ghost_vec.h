@@ -18,7 +18,7 @@
 #define VEC_PAD 16
 #endif
 
-#define VAL(vec,k) ((char *)(vec->val))[k*ghost_sizeofDataType(vec->traits->datatype)]
+#define VAL(vec,k) ((char *)(vec->val))[(k)*ghost_sizeofDataType(vec->traits->datatype)]
 
 ghost_vec_t * ghost_initVector(ghost_vtraits_t *);
 

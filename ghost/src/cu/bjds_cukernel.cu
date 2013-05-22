@@ -8,65 +8,6 @@
 #include "ghost_complex.h"
 #include <cuComplex.h>
 
-/*#define vecdt float
-#define prefix s
-#define prefixID GHOST_DT_S_IDX
-#include "bjds_cukernel.def"
-#undef vecdt
-#undef prefix
-#undef prefixID
-
-#define vecdt double
-#define prefix d
-#define prefixID GHOST_DT_D_IDX
-#include "bjds_cukernel.def"
-#undef vecdt
-#undef prefix
-#undef prefixID
-
-#define vecdt cuDoubleComplex
-#define prefix z
-#define prefixID GHOST_DT_Z_IDX
-#include "bjds_cukernel.def"
-#undef vecdt
-#undef prefix
-#undef prefixID
-
-#define vecdt cuFloatComplex
-#define prefix c
-#define prefixID GHOST_DT_C_IDX
-#include "bjds_cukernel.def"
-#undef vecdt
-#undef prefix
-#undef prefixID*/
-
-/*
-__global__ void BJDS_kernel(ghost_cu_dt *lhs, ghost_cu_dt *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, ghost_cu_dt *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
-{
-	int i = threadIdx.x+blockIdx.x*blockDim.x;
-
-	if (i<nrows) {
-		int cs = chunkstart[blockIdx.x];
-		int j;
-		ghost_cu_dt tmp = ZERO;
-
-		for (j=0; j<rowlen[i]; j++) {
-			tmp = ADD(tmp, MUL(val[cs + threadIdx.x + j*BJDS_LEN], rhs[col[cs + threadIdx.x + j*BJDS_LEN]]));
-		}
-		if (options & GHOST_SPMVM_AXPY)
-			lhs[i] = ADD(lhs[i],tmp);
-		else 
-			lhs[i] = tmp;
-
-	}
-}	
-
-extern "C" void BJDS_kernel_wrap(ghost_cu_dt *lhs, ghost_cu_dt *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, ghost_cu_dt *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
-{
-	BJDS_kernel<<<nrowspadded/BJDS_LEN,BJDS_LEN>>>(lhs, rhs, options, nrows, nrowspadded, rowlen, col, val, chunkstart, chunklen);
-	CU_checkerror();
-}*/
-
 template<typename T>
 __device__ inline void zero(T &val)
 {
@@ -211,49 +152,49 @@ __global__ void BJDS_kernel_CU_cvec_tmpl(cuFloatComplex *lhs, cuFloatComplex *rh
 }*/
 
 extern "C" void dd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< double,double > <<<BJDS(mat)->nrows/256,256>>> ((double *)lhs->val,(double *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(double *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< double,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void ds_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< double,float > <<<BJDS(mat)->nrows/256,256>>> ((float *)lhs->val,(float *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(double *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< double,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
-extern "C" void dc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options){ return BJDS_kernel_CU_tmpl< double > <<<BJDS(mat)->nrows/256,256>>> ((cuFloatComplex*)lhs->val,(cuFloatComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(double *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+extern "C" void dc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options){ return BJDS_kernel_CU_tmpl< double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuFloatComplex*)lhs->CU_val,(cuFloatComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void dz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< double,cuDoubleComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuDoubleComplex*)lhs->val,(cuDoubleComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(double *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< double,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void sd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,double > <<<BJDS(mat)->nrows/256,256>>> ((double *)lhs->val,(double *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(float *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< float,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void ss_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,float > <<<BJDS(mat)->nrows/256,256>>> ((float *)lhs->val,(float *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(float *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< float,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void sc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,cuComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuComplex*)lhs->val,(cuComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(float *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< float,cuComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void sz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,cuDoubleComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuDoubleComplex*)lhs->val,(cuDoubleComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(float *)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< float,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void cd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,double > <<<BJDS(mat)->nrows/256,256>>> ((double *)lhs->val,(double *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuFloatComplex,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void cs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,float > <<<BJDS(mat)->nrows/256,256>>> ((float *)lhs->val,(float *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuFloatComplex,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void cc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuComplex*)lhs->val,(cuComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void cz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuDoubleComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuDoubleComplex*)lhs->val,(cuDoubleComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void zd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,double > <<<BJDS(mat)->nrows/256,256>>> ((double *)lhs->val,(double *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuDoubleComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void zs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,float > <<<BJDS(mat)->nrows/256,256>>> ((float *)lhs->val,(float *)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuDoubleComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void zc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuFloatComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuComplex*)lhs->val,(cuComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuDoubleComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuFloatComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 
 extern "C" void zz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuDoubleComplex > <<<BJDS(mat)->nrows/256,256>>> ((cuDoubleComplex*)lhs->val,(cuDoubleComplex*)rhs->val,options,BJDS(mat)->nrows,BJDS(mat)->nrowsPadded,BJDS(mat)->rowLen,BJDS(mat)->col,(cuDoubleComplex*)BJDS(mat)->val,BJDS(mat)->chunkStart,BJDS(mat)->chunkLen); }
+{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
 

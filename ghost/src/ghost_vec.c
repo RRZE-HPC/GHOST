@@ -183,16 +183,20 @@ static void vec_print(ghost_vec_t *vec)
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					printf("PE%d: vec[%d] = %f + %fi\t",
-							ghost_getRank(),i,crealf(VAL(vec,v*vec->traits->nrows+i)),cimagf(VAL(vec,v*vec->traits->nrows+i)));
+							ghost_getRank(),i,
+							crealf(((complex float *)(vec->val))[v*vec->traits->nrows+i]),
+							cimagf(((complex float *)(vec->val))[v*vec->traits->nrows+i]));
 				} else {
 					printf("PE%d: vec[%d] = %f + %fi\t",
-							ghost_getRank(),i,creal(VAL(vec,v*vec->traits->nrows+i)),cimag(VAL(vec,v*vec->traits->nrows+i)));
+							ghost_getRank(),i,
+							crealf(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
+							cimagf(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,(float)(VAL(vec,v*vec->traits->nrows+i)));
+					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,((float *)(vec->val))[v*vec->traits->nrows+i]);
 				} else {
-					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,(double)(VAL(vec,v*vec->traits->nrows+i)));
+					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,((double *)(vec->val))[v*vec->traits->nrows+i]);
 				}
 			}
 		}
@@ -413,7 +417,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 	} else {
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			fp(i,v,&VAL(vec,i));
+			fp(i,v,(vec->val)+sizeofdt*i);
 		}
 	}
 

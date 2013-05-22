@@ -18,7 +18,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += (v_t)(cr->val[j*sizeof(m_t)]) * rhsv[cr->col[j]];
+				hlp1 += (v_t)(((m_t *)(cr->val))[j]) * rhsv[cr->col[j]];
 			}
 			if (options & GHOST_SPMVM_AXPY) 
 				lhsv[i] += hlp1;

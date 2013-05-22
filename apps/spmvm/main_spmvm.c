@@ -13,8 +13,8 @@
 
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_Z(vecdt)
-GHOST_REGISTER_DT_S(matdt)
+GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(matdt)
 
 typedef struct {
 	ghost_context_t *ctx;
@@ -46,7 +46,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 

@@ -698,6 +698,9 @@ static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 		else
 			d_BJDS_kernel_wrap(mat, lhs, rhs, options);
 	}*/
+	BJDS_kernels_CU
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 	
 
 }
