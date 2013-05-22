@@ -189,8 +189,8 @@ static void vec_print(ghost_vec_t *vec)
 				} else {
 					printf("PE%d: vec[%d] = %f + %fi\t",
 							ghost_getRank(),i,
-							crealf(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
-							cimagf(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
+							creal(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
+							cimag(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -417,7 +417,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 	} else {
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			fp(i,v,(vec->val)+sizeofdt*i);
+			fp(i,v,((char*)(vec->val))+sizeofdt*i);
 		}
 	}
 
