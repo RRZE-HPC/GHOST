@@ -443,10 +443,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 static void ghost_zeroVector(ghost_vec_t *vec) 
 {
 	DEBUG_LOG(1,"Zeroing vector");
-	int i;
-	for (i=0; i<vec->traits->nrows; i++) {
-		VAL(vec,i) = 0.+I*0.;
-	}
+	memset(vec->val,0,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 
 #ifdef OPENCL
 	CL_uploadVector(vec);
@@ -454,8 +451,6 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 #ifdef CUDA
 	vec->CUupload(vec);
 #endif
-
-
 }
 /*
    static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 

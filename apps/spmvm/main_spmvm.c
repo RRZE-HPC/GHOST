@@ -46,7 +46,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 2;
 	double time;
 	vecdt_t zero = 0.;
 
@@ -101,7 +101,7 @@ int main( int argc, char* argv[] )
 	lhs->fromScalar(lhs,context,&zero);
 	rhs->fromFunc(rhs,context,rhsVal);
 
-#ifdef CHECK	
+#ifdef CHECK
 	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
 	ghost_printSysInfo();

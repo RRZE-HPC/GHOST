@@ -19,11 +19,14 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 				hlp1 += (v_t)(((m_t *)(cr->val))[j]) * rhsv[cr->col[j]];
+				//DEBUG_LOG(0,"%f * %f",(v_t)(((m_t *)(cr->val))[j]), rhsv[cr->col[j]]);
 			}
-			if (options & GHOST_SPMVM_AXPY) 
+			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;
-			else
+				//DEBUG_LOG(0,"%f += %f",lhsv[i],hlp1);
+			} else {
 				lhsv[i] = hlp1;
+			}
 	}
 }
 

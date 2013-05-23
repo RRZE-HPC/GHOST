@@ -427,6 +427,9 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
+#ifdef GHOST_MPI
+	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+#endif
 	int me = ghost_getRank();
 	complex double zero = 0.+I*0.; // TODO das ist unschoen
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
@@ -479,8 +482,13 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vtraits_t nltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST,.datatype=rhs->traits->datatype);
-	ghost_vec_t *nodeLHS = ghost_createVector(&nltraits);
+	ghost_vtraits_t *nltraits;
+   	nltraits = allocateMemory(sizeof(ghost_vtraits_t),"nltraits");
+	nltraits->flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
+   	nltraits->datatype = rhs->traits->datatype;
+   	nltraits->nvecs = 1;
+	nltraits->nrows = 0;
+	ghost_vec_t *nodeLHS = ghost_createVector(nltraits);
 
 	nodeLHS->fromScalar(nodeLHS,distContext,&zero);
 	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);

@@ -539,13 +539,13 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		//context->localMatrix->nrows = lcrp->lnrows[me];
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_l; i++) localCR->val[i] = 0.0;
+		for (i=0; i<lnEnts_l; i++) localCR->val[i*sizeofdt] = 0;
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_l; i++) localCR->col[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-		for (i=0; i<lnEnts_r; i++) remoteCR->val[i] = 0.0;
+		for (i=0; i<lnEnts_r; i++) remoteCR->val[i*sizeofdt] = 0;
 
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<lnEnts_r; i++) remoteCR->col[i] = 0.0;
@@ -568,13 +568,17 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 			for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++){
 
 				if (fullCR->col[j]<lcrp->lnrows[me]){
-					localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j]; 
-					localCR->val[ localCR->rpt[i]+current_l ] = fullCR->val[j]; 
+					localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j];
+					memcpy(&localCR->val[(localCR->rpt[i]+current_l)*sizeofdt],&fullCR->val[j*sizeofdt],sizeofdt);
+					//localCR->val[ localCR->rpt[i]+current_l ] = fullCR->val[j];
+				  // DEBUG_LOG(0,"local: %f",((double *)(localCR->val))[localCR->rpt[i]+current_l]);
 					current_l++;
 				}
 				else{
 					remoteCR->col[ remoteCR->rpt[i]+current_r ] = fullCR->col[j];
-					remoteCR->val[ remoteCR->rpt[i]+current_r ] = fullCR->val[j];
+					memcpy(&remoteCR->val[(remoteCR->rpt[i]+current_r)*sizeofdt],&fullCR->val[j*sizeofdt],sizeofdt);
+					//remoteCR->val[ remoteCR->rpt[i]+current_r ] = fullCR->val[j];
+				  // DEBUG_LOG(0,"remote: %f",((double *)(remoteCR->val))[remoteCR->rpt[i]+current_r]);
 					current_r++;
 				}
 
