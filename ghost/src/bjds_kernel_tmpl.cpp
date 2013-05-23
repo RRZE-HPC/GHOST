@@ -1,5 +1,5 @@
-#include <ghost.h>
 #include <ghost_util.h>
+#include <ghost.h>
 #include <ghost_mat.h>
 #include <bjds.h>
 #include <stdio.h>

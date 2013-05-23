@@ -385,7 +385,7 @@ void ghost_printGhostInfo()
 #else
 		ghost_printLine("SSE kernels",NULL,"disabled");
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 		ghost_printLine("MPI support",NULL,"enabled");
 #else
 		ghost_printLine("MPI support",NULL,"disabled");
@@ -656,7 +656,7 @@ char * ghost_workdistName(int options)
 
 int ghost_getRank() 
 {
-#ifdef MPI
+#ifdef GHOST_MPI
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
 	return rank;
@@ -667,7 +667,7 @@ int ghost_getRank()
 
 int ghost_getLocalRank() 
 {
-#ifdef MPI
+#ifdef GHOST_MPI
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( getSingleNodeComm(), &rank));
 
@@ -679,7 +679,7 @@ int ghost_getLocalRank()
 
 int ghost_getNumberOfRanksOnNode()
 {
-#ifdef MPI
+#ifdef GHOST_MPI
 	int size;
 	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
 
@@ -730,7 +730,7 @@ static int stringcmp(const void *x, const void *y)
 
 int ghost_getNumberOfNodes() 
 {
-#ifndef MPI
+#ifndef GHOST_MPI
 	UNUSED(stringcmp);
 	return 1;
 #else
@@ -772,7 +772,7 @@ int ghost_getNumberOfNodes()
 
 int ghost_getNumberOfProcesses() 
 {
-#ifndef MPI
+#ifndef GHOST_MPI
 	return 1;
 #else
 
@@ -866,7 +866,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		return -1.0;
 	}
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef OPENCL
@@ -884,7 +884,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 #ifdef CUDA
 		CU_barrier();
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
@@ -919,7 +919,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 {
 	if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
-#ifdef MPI
+#ifdef GHOST_MPI
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 		else
@@ -1273,7 +1273,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nrows = lnrows;
 	} else {
-#ifdef MPI
+#ifdef GHOST_MPI
 		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
 #else
 		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
@@ -1291,7 +1291,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nnz = lnnz;
 	} else {
-#ifdef MPI
+#ifdef GHOST_MPI
 		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
 #else
 		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");

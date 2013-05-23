@@ -28,7 +28,7 @@ IPATH  += -I./include/ -I./include/fortran/
 OBJS	=	$(COBJS) $(CPPOBJS) $(FOBJS) 
 
 ifeq ($(MPI),1)
-MAKROS+= -DMPI
+MAKROS+= -DGHOST_MPI
 IPATH += -I./include/mpi
 OBJS  += $(MPIOBJS)
 endif

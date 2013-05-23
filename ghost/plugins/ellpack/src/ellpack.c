@@ -147,7 +147,7 @@ static void ELLPACK_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrix
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 	mat->context = ctx;
-#ifdef MPI
+#ifdef GHOST_MPI
 	
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO traits[1]

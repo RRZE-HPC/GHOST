@@ -1,6 +1,10 @@
 #ifndef __GHOST_H__
 #define __GHOST_H__
 
+#ifdef GHOST_MPI
+#include <mpi.h>
+#endif
+
 #ifndef GHOST_CLKERNEL
 #include <stdlib.h>
 #ifndef __cplusplus

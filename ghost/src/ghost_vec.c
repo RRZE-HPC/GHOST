@@ -500,7 +500,7 @@ return vec;
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm)
 {
 	DEBUG_LOG(1,"Distributing vector");
-#ifdef MPI
+#ifdef GHOST_MPI
 	int me = ghost_getRank();
 
 	/*	ghost_vidx_t nrows;
@@ -560,7 +560,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_context_t *context, ghost_mat_t *mat) 
 {
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	// TODO
 	//if (matrix->trait.format != GHOST_SPMFORMAT_CRS)
 	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");

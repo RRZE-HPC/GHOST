@@ -1,6 +1,6 @@
 ifeq ($(MPI),1)
 CC = mpicc
-CPPC = mpiCC
+CPPC = mpiicpc
 FC = mpiifort
 else
 CC = icc

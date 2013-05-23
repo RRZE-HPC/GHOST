@@ -7,7 +7,7 @@
 #include "bjds.h"
 #include "crs.h"
 
-#ifdef MPI
+#ifdef GHOST_MPI
 #include <mpi.h>
 #include "ghost_mpi_util.h"
 #endif
@@ -34,8 +34,12 @@
 #endif
 
 //static int options;
-#ifdef MPI
+#ifdef GHOST_MPI
 static int MPIwasInitialized;
+MPI_Datatype GHOST_MPI_DT_C;
+MPI_Op GHOST_MPI_OP_SUM_C;
+MPI_Datatype GHOST_MPI_DT_Z;
+MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
 extern ghost_threadstate_t *threadpool;
@@ -46,7 +50,7 @@ static ghost_mnnz_t context_gnnz (ghost_context_t * context)
 	ghost_mnnz_t gnnz;
 	ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
 	} else {
@@ -69,7 +73,7 @@ static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 	ghost_mnnz_t gnrows;
 	ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) { 
 		MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
 	} else {
@@ -92,7 +96,7 @@ static ghost_mnnz_t context_gncols (ghost_context_t * context)
 	ghost_mnnz_t gncols;
 	ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
 	} else {
@@ -110,7 +114,7 @@ static ghost_mnnz_t context_lncols (ghost_context_t * context)
 	return context->fullMatrix->ncols(context->fullMatrix);
 }*/
 
-#ifdef MPI
+#ifdef GHOST_MPI
 #ifdef GHOST_VEC_COMPLEX
 typedef struct 
 {
@@ -155,7 +159,7 @@ static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
 #endif
 #endif
 
-#ifdef MPI
+#ifdef GHOST_MPI
 typedef struct 
 {
 	float x;
@@ -198,7 +202,7 @@ int ghost_init(int argc, char **argv)
 {
 	int me;
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	int req, prov;
 
 	req = MPI_THREAD_FUNNELED; // TODO not if not all kernels configured
@@ -246,12 +250,12 @@ int ghost_init(int argc, char **argv)
 	} 
 #endif*/
 
-#else // ifdef MPI
+#else // ifdef GHOST_MPI
 	UNUSED(argc);
 	UNUSED(argv);
 	me = 0;
 
-#endif // ifdef MPI
+#endif // ifdef GHOST_MPI
 
 	/*if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
 	} else {
@@ -300,7 +304,7 @@ void ghost_finish()
 	CL_finish();
 #endif
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	if (!MPIwasInitialized)
 		MPI_Finalize();
 #endif
@@ -501,7 +505,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 	strcpy(context->matrixName,mname);
 	free(matrixPathCopy);*/
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
 		DEBUG_LOG(1,"Context is set to be distributed");
 		context->flags |= GHOST_CONTEXT_DISTRIBUTED;
@@ -522,7 +526,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 
 	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
 	for (i=0; i<GHOST_NUM_MODES; i++) context->solvers[i] = NULL;
-#ifdef MPI
+#ifdef GHOST_MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
 	context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
 	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
@@ -533,7 +537,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 	/*
 	   if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	   { // distributed matrix
-#ifdef MPI
+#ifdef GHOST_MPI
 if (!(options & GHOST_OPTION_NO_SPLIT_SOLVERS)) {
 if (!(options & GHOST_OPTION_NO_COMBINED_SOLVERS)) {
 if (nTraits != 3) {
@@ -698,7 +702,7 @@ void ghost_normalizeVec(ghost_vec_t *vec)
 void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
 	vec->dotProduct(vec,vec2,res);
-#ifdef MPI
+#ifdef GHOST_MPI
 	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, res, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, MPI_COMM_WORLD));
 #endif
 
@@ -707,7 +711,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 {
 	int64_t nrows = vec->traits->nrows;
-#ifdef MPI
+#ifdef GHOST_MPI
 	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD));
 #endif
 	if (ghost_getRank() == 0) { // write header

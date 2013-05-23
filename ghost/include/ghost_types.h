@@ -2,10 +2,10 @@
 #define __GHOST_TYPES_H__
 
 #ifdef CUDAKERNEL
-#undef MPI // TODO
+#undef GHOST_MPI // TODO
 #endif
 
-#ifdef MPI
+#ifdef GHOST_MPI
 #include <mpi.h>
 #endif
 #ifdef OPENCL
@@ -31,7 +31,7 @@ typedef float ghost_cu_dt;
 #define CUREAL(a) a
 #define CUIMAG(a) 0 
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 #define ghost_mpi_dt MPI_FLOAT
 #define ghost_mpi_sum MPI_SUM
 #endif
@@ -53,7 +53,7 @@ typedef double ghost_cu_dt;
 #define CUREAL(a) a
 #define CUIMAG(a) 0 
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 #define ghost_mpi_dt MPI_DOUBLE
 #define ghost_mpi_sum MPI_SUM
 #endif
@@ -75,7 +75,7 @@ typedef cuFloatComplex ghost_cu_dt;
 #define CUREAL(a) cuCrealf(a)
 #define CUIMAG(a) cuCimagf(a)
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 #define ghost_mpi_dt GHOST_MPI_DT_C
 #define ghost_mpi_sum GHOST_MPI_OP_SUM_C
 #endif
@@ -97,7 +97,7 @@ typedef cuDoubleComplex ghost_cu_dt;
 #define CUREAL(a) cuCreal(a)
 #define CUIMAG(a) cuCimag(a)
 #endif
-#ifdef MPI
+#ifdef GHOST_MPI
 #define ghost_mpi_dt GHOST_MPI_DT_Z
 #define ghost_mpi_sum GHOST_MPI_OP_SUM_Z
 #endif

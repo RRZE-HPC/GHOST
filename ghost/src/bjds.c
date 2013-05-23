@@ -218,7 +218,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	mat->context = ctx;
 	mat->name = basename(matrixPath);
 
-#ifdef MPI
+#ifdef GHOST_MPI
 	
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO trats[1]
