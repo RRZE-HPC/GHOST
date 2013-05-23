@@ -6,42 +6,104 @@
 #include <crs.h>
 #include "ghost_complex.h"
 
+#define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \
+	switch(ch) { \
+		case 1: \
+				return BJDS_kernel_plain_tmpl< dt1, dt2, 1 >(mat,lhs,rhs,options); \
+		break; \
+		case 2: \
+				return BJDS_kernel_plain_tmpl< dt1, dt2, 2 >(mat,lhs,rhs,options); \
+		break; \
+		case 4: \
+				return BJDS_kernel_plain_tmpl< dt1, dt2, 4 >(mat,lhs,rhs,options); \
+		break; \
+		case 8: \
+				return BJDS_kernel_plain_tmpl< dt1, dt2, 8 >(mat,lhs,rhs,options); \
+		break; \
+		case 16: \
+				 return BJDS_kernel_plain_tmpl< dt1, dt2, 16 >(mat,lhs,rhs,options); \
+		break; \
+		case 32: \
+				 return BJDS_kernel_plain_tmpl< dt1, dt2, 32 >(mat,lhs,rhs,options); \
+		break; \
+		case 64: \
+				 return BJDS_kernel_plain_tmpl< dt1, dt2, 64 >(mat,lhs,rhs,options); \
+		break; \
+		case 256: \
+				  return BJDS_kernel_plain_tmpl< dt1, dt2, 256 >(mat,lhs,rhs,options); \
+		break; \
+		default: \
+				 return BJDS_kernel_plain_ELLPACK_tmpl< dt1, dt2 >(mat,lhs,rhs,options); \
+		break; \
+	}
+
 using namespace std;
 
-template<typename m_t, typename v_t> void BJDS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+template<typename m_t, typename v_t, int chunkHeight> void BJDS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
+	DEBUG_LOG(2,"In plain BJDS kernel");
 	v_t *rhsd = (v_t *)(rhs->val);
 	v_t *lhsd = (v_t *)(lhs->val);
 	ghost_midx_t i,j,c;
-	v_t tmp[BJDS_LEN];
+	v_t tmp[chunkHeight];
 	BJDS_TYPE *bjds = (BJDS_TYPE *)(mat->data);
 
+
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-	for (c=0; c<bjds->nrowsPadded/BJDS_LEN; c++) 
+	for (c=0; c<bjds->nrowsPadded/chunkHeight; c++) 
 	{ // loop over chunks
-		for (i=0; i<BJDS_LEN; i++)
+		for (i=0; i<chunkHeight; i++)
 		{
 			tmp[i] = (v_t)0;
 		}
 
-		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/BJDS_LEN; j++) 
+		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/chunkHeight; j++) 
 		{ // loop inside chunk
-			for (i=0; i<BJDS_LEN; i++)
+			for (i=0; i<chunkHeight; i++)
 			{
-				tmp[i] += (v_t)(bjds->val[(bjds->chunkStart[c]+j*BJDS_LEN+i)*sizeof(m_t)]) * 
-					rhsd[bjds->col[bjds->chunkStart[c]+j*BJDS_LEN+i]];
+				tmp[i] += (v_t)(((m_t*)(bjds->val))[bjds->chunkStart[c]+j*chunkHeight+i]) * 
+					rhsd[bjds->col[bjds->chunkStart[c]+j*chunkHeight+i]];
 			}
 		}
-		for (i=0; i<BJDS_LEN; i++)
+		for (i=0; i<chunkHeight; i++)
 		{
-			if (c*BJDS_LEN+i < bjds->nrows) {
+			if (c*chunkHeight+i < bjds->nrows) {
 				if (options & GHOST_SPMVM_AXPY)
-					lhsd[c*BJDS_LEN+i] += tmp[i];
+					lhsd[c*chunkHeight+i] += tmp[i];
 				else
-					lhsd[c*BJDS_LEN+i] = tmp[i];
+					lhsd[c*chunkHeight+i] = tmp[i];
 			}
 
 		}
+	}
+}
+
+template<typename m_t, typename v_t> void BJDS_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{
+	DEBUG_LOG(2,"In plain ELLPACK (BJDS) kernel");
+	v_t *rhsd = (v_t *)(rhs->val);
+	v_t *lhsd = (v_t *)(lhs->val);
+	ghost_midx_t i,j;
+	v_t tmp;
+	BJDS_TYPE *bjds = (BJDS_TYPE *)(mat->data);
+	m_t *bjdsv = (m_t*)(bjds->val);
+
+
+#pragma omp parallel for schedule(runtime) private(j,tmp)
+	for (i=0; i<bjds->nrows; i++) 
+	{
+		tmp = (v_t)0;
+
+		for (j=0; j<bjds->rowLen[i]; j++) 
+		{ 
+			tmp += (v_t)bjdsv[bjds->nrowsPadded*j+i] * 
+				rhsd[bjds->col[bjds->nrowsPadded*j+i]];
+		}
+		if (options & GHOST_SPMVM_AXPY)
+			lhsd[i] += tmp;
+		else
+			lhsd[i] = tmp;
+
 	}
 }
 
@@ -58,7 +120,6 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_sorting_t* rowSort = NULL;
 
 
-	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
 	mat->rowPerm = rowPerm;
 	mat->invRowPerm = invRowPerm;
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
@@ -96,26 +157,26 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 		/* sort within same rowlength with asceding row number #################### */
 		/*i=0;
-		while(i < cr->nrows) {
-			ghost_midx_t start = i;
+		  while(i < cr->nrows) {
+		  ghost_midx_t start = i;
 
-			j = rowSort[start].nEntsInRow;
-			while( i<cr->nrows && rowSort[i].nEntsInRow >= j ) 
-				++i;
+		  j = rowSort[start].nEntsInRow;
+		  while( i<cr->nrows && rowSort[i].nEntsInRow >= j ) 
+		  ++i;
 
-			DEBUG_LOG(1,"sorting over %"PRmatIDX" rows (%"PRmatIDX"): %"PRmatIDX" - %"PRmatIDX,i-start,j, start, i-1);
-			qsort( &rowSort[start], i-start, sizeof(ghost_sorting_t), compareNZEOrgPos );
-		}
+		  DEBUG_LOG(1,"sorting over %"PRmatIDX" rows (%"PRmatIDX"): %"PRmatIDX" - %"PRmatIDX,i-start,j, start, i-1);
+		  qsort( &rowSort[start], i-start, sizeof(ghost_sorting_t), compareNZEOrgPos );
+		  }
 
-		for(i=1; i < cr->nrows; ++i) {
-			if( rowSort[i].nEntsInRow == rowSort[i-1].nEntsInRow && rowSort[i].row < rowSort[i-1].row)
-				printf("Error in row %"PRmatIDX": descending row number\n",i);
-		}*/
+		  for(i=1; i < cr->nrows; ++i) {
+		  if( rowSort[i].nEntsInRow == rowSort[i-1].nEntsInRow && rowSort[i].row < rowSort[i-1].row)
+		  printf("Error in row %"PRmatIDX": descending row number\n",i);
+		  }*/
 		for(i=0; i < cr->nrows; ++i) {
 			/* invRowPerm maps an index in the permuted system to the original index,
 			 * rowPerm gets the original index and returns the corresponding permuted position.
 			 */
-		//	if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
+			//	if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
 
 			(invRowPerm)[i] = rowSort[i].row;
 			(rowPerm)[rowSort[i].row] = i;
@@ -123,14 +184,13 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 
 
-
-
 	BJDS(mat)->nrows = cr->nrows;
 	BJDS(mat)->nnz = cr->nEnts;
 	BJDS(mat)->nEnts = 0;
-	BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS_LEN);
+	BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS(mat)->chunkHeight);
+	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
 
-	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS_LEN;
+	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight;
 	BJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"BJDS(mat)->chunkStart");
 	BJDS(mat)->chunkMin = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
 	BJDS(mat)->chunkLen = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
@@ -164,10 +224,10 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		chunkAvg += BJDS(mat)->rowLen[i];
 		chunkEnts += BJDS(mat)->rowLen[i];
 
-		if ((i+1)%BJDS_LEN == 0) {
-			chunkAvg /= (double)BJDS_LEN;
+		if ((i+1)%BJDS(mat)->chunkHeight == 0) {
+			chunkAvg /= (double)BJDS(mat)->chunkHeight;
 
-			BJDS(mat)->nEnts += BJDS_LEN*chunkLen;
+			BJDS(mat)->nEnts += BJDS(mat)->chunkHeight*chunkLen;
 			BJDS(mat)->chunkStart[curChunk] = BJDS(mat)->nEnts;
 			BJDS(mat)->chunkMin[curChunk-1] = chunkMin;
 			BJDS(mat)->chunkLen[curChunk-1] = chunkLen;
@@ -190,19 +250,37 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->val = (char *)allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
 	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
 
-#pragma omp parallel for schedule(runtime) private(j,i)
-	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
-	{ // loop over chunks
+	if (BJDS(mat)->chunkHeight < BJDS(mat)->nrowsPadded) 
+	{ // BJDS NUMA initialization
 
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])/BJDS_LEN; j++)
-		{
-			for (i=0; i<BJDS_LEN; i++)
+#pragma omp parallel for schedule(runtime) private(j,i)
+		for (c=0; c<BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight; c++) 
+		{ // loop over chunks
+
+			DEBUG_LOG(2,"Doing BJDS NUMA first-touch initialization");
+			for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])/BJDS(mat)->chunkHeight; j++)
 			{
-				((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = (m_t)0.;
-				BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
+				for (i=0; i<BJDS(mat)->chunkHeight; i++)
+				{
+					((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = (m_t)0.;
+					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = 0;
+				}
+			}
+		}
+	} else 
+	{ // ELLPACK NUMA
+		DEBUG_LOG(2,"Doing ELLPACK NUMA first-touch initialization");
+
+#pragma omp parallel for schedule(runtime) private(j)
+		for (i=0; i<BJDS(mat)->nrows; i++) { 
+			for (j=0; j<BJDS(mat)->chunkLen[0]; j++) {
+				((m_t *)(BJDS(mat)->val))[BJDS(mat)->nrowsPadded*j+i] = (m_t)0.;
+				BJDS(mat)->col[BJDS(mat)->nrowsPadded*j+i] = 0;
 			}
 		}
 	}
+
+
 
 
 
@@ -210,79 +288,80 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 		for (j=0; j<BJDS(mat)->chunkLen[c]; j++) {
 
-			for (i=0; i<BJDS_LEN; i++) {
-				ghost_midx_t row = c*BJDS_LEN+i;
+			for (i=0; i<BJDS(mat)->chunkHeight; i++) {
+				ghost_midx_t row = c*BJDS(mat)->chunkHeight+i;
 
 				if (j<BJDS(mat)->rowLen[row]) {
 					if (flags & GHOST_SPM_SORTED) {
-						((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = ((m_t *)(cr->val))[cr->rpt[(invRowPerm)[row]]+j];
+						((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(invRowPerm)[row]]+j];
 						if (flags & GHOST_SPM_PERMUTECOLIDX)
-							BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = (rowPerm)[cr->col[cr->rpt[(invRowPerm)[row]]+j]];
+							BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = (rowPerm)[cr->col[cr->rpt[(invRowPerm)[row]]+j]];
 						else
-							BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rpt[(invRowPerm)[row]]+j];
+							BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = cr->col[cr->rpt[(invRowPerm)[row]]+j];
 					} else {
-						((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = ((m_t *)(cr->val))[cr->rpt[row]+j];
-						BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = cr->col[cr->rpt[row]+j];
+						((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[row]+j];
+						BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = cr->col[cr->rpt[row]+j];
 					}
 
 				} else {
-					((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = (m_t)0.0;
-					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS_LEN+i] = 0;
+					((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = (m_t)0.0;
+					BJDS(mat)->col[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i] = 0;
 				}
+				//printf("%f ",((m_t *)(BJDS(mat)->val))[BJDS(mat)->chunkStart[c]+j*BJDS(mat)->chunkHeight+i]);
 			}
 		}
 	}
+	//	printf("\n");
 	DEBUG_LOG(1,"Successfully created BJDS");
 }
 
-
 extern "C" void dd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,double,double,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void ds_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< double,float >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,double,float,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void dc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< double,ghost_complex< float > >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,double,ghost_complex<float>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void dz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< double,ghost_complex<double> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,double,ghost_complex<double>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void sd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< float,double >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,float,double,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void ss_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< float,float >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,float,float,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void sc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< float,ghost_complex<float> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,float,ghost_complex<float>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void sz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< float,ghost_complex<double> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,float,ghost_complex<double>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void cd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,double >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<float>,double,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void cs_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,float >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<float>,float,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void cc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<float> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<float>,ghost_complex<float>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void cz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<double> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<float>,ghost_complex<double>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void zd_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,double >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<double>,double,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void zs_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,float >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<double>,float,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void zc_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<float> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<float>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void zz_BJDS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
+{ CHOOSE_KERNEL(BJDS_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<double>,BJDS(mat)->chunkHeight,mat,lhs,rhs,options); }
 
 extern "C" void d_BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 { return BJDS_fromCRS< double >(mat,crs); }

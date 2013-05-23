@@ -1,8 +1,10 @@
 ifeq ($(MPI),1)
-CC = mpiCC
+CC = mpicc
+CPPC = mpiCC
 FC = mpiifort
 else
 CC = icc
+CPPC = icpc
 FC = ifort
 endif
 

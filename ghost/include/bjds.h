@@ -4,7 +4,7 @@
 
 #include "ghost.h"
 
-#ifdef MIC
+/*#ifdef MIC
 //#define BJDS_LEN 8
 #define BJDS_LEN 16
 #elif defined (AVX)
@@ -17,7 +17,8 @@
 #define BJDS_LEN 2
 #else
 #define BJDS_LEN 4
-#endif
+#endif*/
+
 
 typedef struct 
 {
@@ -62,6 +63,7 @@ typedef struct
 	ghost_midx_t *chunkMin; // for version with remainder loop
 	ghost_midx_t *chunkLen; // for version with remainder loop
 	ghost_midx_t *rowLen;   // for version with remainder loop
+	ghost_midx_t chunkHeight;
 	
 	CL_BJDS_TYPE *clmat;
 	CU_BJDS_TYPE *cumat;
@@ -70,10 +72,13 @@ BJDS_TYPE;
 
 #define BJDS(mat) ((BJDS_TYPE *)(mat->data))
 
+//enum BJDS_chunkHeight { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };
+
 ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t *);
 #ifdef __cplusplus
-template<typename m_t, typename v_t> void BJDS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
-template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs);
+template<typename, typename, int> void BJDS_kernel_plain_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+template<typename, typename> void BJDS_kernel_plain_ELLPACK_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+template <typename> void BJDS_fromCRS(ghost_mat_t *, void *);
 extern "C" {
 #endif
 void dd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);

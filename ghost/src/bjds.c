@@ -118,6 +118,22 @@ ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
+	
+	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
+	
+#ifdef MIC
+	BJDS(mat)->chunkHeight = 16;
+#elif defined (AVX)
+	BJDS(mat)->chunkHeight = 4;
+#elif defined (SSE)
+	BJDS(mat)->chunkHeight = 2;
+#elif defined (OPENCL) || defined (CUDA)
+	BJDS(mat)->chunkHeight = 256;
+#elif defined (VSX)
+	BJDS(mat)->chunkHeight = 2;
+#else
+	BJDS(mat)->chunkHeight = 4;
+#endif
 
 	return mat;
 }
@@ -142,7 +158,7 @@ static ghost_midx_t BJDS_ncols(ghost_mat_t *mat)
 
 static void BJDS_printInfo(ghost_mat_t *mat)
 {
-	ghost_printLine("Vector block size",NULL,"%d",BJDS_LEN);
+	ghost_printLine("Vector block size",NULL,"%d",BJDS(mat)->chunkHeight);
 	ghost_printLine("Nu",NULL,"%f",BJDS(mat)->nu);
 	ghost_printLine("Mu",NULL,"%f",BJDS(mat)->mu);
 	ghost_printLine("Beta",NULL,"%f",BJDS(mat)->beta);
@@ -189,7 +205,7 @@ static ghost_midx_t BJDS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 
 static size_t BJDS_byteSize (ghost_mat_t *mat)
 {
-	return (size_t)((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t) + 
+	return (size_t)((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_mnnz_t) + 
 			BJDS(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
@@ -426,18 +442,18 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_dt));
-		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
-		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
+		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
+		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
 	
 		BJDS(mat)->clmat->nrows = BJDS(mat)->nrows;
 		BJDS(mat)->clmat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CL_copyHostToDevice(BJDS(mat)->clmat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_cl_midx_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_cl_midx_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_dt));
-		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_mnnz_t));
-		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_cl_midx_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
+		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
 		char options[32];
-		snprintf(options,32,"-DBJDS_LEN=%d",BJDS_LEN);
+		snprintf(options,32,"-DBJDS_LEN=%d",BJDS(mat)->chunkHeight);
 
 		cl_int err;
 		cl_uint numKernels;
@@ -474,16 +490,16 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
-		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
-		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
+		BJDS(mat)->cumat->chunkStart = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_mnnz_t));
+		BJDS(mat)->cumat->chunkLen = CU_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_midx_t));
 	
 		BJDS(mat)->cumat->nrows = BJDS(mat)->nrows;
 		BJDS(mat)->cumat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CU_copyHostToDevice(BJDS(mat)->cumat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_midx_t));
 		CU_copyHostToDevice(BJDS(mat)->cumat->val, BJDS(mat)->val, BJDS(mat)->nEnts*ghost_sizeofDataType(mat->traits->datatype));
-		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_mnnz_t));
-		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS_LEN)*sizeof(ghost_midx_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_mnnz_t));
+		CU_copyHostToDevice(BJDS(mat)->cumat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_midx_t));
 	}
 #else
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
@@ -544,9 +560,9 @@ static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 			tmp    = _mm_add_pd(tmp,_mm_mul_pd(val,rhs));           // accumulate
 		}
 		if (options & GHOST_SPMVM_AXPY) {
-			_mm_store_pd(&lhs->val[c*BJDS_LEN],_mm_add_pd(tmp,_mm_load_pd(&lhs->val[c*BJDS_LEN])));
+			_mm_store_pd(&lhs->val[c*BJDS(mat)->chunkHeight],_mm_add_pd(tmp,_mm_load_pd(&lhs->val[c*BJDS(mat)->chunkHeight])));
 		} else {
-			_mm_stream_pd(&lhs->val[c*BJDS_LEN],tmp);
+			_mm_stream_pd(&lhs->val[c*BJDS(mat)->chunkHeight],tmp);
 		}
 	}
 
@@ -583,9 +599,9 @@ static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
 		}
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm256_store_pd(&res->val[c*BJDS_LEN],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS_LEN])));
+			_mm256_store_pd(&res->val[c*BJDS(mat)->chunkHeight],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS(mat)->chunkHeight])));
 		} else {
-			_mm256_stream_pd(&res->val[c*BJDS_LEN],tmp);
+			_mm256_stream_pd(&res->val[c*BJDS(mat)->chunkHeight],tmp);
 		}
 	}
 }
@@ -625,9 +641,9 @@ static void BJDS_kernel_MIC(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inv
 			offs += 8;
 		}
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],_mm512_add_pd(tmp,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN])));
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],_mm512_add_pd(tmp,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight])));
 		} else {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],tmp);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],tmp);
 		}
 	}
 }
@@ -671,11 +687,11 @@ static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* 
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
 		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
 		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
-			_mm512_store_pd(&((double *)(res->val))[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN])));
-			_mm512_store_pd(&((double *)(res->val))[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&((double *)(res->val))[c*BJDS_LEN+8])));
+			_mm512_store_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],_mm512_add_pd(tmp1,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight])));
+			_mm512_store_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8],_mm512_add_pd(tmp2,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8])));
 		} else {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN],tmp1);
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS_LEN+8],tmp2);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],tmp1);
+			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8],tmp2);
 		}
 	}
 }
@@ -714,7 +730,7 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
 
 	size_t gSize = (size_t)BJDS(mat)->clmat->nrowsPadded;
-	size_t lSize = BJDS_LEN;
+	size_t lSize = BJDS(mat)->chunkHeight;
 
 	CL_enqueueKernel(mat->clkernel,1,&gSize,&lSize);
 }
@@ -744,9 +760,9 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 			tmp = vec_madd(val,rhs,tmp);
 		}
 		if (options & GHOST_SPMVM_AXPY) {
-			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS_LEN*sizeof(ghost_dt),lhs->val)),c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
+			vec_xstd2(vec_add(tmp,vec_xld2(c*BJDS(mat)->chunkHeight*sizeof(ghost_dt),lhs->val)),c*BJDS(mat)->chunkHeight*sizeof(ghost_dt),lhs->val);
 		} else {
-			vec_xstd2(tmp,c*BJDS_LEN*sizeof(ghost_dt),lhs->val);
+			vec_xstd2(tmp,c*BJDS(mat)->chunkHeight*sizeof(ghost_dt),lhs->val);
 		}
 	}
 }

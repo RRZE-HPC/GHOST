@@ -518,7 +518,25 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 		DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
 	 */
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
-	MPI_safecall(MPI_Scatterv ( VAL(vec), (int *)comm->lnrows, (int *)comm->lfRow, ghost_mpi_dt, VAL((*nodeVec)), (int)comm->lnrows[me], ghost_mpi_dt, 0, MPI_COMM_WORLD ));
+
+	int mpidt;
+	
+
+	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			mpidt = GHOST_MPI_DT_C;
+		} else {
+			mpidt = GHOST_MPI_DT_Z;
+		}
+	} else {
+		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			mpidt = MPI_FLOAT;
+		} else {
+			mpidt = MPI_DOUBLE;
+		}
+	}
+
+	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
@@ -547,6 +565,22 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	//if (matrix->trait.format != GHOST_SPMFORMAT_CRS)
 	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
+	int mpidt;
+	
+
+	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			mpidt = GHOST_MPI_DT_C;
+		} else {
+			mpidt = GHOST_MPI_DT_Z;
+		}
+	} else {
+		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+			mpidt = MPI_FLOAT;
+		} else {
+			mpidt = MPI_DOUBLE;
+		}
+	}
 	int me = ghost_getRank();
 	//TODO permute
 	/*if ( 0x1<<kernel & GHOST_SPMVM_MODES_COMBINED)  {
@@ -557,8 +591,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}*/
 	vec->permute(vec,mat->invRowPerm); 
-	MPI_safecall(MPI_Gatherv(VAL(vec),(int)context->communicator->lnrows[me],ghost_mpi_dt,totalVec->val,
-				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,ghost_mpi_dt,0,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
+				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
 #else
 	//	UNUSED(kernel);
 	UNUSED(context);

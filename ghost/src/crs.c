@@ -322,6 +322,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	int nprocs = ghost_getNumberOfProcesses();
 	ghost_comm_t *lcrp = context->communicator;
+	size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
 	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(int)  );
 	size_nptr = (size_t)( nprocs             * sizeof(int*) );
@@ -512,11 +513,11 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
 
-		localCR->val = (ghost_dt*) allocateMemory(lnEnts_l*sizeof( ghost_dt ),"localMatrix->val" ); 
+		localCR->val = allocateMemory(lnEnts_l*sizeofdt,"localMatrix->val" ); 
 		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
 		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
 
-		remoteCR->val = (ghost_dt*) allocateMemory(lnEnts_r*sizeof( ghost_dt ),"remoteMatrix->val" ); 
+		remoteCR->val = allocateMemory(lnEnts_r*sizeofdt,"remoteMatrix->val" ); 
 		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
 		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
 

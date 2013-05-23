@@ -113,7 +113,7 @@ $(OBJDIR)/%.o: %.c config.mk
 
 $(OBJDIR)/%.o: %.cpp config.mk
 	@echo "==> Compile $< -> $@"
-	${Q}icpc $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	${Q}${CPPC} $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
 $(OBJDIR)/%.o: %.F90 config.mk $(FMODULES) 
 	@echo "==> Compile $< -> $@"
