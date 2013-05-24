@@ -66,10 +66,6 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n);
 static void vec_CUupload (ghost_vec_t *);
 static void vec_CUdownload (ghost_vec_t *);
 #endif
-#ifdef OPENCL
-static void vec_CLupload (ghost_vec_t *);
-static void vec_CLdownload (ghost_vec_t *);
-#endif
 
 ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 {
@@ -105,6 +101,10 @@ ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
 #endif
+#ifdef OPENCL
+	vec->CLupload = &CL_uploadVector;
+	vec->CLdownload = &CL_downloadVector;
+#endif
 
 	vec->val = NULL;
 	vec->isView = 0;
@@ -127,7 +127,6 @@ VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
 static void vec_CUupload (ghost_vec_t *vec)
 {
 	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-
 }
 
 static void vec_CUdownload (ghost_vec_t *vec)
@@ -299,7 +298,7 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 		vec->CUupload(vec);
 #endif
 #ifdef OPENCL
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,flag );
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
 		vec->CLupload(vec);
 #endif
 	}	
@@ -394,6 +393,21 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	pread(file,vec->val,sizeofdt*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeofdt);
 
 	close(file);
+	
+	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
+#ifdef CUDA
+#ifdef CUDA_PINNEDMEM
+		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+#else
+		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
+#endif
+		vec->CUupload(vec);
+#endif
+#ifdef OPENCL
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
+		vec->CLupload(vec);
+#endif
+	}	
 
 }
 
@@ -432,7 +446,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 		vec->CUupload(vec);
 #endif
 #ifdef OPENCL
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,flag );
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
 		vec->CLupload(vec);
 #endif
 	}	
@@ -609,7 +623,7 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 	v1->CL_val_gpu = v2->CL_val_gpu;
 	v2->CL_val_gpu = tmp;
 #endif
-#ifdef OPENCL
+#ifdef CUDA
 	dtmp = v1->CU_val;
 	v1->CU_val = v2->CU_val;
 	v2->CU_val = dtmp;

@@ -247,7 +247,7 @@ static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	crsMat->destroy(crsMat);
 	
 #ifdef OPENCL
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+		if (!(mat->traits->flags & GHOST_SPM_HOST))
 			mat->CLupload(mat);
 #endif
 #ifdef CUDA
@@ -440,7 +440,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat = (CL_BJDS_TYPE *)allocateMemory(sizeof(CL_BJDS_TYPE),"CL_CRS");
 		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
-		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_dt));
+		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
 		BJDS(mat)->clmat->chunkStart = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
 		BJDS(mat)->clmat->chunkLen = CL_allocDeviceMemory((BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
 	
@@ -448,7 +448,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		BJDS(mat)->clmat->nrowsPadded = BJDS(mat)->nrowsPadded;
 		CL_copyHostToDevice(BJDS(mat)->clmat->rowLen, BJDS(mat)->rowLen, BJDS(mat)->nrows*sizeof(ghost_cl_midx_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->col, BJDS(mat)->col, BJDS(mat)->nEnts*sizeof(ghost_cl_midx_t));
-		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*sizeof(ghost_cl_dt));
+		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*ghost_sizeofDataType(mat->traits->datatype));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
 		char options[32];

@@ -184,7 +184,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 #endif
 
 #ifdef OPENCL
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
+	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif
 #ifdef CUDA
 	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
@@ -225,8 +225,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	 ***************************************************************************/
 #ifdef OPENCL
 	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-			invec->val+context->lnrows(context), context->communicator->halo_elements*sizeof(ghost_vdat_t),
-			context->lnrows(context)*sizeof(ghost_vdat_t));
+			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
+			mat->nrows(mat)*sizeofRHS);
 #endif
 #ifdef CUDA
 	CU_copyHostToDevice(&((char *)(invec->CU_val))[mat->nrows(mat)*sizeofRHS], 

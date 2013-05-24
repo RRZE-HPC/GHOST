@@ -544,12 +544,12 @@ matrix->devMatrix =  gpum;
 
 void CL_uploadVector( ghost_vec_t *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->nrows*sizeof(ghost_vdat_t));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 void CL_downloadVector( ghost_vec_t *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->nrows*sizeof(ghost_vdat_t));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 size_t CL_getLocalSize(cl_kernel kernel) 
