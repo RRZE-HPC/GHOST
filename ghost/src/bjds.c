@@ -119,9 +119,8 @@ ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
 	
-	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
 	
-#ifdef MIC
+/*#ifdef MIC
 	BJDS(mat)->chunkHeight = 16;
 #elif defined (AVX)
 	BJDS(mat)->chunkHeight = 4;
@@ -133,7 +132,7 @@ ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 	BJDS(mat)->chunkHeight = 2;
 #else
 	BJDS(mat)->chunkHeight = 4;
-#endif
+#endif*/
 
 	return mat;
 }

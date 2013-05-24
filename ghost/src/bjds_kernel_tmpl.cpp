@@ -120,6 +120,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_sorting_t* rowSort = NULL;
 
 
+	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
 	mat->rowPerm = rowPerm;
 	mat->invRowPerm = invRowPerm;
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
@@ -187,8 +188,14 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->nrows = cr->nrows;
 	BJDS(mat)->nnz = cr->nEnts;
 	BJDS(mat)->nEnts = 0;
-	BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS(mat)->chunkHeight);
-	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
+	if (((int *)(mat->traits->aux))[1] == GHOST_BJDS_CHUNKHEIGHT_ELLPACK) {
+		BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,256); // TODO padding anpassen an architektur
+		BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
+	 } else {
+		BJDS(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
+		BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS(mat)->chunkHeight);
+	 }
+//	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
 
 	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight;
 	BJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"BJDS(mat)->chunkStart");

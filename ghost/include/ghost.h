@@ -2,7 +2,9 @@
 #define __GHOST_H__
 
 #ifdef GHOST_MPI
+#ifndef CUDAKERNEL
 #include <mpi.h>
+#endif
 #endif
 
 #ifndef GHOST_CLKERNEL
