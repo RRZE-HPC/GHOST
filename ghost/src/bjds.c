@@ -4,6 +4,7 @@
 #include "ghost_util.h"
 
 #include <libgen.h>
+#include <string.h>
 
 #ifdef CUDA
 //#include "private/bjds_cukernel.h"
@@ -456,21 +457,63 @@ static void BJDS_upload(ghost_mat_t* mat)
 
 		cl_int err;
 		cl_uint numKernels;
-		cl_program program = CL_registerProgram("bjds_clkernel.cl",options);
+		
+		char datatype[64];
+		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+				strncpy(datatype," -DGHOST_MAT_C ",15);
+			} else {
+				strncpy(datatype," -DGHOST_MAT_Z ",15);
+			}
+		} else {
+			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+				strncpy(datatype," -DGHOST_MAT_S ",15);
+			} else {
+				strncpy(datatype," -DGHOST_MAT_D ",15);
+			}
+
+		}
+		strncpy(datatype+15," -DGHOST_VEC_S ",15);
+		cl_program program = CL_registerProgram("bjds_clkernel.cl",datatype);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-		mat->clkernel = clCreateKernel(program,"BJDS_kernel",&err);
+		mat->clkernel[0] = clCreateKernel(program,"BJDS_kernel",&err);
+		CL_checkerror(err);
+
+		strncpy(datatype+15," -DGHOST_VEC_D ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[1] = clCreateKernel(program,"BJDS_kernel",&err);
+		CL_checkerror(err);
 		
+		strncpy(datatype+15," -DGHOST_VEC_C ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[2] = clCreateKernel(program,"BJDS_kernel",&err);
+		CL_checkerror(err);
+		
+		strncpy(datatype+15," -DGHOST_VEC_Z ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[3] = clCreateKernel(program,"BJDS_kernel",&err);
+		CL_checkerror(err);
+	
+		int i;
+		for (i=0; i<4; i++) {
+			CL_safecall(clSetKernelArg(mat->clkernel[i],3,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrows)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],4,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrowsPadded)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],5,sizeof(cl_mem), &(BJDS(mat)->clmat->rowLen)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],6,sizeof(cl_mem), &(BJDS(mat)->clmat->col)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],7,sizeof(cl_mem), &(BJDS(mat)->clmat->val)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],8,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkStart)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],9,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkLen)));
+		}
 	//	printf("### %lu\n",CL_getLocalSize(mat->clkernel));
 		CL_checkerror(err);
 		
-		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrows)));
-		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(ghost_cl_midx_t), &(BJDS(mat)->clmat->nrowsPadded)));
-		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(BJDS(mat)->clmat->rowLen)));
-		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(BJDS(mat)->clmat->col)));
-		CL_safecall(clSetKernelArg(mat->clkernel,7,sizeof(cl_mem), &(BJDS(mat)->clmat->val)));
-		CL_safecall(clSetKernelArg(mat->clkernel,8,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkStart)));
-		CL_safecall(clSetKernelArg(mat->clkernel,9,sizeof(cl_mem), &(BJDS(mat)->clmat->chunkLen)));
 	}
 #else
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
@@ -724,14 +767,15 @@ static void BJDS_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 #ifdef OPENCL
 static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
+	cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];
+	CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
 
 	size_t gSize = (size_t)BJDS(mat)->clmat->nrowsPadded;
 	size_t lSize = BJDS(mat)->chunkHeight;
 
-	CL_enqueueKernel(mat->clkernel,1,&gSize,&lSize);
+	CL_enqueueKernel(kernel,1,&gSize,&lSize);
 }
 #endif
 

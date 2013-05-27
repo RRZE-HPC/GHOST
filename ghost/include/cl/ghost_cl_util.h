@@ -1,13 +1,12 @@
 #ifndef __GHOST_CL_UTIL_H__
 #define __GHOST_CL_UTIL_H__
 
+#include <ghost.h>
+#include <CL/cl.h>
 
 void CL_init();
 cl_program CL_registerProgram(const char *filename, const char *options);
 void CL_bindMatrixToKernel(void *mat, int format, int T, int kernelIdx, int spmvmOptions);
-
-void CL_uploadVector( ghost_vec_t *vec );
-void CL_downloadVector( ghost_vec_t *vec );
 
 cl_mem CL_allocDeviceMemory( size_t );
 cl_mem CL_allocDeviceMemoryMapped( size_t bytesize, void *hostPtr, int flag );

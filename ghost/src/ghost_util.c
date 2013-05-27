@@ -26,7 +26,7 @@
 #include <fcntl.h>
 
 
-//#define PRETTYPRINT
+	//#define PRETTYPRINT
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
@@ -40,62 +40,62 @@
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
 #define GHOST_MAX_NTASKS 1024
-static int allocatedMem;
+	static int allocatedMem;
 
-ghost_threadstate_t *threadpool = NULL;
-static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
-static int nTasks = 0;
+	ghost_threadstate_t *threadpool = NULL;
+	static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
+	static int nTasks = 0;
 
 
-static double ghost_wctime()
-{
-/*	struct timespec ts;
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
-	return (double)(ts.tv_sec + ts.tv_nsec/1.e9);*/
-	struct timeval tp;
-	gettimeofday(&tp, NULL);
-	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
-}
-/*static double ghost_timediff(struct timespec start, struct timespec end)
-{
-	struct timespec tmp;
-	if (end.tv_nsec-start.tv_nsec < 0) {
-		tmp.tv_sec = end.tv_sec-start.tv_sec-1;
-		tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
-	} else {
-		tmp.tv_sec = end.tv_sec-start.tv_sec;
-		tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	
+	static double ghost_wctime()
+	{
+	/*	struct timespec ts;
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
+		return (double)(ts.tv_sec + ts.tv_nsec/1.e9);*/
+		struct timeval tp;
+		gettimeofday(&tp, NULL);
+		return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 	}
+	/*static double ghost_timediff(struct timespec start, struct timespec end)
+	{
+		struct timespec tmp;
+		if (end.tv_nsec-start.tv_nsec < 0) {
+			tmp.tv_sec = end.tv_sec-start.tv_sec-1;
+			tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
+		} else {
+			tmp.tv_sec = end.tv_sec-start.tv_sec;
+			tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
+		
+		}
 
-	printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
-	return tmp.tv_sec + tmp.tv_nsec/1.e9;
+		printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
+		return tmp.tv_sec + tmp.tv_nsec/1.e9;
 
 
 
-}*/
+	}*/
 
-void ghost_printHeader(const char *fmt, ...)
-{
-	if(ghost_getRank() == 0) {
-		va_list args;
-		va_start(args,fmt);
-		char label[1024];
-		vsnprintf(label,1024,fmt,args);
-		va_end(args);
+	void ghost_printHeader(const char *fmt, ...)
+	{
+		if(ghost_getRank() == 0) {
+			va_list args;
+			va_start(args,fmt);
+			char label[1024];
+			vsnprintf(label,1024,fmt,args);
+			va_end(args);
 
-		const int spacing = 4;
-		int len = strlen(label);
-		int nDash = (PRINTWIDTH-2*spacing-len)/2;
-		int rem = (PRINTWIDTH-2*spacing-len)%2;
-		int i;
+			const int spacing = 4;
+			int len = strlen(label);
+			int nDash = (PRINTWIDTH-2*spacing-len)/2;
+			int rem = (PRINTWIDTH-2*spacing-len)%2;
+			int i;
 #ifdef PRETTYPRINT
-		printf("┌");
-		for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-		printf("┐");
-		printf("\n");
-		printf("├");
-		for (i=0; i<nDash-1; i++) printf("─");
+			printf("┌");
+			for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+			printf("┐");
+			printf("\n");
+			printf("├");
+			for (i=0; i<nDash-1; i++) printf("─");
 		for (i=0; i<spacing; i++) printf(" ");
 		printf("%s",label);
 		for (i=0; i<spacing+rem; i++) printf(" ");
@@ -906,7 +906,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 
 #ifdef OPENCL
 	DEBUG_LOG(1,"Downloading result from OpenCL device");
-	CL_downloadVector(res);
+	res->CLdownload(res);
 #endif
 #ifdef CUDA
 	DEBUG_LOG(1,"Downloading result from CUDA device");
@@ -973,7 +973,7 @@ int ghost_dataTypeIdx(int datatype)
 
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 {
-	char pluginPath[PATH_MAX];
+/*	char pluginPath[PATH_MAX];
 	DIR * pluginDir = opendir(PLUGINPATH);
 	struct dirent * dirEntry;
 	ghost_spmf_plugin_t myPlugin;
@@ -1007,7 +1007,9 @@ void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 	} else {
 		ABORT("The plugin directory does not exist");
 	}
-
+*/
+	UNUSED(dataformats);
+	UNUSED(nDataformats);
 }
 
 int ghost_archIsBigEndian()

@@ -66,6 +66,10 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n);
 static void vec_CUupload (ghost_vec_t *);
 static void vec_CUdownload (ghost_vec_t *);
 #endif
+#ifdef OPENCL
+static void vec_CLupload (ghost_vec_t *);
+static void vec_CLdownload (ghost_vec_t *);
+#endif
 
 ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 {
@@ -102,8 +106,8 @@ ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 	vec->CUdownload = &vec_CUdownload;
 #endif
 #ifdef OPENCL
-	vec->CLupload = &CL_uploadVector;
-	vec->CLdownload = &CL_downloadVector;
+	vec->CLupload = &vec_CLupload;
+	vec->CLdownload = &vec_CLdownload;
 #endif
 
 	vec->val = NULL;
@@ -132,6 +136,18 @@ static void vec_CUupload (ghost_vec_t *vec)
 static void vec_CUdownload (ghost_vec_t *vec)
 {
 	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+}
+#endif
+
+#ifdef OPENCL
+static void vec_CLupload( ghost_vec_t *vec )
+{
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+}
+
+static void vec_CLdownload( ghost_vec_t *vec )
+{
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
 
@@ -460,7 +476,7 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 	memset(vec->val,0,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 
 #ifdef OPENCL
-	CL_uploadVector(vec);
+	vec->CLupload(vec);
 #endif
 #ifdef CUDA
 	vec->CUupload(vec);
@@ -556,11 +572,11 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 
 #ifdef OPENCL
 	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
-		CL_uploadVector(*nodeVec);
+		(*nodeVec)->CLupload(*nodeVec);
 #endif
 #ifdef CUDA
 	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
-		vec->CUupload(*nodeVec);
+		(*nodeVec)->CUupload(*nodeVec);
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");

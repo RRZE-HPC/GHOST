@@ -93,7 +93,7 @@ endif
 LIBGHOST=libghost.$(SUFFIX)
 
 MAKROS+= -DDEBUG=$(DEBUG)
-MAKROS+= -DPLUGINPATH=\"$(GHOSTPATH)/lib/ghost/\"
+MAKROS+= -DCLKERNELPATH=\"$(GHOSTPATH)/lib/ghost/\"
 MAKROS+= -DHEADERPATH=\"$(GHOSTPATH)/include/ghost/\"
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
@@ -155,15 +155,17 @@ distclean: clean
 	@rm -f *.a *.so
 
 install: all
-	@mkdir -p $(GHOSTPATH)/lib
-	@mkdir -p $(GHOSTPATH)/include/ghost
-	@mkdir -p $(GHOSTPATH)/lib/ghost
+	@mkdir -p $(GHOSTPATH)/lib/
+	@mkdir -p $(GHOSTPATH)/include/ghost/
+	@mkdir -p $(GHOSTPATH)/lib/ghost/
 	@echo "==> Install library to $(GHOSTPATH)/lib/"
-	@cp -f $(LIBGHOST) $(GHOSTPATH)/lib
+	@cp -f $(LIBGHOST) $(GHOSTPATH)/lib/
 	@echo "==> Install headers to $(GHOSTPATH)/include/ghost/"
-	@cp -rf include/* $(GHOSTPATH)/include/ghost
+	@cp -rf include/* $(GHOSTPATH)/include/ghost/
+	@echo "==> Install OpenCL kernels to $(GHOSTPATH)/lib/ghost/"
+	@cp -rf src/cl/*.cl $(GHOSTPATH)/lib/ghost/
 	@echo "==> Install module files to $(GHOSTPATH)/lib/ghost/"
-	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost
+	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost/
 
 uninstall: 
 	@echo "==> Uninstall from $(GHOSTPATH)"

@@ -17,14 +17,14 @@
 
 void (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
-{&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
-{&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
-{&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
+	{&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
+	{&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
+	{&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
 void (*CRS_castData_funcs[4][4]) (void *, void *, int) = 
 {{&ss_CRS_castData,&sd_CRS_castData,&sc_CRS_castData,&sz_CRS_castData},
-{&ds_CRS_castData,&dd_CRS_castData,&dc_CRS_castData,&dz_CRS_castData},
-{&cs_CRS_castData,&cd_CRS_castData,&cc_CRS_castData,&cz_CRS_castData},
-{&zs_CRS_castData,&zd_CRS_castData,&zc_CRS_castData,&zz_CRS_castData}};
+	{&ds_CRS_castData,&dd_CRS_castData,&dc_CRS_castData,&dz_CRS_castData},
+	{&cs_CRS_castData,&cd_CRS_castData,&cc_CRS_castData,&cz_CRS_castData},
+	{&zs_CRS_castData,&zd_CRS_castData,&zc_CRS_castData,&zz_CRS_castData}};
 
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
@@ -62,7 +62,7 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 	DEBUG_LOG(1,"Initializing CRS functions");
 
 	mat->fromFile = &CRS_fromBin;
-//	mat->fromMM = &CRS_fromMM;
+	//	mat->fromMM = &CRS_fromMM;
 	mat->fromCRS = &CRS_fromCRS;
 	mat->printInfo = &CRS_printInfo;
 	mat->formatName = &CRS_formatName;
@@ -86,12 +86,12 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 	mat->kernel   = &CRS_kernel_plain;
 #endif
 	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
-	
+
 	mat->rowPerm = NULL;
 	mat->invRowPerm = NULL;
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
-	
+
 	return mat;
 
 }
@@ -127,14 +127,14 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 }
 
 /*static ghost_dt CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
-{
-	ghost_midx_t e;
-	for (e=CR(mat)->rpt[i]; e<CR(mat)->rpt[i+1]; e++) {
-		if (CR(mat)->col[e] == j)
-			return CR(mat)->val[e];
-	}
-	return 0.;
-}*/
+  {
+  ghost_midx_t e;
+  for (e=CR(mat)->rpt[i]; e<CR(mat)->rpt[i+1]; e++) {
+  if (CR(mat)->col[e] == j)
+  return CR(mat)->val[e];
+  }
+  return 0.;
+  }*/
 
 static size_t CRS_byteSize (ghost_mat_t *mat)
 {
@@ -191,7 +191,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 
 	ghost_comm_t *comm;
 
-//	ghost_mat_t *CRSfullMatrix;
+	//	ghost_mat_t *CRSfullMatrix;
 
 	unsigned int nprocs = ghost_getNumberOfProcesses();
 
@@ -206,8 +206,8 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 	comm = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "comm");
 	context->communicator = comm;
 
-//	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
-//	CRSfullMatrix = ghost_initMatrix(&crsTraits);
+	//	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
+	//	CRSfullMatrix = ghost_initMatrix(&crsTraits);
 
 
 	CRS_readHeader(*mat,matrixPath);  // read header
@@ -266,14 +266,14 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 	((CR_TYPE *)((*mat)->data))->nrows = comm->lnrows[me];
 	((CR_TYPE *)((*mat)->data))->nEnts = comm->lnEnts[me];
 
-//	*mat = ghost_initMatrix(&traits[0]);
+	//	*mat = ghost_initMatrix(&traits[0]);
 
-//	(*mat)->fromCRS(*mat,(*mat)->data);
-//	printf("$$$ %p %p\n",CR((*mat)),CR((*mat))->col);
-//	CR_TYPE *locCR = NULL;
-//	CR_TYPE *remCR = NULL;
+	//	(*mat)->fromCRS(*mat,(*mat)->data);
+	//	printf("$$$ %p %p\n",CR((*mat)),CR((*mat))->col);
+	//	CR_TYPE *locCR = NULL;
+	//	CR_TYPE *remCR = NULL;
 
-//	CRS_createCommunication((*mat),&locCR,&remCR,options,context);
+	//	CRS_createCommunication((*mat),&locCR,&remCR,options,context);
 
 
 	// TODO clean up
@@ -571,14 +571,14 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 					localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j];
 					memcpy(&localCR->val[(localCR->rpt[i]+current_l)*sizeofdt],&fullCR->val[j*sizeofdt],sizeofdt);
 					//localCR->val[ localCR->rpt[i]+current_l ] = fullCR->val[j];
-				  // DEBUG_LOG(0,"local: %f",((double *)(localCR->val))[localCR->rpt[i]+current_l]);
+					// DEBUG_LOG(0,"local: %f",((double *)(localCR->val))[localCR->rpt[i]+current_l]);
 					current_l++;
 				}
 				else{
 					remoteCR->col[ remoteCR->rpt[i]+current_r ] = fullCR->col[j];
 					memcpy(&remoteCR->val[(remoteCR->rpt[i]+current_r)*sizeofdt],&fullCR->val[j*sizeofdt],sizeofdt);
 					//remoteCR->val[ remoteCR->rpt[i]+current_r ] = fullCR->val[j];
-				  // DEBUG_LOG(0,"remote: %f",((double *)(remoteCR->val))[remoteCR->rpt[i]+current_r]);
+					// DEBUG_LOG(0,"remote: %f",((double *)(remoteCR->val))[remoteCR->rpt[i]+current_r]);
 					current_r++;
 				}
 
@@ -615,29 +615,29 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
 	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
 
-/*
-	context->localMatrix = ghost_initMatrix(&traits[1]);
-	context->localMatrix->symmetry = mat->symmetry;
-	context->localMatrix->fromCRS(context->localMatrix,localCR);
+	/*
+	   context->localMatrix = ghost_initMatrix(&traits[1]);
+	   context->localMatrix->symmetry = mat->symmetry;
+	   context->localMatrix->fromCRS(context->localMatrix,localCR);
 
-	context->remoteMatrix = ghost_initMatrix(&traits[2]);
-	context->remoteMatrix->fromCRS(context->remoteMatrix,remoteCR);
+	   context->remoteMatrix = ghost_initMatrix(&traits[2]);
+	   context->remoteMatrix->fromCRS(context->remoteMatrix,remoteCR);
 
 #ifdef OPENCL
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			context->fullMatrix->CLupload(context->fullMatrix);
-		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
-			context->localMatrix->CLupload(context->localMatrix);
-		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
-			context->remoteMatrix->CLupload(context->remoteMatrix);
+if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+context->fullMatrix->CLupload(context->fullMatrix);
+if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+context->localMatrix->CLupload(context->localMatrix);
+if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+context->remoteMatrix->CLupload(context->remoteMatrix);
 #endif
 #ifdef CUDA
-		if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
-			context->fullMatrix->CUupload(context->fullMatrix);
-		if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
-			context->localMatrix->CUupload(context->localMatrix);
-		if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
-			context->remoteMatrix->CUupload(context->remoteMatrix);
+if (!(context->fullMatrix->traits->flags & GHOST_SPM_HOST))
+context->fullMatrix->CUupload(context->fullMatrix);
+if (!(context->localMatrix->traits->flags & GHOST_SPM_HOST))
+context->localMatrix->CUupload(context->localMatrix);
+if (!(context->remoteMatrix->traits->flags & GHOST_SPM_HOST))
+context->remoteMatrix->CUupload(context->remoteMatrix);
 #endif*/
 
 
@@ -688,129 +688,129 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 			WARNING_LOG("Distribution by LNZE is currently not supported");
 			options |= GHOST_CONTEXT_WORKDIST_NZE;
 			/*if (!(options & GHOST_OPTION_SERIAL_IO)) {
-				DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
-						"implemented for parallel IO! Switching to "
-						"GHOST_OPTION_WORKDIST_NZE");
-				options |= GHOST_CONTEXT_WORKDIST_NZE;
-			} else {*/
-				DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
-				ghost_mnnz_t *loc_count;
-				int target_lnze;
+			  DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
+			  "implemented for parallel IO! Switching to "
+			  "GHOST_OPTION_WORKDIST_NZE");
+			  options |= GHOST_CONTEXT_WORKDIST_NZE;
+			  } else {*/
+			DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
+			ghost_mnnz_t *loc_count;
+			int target_lnze;
 
-				int trial_count, prev_count, trial_rows;
-				int ideal, prev_rows;
-				int outer_iter, outer_convergence;
+			int trial_count, prev_count, trial_rows;
+			int ideal, prev_rows;
+			int outer_iter, outer_convergence;
 
-				/* A first attempt should be blocks of equal size */
-				target_rows = (cr->nrows/nprocs);
+			/* A first attempt should be blocks of equal size */
+			target_rows = (cr->nrows/nprocs);
 
-				lcrp->lfRow[0] = 0;
-				lcrp->lfEnt[0] = 0;
+			lcrp->lfRow[0] = 0;
+			lcrp->lfEnt[0] = 0;
 
-				for (i=1; i<nprocs; i++){
-					lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
-					lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
+			for (i=1; i<nprocs; i++){
+				lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
+				lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
+			}
+
+			for (i=0; i<nprocs-1; i++){
+				lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
+				lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
+			}
+			lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
+			lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+
+			/* Count number of local elements in each block */
+			loc_count      = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "loc_count" ); 
+			for (i=0; i<nprocs; i++) loc_count[i] = 0;     
+
+			for (i=0; i<nprocs; i++){
+				for (j=lcrp->lfEnt[i]; j<lcrp->lfEnt[i]+lcrp->lnEnts[i]; j++){
+					if (cr->col[j] >= lcrp->lfRow[i] && 
+							cr->col[j]<lcrp->lfRow[i]+lcrp->lnrows[i])
+						loc_count[i]++;
 				}
+			}
+			DEBUG_LOG(2,"First run: local elements:");
+			hlpi = 0;
+			for (i=0; i<nprocs; i++){
+				hlpi += loc_count[i];
+				DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatIDX, i, loc_count[i], lcrp->lnEnts[i]);
+			}
+			target_lnze = hlpi/nprocs;
+			DEBUG_LOG(2,"total local elements: %d | per PE: %d", hlpi, target_lnze);
+
+			outer_convergence = 0; 
+			outer_iter = 0;
+
+			while(outer_convergence==0){ 
+
+				DEBUG_LOG(2,"Convergence Iteration %d", outer_iter);
 
 				for (i=0; i<nprocs-1; i++){
-					lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-					lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-				}
-				lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-				lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
 
-				/* Count number of local elements in each block */
-				loc_count      = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "loc_count" ); 
-				for (i=0; i<nprocs; i++) loc_count[i] = 0;     
+					ideal = 0;
+					prev_rows  = lcrp->lnrows[i];
+					prev_count = loc_count[i];
 
-				for (i=0; i<nprocs; i++){
-					for (j=lcrp->lfEnt[i]; j<lcrp->lfEnt[i]+lcrp->lnEnts[i]; j++){
-						if (cr->col[j] >= lcrp->lfRow[i] && 
-								cr->col[j]<lcrp->lfRow[i]+lcrp->lnrows[i])
-							loc_count[i]++;
+					while (ideal==0){
+
+						trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
+
+						/* Check ob die Anzahl der Elemente schon das beste ist das ich erwarten kann */
+						if ( (trial_rows-prev_rows)*(trial_rows-prev_rows)<5.0 ) ideal=1;
+
+						trial_count = 0;
+						for (j=lcrp->lfEnt[i]; j<cr->rpt[lcrp->lfRow[i]+trial_rows]; j++){
+							if (cr->col[j] >= lcrp->lfRow[i] && cr->col[j]<lcrp->lfRow[i]+trial_rows)
+								trial_count++;
+						}
+						prev_rows  = trial_rows;
+						prev_count = trial_count;
 					}
+
+					lcrp->lnrows[i]  = trial_rows;
+					loc_count[i]     = trial_count;
+					lcrp->lfRow[i+1] = lcrp->lfRow[i]+lcrp->lnrows[i];
+					if (lcrp->lfRow[i+1]>cr->nrows) DEBUG_LOG(0,"Exceeded matrix dimension");
+					lcrp->lfEnt[i+1] = cr->rpt[lcrp->lfRow[i+1]];
+					lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
+
 				}
-				DEBUG_LOG(2,"First run: local elements:");
+
+				lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1];
+				lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+				loc_count[nprocs-1] = 0;
+				for (j=lcrp->lfEnt[nprocs-1]; j<cr->nEnts; j++)
+					if (cr->col[j] >= lcrp->lfRow[nprocs-1]) loc_count[nprocs-1]++;
+
+				DEBUG_LOG(2,"Next run: outer_iter=%d:", outer_iter);
 				hlpi = 0;
 				for (i=0; i<nprocs; i++){
 					hlpi += loc_count[i];
-					DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatIDX, i, loc_count[i], lcrp->lnEnts[i]);
+					DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatNNZ, i, loc_count[i], lcrp->lnEnts[i]);
 				}
 				target_lnze = hlpi/nprocs;
-				DEBUG_LOG(2,"total local elements: %d | per PE: %d", hlpi, target_lnze);
+				DEBUG_LOG(2,"total local elements: %d | per PE: %d | total share: %6.3f%%",
+						hlpi, target_lnze, 100.0*hlpi/(1.0*cr->nEnts));
 
-				outer_convergence = 0; 
-				outer_iter = 0;
+				hlpi = 0;
+				for (i=0; i<nprocs; i++) if ( (1.0*(loc_count[i]-target_lnze))/(1.0*target_lnze)>0.001) hlpi++;
+				if (hlpi == 0) outer_convergence = 1;
 
-				while(outer_convergence==0){ 
+				outer_iter++;
 
-					DEBUG_LOG(2,"Convergence Iteration %d", outer_iter);
-
-					for (i=0; i<nprocs-1; i++){
-
-						ideal = 0;
-						prev_rows  = lcrp->lnrows[i];
-						prev_count = loc_count[i];
-
-						while (ideal==0){
-
-							trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
-
-							/* Check ob die Anzahl der Elemente schon das beste ist das ich erwarten kann */
-							if ( (trial_rows-prev_rows)*(trial_rows-prev_rows)<5.0 ) ideal=1;
-
-							trial_count = 0;
-							for (j=lcrp->lfEnt[i]; j<cr->rpt[lcrp->lfRow[i]+trial_rows]; j++){
-								if (cr->col[j] >= lcrp->lfRow[i] && cr->col[j]<lcrp->lfRow[i]+trial_rows)
-									trial_count++;
-							}
-							prev_rows  = trial_rows;
-							prev_count = trial_count;
-						}
-
-						lcrp->lnrows[i]  = trial_rows;
-						loc_count[i]     = trial_count;
-						lcrp->lfRow[i+1] = lcrp->lfRow[i]+lcrp->lnrows[i];
-						if (lcrp->lfRow[i+1]>cr->nrows) DEBUG_LOG(0,"Exceeded matrix dimension");
-						lcrp->lfEnt[i+1] = cr->rpt[lcrp->lfRow[i+1]];
-						lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-
-					}
-
-					lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1];
-					lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
-					loc_count[nprocs-1] = 0;
-					for (j=lcrp->lfEnt[nprocs-1]; j<cr->nEnts; j++)
-						if (cr->col[j] >= lcrp->lfRow[nprocs-1]) loc_count[nprocs-1]++;
-
-					DEBUG_LOG(2,"Next run: outer_iter=%d:", outer_iter);
-					hlpi = 0;
-					for (i=0; i<nprocs; i++){
-						hlpi += loc_count[i];
-						DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatNNZ, i, loc_count[i], lcrp->lnEnts[i]);
-					}
-					target_lnze = hlpi/nprocs;
-					DEBUG_LOG(2,"total local elements: %d | per PE: %d | total share: %6.3f%%",
-							hlpi, target_lnze, 100.0*hlpi/(1.0*cr->nEnts));
-
-					hlpi = 0;
-					for (i=0; i<nprocs; i++) if ( (1.0*(loc_count[i]-target_lnze))/(1.0*target_lnze)>0.001) hlpi++;
-					if (hlpi == 0) outer_convergence = 1;
-
-					outer_iter++;
-
-					if (outer_iter>20){
-						DEBUG_LOG(0,"No convergence after 20 iterations, exiting iteration.");
-						outer_convergence = 1;
-					}
-
+				if (outer_iter>20){
+					DEBUG_LOG(0,"No convergence after 20 iterations, exiting iteration.");
+					outer_convergence = 1;
 				}
 
-				int p;
-				for (p=0; i<nprocs; i++)  
-					DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, p, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
+			}
 
-				free(loc_count);
+			int p;
+			for (p=0; i<nprocs; i++)  
+				DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, p, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
+
+			free(loc_count);
 			//}
 		}
 		else {
@@ -1129,16 +1129,56 @@ static void CRS_upload(ghost_mat_t *mat)
 
 		cl_int err;
 		cl_uint numKernels;
-		cl_program program = CL_registerProgram("crs_clkernel.cl","");
+		char datatype[64];
+		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+				strncpy(datatype," -DGHOST_MAT_C ",15);
+			} else {
+				strncpy(datatype," -DGHOST_MAT_Z ",15);
+			}
+		} else {
+			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+				strncpy(datatype," -DGHOST_MAT_S ",15);
+			} else {
+				strncpy(datatype," -DGHOST_MAT_D ",15);
+			}
+
+		}
+		strncpy(datatype+15," -DGHOST_VEC_S ",15);
+		cl_program program = CL_registerProgram("crs_clkernel.cl",datatype);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-		mat->clkernel = clCreateKernel(program,"CRS_kernel",&err);
+		mat->clkernel[0] = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
 
-		CL_safecall(clSetKernelArg(mat->clkernel,3,sizeof(int), &(CR(mat)->clmat->nrows)));
-		CL_safecall(clSetKernelArg(mat->clkernel,4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
-		CL_safecall(clSetKernelArg(mat->clkernel,5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
-		CL_safecall(clSetKernelArg(mat->clkernel,6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
+		strncpy(datatype+15," -DGHOST_VEC_D ",15);
+		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[1] = clCreateKernel(program,"CRS_kernel",&err);
+		CL_checkerror(err);
+		
+		strncpy(datatype+15," -DGHOST_VEC_C ",15);
+		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[2] = clCreateKernel(program,"CRS_kernel",&err);
+		CL_checkerror(err);
+		
+		strncpy(datatype+15," -DGHOST_VEC_Z ",15);
+		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
+		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
+		mat->clkernel[3] = clCreateKernel(program,"CRS_kernel",&err);
+		CL_checkerror(err);
+	
+		int i;
+		for (i=0; i<4; i++) {
+			CL_safecall(clSetKernelArg(mat->clkernel[i],3,sizeof(int), &(CR(mat)->clmat->nrows)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
+			CL_safecall(clSetKernelArg(mat->clkernel[i],6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
+		}
 	}
 #else
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
@@ -1148,18 +1188,18 @@ static void CRS_upload(ghost_mat_t *mat)
 }
 
 /*int compareNZEPos( const void* a, const void* b ) 
-{
+  {
 
-	int aRow = ((NZE_TYPE*)a)->row,
-		bRow = ((NZE_TYPE*)b)->row,
-		aCol = ((NZE_TYPE*)a)->col,
-		bCol = ((NZE_TYPE*)b)->col;
+  int aRow = ((NZE_TYPE*)a)->row,
+  bRow = ((NZE_TYPE*)b)->row,
+  aCol = ((NZE_TYPE*)a)->col,
+  bCol = ((NZE_TYPE*)b)->col;
 
-	if( aRow == bRow ) {
-		return aCol - bCol;
-	}
-	else return aRow - bRow;
-}*/
+  if( aRow == bRow ) {
+  return aCol - bCol;
+  }
+  else return aRow - bRow;
+  }*/
 
 static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
@@ -1182,6 +1222,10 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 #endif
 	}
 	DEBUG_LOG(1,"Matrix read in successfully");
+#ifdef OPENCL
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CLupload(mat);
+#endif
 
 }
 
@@ -1190,22 +1234,22 @@ static void CRS_free(ghost_mat_t * mat)
 	DEBUG_LOG(1,"Freeing CRS matrix");
 	if (mat) {
 #ifdef OPENCL
-	if (mat->traits->flags & GHOST_SPM_DEVICE) {
-		CL_freeDeviceMemory(CR(mat)->clmat->rpt);
-		CL_freeDeviceMemory(CR(mat)->clmat->col);
-		CL_freeDeviceMemory(CR(mat)->clmat->val);
-	}
+		if (mat->traits->flags & GHOST_SPM_DEVICE) {
+			CL_freeDeviceMemory(CR(mat)->clmat->rpt);
+			CL_freeDeviceMemory(CR(mat)->clmat->col);
+			CL_freeDeviceMemory(CR(mat)->clmat->val);
+		}
 #endif
-	free(CR(mat)->rpt);
-	free(CR(mat)->col);
-	free(CR(mat)->val);
+		free(CR(mat)->rpt);
+		free(CR(mat)->col);
+		free(CR(mat)->val);
 
-	free(mat->data);
-	free(mat->rowPerm);
-	free(mat->invRowPerm);
+		free(mat->data);
+		free(mat->rowPerm);
+		free(mat->invRowPerm);
 
 
-	free(mat);
+		free(mat);
 	}
 	DEBUG_LOG(1,"CRS matrix freed successfully");
 }
@@ -1257,74 +1301,75 @@ lhs->val[i] = hlp1;
 
 } else {
 
-	DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
+DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
-	double *rhsv = (double *)rhs->val;	
-	double *lhsv = (double *)lhs->val;	
-	ghost_midx_t i, j;
-	double hlp1;
-	CR_TYPE *cr = CR(mat);
+double *rhsv = (double *)rhs->val;	
+double *lhsv = (double *)lhs->val;	
+ghost_midx_t i, j;
+double hlp1;
+CR_TYPE *cr = CR(mat);
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<cr->nrows; i++){
-		hlp1 = 0.0;
-		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
+for (i=0; i<cr->nrows; i++){
+hlp1 = 0.0;
+for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
 	//		printf("%d: %d: %f*%f (%d) = %f\n",ghost_getRank(),i,cr->val[j],rhsv[cr->col[j]],cr->col[j],hlp1);
-		}
-		if (options & GHOST_SPMVM_AXPY) 
-			lhsv[i] += hlp1;
-		else
-			lhsv[i] = hlp1;
 	}
-*/
+	if (options & GHOST_SPMVM_AXPY) 
+	lhsv[i] += hlp1;
+	else
+	lhsv[i] = hlp1;
+	}
+	 */
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
-//	lhs->print(lhs);
-//	rhs->print(rhs);
+	//	lhs->print(lhs);
+	//	rhs->print(rhs);
 
 	/*if (lhs->traits->nvecs == 1) {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				c_CRS_kernel_plain(mat,lhs,rhs,options);
-			else
-				s_CRS_kernel_plain(mat,lhs,rhs,options);
-		} else {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				z_CRS_kernel_plain(mat,lhs,rhs,options);
-			else
-				d_CRS_kernel_plain(mat,lhs,rhs,options);
-		}
-	} else {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				c_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-			else
-				s_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-		} else {
-			if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-				z_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-			else
-				d_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-		}
-	}*/
-	
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  c_CRS_kernel_plain(mat,lhs,rhs,options);
+	  else
+	  s_CRS_kernel_plain(mat,lhs,rhs,options);
+	  } else {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  z_CRS_kernel_plain(mat,lhs,rhs,options);
+	  else
+	  d_CRS_kernel_plain(mat,lhs,rhs,options);
+	  }
+	  } else {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  c_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+	  else
+	  s_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+	  } else {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  z_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+	  else
+	  d_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
+	  }
+	  }*/
+
 
 
 	//}
 
-	
+
 	CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
-}
+	}
 
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-	CL_safecall(clSetKernelArg(mat->clkernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(mat->clkernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
-	CL_safecall(clSetKernelArg(mat->clkernel,2,sizeof(int), &options));
+	cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];
+	CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
+	CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
 
 	size_t gSize = (size_t)CR(mat)->clmat->nrows;
 
-	CL_enqueueKernel(mat->clkernel,1,&gSize,NULL);
+	CL_enqueueKernel(kernel,1,&gSize,NULL);
 }
 #endif

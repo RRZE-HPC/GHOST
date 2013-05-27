@@ -251,7 +251,7 @@ struct ghost_mat_t
 	void       (*fromCRS)(ghost_mat_t *, void *);
 	void       (*split)(ghost_mat_t *, ghost_context_t *);
 #ifdef OPENCL
-	cl_kernel clkernel;
+	cl_kernel clkernel[4];
 #endif
 }; 
 

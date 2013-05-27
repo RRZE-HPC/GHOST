@@ -144,7 +144,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 
 	char path[PATH_MAX];
-	snprintf(path,PATH_MAX,"%s/%s",PLUGINPATH,filename);
+	snprintf(path,PATH_MAX,"%s/%s",CLKERNELPATH,filename);
 
 	char headerPath[PATH_MAX] = HEADERPATH;
 	size_t optionsLen = strlen(headerPath)+4+strlen(additionalOptions);
@@ -159,7 +159,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	long filesize = ftell(fp);
 	fseek(fp,0L,SEEK_SET);
 
-	char * source_str = (char*)allocateMemory(filesize,"source");
+	char * source_str = (char*)allocateMemory(filesize+1,"source");
 	fread( source_str, 1, filesize, fp);
 	fclose( fp );
 
@@ -178,8 +178,11 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
 		DEBUG_LOG(1,"Build log: %s",build_log);
+		free(build_log);
 	}
 
+	free(source_str);
+	free(options);
 	return program;
 }
 
@@ -542,15 +545,6 @@ if (!(spmvmOptions & GHOST_OPTION_NO_SPLIT_SOLVERS)) { // split computation
 matrix->devMatrix =  gpum;
 }*/
 
-void CL_uploadVector( ghost_vec_t *vec )
-{
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-}
-
-void CL_downloadVector( ghost_vec_t *vec )
-{
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-}
 
 size_t CL_getLocalSize(cl_kernel kernel) 
 {

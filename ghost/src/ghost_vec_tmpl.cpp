@@ -16,7 +16,7 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 	ghost_vec_scale_tmpl<v_t>(vec,&s);
 
 #ifdef OPENCL
-	CL_uploadVector(vec);
+	vec->CLupload(vec);
 #endif
 #ifdef CUDA
 	vec->CUupload(vec);

@@ -92,11 +92,11 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
 #ifdef OPENCL
 	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to OpenCL device");
-	CL_uploadVector(invec);
+	invec->CLupload(invec);
 #endif
 #ifdef CUDA
 	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to CUDA device");
-	CU_uploadVector(invec);
+	invec->CUupload(invec);
 #endif
 
 
