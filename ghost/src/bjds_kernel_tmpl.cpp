@@ -120,12 +120,12 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_sorting_t* rowSort = NULL;
 
 
-	mat->data = (BJDS_TYPE *)allocateMemory(sizeof(BJDS_TYPE),"BJDS(mat)");
+	mat->data = (BJDS_TYPE *)ghost_malloc(sizeof(BJDS_TYPE));
 	mat->rowPerm = rowPerm;
 	mat->invRowPerm = invRowPerm;
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
-		rowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"BJDS(mat)->rowPerm");
-		invRowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"BJDS(mat)->invRowPerm");
+		rowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
+		invRowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
@@ -136,8 +136,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",sortBlock);
 
 		/* get max number of entries in one row ###########################*/
-		rowSort = (ghost_sorting_t*) allocateMemory( cr->nrows * sizeof( ghost_sorting_t ),
-				"rowSort" );
+		rowSort = (ghost_sorting_t*)ghost_malloc(cr->nrows * sizeof(ghost_sorting_t));
 
 		for (c=0; c<cr->nrows/sortBlock; c++)  
 		{
@@ -198,10 +197,10 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 //	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
 
 	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight;
-	BJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"BJDS(mat)->chunkStart");
-	BJDS(mat)->chunkMin = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
-	BJDS(mat)->chunkLen = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
-	BJDS(mat)->rowLen = (ghost_midx_t *)allocateMemory((BJDS(mat)->nrowsPadded)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
+	BJDS(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
+	BJDS(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+	BJDS(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+	BJDS(mat)->rowLen = (ghost_midx_t *)ghost_malloc((BJDS(mat)->nrowsPadded)*sizeof(ghost_midx_t));
 	BJDS(mat)->chunkStart[0] = 0;
 
 	ghost_midx_t chunkMin = cr->ncols;
@@ -253,9 +252,8 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->mu /= (double)nChunks;
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
-	//BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
-	BJDS(mat)->val = (char *)allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
-	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
+	BJDS(mat)->val = (char *)ghost_malloc(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts);
+	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*BJDS(mat)->nEnts);
 
 	if (BJDS(mat)->chunkHeight < BJDS(mat)->nrowsPadded) 
 	{ // BJDS NUMA initialization

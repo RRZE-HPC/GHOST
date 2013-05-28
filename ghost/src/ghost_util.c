@@ -26,7 +26,7 @@
 #include <fcntl.h>
 
 
-	//#define PRETTYPRINT
+//#define PRETTYPRINT
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
@@ -40,62 +40,62 @@
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
 #define GHOST_MAX_NTASKS 1024
-	static int allocatedMem;
+//static int allocatedMem;
 
-	ghost_threadstate_t *threadpool = NULL;
-	static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
-	static int nTasks = 0;
+ghost_threadstate_t *threadpool = NULL;
+static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
+static int nTasks = 0;
 
 
-	static double ghost_wctime()
-	{
+static double ghost_wctime()
+{
 	/*	struct timespec ts;
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
 		return (double)(ts.tv_sec + ts.tv_nsec/1.e9);*/
-		struct timeval tp;
-		gettimeofday(&tp, NULL);
-		return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
-	}
-	/*static double ghost_timediff(struct timespec start, struct timespec end)
-	{
-		struct timespec tmp;
-		if (end.tv_nsec-start.tv_nsec < 0) {
-			tmp.tv_sec = end.tv_sec-start.tv_sec-1;
-			tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
-		} else {
-			tmp.tv_sec = end.tv_sec-start.tv_sec;
-			tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
-		
-		}
+	struct timeval tp;
+	gettimeofday(&tp, NULL);
+	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
+}
+/*static double ghost_timediff(struct timespec start, struct timespec end)
+  {
+  struct timespec tmp;
+  if (end.tv_nsec-start.tv_nsec < 0) {
+  tmp.tv_sec = end.tv_sec-start.tv_sec-1;
+  tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
+  } else {
+  tmp.tv_sec = end.tv_sec-start.tv_sec;
+  tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
 
-		printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
-		return tmp.tv_sec + tmp.tv_nsec/1.e9;
+  }
+
+  printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
+  return tmp.tv_sec + tmp.tv_nsec/1.e9;
 
 
 
-	}*/
+  }*/
 
-	void ghost_printHeader(const char *fmt, ...)
-	{
-		if(ghost_getRank() == 0) {
-			va_list args;
-			va_start(args,fmt);
-			char label[1024];
-			vsnprintf(label,1024,fmt,args);
-			va_end(args);
+void ghost_printHeader(const char *fmt, ...)
+{
+	if(ghost_getRank() == 0) {
+		va_list args;
+		va_start(args,fmt);
+		char label[1024];
+		vsnprintf(label,1024,fmt,args);
+		va_end(args);
 
-			const int spacing = 4;
-			int len = strlen(label);
-			int nDash = (PRINTWIDTH-2*spacing-len)/2;
-			int rem = (PRINTWIDTH-2*spacing-len)%2;
-			int i;
+		const int spacing = 4;
+		int len = strlen(label);
+		int nDash = (PRINTWIDTH-2*spacing-len)/2;
+		int rem = (PRINTWIDTH-2*spacing-len)%2;
+		int i;
 #ifdef PRETTYPRINT
-			printf("┌");
-			for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-			printf("┐");
-			printf("\n");
-			printf("├");
-			for (i=0; i<nDash-1; i++) printf("─");
+		printf("┌");
+		for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+		printf("┐");
+		printf("\n");
+		printf("├");
+		for (i=0; i<nDash-1; i++) printf("─");
 		for (i=0; i<spacing; i++) printf(" ");
 		printf("%s",label);
 		for (i=0; i<spacing+rem; i++) printf(" ");
@@ -184,7 +184,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,ghost_getMatNrows(mat));
 	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,ghost_getMatNnz(mat));
 	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)ghost_getMatNnz(mat)/ghost_getMatNrows(mat));
-	
+
 	ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
 	if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
@@ -194,7 +194,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	} else {
 		ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->symmetry));
 	}
-	
+
 	ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
 	if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
 	{
@@ -212,20 +212,20 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 void ghost_printContextInfo(ghost_context_t *context)
 {
 	UNUSED(context);
-	
-
-/*	size_t ws;
 
 
-	ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
-			context->gnnz(context)*(ghost_sizeofDataType(context->fullMatrix->traits->datatype)+sizeof(ghost_midx_t)))/(1024*1024);
+	/*	size_t ws;
 
-	char *matrixLocation;
-	if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
+
+		ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
+		context->gnnz(context)*(ghost_sizeofDataType(context->fullMatrix->traits->datatype)+sizeof(ghost_midx_t)))/(1024*1024);
+
+		char *matrixLocation;
+		if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
 		matrixLocation = "Device";
-	else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
+		else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
 		matrixLocation = "Host";
-	else
+		else
 		matrixLocation = "Default";*/
 
 	char *contextType;
@@ -236,36 +236,36 @@ void ghost_printContextInfo(ghost_context_t *context)
 
 
 	ghost_printHeader("Context");
-//	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
+	//	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
 	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
-//	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
-//	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
-//	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
+	//	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
+	//	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
+	//	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
 	ghost_printLine("Type",NULL,"%s",contextType);
 	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
-/*	ghost_printLine("Global CRS size","MB","%lu",ws);
-	
-	ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-	{
+	/*	ghost_printLine("Global CRS size","MB","%lu",ws);
+
+		ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
+		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
+		{
 		ghost_printLine("Local  matrix format",NULL,"%s",context->localMatrix->formatName(context->fullMatrix));
 		ghost_printLine("Remote matrix format",NULL,"%s",context->remoteMatrix->formatName(context->fullMatrix));
 		ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(context->localMatrix->symmetry));
-	} else {
+		} else {
 		ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(context->fullMatrix->symmetry));
-	}
+		}
 
-	ghost_printLine("Full   matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-	{
+		ghost_printLine("Full   matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
+		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
+		{
 		ghost_printLine("Local  matrix size (rank 0)","MB","%u",context->localMatrix->byteSize(context->localMatrix)/(1024*1024));
 		ghost_printLine("Remote matrix size (rank 0)","MB","%u",context->remoteMatrix->byteSize(context->remoteMatrix)/(1024*1024));
-	}
+		}
 
-	if (context->flags & GHOST_CONTEXT_GLOBAL)
-	{ //additional information depending on format
+		if (context->flags & GHOST_CONTEXT_GLOBAL)
+		{ //additional information depending on format
 		context->fullMatrix->printInfo(context->fullMatrix);
-	}*/
+		}*/
 	ghost_printFooter();
 
 }
@@ -274,7 +274,7 @@ void ghost_printSysInfo()
 {
 	int nproc = ghost_getNumberOfProcesses();
 	int nnodes = ghost_getNumberOfNodes();
-	
+
 #ifdef CUDA
 	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
 #endif
@@ -347,29 +347,29 @@ void ghost_printGhostInfo()
 {
 
 	if (ghost_getRank()==0) {
-	/*	int nDataformats;
-		char *availDataformats = NULL;
-		char *avDF = NULL;
-		size_t avDFlen = 0;
-		ghost_getAvailableDataFormats(&availDataformats,&nDataformats);
-		int i;
-		for (i=0; i<nDataformats; i++) {
+		/*	int nDataformats;
+			char *availDataformats = NULL;
+			char *avDF = NULL;
+			size_t avDFlen = 0;
+			ghost_getAvailableDataFormats(&availDataformats,&nDataformats);
+			int i;
+			for (i=0; i<nDataformats; i++) {
 			char *curFormat = availDataformats+i*GHOST_DATAFORMAT_NAME_MAX;
 			avDFlen += strlen(curFormat)+1;
 			avDF = realloc(avDF,avDFlen);
 			strncpy(avDF+avDFlen-strlen(curFormat)-1,curFormat,strlen(curFormat));
 			strncpy(avDF+avDFlen-1,",",1);
-		}
-		avDF[avDFlen-1] = '\0'; // skip trailing comma */
+			}
+			avDF[avDFlen-1] = '\0'; // skip trailing comma */
 
 
 		ghost_printHeader("%s", GHOST_NAME);
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
-	//	ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
+		//	ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-//		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
-//		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
+		//		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
+		//		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -391,14 +391,14 @@ void ghost_printGhostInfo()
 		ghost_printLine("MPI support",NULL,"disabled");
 #endif
 #ifdef OPENCL
-	ghost_printLine("OpenCL support",NULL,"enabled");
+		ghost_printLine("OpenCL support",NULL,"enabled");
 #else
-	ghost_printLine("OpenCL support",NULL,"disabled");
+		ghost_printLine("OpenCL support",NULL,"disabled");
 #endif
 #ifdef CUDA
-	ghost_printLine("CUDA support",NULL,"enabled");
+		ghost_printLine("CUDA support",NULL,"enabled");
 #else
-	ghost_printLine("CUDA support",NULL,"disabled");
+		ghost_printLine("CUDA support",NULL,"disabled");
 #endif
 #ifdef LIKWID
 		ghost_printLine("Likwid support",NULL,"enabled");
@@ -415,8 +415,8 @@ printf("Likwid Marker API                :      enabled\n");
 #endif
 		ghost_printFooter();
 
-	//	free(avDF);
-	//	free(availDataformats);
+		//	free(avDF);
+		//	free(availDataformats);
 
 	}
 
@@ -436,10 +436,10 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	ghost_vec_t *globLHS; 
 	ghost_mtraits_t trait = {.format = "CRS", .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
 	ghost_context_t *context;
-	
+
 	ghost_matfile_header_t fileheader;
 	ghost_readMatFileHeader(matrixPath,&fileheader);
-	
+
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_GLOBAL);
 	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
 	mat->fromFile(mat,context,matrixPath);
@@ -453,7 +453,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing actual reference solution with one process");
-				
+
 
 		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 
@@ -483,10 +483,10 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
 	ghost_vtraits_t *nltraits;
-   	nltraits = allocateMemory(sizeof(ghost_vtraits_t),"nltraits");
+	nltraits = ghost_malloc(sizeof(ghost_vtraits_t));
 	nltraits->flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
-   	nltraits->datatype = rhs->traits->datatype;
-   	nltraits->nvecs = 1;
+	nltraits->datatype = rhs->traits->datatype;
+	nltraits->nvecs = 1;
 	nltraits->nrows = 0;
 	ghost_vec_t *nodeLHS = ghost_createVector(nltraits);
 
@@ -502,50 +502,50 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 // FIXME
 void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
-		ghost_midx_t i, j;
-		ghost_vdat_t hlp1;
+ghost_midx_t i, j;
+ghost_vdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
-		for (i=0; i<nrows; i++){
-			hlp1 = 0.0;
-			for (j=rpt[i]; j<rpt[i+1]; j++){
-				hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]];
-		
-				if (i!=col[j]) {	
-					if (spmvmOptions & GHOST_SPMVM_AXPY) { 
-#pragma omp atomic
-						res[col[j]] += (ghost_vdat_t)val[j] * rhs[i];
-					} else {
-#pragma omp atomic
-						res[col[j]] += (ghost_vdat_t)val[i] * rhs[i];  // FIXME non-axpy case doesnt work
-					}
-				}
+for (i=0; i<nrows; i++){
+hlp1 = 0.0;
+for (j=rpt[i]; j<rpt[i+1]; j++){
+hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]];
 
-			}
-			if (spmvmOptions & GHOST_SPMVM_AXPY) {
-				res[i] += hlp1;
-			} else {
-				res[i] = hlp1;
-			}
-		}
+if (i!=col[j]) {	
+if (spmvmOptions & GHOST_SPMVM_AXPY) { 
+#pragma omp atomic
+res[col[j]] += (ghost_vdat_t)val[j] * rhs[i];
+} else {
+#pragma omp atomic
+res[col[j]] += (ghost_vdat_t)val[i] * rhs[i];  // FIXME non-axpy case doesnt work
+}
+}
+
+}
+if (spmvmOptions & GHOST_SPMVM_AXPY) {
+res[i] += hlp1;
+} else {
+res[i] = hlp1;
+}
+}
 }
 
 void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
 {
-	ghost_midx_t i, j;
-	ghost_vdat_t hlp1;
+ghost_midx_t i, j;
+ghost_vdat_t hlp1;
 
 #pragma omp	parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<nrows; i++){
-			hlp1 = 0.0;
-		for (j=rpt[i]; j<rpt[i+1]; j++){
-			hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; // TODO do not multiply with zero if different datatypes 
-		}
-		if (spmvmOptions & GHOST_SPMVM_AXPY) 
-			res[i] += hlp1;
-		else
-			res[i] = hlp1;
-	}
+for (i=0; i<nrows; i++){
+hlp1 = 0.0;
+for (j=rpt[i]; j<rpt[i+1]; j++){
+hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; // TODO do not multiply with zero if different datatypes 
+}
+if (spmvmOptions & GHOST_SPMVM_AXPY) 
+res[i] += hlp1;
+else
+res[i] = hlp1;
+}
 }*/	
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
@@ -571,14 +571,14 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 char * ghost_modeName(int spmvmOptions) 
 {
 	if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
-			return "non-MPI";
+		return "non-MPI";
 	if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
-			return "vector mode";
+		return "vector mode";
 	if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
-			return "g/f hybrid";
+		return "g/f hybrid";
 	if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
-			return "task mode";
-			return "invalid";
+		return "task mode";
+	return "invalid";
 
 }
 
@@ -587,7 +587,7 @@ int ghost_symmetryValid(int symmetry)
 	if ((symmetry & GHOST_BINCRS_SYMM_GENERAL) &&
 			(symmetry & ~GHOST_BINCRS_SYMM_GENERAL))
 		return 0;
-	
+
 	if ((symmetry & GHOST_BINCRS_SYMM_SYMMETRIC) &&
 			(symmetry & ~GHOST_BINCRS_SYMM_SYMMETRIC))
 		return 0;
@@ -599,7 +599,7 @@ char * ghost_symmetryName(int symmetry)
 {
 	if (symmetry & GHOST_BINCRS_SYMM_GENERAL)
 		return "General";
-	
+
 	if (symmetry & GHOST_BINCRS_SYMM_SYMMETRIC)
 		return "Symmetric";
 
@@ -625,7 +625,7 @@ int ghost_datatypeValid(int datatype)
 	if (!(datatype & GHOST_BINCRS_DT_FLOAT) &&
 			!(datatype & GHOST_BINCRS_DT_DOUBLE))
 		return 0;
-	
+
 	if ((datatype & GHOST_BINCRS_DT_REAL) &&
 			(datatype & GHOST_BINCRS_DT_COMPLEX))
 		return 0;
@@ -732,9 +732,9 @@ int ghost_getNumberOfThreads()
 }
 
 static int stringcmp(const void *x, const void *y)
-	{
-		return (strcmp((char *)x, (char *)y));
-	}
+{
+	return (strcmp((char *)x, (char *)y));
+}
 
 int ghost_getNumberOfNodes() 
 {
@@ -753,8 +753,7 @@ int ghost_getNumberOfNodes()
 
 
 	if (me==0) {
-		names = (char *)allocateMemory(size*MPI_MAX_PROCESSOR_NAME*sizeof(char),
-				"names");
+		names = ghost_malloc(size*MPI_MAX_PROCESSOR_NAME*sizeof(char));
 	}
 
 
@@ -818,12 +817,10 @@ int ghost_pad(int nrows, int padding)
 	}
 	return nrowsPadded;
 }
-
+/*
 void* allocateMemory( const size_t size, const char* desc ) 
 {
 
-	/* allocate size bytes of posix-aligned memory;
-	 * check for success and increase global counter */
 
 	size_t boundary = 1024;
 	int ierr;
@@ -843,8 +840,36 @@ void* allocateMemory( const size_t size, const char* desc )
 
 	allocatedMem += size;
 	return mem;
-}
+}*/
 
+void *ghost_malloc(const size_t size, ...)
+{
+	va_list ap;
+	int ierr;
+	void *mem = NULL;
+
+	va_start(ap,size);
+	size_t align = va_arg(ap,size_t);
+	va_end(ap);
+
+	if (align > 0) {
+
+		if ((ierr = posix_memalign((void**) &mem, align, size)) != 0 ) {
+			ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
+		}
+	} else {
+		mem = malloc(size);
+	}
+
+	if( ! mem ) {
+		ABORT("Error in memory allocation of %lu bytes",size);
+	}
+
+
+	return mem;
+
+}
+/*
 void freeMemory( size_t size, const char* desc, void* this_array ) 
 {
 
@@ -853,7 +878,7 @@ void freeMemory( size_t size, const char* desc, void* this_array )
 	allocatedMem -= size;
 	free (this_array);
 
-}
+}*/
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions, int nIter)
@@ -973,41 +998,41 @@ int ghost_dataTypeIdx(int datatype)
 
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
 {
-/*	char pluginPath[PATH_MAX];
-	DIR * pluginDir = opendir(PLUGINPATH);
-	struct dirent * dirEntry;
-	ghost_spmf_plugin_t myPlugin;
+	/*	char pluginPath[PATH_MAX];
+		DIR * pluginDir = opendir(PLUGINPATH);
+		struct dirent * dirEntry;
+		ghost_spmf_plugin_t myPlugin;
 
-	*nDataformats=0;
+	 *nDataformats=0;
 
 
-	if (pluginDir) {
-		while (0 != (dirEntry = readdir(pluginDir))) {
-			if (dirEntry->d_name[0] == 'd') 
-			{ // only use double variant ==> only count each format once
-			snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
-			myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
-			if (!myPlugin.so) {
-				continue;
-			}
+	 if (pluginDir) {
+	 while (0 != (dirEntry = readdir(pluginDir))) {
+	 if (dirEntry->d_name[0] == 'd') 
+	 { // only use double variant ==> only count each format once
+	 snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
+	 myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
+	 if (!myPlugin.so) {
+	 continue;
+	 }
 
-			myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
-			if (!myPlugin.formatID) {
-				dlclose(myPlugin.so);
-				continue;
-			}
+	 myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
+	 if (!myPlugin.formatID) {
+	 dlclose(myPlugin.so);
+	 continue;
+	 }
 
-			(*nDataformats)++;
-			*dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
-			strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
-			dlclose(myPlugin.so);
-			}
-		}
-		closedir(pluginDir);
-	} else {
-		ABORT("The plugin directory does not exist");
-	}
-*/
+	 (*nDataformats)++;
+	 *dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
+	 strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
+	 dlclose(myPlugin.so);
+	 }
+	 }
+	 closedir(pluginDir);
+	 } else {
+	 ABORT("The plugin directory does not exist");
+	 }
+	 */
 	UNUSED(dataformats);
 	UNUSED(nDataformats);
 }
@@ -1071,19 +1096,19 @@ int ghost_getCoreNumbering()
 
 int ghost_getCore()
 {
-    cpu_set_t  cpu_set;
-    CPU_ZERO(&cpu_set);
-    sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
-    int processorId;
+	cpu_set_t  cpu_set;
+	CPU_ZERO(&cpu_set);
+	sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
+	int processorId;
 
-    for (processorId=0;processorId<128;processorId++)
-    {
-        if (CPU_ISSET(processorId,&cpu_set))
-        {
-            break;
-        }
-    }
-    return processorId;
+	for (processorId=0;processorId<128;processorId++)
+	{
+		if (CPU_ISSET(processorId,&cpu_set))
+		{
+			break;
+		}
+	}
+	return processorId;
 }
 
 void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)
@@ -1150,7 +1175,7 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 	} else {
 		DEBUG_LOG(1,"OK, file and library have same endianess.");
 	}
-	
+
 	fread(&header->version, 4, 1, file);
 	if (swapReq) header->version = bswap_32(header->version);
 
@@ -1225,7 +1250,7 @@ void ghost_pinThreads(int options, char *procList)
 
 #pragma omp parallel
 		ghost_setCore(cores[omp_get_thread_num()]);
-		
+
 
 	} else {
 		DEBUG_LOG(1,"Trying to automatically pin threads");
@@ -1268,7 +1293,7 @@ void ghost_pinThreads(int options, char *procList)
 	}
 #pragma omp parallel
 	{
-			DEBUG_LOG(1,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
+		DEBUG_LOG(1,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
 
 	}
 
@@ -1322,7 +1347,7 @@ static void *ghost_enterTask(void *arg)
 		threadpool[task->coreList[omp_get_thread_num()]].state = GHOST_THREAD_RUNNING;
 		ghost_setCore(task->coreList[omp_get_thread_num()]);	
 	}
-	
+
 	return task->func(task->arg);
 
 }
@@ -1340,7 +1365,7 @@ void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, in
 
 	if (task->coreList == NULL) {
 		DEBUG_LOG(1,"Auto-selecting cores for this task");
-		task->coreList = (int *)allocateMemory(sizeof(int)*task->nThreads,"coreList");
+		task->coreList = (int *)ghost_malloc(sizeof(int)*task->nThreads);
 
 		int c = 0;
 
@@ -1365,11 +1390,11 @@ void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, in
 	if (nTasks > GHOST_MAX_NTASKS) ABORT("Maximum number of tasks reached");
 	tasklist[nTasks-1] = task;
 	/*tasklist[nTasks-1].flags = flags;
-	tasklist[nTasks-1].tid = tid;
-	tasklist[nTasks-1].nThreads = args->nThreads;
-	tasklist[nTasks-1].coreList = args->coreList;
+	  tasklist[nTasks-1].tid = tid;
+	  tasklist[nTasks-1].nThreads = args->nThreads;
+	  tasklist[nTasks-1].coreList = args->coreList;
 
-	*/
+	 */
 
 	if (task->flags & GHOST_TASK_SYNC)
 		ghost_waitTask(tasklist[nTasks-1]);

@@ -56,7 +56,7 @@ static int swapReq = 0;
 
 ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 {
-	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
 	mat->traits = traits;
 
 	DEBUG_LOG(1,"Initializing CRS functions");
@@ -85,7 +85,7 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 #else
 	mat->kernel   = &CRS_kernel_plain;
 #endif
-	mat->data = (CR_TYPE*) allocateMemory( sizeof( CR_TYPE ), "CR(mat)" );
+	mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
 	mat->rowPerm = NULL;
 	mat->invRowPerm = NULL;
@@ -151,14 +151,14 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_midx_t i,j;
 
 
-	mat->data = (CR_TYPE *)allocateMemory(sizeof(CR_TYPE),"CR(mat)");
+	mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 	CR(mat)->nrows = cr->nrows;
 	CR(mat)->ncols = cr->ncols;
 	CR(mat)->nEnts = cr->nEnts;
 
-	CR(mat)->rpt = (ghost_midx_t *)allocateMemory((cr->nrows+1)*sizeof(ghost_midx_t),"rpt");
-	CR(mat)->col = (ghost_midx_t *)allocateMemory(cr->nEnts*sizeof(ghost_midx_t),"col");
-	CR(mat)->val = allocateMemory(cr->nEnts*sizeofdt,"val");
+	CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((cr->nrows+1)*sizeof(ghost_midx_t));
+	CR(mat)->col = (ghost_midx_t *)ghost_malloc(cr->nEnts*sizeof(ghost_midx_t));
+	CR(mat)->val = ghost_malloc(cr->nEnts*sizeofdt);
 
 #pragma omp parallel for schedule(runtime)
 	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
@@ -203,7 +203,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 
 	DEBUG_LOG(1,"Entering context_communication_parallel");
 
-	comm = (ghost_comm_t*) allocateMemory( sizeof(ghost_comm_t), "comm");
+	comm = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
 	context->communicator = comm;
 
 	//	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
@@ -216,8 +216,8 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 		CRS_readRpt((*mat),matrixPath);  // read rpt
 	}
 
-	comm->wishes   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->wishes" ); 
-	comm->dues     = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "comm->dues" ); 
+	comm->wishes   = (ghost_mnnz_t*)ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	comm->dues     = (ghost_mnnz_t*)ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 
 	CRS_createDistribution((*mat),context->flags,comm);
 
@@ -341,15 +341,15 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 
 
-	item_from       = (int*) allocateMemory( size_nint, "item_from" ); 
-	wishlist_counts = (ghost_mnnz_t *) allocateMemory( nprocs*sizeof(ghost_mnnz_t), "wishlist_counts" ); 
-	comm_remotePE   = (int*) allocateMemory( size_col,  "comm_remotePE" );
-	comm_remoteEl   = (int*) allocateMemory( size_col,  "comm_remoteEl" );
-	present_values  = (int*) allocateMemory( size_pval, "present_values" ); 
-	tmp_transfers   = (int*) allocateMemory( size_a2ai, "tmp_transfers" ); 
-	pseudocol       = (int*) allocateMemory( size_col,  "pseudocol" );
-	globcol         = (int*) allocateMemory( size_col,  "origincol" );
-	revcol          = (int*) allocateMemory( size_revc, "revcol" );
+	item_from       = (int*) ghost_malloc( size_nint); 
+	wishlist_counts = (ghost_mnnz_t *) ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	comm_remotePE   = (int*) ghost_malloc(size_col);
+	comm_remoteEl   = (int*) ghost_malloc(size_col);
+	present_values  = (int*) ghost_malloc(size_pval); 
+	tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
+	pseudocol       = (int*) ghost_malloc(size_col);
+	globcol         = (int*) ghost_malloc(size_col);
+	revcol          = (int*) ghost_malloc(size_revc);
 
 
 	for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
@@ -369,10 +369,10 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	for (i=0; i<nprocs; i++) acc_wishes += wishlist_counts[i];
 	size_mem  = (size_t)( acc_wishes * sizeof(int) );
 
-	wishlist        = (int**) allocateMemory( size_nptr, "wishlist" ); 
-	cwishlist       = (int**) allocateMemory( size_nptr, "cwishlist" ); 
-	wishlist_mem    = (int*)  allocateMemory( size_mem,  "wishlist_mem" ); 
-	cwishlist_mem   = (int*)  allocateMemory( size_mem,  "cwishlist_mem" ); 
+	wishlist        = (int**) ghost_malloc(size_nptr); 
+	cwishlist       = (int**) ghost_malloc(size_nptr); 
+	wishlist_mem    = (int*)  ghost_malloc(size_mem); 
+	cwishlist_mem   = (int*)  ghost_malloc(size_mem); 
 
 	hlpi = 0;
 	for (i=0; i<nprocs; i++){
@@ -443,25 +443,25 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 			fullCR->col[i] = pseudocol[revcol[fullCR->col[i]]];
 	}
 
-	freeMemory ( size_col,  "comm_remoteEl",  comm_remoteEl);
-	freeMemory ( size_col,  "comm_remotePE",  comm_remotePE);
-	freeMemory ( size_col,  "pseudocol",      pseudocol);
-	freeMemory ( size_col,  "globcol",        globcol);
-	freeMemory ( size_revc, "revcol",         revcol);
-	freeMemory ( size_pval, "present_values", present_values ); 
+	free(comm_remoteEl);
+	free(comm_remotePE);
+	free(pseudocol);
+	free(globcol);
+	free(revcol);
+	free(present_values); 
 
 	size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
 	size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
 
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
-	lcrp->wishlist      = (int**) allocateMemory( size_nptr, "lcrp->wishlist" ); 
-	lcrp->duelist       = (int**) allocateMemory( size_nptr, "lcrp->duelist" ); 
-	lcrp->wishlist_mem  = (int*)  allocateMemory( size_wish, "lcrp->wishlist_mem" ); 
-	lcrp->duelist_mem   = (int*)  allocateMemory( size_dues, "lcrp->duelist_mem" ); 
-	lcrp->wish_displ    = (int*)  allocateMemory( size_nint, "lcrp->wish_displ" ); 
-	lcrp->due_displ     = (int*)  allocateMemory( size_nint, "lcrp->due_displ" ); 
-	lcrp->hput_pos      = (int*)  allocateMemory( size_nptr, "lcrp->hput_pos" ); 
+	lcrp->wishlist      = (int**) ghost_malloc(size_nptr); 
+	lcrp->duelist       = (int**) ghost_malloc(size_nptr); 
+	lcrp->wishlist_mem  = (int*)  ghost_malloc(size_wish); 
+	lcrp->duelist_mem   = (int*)  ghost_malloc(size_dues); 
+	lcrp->wish_displ    = (int*)  ghost_malloc(size_nint); 
+	lcrp->due_displ     = (int*)  ghost_malloc(size_nint); 
+	lcrp->hput_pos      = (int*)  ghost_malloc(size_nptr); 
 
 	acc_dues = 0;
 	acc_wishes = 0;
@@ -510,16 +510,16 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		//CR_TYPE remoteCR;
 
 
-		localCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
-		remoteCR = (CR_TYPE *) allocateMemory(sizeof(CR_TYPE),"fullCR");
+		localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
+		remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
 
-		localCR->val = allocateMemory(lnEnts_l*sizeofdt,"localMatrix->val" ); 
-		localCR->col = (ghost_midx_t*) allocateMemory(lnEnts_l*sizeof( ghost_midx_t ),"localMatrix->col" ); 
-		localCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"localMatrix->rpt" ); 
+		localCR->val = ghost_malloc(lnEnts_l*sizeofdt); 
+		localCR->col = (ghost_midx_t*) ghost_malloc(lnEnts_l*sizeof( ghost_midx_t )); 
+		localCR->rpt = (ghost_midx_t*) ghost_malloc((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t )); 
 
-		remoteCR->val = allocateMemory(lnEnts_r*sizeofdt,"remoteMatrix->val" ); 
-		remoteCR->col = (ghost_midx_t*) allocateMemory(lnEnts_r*sizeof( ghost_midx_t ),"remoteMatrix->col" ); 
-		remoteCR->rpt = (ghost_midx_t*) allocateMemory((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t ),"remoteMatrix->rpt" ); 
+		remoteCR->val = ghost_malloc(lnEnts_r*sizeofdt); 
+		remoteCR->col = (ghost_midx_t*) ghost_malloc(lnEnts_r*sizeof( ghost_midx_t )); 
+		remoteCR->rpt = (ghost_midx_t*) ghost_malloc((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t )); 
 
 		//context->localMatrix->data = localCR;
 		//context->remoteMatrix->data = remoteCR;
@@ -601,13 +601,13 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	}
-	freeMemory ( size_mem,  "wishlist_mem",    wishlist_mem);
-	freeMemory ( size_mem,  "cwishlist_mem",   cwishlist_mem);
-	freeMemory ( size_nptr, "wishlist",        wishlist);
-	freeMemory ( size_nptr, "cwishlist",       cwishlist);
-	freeMemory ( size_a2ai, "tmp_transfers",   tmp_transfers);
-	freeMemory ( size_nint, "wishlist_counts", wishlist_counts);
-	freeMemory ( size_nint, "item_from",       item_from);
+	free(wishlist_mem);
+	free(cwishlist_mem);
+	free(wishlist);
+	free(cwishlist);
+	free(tmp_transfers);
+	free(wishlist_counts);
+	free(item_from);
 
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
 	mat->localPart->fromCRS(mat->localPart,localCR);
@@ -655,10 +655,10 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 	int target_rows;
 	int nprocs = ghost_getNumberOfProcesses();
 
-	lcrp->lnEnts   = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->lnEnts" ); 
-	lcrp->lnrows   = (ghost_midx_t*)       allocateMemory( nprocs*sizeof(ghost_midx_t), "lcrp->lnrows" ); 
-	lcrp->lfEnt    = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "lcrp->lfEnt" ); 
-	lcrp->lfRow    = (ghost_midx_t*)       allocateMemory( nprocs*sizeof(ghost_midx_t), "lcrp->lfRow" ); 
+	lcrp->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	lcrp->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+	lcrp->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	lcrp->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
 
 	/****************************************************************************
 	 *******  Calculate a fair partitioning of NZE and ROWS on master PE  *******
@@ -720,7 +720,7 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 			lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
 
 			/* Count number of local elements in each block */
-			loc_count      = (ghost_mnnz_t*)       allocateMemory( nprocs*sizeof(ghost_mnnz_t), "loc_count" ); 
+			loc_count      = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 			for (i=0; i<nprocs; i++) loc_count[i] = 0;     
 
 			for (i=0; i<nprocs; i++){
@@ -901,7 +901,7 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 	}
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->rpt");
-	CR(mat)->rpt = (ghost_midx_t *)    allocateMemory( (CR(mat)->nrows+1)*sizeof(ghost_midx_t), "rpt" );
+	CR(mat)->rpt = (ghost_midx_t *)ghost_malloc( (CR(mat)->nrows+1)*sizeof(ghost_midx_t));
 
 	DEBUG_LOG(1,"NUMA-placement for CR(mat)->rpt");
 #pragma omp parallel for schedule(runtime)
@@ -965,8 +965,8 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
 
 	DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
-	CR(mat)->col       = (ghost_midx_t *) allocateMemory( nEnts * sizeof(ghost_midx_t),  "col" );
-	CR(mat)->val       = allocateMemory( nEnts * sizeofdt,  "val" );
+	CR(mat)->col       = (ghost_midx_t *) ghost_malloc( nEnts * sizeof(ghost_midx_t));
+	CR(mat)->val       = ghost_malloc( nEnts * sizeofdt);
 
 	DEBUG_LOG(2,"NUMA-placement for CR(mat)->val and CR(mat)->col");
 #pragma omp parallel for schedule(runtime) private(j)
@@ -1021,7 +1021,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 	if (datatype == mat->traits->datatype) {
 		if (swapReq) {
-			uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
+			uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
 			pread(file,tmpval, nEnts*valSize, offs);
 			if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -1066,7 +1066,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 				" the file contains %s data. Casting...",ghost_datatypeName(mat->traits->datatype),ghost_datatypeName(datatype));
 
 
-		uint8_t *tmpval = (uint8_t *)allocateMemory(nEnts*valSize,"tmpval");
+		uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
 		pread(file,tmpval, nEnts*valSize, offs);
 
 		if (swapReq) {
@@ -1117,7 +1117,7 @@ static void CRS_upload(ghost_mat_t *mat)
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
-		CR(mat)->clmat = (CL_CR_TYPE *)allocateMemory(sizeof(CL_CR_TYPE),"CL_CRS");
+		CR(mat)->clmat = (CL_CR_TYPE *)ghost_malloc(sizeof(CL_CR_TYPE));
 		CR(mat)->clmat->rpt = CL_allocDeviceMemory((CR(mat)->nrows+1)*sizeof(ghost_cl_mnnz_t));
 		CR(mat)->clmat->col = CL_allocDeviceMemory((CR(mat)->nEnts)*sizeof(ghost_cl_midx_t));
 		CR(mat)->clmat->val = CL_allocDeviceMemory((CR(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));

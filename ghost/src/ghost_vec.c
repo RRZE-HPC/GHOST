@@ -73,7 +73,7 @@ static void vec_CLdownload (ghost_vec_t *);
 
 ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 {
-	ghost_vec_t *vec = (ghost_vec_t *)allocateMemory(sizeof(ghost_vec_t),"vector");
+	ghost_vec_t *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
 	vec->traits = traits;
 
 	DEBUG_LOG(1,"Initializing vector");
@@ -243,7 +243,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs
 {
 	DEBUG_LOG(2,"Cloning the vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	vec->val = allocateMemory(vec->traits->nvecs*vec2->traits->nrows*sizeofdt,"vec->val");
+	vec->val = ghost_malloc(vec->traits->nvecs*vec2->traits->nrows*sizeofdt);
 	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
@@ -287,7 +287,7 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 		getNrowsFromContext(vec,ctx);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
-	vec->val = allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt,"vec->val");
+	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {
@@ -366,7 +366,7 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 		getNrowsFromContext(vec,ctx);
 	
 
-	vec->val = allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt,"vec->val");
+	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
 	DEBUG_LOG(1,"Reading vector from file %s",path);
 	int file;
 
@@ -434,7 +434,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 	if (vec->traits->nrows == 0)
 		getNrowsFromContext(vec,ctx);
 
-	vec->val = allocateMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt,"vec->val");
+	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {
@@ -689,7 +689,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 	}
 
 
-	tmp = allocateMemory(sizeofdt*len, "permute tmp");
+	tmp = ghost_malloc(sizeofdt*len);
 
 	for(i = 0; i < len; ++i) {
 		if( perm[i] >= len ) {

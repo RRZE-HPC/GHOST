@@ -282,7 +282,7 @@ int ghost_init(int argc, char **argv)
 //	options = ghostOptions;
 
 	ghost_setCore(0);
-	threadpool = (ghost_threadstate_t *)allocateMemory(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads(),"threadpool");
+	threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
 	threadpool[0].state = GHOST_THREAD_MGMT;
 	threadpool[0].desc = "main";
 	for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
@@ -493,7 +493,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 	int i;
 
 
-	context = (ghost_context_t *)allocateMemory(sizeof(ghost_context_t),"context");
+	context = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
 	context->flags = context_flags;
 	context->gnrows = (ghost_midx_t)gnrows;
 /*
@@ -524,7 +524,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 //		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
-	context->solvers = (ghost_solver_t *)allocateMemory(sizeof(ghost_solver_t)*GHOST_NUM_MODES,"solvers");
+	context->solvers = (ghost_solver_t *)ghost_malloc(sizeof(ghost_solver_t)*GHOST_NUM_MODES);
 	for (i=0; i<GHOST_NUM_MODES; i++) context->solvers[i] = NULL;
 #ifdef GHOST_MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;

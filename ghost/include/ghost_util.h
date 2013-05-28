@@ -222,8 +222,8 @@ char * ghost_symmetryName(int symmetry);
 
 int ghost_pad(int nrows, int padding);
 
-void* allocateMemory( const size_t size, const char* desc );
-void freeMemory(size_t, const char*, void*);
+//void* allocateMemory( const size_t size, const char* desc );
+//void freeMemory(size_t, const char*, void*);
 
 void ghost_freeCommunicator( ghost_comm_t* const );
 void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin);
@@ -258,6 +258,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
 void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
+void *ghost_malloc(const size_t size, ...);
 
 #ifdef __cplusplus
 }

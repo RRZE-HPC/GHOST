@@ -39,9 +39,9 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 			if (context->communicator->dues[i]>max_dues) 
 				max_dues = context->communicator->dues[i];
 
-		work = (char *)allocateMemory(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype), "work");
-		request = (MPI_Request*) allocateMemory( 2*nprocs*sizeof(MPI_Request), "request" );
-		status  = (MPI_Status*)  allocateMemory( 2*nprocs*sizeof(MPI_Status),  "status" );
+		work = (char *)ghost_malloc(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
+		request = (MPI_Request*) ghost_malloc( 2*nprocs*sizeof(MPI_Request));
+		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
 		init_kernel = 0;
 	}

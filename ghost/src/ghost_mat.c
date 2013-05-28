@@ -37,7 +37,7 @@ int isMMfile(const char *filename)
 	}
 
 	const char *keyword="%%MatrixMarket";
-	char *readkw = (char *)allocateMemory((strlen(keyword)+1)*sizeof(char),"readkw");
+	char *readkw = (char *)ghost_malloc((strlen(keyword)+1)*sizeof(char));
 	if (NULL == fgets(readkw,strlen(keyword)+1,file))
 		return 0;
 

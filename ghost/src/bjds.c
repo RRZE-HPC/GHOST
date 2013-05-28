@@ -77,7 +77,7 @@ static void BJDS_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rh
 
 ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 {
-	ghost_mat_t *mat = (ghost_mat_t *)allocateMemory(sizeof(ghost_mat_t),"matrix");
+	ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
 	mat->traits = traits;
 	DEBUG_LOG(1,"Setting functions for BJDS matrix");
 
@@ -278,7 +278,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	mat->invRowPerm = invRowPerm;
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		rowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"BJDS(mat)->rowPerm");
-		invRowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"BJDS(mat)->invRowPerm");
+		invRowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
 
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
@@ -288,8 +288,7 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 
 		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",sortBlock);
 
-		rowSort = (ghost_sorting_t*) allocateMemory( cr->nrows * sizeof( ghost_sorting_t ),
-				"rowSort" );
+		rowSort = (ghost_sorting_t*)(cr->nrows * sizeof(ghost_sorting_t));
 
 		for (c=0; c<cr->nrows/sortBlock; c++)  
 		{
@@ -325,10 +324,10 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS_LEN);
 
 	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS_LEN;
-	BJDS(mat)->chunkStart = (ghost_mnnz_t *)allocateMemory((nChunks+1)*sizeof(ghost_mnnz_t),"BJDS(mat)->chunkStart");
-	BJDS(mat)->chunkMin = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
-	BJDS(mat)->chunkLen = (ghost_midx_t *)allocateMemory((nChunks)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
-	BJDS(mat)->rowLen = (ghost_midx_t *)allocateMemory((BJDS(mat)->nrowsPadded)*sizeof(ghost_midx_t),"BJDS(mat)->chunkMin");
+	BJDS(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
+	BJDS(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+	BJDS(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+	BJDS(mat)->rowLen = (ghost_midx_t *)ghost_malloc((BJDS(mat)->nrowsPadded)*sizeof(ghost_midx_t));
 	BJDS(mat)->chunkStart[0] = 0;
 
 	ghost_midx_t chunkMin = cr->ncols;
@@ -381,8 +380,8 @@ static void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
 	//BJDS(mat)->val = (ghost_dt *)allocateMemory(sizeof(ghost_dt)*BJDS(mat)->nEnts,"BJDS(mat)->val");
-	BJDS(mat)->val = allocateMemory(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,"BJDS(mat)->val");
-	BJDS(mat)->col = (ghost_midx_t *)allocateMemory(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,"BJDS(mat)->col");
+	BJDS(mat)->val = ghost_malloc(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts);
+	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*BJDS(mat)->nEnts);
 
 #pragma omp parallel for schedule(runtime) private(j,i)
 	for (c=0; c<BJDS(mat)->nrowsPadded/BJDS_LEN; c++) 
@@ -438,7 +437,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 #ifdef OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
-		BJDS(mat)->clmat = (CL_BJDS_TYPE *)allocateMemory(sizeof(CL_BJDS_TYPE),"CL_CRS");
+		BJDS(mat)->clmat = (CL_BJDS_TYPE *)ghost_malloc(sizeof(CL_BJDS_TYPE));
 		BJDS(mat)->clmat->rowLen = CL_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->col = CL_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_cl_midx_t));
 		BJDS(mat)->clmat->val = CL_allocDeviceMemory((BJDS(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
@@ -533,7 +532,7 @@ static void BJDS_CUupload(ghost_mat_t* mat)
 #ifdef CUDA
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on CUDA device");
-		BJDS(mat)->cumat = (CU_BJDS_TYPE *)allocateMemory(sizeof(CU_BJDS_TYPE),"CU_CRS");
+		BJDS(mat)->cumat = (CU_BJDS_TYPE *)ghost_malloc(sizeof(CU_BJDS_TYPE));
 		BJDS(mat)->cumat->rowLen = CU_allocDeviceMemory((BJDS(mat)->nrows)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->col = CU_allocDeviceMemory((BJDS(mat)->nEnts)*sizeof(ghost_midx_t));
 		BJDS(mat)->cumat->val = CU_allocDeviceMemory((BJDS(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));

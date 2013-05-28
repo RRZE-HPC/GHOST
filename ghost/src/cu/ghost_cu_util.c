@@ -94,7 +94,7 @@ static int stringcmp(const void *x, const void *y)
 
 ghost_acc_info_t *CU_getDeviceInfo() 
 {
-	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_acc_info_t),"devInfo");
+	ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -114,10 +114,9 @@ ghost_acc_info_t *CU_getDeviceInfo()
 	int *recvcounts;
 
 	if (me==0) {
-		names = (char *)allocateMemory(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char),
-				"names");
-		recvcounts = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
-		displs = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
+		recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
+		displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
 		
 		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
 			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
@@ -148,10 +147,10 @@ ghost_acc_info_t *CU_getDeviceInfo()
 	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 
-	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
-	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
+	devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
+	devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
 	for (i=0; i<devInfo->nDistinctDevices; i++) {
-		devInfo->names[i] = allocateMemory(sizeof(char)*CU_MAX_DEVICE_NAME_LEN,"device names");
+		devInfo->names[i] = ghost_malloc(sizeof(char)*CU_MAX_DEVICE_NAME_LEN);
 		devInfo->nDevices[i] = 1;
 	}
 

@@ -47,8 +47,8 @@ void CL_init()
 
 	CL_safecall(clGetPlatformIDs(0, NULL, &numPlatforms));
 	DEBUG_LOG(1,"There are %u OpenCL platforms",numPlatforms);
-	platformIDs = (cl_platform_id *)allocateMemory(
-			sizeof(cl_platform_id)*numPlatforms,"platformIDs");
+	platformIDs = (cl_platform_id *)ghost_malloc(
+			sizeof(cl_platform_id)*numPlatforms);
 	CL_safecall(clGetPlatformIDs(numPlatforms, platformIDs, NULL));
 
 	for (platformNum=0; platformNum<numPlatforms; platformNum++) {
@@ -65,8 +65,7 @@ void CL_init()
 	if (numDevices == 0)
 		ABORT("No suitable OpenCL device found.");
 
-	deviceIDs = (cl_device_id *)allocateMemory(sizeof(cl_device_id)*numDevices,
-			"deviceIDs");
+	deviceIDs = (cl_device_id *)ghost_malloc(sizeof(cl_device_id)*numDevices);
 	CL_safecall(clGetDeviceIDs(platformIDs[platformNum],CL_MY_DEVICE_TYPE, numDevices,
 				deviceIDs, &numDevices));
 
@@ -157,7 +156,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	long filesize = ftell(fp);
 	fseek(fp,0L,SEEK_SET);
 
-	char * source_str = (char*)allocateMemory(filesize+1,"source");
+	char * source_str = (char*)ghost_malloc(filesize+1);
 	fread( source_str, 1, filesize, fp);
 	source_str[filesize]='\0';
 	fclose( fp );
@@ -171,7 +170,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 	if (clBuildProgram(program,1,&deviceID,options,NULL,NULL) != CL_SUCCESS) {
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
-		build_log = (char *)allocateMemory(log_size+1,"build log");
+		build_log = (char *)ghost_malloc(log_size+1);
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
 		ABORT("OpenCL build failed, log following:\n%s",build_log);
@@ -564,7 +563,7 @@ static int stringcmp(const void *x, const void *y)
 
 ghost_acc_info_t *CL_getDeviceInfo() 
 {
-	ghost_acc_info_t *devInfo = allocateMemory(sizeof(ghost_acc_info_t),"devInfo");
+	ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
 	devInfo->nDistinctDevices = 1;
 
 	int me,size,i;
@@ -584,10 +583,9 @@ ghost_acc_info_t *CL_getDeviceInfo()
 	int *recvcounts;
 
 	if (me==0) {
-		names = (char *)allocateMemory(size*CL_MAX_DEVICE_NAME_LEN*sizeof(char),
-				"names");
-		recvcounts = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
-		displs = (int *)allocateMemory(sizeof(int)*ghost_getNumberOfProcesses(),"displs");
+		names = (char *)ghost_malloc(size*CL_MAX_DEVICE_NAME_LEN*sizeof(char));
+		recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
+		displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
 		
 		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
 			recvcounts[i] = CL_MAX_DEVICE_NAME_LEN;
@@ -618,10 +616,10 @@ ghost_acc_info_t *CL_getDeviceInfo()
 	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 
-	devInfo->nDevices = allocateMemory(sizeof(int)*devInfo->nDistinctDevices,"nDevices");
-	devInfo->names = allocateMemory(sizeof(char *)*devInfo->nDistinctDevices,"device names");
+	devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
+	devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
 	for (i=0; i<devInfo->nDistinctDevices; i++) {
-		devInfo->names[i] = allocateMemory(sizeof(char)*CL_MAX_DEVICE_NAME_LEN,"device names");
+		devInfo->names[i] = ghost_malloc(sizeof(char)*CL_MAX_DEVICE_NAME_LEN);
 		devInfo->nDevices[i] = 1;
 	}
 
