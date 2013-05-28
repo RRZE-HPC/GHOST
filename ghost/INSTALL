@@ -5,5 +5,5 @@
 
 2) INSTALLATION
 ---------------
-   Invoke make install to install the ghost library and headers to the location 
-   specified in config.mk.
+   Invoke make install to build and install the ghost library and headers 
+   to the location as specified in config.mk.
