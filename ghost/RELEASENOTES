@@ -1,10 +1,35 @@
+2013 - 05 - xx  Moritz Kreutzer  <moritz.kreutzer@fau.de>
+
+	Release Version 0.3
+
+
+	+ The whole X macro and run-time linking stuff for mixed data types has 
+		been removed. 
+		Reason: The old approach was very complex and the code readability and
+		maintainability suffered.
+		Now, a _careful_ use of C++ templates does the work.
+		Templates for the data types and the SELL chunk height are the only 
+		C++ feature used (no overloaded operators, stl::vectors and so on) and
+		only the necessary functions have been implemented in C++.
+		The use of C++ should stay as small as possible because a plain C wrapper
+		is needed anyways for Fortran compatibility.
+
+	+ As ELLPACK is only a special case of BJDS (now: "SELL" (Sliced ELLPACK)), it
+		has completely been integrated into the SELL code.
+
+	+ The chunk height for SELL can now be set at runtime. This should enable 
+		easier set-up for hybrid machines as the optimal chunk height depends on
+		the architecture.	
+
+
+
 2013 - 04 - 26  Moritz Kreutzer  <moritz.kreutzer@fau.de>
 	
 	Release Version 0.2
 
 
 	+ Arbitrary data types at runtime (currently only test with CRS for CPUs 
-			and BJDS for CUDA)
+		and BJDS for CUDA)
 
 	+ Initial Fortran support (thanks to Jonas)
 
