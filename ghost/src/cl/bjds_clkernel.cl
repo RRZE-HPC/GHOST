@@ -35,18 +35,18 @@ kernel void BJDS_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhs
 		   	
 #ifdef GHOST_MAT_COMPLEX
 #ifdef GHOST_VEC_COMPLEX
-			tmp.s0 += val[j].s0 * rhs.s0 - val[j].s1 * rhs.s1;
-			tmp.s1 += val[j].s0 * rhs.s1 + val[j].s1 * rhs.s0;
+			tmp.s0 += value.s0 * rhs.s0 - value.s1 * rhs.s1;
+			tmp.s1 += value.s0 * rhs.s1 + value.s1 * rhs.s0;
 #else
-			tmp += val[j].s0 * rhs;
+			tmp += value.s0 * rhs;
 #endif
 #endif
 #ifdef GHOST_MAT_REAL
 #ifdef GHOST_VEC_REAL
-			tmp += val[j]*rhs;
+			tmp += value*rhs;
 #else
-			tmp.s0 += val[j] * rhs.s0;
-			tmp.s1 += val[j] * rhs.s1;
+			tmp.s0 += value * rhs.s0;
+			tmp.s1 += value * rhs.s1;
 #endif
 #endif
 		}
