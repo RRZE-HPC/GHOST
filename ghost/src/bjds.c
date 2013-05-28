@@ -453,7 +453,7 @@ static void BJDS_upload(ghost_mat_t* mat)
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
 
-		int nDigits = log10(BJDS(mat)->chunkHeight)+1;
+		int nDigits = (int)log10(BJDS(mat)->chunkHeight)+1;
 		char options[128];
 		char bjdsLenStr[32];
 		snprintf(bjdsLenStr,32,"-DBJDS_LEN=%d",BJDS(mat)->chunkHeight);
