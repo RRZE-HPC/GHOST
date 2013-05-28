@@ -1,6 +1,8 @@
 #ifndef __GHOST_UTIL_H__
 #define __GHOST_UTIL_H__
 
+#include <ghost.h>
+
 #ifdef GHOST_MPI
 #include <mpi.h>
 #include "mpi/ghost_mpi_util.h"
