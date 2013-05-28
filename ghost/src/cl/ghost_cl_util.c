@@ -168,15 +168,13 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 
 	DEBUG_LOG(1,"Building program with \"%s\" and creating kernels",options);
 
-	CL_safecall(clBuildProgram(program,1,&deviceID,options,NULL,NULL));
-
-	IF_DEBUG(1) {
+	if (clBuildProgram(program,1,&deviceID,options,NULL,NULL) != CL_SUCCESS) {
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,0,NULL,&log_size));
 		build_log = (char *)allocateMemory(log_size+1,"build log");
 		CL_safecall(clGetProgramBuildInfo(program,deviceID,
 					CL_PROGRAM_BUILD_LOG,log_size,build_log,NULL));
-		DEBUG_LOG(1,"Build log: %s",build_log);
+		ABORT("OpenCL build failed, log following:\n%s",build_log);
 		free(build_log);
 	}
 
