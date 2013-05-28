@@ -140,8 +140,6 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
-	char devicename[CL_MAX_DEVICE_NAME_LEN];
-	CL_safecall(clGetDeviceInfo(deviceID,CL_DEVICE_NAME,sizeof(devicename),devicename,NULL));
 
 	char path[PATH_MAX];
 	snprintf(path,PATH_MAX,"%s/%s",CLKERNELPATH,filename);
@@ -161,6 +159,7 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 
 	char * source_str = (char*)allocateMemory(filesize+1,"source");
 	fread( source_str, 1, filesize, fp);
+	source_str[filesize]='\0';
 	fclose( fp );
 
 	program = clCreateProgramWithSource(context,1,(const char **)&source_str,
