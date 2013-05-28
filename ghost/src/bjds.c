@@ -466,40 +466,40 @@ static void BJDS_upload(ghost_mat_t* mat)
 		
 		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_C ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_C",14);
 			} else {
-				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_Z ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_Z",14);
 			}
 		} else {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_S ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_S",14);
 			} else {
-				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_D ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_D",14);
 			}
 
 		}
-		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_S ",15);
+		strncpy(options+bjdsLenStrlen+14," -DGHOST_VEC_S\0",15);
 		cl_program program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[0] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 
-		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_D ",15);
+		strncpy(options+bjdsLenStrlen+14," -DGHOST_VEC_D\0",15);
 		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[1] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_C ",15);
+		strncpy(options+bjdsLenStrlen+14," -DGHOST_VEC_C\0",15);
 		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[2] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_Z ",15);
+		strncpy(options+bjdsLenStrlen+14," -DGHOST_VEC_Z\0",15);
 		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
