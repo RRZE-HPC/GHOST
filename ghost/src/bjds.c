@@ -452,50 +452,55 @@ static void BJDS_upload(ghost_mat_t* mat)
 		CL_copyHostToDevice(BJDS(mat)->clmat->val, BJDS(mat)->val, BJDS(mat)->nEnts*ghost_sizeofDataType(mat->traits->datatype));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkStart, BJDS(mat)->chunkStart, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
 		CL_copyHostToDevice(BJDS(mat)->clmat->chunkLen, BJDS(mat)->chunkLen, (BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
-		char options[32];
-		snprintf(options,32,"-DBJDS_LEN=%d",BJDS(mat)->chunkHeight);
+
+		int nDigits = log10(BJDS(mat)->chunkHeight)+1;
+		char options[128];
+		char bjdsLenStr[32];
+		snprintf(bjdsLenStr,32,"-DBJDS_LEN=%d",BJDS(mat)->chunkHeight);
+		int bjdsLenStrlen = 11+nDigits;
+		strncpy(options,bjdsLenStr,bjdsLenStrlen);
+
 
 		cl_int err;
 		cl_uint numKernels;
 		
-		char datatype[64];
 		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(datatype," -DGHOST_MAT_C ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_C ",15);
 			} else {
-				strncpy(datatype," -DGHOST_MAT_Z ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_Z ",15);
 			}
 		} else {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(datatype," -DGHOST_MAT_S ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_S ",15);
 			} else {
-				strncpy(datatype," -DGHOST_MAT_D ",15);
+				strncpy(options+bjdsLenStrlen," -DGHOST_MAT_D ",15);
 			}
 
 		}
-		strncpy(datatype+15," -DGHOST_VEC_S ",15);
-		cl_program program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_S ",15);
+		cl_program program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[0] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 
-		strncpy(datatype+15," -DGHOST_VEC_D ",15);
-		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_D ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[1] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(datatype+15," -DGHOST_VEC_C ",15);
-		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_C ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[2] = clCreateKernel(program,"BJDS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(datatype+15," -DGHOST_VEC_Z ",15);
-		program = CL_registerProgram("bjds_clkernel.cl",datatype);
+		strncpy(options+bjdsLenStrlen+15," -DGHOST_VEC_Z ",15);
+		program = CL_registerProgram("bjds_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[3] = clCreateKernel(program,"BJDS_kernel",&err);
