@@ -1,6 +1,5 @@
 Version 0.3
 
-- generalization of intrinsics kernels for arbitrary data types
 - first implementation of optionally asynchronous offload mechanism 
 	(test case: task mode spMVM kernel)
 	- pthread_create-like call to start thread (supplying a function and a void pointer, returning handle)
@@ -25,6 +24,12 @@ Version 0.3
 - vec->fromFunc: add a version where the loop is in the user-defined function
 	also: global instead of local index
 - instrumentation: prefix all region names with a number according to the level of instrumentation
+
+
+Version 0.4
+
+- generalization of intrinsics kernels for arbitrary data types as far as possible
+- build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
 
 
 Version x.x
