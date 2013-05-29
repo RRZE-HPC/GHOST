@@ -258,7 +258,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
 void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
-void *ghost_malloc(const size_t size, ...);
+void *ghost_malloc(const size_t size);
 int ghost_flopsPerSpmvm(int m_t, int v_t);
 
 #ifdef __cplusplus

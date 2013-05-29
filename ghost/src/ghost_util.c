@@ -842,30 +842,15 @@ void* allocateMemory( const size_t size, const char* desc )
 	return mem;
 }*/
 
-void *ghost_malloc(const size_t size, ...)
+void *ghost_malloc(const size_t size)
 {
-	va_list ap;
-	int ierr;
 	void *mem = NULL;
 
-	va_start(ap,size);
-	size_t align = va_arg(ap,size_t);
-	va_end(ap);
-
-	if (align > 0) {
-
-		if ((ierr = posix_memalign((void**) &mem, align, size)) != 0 ) {
-			ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
-		}
-	} else {
-		mem = malloc(size);
-	}
+	mem = malloc(size);
 
 	if( ! mem ) {
 		ABORT("Error in memory allocation of %lu bytes",size);
 	}
-
-
 	return mem;
 
 }
