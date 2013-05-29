@@ -775,6 +775,14 @@ static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
+	if (mat->traits->shift != NULL) {
+		CL_safecall(clSetKernelArg(kernel,10,ghost_sizeofDataType(mat->traits->datatype), mat->traits->shift));
+	} else {
+		if (options & GHOST_SPMVM_APPLY_SHIFT)
+			ABORT("A shift should be applied but the pointer is NULL!");
+		complex double foo = 0.+I*0.; // should never be needed
+		CL_safecall(clSetKernelArg(kernel,10,ghost_sizeofDataType(mat->traits->datatype), &foo))
+	}
 
 	size_t gSize = (size_t)BJDS(mat)->clmat->nrowsPadded;
 	size_t lSize = BJDS(mat)->chunkHeight;

@@ -13,6 +13,12 @@ LIBS  += -lcudart
 IPATH += -isystem$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cu
 LPATH +=  -L$(CUDA_HOME)/lib64
 endif
+ifeq ($(strip $(OPENCL)),1)
+MAKROS+= -DOPENCL
+LIBS  += -lOpenCL
+IPATH += -I$(CUDA_HOME)/include -I$(strip $(GHOSTPATH))/include/ghost/cl
+LPATH += -L$(CUDA_DRIVERDIR)/lib
+endif
 
 %.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"

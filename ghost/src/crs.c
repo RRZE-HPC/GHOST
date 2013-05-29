@@ -26,6 +26,9 @@ void (*CRS_castData_funcs[4][4]) (void *, void *, int) =
 	{&cs_CRS_castData,&cd_CRS_castData,&cc_CRS_castData,&cz_CRS_castData},
 	{&zs_CRS_castData,&zd_CRS_castData,&zc_CRS_castData,&zz_CRS_castData}};
 
+void (*CRS_valToStr_funcs[4]) (void *, char *, int) = 
+{&s_CRS_valToStr,&d_CRS_valToStr,&c_CRS_valToStr,&z_CRS_valToStr};
+
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
@@ -1129,44 +1132,48 @@ static void CRS_upload(ghost_mat_t *mat)
 
 		cl_int err;
 		cl_uint numKernels;
-		char datatype[64];
+	/*	char shift[32];
+		CRS_valToStr_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat->traits->shift,shift,32);
+		printf("SHIFT: %f   %s\n",*((double *)(mat->traits->shift)),shift);
+*/
+		char options[128];
 		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(datatype," -DGHOST_MAT_C ",15);
+				strncpy(options," -DGHOST_MAT_C ",15);
 			} else {
-				strncpy(datatype," -DGHOST_MAT_Z ",15);
+				strncpy(options," -DGHOST_MAT_Z ",15);
 			}
 		} else {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-				strncpy(datatype," -DGHOST_MAT_S ",15);
+				strncpy(options," -DGHOST_MAT_S ",15);
 			} else {
-				strncpy(datatype," -DGHOST_MAT_D ",15);
+				strncpy(options," -DGHOST_MAT_D ",15);
 			}
 
 		}
-		strncpy(datatype+15," -DGHOST_VEC_S ",15);
-		cl_program program = CL_registerProgram("crs_clkernel.cl",datatype);
+		strncpy(options+15," -DGHOST_VEC_S ",15);
+		cl_program program = CL_registerProgram("crs_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[0] = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
 
-		strncpy(datatype+15," -DGHOST_VEC_D ",15);
-		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		strncpy(options+15," -DGHOST_VEC_D ",15);
+		program = CL_registerProgram("crs_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[1] = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(datatype+15," -DGHOST_VEC_C ",15);
-		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		strncpy(options+15," -DGHOST_VEC_C ",15);
+		program = CL_registerProgram("crs_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[2] = clCreateKernel(program,"CRS_kernel",&err);
 		CL_checkerror(err);
 		
-		strncpy(datatype+15," -DGHOST_VEC_Z ",15);
-		program = CL_registerProgram("crs_clkernel.cl",datatype);
+		strncpy(options+15," -DGHOST_VEC_Z ",15);
+		program = CL_registerProgram("crs_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[3] = clCreateKernel(program,"CRS_kernel",&err);
@@ -1367,6 +1374,15 @@ static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rh
 	CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
 	CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
+	if (mat->traits->shift != NULL) {
+		CL_safecall(clSetKernelArg(kernel,7,ghost_sizeofDataType(mat->traits->datatype), mat->traits->shift));
+	} else {
+		if (options & GHOST_SPMVM_APPLY_SHIFT)
+			ABORT("A shift should be applied but the pointer is NULL!");
+		complex double foo = 0.+I*0.; // should never be needed
+		CL_safecall(clSetKernelArg(kernel,7,ghost_sizeofDataType(mat->traits->datatype), &foo))
+	}
+
 
 	size_t gSize = (size_t)CR(mat)->clmat->nrows;
 

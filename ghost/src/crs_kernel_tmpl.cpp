@@ -55,6 +55,16 @@ template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, vo
 	}
 }
 
+template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
+{
+	if (val == NULL) {
+		str = "0.";
+	} else {
+		snprintf(str,n,"%g",*((m_t *)(val)));
+	}
+}
+
+
 extern "C" void dd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { return CRS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options); }
 
@@ -150,3 +160,15 @@ extern "C" void zc_CRS_castData(void *matrixData, void *fileData, int nEnts)
 
 extern "C" void zz_CRS_castData(void *matrixData, void *fileData, int nEnts)
 { return CRS_castData_tmpl< ghost_complex<double>,ghost_complex<double> >(matrixData, fileData, nEnts); }
+
+extern "C" void d_CRS_valToStr(void *val, char *str, int n)
+{ return CRS_valToStr_tmpl< double >(val,str,n); }
+
+extern "C" void s_CRS_valToStr(void *val, char *str, int n)
+{ return CRS_valToStr_tmpl< float >(val,str,n); }
+
+extern "C" void c_CRS_valToStr(void *val, char *str, int n)
+{ return CRS_valToStr_tmpl< ghost_complex<float> >(val,str,n); }
+
+extern "C" void z_CRS_valToStr(void *val, char *str, int n)
+{ return CRS_valToStr_tmpl< ghost_complex<double> >(val,str,n); }
