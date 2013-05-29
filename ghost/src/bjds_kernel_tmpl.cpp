@@ -49,30 +49,59 @@ template<typename m_t, typename v_t, int chunkHeight> void BJDS_kernel_plain_tmp
 	BJDS_TYPE *bjds = (BJDS_TYPE *)(mat->data);
 
 
+	if (options & GHOST_SPMVM_APPLY_SHIFT) {
+		m_t shift = *((m_t *)(mat->traits->shift));
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-	for (c=0; c<bjds->nrowsPadded/chunkHeight; c++) 
-	{ // loop over chunks
-		for (i=0; i<chunkHeight; i++) {
-			tmp[i] = (v_t)0;
-		}
-
-		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/chunkHeight; j++) 
-		{ // loop inside chunk
+		for (c=0; c<bjds->nrowsPadded/chunkHeight; c++) 
+		{ // loop over chunks
 			for (i=0; i<chunkHeight; i++) {
-				tmp[i] += (v_t)(((m_t*)(bjds->val))[bjds->chunkStart[c]+j*chunkHeight+i]) * 
-					rhsd[bjds->col[bjds->chunkStart[c]+j*chunkHeight+i]];
-			}
-		}
-		for (i=0; i<chunkHeight; i++) {
-			if (c*chunkHeight+i < bjds->nrows) {
-				if (options & GHOST_SPMVM_AXPY)
-					lhsd[c*chunkHeight+i] += tmp[i];
-				else
-					lhsd[c*chunkHeight+i] = tmp[i];
+				tmp[i] = (v_t)0;
 			}
 
+			for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/chunkHeight; j++) 
+			{ // loop inside chunk
+				for (i=0; i<chunkHeight; i++) {
+					tmp[i] += (v_t)((((m_t*)(bjds->val))[bjds->chunkStart[c]+j*chunkHeight+i]) + shift) * 
+						rhsd[bjds->col[bjds->chunkStart[c]+j*chunkHeight+i]];
+				}
+			}
+			for (i=0; i<chunkHeight; i++) {
+				if (c*chunkHeight+i < bjds->nrows) {
+					if (options & GHOST_SPMVM_AXPY)
+						lhsd[c*chunkHeight+i] += tmp[i];
+					else
+						lhsd[c*chunkHeight+i] = tmp[i];
+				}
+
+			}
+		}
+	} else {
+#pragma omp parallel for schedule(runtime) private(j,tmp,i)
+		for (c=0; c<bjds->nrowsPadded/chunkHeight; c++) 
+		{ // loop over chunks
+			for (i=0; i<chunkHeight; i++) {
+				tmp[i] = (v_t)0;
+			}
+
+			for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/chunkHeight; j++) 
+			{ // loop inside chunk
+				for (i=0; i<chunkHeight; i++) {
+					tmp[i] += (v_t)(((m_t*)(bjds->val))[bjds->chunkStart[c]+j*chunkHeight+i]) * 
+						rhsd[bjds->col[bjds->chunkStart[c]+j*chunkHeight+i]];
+				}
+			}
+			for (i=0; i<chunkHeight; i++) {
+				if (c*chunkHeight+i < bjds->nrows) {
+					if (options & GHOST_SPMVM_AXPY)
+						lhsd[c*chunkHeight+i] += tmp[i];
+					else
+						lhsd[c*chunkHeight+i] = tmp[i];
+				}
+
+			}
 		}
 	}
+
 }
 
 template<typename m_t, typename v_t> void BJDS_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
@@ -86,22 +115,41 @@ template<typename m_t, typename v_t> void BJDS_kernel_plain_ELLPACK_tmpl(ghost_m
 	m_t *bjdsv = (m_t*)(bjds->val);
 
 
+	if (options & GHOST_SPMVM_APPLY_SHIFT) {
+		m_t shift = *((m_t *)(mat->traits->shift));
 #pragma omp parallel for schedule(runtime) private(j,tmp)
-	for (i=0; i<bjds->nrows; i++) 
-	{
-		tmp = (v_t)0;
+		for (i=0; i<bjds->nrows; i++) 
+		{
+			tmp = (v_t)0;
 
-		for (j=0; j<bjds->rowLen[i]; j++) 
-		{ 
-			tmp += (v_t)bjdsv[bjds->nrowsPadded*j+i] * 
-				rhsd[bjds->col[bjds->nrowsPadded*j+i]];
+			for (j=0; j<bjds->rowLen[i]; j++) 
+			{ 
+				tmp += (v_t)(bjdsv[bjds->nrowsPadded*j+i] + shift) * 
+					rhsd[bjds->col[bjds->nrowsPadded*j+i]];
+			}
+			if (options & GHOST_SPMVM_AXPY)
+				lhsd[i] += tmp;
+			else
+				lhsd[i] = tmp;
 		}
-		if (options & GHOST_SPMVM_AXPY)
-			lhsd[i] += tmp;
-		else
-			lhsd[i] = tmp;
+	} else {
+#pragma omp parallel for schedule(runtime) private(j,tmp)
+		for (i=0; i<bjds->nrows; i++) 
+		{
+			tmp = (v_t)0;
 
+			for (j=0; j<bjds->rowLen[i]; j++) 
+			{ 
+				tmp += (v_t)bjdsv[bjds->nrowsPadded*j+i] * 
+					rhsd[bjds->col[bjds->nrowsPadded*j+i]];
+			}
+			if (options & GHOST_SPMVM_AXPY)
+				lhsd[i] += tmp;
+			else
+				lhsd[i] = tmp;
+		}
 	}
+
 }
 
 template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
@@ -187,11 +235,11 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	if (((int *)(mat->traits->aux))[1] == GHOST_BJDS_CHUNKHEIGHT_ELLPACK) {
 		BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,256); // TODO padding anpassen an architektur
 		BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
-	 } else {
+	} else {
 		BJDS(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
 		BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,BJDS(mat)->chunkHeight);
-	 }
-//	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
+	}
+	//	BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
 
 	ghost_midx_t nChunks = BJDS(mat)->nrowsPadded/BJDS(mat)->chunkHeight;
 	BJDS(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));

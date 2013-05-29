@@ -113,7 +113,7 @@ int main( int argc, char* argv[] )
 	lhs->print(lhs);
 
 	lhs->zero(lhs);
-	double shift = 1.;
+	double shift = -1.;
 	mat->traits->shift = &shift;
 	spmvmOptions = spmvmOptions | GHOST_SPMVM_APPLY_SHIFT;
 
