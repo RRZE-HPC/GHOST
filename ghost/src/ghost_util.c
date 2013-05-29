@@ -1417,3 +1417,20 @@ void ghost_waitTask(ghost_task_t *task)
 
 	//omp_set_num_threads(ghost_getNumberOfThreads()+task->nThreads);
 }
+
+int ghost_flopsPerSpmvm(int m_t, int v_t)
+{
+	int flops = 2;
+
+	if (m_t & GHOST_BINCRS_DT_COMPLEX) {
+		if (v_t & GHOST_BINCRS_DT_COMPLEX) {
+			flops = 8;
+		}
+	} else {
+		if (v_t & GHOST_BINCRS_DT_COMPLEX) {
+			flops = 4;
+		}
+	}
+
+	return flops;
+}
