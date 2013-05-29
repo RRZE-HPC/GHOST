@@ -24,7 +24,7 @@ static void rhsVal (int i, int v, void *val)
 	printf("in mywork: openmp thread no. %d on core %d\n",omp_get_thread_num(),ghost_getCore());
 
 	return NULL;
-}*/
+}
 
 
 typedef struct {
@@ -63,11 +63,11 @@ static void *benchTask(void *vargs)
 
 	return NULL;
 }
-
+*/
 
 int main( int argc, char* argv[] ) 
 {
-	int nIter = 100;
+	int nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 
@@ -92,28 +92,37 @@ int main( int argc, char* argv[] )
 	rhs = ghost_createVector(&rvtraits);
 	lhs = ghost_createVector(&lvtraits);
 
-	/*mat->fromFile(mat,ctx,argv[1]);
+	mat->fromFile(mat,ctx,argv[1]);
 	lhs->fromScalar(lhs,ctx,&zero);
-	rhs->fromFunc(rhs,ctx,rhsVal);*/
-	createDataArgs args = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = argv[1], .lhsInit = &zero, .rhsInit = rhsVal};
+	rhs->fromFunc(rhs,ctx,rhsVal);
+	/*createDataArgs args = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = argv[1], .lhsInit = &zero, .rhsInit = rhsVal};
 	ghost_task_t cdTask = ghost_spawnTask(&createDataTask,&args,6,NULL,"create data structures",GHOST_TASK_ASYNC);
-	
+	*/
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(ctx);
 
-	ghost_waitTask(&cdTask);
+//	ghost_waitTask(&cdTask);
 	ghost_printMatrixInfo(mat);
 
 	ghost_printHeader("Performance");
 
-	benchArgs bargs = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &spmvmOptions, .nIter = nIter, .time = &time};
-	ghost_spawnTask(&benchTask,&bargs,GHOST_TASK_ALIKE,&cdTask,"bench",GHOST_TASK_SYNC);
-//	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
+	//benchArgs bargs = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &spmvmOptions, .nIter = nIter, .time = &time};
+	//ghost_spawnTask(&benchTask,&bargs,GHOST_TASK_ALIKE,&cdTask,"bench",GHOST_TASK_SYNC);
+	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
+	lhs->print(lhs);
+
+	lhs->zero(lhs);
+	double shift = 1.;
+	mat->traits->shift = &shift;
+	spmvmOptions = spmvmOptions | GHOST_SPMVM_APPLY_SHIFT;
+
+	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
+	lhs->print(lhs);
 
 
 	if (time > 0.)
-		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",FLOPS_PER_ENTRY*1.e-9*ghost_getMatNnz(mat)/time);
+		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",ghost_flopsPerSpmvm(matdt,vecdt)*1.e-9*ghost_getMatNnz(mat)/time);
 
 
 	ghost_printFooter();

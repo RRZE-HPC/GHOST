@@ -52,21 +52,18 @@ template<typename m_t, typename v_t, int chunkHeight> void BJDS_kernel_plain_tmp
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
 	for (c=0; c<bjds->nrowsPadded/chunkHeight; c++) 
 	{ // loop over chunks
-		for (i=0; i<chunkHeight; i++)
-		{
+		for (i=0; i<chunkHeight; i++) {
 			tmp[i] = (v_t)0;
 		}
 
 		for (j=0; j<(bjds->chunkStart[c+1]-bjds->chunkStart[c])/chunkHeight; j++) 
 		{ // loop inside chunk
-			for (i=0; i<chunkHeight; i++)
-			{
+			for (i=0; i<chunkHeight; i++) {
 				tmp[i] += (v_t)(((m_t*)(bjds->val))[bjds->chunkStart[c]+j*chunkHeight+i]) * 
 					rhsd[bjds->col[bjds->chunkStart[c]+j*chunkHeight+i]];
 			}
 		}
-		for (i=0; i<chunkHeight; i++)
-		{
+		for (i=0; i<chunkHeight; i++) {
 			if (c*chunkHeight+i < bjds->nrows) {
 				if (options & GHOST_SPMVM_AXPY)
 					lhsd[c*chunkHeight+i] += tmp[i];

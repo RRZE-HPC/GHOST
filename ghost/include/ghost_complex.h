@@ -1,18 +1,29 @@
 #include <complex>
 
-using namespace std;
-template <class T> 
-class ghost_complex : public complex<T> 
+template <typename T> 
+struct ghost_complex : public std::complex<T> 
 {
-	public:
-		ghost_complex() : complex<T>(0.,0.) {}
-		ghost_complex(T a) : complex<T>(a) {}
-		ghost_complex(complex<T> a) : complex<T>(a) {}
-		ghost_complex(ghost_complex<float> &a) : complex<T>(a) {}
+		ghost_complex() : std::complex<T>(0.,0.) {}
+		ghost_complex(T a) : std::complex<T>(a) {}
+		ghost_complex(T a, T b) : std::complex<T>(a,b) {}
+		ghost_complex(const std::complex<T> &a) : std::complex<T>(a) {}
+		ghost_complex(const ghost_complex<float> &a) : std::complex<T>(a) {}
 		operator float() const;
+	//	operator double() const;
+		ghost_complex<T> operator+(const ghost_complex<T>&) const;
 };
 
-template <class T>
+template <typename T>
 ghost_complex<T>::operator float() const {
-	return (float)(real(*this));
+	return (float)(std::real(*this));
+}
+
+/*template <typename T>
+ghost_complex<T>::operator double() const {
+	return (double)(std::real(*this));
+}*/
+
+template <typename T>
+ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) const {
+	return ghost_complex<T>(std::real(*this) + std::real(c), std::imag(*this) + std::imag(c));
 }

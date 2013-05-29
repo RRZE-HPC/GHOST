@@ -89,8 +89,8 @@ template<typename v_t> int ghost_vecEquals_tmpl(ghost_vec_t *a, ghost_vec_t *b)
 	double tol = 1e-5; // TODO as argument?
 	int i;
 	for (i=0; i<a->traits->nrows; i++) {
-			if (fabs(real((complex<double>)VAL(a,i) - (complex<double>)VAL(b,i))) > tol ||
-					fabs(imag((complex<double>)VAL(a,i) - (complex<double>)VAL(b,i))) > tol)
+			if (fabs(real((std::complex<double>)VAL(a,i) - (std::complex<double>)VAL(b,i))) > tol ||
+					fabs(imag((std::complex<double>)VAL(a,i) - (std::complex<double>)VAL(b,i))) > tol)
 				return 0;
 	}
 	return 1;

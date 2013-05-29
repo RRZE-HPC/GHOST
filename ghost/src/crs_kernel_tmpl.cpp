@@ -4,7 +4,7 @@
 #include <crs.h>
 #include "ghost_complex.h"
 #include <iostream>
-	
+
 
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
@@ -14,19 +14,33 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	v_t hlp1 = 0.;
 	CR_TYPE *cr = CR(mat);
 
+	if (options & GHOST_SPMVM_APPLY_SHIFT) {
+		m_t shift = *((m_t *)(mat->traits->shift));
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<cr->nrows; i++){
+		for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += (v_t)(((m_t *)(cr->val))[j]) * rhsv[cr->col[j]];
-				//DEBUG_LOG(0,"%f * %f",(v_t)(((m_t *)(cr->val))[j]), rhsv[cr->col[j]]);
+				hlp1 += (v_t)(((m_t *)(cr->val))[j] + shift) * rhsv[cr->col[j]];
 			}
 			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;
-				//DEBUG_LOG(0,"%f += %f",lhsv[i],hlp1);
 			} else {
 				lhsv[i] = hlp1;
 			}
+		}
+	} else {
+#pragma omp parallel for schedule(runtime) private (hlp1, j)
+		for (i=0; i<cr->nrows; i++){
+			hlp1 = (v_t)0.0;
+			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+				hlp1 += (v_t)(((m_t *)(cr->val))[j]) * rhsv[cr->col[j]];
+			}
+			if (options & GHOST_SPMVM_AXPY) { 
+				lhsv[i] += hlp1;
+			} else {
+				lhsv[i] = hlp1;
+			}
+		}
 	}
 }
 

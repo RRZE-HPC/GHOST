@@ -230,7 +230,7 @@ struct ghost_mat_t
 	ghost_context_t *context;
 	char *name;
 	void *data;
-	ghost_dummyfun_t *extraFun;
+	ghost_dummyfun_t *extraFun; // TODO still needed?
 	// TODO MPI-IO
 	ghost_kernel_t kernel;
 
@@ -301,8 +301,9 @@ struct ghost_mtraits_t
 	int flags;
 	void * aux;
 	int datatype;
+	void * shift; 
 }; 
-#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = "CRS", ## __VA_ARGS__ }
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = "CRS", .shift = NULL,  ## __VA_ARGS__ }
 
 typedef struct
 {
