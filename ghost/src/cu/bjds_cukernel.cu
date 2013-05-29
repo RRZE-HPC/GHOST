@@ -4,7 +4,6 @@
 #include <ghost_util.h>
 #include <ghost_types.h>
 #include <bjds.h>
-#include <ghost_cu_types_generic.h>
 #include "ghost_complex.h"
 #include <cuComplex.h>
 
