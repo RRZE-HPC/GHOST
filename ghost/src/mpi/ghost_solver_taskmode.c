@@ -84,7 +84,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	static commArgs cargs;
 	static compArgs cpargs;
-	static int commThreads[] = {12};
+	static int commThreads[] = {23};
 	static int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
 	static ghost_task_t commTask, compTask;
 
@@ -151,16 +151,16 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		}
 	}
 
-	/*****************************************************************************
-	 *******       Local assembly of halo-elements  & Communication       ********
-	 ****************************************************************************/
-
-#pragma omp parallel private(to_PE,i)
+#pragma omp parallel private(to_PE,i) 
+	{
+//#pragma omp single
+//		printf("assembly is done with %d threads\n",omp_get_num_threads());
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
 			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
+	}
 	}
 
 //	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -170,7 +170,10 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 //		}
 //	}
 
+//	double start = ghost_wctime();
 	ghost_spawnTask(&commTask);
+//	double time = ghost_wctime()-start;
+//	printf("spawning async comm task took %f seconds\n",time);
 //	communicate(&cargs);
 //	commArgs *args = &cargs;
 
@@ -195,7 +198,10 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	cargs.request = request;
 	cargs.status = status;
 
+//	start = ghost_wctime();
 	ghost_spawnTask(&compTask);
+//	time = ghost_wctime()-start;
+//	printf("local computation took %f seconds\n",time);
 //	ghost_spawnTask(&computeLocal, &cpargs, 12, compThreads, "local compute", GHOST_TASK_SYNC/*|GHOST_TASK_EXCLUSIVE*/);
 
 //	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
@@ -209,7 +215,10 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	 *******       Finishing communication: MPI_Waitall                   *******
 	 ***************************************************************************/
 
+//	start = ghost_wctime();
 	ghost_waitTask(&commTask);
+//	time = ghost_wctime()-start;
+//	printf("had to wait for comm to finish for %f seconds\n",time);
 //	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
 
 #ifdef LIKWID_MARKER_FINE

@@ -47,7 +47,7 @@ static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
 static int nTasks = 0;
 
 
-static double ghost_wctime()
+double ghost_wctime()
 {
 	/*	struct timespec ts;
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
@@ -1321,7 +1321,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	return nnz;
 }
 
-static void *ghost_enterTask(void *arg)
+static inline void *ghost_enterTask(void *arg)
 {
 	ghost_task_t *task = (ghost_task_t *)arg;
 
@@ -1338,7 +1338,7 @@ static void *ghost_enterTask(void *arg)
 }
 
 
-void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags)
+inline void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags)
 {
 
 	DEBUG_LOG(2,"There are %d threads available",ghost_getNumberOfThreads());

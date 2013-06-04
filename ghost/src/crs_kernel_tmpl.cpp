@@ -58,9 +58,13 @@ template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, vo
 template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
 {
 	if (val == NULL) {
-		str = "0.";
+		UNUSED(str);
+		//str = "0.";
 	} else {
-		snprintf(str,n,"%g",*((m_t *)(val)));
+		UNUSED(str);
+		UNUSED(n);
+		// TODO
+		//snprintf(str,n,"%g",*((m_t *)(val)));
 	}
 }
 
