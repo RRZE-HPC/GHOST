@@ -1,9 +1,9 @@
-2013 - 05 - xx  Moritz Kreutzer  <moritz.kreutzer@fau.de>
+2013 - 06 - xx  Moritz Kreutzer  <moritz.kreutzer@fau.de>
 
 	Release Version 0.3
 
 
-	+ The whole X macro and run-time linking stuff for mixed data types has 
+	+ The whole X-macro and run-time linking stuff for mixed data types has 
 		been removed. 
 		Reason: The old approach was very complex and the code readability and
 		maintainability suffered.
@@ -19,7 +19,16 @@
 
 	+ The chunk height for SELL can now be set at runtime. This should enable 
 		easier set-up for hybrid machines as the optimal chunk height depends on
-		the architecture.	
+		the architecture.
+
+	+ A shift can now be added to a matrix. At the time of the SpMVM call, it can
+   		be selected whether to apply the shift which would yield: y <- y + (A+s)*x.
+		There is currently _no_ CUDA version for this (only CPU and OpenCL).
+
+	+ A first implementation of tasking is available. The most important function
+		calls are ghost_spawnTask(ghost_task_t *) and ghost_waitTas(ghost_task_t *).
+		Tasks can be either synchronous (no ghost_waitTask() neede) or asynchronous.
+
 
 
 
