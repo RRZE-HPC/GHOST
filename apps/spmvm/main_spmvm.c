@@ -64,6 +64,7 @@ int main( int argc, char* argv[] )
 	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
+	matdt_t shift = 0.;
 
 #ifdef CHECK
 	ghost_midx_t i, errcount = 0;
@@ -76,7 +77,7 @@ int main( int argc, char* argv[] )
 		GHOST_SPMVM_MODE_TASKMODE};
 	int nModes = sizeof(modes)/sizeof(int);
 
-	int spmvmOptions = GHOST_SPMVM_AXPY;
+	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
 	ghost_matfile_header_t fileheader;
 
 	ghost_mat_t *mat; // matrix
@@ -86,7 +87,7 @@ int main( int argc, char* argv[] )
 	ghost_context_t *context;
 
 	char *matrixPath = argv[1];
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = "CRS", .datatype = matdt);
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = "CRS", .datatype = matdt, .shift = &shift);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 
@@ -116,10 +117,7 @@ int main( int argc, char* argv[] )
 	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
 
 	ghost_spawnTask(&cdTask);
-	/*mat->fromFile(mat,context,matrixPath);
-	lhs->fromScalar(lhs,context,&zero);
-	rhs->fromFunc(rhs,context,rhsVal);
-*/
+	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(context);
@@ -136,7 +134,6 @@ int main( int argc, char* argv[] )
 		benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
 		ghost_task_t bTask = {.desc = "bench", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &benchTask, .arg = &bargs};
 		ghost_spawnTask(&bTask);
-		//time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 
 		if (time < 0.) {
 			ghost_printLine(ghost_modeName(modes[mode]),NULL,"SKIPPED");
@@ -185,8 +182,8 @@ int main( int argc, char* argv[] )
 	}
 	ghost_printFooter();
 
-//	lhs->destroy(lhs);
-//	rhs->destroy(rhs);
+	lhs->destroy(lhs);
+	rhs->destroy(rhs);
 	ghost_freeContext( context );
 
 #ifdef CHECK

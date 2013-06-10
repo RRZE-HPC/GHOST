@@ -12,58 +12,8 @@ static void rhsVal (int i, int v, void *val)
 {
 	UNUSED(i);
 	UNUSED(v);
-	*(vecdt_t *)val = 1+I*1;//i + (vecdt_t)1.0 + I*i;
+	*(vecdt_t *)val = 1+I*1;
 }
-
-/*static void *mywork(void *t)
-{
-	sleep(*(int *)t);
-	printf("in mywork after sleeping for %d seconds\n",*(int *)t);
-
-#pragma omp parallel 
-	printf("in mywork: openmp thread no. %d on core %d\n",omp_get_thread_num(),ghost_getCore());
-
-	return NULL;
-}
-
-
-typedef struct {
-	ghost_context_t *ctx;
-	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
-	int *spmvmOptions;
-	int nIter;
-	double *time;
-} benchArgs;
-
-typedef struct {
-	ghost_context_t *ctx;
-	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
-	char *matfile;
-	vecdt_t *lhsInit;
-	void (*rhsInit)(int,int,void*);
-} createDataArgs;
-
-
-static void *createDataTask(void *vargs)
-{
-	createDataArgs *args = (createDataArgs *)vargs;
-	args->mat->fromFile(args->mat,args->ctx,args->matfile);
-	args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
-	args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
-
-	return NULL;
-}
-
-static void *benchTask(void *vargs)
-{
-	benchArgs *args = (benchArgs *)vargs;
-	*(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
-
-	return NULL;
-}
-*/
 
 int main( int argc, char* argv[] ) 
 {
@@ -81,7 +31,6 @@ int main( int argc, char* argv[] )
 	ghost_vec_t *lhs, *rhs;
 	ghost_mat_t *mat;
 
-
 	ghost_init(argc,argv);
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 
@@ -95,41 +44,20 @@ int main( int argc, char* argv[] )
 	mat->fromFile(mat,ctx,argv[1]);
 	lhs->fromScalar(lhs,ctx,&zero);
 	rhs->fromFunc(rhs,ctx,rhsVal);
-	/*createDataArgs args = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = argv[1], .lhsInit = &zero, .rhsInit = rhsVal};
-	ghost_task_t cdTask = ghost_spawnTask(&createDataTask,&args,6,NULL,"create data structures",GHOST_TASK_ASYNC);
-	*/
+	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(ctx);
-
-//	ghost_waitTask(&cdTask);
 	ghost_printMatrixInfo(mat);
 
 	ghost_printHeader("Performance");
-
-	//benchArgs bargs = {.ctx = ctx, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &spmvmOptions, .nIter = nIter, .time = &time};
-	//ghost_spawnTask(&benchTask,&bargs,GHOST_TASK_ALIKE,&cdTask,"bench",GHOST_TASK_SYNC);
 	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
-	lhs->print(lhs);
-
-	lhs->zero(lhs);
-	double shift = -1.;
-	mat->traits->shift = &shift;
-	spmvmOptions = spmvmOptions | GHOST_SPMVM_APPLY_SHIFT;
-
-	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
-	lhs->print(lhs);
-
-
-	if (time > 0.)
-		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",ghost_flopsPerSpmvm(matdt,vecdt)*1.e-9*ghost_getMatNnz(mat)/time);
-
-
+	ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",ghost_flopsPerSpmvm(matdt,vecdt)*1.e-9*ghost_getMatNnz(mat)/time);
 	ghost_printFooter();
-
 	
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);
+	mat->destroy(mat);
 	ghost_freeContext(ctx);
 
 	ghost_finish();
