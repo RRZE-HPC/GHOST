@@ -852,7 +852,18 @@ void *ghost_malloc(const size_t size)
 		ABORT("Error in memory allocation of %lu bytes",size);
 	}
 	return mem;
+}
 
+void *ghost_malloc_align(const size_t size, const size_t align)
+{
+	void *mem = NULL;
+	int ierr;
+
+	if ((ierr = posix_memalign((void**) &mem, align, size)) != 0) {
+		ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
+	}
+
+	return mem;
 }
 /*
 void freeMemory( size_t size, const char* desc, void* this_array ) 

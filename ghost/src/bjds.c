@@ -17,6 +17,24 @@
 #include <altivec.h>
 #endif
 
+void (*BJDS_kernels_SSE[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{NULL,NULL,NULL,NULL},
+{NULL,&dd_BJDS_kernel_SSE,NULL,NULL},
+{NULL,NULL,NULL,NULL},
+{NULL,NULL,NULL,NULL}};
+
+void (*BJDS_kernels_AVX[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{NULL,NULL,NULL,NULL},
+{NULL,&dd_BJDS_kernel_AVX,NULL,NULL},
+{NULL,NULL,NULL,NULL},
+{NULL,NULL,NULL,NULL}};
+
+void (*BJDS_kernels_MIC_16[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{NULL,NULL,NULL,NULL},
+{NULL,&dd_BJDS_kernel_MIC_16,NULL,NULL},
+{NULL,NULL,NULL,NULL},
+{NULL,NULL,NULL,NULL}};
+
 void (*BJDS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_BJDS_kernel_plain,&sd_BJDS_kernel_plain,&sc_BJDS_kernel_plain,&sz_BJDS_kernel_plain},
 {&ds_BJDS_kernel_plain,&dd_BJDS_kernel_plain,&dc_BJDS_kernel_plain,&dz_BJDS_kernel_plain},
@@ -52,16 +70,16 @@ static void BJDS_CUupload(ghost_mat_t *mat);
 static void BJDS_fromBin(ghost_mat_t *mat, ghost_context_t *, char *);
 static void BJDS_free(ghost_mat_t *mat);
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#ifdef SSE_INTR
-static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#endif
-#ifdef AVX_INTR
-static void BJDS_kernel_AVX (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#endif
-#ifdef MIC_INTR
-static void BJDS_kernel_MIC (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#endif
+//#ifdef SSE_INTR
+//static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+//#endif
+//#ifdef AVX_INTR
+//static void BJDS_kernel_AVX (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+//#endif
+//#ifdef MIC_INTR
+//static void BJDS_kernel_MIC (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+//static void BJDS_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+//#endif
 #ifdef OPENCL
 static void BJDS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
@@ -91,12 +109,12 @@ ghost_mat_t * ghost_BJDS_init(ghost_mtraits_t * traits)
 	mat->byteSize   = &BJDS_byteSize;
 	mat->kernel     = &BJDS_kernel_plain;
 	mat->fromCRS    = &BJDS_fromCRS;
-#ifdef SSE_INTR
-	mat->kernel   = &BJDS_kernel_SSE;
-#endif
-#ifdef AVX_INTR
-	mat->kernel   = &BJDS_kernel_AVX;
-#endif
+//#ifdef SSE_INTR
+//	mat->kernel   = &BJDS_kernel_SSE;
+//#endif
+//#ifdef AVX_INTR
+//	mat->kernel   = &BJDS_kernel_AVX;
+//#endif
 #ifdef VSX_INTR
 	mat->kernel = &BJDS_kernel_VSX;
 #endif
@@ -576,171 +594,40 @@ static void BJDS_free(ghost_mat_t *mat)
 
 static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
-
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
-	BJDS_kernels_plain
-		[ghost_dataTypeIdx(mat->traits->datatype)]
-		[ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
-}
+	
+	void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
 
 #ifdef SSE_INTR
-static void BJDS_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
-{
-	ghost_midx_t c,j;
-	ghost_mnnz_t offs;
-	__m128d tmp;
-	__m128d val;
-	__m128d rhs;
-
-#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
-	for (c=0; c<BJDS(mat)->nrowsPadded>>1; c++) 
-	{ // loop over chunks
-		tmp = _mm_setzero_pd(); // tmp = 0
-		offs = BJDS(mat)->chunkStart[c];
-
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>1; j++) 
-		{ // loop inside chunk
-			val    = _mm_load_pd(&BJDS(mat)->val[offs]);                      // load values
-			rhs    = _mm_loadl_pd(rhs,&invec->val[(BJDS(mat)->col[offs++])]); // load first 128 bits of RHS
-			rhs    = _mm_loadh_pd(rhs,&invec->val[(BJDS(mat)->col[offs++])]);
-			tmp    = _mm_add_pd(tmp,_mm_mul_pd(val,rhs));           // accumulate
-		}
-		if (options & GHOST_SPMVM_AXPY) {
-			_mm_store_pd(&lhs->val[c*BJDS(mat)->chunkHeight],_mm_add_pd(tmp,_mm_load_pd(&lhs->val[c*BJDS(mat)->chunkHeight])));
-		} else {
-			_mm_stream_pd(&lhs->val[c*BJDS(mat)->chunkHeight],tmp);
-		}
-	}
-
-
-}
+	kernel = BJDS_kernels_SSE
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)];
+#elif defined(AVX_INTR)
+	kernel = BJDS_kernels_AVX
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)];
+#elif defined(MIC_INTR)
+	kernel = BJDS_kernels_MIC_16
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)];
+#else
+	kernel = BJDS_kernels_plain
+		[ghost_dataTypeIdx(mat->traits->datatype)]
+		[ghost_dataTypeIdx(lhs->traits->datatype)];
 #endif
 
-#ifdef AVX_INTR
-static void BJDS_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
-{
-	ghost_midx_t c,j;
-	ghost_mnnz_t offs;
-	__m256d tmp;
-	__m256d val;
-	__m256d rhs;
-	__m128d rhstmp;
-
-#pragma omp parallel for schedule(runtime) private(j,tmp,val,offs,rhs,rhstmp)
-	for (c=0; c<BJDS(mat)->nrowsPadded>>2; c++) 
-	{ // loop over chunks
-		tmp = _mm256_setzero_pd(); // tmp = 0
-		offs = BJDS(mat)->chunkStart[c];
-
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>2; j++) 
-		{ // loop inside chunk
-
-			val    = _mm256_load_pd(&BJDS(mat)->val[offs]);                      // load values
-			rhstmp = _mm_loadl_pd(rhstmp,&invec->val[(BJDS(mat)->col[offs++])]); // load first 128 bits of RHS
-			rhstmp = _mm_loadh_pd(rhstmp,&invec->val[(BJDS(mat)->col[offs++])]);
-			rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-			rhstmp = _mm_loadl_pd(rhstmp,&invec->val[(BJDS(mat)->col[offs++])]); // load second 128 bits of RHS
-			rhstmp = _mm_loadh_pd(rhstmp,&invec->val[(BJDS(mat)->col[offs++])]);
-			rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-			tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
-		}
-		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm256_store_pd(&res->val[c*BJDS(mat)->chunkHeight],_mm256_add_pd(tmp,_mm256_load_pd(&res->val[c*BJDS(mat)->chunkHeight])));
-		} else {
-			_mm256_stream_pd(&res->val[c*BJDS(mat)->chunkHeight],tmp);
-		}
+	if (kernel == NULL) {
+		WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!\n");
+		kernel = BJDS_kernels_plain
+			[ghost_dataTypeIdx(mat->traits->datatype)]
+			[ghost_dataTypeIdx(lhs->traits->datatype)];
 	}
-}
-#endif
 
-#ifdef MIC_INTR
-static void BJDS_kernel_MIC(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
-{
-	ghost_midx_t c,j;
-	ghost_mnnz_t offs;
-	__m512d tmp;
-	__m512d val;
-	__m512d rhs;
-	__m512i idx;
-
-#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,idx,offs)
-	for (c=0; c<BJDS(mat)->nrowsPadded>>3; c++) 
-	{ // loop over chunks
-		tmp = _mm512_setzero_pd(); // tmp = 0
-		//		int offset = BJDS(mat)->chunkStart[c];
-		offs = BJDS(mat)->chunkStart[c];
-
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>3; j+=2) 
-		{ // loop inside chunk
-			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
-			idx = _mm512_load_epi32(&BJDS(mat)->col[offs]);
-			rhs = _mm512_i32logather_pd(idx,invec->val,8);
-			tmp = _mm512_add_pd(tmp,_mm512_mul_pd(val,rhs));
-
-			offs += 8;
-
-			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
-			idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
-			rhs = _mm512_i32logather_pd(idx,invec->val,8);
-			tmp = _mm512_add_pd(tmp,_mm512_mul_pd(val,rhs));
-
-			offs += 8;
-		}
-		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],_mm512_add_pd(tmp,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight])));
-		} else {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],tmp);
-		}
-	}
+	kernel(mat,lhs,rhs,options);
 }
 
-static void BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
-{
-	ghost_midx_t c,j;
-	ghost_mnnz_t offs;
-	__m512d tmp1;
-	__m512d tmp2;
-	__m512d val;
-	__m512d rhs;
-	__m512i idx;
-	UNUSED(invec);
 
-#pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,idx,val,rhs,offs)
-	for (c=0; c<BJDS(mat)->nrowsPadded>>4; c++) 
-	{ // loop over chunks
-		tmp1 = _mm512_setzero_pd(); // tmp1 = 0
-		tmp2 = _mm512_setzero_pd(); // tmp2 = 0
-		offs = BJDS(mat)->chunkStart[c];
 
-		for (j=0; j<(BJDS(mat)->chunkStart[c+1]-BJDS(mat)->chunkStart[c])>>4; j++) 
-		{ // loop inside chunk
-			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
-			idx = _mm512_load_epi32(&BJDS(mat)->col[offs]);
-			rhs = _mm512_i32logather_pd(idx,invec->val,8);
-			//rhs = _mm512_set1_pd(invec->val[j]);
-			tmp1 = _mm512_add_pd(tmp1,_mm512_mul_pd(val,rhs));
-
-			offs += 8;
-
-			val = _mm512_load_pd(&BJDS(mat)->val[offs]);
-			idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
-			rhs = _mm512_i32logather_pd(idx,invec->val,8);
-			//rhs = _mm512_set1_pd(invec->val[j]);
-			tmp2 = _mm512_add_pd(tmp2,_mm512_mul_pd(val,rhs));
-
-			offs += 8;
-		}
-		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
-		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
-			_mm512_store_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],_mm512_add_pd(tmp1,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight])));
-			_mm512_store_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8],_mm512_add_pd(tmp2,_mm512_load_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8])));
-		} else {
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight],tmp1);
-			_mm512_storenrngo_pd(&((double *)(res->val))[c*BJDS(mat)->chunkHeight+8],tmp2);
-		}
-	}
-}
 #endif
 
 #ifdef CUDA

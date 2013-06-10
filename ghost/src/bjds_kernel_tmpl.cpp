@@ -297,8 +297,8 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->mu /= (double)nChunks;
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
-	BJDS(mat)->val = (char *)ghost_malloc(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts);
-	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*BJDS(mat)->nEnts);
+	BJDS(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,64);
+	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,64);
 
 	if (BJDS(mat)->chunkHeight < BJDS(mat)->nrowsPadded) 
 	{ // BJDS NUMA initialization
@@ -329,9 +329,6 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 			}
 		}
 	}
-
-
-
 
 
 	for (c=0; c<nChunks; c++) {

@@ -97,6 +97,10 @@ void zd_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int optio
 void zs_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zc_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void zz_BJDS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+
+void dd_BJDS_kernel_SSE(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dd_BJDS_kernel_AVX(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dd_BJDS_kernel_MIC_16(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 #ifdef CUDA
 void dd_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void ds_BJDS_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
