@@ -4,7 +4,7 @@
 #include "ghost.h"
 
 #ifdef MIC
-//#define BJDS_LEN 8
+//#define SELL_LEN 8
 #define VEC_PAD 16
 #elif defined (AVX)
 #define VEC_PAD 4 // TODO single/double precision

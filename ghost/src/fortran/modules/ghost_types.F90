@@ -18,7 +18,7 @@ INTEGER, PARAMETER :: ghost_mnnz_t = c_long
 ! these strings are used to define a matrix format in a
 ! more or less convenient way (TODO - add others)
 CHARACTER(c_char), dimension(4), parameter :: str_CRS = (/'C', 'R','S',C_NULL_CHAR/)
-CHARACTER(c_char), dimension(5), parameter :: str_BJDS = (/'B','J','D','S',C_NULL_CHAR/)
+CHARACTER(c_char), dimension(5), parameter :: str_SELL = (/'B','J','D','S',C_NULL_CHAR/)
 
 !---------------------------------------------------------!
 ! Stage 1 interfaces (have the same name as in C)         !

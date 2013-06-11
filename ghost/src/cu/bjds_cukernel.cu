@@ -3,42 +3,42 @@
 #include <cuda_runtime.h>
 #include <ghost_util.h>
 #include <ghost_types.h>
-#include <bjds.h>
+#include <sell.h>
 #include "ghost_complex.h"
 #include <cuComplex.h>
 
 #define CHOOSE_KERNEL(dt1,dt2,ch, ...) \
 	switch(ch) { \
 		case 1: \
-				BJDS_kernel_CU_tmpl< dt1, dt2, 1 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				SELL_kernel_CU_tmpl< dt1, dt2, 1 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 2: \
-				BJDS_kernel_CU_tmpl< dt1, dt2, 2 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				SELL_kernel_CU_tmpl< dt1, dt2, 2 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 4: \
-				BJDS_kernel_CU_tmpl< dt1, dt2, 4 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				SELL_kernel_CU_tmpl< dt1, dt2, 4 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 8: \
-				BJDS_kernel_CU_tmpl< dt1, dt2, 8 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				SELL_kernel_CU_tmpl< dt1, dt2, 8 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 16: \
-				 BJDS_kernel_CU_tmpl< dt1, dt2, 16 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_tmpl< dt1, dt2, 16 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 32: \
-				 BJDS_kernel_CU_tmpl< dt1, dt2, 32 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_tmpl< dt1, dt2, 32 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 64: \
-				 BJDS_kernel_CU_tmpl< dt1, dt2, 64 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_tmpl< dt1, dt2, 64 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 256: \
-				 BJDS_kernel_CU_tmpl< dt1, dt2, 256 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_tmpl< dt1, dt2, 256 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		default: \
 				 DEBUG_LOG(2,"Calling ELLPACK kernel"); \
-				 BJDS_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< ceil(BJDS(mat)->cumat->nrows/256.),256 >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< ceil(SELL(mat)->cumat->nrows/256.),256 >>> ( __VA_ARGS__ ); \
 		}
 	/*	default: \
-				 return BJDS_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< ceil(BJDS(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 return SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 	}*/
 
@@ -142,7 +142,7 @@ __device__ inline float axpy<float,cuDoubleComplex>(float val, float val2, cuDou
 }
 
 template<typename m_t, typename v_t>  
-__global__ void BJDS_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
+__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
@@ -162,7 +162,7 @@ __global__ void BJDS_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int
 }
 
 template<typename m_t, typename v_t, int chunkHeight>  
-__global__ void BJDS_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
+__global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
@@ -183,7 +183,7 @@ __global__ void BJDS_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
 }
 
 /*template<typename m_t>  
-__global__ void BJDS_kernel_CU_cvec_tmpl(cuFloatComplex *lhs, cuFloatComplex *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
+__global__ void SELL_kernel_CU_cvec_tmpl(cuFloatComplex *lhs, cuFloatComplex *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
@@ -194,8 +194,8 @@ __global__ void BJDS_kernel_CU_cvec_tmpl(cuFloatComplex *lhs, cuFloatComplex *rh
 
 
 		for (j=0; j<rowlen[i]; j++) {
-			tmp += make_cuFloatComplex(val[cs + threadIdx.x + j*BJDS_LEN])  // TODO cast besser machen
-				* rhs[col[cs + threadIdx.x + j*BJDS_LEN]];
+			tmp += make_cuFloatComplex(val[cs + threadIdx.x + j*SELL_LEN])  // TODO cast besser machen
+				* rhs[col[cs + threadIdx.x + j*SELL_LEN]];
 		}
 		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] += tmp;
@@ -204,95 +204,95 @@ __global__ void BJDS_kernel_CU_cvec_tmpl(cuFloatComplex *lhs, cuFloatComplex *rh
 	}
 }*/
 
-extern "C" void dd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(double,double,BJDS(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void dd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(double,double,SELL(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void ds_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(double,float,BJDS(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void ds_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(double,float,SELL(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void dc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(double,cuFloatComplex,BJDS(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void dc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(double,cuFloatComplex,SELL(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void dz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(double,cuDoubleComplex,BJDS(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void dz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(double,cuDoubleComplex,SELL(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void sd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(float,double,BJDS(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void sd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(float,double,SELL(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void ss_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(float,float,BJDS(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void ss_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(float,float,SELL(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void sc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(float,cuFloatComplex,BJDS(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void sc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(float,cuFloatComplex,SELL(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void sz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(float,cuDoubleComplex,BJDS(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void sz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(float,cuDoubleComplex,SELL(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void cd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuFloatComplex,double,BJDS(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuFloatComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void cd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuFloatComplex,double,SELL(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void cs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuFloatComplex,float,BJDS(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuFloatComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void cs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuFloatComplex,float,SELL(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void cc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuFloatComplex,cuFloatComplex,BJDS(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuFloatComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void cc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuFloatComplex,cuFloatComplex,SELL(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void cz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuFloatComplex,cuDoubleComplex,BJDS(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuFloatComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void cz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuFloatComplex,cuDoubleComplex,SELL(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void zd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuDoubleComplex,double,BJDS(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void zd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuDoubleComplex,double,SELL(mat)->chunkHeight,(double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void zs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuDoubleComplex,float,BJDS(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void zs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuDoubleComplex,float,SELL(mat)->chunkHeight,(float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void zc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuDoubleComplex,cuFloatComplex,BJDS(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void zc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuDoubleComplex,cuFloatComplex,SELL(mat)->chunkHeight,(cuFloatComplex *)lhs->CU_val,(cuFloatComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-extern "C" void zz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ CHOOSE_KERNEL(cuDoubleComplex,cuDoubleComplex,BJDS(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen) }
+extern "C" void zz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ CHOOSE_KERNEL(cuDoubleComplex,cuDoubleComplex,SELL(mat)->chunkHeight,(cuDoubleComplex *)lhs->CU_val,(cuDoubleComplex *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen) }
 
-/*extern "C" void ds_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< double,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+/*extern "C" void ds_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< double,float > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void dc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options){ return BJDS_kernel_CU_tmpl< double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuFloatComplex*)lhs->CU_val,(cuFloatComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void dc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options){ return SELL_kernel_CU_tmpl< double > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuFloatComplex*)lhs->CU_val,(cuFloatComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void dz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< double,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(double *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void dz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< double,cuDoubleComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void sd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void sd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< float,double > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void ss_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void ss_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< float,float > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void sc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,cuComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void sc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< float,cuComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void sz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< float,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(float *)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void sz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< float,cuDoubleComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void cd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void cd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuFloatComplex,double > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void cs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void cs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuFloatComplex,float > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void cc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void cc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuFloatComplex,cuComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void cz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuFloatComplex,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void cz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuFloatComplex,cuDoubleComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void zd_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,double > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void zd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuDoubleComplex,double > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void zs_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,float > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void zs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuDoubleComplex,float > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((float *)lhs->CU_val,(float *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void zc_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuFloatComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void zc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuDoubleComplex,cuFloatComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuComplex*)lhs->CU_val,(cuComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 
-extern "C" void zz_BJDS_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
-{ return BJDS_kernel_CU_tmpl< cuDoubleComplex,cuDoubleComplex > <<<ceil(BJDS(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,BJDS(mat)->cumat->nrows,BJDS(mat)->cumat->nrowsPadded,BJDS(mat)->cumat->rowLen,BJDS(mat)->cumat->col,(cuDoubleComplex*)BJDS(mat)->cumat->val,BJDS(mat)->cumat->chunkStart,BJDS(mat)->cumat->chunkLen); }
+extern "C" void zz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
+{ return SELL_kernel_CU_tmpl< cuDoubleComplex,cuDoubleComplex > <<<ceil(SELL(mat)->cumat->nrows/256.),256>>> ((cuDoubleComplex*)lhs->CU_val,(cuDoubleComplex*)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex*)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen); }
 */

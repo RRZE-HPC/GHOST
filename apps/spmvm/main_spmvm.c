@@ -97,7 +97,7 @@ int main( int argc, char* argv[] )
 		int sortBlock = atoi(argv[4]);
 		int aux[2];
 		aux[0] = sortBlock;
-		//aux[1] = GHOST_BJDS_CHUNKHEIGHT_ELLPACK; 
+		//aux[1] = GHOST_SELL_CHUNKHEIGHT_ELLPACK; 
 		aux[1] = 16; 
 		mtraits.aux = &aux;
 	}

@@ -14,7 +14,7 @@
 #include <ghost_constants.h>
 
 
-kernel void BJDS_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, global unsigned int *chunkStart, global unsigned int *chunkLen, ghost_cl_mdat_t shift)
+kernel void SELL_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, global unsigned int *chunkStart, global unsigned int *chunkLen, ghost_cl_mdat_t shift)
 { 
 	unsigned int i = get_global_id(0);
 
@@ -29,9 +29,9 @@ kernel void BJDS_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhs
 		int colidx;
 
 		for(unsigned int j=0; j<max; ++j){ 
-			colidx = col[cs + li + j*BJDS_LEN];
+			colidx = col[cs + li + j*SELL_LEN];
 			rhs = rhsVec[colidx];
-			value = val[cs + li + j*BJDS_LEN]; 
+			value = val[cs + li + j*SELL_LEN]; 
 			if (options & GHOST_SPMVM_APPLY_SHIFT)
 				value += shift; 
 		   	

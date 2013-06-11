@@ -14,7 +14,7 @@
 		The use of C++ should stay as small as possible because a plain C wrapper
 		is needed anyways for Fortran compatibility.
 
-	+ As ELLPACK is only a special case of BJDS (now: "SELL" (Sliced ELLPACK)), it
+	+ As ELLPACK is only a special case of SELL (now: "SELL" (Sliced ELLPACK)), it
 		has completely been integrated into the SELL code.
 
 	+ The chunk height for SELL can now be set at runtime. This should enable 
@@ -38,7 +38,7 @@
 
 
 	+ Arbitrary data types at runtime (currently only test with CRS for CPUs 
-		and BJDS for CUDA)
+		and SELL for CUDA)
 
 	+ Initial Fortran support (thanks to Jonas)
 

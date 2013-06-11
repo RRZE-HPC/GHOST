@@ -4,7 +4,7 @@
 #include "ghost_util.h"
 #include "ghost_mat.h"
 #include "ghost_vec.h"
-#include "bjds.h"
+#include "sell.h"
 #include "crs.h"
 
 #ifdef GHOST_MPI
@@ -619,8 +619,8 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 	ghost_mat_t* mat;
 	if (!(strcasecmp(traits->format,"CRS")))
 		mat = ghost_CRS_init(traits);
-	else if (!(strcasecmp(traits->format,"BJDS")))
-		mat = ghost_BJDS_init(traits);
+	else if (!(strcasecmp(traits->format,"SELL")))
+		mat = ghost_SELL_init(traits);
 		
    return mat;	
 }
