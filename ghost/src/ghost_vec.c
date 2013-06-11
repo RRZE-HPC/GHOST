@@ -197,21 +197,21 @@ static void vec_print(ghost_vec_t *vec)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%d] = %f + %fi\t",
+					printf("PE%d: vec[%"PRvecIDX"] = %f + %fi\t",
 							ghost_getRank(),i,
 							crealf(((complex float *)(vec->val))[v*vec->traits->nrows+i]),
 							cimagf(((complex float *)(vec->val))[v*vec->traits->nrows+i]));
 				} else {
-					printf("PE%d: vec[%d] = %f + %fi\t",
+					printf("PE%d: vec[%"PRvecIDX"] = %f + %fi\t",
 							ghost_getRank(),i,
 							creal(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
 							cimag(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,((float *)(vec->val))[v*vec->traits->nrows+i]);
+					printf("PE%d: vec[%"PRvecIDX"] = %f\t",ghost_getRank(),i,((float *)(vec->val))[v*vec->traits->nrows+i]);
 				} else {
-					printf("PE%d: vec[%d] = %f\t",ghost_getRank(),i,((double *)(vec->val))[v*vec->traits->nrows+i]);
+					printf("PE%d: vec[%"PRvecIDX"] = %f\t",ghost_getRank(),i,((double *)(vec->val))[v*vec->traits->nrows+i]);
 				}
 			}
 		}
