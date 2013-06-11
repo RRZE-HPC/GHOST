@@ -607,9 +607,11 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
 #elif defined(MIC_INTR)
+#ifndef LONGIDX
 	kernel = BJDS_kernels_MIC_16
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
+#endif
 #else
 	kernel = BJDS_kernels_plain
 		[ghost_dataTypeIdx(mat->traits->datatype)]
@@ -617,7 +619,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 #endif
 
 	if (kernel == NULL) {
-		WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!\n");
+		WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
 		kernel = BJDS_kernels_plain
 			[ghost_dataTypeIdx(mat->traits->datatype)]
 			[ghost_dataTypeIdx(lhs->traits->datatype)];

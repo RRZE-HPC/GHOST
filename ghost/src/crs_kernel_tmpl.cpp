@@ -34,7 +34,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 		for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += 1.0/*(v_t)(mval[j]) * rhsv[cr->col[j]]*/;
+				hlp1 += (v_t)(mval[j]) * rhsv[cr->col[j]];
 			}
 			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;
@@ -47,7 +47,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
 template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts)
 {
-	int i;
+	ghost_mnnz_t i;
 	m_t *md = (m_t *)matrixData;
 	f_t *fd = (f_t *)fileData;
 

@@ -30,6 +30,7 @@ Version 0.4
 
 - generalization of intrinsics kernels for arbitrary data types as far as possible
 - build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
+- enable MPI with 64-bit indices
 
 
 Version x.x

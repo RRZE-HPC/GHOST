@@ -235,7 +235,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 					((CR_TYPE *)((*mat)->data))->rpt, 
 					(int *)comm->lnrows, 
 					(int *)comm->lfRow, 
-					MPI_INTEGER,
+					ghost_mpi_dt_midx,
 					MPI_IN_PLACE,
 					(int)comm->lnrows[me],
 					MPI_INTEGER, 0, MPI_COMM_WORLD));
@@ -244,7 +244,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 					((CR_TYPE *)((*mat)->data))->rpt, 
 					(int *)comm->lnrows, 
 					(int *)comm->lfRow, 
-					MPI_INTEGER,
+					ghost_mpi_dt_midx,
 					((CR_TYPE *)((*mat)->data))->rpt,
 					(int)comm->lnrows[me],
 					MPI_INTEGER, 0, MPI_COMM_WORLD));
@@ -490,7 +490,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	for(i=0; i<nprocs; i++) {
 		MPI_safecall(MPI_Scatterv ( 
-					lcrp->wishlist_mem, (int *)lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
+					lcrp->wishlist_mem, (int *)lcrp->wishes, lcrp->wish_displ, ghost_mpi_dt_midx, 
 					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
 	}
 
