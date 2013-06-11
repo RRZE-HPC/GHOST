@@ -8,11 +8,12 @@
 
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
+	CR_TYPE *cr = CR(mat);
 	v_t *rhsv = (v_t *)(rhs->val);	
-	v_t *lhsv = (v_t *)(lhs->val);	
+	v_t *lhsv = (v_t *)(lhs->val);
+	m_t *mval = (m_t *)(cr->val);	
 	ghost_midx_t i, j;
 	v_t hlp1 = 0.;
-	CR_TYPE *cr = CR(mat);
 
 	if (options & GHOST_SPMVM_APPLY_SHIFT) {
 		m_t shift = *((m_t *)(mat->traits->shift));
@@ -20,7 +21,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 		for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += (v_t)(((m_t *)(cr->val))[j] + shift) * rhsv[cr->col[j]];
+				hlp1 += ((v_t)(mval[j] + shift)) * rhsv[cr->col[j]];
 			}
 			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;
@@ -33,7 +34,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 		for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += (v_t)(((m_t *)(cr->val))[j]) * rhsv[cr->col[j]];
+				hlp1 += 1.0/*(v_t)(mval[j]) * rhsv[cr->col[j]]*/;
 			}
 			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;

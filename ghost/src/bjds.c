@@ -596,7 +596,7 @@ static void BJDS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 {
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
 	
-	void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
+	void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int) = NULL;
 
 #ifdef SSE_INTR
 	kernel = BJDS_kernels_SSE

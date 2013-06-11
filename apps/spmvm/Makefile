@@ -35,6 +35,9 @@ endif
 ifeq ($(strip $(MIC)),1)
 LIBS+= -limf -lsvml -lirng -lintlc
 endif
+ifeq ($(strip $(MIC)),2)
+LIBS+= -limf -lsvml -lirng -lintlc
+endif
 
 ifeq ($(strip $(LIKWID)),1)
 MAKROS+= -DLIKWID_PERMON

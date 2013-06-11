@@ -94,8 +94,8 @@ void dd_BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 	ghost_midx_t c,j;
 	ghost_mnnz_t offs;
 	double *mval = (double *)BJDS(mat)->val;
-	double *lval = res->val;
-	double *rval = invec->val;
+	double *lval = (double *)res->val;
+	double *rval = (double *)invec->val;
 	__m512d tmp1;
 	__m512d tmp2;
 	__m512d val;
@@ -114,7 +114,6 @@ void dd_BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 			val = _mm512_load_pd(&mval[offs]);
 			idx = _mm512_load_epi32(&BJDS(mat)->col[offs]);
 			rhs = _mm512_i32logather_pd(idx,rval,8);
-			//rhs = _mm512_set1_pd(invec->val[j]);
 			tmp1 = _mm512_add_pd(tmp1,_mm512_mul_pd(val,rhs));
 
 			offs += 8;
@@ -122,14 +121,11 @@ void dd_BJDS_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 			val = _mm512_load_pd(&mval[offs]);
 			idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
 			rhs = _mm512_i32logather_pd(idx,rval,8);
-			//rhs = _mm512_set1_pd(invec->val[j]);
 			tmp2 = _mm512_add_pd(tmp2,_mm512_mul_pd(val,rhs));
 
 			offs += 8;
 		}
 		if (spmvmOptions & GHOST_SPMVM_AXPY) {
-		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN],_mm512_add_pd(tmp1,_mm512_load_pd(&res->val[c*BJDS_LEN])));
-		//	_mm512_storenrngo_pd(&res->val[c*BJDS_LEN+8],_mm512_add_pd(tmp2,_mm512_load_pd(&res->val[c*BJDS_LEN+8])));
 			_mm512_store_pd(&lval[c*BJDS(mat)->chunkHeight],_mm512_add_pd(tmp1,_mm512_load_pd(&lval[c*BJDS(mat)->chunkHeight])));
 			_mm512_store_pd(&lval[c*BJDS(mat)->chunkHeight+8],_mm512_add_pd(tmp2,_mm512_load_pd(&lval[c*BJDS(mat)->chunkHeight+8])));
 		} else {

@@ -919,8 +919,9 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
 		//time = ghost_timediff(start,end);
 		time = ghost_wctime()-time;
-		if (time < 0)
-			printf("dummy\n");
+	//	printf("%f\n",time);
+//		if (time < 0)
+//			printf("dummy\n");
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}

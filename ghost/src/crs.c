@@ -997,7 +997,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
-	int64_t *tmp = (int64_t *)malloc(nEnts*8);
+	int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
 	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {

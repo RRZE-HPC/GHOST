@@ -232,7 +232,7 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->nrows = cr->nrows;
 	BJDS(mat)->nnz = cr->nEnts;
 	BJDS(mat)->nEnts = 0;
-	if (((int *)(mat->traits->aux))[1] == GHOST_BJDS_CHUNKHEIGHT_ELLPACK) {
+	if ((mat->traits->aux == NULL) || ((int *)(mat->traits->aux))[1] == GHOST_BJDS_CHUNKHEIGHT_ELLPACK) {
 		BJDS(mat)->nrowsPadded = ghost_pad(BJDS(mat)->nrows,256); // TODO padding anpassen an architektur
 		BJDS(mat)->chunkHeight = BJDS(mat)->nrowsPadded;
 	} else {
@@ -297,8 +297,8 @@ template <typename m_t> void BJDS_fromCRS(ghost_mat_t *mat, void *crs)
 	BJDS(mat)->mu /= (double)nChunks;
 	BJDS(mat)->beta = nnz*1.0/(double)BJDS(mat)->nEnts;
 
-	BJDS(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,64);
-	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,64);
+	BJDS(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*BJDS(mat)->nEnts,GHOST_DATA_ALIGNMENT);
+	BJDS(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*BJDS(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 
 	if (BJDS(mat)->chunkHeight < BJDS(mat)->nrowsPadded) 
 	{ // BJDS NUMA initialization
