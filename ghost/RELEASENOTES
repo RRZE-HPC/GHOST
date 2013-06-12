@@ -19,7 +19,9 @@
 
 	+ The chunk height for SELL can now be set at runtime. This should enable 
 		easier set-up for hybrid machines as the optimal chunk height depends on
-		the architecture.
+		the architecture. It is also possible to let the chunkheight be auto-
+		matically detected by ghost at runtime, depending on the datatype and
+		architecture.
 
 	+ A shift can now be added to a matrix. At the time of the SpMVM call, it can
    		be selected whether to apply the shift which would yield: y <- y + (A+s)*x.
