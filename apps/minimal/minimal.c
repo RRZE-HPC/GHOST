@@ -15,15 +15,15 @@ static void rhsVal (int i, int v, void *val)
 	*(vecdt_t *)val = 1+I*1;
 }
 
-int main( int argc, char* argv[] ) 
+int main(int argc, char* argv[]) 
 {
 	int nIter = 1000;
 	double time;
 	vecdt_t zero = 0.;
-	int aux[2] = {0,16};
+//	int aux[2] = {0,2};
 
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format="SELL",.aux=&aux,.datatype = matdt);
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format="SELL",.datatype = matdt);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 

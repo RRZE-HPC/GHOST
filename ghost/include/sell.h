@@ -4,22 +4,6 @@
 
 #include "ghost.h"
 
-/*#ifdef MIC
-//#define SELL_LEN 8
-#define SELL_LEN 16
-#elif defined (AVX)
-#define SELL_LEN 4 // TODO single/double precision
-#elif defined (SSE)
-#define SELL_LEN 2
-#elif defined (OPENCL) || defined (CUDA)
-#define SELL_LEN 256
-#elif defined (VSX)
-#define SELL_LEN 2
-#else
-#define SELL_LEN 4
-#endif*/
-
-
 typedef struct 
 {
 #ifdef OPENCL
@@ -64,6 +48,7 @@ typedef struct
 	ghost_midx_t *chunkLen; // for version with remainder loop
 	ghost_midx_t *rowLen;   // for version with remainder loop
 	ghost_midx_t chunkHeight;
+	ghost_midx_t scope;
 	
 	CL_SELL_TYPE *clmat;
 	CU_SELL_TYPE *cumat;
