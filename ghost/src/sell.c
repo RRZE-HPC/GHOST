@@ -238,7 +238,7 @@ static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO trats[1]
-	mat->localPart->symmetry = mat->symmetry;
+	mat->localPart->symmetry = crsMat->symmetry;
 	mat->localPart->fromCRS(mat->localPart,crsMat->localPart->data);
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]); // TODO traits[2]

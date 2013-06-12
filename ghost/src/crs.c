@@ -613,10 +613,12 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	free(item_from);
 
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
+	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->fromCRS(mat->localPart,localCR);
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
 	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
+
 
 	/*
 	   context->localMatrix = ghost_initMatrix(&traits[1]);
