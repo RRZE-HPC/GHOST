@@ -177,8 +177,6 @@ static ghost_midx_t SELL_ncols(ghost_mat_t *mat)
 static void SELL_printInfo(ghost_mat_t *mat)
 {
 	ghost_printLine("Vector block size",NULL,"%d",SELL(mat)->chunkHeight);
-	ghost_printLine("Nu",NULL,"%f",SELL(mat)->nu);
-	ghost_printLine("Mu",NULL,"%f",SELL(mat)->mu);
 	ghost_printLine("Beta",NULL,"%f",SELL(mat)->beta);
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		ghost_printLine("Sorted",NULL,"yes");

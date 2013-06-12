@@ -301,8 +301,6 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_mnnz_t nnz = 0;
 	double chunkAvg = 0.;
 	ghost_midx_t curChunk = 1;
-	SELL(mat)->nu = 0.;
-	SELL(mat)->mu = 0.;
 	SELL(mat)->beta = 0.;
 
 	for (i=0; i<SELL(mat)->nrowsPadded; i++) {
@@ -330,9 +328,6 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 			SELL(mat)->chunkMin[curChunk-1] = chunkMin;
 			SELL(mat)->chunkLen[curChunk-1] = chunkLen;
 
-			SELL(mat)->nu += (double)chunkMin/chunkLen;
-			SELL(mat)->mu += (double)chunkAvg*1.0/(double)chunkLen;
-
 			chunkMin = cr->ncols;
 			chunkLen = 0;
 			chunkAvg = 0;
@@ -340,8 +335,6 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 			chunkEnts = 0;
 		}
 	}
-	SELL(mat)->nu /= (double)nChunks;
-	SELL(mat)->mu /= (double)nChunks;
 	SELL(mat)->beta = nnz*1.0/(double)SELL(mat)->nEnts;
 
 	SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
