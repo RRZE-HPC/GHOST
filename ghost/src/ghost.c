@@ -281,14 +281,13 @@ int ghost_init(int argc, char **argv)
 
 //	options = ghostOptions;
 
-	// TODO this 
-/*	ghost_setCore(0);
+	ghost_setCore(ghost_getCore());
 	threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
-	threadpool[0].state = GHOST_THREAD_MGMT;
-	threadpool[0].desc = "main";
+	threadpool[ghost_getCore()].state = GHOST_THREAD_MGMT;
+	threadpool[ghost_getCore()].desc = "main";
 	for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
 		threadpool[i].state = GHOST_THREAD_HALTED;
-	}*/
+	}
 
 
 	return me;
