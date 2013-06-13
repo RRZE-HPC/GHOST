@@ -18,21 +18,21 @@ Version 0.3
 
 - add shift to matrix and apply at spMVM, option: GHOST_SPM_(NO)SHIFT
 (- threaded incomplete factorization)
-- sparse matrix addition with a pre-factor
-	special x-macro versions for +/-1
-- GitLab or something similar
+- enable MPI with 64-bit indices
 - vec->fromFunc: add a version where the loop is in the user-defined function
 	also: global instead of local index
-- instrumentation: prefix all region names with a number according to the level of instrumentation
 
 
 Version 0.4
 
+- instrumentation: prefix all region names with a number according to the level of instrumentation
 - generalization of intrinsics kernels for arbitrary data types as far as possible
 - build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
-- enable MPI with 64-bit indices
+- sparse matrix addition with a pre-factor
+	special x-macro versions for +/-1
 
 
 Version x.x
 
+- bugtracker
 - support of special matrix structures
