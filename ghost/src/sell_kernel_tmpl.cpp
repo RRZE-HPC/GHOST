@@ -1,5 +1,5 @@
-#include <ghost_util.h>
 #include <ghost.h>
+#include <ghost_util.h>
 #include <ghost_mat.h>
 #include <sell.h>
 #include <stdio.h>
@@ -230,8 +230,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 		mat->rowPerm = rowPerm;
 		mat->invRowPerm = invRowPerm;
 
-
-		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",SELL(mat)->scope);
+		DEBUG_LOG(1,"Sorting matrix rows");
 
 		/* get max number of entries in one row ###########################*/
 		rowSort = (ghost_sorting_t*)ghost_malloc(cr->nrows * sizeof(ghost_sorting_t));

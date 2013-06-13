@@ -562,7 +562,31 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 		}
 	}
 
-	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
+	int nprocs = ghost_getNumberOfProcesses();
+	int i;
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	//vec->print(vec);
+
+	MPI_Request req[2*(nprocs-1)];
+	MPI_Status stat[2*(nprocs-1)];
+	int msgcount = 0;
+	
+	for (i=0;i<2*(nprocs-1);i++) 
+			req[i] = MPI_REQUEST_NULL;
+
+	if (ghost_getRank() != 0) {
+		MPI_safecall(MPI_Irecv((*nodeVec)->val,comm->lnrows[me],mpidt,0,me,MPI_COMM_WORLD,&req[msgcount]));
+		msgcount++;
+	} else {
+		memcpy((*nodeVec)->val,vec->val,sizeofdt*comm->lnrows[0]);
+		for (i=1;i<nprocs;i++) {
+			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,MPI_COMM_WORLD,&req[msgcount]));
+			msgcount++;
+		}
+	}
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
+	//(*nodeVec)->print(*nodeVec);
+//	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
@@ -617,8 +641,32 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}*/
 	vec->permute(vec,mat->invRowPerm); 
-	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
-				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
+	
+	int nprocs = ghost_getNumberOfProcesses();
+	int i;
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+
+	ghost_comm_t *comm = context->communicator;
+	MPI_Request req[2*(nprocs-1)];
+	MPI_Status stat[2*(nprocs-1)];
+	int msgcount = 0;
+	
+	for (i=0;i<2*(nprocs-1);i++) 
+			req[i] = MPI_REQUEST_NULL;
+	
+	if (ghost_getRank() != 0) {
+		MPI_safecall(MPI_Isend(vec->val,comm->lnrows[me],mpidt,0,me,MPI_COMM_WORLD,&req[msgcount]));
+		msgcount++;
+	} else {
+		memcpy(totalVec->val,vec->val,sizeofdt*comm->lnrows[0]);
+		for (i=1;i<nprocs;i++) {
+			MPI_safecall(MPI_Irecv(((char *)(totalVec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,MPI_COMM_WORLD,&req[msgcount]));
+			msgcount++;
+		}
+	}
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
+//	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
+//				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
 #else
 	//	UNUSED(kernel);
 	UNUSED(context);

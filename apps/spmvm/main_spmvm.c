@@ -61,7 +61,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -73,8 +73,8 @@ int main( int argc, char* argv[] )
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
-		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE};
+		GHOST_SPMVM_MODE_GOODFAITH/*,
+		GHOST_SPMVM_MODE_TASKMODE*/};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;

@@ -3,7 +3,9 @@
 
 #ifdef GHOST_MPI
 #ifndef CUDAKERNEL
+#pragma warning (disable : 869)
 #include <mpi.h>
+#pragma warning (enable : 869)
 #endif
 #endif
 
@@ -207,15 +209,17 @@ struct ghost_comm_t
 	ghost_mnnz_t* lfEnt;
 	ghost_midx_t* lnrows;
 	ghost_midx_t* lfRow;
-	ghost_mnnz_t* wishes;
-	int* wishlist_mem; // TODO delete
+	int* wishes;
+	//ghost_midx_t* wishlist_mem; // TODO delete
 	int** wishlist;    // TODO delete
-	ghost_mnnz_t* dues;
-	int* duelist_mem;  // TODO delete
+	int* dues;
+	//ghost_midx_t* duelist_mem;  // TODO delete
 	int** duelist;
-	int* due_displ;    
-	int* wish_displ;   // TODO delete
-	int* hput_pos;
+	ghost_midx_t* due_displ;    
+	ghost_midx_t* wish_displ;   // TODO delete
+//	int32_t * wish_displ_split;   
+//	ghost_midx_t * comm_start_displ;   
+	ghost_midx_t* hput_pos;
 }; 
 
 struct ghost_mat_t 

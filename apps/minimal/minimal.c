@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 //	int aux[2] = {0,2};
 
 	int spmvmOptions = GHOST_SPMVM_AXPY;
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format="SELL",.datatype = matdt);
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format="CRS",.datatype = matdt);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 

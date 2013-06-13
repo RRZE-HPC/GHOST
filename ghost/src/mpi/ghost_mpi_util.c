@@ -19,6 +19,7 @@
 #define MAX_NUM_THREADS 128
 
 static MPI_Comm single_node_comm;
+MPI_Comm *ghost_mpi_comms;
 
 static int getProcessorId() 
 {
@@ -116,6 +117,25 @@ int ghost_mpi_dataType(int datatype)
 		else
 			return MPI_DOUBLE;
 	}
+}
+
+void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Datatype sendtype, void *recvbuv, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm)
+{
+#ifdef LONGIDX
+
+	UNUSED(sendbuf);
+	UNUSED(sendcnts);
+	UNUSED(displs);
+	UNUSED(sendtype);
+	UNUSED(recvbuv);
+	UNUSED(recvcnt);
+	UNUSED(recvtype);
+	UNUSED(root);
+	UNUSED(comm);
+#else
+MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvtype,root,comm));
+#endif
+
 }
 
 /*

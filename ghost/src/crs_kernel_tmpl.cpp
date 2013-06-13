@@ -35,6 +35,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 				hlp1 += (v_t)(mval[j]) * rhsv[cr->col[j]];
+				//printf("##### %f*%f\n",mval[j],rhsv[cr->col[j]]);
 			}
 			if (options & GHOST_SPMVM_AXPY) { 
 				lhsv[i] += hlp1;

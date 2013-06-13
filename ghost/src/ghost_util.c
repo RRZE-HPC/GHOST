@@ -556,10 +556,10 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 		free(comm->lfEnt);
 		free(comm->lfRow);
 		free(comm->wishes);
-		free(comm->wishlist_mem);
+		//free(comm->wishlist_mem);
 		free(comm->wishlist);
 		free(comm->dues);
-		free(comm->duelist_mem);
+		//free(comm->duelist_mem);
 		free(comm->duelist);
 		free(comm->due_displ);
 		free(comm->wish_displ);

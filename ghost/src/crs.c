@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <libgen.h>
+#include <limits.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -196,7 +197,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 
 	//	ghost_mat_t *CRSfullMatrix;
 
-	unsigned int nprocs = ghost_getNumberOfProcesses();
+	int nprocs = ghost_getNumberOfProcesses();
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -219,18 +220,38 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 		CRS_readRpt((*mat),matrixPath);  // read rpt
 	}
 
-	comm->wishes   = (ghost_mnnz_t*)ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-	comm->dues     = (ghost_mnnz_t*)ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	comm->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
+	comm->dues     = (int *)ghost_malloc( nprocs*sizeof(int)); 
 
 	CRS_createDistribution((*mat),context->flags,comm);
 
 	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",comm->lnrows[me]);
 
 	if (ghost_getRank() != 0) {
-		((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)malloc((comm->lnrows[me]+1)*sizeof(int));
+		((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((comm->lnrows[me]+1)*sizeof(ghost_midx_t));
 	}
 
-	if (ghost_getRank() == 0) {
+	MPI_Request req[2*(nprocs-1)];
+	MPI_Status stat[2*(nprocs-1)];
+	int msgcount = 0;
+	
+	for (i=0;i<2*(nprocs-1);i++) 
+			req[i] = MPI_REQUEST_NULL;
+	
+	if (ghost_getRank() != 0) {
+		MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,comm->lnrows[me]+1,ghost_mpi_dt_midx,0,me,MPI_COMM_WORLD,&req[msgcount]));
+		msgcount++;
+	} else {
+		for (i=1;i<nprocs;i++) {
+			MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[comm->lfRow[i]],comm->lnrows[i]+1,ghost_mpi_dt_midx,i,i,MPI_COMM_WORLD,&req[msgcount]));
+			msgcount++;
+		}
+	}
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
+		
+
+
+	/*if (ghost_getRank() == 0) {
 		MPI_safecall(MPI_Scatterv(
 					((CR_TYPE *)((*mat)->data))->rpt, 
 					(int *)comm->lnrows, 
@@ -248,7 +269,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 					((CR_TYPE *)((*mat)->data))->rpt,
 					(int)comm->lnrows[me],
 					MPI_INTEGER, 0, MPI_COMM_WORLD));
-	}
+	}*/
 
 	DEBUG_LOG(1,"Adjusting row pointers");
 
@@ -290,8 +311,8 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
 
 	int hlpi;
-	ghost_mnnz_t j;
-	ghost_midx_t i;
+	int j;
+	int i;
 	int me;
 	ghost_mnnz_t max_loc_elements, thisentry;
 	int *present_values;
@@ -307,6 +328,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	int *wishlist_mem,  **wishlist;
 	int *cwishlist_mem, **cwishlist;
+
 
 	int this_pseudo_col;
 	int *pseudocol;
@@ -327,9 +349,9 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	ghost_comm_t *lcrp = context->communicator;
 	size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
-	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(int)  );
-	size_nptr = (size_t)( nprocs             * sizeof(int*) );
-	size_a2ai = (size_t)( nprocs*nprocs * sizeof(int)  );
+	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_midx_t)  );
+	size_nptr = (size_t)( nprocs             * sizeof(ghost_midx_t*) );
+	size_a2ai = (size_t)( nprocs*nprocs * sizeof(ghost_midx_t)  );
 
 	me = ghost_getRank();
 
@@ -362,6 +384,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 			if (lcrp->lfRow[j]<fullCR->col[i]+1) {
 				comm_remotePE[i] = j;
 				wishlist_counts[j]++;
+				DEBUG_LOG(3,"wishlist_counts[%d]=%"PRmatNNZ" due to %f",j,wishlist_counts[j],((double *)fullCR->val)[i]);
 				comm_remoteEl[i] = fullCR->col[i] -lcrp->lfRow[j];
 				break;
 			}
@@ -379,8 +402,10 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	hlpi = 0;
 	for (i=0; i<nprocs; i++){
-		wishlist[i]  = &wishlist_mem[hlpi];
-		cwishlist[i] = &cwishlist_mem[hlpi];
+	//	wishlist[i]  = &wishlist_mem[hlpi];
+	//	cwishlist[i] = &cwishlist_mem[hlpi];
+		cwishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
+		wishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
 		hlpi += wishlist_counts[i];
 	}
 
@@ -391,9 +416,9 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		item_from[comm_remotePE[i]]++;
 	}
 
-	for (i=0; i<nprocs; i++){
-
-		for (j=0; j<max_loc_elements; j++) present_values[j] = -1;
+	for (i=0; i<nprocs; i++) {
+		for (j=0; j<max_loc_elements; j++) 
+			present_values[j] = -1;
 
 		if ( (i!=me) && (wishlist_counts[i]>0) ){
 			thisentry = 0;
@@ -405,8 +430,9 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 				}
 			}
 			lcrp->wishes[i] = thisentry;
+		} else {
+			lcrp->wishes[i] = 0; 
 		}
-		else lcrp->wishes[i] = 0; 
 
 	}
 
@@ -458,41 +484,159 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
-	lcrp->wishlist      = (int**) ghost_malloc(size_nptr); 
-	lcrp->duelist       = (int**) ghost_malloc(size_nptr); 
-	lcrp->wishlist_mem  = (int*)  ghost_malloc(size_wish); 
-	lcrp->duelist_mem   = (int*)  ghost_malloc(size_dues); 
-	lcrp->wish_displ    = (int*)  ghost_malloc(size_nint); 
-	lcrp->due_displ     = (int*)  ghost_malloc(size_nint); 
-	lcrp->hput_pos      = (int*)  ghost_malloc(size_nptr); 
+	lcrp->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
+	lcrp->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
+	int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
+	int *duel_mem   = (int *)  ghost_malloc(size_dues); // we need a contiguous array in memory
+	lcrp->wish_displ    = (ghost_midx_t*)  ghost_malloc(nprocs * sizeof(ghost_midx_t)); 
+//	lcrp->wish_displ_split = (ghost_midx_t*)  ghost_malloc(nprocs * sizeof(int)); 
+	lcrp->due_displ     = (ghost_midx_t*)  ghost_malloc(size_nint); 
+	lcrp->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
 
 	acc_dues = 0;
 	acc_wishes = 0;
 
 
+//	int maxSubComm = 3;//INT_MAX;
+//	int nComm = (int)(ceil((double)ghost_getMatNrows(mat)/maxSubComm));
+/*	int color = lcrp->lfRow[me]/maxSubComm;
+	DEBUG_LOG(0,"There are %d subcommunicators and I'm in no. %d",nComm,color);
+
+	MPI_Comm newcomm, *intercomm;
+	MPI_safecall(MPI_Comm_split(MPI_COMM_WORLD,color,me,&newcomm));
+	
+	int subme;
+	MPI_safecall(MPI_Comm_rank(newcomm,&subme));
+	DEBUG_LOG(0,"I'm PE%d in the subcommunicator",subme);
+
+	int *subleader = (int *)ghost_malloc(sizeof(int)*nComm);
+	for (i=0; i<nprocs; i++) subleader[i] = -1;
+
+	int curComm;
+	for (i=0; i<nprocs; i++) {
+		curComm = lcrp->lfRow[i]/maxSubComm;
+		if (subleader[curComm] < 0)
+			subleader[curComm] = i;
+	}
+	for (i=0; i<nComm; i++) {
+		DEBUG_LOG(0,"subleader[%d] = %d",i,subleader[i]);
+	}
+
+	intercomm = (MPI_Comm *)ghost_malloc(sizeof(MPI_Comm)*nComm);
+
+	for (i=0; i<nComm; i++) {
+		if (i != color) {
+			int tag = MIN(color,i)*(nComm-1)+MAX(color,i)-1;
+			DEBUG_LOG(0,"With color %d create intercomm with subcomm %d and tag %d",color,i,tag);
+			MPI_safecall(MPI_Intercomm_create(newcomm,0,MPI_COMM_WORLD,subleader[i],tag,&intercomm[i]));
+		}
+	}
+*/
+/*	int nComm = (int)(ceil((double)ghost_getMatNrows(mat)/maxSubComm));
+	
+	lcrp->wish_displ_split = (int **)ghost_malloc(sizeof(int *)*nComm);
+	lcrp->comm_start_displ = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*nComm);
+	DEBUG_LOG(0,"We need %d communicators",nComm);
+
+	for (i=0; i<nComm; i++) {
+		lcrp->wish_displ_split[i] = (int *)ghost_malloc(sizeof(int)*nprocs); // TODO malloc only actual number
+	}
+	lcrp->comm_start_displ[0] = 0;
+
+	int curComm = 0;
+	int idxInComm[nComm];
+	for (i=0; i<nComm; i++) idxInComm[i] = 0;*/
+
+
+	
+
+	
 
 	for (i=0; i<nprocs; i++){
 
 		lcrp->due_displ[i]  = acc_dues;
 		lcrp->wish_displ[i] = acc_wishes;
-		lcrp->duelist[i]    = &(lcrp->duelist_mem[acc_dues]);
-		lcrp->wishlist[i]   = &(lcrp->wishlist_mem[acc_wishes]);
+		
+//		if (acc_wishes > maxSubComm) {
+//		}
+
+		lcrp->duelist[i]    = &(duel_mem[acc_dues]);
+		lcrp->wishlist[i]   = &(wishl_mem[acc_wishes]);
+//		lcrp->duelist[i]    = &(lcrp->duelist_mem[acc_dues]);
+//		lcrp->wishlist[i]   = &(lcrp->wishlist_mem[acc_wishes]);
+	//	lcrp->duelist[i]    = (int *)ghost_malloc(sizeof(int) * lcrp->dues[i]);
+	//	lcrp->wishlist[i]   = (int *)ghost_malloc(sizeof(int) * wishlist_counts[i]); // TODO why not wishes?
+	//	lcrp->wishlist[i]   = (int *)ghost_malloc(sizeof(int) * lcrp->wishes[i]); 
 		lcrp->hput_pos[i]   = lcrp->lnrows[me]+acc_wishes;
 
+		//curComm = lcrp->lfRow[i]/maxSubComm;
 		if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
 			acc_dues   += lcrp->dues[i];
 			acc_wishes += lcrp->wishes[i];
+			
+		/*	lcrp->comm_start_displ[curComm] = lcrp->wish_displ[i-1];
+				
+			lcrp->wish_displ_split[curComm][idxInComm[curComm]++] = acc_wishes-lcrp->comm_start_displ[curComm];
+			DEBUG_LOG(0,"proc: %d, curComm: %d, startDispl: %d, accWishes: %d",i,curComm,lcrp->comm_start_displ[curComm],acc_wishes);*/
+		}
+	}
+	
+//	int nParts = (int)(ceil((double)ghost_getMatNrows(mat)/maxSubComm));
+	
+
+//	int **wishes_split = (int **)ghost_malloc(sizeof(int)*nParts);
+//	for (i=0; i<nParts; i++) {
+//		wishes_split[i]
+//	}
+		
+	MPI_Request req[2*nprocs];
+	MPI_Status stat[2*nprocs];
+	for (i=0;i<2*(nprocs-1);i++) 
+			req[i] = MPI_REQUEST_NULL;
+
+	for (i=0; i<nprocs; i++) 
+		for (j=0;j<lcrp->wishes[i];j++)
+			lcrp->wishlist[i][j] = cwishlist[i][j]; 
+
+	int msgcount = 0;
+	for(i=0; i<nprocs; i++) 
+	{ // scatter _my_ wishes to _other_ processes' dues
+		/*MPI_safecall(MPI_Scatterv ( 
+					lcrp->wishlist[0], (int *)lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
+					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
+*/
+		if (lcrp->wishes[i]>0){
+		//	DEBUG_LOG(0,"Doing recv to duelist from proc %d",i);
+			MPI_safecall(MPI_Irecv(lcrp->duelist[i],lcrp->dues[i],MPI_INTEGER,i,i,MPI_COMM_WORLD,&req[msgcount]));
+			msgcount++;
+		}
+
+	/*	ghost_scatterv(lcrp->wishlist_mem, (int *)lcrp->wishes, lcrp->wish_displ, ghost_mpi_dt_midx, 
+					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD);*/
+		//DEBUG_LOG(0,"proc: %d, frow: %d, dues[%d]: %d, wishes[%d]: %d, wishlist_counts[%d]: %d, wish_displ[%d]: %d, w_d_split[%d]: %d",i,lcrp->lfRow[i],i,lcrp->dues[i],i,lcrp->wishes[i],i,wishlist_counts[i],i,lcrp->wish_displ[i],i,lcrp->wish_displ_split[i]);
+	}
+
+	//	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+
+	for(i=0; i<nprocs; i++) { 
+		if (lcrp->dues[i]>0){
+		//	DEBUG_LOG(0,"Doing send from wishlist to proc %d",i);
+			MPI_safecall(MPI_Isend(lcrp->wishlist[i],lcrp->wishes[i],MPI_INTEGER,i,me,MPI_COMM_WORLD,&req[msgcount]));
+			msgcount++;
 		}
 	}
 
-	for (i=0; i<nprocs; i++) for (j=0;j<lcrp->wishes[i];j++)
-		lcrp->wishlist[i][j] = cwishlist[i][j]; 
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 
-	for(i=0; i<nprocs; i++) {
-		MPI_safecall(MPI_Scatterv ( 
-					lcrp->wishlist_mem, (int *)lcrp->wishes, lcrp->wish_displ, ghost_mpi_dt_midx, 
-					lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, MPI_COMM_WORLD ));
-	}
+
+/*	for(i=0; i<nprocs; i++) {
+		for (j=0; j<lcrp->wishes[i]; j++) {
+			DEBUG_LOG(0,"wishlist[%d][%d] = %d",i,j,lcrp->wishlist[i][j]);
+		}
+		for (j=0; j<lcrp->dues[i]; j++) {
+			DEBUG_LOG(0,"duelist[%d][%d] = %d",i,j,lcrp->duelist[i][j]);
+		}
+	}	*/
 
 	if (!(context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
@@ -593,12 +737,12 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 		IF_DEBUG(3){
 			for (i=0; i<lcrp->lnrows[me]+1; i++)
-				DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%"PRmatIDX" local=%"PRmatIDX" remote=%"PRmatIDX, 
+				DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%d local=%"PRmatIDX" remote=%"PRmatIDX, 
 						me, i, localCR->rpt[i], remoteCR->rpt[i]);
 			for (i=0; i<localCR->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, localCR->col[i]);
+				DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%d]=%"PRmatIDX, me, i, localCR->col[i]);
 			for (i=0; i<remoteCR->rpt[lcrp->lnrows[me]]; i++)
-				DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRmatIDX"]=%"PRmatIDX, me, i, remoteCR->col[i]);
+				DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%d]=%"PRmatIDX, me, i, remoteCR->col[i]);
 		}
 		fflush(stdout);
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
@@ -846,10 +990,10 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 	 *******            Distribute correct share to all PEs               *******
 	 ***************************************************************************/
 
-	MPI_safecall(MPI_Bcast(lcrp->lfRow,  nprocs, MPI_INTEGER, 0, MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, MPI_INTEGER, 0, MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(lcrp->lnrows, nprocs, MPI_INTEGER, 0, MPI_COMM_WORLD));
-	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, MPI_INTEGER, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lfRow,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lnrows, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
+	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
 
 
 }

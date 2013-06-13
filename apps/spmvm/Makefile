@@ -17,7 +17,7 @@ LIKWIDPATH:=$(strip $(LIKWIDPATH))
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
-WTV=0
+WTV=1
 
 .PHONY:clean distclean all
 
