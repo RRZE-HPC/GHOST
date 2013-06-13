@@ -235,8 +235,8 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 		if (vec->traits->flags & GHOST_VEC_RHS)
 			vec->traits->nrows += context->communicator->halo_elements;
 	}
-	vec->traits->nrows = ghost_pad(vec->traits->nrows,GHOST_PAD_MAX); // TODO needed?
-	DEBUG_LOG(1,"The vector has %d rows",vec->traits->nrows);
+	vec->traits->nrowspadded = ghost_pad(vec->traits->nrows,GHOST_PAD_MAX); // TODO needed?
+	DEBUG_LOG(1,"The vector has %d (padded: %d) rows",vec->traits->nrows,vec->traits->nrowspadded);
 }
 
 
@@ -244,7 +244,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs
 {
 	DEBUG_LOG(2,"Cloning the vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec2->traits->nrows*sizeofdt,GHOST_DATA_ALIGNMENT);
+	vec->val = ghost_malloc_align(vec->traits->nvecs*vec2->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
@@ -288,7 +288,7 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 		getNrowsFromContext(vec,ctx);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrows*sizeofdt,GHOST_DATA_ALIGNMENT);
+	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {
@@ -367,7 +367,7 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 		getNrowsFromContext(vec,ctx);
 	
 
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrows*sizeofdt,GHOST_DATA_ALIGNMENT);
+	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	DEBUG_LOG(1,"Reading vector from file %s",path);
 	int file;
 
@@ -435,7 +435,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 	if (vec->traits->nrows == 0)
 		getNrowsFromContext(vec,ctx);
 
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrows*sizeofdt,GHOST_DATA_ALIGNMENT);
+	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {

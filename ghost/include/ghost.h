@@ -130,6 +130,7 @@ struct ghost_vtraits_t
 	void * aux;
 	int datatype;
 	int nrows;
+	int nrowspadded;
 	int nvecs;
 }; 
 #define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nvecs = 1, ## __VA_ARGS__ }

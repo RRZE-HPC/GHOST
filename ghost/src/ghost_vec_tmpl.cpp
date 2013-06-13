@@ -75,7 +75,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_con
 	if (vec->traits->nrows == 0)
 		getNrowsFromContext(vec,ctx);
 
-	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
 	int i;
 
 #pragma omp parallel for schedule(runtime)
