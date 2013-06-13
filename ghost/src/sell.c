@@ -176,11 +176,11 @@ static ghost_midx_t SELL_ncols(ghost_mat_t *mat)
 
 static void SELL_printInfo(ghost_mat_t *mat)
 {
-	ghost_printLine("Vector block size",NULL,"%d",SELL(mat)->chunkHeight);
-	ghost_printLine("Beta",NULL,"%f",SELL(mat)->beta);
+	ghost_printLine("Chunk height",NULL,"%d",SELL(mat)->chunkHeight);
+	ghost_printLine("Vectorization friendliness (beta)",NULL,"%f",SELL(mat)->beta);
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		ghost_printLine("Sorted",NULL,"yes");
-		ghost_printLine("Sort block size",NULL,"%u",*(unsigned int *)(mat->traits->aux));
+		ghost_printLine("Scope",NULL,"%u",*(unsigned int *)(mat->traits->aux));
 		ghost_printLine("Permuted columns",NULL,"%s",mat->traits->flags&GHOST_SPM_PERMUTECOLIDX?"yes":"no");
 	} else {
 		ghost_printLine("Sorted",NULL,"no");
