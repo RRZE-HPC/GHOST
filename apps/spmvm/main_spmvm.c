@@ -14,43 +14,43 @@
 
 #define CHECK // compare with reference solution
 
-	GHOST_REGISTER_DT_D(vecdt)
-GHOST_REGISTER_DT_D(matdt)
+GHOST_REGISTER_DT_D(vecdt);
+GHOST_REGISTER_DT_D(matdt);
 
-	/*typedef struct {
-	  ghost_context_t *ctx;
-	  ghost_mat_t *mat;
-	  ghost_vec_t *lhs, *rhs;
-	  char *matfile;
-	  vecdt_t *lhsInit;
-	  void (*rhsInit)(int,int,void*);
-	  } createDataArgs;
-	  typedef struct {
-	  ghost_context_t *ctx;
-	  ghost_mat_t *mat;
-	  ghost_vec_t *lhs, *rhs;
-	  int *spmvmOptions;
-	  int nIter;
-	  double *time;
-	  } benchArgs;
+typedef struct {
+	ghost_context_t *ctx;
+	ghost_mat_t *mat;
+	ghost_vec_t *lhs, *rhs;
+	char *matfile;
+	vecdt_t *lhsInit;
+	void (*rhsInit)(int,int,void*);
+} createDataArgs;
+typedef struct {
+	ghost_context_t *ctx;
+	ghost_mat_t *mat;
+	ghost_vec_t *lhs, *rhs;
+	int *spmvmOptions;
+	int nIter;
+	double *time;
+} benchArgs;
 
 
-	  static void *createDataTask(void *vargs)
-	  {
-	  createDataArgs *args = (createDataArgs *)vargs;
-	  args->mat->fromFile(args->mat,args->ctx,args->matfile);
-	  args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
-	  args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
+static void *createDataTask(void *vargs)
+{
+	createDataArgs *args = (createDataArgs *)vargs;
+	args->mat->fromFile(args->mat,args->ctx,args->matfile);
+	args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
+	args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
 
-	  return NULL;
-	  }
-	  static void *benchTask(void *vargs)
-	  {
-	  benchArgs *args = (benchArgs *)vargs;
-	 *(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
+	return NULL;
+}
+static void *benchTask(void *vargs)
+{
+	benchArgs *args = (benchArgs *)vargs;
+	*(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
 
-	 return NULL;
-	 }*/
+	return NULL;
+}
 
 static void rhsVal (int i, int v, void *val) 
 {
@@ -107,7 +107,7 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
-	ghost_pinThreads(GHOST_PIN_SMT,NULL);
+	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
@@ -115,15 +115,15 @@ int main( int argc, char* argv[] )
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);
 
-	//	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
+	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 
-	//	int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
-	//	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
+	int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
+	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
 
-	//	ghost_spawnTask(&cdTask);
-	mat->fromFile(mat,context,matrixPath);
-	lhs->fromScalar(lhs,context,&zero);
-	rhs->fromFunc(rhs,context,&rhsVal);
+	ghost_spawnTask(&cdTask);
+	//mat->fromFile(mat,context,matrixPath);
+	//lhs->fromScalar(lhs,context,&zero);
+	//rhs->fromFunc(rhs,context,&rhsVal);
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -138,10 +138,10 @@ int main( int argc, char* argv[] )
 	for (mode=0; mode < nModes; mode++){
 
 		int argOptions = spmvmOptions | modes[mode];
-		//benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-		//	ghost_task_t bTask = {.desc = "bench", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &benchTask, .arg = &bargs};
-		//	ghost_spawnTask(&bTask);
-		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
+		benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
+		ghost_task_t bTask = {.desc = "bench", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &benchTask, .arg = &bargs};
+		ghost_spawnTask(&bTask);
+		//time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 
 
 		if (time < 0.) {
