@@ -102,6 +102,7 @@ TYPE, BIND(C) :: ghost_vtraits_t
   TYPE(c_ptr)     :: aux
   INTEGER(c_int)     :: datatype
   INTEGER(c_int)     :: nrows
+  INTEGER(c_int)     :: nrowspadded
   INTEGER(c_int)     :: nvecs
 END TYPE ghost_vtraits_t
 
@@ -124,10 +125,12 @@ TYPE, BIND(C) :: ghost_context_t
 END TYPE ghost_context_t
 
 TYPE, BIND(C) :: ghost_mtraits_t 
-  TYPE(c_ptr) :: format
+  INTEGER(c_int) :: format
   INTEGER(c_int) :: flags
-  TYPE(c_ptr) :: aux
+  INTEGER(c_int) :: nAux
   INTEGER(c_int) :: datatype
+  TYPE(c_ptr) :: aux
+  TYPE(c_ptr) :: shift
 END TYPE ghost_mtraits_t
 
 
