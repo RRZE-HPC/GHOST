@@ -7,49 +7,50 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <libgen.h>
-#ifdef MPI
+#include <strings.h>
+#ifdef GHOST_MPI
 #include <mpi.h>
 #endif
 
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
+	GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
-/*typedef struct {
-	ghost_context_t *ctx;
-	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
-	char *matfile;
-	vecdt_t *lhsInit;
-	void (*rhsInit)(int,int,void*);
-} createDataArgs;
-typedef struct {
-	ghost_context_t *ctx;
-	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
-	int *spmvmOptions;
-	int nIter;
-	double *time;
-} benchArgs;
+	/*typedef struct {
+	  ghost_context_t *ctx;
+	  ghost_mat_t *mat;
+	  ghost_vec_t *lhs, *rhs;
+	  char *matfile;
+	  vecdt_t *lhsInit;
+	  void (*rhsInit)(int,int,void*);
+	  } createDataArgs;
+	  typedef struct {
+	  ghost_context_t *ctx;
+	  ghost_mat_t *mat;
+	  ghost_vec_t *lhs, *rhs;
+	  int *spmvmOptions;
+	  int nIter;
+	  double *time;
+	  } benchArgs;
 
 
-static void *createDataTask(void *vargs)
-{
-	createDataArgs *args = (createDataArgs *)vargs;
-	args->mat->fromFile(args->mat,args->ctx,args->matfile);
-	args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
-	args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
+	  static void *createDataTask(void *vargs)
+	  {
+	  createDataArgs *args = (createDataArgs *)vargs;
+	  args->mat->fromFile(args->mat,args->ctx,args->matfile);
+	  args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
+	  args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
 
-	return NULL;
-}
-static void *benchTask(void *vargs)
-{
-	benchArgs *args = (benchArgs *)vargs;
-	*(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
+	  return NULL;
+	  }
+	  static void *benchTask(void *vargs)
+	  {
+	  benchArgs *args = (benchArgs *)vargs;
+	 *(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
 
-	return NULL;
-}*/
+	 return NULL;
+	 }*/
 
 static void rhsVal (int i, int v, void *val) 
 {
@@ -61,7 +62,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 1;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -73,8 +74,8 @@ int main( int argc, char* argv[] )
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
-		GHOST_SPMVM_MODE_GOODFAITH/*,
-		GHOST_SPMVM_MODE_TASKMODE*/};
+		GHOST_SPMVM_MODE_GOODFAITH,
+		GHOST_SPMVM_MODE_TASKMODE};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -87,12 +88,15 @@ int main( int argc, char* argv[] )
 	ghost_context_t *context;
 
 	char *matrixPath = argv[1];
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = "CRS", .datatype = matdt, .shift = &shift);
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS, .datatype = matdt, .shift = &shift);
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 
 	if (argc == 5) {
-		mtraits.format = argv[2];
+		if (!(strcasecmp(argv[2],"CRS")))
+			mtraits.format = GHOST_SPM_FORMAT_CRS;
+		else if (!(strcasecmp(argv[2],"SELL")))
+			mtraits.format = GHOST_SPM_FORMAT_SELL;
 		mtraits.flags = atoi(argv[3]);
 		int sortBlock = atoi(argv[4]);
 		int aux[2];
@@ -103,24 +107,24 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
-	//ghost_pinThreads(GHOST_PIN_PHYS,NULL);
-	
+	ghost_pinThreads(GHOST_PIN_SMT,NULL);
+
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
 	mat = ghost_createMatrix(&mtraits,1);
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);
 
-//	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
-	
-//	int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
-//	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
+	//	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 
-//	ghost_spawnTask(&cdTask);
+	//	int compThreads[] = {0,1,2,3,4,5,6,7,8,9,10,11};
+	//	ghost_task_t cdTask = {.desc = "create data structures", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &createDataTask, .arg = &args};
+
+	//	ghost_spawnTask(&cdTask);
 	mat->fromFile(mat,context,matrixPath);
 	lhs->fromScalar(lhs,context,&zero);
 	rhs->fromFunc(rhs,context,&rhsVal);
-	
+
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
 	ghost_printContextInfo(context);
@@ -135,8 +139,8 @@ int main( int argc, char* argv[] )
 
 		int argOptions = spmvmOptions | modes[mode];
 		//benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-	//	ghost_task_t bTask = {.desc = "bench", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &benchTask, .arg = &bargs};
-	//	ghost_spawnTask(&bTask);
+		//	ghost_task_t bTask = {.desc = "bench", .flags = GHOST_TASK_SYNC, .coreList = compThreads, .nThreads = 12, .func = &benchTask, .arg = &bargs};
+		//	ghost_spawnTask(&bTask);
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 
 
@@ -151,7 +155,7 @@ int main( int argc, char* argv[] )
 		for (i=0; i<mat->nrows(mat); i++){
 			goldLHS->entry(goldLHS,i,&ref);
 			lhs->entry(lhs,i,&res);
-		
+
 			mytol = 1e-7 * mat->rowLen(mat,i);
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){

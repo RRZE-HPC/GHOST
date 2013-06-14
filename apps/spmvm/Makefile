@@ -17,7 +17,7 @@ LIKWIDPATH:=$(strip $(LIKWIDPATH))
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
-WTV=1
+WTV=0
 
 .PHONY:clean distclean all
 
@@ -63,7 +63,7 @@ LPATH += -L$(CUDA_HOME)/lib64
 endif
 
 ifeq ($(strip $(MPI)),1)
-MAKROS+= -DMPI
+MAKROS+= -DGHOST_MPI
 endif
 
 %.o: %.c ../../ghost/config.mk 

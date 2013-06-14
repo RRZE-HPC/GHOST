@@ -228,7 +228,7 @@ static size_t SELL_byteSize (ghost_mat_t *mat)
 static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
 {
 	DEBUG_LOG(1,"Creating SELL matrix from binary file");
-	ghost_mtraits_t crsTraits = {.format = "CRS",.flags=GHOST_SPM_HOST,.datatype=mat->traits->datatype};
+	ghost_mtraits_t crsTraits = {.format = GHOST_SPM_FORMAT_CRS,.flags=GHOST_SPM_HOST,.datatype=mat->traits->datatype};
 	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 	mat->context = ctx;

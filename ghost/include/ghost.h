@@ -302,14 +302,14 @@ struct ghost_context_t
 
 struct ghost_mtraits_t
 {
-	const char * format;
+	int format;
 	int flags;
 	void * aux;
 	int nAux;
 	int datatype;
 	void * shift; 
 }; 
-#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = "CRS", .shift = NULL,  ## __VA_ARGS__ }
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL,  ## __VA_ARGS__ }
 
 typedef struct
 {

@@ -616,11 +616,18 @@ context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 {
 	ghost_mat_t* mat;
-	if (!(strcasecmp(traits->format,"CRS")))
-		mat = ghost_CRS_init(traits);
-	else if (!(strcasecmp(traits->format,"SELL")))
-		mat = ghost_SELL_init(traits);
-		
+	switch (traits->format) {
+		case GHOST_SPM_FORMAT_CRS:
+			mat = ghost_CRS_init(traits);
+			break;
+		case GHOST_SPM_FORMAT_SELL:
+			mat = ghost_SELL_init(traits);
+			break;
+		default:
+			WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
+			traits->format = GHOST_SPM_FORMAT_CRS;
+			mat = ghost_CRS_init(traits);
+	}
    return mat;	
 }
 

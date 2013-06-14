@@ -1210,7 +1210,6 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 			pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs );
 		}
 	} else {
-
 		WARNING_LOG("This matrix is supposed to be of %s data but"
 				" the file contains %s data. Casting...",ghost_datatypeName(mat->traits->datatype),ghost_datatypeName(datatype));
 
