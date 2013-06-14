@@ -158,13 +158,13 @@ install: all
 	@mkdir -p $(GHOSTPATH)/lib/
 	@mkdir -p $(GHOSTPATH)/include/ghost/
 	@mkdir -p $(GHOSTPATH)/lib/ghost/
-	@echo "==> Install library to $(GHOSTPATH)/lib/"
+	@echo "==> Install Library to $(GHOSTPATH)/lib/"
 	@cp -f $(LIBGHOST) $(GHOSTPATH)/lib/
-	@echo "==> Install headers to $(GHOSTPATH)/include/ghost/"
+	@echo "==> Install Headers to $(GHOSTPATH)/include/ghost/"
 	@cp -rf include/* $(GHOSTPATH)/include/ghost/
 	@echo "==> Install OpenCL kernels to $(GHOSTPATH)/lib/ghost/"
 	@cp -rf src/cl/*.cl $(GHOSTPATH)/lib/ghost/
-	@echo "==> Install module files to $(GHOSTPATH)/lib/ghost/"
+	@echo "==> Install Fortran module files to $(GHOSTPATH)/lib/ghost/"
 	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost/
 
 uninstall: 
