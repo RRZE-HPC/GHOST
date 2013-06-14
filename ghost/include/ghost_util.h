@@ -2,6 +2,7 @@
 #define __GHOST_UTIL_H__
 
 #include <ghost.h>
+#include <stdio.h>
 
 #ifdef GHOST_MPI
 #include <mpi.h>
