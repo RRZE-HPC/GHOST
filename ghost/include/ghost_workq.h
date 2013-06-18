@@ -1,5 +1,7 @@
 #include <pthread.h>
 
+#define GHOST_WORKQ_VALID 1
+
 typedef struct ghost_workq_ele_t {
 	struct ghost_workq_ele_t *next;
 	void *data;
@@ -17,8 +19,6 @@ typedef struct ghost_workq_t {
 	int idle;
 	void (*engine)(void *arg);
 } ghost_workq_t;
-
-#define GHOST_WORKQ_VALID 1
 
 int ghost_workq_init(ghost_workq_t *wq, int threads, void (*engine)(void *));
 int ghost_workq_destroy(ghost_workq_t *wq);

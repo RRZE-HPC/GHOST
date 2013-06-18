@@ -115,6 +115,7 @@ int ghost_workq_add(ghost_workq_t *wq, void * element)
 		wq->first = item;
 	else
 		wq->last->next = item;
+	
 	wq->last = item;
 
 	if (wq->idle > 0) {
