@@ -169,7 +169,7 @@ int main( int argc, char* argv[] )
 			}
 		}
 		ghost_midx_t totalerrors;
-#ifdef MPI
+#ifdef GHOST_MPI
 		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
 #else
 		totalerrors = errcount;
