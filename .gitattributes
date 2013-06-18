@@ -1,6 +1,6 @@
 apps/lanczos export-ignore
+apps/lanczos_simple export-ignore
 apps/benchshell export-ignore
-apps/spmvm export-ignore
 test export-ignore
 bench export-ignore
 meas export-ignore
