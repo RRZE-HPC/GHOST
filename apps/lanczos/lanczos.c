@@ -35,9 +35,9 @@ static void lanczosStep(ghost_context_t *context, ghost_mat_t *mat, ghost_vec_t 
 	vnew->scale(vnew,&recbeta);
 }
 
-int main( int argc, char* argv[] )
+int main(int argc, char* argv[])
 {
-	matdt_t alpha=0., beta=0., minusbeta, recbeta, minusalpha;
+	matdt_t alpha=0., beta=0.;
 	int ferr, n, iteration, nIter = 500;
 	char *matrixPath = argv[1];
 	double zero = 0.;
