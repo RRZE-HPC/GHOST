@@ -34,7 +34,7 @@
 #include "ghost_constants.h"
 
 #define GHOST_NAME "ghost"
-#define GHOST_VERSION "0.3"
+#define GHOST_VERSION "0.3.1"
 
 
 /******************************************************************************/
@@ -130,10 +130,11 @@ struct ghost_vtraits_t
 	void * aux;
 	int datatype;
 	int nrows;
+	int nrowshalo;
 	int nrowspadded;
 	int nvecs;
 }; 
-#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nvecs = 1, ## __VA_ARGS__ }
+#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
 
 typedef struct 
 {
@@ -308,8 +309,10 @@ struct ghost_mtraits_t
 	int nAux;
 	int datatype;
 	void * shift; 
-}; 
-#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL,  ## __VA_ARGS__ }
+	void * scale; 
+};
+
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
 typedef struct
 {

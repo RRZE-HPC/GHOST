@@ -223,20 +223,41 @@ static void vec_print(ghost_vec_t *vec)
 void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 {
 	DEBUG_LOG(1,"Computing the number of vector rows from the context");
-	if (vec->traits->flags & GHOST_VEC_DUMMY) {
-		vec->traits->nrows = 0;
-	} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
-	{
-		vec->traits->nrows = context->gnrows;
-	} 
-	else 
-	{
-		vec->traits->nrows = context->communicator->lnrows[ghost_getRank()];
-		if (vec->traits->flags & GHOST_VEC_RHS)
-			vec->traits->nrows += context->communicator->halo_elements;
+
+	if (vec->traits->nrows == 0) {
+		if (vec->traits->flags & GHOST_VEC_DUMMY) {
+			vec->traits->nrows = 0;
+		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+		{
+			vec->traits->nrows = context->gnrows;
+		} 
+		else 
+		{
+			vec->traits->nrows = context->communicator->lnrows[ghost_getRank()];
+		}
 	}
-	vec->traits->nrowspadded = ghost_pad(vec->traits->nrows,GHOST_PAD_MAX); // TODO needed?
-	DEBUG_LOG(1,"The vector has %d (padded: %d) rows",vec->traits->nrows,vec->traits->nrowspadded);
+	if (vec->traits->nrowshalo == 0) {
+		if (vec->traits->flags & GHOST_VEC_DUMMY) {
+			vec->traits->nrowshalo = 0;
+		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+		{
+			vec->traits->nrowshalo = vec->traits->nrows;
+		} 
+		else 
+		{
+			if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS)
+				vec->traits->nrowshalo = vec->traits->nrows+context->communicator->halo_elements;
+			else
+				vec->traits->nrowshalo = vec->traits->nrows;
+		}	
+	}
+
+
+	if (vec->traits->nrowspadded == 0) {
+		vec->traits->nrowspadded = ghost_pad(vec->traits->nrowshalo,GHOST_PAD_MAX); // TODO needed?
+	}
+	DEBUG_LOG(1,"The vector has %d w/ %d halo elements (padded: %d) rows",
+			vec->traits->nrows,vec->traits->nrowshalo-vec->traits->nrows,vec->traits->nrowspadded);
 }
 
 
@@ -284,8 +305,7 @@ static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	if (vec->traits->nrows == 0)
-		getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec,ctx);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -362,10 +382,9 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, off_t offset)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	
-	if (vec->traits->nrows == 0)
-		getNrowsFromContext(vec,ctx);
-	
+
+	getNrowsFromContext(vec,ctx);
+
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	DEBUG_LOG(1,"Reading vector from file %s",path);
@@ -410,7 +429,7 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	pread(file,vec->val,sizeofdt*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeofdt);
 
 	close(file);
-	
+
 	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
 #ifdef CUDA
 #ifdef CUDA_PINNEDMEM
@@ -432,8 +451,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 {
 	DEBUG_LOG(1,"Filling vector via function");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	if (vec->traits->nrows == 0)
-		getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec,ctx);
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
@@ -546,7 +564,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
 	int mpidt;
-	
+
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -570,9 +588,9 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	MPI_Request req[2*(nprocs-1)];
 	MPI_Status stat[2*(nprocs-1)];
 	int msgcount = 0;
-	
+
 	for (i=0;i<2*(nprocs-1);i++) 
-			req[i] = MPI_REQUEST_NULL;
+		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank() != 0) {
 		MPI_safecall(MPI_Irecv((*nodeVec)->val,comm->lnrows[me],mpidt,0,me,MPI_COMM_WORLD,&req[msgcount]));
@@ -586,7 +604,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 	//(*nodeVec)->print(*nodeVec);
-//	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
+	//	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
 	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
@@ -616,7 +634,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
 	int mpidt;
-	
+
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -641,7 +659,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
 	}*/
 	vec->permute(vec,mat->invRowPerm); 
-	
+
 	int nprocs = ghost_getNumberOfProcesses();
 	int i;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
@@ -650,10 +668,10 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	MPI_Request req[2*(nprocs-1)];
 	MPI_Status stat[2*(nprocs-1)];
 	int msgcount = 0;
-	
+
 	for (i=0;i<2*(nprocs-1);i++) 
-			req[i] = MPI_REQUEST_NULL;
-	
+		req[i] = MPI_REQUEST_NULL;
+
 	if (ghost_getRank() != 0) {
 		MPI_safecall(MPI_Isend(vec->val,comm->lnrows[me],mpidt,0,me,MPI_COMM_WORLD,&req[msgcount]));
 		msgcount++;
@@ -665,8 +683,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
-//	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
-//				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
+	//	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
+	//				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
 #else
 	//	UNUSED(kernel);
 	UNUSED(context);
