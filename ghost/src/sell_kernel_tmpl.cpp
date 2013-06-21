@@ -169,41 +169,52 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
 	v_t tmp;
 	SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
 	m_t *sellv = (m_t*)(sell->val);
+	v_t shift, scale;
+	if (options & GHOST_SPMVM_APPLY_SHIFT)
+		shift = *((v_t *)(mat->traits->shift));
+	if (options & GHOST_SPMVM_APPLY_SCALE)
+		scale = *((v_t *)(mat->traits->scale));
 
 
-	if (options & GHOST_SPMVM_APPLY_SHIFT) {
-		m_t shift = *((m_t *)(mat->traits->shift));
 #pragma omp parallel for schedule(runtime) private(j,tmp)
-		for (i=0; i<sell->nrows; i++) 
-		{
-			tmp = (v_t)0;
+	for (i=0; i<sell->nrows; i++) 
+	{
+		tmp = (v_t)0;
 
-			for (j=0; j<sell->rowLen[i]; j++) 
-			{ 
-				tmp += (v_t)(sellv[sell->nrowsPadded*j+i] + shift) * 
-					rhsd[sell->col[sell->nrowsPadded*j+i]];
-			}
-			if (options & GHOST_SPMVM_AXPY)
-				lhsd[i] += tmp;
-			else
-				lhsd[i] = tmp;
+		for (j=0; j<sell->rowLen[i]; j++) 
+		{ 
+			tmp += (v_t)sellv[sell->nrowsPadded*j+i] * 
+				rhsd[sell->col[sell->nrowsPadded*j+i]];
 		}
-	} else {
-#pragma omp parallel for schedule(runtime) private(j,tmp)
-		for (i=0; i<sell->nrows; i++) 
-		{
-			tmp = (v_t)0;
-
-			for (j=0; j<sell->rowLen[i]; j++) 
-			{ 
-				tmp += (v_t)sellv[sell->nrowsPadded*j+i] * 
-					rhsd[sell->col[sell->nrowsPadded*j+i]];
+		if (options & GHOST_SPMVM_APPLY_SHIFT) {
+			if (options & GHOST_SPMVM_APPLY_SCALE) {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsd[i] += scale*(tmp+shift*rhsd[i]);
+				} else {
+					lhsd[i] = scale*(tmp+shift*rhsd[i]);
+				}
+			} else {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsd[i] += (tmp+shift*rhsd[i]);
+				} else {
+					lhsd[i] = (tmp+shift*rhsd[i]);
+				}
 			}
-			if (options & GHOST_SPMVM_AXPY)
-				lhsd[i] += tmp;
-			else
+		} else {
+			if (options & GHOST_SPMVM_APPLY_SCALE) {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsd[i] += scale*(tmp);
+				} else {
+					lhsd[i] = scale*(tmp);
+				}
+			} else {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsd[i] += (tmp);
+				} else {
+					lhsd[i] = (tmp);
+				}
+			}
 
-				lhsd[i] = tmp;
 		}
 	}
 

@@ -15,66 +15,47 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	m_t *mval = (m_t *)(cr->val);	
 	ghost_midx_t i, j;
 	v_t hlp1 = 0.;
+	v_t shift, scale;
+	if (options & GHOST_SPMVM_APPLY_SHIFT)
+		shift = *((v_t *)(mat->traits->shift));
+	if (options & GHOST_SPMVM_APPLY_SCALE)
+		scale = *((v_t *)(mat->traits->scale));
 
-	if (options & GHOST_SPMVM_APPLY_SHIFT) {
-		m_t shift = *((m_t *)(mat->traits->shift));
-		if (options & GHOST_SPMVM_APPLY_SCALE) {
-			m_t scale = *((m_t *)(mat->traits->scale));
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
-			for (i=0; i<cr->nrows; i++){
-				hlp1 = (v_t)0.0;
-				for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-					hlp1 += ((v_t)(scale * (mval[j] + shift))) * rhsv[cr->col[j]];
-				}
-				if (options & GHOST_SPMVM_AXPY) { 
-					lhsv[i] += hlp1;
-				} else {
-					lhsv[i] = hlp1;
-				}
-			} 
-		} else {
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-			for (i=0; i<cr->nrows; i++){
-				hlp1 = (v_t)0.0;
-				for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-					hlp1 += ((v_t)(mval[j] + shift)) * rhsv[cr->col[j]];
-				}
-				if (options & GHOST_SPMVM_AXPY) { 
-					lhsv[i] += hlp1;
-				} else {
-					lhsv[i] = hlp1;
-				}
-			}
+	for (i=0; i<cr->nrows; i++){
+		hlp1 = (v_t)0.0;
+		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+			hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
 		}
-	} else {
-		if (options & GHOST_SPMVM_APPLY_SCALE) {
-			m_t scale = *((m_t *)(mat->traits->scale));
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-			for (i=0; i<cr->nrows; i++){
-				hlp1 = (v_t)0.0;
-				for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-					hlp1 += ((v_t)(scale * mval[j])) * rhsv[cr->col[j]];
-				}
-				if (options & GHOST_SPMVM_AXPY) { 
-					lhsv[i] += hlp1;
+		if (options & GHOST_SPMVM_APPLY_SHIFT) {
+			if (options & GHOST_SPMVM_APPLY_SCALE) {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsv[i] += scale*(hlp1+shift*rhsv[i]);
 				} else {
-					lhsv[i] = hlp1;
+					lhsv[i] = scale*(hlp1+shift*rhsv[i]);
 				}
-			} 
-		} else {
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-			for (i=0; i<cr->nrows; i++){
-				hlp1 = (v_t)0.0;
-				for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-					hlp1 += (v_t)(mval[j]) * rhsv[cr->col[j]];
-					//printf("##### %f*%f\n",mval[j],rhsv[cr->col[j]]);
-				}
-				if (options & GHOST_SPMVM_AXPY) { 
-					lhsv[i] += hlp1;
+			} else {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsv[i] += (hlp1+shift*rhsv[i]);
 				} else {
-					lhsv[i] = hlp1;
+					lhsv[i] = (hlp1+shift*rhsv[i]);
 				}
 			}
+		} else {
+			if (options & GHOST_SPMVM_APPLY_SCALE) {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsv[i] += scale*(hlp1);
+				} else {
+					lhsv[i] = scale*(hlp1);
+				}
+			} else {
+				if (options & GHOST_SPMVM_AXPY) {
+					lhsv[i] += (hlp1);
+				} else {
+					lhsv[i] = (hlp1);
+				}
+			}
+
 		}
 	}
 }
