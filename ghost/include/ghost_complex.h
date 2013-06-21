@@ -11,6 +11,7 @@ struct ghost_complex : public std::complex<T>
 		operator float() const;
 	//	operator double() const;
 		ghost_complex<T> operator+(const ghost_complex<T>&) const;
+		ghost_complex<T> operator*(const ghost_complex<T>&) const;
 };
 
 template <typename T>
@@ -26,4 +27,11 @@ ghost_complex<T>::operator double() const {
 template <typename T>
 ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) const {
 	return ghost_complex<T>(std::real(*this) + std::real(c), std::imag(*this) + std::imag(c));
+}
+
+template <typename T>
+ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) const {
+	return ghost_complex<T>(
+			std::real(*this)*std::real(c) - std::imag(*this)*std::imag(c), 
+			std::real(*this)*std::imag(c) + std::imag(*this)*std::real(c));
 }
