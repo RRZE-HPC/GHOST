@@ -34,6 +34,7 @@ Version 0.3.2
 
 - exclude intrinsics kernels when scale or shift should be applied
 - multi-vector I/O 
+- add AXMY
 
 	
 Version 0.4
