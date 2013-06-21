@@ -15,7 +15,9 @@ _attic/
 apps/*/
 !apps/minimal/
 !apps/spmvm/
+!apps/lanczos/
 tags
 *stdout*
 *stderr*
 types_c.taghl
+types_fortran.taghl

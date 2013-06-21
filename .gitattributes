@@ -1,5 +1,3 @@
-apps/lanczos export-ignore
-apps/lanczos_simple export-ignore
 apps/benchshell export-ignore
 test export-ignore
 bench export-ignore
