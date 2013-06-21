@@ -1,105 +1,74 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <ghost_vec.h>
-#include "lanczos.h"
-#include <omp.h>
-
-#include <limits.h>
-#include <getopt.h>
-#include <libgen.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-static int converged(ghost_mdat_t evmin)
-{
-	static ghost_mdat_t oldevmin = -1e9;
+GHOST_REGISTER_DT_D(vecdt); // vectors have double values
+GHOST_REGISTER_DT_D(matdt); // matrix has double values
 
-	int converged = MABS(evmin-oldevmin) < 1e-9;
+extern void imtql1_(int *, matdt_t *, matdt_t *, int *);
+extern void imtql1f_(int *, matdt_t *, matdt_t *, int *);
+
+static int converged(matdt_t evmin)
+{
+	static matdt_t oldevmin = -1e9;
+
+	int converged = fabs(evmin-oldevmin) < 1e-9;
 	oldevmin = evmin;
 
 	return converged;
 }
 
-static void dotprod(ghost_vec_t *v1, ghost_vec_t *v2, ghost_vdat_t *res, int n)
+static void lanczosStep(ghost_context_t *context, ghost_mat_t *mat, ghost_vec_t *vnew, ghost_vec_t *vold,
+		matdt_t *alpha, matdt_t *beta)
 {
-	int i;
-	ghost_mdat_t sum = 0;
-#pragma omp parallel for private(i) reduction(+:sum)
-	for (i=0; i<n; i++)
-		sum += v1->val[i]*v2->val[i];
-	*res = sum;
-}
-
-static void axpy(ghost_vec_t *v1, ghost_vec_t *v2, ghost_vdat_t s, int n)
-{
-	int i;
-#pragma omp parallel for private(i)
-	for (i=0; i<n; i++)
-		v1->val[i] = v1->val[i] + s*v2->val[i];
-
-}
-
-static void vecscal(ghost_vec_t *vec, ghost_vdat_t s, int n)
-{
-	int i;
-#pragma omp parallel for private(i)
-	for (i=0; i<n; i++)
-		vec->val[i] = s*vec->val[i];
-}
-
-
-static void lanczosStep(ghost_context_t *context, ghost_vec_t *vnew, ghost_vec_t *vold,
-		ghost_mdat_t *alpha, ghost_mdat_t *beta)
-{
-	vecscal(vnew,-*beta,context->lnrows(context));
-	ghost_spmvm(vnew, context, vold, GHOST_SPMVM_MODE_NOMPI|GHOST_SPMVM_AXPY);
-	dotprod(vnew,vold,alpha,context->lnrows(context));
-	axpy(vnew,vold,-(*alpha),context->lnrows(context));
-	dotprod(vnew,vnew,beta,context->lnrows(context));
-	*beta=MSQRT(*beta);
-	vecscal(vnew,(ghost_mdat_t)1./(*beta),context->lnrows(context));
-}
-
-static ghost_vdat_t rhsVal (int i)
-{
-	return i + (ghost_vdat_t)1.0;
+	int opt = GHOST_SPMVM_AXPY;
+	matdt_t minusbeta = -*beta;
+	vnew->scale(vnew,&minusbeta);
+	ghost_spmvm(context, vnew, mat, vold, &opt);
+	ghost_dotProduct(vnew,vold,alpha);
+	matdt_t minusalpha = -*alpha;
+	vnew->axpy(vnew,vold,&minusalpha);
+	ghost_dotProduct(vnew,vnew,beta);
+	*beta=sqrt(*beta);
+	matdt_t recbeta = 1./(*beta);
+	vnew->scale(vnew,&recbeta);
 }
 
 int main( int argc, char* argv[] )
 {
-	int ferr;
-	ghost_mdat_t alpha=0., beta=0.;
-	int n;
+	matdt_t alpha=0., beta=0., minusbeta, recbeta, minusalpha;
+	int ferr, n, iteration, nIter = 500;
+	char *matrixPath = argv[1];
+	double zero = 0.;
 
 	ghost_context_t *context;
-	ghost_vec_t   *vold;
-	ghost_vec_t   *vnew;
-	ghost_vec_t   *r0;
+	ghost_mat_t *mat;
+	ghost_vec_t *vold;
+	ghost_vec_t *vnew;
+	ghost_matfile_header_t fileheader;
+	
+	ghost_init(argc,argv); // has to be the first call
+	ghost_pinThreads(GHOST_PIN_PHYS,NULL); // pin the threads to the physical cores (no SMT)
+	
+	ghost_readMatFileHeader(matrixPath,&fileheader); // read basic matrix information
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS, .datatype = matdt);
+	ghost_vtraits_t vtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_RHS,.datatype = vecdt);
 
-	int iteration, nIter = 500;
-	char *matrixPath = argv[1];
+	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
+	mat   = ghost_createMatrix(&mtraits,1);
+	vnew  = ghost_createVector(&vtraits);
+	vold  = ghost_createVector(&vtraits);
 
-	int ghostOptions = GHOST_OPTION_NONE;
-
-	ghost_mtraits_t trait = {.format="CRS",
-		.flags=GHOST_SPM_DEFAULT,
-		.aux=NULL};
-
-	ghost_init(argc,argv,ghostOptions);       // basic initialization
-
-	context = ghost_createContext(matrixPath,&trait,1,GHOST_CONTEXT_DEFAULT);
-	vnew  = ghost_createVector(context,GHOST_VEC_RHS|GHOST_VEC_LHS,NULL);
-	r0    = ghost_createVector(context,GHOST_VEC_DEFAULT,rhsVal); 
-
-	ghost_normalizeVector(r0); // normalize the global vector r0
-
-	vold = ghost_cloneVector(r0); 
-
-	ghost_mdat_t *alphas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
-	ghost_mdat_t *betas   = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
-	ghost_mdat_t *falphas = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
-	ghost_mdat_t *fbetas  = (ghost_mdat_t *)malloc(sizeof(ghost_mdat_t)*nIter);
+	mat->fromFile(mat,context,matrixPath);
+	vnew->fromScalar(vnew,context,&zero); // vnew = 0
+	vold->fromRand(vold,context); // vold = random
+	ghost_normalizeVec(vold); // normalize vold
+	
+	matdt_t *alphas  = (matdt_t *)ghost_malloc(sizeof(matdt_t)*nIter);
+	matdt_t *betas   = (matdt_t *)ghost_malloc(sizeof(matdt_t)*nIter);
+	matdt_t *falphas = (matdt_t *)ghost_malloc(sizeof(matdt_t)*nIter);
+	matdt_t *fbetas  = (matdt_t *)ghost_malloc(sizeof(matdt_t)*nIter);
 
 	betas[0] = beta;
 
@@ -109,33 +78,30 @@ int main( int argc, char* argv[] )
 	{
 		printf("\r");
 
-		lanczosStep(context,vnew,vold,&alpha,&beta);
-		ghost_swapVectors(vnew,vold);
+		lanczosStep(context,mat,vnew,vold,&alpha,&beta);
+		vnew->swap(vnew,vold);
 
 		alphas[iteration] = alpha;
 		betas[iteration+1] = beta;
-		memcpy(falphas,alphas,n*sizeof(ghost_mdat_t)); // alphas and betas will be destroyed in imtql
-		memcpy(fbetas,betas,n*sizeof(ghost_mdat_t));
+		memcpy(falphas,alphas,n*sizeof(matdt_t)); // alphas and betas will be destroyed in imtql
+		memcpy(fbetas,betas,n*sizeof(matdt_t));
 
-		// TODO evaluate headers in fortran files
-		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-			imtql1f_(&n,falphas,fbetas,&ferr);
-		} else
-			imtql1_(&n,falphas,fbetas,&ferr);
+		imtql1_(&n,falphas,fbetas,&ferr);
 
-		if(ferr != 0) printf("Error: the %d. ev could not be determined\n",ferr);
-		printf("minimal eigenvalue: %f", falphas[0]);
+		if(ferr != 0) printf("Error: the %d. eigenvalue could not be determined\n",ferr);
+		if (ghost_getRank() == 0)
+			printf("minimal eigenvalue: %f", falphas[0]);
 		fflush(stdout);
 	}
-	printf("\n");
+	if (ghost_getRank() == 0)
+		printf("%s\n",converged(falphas[0])?" (converged!)":" (max. iterations reached!)");
 
-	ghost_freeVector(r0);
-	ghost_freeVector(vold);
-	ghost_freeVector(vnew);
-	ghost_freeContext (context);
+	vold->destroy(vold);
+	vnew->destroy(vnew);
+	ghost_freeContext(context);
+	mat->destroy(mat);
 
 	ghost_finish();
-
+	
 	return EXIT_SUCCESS;
-
 }
