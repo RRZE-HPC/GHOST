@@ -25,7 +25,7 @@
 				 SELL_kernel_CU_tmpl< dt1, dt2, 16 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
 		break; \
 		case 32: \
-				 SELL_kernel_CU_tmpl< dt1, dt2, 32 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
+				 SELL_kernel_CU_tmpl< dt1, dt2, 32 > <<< ceil(SELL(mat)->cumat->nrows/(double)4),4 >>> ( __VA_ARGS__ ); \
 		break; \
 		case 64: \
 				 SELL_kernel_CU_tmpl< dt1, dt2, 64 > <<< ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
@@ -167,7 +167,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
 	if (i<nrows) {
-		int cs = chunkstart[blockIdx.x];
+		int cs = chunkstart[i/chunkHeight/*blockIdx.x*/];
 		int j;
 		v_t tmp;
 		zero<v_t>(tmp);
