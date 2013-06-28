@@ -138,4 +138,6 @@
 
 #define GHOST_DATA_ALIGNMENT 1024
 
+#define GHOST_AFFINITYDOMAIN_ANY -1
+
 #endif

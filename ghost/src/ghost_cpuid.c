@@ -728,6 +728,7 @@ ghost_cpuid_initTopology(void)
         }
     }
 
+    ghost_cpuid_topology.threadPool = hwThreadPool;
 #if 0
     for (i=0; i<  ghost_cpuid_topology.numHWThreads; i++)
     {

@@ -82,6 +82,8 @@ typedef struct thpool_job_t{
 	struct thpool_job_t*     next;                     /**< pointer to next job      */
 	struct thpool_job_t*     prev;                     /**< pointer to previous job  */
 	int nThreads;
+	char *desc;
+	int affinityDomain;
 }thpool_job_t;
 
 
@@ -99,7 +101,7 @@ typedef struct thpool_t{
 	pthread_t*       threads;                          /**< pointer to threads' ID   */
 	int              threadIdx;
 	int              threadsN;                         /**< amount of threads        */
-	thpool_jobqueue* jobqueue;                         /**< pointer to the job queue */
+	thpool_jobqueue** jobqueue;                         /**< pointer to the job queue */
 	sem_t           *thSem;
 }thpool_t;
 
@@ -156,7 +158,7 @@ void * thpool_thread_do(void*);
  * @param  argument to the above function
  * @return int
  */
-int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads);
+int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads, char *desc, int affDomain);
 
 
 /**

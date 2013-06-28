@@ -29,14 +29,19 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <errno.h>
+#include <omp.h>
 
 #include "thpool.h"      /* here you can also find the interface to each function */
 #include "ghost_util.h"
+#include "ghost_cpuid.h"
 
 #define THREAD_IDLE 0
 #define THREAD_BUSY 1
 
 static int thpool_keepalive=1;
+static int curThread = 0;
+static int nQueues;
+static int jobsN;
 
 /* Create mutex variable */
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /* used to serialize queue access */
@@ -48,10 +53,21 @@ static int idleThreads;
 /* Initialise thread pool */
 thpool_t* thpool_init(int threadsN){
 	thpool_t* tp_p;
+	int q;
 	threadstate = (int *)ghost_malloc(sizeof(int)*threadsN);
 	idleThreads = threadsN;
+	nQueues = ghost_cpuid_topology.numSockets;
 
-	if (!threadsN || threadsN<1) threadsN=1;
+	if ((uint32_t)threadsN > ghost_cpuid_topology.numHWThreads) {
+		WARNING_LOG("Trying to create more threads than there are hardware threads. Setting no. of threads to %u",ghost_cpuid_topology.numHWThreads);
+		threadsN = ghost_cpuid_topology.numHWThreads;
+	}
+
+
+	if (!threadsN || threadsN<1) {
+		WARNING_LOG("Invalid number of threads given for thread pool, setting to 1");
+		threadsN=1;
+	}
 
 	/* Make new thread pool */
 	tp_p=(thpool_t*)malloc(sizeof(thpool_t));                              /* MALLOC thread pool */
@@ -73,9 +89,11 @@ thpool_t* thpool_init(int threadsN){
 	}
 
 	/* Initialise semaphore*/
-	tp_p->jobqueue->queueSem=(sem_t*)malloc(sizeof(sem_t));                 /* MALLOC job queue semaphore */
+	for (q=0; q<nQueues; q++) {
+		tp_p->jobqueue[q]->queueSem=(sem_t*)malloc(sizeof(sem_t));                 /* MALLOC job queue semaphore */
+		sem_init(tp_p->jobqueue[q]->queueSem, 0, 0); /* no shared, initial value */
+	}
 	tp_p->thSem=(sem_t*)malloc(sizeof(sem_t));                 /* MALLOC job queue semaphore */
-	sem_init(tp_p->jobqueue->queueSem, 0, 0); /* no shared, initial value */
 	sem_init(tp_p->thSem, 0, threadsN); /* no shared, initial value */
 
 	/* Make threads in pool */
@@ -97,15 +115,24 @@ thpool_t* thpool_init(int threadsN){
 void * thpool_thread_do(void *arg){
 
 	//		int sval;
+	int myCore;
+	int myDomain;
+
+	pthread_mutex_lock(&mutex);                  /* LOCK */
+	ghost_setCore(curThread++);
+	myCore = ghost_getCore();
+	myDomain = ghost_cpuid_topology.threadPool[myCore].packageId;
+	DEBUG_LOG(0,"%d: Pinning to core %d on package %d",(int)pthread_self(),myCore,myDomain);
+	pthread_mutex_unlock(&mutex);                  /* LOCK */
 	int t;	
-	int enoughThreads;
 	//	int hasJob = 0;	
 	thpool_t *tp_p = (thpool_t *)arg;
-	while(thpool_keepalive || (tp_p->jobqueue->jobsN > 0)){
+
+	while(thpool_keepalive || (jobsN > 0)){
 		//		printf("a\n");
 
-		DEBUG_LOG(0,"%d: Waiting for work, jobsN = %d",(int)pthread_self(),tp_p->jobqueue->jobsN);
-		if (sem_wait(tp_p->jobqueue->queueSem)) {/* WAITING until there is work in the queue */
+		DEBUG_LOG(0,"%d: Waiting for work, jobsN = %d",(int)pthread_self(),jobsN);
+		if (sem_wait(tp_p->jobqueue[myDomain]->queueSem)) {/* WAITING until there is work in the queue */
 			perror("thpool_thread_do(): Waiting for semaphore");
 			exit(1);
 		}
@@ -124,12 +151,13 @@ void * thpool_thread_do(void *arg){
 		job_p = thpool_jobqueue_peek(tp_p);
 
 		if (job_p == NULL) {
-			WARNING_LOG("%d: Peeked NULL",(int)pthread_self());
+			DEBUG_LOG(1,"%d: Peeked NULL",(int)pthread_self());
 			pthread_mutex_unlock(&mutex);                  /* LOCK */
 			continue;
 			//	ABORT("This should not happen. I peeked NULL but there are %d jobs left",tp_p->jobqueue->jobsN);
 		}
-		(tp_p->jobqueue->jobsN)--;
+		(tp_p->jobqueue[myDomain]->jobsN)--;
+		jobsN--;
 		//	hasJob = 1;
 		//	pthread_mutex_unlock(&mutex);                /* UNLOCK */
 
@@ -206,6 +234,7 @@ void * thpool_thread_do(void *arg){
 		pthread_mutex_unlock(&mutex);                /* UNLOCK */
 
 
+		omp_set_num_threads(job_p->nThreads);
 		func_buff(arg_buff);               			 /* run function */
 
 		DEBUG_LOG(2,"Making threads available again");	
@@ -232,19 +261,23 @@ void * thpool_thread_do(void *arg){
 
 
 /* Add work to the thread pool */
-int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads){
+int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads, char *desc, int affDomain){
 	thpool_job_t* newJob;
 
-	newJob=(thpool_job_t*)malloc(sizeof(thpool_job_t));                        /* MALLOC job */
-	if (newJob==NULL){
-		fprintf(stderr, "thpool_add_work(): Could not allocate memory for new job\n");
-		exit(1);
+	if (nThreads > tp_p->threadsN) {
+		WARNING_LOG("Cannot add job because it requests too many threads");
+		return -1;
 	}
+
+	newJob=(thpool_job_t*)ghost_malloc(sizeof(thpool_job_t));                        /* MALLOC job */
+	DEBUG_LOG(0,"Adding job %s (%p) with %d threads, pinned to affinityDomain %d, now %d jobs in queue",desc,newJob,nThreads,affDomain,jobsN+1);
 
 	/* add function and argument */
 	newJob->function=function_p;
 	newJob->arg=arg_p;
 	newJob->nThreads=nThreads;
+	newJob->desc = desc;
+	newJob->affinityDomain = affDomain;
 
 	/* add job to queue */
 	pthread_mutex_lock(&mutex);                  /* LOCK */
@@ -260,18 +293,21 @@ int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int
 
 /* Destroy the threadpool */
 void thpool_destroy(thpool_t* tp_p){
-	int t;
+	int t, q;
+
 
 	/* End each thread's infinite loop */
 	thpool_keepalive=0; 
 
 	/* Awake idle threads waiting at semaphore */
-	for (t=0; t<(tp_p->threadsN); t++){
-		if (sem_post(tp_p->jobqueue->queueSem)){
-			fprintf(stderr, "thpool_destroy(): Could not bypass sem_wait()\n");
+	for (q=0; q<nQueues; q++) {
+		for (t=0; t<(tp_p->threadsN); t++){
+			if (sem_post(tp_p->jobqueue[q]->queueSem)){
+				fprintf(stderr, "thpool_destroy(): Could not bypass sem_wait()\n");
+			}
 		}
 	}
-	DEBUG_LOG(1,"Thread pool about to be destroyed but %d jobs still in queue",tp_p->jobqueue->jobsN);
+	DEBUG_LOG(1,"Thread pool about to be destroyed but %d jobs still in queue",jobsN);
 
 
 	/* Kill semaphore */
@@ -284,16 +320,20 @@ void thpool_destroy(thpool_t* tp_p){
 		pthread_join(tp_p->threads[t], NULL);
 	}
 	DEBUG_LOG(1,"All work is done, ready to destroy the thread pool");
-	if (sem_destroy(tp_p->jobqueue->queueSem)!=0){
+	for (q=0; q<nQueues; q++) {
+	if (sem_destroy(tp_p->jobqueue[q]->queueSem)!=0){
 		fprintf(stderr, "thpool_destroy(): Could not destroy semaphore\n");
+	}
 	}
 
 	thpool_jobqueue_empty(tp_p);
 
 	/* Dealloc */
 	free(tp_p->threads);                                                   /* DEALLOC threads             */
-	free(tp_p->jobqueue->queueSem);                                        /* DEALLOC job queue semaphore */
-	free(tp_p->jobqueue);                                                  /* DEALLOC job queue           */
+	for (q=0; q<nQueues; q++) {
+		free(tp_p->jobqueue[q]->queueSem);                                        /* DEALLOC job queue semaphore */
+		free(tp_p->jobqueue[q]);                                                  /* DEALLOC job queue           */
+	}
 	free(tp_p);                                                            /* DEALLOC thread pool         */
 }
 
@@ -305,11 +345,17 @@ void thpool_destroy(thpool_t* tp_p){
 
 /* Initialise queue */
 int thpool_jobqueue_init(thpool_t* tp_p){
-	tp_p->jobqueue=(thpool_jobqueue*)malloc(sizeof(thpool_jobqueue));      /* MALLOC job queue */
-	if (tp_p->jobqueue==NULL) return -1;
-	tp_p->jobqueue->tail=NULL;
-	tp_p->jobqueue->head=NULL;
-	tp_p->jobqueue->jobsN=0;
+	int q;
+	DEBUG_LOG(0,"There will be %d job queues (1 per affinity domain)",nQueues);
+	
+	tp_p->jobqueue=(thpool_jobqueue**)ghost_malloc(nQueues*sizeof(thpool_jobqueue *));      /* MALLOC job queue */
+
+	for (q=0; q<nQueues; q++) {
+		tp_p->jobqueue[q]=(thpool_jobqueue*)ghost_malloc(sizeof(thpool_jobqueue));      /* MALLOC job queue */
+		tp_p->jobqueue[q]->tail=NULL;
+		tp_p->jobqueue[q]->head=NULL;
+		tp_p->jobqueue[q]->jobsN=0;
+	}
 	return 0;
 }
 
@@ -320,13 +366,23 @@ void thpool_jobqueue_add(thpool_t* tp_p, thpool_job_t* newjob_p){ /* remember th
 	newjob_p->next=NULL;
 	newjob_p->prev=NULL;
 
-	if (newjob_p->nThreads > tp_p->threadsN) {
-		WARNING_LOG("Cannot add job because it requests too many threads");
-		return;
+	int q;
+	int jobInQueues = 1;
+	if (newjob_p->affinityDomain == GHOST_AFFINITYDOMAIN_ANY)
+		jobInQueues = nQueues;
+
+	int queues[jobInQueues];
+	if (newjob_p->affinityDomain == GHOST_AFFINITYDOMAIN_ANY) {
+		for (q=0; q<jobInQueues; q++) 
+			queues[q] = q;
+	} else {
+		queues[0] = newjob_p->affinityDomain;
 	}
 
-	thpool_job_t *oldFirstJob;
-	oldFirstJob = tp_p->jobqueue->head;
+
+	thpool_job_t *oldFirstJob[jobInQueues];
+	for (q=0; q<jobInQueues; q++) 
+		oldFirstJob[q] = tp_p->jobqueue[queues[q]]->head;
 
 	/* fix jobs' pointers */
 	switch(tp_p->jobqueue->jobsN){
@@ -344,11 +400,11 @@ void thpool_jobqueue_add(thpool_t* tp_p, thpool_job_t* newjob_p){ /* remember th
 	}
 
 	(tp_p->jobqueue->jobsN)++;     /* increment amount of jobs in queue */
+	jobsN++;
 	sem_post(tp_p->jobqueue->queueSem);
 
 	int sval;
 	sem_getvalue(tp_p->jobqueue->queueSem, &sval);
-	DEBUG_LOG(0,"Job %p added, now %d jobs in queue",newjob_p,tp_p->jobqueue->jobsN);
 }
 
 
@@ -376,6 +432,7 @@ int thpool_jobqueue_removelast(thpool_t* tp_p){
 	}
 
 	(tp_p->jobqueue->jobsN)--;
+	jobsN--;
 
 	int sval;
 	sem_getvalue(tp_p->jobqueue->queueSem, &sval);
@@ -399,7 +456,6 @@ thpool_job_t* thpool_jobqueue_peek(thpool_t* tp_p){
 				tp_p->jobqueue->head=NULL;
 				DEBUG_LOG(0,"There is only one job in the queue");
 				return this;
-				break;
 			}
 
 		default: 	/* if there are more than one jobs in queue */
@@ -444,9 +500,9 @@ thpool_job_t* thpool_jobqueue_peek(thpool_t* tp_p){
 
 	//return tp_p->jobqueue->tail;
 }
-static thpool_job_t* thpool_jobqueue_peek_dumb(thpool_t* tp_p){
-	return tp_p->jobqueue->tail;
-}
+//static thpool_job_t* thpool_jobqueue_peek_dumb(thpool_t* tp_p){
+//	return tp_p->jobqueue->tail;
+//}
 
 /* Remove and deallocate all jobs in queue */
 void thpool_jobqueue_empty(thpool_t* tp_p){
