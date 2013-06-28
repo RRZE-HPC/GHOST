@@ -46,9 +46,7 @@
 #else
 #define DEBUG_LOG(level,msg, ...) {\
 	if(DEBUG >= level) {\
-		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
-		fprintf(stderr, msg, ##__VA_ARGS__);\
-		fprintf(stderr, "\n");\
+		fprintf(stderr,"%s:%d: "msg"\n",__FILE__,__LINE__,##__VA_ARGS__);\
 		fflush(stderr);\
 	}\
 }

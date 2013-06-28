@@ -1096,7 +1096,7 @@ int ghost_getCore()
 	cpu_set_t  cpu_set;
 	CPU_ZERO(&cpu_set);
 	sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
-	int processorId;
+	int processorId = -1;
 
 	for (processorId=0;processorId<128;processorId++)
 	{
