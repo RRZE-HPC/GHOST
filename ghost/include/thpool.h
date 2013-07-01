@@ -83,7 +83,8 @@ typedef struct thpool_job_t{
 	struct thpool_job_t*     prev;                     /**< pointer to previous job  */
 	int nThreads;
 	char *desc;
-	int affinityDomain;
+	int localityDomain;
+	struct thpool_job_t *siblings; // there are always nQueue siblings
 }thpool_job_t;
 
 
@@ -158,7 +159,7 @@ void * thpool_thread_do(void*);
  * @param  argument to the above function
  * @return int
  */
-int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads, char *desc, int affDomain);
+int thpool_add_work(thpool_t* tp_p, void *(*function_p)(void*), void* arg_p, int nThreads, char *desc, int ld);
 
 
 /**
@@ -222,7 +223,7 @@ int thpool_jobqueue_removelast(thpool_t* tp_p);
  * @return job a pointer to the last job in queue,
  *         a pointer to NULL if the queue is empty
  */
-thpool_job_t* thpool_jobqueue_peek(thpool_t* tp_p);
+thpool_job_t* thpool_jobqueue_getjob(thpool_t* tp_p, int ld);
 
 
 /**
