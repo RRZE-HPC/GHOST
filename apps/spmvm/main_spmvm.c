@@ -102,7 +102,7 @@ int main( int argc, char* argv[] )
 		int aux[2];
 		aux[0] = sortBlock;
 		//aux[1] = GHOST_SELL_CHUNKHEIGHT_ELLPACK; 
-		aux[1] = 2; 
+		aux[1] = 256; 
 		mtraits.aux = &aux;
 	}
 
@@ -166,6 +166,7 @@ int main( int argc, char* argv[] )
 						cimag(res),
 						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
+				break;
 			}
 		}
 		ghost_midx_t totalerrors;

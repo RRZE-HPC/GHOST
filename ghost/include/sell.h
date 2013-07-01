@@ -55,7 +55,7 @@ SELL_TYPE;
 
 #define SELL(mat) ((SELL_TYPE *)(mat->data))
 
-//enum SELL_chunkHeight { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };
+#define SELL_CUDA_BLOCKSIZE 256
 
 ghost_mat_t * ghost_SELL_init(ghost_mtraits_t *);
 #ifdef __cplusplus
