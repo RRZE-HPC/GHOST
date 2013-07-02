@@ -229,7 +229,11 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 			vec->traits->nrows = 0;
 		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
 		{
-			vec->traits->nrows = context->gnrows;
+			if (vec->traits->flags & GHOST_VEC_LHS) {
+				vec->traits->nrows = context->gnrows;
+			} else if (vec->traits->flags & GHOST_VEC_RHS) {
+				vec->traits->nrows = context->gncols;
+			}
 		} 
 		else 
 		{

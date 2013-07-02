@@ -486,9 +486,9 @@ ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 	return mat;
 }
 
-ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags) 
+ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags) 
 {
-	DEBUG_LOG(1,"Creating context with %ld rows",gnrows);
+	DEBUG_LOG(1,"Creating context with dimension %ldx%ld",gnrows,gncols);
 	ghost_context_t *context;
 	int i;
 
@@ -496,6 +496,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int context_flags)
 	context = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
 	context->flags = context_flags;
 	context->gnrows = (ghost_midx_t)gnrows;
+	context->gncols = (ghost_midx_t)gncols;
 /*
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
