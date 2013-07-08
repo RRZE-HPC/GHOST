@@ -15,7 +15,7 @@ static int device;
 
 void CU_init()
 {
-	int nDevs;
+	int nDevs = 0;
 	CU_safecall(cudaGetDeviceCount(&nDevs));
 
 	if (nDevs < ghost_getNumberOfRanksOnNode()) {

@@ -1,5 +1,6 @@
 #define CUDAKERNEL
 #include <ghost.h>
+#include <stdio.h>
 #include <cuda_runtime.h>
 #include <ghost_util.h>
 #include <ghost_types.h>

@@ -369,6 +369,8 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	ghost_midx_t curChunk = 1;
 	SELL(mat)->beta = 0.;
 
+	// TODO CHECK FOR OVERFLOW
+
 	for (i=0; i<SELL(mat)->nrowsPadded; i++) {
 		if (i<cr->nrows) {
 			if (flags & GHOST_SPM_SORTED)
@@ -403,8 +405,8 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 	SELL(mat)->beta = nnz*1.0/(double)SELL(mat)->nEnts;
 
-	SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
-	SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
+	SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
+	SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 
 	if (SELL(mat)->chunkHeight < SELL(mat)->nrowsPadded) 
 	{ // SELL NUMA initialization
@@ -428,8 +430,9 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 		DEBUG_LOG(2,"Doing ELLPACK NUMA first-touch initialization");
 
 #pragma omp parallel for schedule(runtime) private(j)
-		for (i=0; i<SELL(mat)->nrows; i++) { 
+		for (i=0; i<SELL(mat)->nrowsPadded; i++) { 
 			for (j=0; j<SELL(mat)->chunkLen[0]; j++) {
+			//	printf("%p %p\n",&(((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i]),&(SELL(mat)->col[SELL(mat)->nrowsPadded*j+i]));
 				((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
 				SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
 			}
@@ -437,6 +440,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	}
 
 
+	DEBUG_LOG(2,"Copying CRS to SELL");
 	for (c=0; c<nChunks; c++) {
 
 		for (j=0; j<SELL(mat)->chunkLen[c]; j++) {
