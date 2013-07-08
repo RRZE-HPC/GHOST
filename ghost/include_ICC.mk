@@ -14,19 +14,17 @@ SHAREDFLAG = -shared
 
 LIBS = -limf -lm -lrt -lsvml -lintlc -lpthread # -lirng 
 
-ifeq ($(AVX),1)
+ifneq ($(AVX),0)
 CFLAGS += -mavx
+FFLAGS += -mavx
 endif
 
-ifeq ($(SSE),1)
+ifneq ($(SSE),0)
 CFLAGS += -msse4.2
+FFLAGS += -msse4.2
 endif
 
-ifeq ($(MIC),1)
-CFLAGS += -mmic
-FFLAGS += -mmic
-endif
-ifeq ($(MIC),2)
+ifneq ($(MIC),0)
 CFLAGS += -mmic
 FFLAGS += -mmic
 endif

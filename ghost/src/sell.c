@@ -19,34 +19,46 @@
 
 void (*SELL_kernels_SSE[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{NULL,NULL,NULL,NULL},
-{NULL,&dd_SELL_kernel_SSE,NULL,NULL},
-{NULL,NULL,NULL,NULL},
-{NULL,NULL,NULL,NULL}};
+	{NULL,&dd_SELL_kernel_SSE,NULL,NULL},
+	{NULL,NULL,NULL,NULL},
+	{NULL,NULL,NULL,NULL}};
 
 void (*SELL_kernels_AVX[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{NULL,NULL,NULL,NULL},
-{NULL,&dd_SELL_kernel_AVX,NULL,NULL},
-{NULL,NULL,NULL,NULL},
-{NULL,NULL,NULL,NULL}};
+	{NULL,&dd_SELL_kernel_AVX,NULL,NULL},
+	{NULL,NULL,NULL,NULL},
+	{NULL,NULL,NULL,NULL}};
+
+void (*SELL_kernels_AVX_32[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{NULL,NULL,NULL,NULL},
+	{NULL,&dd_SELL_kernel_AVX_32,NULL,NULL},
+	{NULL,NULL,NULL,NULL},
+	{NULL,NULL,NULL,NULL}};
 
 void (*SELL_kernels_MIC_16[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{NULL,NULL,NULL,NULL},
-{NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
-{NULL,NULL,NULL,NULL},
-{NULL,NULL,NULL,NULL}};
+	{NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
+	{NULL,NULL,NULL,NULL},
+	{NULL,NULL,NULL,NULL}};
+
+void (*SELL_kernels_MIC_32[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+{{NULL,NULL,NULL,NULL},
+	{NULL,&dd_SELL_kernel_MIC_32,NULL,NULL},
+	{NULL,NULL,NULL,NULL},
+	{NULL,NULL,NULL,NULL}};
 
 void (*SELL_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_SELL_kernel_plain,&sd_SELL_kernel_plain,&sc_SELL_kernel_plain,&sz_SELL_kernel_plain},
-{&ds_SELL_kernel_plain,&dd_SELL_kernel_plain,&dc_SELL_kernel_plain,&dz_SELL_kernel_plain},
-{&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
-{&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
+	{&ds_SELL_kernel_plain,&dd_SELL_kernel_plain,&dc_SELL_kernel_plain,&dz_SELL_kernel_plain},
+	{&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
+	{&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
 
 #ifdef CUDA
 void (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_SELL_kernel_CU,&sd_SELL_kernel_CU,&sc_SELL_kernel_CU,&sz_SELL_kernel_CU},
-{&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
-{&cs_SELL_kernel_CU,&cd_SELL_kernel_CU,&cc_SELL_kernel_CU,&cz_SELL_kernel_CU},
-{&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
+	{&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
+	{&cs_SELL_kernel_CU,&cd_SELL_kernel_CU,&cc_SELL_kernel_CU,&cz_SELL_kernel_CU},
+	{&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
 #endif
 
 void (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, void *) = 
@@ -105,23 +117,23 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 	mat->printInfo = &SELL_printInfo;
 	mat->formatName = &SELL_formatName;
 	mat->rowLen     = &SELL_rowLen;
-//	mat->entry      = &SELL_entry;
+	//	mat->entry      = &SELL_entry;
 	mat->byteSize   = &SELL_byteSize;
 	mat->kernel     = &SELL_kernel_plain;
 	mat->fromCRS    = &SELL_fromCRS;
-//#ifdef SSE_INTR
-//	mat->kernel   = &SELL_kernel_SSE;
-//#endif
-//#ifdef AVX_INTR
-//	mat->kernel   = &SELL_kernel_AVX;
-//#endif
+	//#ifdef SSE_INTR
+	//	mat->kernel   = &SELL_kernel_SSE;
+	//#endif
+	//#ifdef AVX_INTR
+	//	mat->kernel   = &SELL_kernel_AVX;
+	//#endif
 #ifdef VSX_INTR
 	mat->kernel = &SELL_kernel_VSX;
 #endif
-//#ifdef MIC_INTR
-//	mat->kernel   = &SELL_kernel_MIC_16;
-//	UNUSED(&SELL_kernel_MIC);
-//#endif
+	//#ifdef MIC_INTR
+	//	mat->kernel   = &SELL_kernel_MIC_16;
+	//	UNUSED(&SELL_kernel_MIC);
+	//#endif
 #ifdef OPENCL
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &SELL_kernel_CL;
@@ -137,20 +149,20 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
-	
-	
-/*#ifdef MIC
-	SELL(mat)->chunkHeight = 16;
+
+
+	/*#ifdef MIC
+	  SELL(mat)->chunkHeight = 16;
 #elif defined (AVX)
-	SELL(mat)->chunkHeight = 4;
+SELL(mat)->chunkHeight = 4;
 #elif defined (SSE)
-	SELL(mat)->chunkHeight = 2;
+SELL(mat)->chunkHeight = 2;
 #elif defined (OPENCL) || defined (CUDA)
-	SELL(mat)->chunkHeight = 256;
+SELL(mat)->chunkHeight = 256;
 #elif defined (VSX)
-	SELL(mat)->chunkHeight = 2;
+SELL(mat)->chunkHeight = 2;
 #else
-	SELL(mat)->chunkHeight = 4;
+SELL(mat)->chunkHeight = 4;
 #endif*/
 
 	return mat;
@@ -202,22 +214,22 @@ static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 }
 
 /*static ghost_dt SELL_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
-{
-	ghost_midx_t e;
+  {
+  ghost_midx_t e;
 
-	if (mat->traits->flags & GHOST_SPM_SORTED)
-		i = mat->rowPerm[i];
-	if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)
-		j = mat->rowPerm[j];
+  if (mat->traits->flags & GHOST_SPM_SORTED)
+  i = mat->rowPerm[i];
+  if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)
+  j = mat->rowPerm[j];
 
-	for (e=SELL(mat)->chunkStart[i/SELL_LEN]+i%SELL_LEN; 
-			e<SELL(mat)->chunkStart[i/SELL_LEN+1]; 
-			e+=SELL_LEN) {
-		if (SELL(mat)->col[e] == j)
-			return SELL(mat)->val[e];
-	}
-	return 0.;
-}*/
+  for (e=SELL(mat)->chunkStart[i/SELL_LEN]+i%SELL_LEN; 
+  e<SELL(mat)->chunkStart[i/SELL_LEN+1]; 
+  e+=SELL_LEN) {
+  if (SELL(mat)->col[e] == j)
+  return SELL(mat)->val[e];
+  }
+  return 0.;
+  }*/
 
 static size_t SELL_byteSize (ghost_mat_t *mat)
 {
@@ -233,9 +245,10 @@ static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 	crsMat->fromFile(crsMat,ctx,matrixPath);
 	mat->context = ctx;
 	mat->name = basename(matrixPath);
+	
 
 #ifdef GHOST_MPI
-	
+
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO trats[1]
 	mat->localPart->symmetry = crsMat->symmetry;
@@ -246,30 +259,34 @@ static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 
 
 #ifdef OPENCL
-		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
-			mat->localPart->CLupload(mat->localPart);
-		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
-			mat->remotePart->CLupload(mat->remotePart);
+	if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+		mat->localPart->CLupload(mat->localPart);
+	if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+		mat->remotePart->CLupload(mat->remotePart);
 #endif
 #ifdef CUDA
-		if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
-			mat->localPart->CUupload(mat->localPart);
-		if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
-			mat->remotePart->CUupload(mat->remotePart);
+	if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
+		mat->localPart->CUupload(mat->localPart);
+	if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
+		mat->remotePart->CUupload(mat->remotePart);
 #endif
 #endif
 
 	mat->symmetry = crsMat->symmetry;
+	if ((CR(crsMat)->nrows != CR(crsMat)->ncols) && (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX)) { // TODO not here???	
+		WARNING_LOG("Preventing column re-ordering as the matrix is not square!");
+		mat->traits->flags &= ~GHOST_SPM_PERMUTECOLIDX;
+	}
 	mat->fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
-	
+
 #ifdef OPENCL
-		if (!(mat->traits->flags & GHOST_SPM_HOST))
-			mat->CLupload(mat);
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CLupload(mat);
 #endif
 #ifdef CUDA
-		if (!(mat->traits->flags & GHOST_SPM_HOST))
-			mat->CUupload(mat);
+	if (!(mat->traits->flags & GHOST_SPM_HOST))
+		mat->CUupload(mat);
 #endif
 
 	DEBUG_LOG(1,"SELL matrix successfully created");
@@ -277,22 +294,22 @@ static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPat
 
 static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 {
-/*	DEBUG_LOG(1,"Creating SELL matrix");
-	CR_TYPE *cr = (CR_TYPE*)crs;
-	ghost_midx_t i,j,c;
-	unsigned int flags = mat->traits->flags;
+	/*	DEBUG_LOG(1,"Creating SELL matrix");
+		CR_TYPE *cr = (CR_TYPE*)crs;
+		ghost_midx_t i,j,c;
+		unsigned int flags = mat->traits->flags;
 
-	ghost_midx_t *rowPerm = NULL;
-	ghost_midx_t *invRowPerm = NULL;
+		ghost_midx_t *rowPerm = NULL;
+		ghost_midx_t *invRowPerm = NULL;
 
-	ghost_sorting_t* rowSort = NULL;
+		ghost_sorting_t* rowSort = NULL;
 
 
-	mat->data = (SELL_TYPE *)allocateMemory(sizeof(SELL_TYPE),"SELL(mat)");
-	mat->data = SELL(mat);
-	mat->rowPerm = rowPerm;
-	mat->invRowPerm = invRowPerm;
-	if (mat->traits->flags & GHOST_SPM_SORTED) {
+		mat->data = (SELL_TYPE *)allocateMemory(sizeof(SELL_TYPE),"SELL(mat)");
+		mat->data = SELL(mat);
+		mat->rowPerm = rowPerm;
+		mat->invRowPerm = invRowPerm;
+		if (mat->traits->flags & GHOST_SPM_SORTED) {
 		rowPerm = (ghost_midx_t *)allocateMemory(cr->nrows*sizeof(ghost_midx_t),"SELL(mat)->rowPerm");
 		invRowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
 
@@ -300,7 +317,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 		mat->invRowPerm = invRowPerm;
 		int sortBlock = *(int *)(mat->traits->aux);
 		if (sortBlock == 0)
-			sortBlock = cr->nrows;
+		sortBlock = cr->nrows;
 
 		DEBUG_LOG(1,"Sorting matrix with a sorting block size of %d",sortBlock);
 
@@ -308,46 +325,46 @@ static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 		for (c=0; c<cr->nrows/sortBlock; c++)  
 		{
-			for( i = c*sortBlock; i < (c+1)*sortBlock; i++ ) 
-			{
-				rowSort[i].row = i;
-				rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
-			} 
+		for( i = c*sortBlock; i < (c+1)*sortBlock; i++ ) 
+		{
+		rowSort[i].row = i;
+		rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
+		} 
 
-			qsort( rowSort+c*sortBlock, sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
+		qsort( rowSort+c*sortBlock, sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 		}
 		for( i = c*sortBlock; i < cr->nrows; i++ ) 
 		{ // remainder
-			rowSort[i].row = i;
-			rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
+		rowSort[i].row = i;
+		rowSort[i].nEntsInRow = cr->rpt[i+1] - cr->rpt[i];
 		}
 		qsort( rowSort+c*sortBlock, cr->nrows-c*sortBlock, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 
 		for(i=0; i < cr->nrows; ++i) {
-			if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
+		if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
 
-			(invRowPerm)[i] = rowSort[i].row;
-			(rowPerm)[rowSort[i].row] = i;
+		(invRowPerm)[i] = rowSort[i].row;
+		(rowPerm)[rowSort[i].row] = i;
 		}
-	}
+		}
 
 
 
 
-	SELL(mat)->nrows = cr->nrows;
-	SELL(mat)->nnz = cr->nEnts;
-	SELL(mat)->nEnts = 0;
-	SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL_LEN);
+		SELL(mat)->nrows = cr->nrows;
+		SELL(mat)->nnz = cr->nEnts;
+		SELL(mat)->nEnts = 0;
+		SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL_LEN);
 
-	ghost_midx_t nChunks = SELL(mat)->nrowsPadded/SELL_LEN;
-	SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
-	SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
-	SELL(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
-	SELL(mat)->rowLen = (ghost_midx_t *)ghost_malloc((SELL(mat)->nrowsPadded)*sizeof(ghost_midx_t));
-	SELL(mat)->chunkStart[0] = 0;
+		ghost_midx_t nChunks = SELL(mat)->nrowsPadded/SELL_LEN;
+		SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
+		SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+		SELL(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+		SELL(mat)->rowLen = (ghost_midx_t *)ghost_malloc((SELL(mat)->nrowsPadded)*sizeof(ghost_midx_t));
+		SELL(mat)->chunkStart[0] = 0;
 
-	ghost_midx_t chunkMin = cr->ncols;
-	ghost_midx_t chunkLen = 0;
+		ghost_midx_t chunkMin = cr->ncols;
+		ghost_midx_t chunkLen = 0;
 	ghost_midx_t chunkEnts = 0;
 	ghost_mnnz_t nnz = 0;
 	double chunkAvg = 0.;
@@ -442,9 +459,9 @@ static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 		}
 	}
 	DEBUG_LOG(1,"Successfully created SELL");*/
-		
-	SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
-		
+
+		SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
+
 }
 
 static void SELL_upload(ghost_mat_t* mat) 
@@ -459,7 +476,7 @@ static void SELL_upload(ghost_mat_t* mat)
 		SELL(mat)->clmat->val = CL_allocDeviceMemory((SELL(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
 		SELL(mat)->clmat->chunkStart = CL_allocDeviceMemory((SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
 		SELL(mat)->clmat->chunkLen = CL_allocDeviceMemory((SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
-	
+
 		SELL(mat)->clmat->nrows = SELL(mat)->nrows;
 		SELL(mat)->clmat->nrowsPadded = SELL(mat)->nrowsPadded;
 		CL_copyHostToDevice(SELL(mat)->clmat->rowLen, SELL(mat)->rowLen, SELL(mat)->nrows*sizeof(ghost_cl_midx_t));
@@ -478,7 +495,7 @@ static void SELL_upload(ghost_mat_t* mat)
 
 		cl_int err;
 		cl_uint numKernels;
-		
+
 		if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 			if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 				strncpy(options+sellLenStrlen," -DGHOST_MAT_C",14);
@@ -506,21 +523,21 @@ static void SELL_upload(ghost_mat_t* mat)
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[1] = clCreateKernel(program,"SELL_kernel",&err);
 		CL_checkerror(err);
-		
+
 		strncpy(options+sellLenStrlen+14," -DGHOST_VEC_C\0",15);
 		program = CL_registerProgram("sell_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[2] = clCreateKernel(program,"SELL_kernel",&err);
 		CL_checkerror(err);
-		
+
 		strncpy(options+sellLenStrlen+14," -DGHOST_VEC_Z\0",15);
 		program = CL_registerProgram("sell_clkernel.cl",options);
 		CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
 		DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
 		mat->clkernel[3] = clCreateKernel(program,"SELL_kernel",&err);
 		CL_checkerror(err);
-	
+
 		int i;
 		for (i=0; i<4; i++) {
 			CL_safecall(clSetKernelArg(mat->clkernel[i],3,sizeof(ghost_cl_midx_t), &(SELL(mat)->clmat->nrows)));
@@ -531,9 +548,9 @@ static void SELL_upload(ghost_mat_t* mat)
 			CL_safecall(clSetKernelArg(mat->clkernel[i],8,sizeof(cl_mem), &(SELL(mat)->clmat->chunkStart)));
 			CL_safecall(clSetKernelArg(mat->clkernel[i],9,sizeof(cl_mem), &(SELL(mat)->clmat->chunkLen)));
 		}
-	//	printf("### %lu\n",CL_getLocalSize(mat->clkernel));
+		//	printf("### %lu\n",CL_getLocalSize(mat->clkernel));
 		CL_checkerror(err);
-		
+
 	}
 #else
 	if (mat->traits->flags & GHOST_SPM_DEVICE) {
@@ -554,7 +571,7 @@ static void SELL_CUupload(ghost_mat_t* mat)
 		SELL(mat)->cumat->val = CU_allocDeviceMemory((SELL(mat)->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
 		SELL(mat)->cumat->chunkStart = CU_allocDeviceMemory((SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_mnnz_t));
 		SELL(mat)->cumat->chunkLen = CU_allocDeviceMemory((SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_midx_t));
-	
+
 		SELL(mat)->cumat->nrows = SELL(mat)->nrows;
 		SELL(mat)->cumat->nrowsPadded = SELL(mat)->nrowsPadded;
 		CU_copyHostToDevice(SELL(mat)->cumat->rowLen, SELL(mat)->rowLen, SELL(mat)->nrows*sizeof(ghost_midx_t));
@@ -579,7 +596,7 @@ static void SELL_free(ghost_mat_t *mat)
 	free(SELL(mat)->chunkMin);
 	free(SELL(mat)->chunkLen);
 	free(SELL(mat)->rowLen);
-	
+
 	free(mat->data);
 	free(mat->rowPerm);
 	free(mat->invRowPerm);
@@ -591,7 +608,7 @@ static void SELL_free(ghost_mat_t *mat)
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(2,"lhs vector has %s data and %d sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
-	
+
 	void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int) = NULL;
 
 #ifdef SSE_INTR
@@ -599,14 +616,30 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
 #elif defined(AVX_INTR)
+	if (SELL(mat)->chunkHeight == 4) {
 	kernel = SELL_kernels_AVX
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
-#elif defined(MIC_INTR)
-#ifndef LONGIDX
-	kernel = SELL_kernels_MIC_16
+	} else if (SELL(mat)->chunkHeight == 32) {
+	kernel = SELL_kernels_AVX_32
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
+	}
+
+#elif defined(MIC_INTR)
+#ifndef LONGIDX
+	if (SELL(mat)->chunkHeight == 16) {
+//	printf("$$$$$$$$$$1\n");
+		kernel = SELL_kernels_MIC_16
+			[ghost_dataTypeIdx(mat->traits->datatype)]
+			[ghost_dataTypeIdx(lhs->traits->datatype)];
+	} else if (SELL(mat)->chunkHeight == 32) {
+	printf("$$$$$$$$$$2\n");
+		kernel = SELL_kernels_MIC_32
+			[ghost_dataTypeIdx(mat->traits->datatype)]
+			[ghost_dataTypeIdx(lhs->traits->datatype)];
+	}
+
 #endif
 #else
 	kernel = SELL_kernels_plain
@@ -632,20 +665,20 @@ static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 	DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
 	/*if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-			c_SELL_kernel_wrap(mat, lhs, rhs, options);
-		else
-			s_SELL_kernel_wrap(mat, lhs, rhs, options);
-	} else {
-		if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-			z_SELL_kernel_wrap(mat, lhs, rhs, options);
-		else
-			d_SELL_kernel_wrap(mat, lhs, rhs, options);
-	}*/
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  c_SELL_kernel_wrap(mat, lhs, rhs, options);
+	  else
+	  s_SELL_kernel_wrap(mat, lhs, rhs, options);
+	  } else {
+	  if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+	  z_SELL_kernel_wrap(mat, lhs, rhs, options);
+	  else
+	  d_SELL_kernel_wrap(mat, lhs, rhs, options);
+	  }*/
 	SELL_kernels_CU
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
-	
+
 
 }
 #endif

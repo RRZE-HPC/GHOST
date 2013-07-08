@@ -3,24 +3,24 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
 
-FC	= gfortran
-FFLAGS  =-O3 -warn -openmp  
-
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
-LIBS+=  -lghost
+LIBS+=  -lghost -lifcore
+OBJS += imtql1f.o pythagf.o imtql1.o pythag.o
 
-%.o: %.c  
+%.o: %.c ../../ghost/config.mk
 	@echo "==> Compile $< -> $@"
 	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
-%.o: %.f 
+%.o: %.f ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
 	@$(FC) $(FFLAGS) -o $@ -c $<
 
-lanczos.x: lanczos.o imtql1.o pythag.o ../../ghost/config.mk
+
+lanczos.x: lanczos.o $(OBJS)
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
+	@$(CC) $(CFLAGS) $(MAKROS) $(LPATH) -o $@ $^  $(LIBS)
+
 
 clean:
 	@echo "==> Clean"
@@ -29,4 +29,3 @@ clean:
 distclean: clean
 	@echo "==> Distclean"
 	@rm -f *.x
-

@@ -3,7 +3,7 @@ LIBTYPE=shared  # static or shared (default)
 LONGIDX=0       # 0/1 = indices are 32/64 bit integers
 MPI=0           # 0 = no MPI support        | 1 = with MPI support
 VSX=0           # 0 = no VSX kernels        | 1 = build VSX kernels
-MIC=0           # 0 = no MIC | 1 = compile for MIC | 2 = w/ intrinsics
+MIC=2           # 0 = no MIC | 1 = compile for MIC | 2 = w/ intrinsics
 AVX=0           # 0 = no AVX | 1 = compile for AVX | 2 = w/ intrinsics
 SSE=0           # 0 = no SSE | 1 = compile for SSE | 2 = w/ intrinsics
 OPENCL=0        # 0 = no OpenCL kernels     | 1 = build OpenCL kernels
@@ -12,4 +12,4 @@ LIKWID=0        # 0 = no instrumentation    | 1 = Likwid Marker API instrumentat
 DEBUG=1         # 0 = no DEBUG output       | >0 = level of DEBUG output
 
 GHOSTPATH=$(HOME)/local      # where to install ghost
-LIKWIDPATH=$(HOME)/local/likwid.mic/     # path to LIKWID installation (if enabled)
+LIKWIDPATH=/usr/local/likwid/     # path to LIKWID installation (if enabled)

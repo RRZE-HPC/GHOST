@@ -1362,6 +1362,7 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Reading in a global context");
 		CRS_readHeader(mat,matrixPath);
+
 		CRS_readRpt(mat,matrixPath);
 		CRS_readColValOffset(mat, matrixPath, 0, 0, CR(mat)->nrows, CR(mat)->nEnts, GHOST_IO_STD);
 	} else {
