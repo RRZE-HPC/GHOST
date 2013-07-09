@@ -786,7 +786,7 @@ void ghost_matFromFile(ghost_mat_t *m, ghost_context_t *c, char *p)
 	m->fromFile(m,c,p);
 }
 
-int ghost_gemm(ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce)
+int ghost_gemm(char *tranpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce)
 {
 
 	// TODO if rhs vector data will not be continous
@@ -808,7 +808,7 @@ int ghost_gemm(ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, v
 	restraits->datatype = v->traits->datatype;
 
 	*res = ghost_createVector(restraits);
-	(*res)->fromScalar(*res,NULL,&zero);
+	(*res)->fromScalar(*res,NULL,&zero); //vec rows are valid, ctx can be NULL
 
 #ifdef LONGIDX // TODO
 	ABORT("GEMM with LONGIDX not implemented");
@@ -824,7 +824,7 @@ int ghost_gemm(ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, v
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
 			DEBUG_LOG(1,"Calling DGEMM with (%dx%d) * (%dx%d) = (%dx%d)",m,k,k,n,m,n);
-			dgemm("T","N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
+			dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
 
 		}
 	}

@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 	dm2->print(dm2);
 
 	vecdt_t alpha = 1., beta = 0.;
-	ghost_gemm(dm,dm2,&dm3,&alpha, &beta, 1);
+	ghost_gemm("T",dm,dm2,&dm3,&alpha,&beta,1);
 
 	dm3->print(dm3);
 
