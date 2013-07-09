@@ -197,21 +197,21 @@ static void vec_print(ghost_vec_t *vec)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%"PRvecIDX"] = %f + %fi\t",
-							ghost_getRank(),i,
+					printf("PE%d: vec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							ghost_getRank(),v,i,
 							crealf(((complex float *)(vec->val))[v*vec->traits->nrows+i]),
 							cimagf(((complex float *)(vec->val))[v*vec->traits->nrows+i]));
 				} else {
-					printf("PE%d: vec[%"PRvecIDX"] = %f + %fi\t",
-							ghost_getRank(),i,
+					printf("PE%d: vec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							ghost_getRank(),v,i,
 							creal(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
 							cimag(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%"PRvecIDX"] = %f\t",ghost_getRank(),i,((float *)(vec->val))[v*vec->traits->nrows+i]);
+					printf("PE%d: (s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",ghost_getRank(),v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
 				} else {
-					printf("PE%d: vec[%"PRvecIDX"] = %f\t",ghost_getRank(),i,((double *)(vec->val))[v*vec->traits->nrows+i]);
+					printf("PE%d: (d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",ghost_getRank(),v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
 				}
 			}
 		}
@@ -225,6 +225,7 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 	DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
 	if (vec->traits->nrows == 0) {
+		DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
 		if (vec->traits->flags & GHOST_VEC_DUMMY) {
 			vec->traits->nrows = 0;
 		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
@@ -241,6 +242,7 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 		}
 	}
 	if (vec->traits->nrowshalo == 0) {
+		DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
 		if (vec->traits->flags & GHOST_VEC_DUMMY) {
 			vec->traits->nrowshalo = 0;
 		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
@@ -258,6 +260,7 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 
 
 	if (vec->traits->nrowspadded == 0) {
+		DEBUG_LOG(2,"nrowspadded for vector not given. determining it from the context");
 		vec->traits->nrowspadded = ghost_pad(vec->traits->nrowshalo,GHOST_PAD_MAX); // TODO needed?
 	}
 	DEBUG_LOG(1,"The vector has %d w/ %d halo elements (padded: %d) rows",
@@ -319,7 +322,7 @@ static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 #pragma omp parallel for schedule(runtime) private(i)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			for (i=0; i<vec->traits->nrows; i++) {
-				memcpy(&VAL(vec,v*vec->traits->nrows+i),val,sizeofdt);
+				memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),val,sizeofdt);
 			}
 		}
 	} else {
@@ -464,7 +467,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 #pragma omp parallel for schedule(runtime) private(i)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			for (i=0; i<vec->traits->nrows; i++) {
-				fp(i,v,&VAL(vec,v*vec->traits->nrows+i));
+				fp(i,v,&VAL(vec,v*vec->traits->nrowspadded+i));
 			}
 		}
 	} else {

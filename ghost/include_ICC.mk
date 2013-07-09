@@ -12,7 +12,7 @@ CFLAGS  = -openmp -fPIC -std=c99
 FFLAGS  = -fPIC -module $(MODDIR)
 SHAREDFLAG = -shared
 
-LIBS = -limf -lm -lrt -lsvml -lintlc # -lirng 
+LIBS = -limf -lm -lrt -lsvml -lintlc -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core # -lirng 
 
 ifneq ($(AVX),0)
 CFLAGS += -mavx

@@ -451,4 +451,6 @@ void ghost_vecFromFunc(ghost_vec_t *v, ghost_context_t *, void (*func)(int,int,v
 void ghost_freeVec(ghost_vec_t *vec);
 void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
 
+int ghost_gemm(ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce); 
+
 #endif

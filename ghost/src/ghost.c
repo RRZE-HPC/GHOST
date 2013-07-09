@@ -33,6 +33,9 @@
 #include <cuda_runtime.h>
 #endif
 
+#include <mkl.h>
+
+
 //static int options;
 #ifdef GHOST_MPI
 static int MPIwasInitialized;
@@ -45,73 +48,73 @@ MPI_Op GHOST_MPI_OP_SUM_Z;
 extern ghost_threadstate_t *threadpool;
 
 /*
-static ghost_mnnz_t context_gnnz (ghost_context_t * context)
-{
-	ghost_mnnz_t gnnz;
-	ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
+   static ghost_mnnz_t context_gnnz (ghost_context_t * context)
+   {
+   ghost_mnnz_t gnnz;
+   ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
 
 #ifdef GHOST_MPI
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-		MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
-	} else {
-		gnnz = lnnz;
-	}
+if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+} else {
+gnnz = lnnz;
+}
 #else
-	gnnz = lnnz;
+gnnz = lnnz;
 #endif
 
-	return gnnz;
+return gnnz;
 }
 
 static ghost_mnnz_t context_lnnz (ghost_context_t * context)
 {
-	return context->fullMatrix->nnz(context->fullMatrix);
+return context->fullMatrix->nnz(context->fullMatrix);
 }
 
 static ghost_mnnz_t context_gnrows (ghost_context_t * context)
 {
-	ghost_mnnz_t gnrows;
-	ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
+ghost_mnnz_t gnrows;
+ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
 
 #ifdef GHOST_MPI
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) { 
-		MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
-	} else {
-		gnrows = lnrows;
-	}
+if (context->flags & GHOST_CONTEXT_DISTRIBUTED) { 
+MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+} else {
+gnrows = lnrows;
+}
 #else
-	gnrows = lnrows;
+gnrows = lnrows;
 #endif
 
-	return gnrows;
+return gnrows;
 }
 
 static ghost_mnnz_t context_lnrows (ghost_context_t * context)
 {
-	return context->fullMatrix->nrows(context->fullMatrix);
+return context->fullMatrix->nrows(context->fullMatrix);
 }
 
 static ghost_mnnz_t context_gncols (ghost_context_t * context)
 {
-	ghost_mnnz_t gncols;
-	ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
+ghost_mnnz_t gncols;
+ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
 
 #ifdef GHOST_MPI
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-		MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
-	} else {
-		gncols = lncols;
-	}
+if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+} else {
+gncols = lncols;
+}
 #else
-	gncols = lncols;
+gncols = lncols;
 #endif
 
-	return gncols;
+return gncols;
 }
 
 static ghost_mnnz_t context_lncols (ghost_context_t * context)
 {
-	return context->fullMatrix->ncols(context->fullMatrix);
+return context->fullMatrix->ncols(context->fullMatrix);
 }*/
 
 #ifdef GHOST_MPI
@@ -222,32 +225,32 @@ int ghost_init(int argc, char **argv)
 	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
 	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_MPI_OP_SUM_C));
-	
+
 	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
-/*
+	/*
 #ifdef GHOST_MAT_COMPLEX
-	if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-		if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-			MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
-		} else {
-			MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
-		}
-		MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
-		MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_mComplAdd,1,&ghost_mpi_sum_mdat));
-	} 
+if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
+} else {
+MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
+}
+MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
+MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_mComplAdd,1,&ghost_mpi_sum_mdat));
+} 
 #endif
 #ifdef GHOST_VEC_COMPLEX
-	if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-		if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-			MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_vdat));
-		} else {
-			MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_vdat));
-		}
-		MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_vdat));
-		MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_vComplAdd,1,&ghost_mpi_sum_vdat));
-	} 
+if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
+if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_FLOAT) {
+MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_vdat));
+} else {
+MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_vdat));
+}
+MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_vdat));
+MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_vComplAdd,1,&ghost_mpi_sum_vdat));
+} 
 #endif*/
 
 #else // ifdef GHOST_MPI
@@ -258,12 +261,12 @@ int ghost_init(int argc, char **argv)
 #endif // ifdef GHOST_MPI
 
 	/*if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
-	} else {
+	  } else {
 #pragma omp parallel
-		{
-			DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
-		}
-	}*/
+{
+DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
+}
+}*/
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
@@ -279,7 +282,7 @@ int ghost_init(int argc, char **argv)
 	CU_init();
 #endif
 
-//	options = ghostOptions;
+	//	options = ghostOptions;
 
 	ghost_setCore(ghost_getCore());
 	threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
@@ -290,7 +293,7 @@ int ghost_init(int argc, char **argv)
 	}
 
 
-	return me;
+return me;
 }
 
 void ghost_finish()
@@ -313,21 +316,21 @@ void ghost_finish()
 
 ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits)
 {
-/*	ghost_vidx_t nrows;
-	if (traits->flags & GHOST_VEC_DUMMY) {
+	/*	ghost_vidx_t nrows;
+		if (traits->flags & GHOST_VEC_DUMMY) {
 		nrows = 0;
-	} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
-	{
+		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
+		{
 		nrows = context->gnrows;
-	} 
-	else 
-	{
+		} 
+		else 
+		{
 		nrows = context->communicator->lnrows[ghost_getRank()];
 		if (traits->flags & GHOST_VEC_RHS)
-			nrows += context->communicator->halo_elements;
-	}
+		nrows += context->communicator->halo_elements;
+		}
 
-	traits->nrows = nrows;*/
+		traits->nrows = nrows;*/
 
 	ghost_vec_t *vec = ghost_initVector(traits);
 
@@ -472,15 +475,15 @@ ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 	UNUSED(nTraits);
 
 	mat = ghost_initMatrix(traits);
-/*	mat->fromBin(mat,matrixPath,context,options);
+	/*	mat->fromBin(mat,matrixPath,context,options);
 
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+		if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		mat->split(mat,options,context,traits);
-	} else {
+		} else {
 		mat->localPart = NULL;
 		mat->remotePart = NULL;
 		context->communicator = NULL;
-	}*/
+		}*/
 
 
 	return mat;
@@ -497,7 +500,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	context->flags = context_flags;
 	context->gnrows = (ghost_midx_t)gnrows;
 	context->gncols = (ghost_midx_t)gncols;
-/*
+	/*
 	// copy is needed because basename() changes the string
 	char *matrixPathCopy = (char *)allocateMemory(strlen(matrixPath)+1,"matrixPathCopy");
 	strcpy(matrixPathCopy,matrixPath);
@@ -521,8 +524,8 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #endif
 
 	if (context_flags & GHOST_CONTEXT_GLOBAL) {
-//		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
-//		options |= GHOST_OPTION_SERIAL_IO;
+		//		DEBUG_LOG(1,"Forcing serial I/O as the matrix format is a global one");
+		//		options |= GHOST_OPTION_SERIAL_IO;
 	}
 
 	context->solvers = (ghost_solver_t *)ghost_malloc(sizeof(ghost_solver_t)*GHOST_NUM_MODES);
@@ -601,13 +604,13 @@ context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = NULL;
 
 	//#endif
 	/*context->lnnz = &context_lnnz;
-	context->lnrows = &context_lnrows;
-	context->lncols = &context_lncols;
-	context->gnnz = &context_gnnz;
-	context->gnrows = &context_gnrows;
-	context->gncols = &context_gncols;
+	  context->lnrows = &context_lnrows;
+	  context->lncols = &context_lncols;
+	  context->gnnz = &context_gnnz;
+	  context->gnrows = &context_gnrows;
+	  context->gncols = &context_gncols;
 
-	DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));*/
+	  DEBUG_LOG(1,"%"PRmatIDX"x%"PRmatIDX" matrix (%"PRmatNNZ" nonzeros) created successfully",context->gncols(context),context->gnrows(context),context->gnnz(context));*/
 
 
 	DEBUG_LOG(1,"Context created successfully");
@@ -629,7 +632,7 @@ ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
 			traits->format = GHOST_SPM_FORMAT_CRS;
 			mat = ghost_CRS_init(traits);
 	}
-   return mat;	
+	return mat;	
 }
 
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
@@ -652,25 +655,25 @@ void ghost_freeContext(ghost_context_t *context)
 	DEBUG_LOG(1,"Freeing context");
 	if (context != NULL) {
 		/*if (context->fullMatrix != NULL) {
-			context->fullMatrix->destroy(context->fullMatrix);
-			dlclose(context->fullMatrix->so);
-		}
+		  context->fullMatrix->destroy(context->fullMatrix);
+		  dlclose(context->fullMatrix->so);
+		  }
 
-		if (context->localMatrix != NULL) {
-			context->localMatrix->destroy(context->localMatrix);
-			dlclose(context->localMatrix->so);
-		}
+		  if (context->localMatrix != NULL) {
+		  context->localMatrix->destroy(context->localMatrix);
+		  dlclose(context->localMatrix->so);
+		  }
 
-		if (context->remoteMatrix != NULL) {
-			context->remoteMatrix->destroy(context->remoteMatrix);
-			dlclose(context->remoteMatrix->so);
-		}*/
+		  if (context->remoteMatrix != NULL) {
+		  context->remoteMatrix->destroy(context->remoteMatrix);
+		  dlclose(context->remoteMatrix->so);
+		  }*/
 
 		free(context->solvers);
-	//	free(context->matrixName);
+		//	free(context->matrixName);
 
 		// TODO
-//		ghost_freeCommunicator(context->communicator);
+		//		ghost_freeCommunicator(context->communicator);
 
 		free(context);
 	}
@@ -781,4 +784,71 @@ void ghost_freeVec(ghost_vec_t *vec)
 void ghost_matFromFile(ghost_mat_t *m, ghost_context_t *c, char *p)
 {
 	m->fromFile(m,c,p);
+}
+
+int ghost_gemm(ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce)
+{
+
+	// TODO if rhs vector data will not be continous
+	// TODO transpose of first matrix as argument
+	complex double zero = 0.+I*0.;
+	if (v->traits->nrows != w->traits->nrows) {
+		WARNING_LOG("GEMM with vector of different size does not work");
+		return GHOST_FAILURE;
+	}
+	if (v->traits->datatype != w->traits->datatype) {
+		WARNING_LOG("GEMM with vector of different datatype does not work");
+		return GHOST_FAILURE;
+	}
+
+	ghost_vtraits_t *restraits = (ghost_vtraits_t*)ghost_malloc(sizeof(ghost_vtraits_t));;
+	restraits->flags = GHOST_VEC_DEFAULT;
+	restraits->nrows = v->traits->nvecs;
+	restraits->nvecs = w->traits->nvecs;
+	restraits->datatype = v->traits->datatype;
+
+	*res = ghost_createVector(restraits);
+	(*res)->fromScalar(*res,NULL,&zero);
+
+#ifdef LONGIDX // TODO
+	ABORT("GEMM with LONGIDX not implemented");
+#endif
+
+	int m,n,k,i,j;
+	m = v->traits->nvecs;
+	n = w->traits->nvecs;
+	k = v->traits->nrows;
+
+	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+
+	} else {
+		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
+			DEBUG_LOG(1,"Calling DGEMM with (%dx%d) * (%dx%d) = (%dx%d)",m,k,k,n,m,n);
+			dgemm("T","N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
+
+		}
+	}
+
+	if (reduce == GHOST_GEMM_NO_REDUCE) {
+		return GHOST_SUCCESS;
+	} else if (reduce == GHOST_GEMM_ALL_REDUCE) {
+		for (i=0; i<(*res)->traits->nvecs; ++i) {
+			for (j=0; j<(*res)->traits->nrows; ++j) {
+				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,(*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
+			}
+		}
+	} else {
+		for (i=0; i<(*res)->traits->nvecs; ++i) {
+			for (j=0; j<(*res)->traits->nrows; ++j) {
+				if (ghost_getRank() == reduce) {
+					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,(*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+				} else {
+					MPI_safecall(MPI_Reduce((*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),NULL,1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+				}
+			}
+		}
+	}
+
+	return GHOST_SUCCESS;
+
 }

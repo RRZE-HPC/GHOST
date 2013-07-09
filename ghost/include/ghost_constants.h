@@ -139,4 +139,7 @@
 
 #define GHOST_DATA_ALIGNMENT 1024
 
+#define GHOST_GEMM_ALL_REDUCE -1
+#define GHOST_GEMM_NO_REDUCE -2
+
 #endif

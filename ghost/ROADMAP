@@ -35,6 +35,7 @@ Version 0.3.2
 - exclude intrinsics kernels when scale or shift should be applied
 - multi-vector I/O 
 - add AXMY
+- fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
 
 	
 Version 0.4
@@ -51,3 +52,4 @@ Version x.x
 - make all functions return a success indicator int
 - bugtracker
 - support of special matrix structures
+- dot product with a list of input vectors
