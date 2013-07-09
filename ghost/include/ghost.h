@@ -149,7 +149,7 @@ typedef struct
 	char *desc;
 } ghost_threadstate_t;
 
-
+/*
 typedef struct
 {
 	const char *desc;
@@ -160,7 +160,7 @@ typedef struct
 	void *(*func) (void *);
 	void *arg;
 } ghost_task_t;
-	
+*/	
 
 
 /*typedef struct{
