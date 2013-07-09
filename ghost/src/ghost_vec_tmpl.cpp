@@ -72,6 +72,7 @@ template<typename v_t> void ghost_vec_scale_tmpl(ghost_vec_t *vec, void *scale)
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_context_t * ctx)
 {
 	DEBUG_LOG(1,"Filling vector with random values");
+	if (ctx)
 		getNrowsFromContext(vec,ctx);
 
 	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));

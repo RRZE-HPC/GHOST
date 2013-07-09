@@ -312,6 +312,7 @@ static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	if (ctx)
 	getNrowsFromContext(vec,ctx);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
@@ -390,7 +391,8 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	getNrowsFromContext(vec,ctx);
+	if (ctx)
+		getNrowsFromContext(vec,ctx);
 
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -458,7 +460,8 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 {
 	DEBUG_LOG(1,"Filling vector via function");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	getNrowsFromContext(vec,ctx);
+	if (ctx)
+		getNrowsFromContext(vec,ctx);
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
