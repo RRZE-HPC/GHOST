@@ -246,9 +246,9 @@ char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
 ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 void ghost_pinThreads(int options, char *procList);
-void ghost_spawnTask(ghost_task_t *task);
+//void ghost_spawnTask(ghost_task_t *task);
 //ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags);
-void ghost_waitTask(ghost_task_t *task);
+//void ghost_waitTask(ghost_task_t *task);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
