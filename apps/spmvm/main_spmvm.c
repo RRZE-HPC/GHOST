@@ -102,7 +102,7 @@ int main( int argc, char* argv[] )
 		int aux[2];
 		aux[0] = sortBlock;
 		//aux[1] = GHOST_SELL_CHUNKHEIGHT_ELLPACK; 
-		aux[1] = 4; 
+		aux[1] = 32; 
 		mtraits.aux = &aux;
 	}
 

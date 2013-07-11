@@ -786,7 +786,7 @@ void ghost_matFromFile(ghost_mat_t *m, ghost_context_t *c, char *p)
 	m->fromFile(m,c,p);
 }
 
-int ghost_gemm(char *tranpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce)
+int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce)
 {
 
 	// TODO if rhs vector data will not be continous
@@ -814,7 +814,7 @@ int ghost_gemm(char *tranpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res
 	ABORT("GEMM with LONGIDX not implemented");
 #endif
 
-	int m,n,k,i,j;
+	int m,n,k;
 	m = v->traits->nvecs;
 	n = w->traits->nvecs;
 	k = v->traits->nrows;
@@ -829,9 +829,11 @@ int ghost_gemm(char *tranpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res
 		}
 	}
 
+#ifdef GHOST_MPI
 	if (reduce == GHOST_GEMM_NO_REDUCE) {
 		return GHOST_SUCCESS;
 	} else if (reduce == GHOST_GEMM_ALL_REDUCE) {
+		int i,j;
 		for (i=0; i<(*res)->traits->nvecs; ++i) {
 			for (j=0; j<(*res)->traits->nrows; ++j) {
 				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,(*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
@@ -848,6 +850,9 @@ int ghost_gemm(char *tranpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **res
 			}
 		}
 	}
+#else
+	UNUSED(reduce);
+#endif
 
 	return GHOST_SUCCESS;
 
