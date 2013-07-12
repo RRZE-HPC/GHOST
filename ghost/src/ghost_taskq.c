@@ -62,7 +62,6 @@ int ghost_thpool_init(int nThreads){
 	thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
 	thpool->nLDs = 2; // TODO
 	thpool->threads = (pthread_t *)ghost_malloc(nThreads*sizeof(pthread_t));
-	thpool->taskDoneConds = (pthread_cond_t *)ghost_malloc(nThreads*sizeof(pthread_cond_t));
 	thpool->nThreadsPerLD = (int *)ghost_malloc(thpool->nLDs*sizeof(int));
 	thpool->firstThreadOfLD = (int *)ghost_malloc((thpool->nLDs+1)*sizeof(int));
 	thpool->LDs = (int *)ghost_malloc(nThreads*sizeof(int));
@@ -94,9 +93,8 @@ int ghost_thpool_init(int nThreads){
 		DEBUG_LOG(1,"Thread %d @ LD %d, # threads @ LD: %d",t,thpool->LDs[t],thpool->nThreadsPerLD[curLD]);
 	}
 	thpool->firstThreadOfLD[thpool->nLDs] = nThreads;
-	
+
 	for (t=0; t<nThreads; t++){
-		pthread_cond_init(&thpool->taskDoneConds[t],NULL);
 
 		pthread_create(&(thpool->threads[t]), NULL, thread_do, (void *)(intptr_t)t);
 
@@ -126,6 +124,7 @@ int ghost_taskq_init(int nqs)
 		taskqs[q]->head = NULL;
 		taskqs[q]->nTasks = 0;
 		taskqs[q]->sem = (sem_t*)malloc(sizeof(sem_t));
+		taskqs[q]->LD = q;
 		sem_init(taskqs[q]->sem, 0, 0);
 		pthread_mutex_init(&(taskqs[q]->mutex),NULL);
 	}
@@ -162,16 +161,17 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 
 static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 {
-	DEBUG_LOG(1,"Trying to find a suited task in q %p",q);
+	//DEBUG_LOG(1,"Trying to find a suited task in q %p",q);
 	if (q == NULL) {
 		WARNING_LOG("Tried to find a job but the queue is NULL");
 		return NULL;
 	}
 	if (q->head == NULL) {
-		WARNING_LOG("Empty queue, returning NULL!");
+		DEBUG_LOG(1,"Empty queue, returning NULL!");
 		return NULL;
 	}
 
+		pthread_mutex_lock(&q->mutex);
 
 	ghost_task_t *curTask = q->head;
 	ghost_task_t *prevTask;
@@ -180,7 +180,8 @@ static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 	{
 		prevTask = curTask->prev;
 
-		if (thpool->idleThreads >= curTask->nThreads)
+		if (!((curTask->flags & GHOST_TASK_LD_STRICT) && (q->LD != curTask->LD)) && 
+				thpool->idleThreads >= curTask->nThreads)
 		{
 			DEBUG_LOG(1,"Found a suiting task!");
 
@@ -188,10 +189,25 @@ static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 			if (curTask->siblings != NULL)
 			{
 				DEBUG_LOG(1,"Deleting siblings of task");
-			}
+				int s;
+				for (s=0; s<thpool->nLDs; s++) {
+					if (s!=q->LD) {
+						pthread_mutex_lock(&taskqs[s]->mutex);
+					}
+						taskq_deleteTask(taskqs[s],curTask->siblings[s]);
+					if (s!=q->LD) {
+						pthread_mutex_unlock(&taskqs[s]->mutex);
+					}
+				}
+				
+				
+			} else {
 
-			DEBUG_LOG(1,"Deleting task itself");
-			taskq_deleteTask(q,curTask);	
+				DEBUG_LOG(1,"Deleting task itself");
+				taskq_deleteTask(q,curTask);	
+			}
+			
+			pthread_mutex_unlock(&q->mutex);
 			return curTask;
 		} else {
 			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,thpool->idleThreads);
@@ -201,6 +217,7 @@ static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 
 	}
 
+		pthread_mutex_unlock(&q->mutex);
 	DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
 	return NULL;
 
@@ -220,23 +237,24 @@ static void * thread_do(void *arg)
 	ghost_setCore(core);
 	int myCore = ghost_getCore();
 	int myLD = thpool->LDs[core];
+	int curLD = 0;
 	DEBUG_LOG(1,"Thread %d: Pinning to core %d (%d) on LD %d",(int)pthread_self(),myCore,(int)core,myLD);
-	
+
 	sem_post(thpool->sem);
-	
+
 	while ((!killed) || (nTasks > 0)) // as long as there are jobs stay alive
 	{
 
 		int sval;
 		sem_getvalue(&taskSem,&sval);
-		WARNING_LOG("Thread %d: Waiting for tasks (taskSem: %d)...",(int)pthread_self(),sval);
-		
+		DEBUG_LOG(1,"Thread %d: Waiting for tasks (taskSem: %d)...",(int)pthread_self(),sval);
+
 		if (sem_wait(&taskSem)) 
 			ABORT("Waiting for tasks failed: %s",strerror(errno));
 
 		sem_getvalue(&taskSem,&sval);
 
-		WARNING_LOG("Thread %d: Finished waiting for a task, now there are %d tasks (taskSem: %d) available and killed=%d",(int)pthread_self(),nTasks,sval,killed);
+		DEBUG_LOG(1,"Thread %d: Finished waiting for a task, now there are %d tasks (taskSem: %d) available and killed=%d",(int)pthread_self(),nTasks,sval,killed);
 		if (killed && (nTasks <= 0)) {
 			DEBUG_LOG(1,"Thread %d: Not executing any further tasks",(int)pthread_self());
 			//pthread_mutex_unlock(&globalMutex);
@@ -250,13 +268,11 @@ static void * thread_do(void *arg)
 		curQueue = taskqs[myLD];	
 		DEBUG_LOG(1,"Thread %d: Trying to find task in queue %d: %p",(int)pthread_self(),myLD,curQueue);	
 
-		pthread_mutex_lock(&curQueue->mutex);
 		myTask = taskq_findAndDeleteTask(curQueue);
-		pthread_mutex_unlock(&curQueue->mutex);
 
 		if (myTask  == NULL) { // steal work
 
-			DEBUG_LOG(1,"Thread %d: Trying to steal work from other queues",(int)pthread_self());	
+			WARNING_LOG("Thread %d: Trying to steal work from other queues",(int)pthread_self());	
 
 			for (q=0; q<thpool->nLDs && q!=myLD; q++) {
 				curQueue = taskqs[q];	
@@ -279,7 +295,7 @@ static void * thread_do(void *arg)
 				continue;
 			}
 		}
-		
+
 		tFunc = myTask->func;
 		tArg = myTask->arg;
 
@@ -290,35 +306,70 @@ static void * thread_do(void *arg)
 		omp_set_num_threads(myTask->nThreads);
 		int reservedCores = 0;
 		t = thpool->firstThreadOfLD[myLD];
-#pragma omp parallel
-#pragma omp critical
-		{
-			pthread_mutex_lock(&globalMutex);
-			DEBUG_LOG(1,"Thread %d: OMP thread %d Looking for idle cores between %d and %d",
-					(int)pthread_self(),omp_get_thread_num(),t,thpool->firstThreadOfLD[myLD+1]-1);
+		int curThread;
 
-			for (; (t<thpool->firstThreadOfLD[myLD+1]) && (reservedCores < myTask->nThreads); t++) {
-				if (!(CHK_BIT(threadstate,t))) {
-					DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",(int)pthread_self(),t);
-					ghost_setCore(t);
-					reservedCores++;
-					SET_BIT(threadstate,t);
-					SET_BIT(myTask->cores,t);
-					t++; // start from next core for next OMP thread
-					break;
+		for (curThread=0; curThread<myTask->nThreads; curThread++)// TODO is it needed that the threads get assigned ordered?
+		{
+#pragma omp parallel
+			{
+				if (omp_get_thread_num() == curThread)
+				{
+					pthread_mutex_lock(&globalMutex);
+					
+					DEBUG_LOG(1,"Thread %d: OMP thread %d Looking for idle cores between %d and < %d",
+							(int)pthread_self(),omp_get_thread_num(),t,thpool->firstThreadOfLD[myLD+1]);
+
+					if (t>=thpool->firstThreadOfLD[myLD+1]) //look for threads in other LDs
+					{
+						DEBUG_LOG(1,"Could not find enough empty resource in the right LD. Looking for free threads in other LDs...");
+
+						for (curLD = 0; curLD < thpool->nLDs; curLD++) {
+							if (curLD == myLD) continue;
+							DEBUG_LOG(2,"LD %d...",curLD);
+							for (; (t<thpool->firstThreadOfLD[curLD+1]) && (reservedCores < myTask->nThreads); t++) {
+								if (!(CHK_BIT(threadstate,t))) {
+									DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",(int)pthread_self(),t);
+									ghost_setCore(t);
+									reservedCores++;
+									SET_BIT(threadstate,t);
+									SET_BIT(myTask->cores,t);
+									t++; // start from next core for next OMP thread
+									break;
+								}
+							}
+						}
+					}
+					for (; (t<thpool->firstThreadOfLD[myLD+1]) && (reservedCores < myTask->nThreads); t++) {
+						if (!(CHK_BIT(threadstate,t))) {
+							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",(int)pthread_self(),t);
+							ghost_setCore(t);
+							reservedCores++;
+							SET_BIT(threadstate,t);
+							SET_BIT(myTask->cores,t);
+							t++; // start from next core for next OMP thread
+							break;
+						}
+					}
+						
+
+					
+
+
+					pthread_mutex_unlock(&globalMutex);	
 				}
 			}
-			pthread_mutex_unlock(&globalMutex);	
+		}
+		if (reservedCores < myTask->nThreads) {
 		}
 
 		myTask->executingThreadNo == myCore;
 		myTask->state = GHOST_TASK_RUNNING;	
-		
+
 		myTask->ret = tFunc(tArg);
-		
+
 		myTask->state = GHOST_TASK_FINISHED;
-		pthread_cond_broadcast(&thpool->taskDoneConds[myCore]);
-			
+		pthread_cond_broadcast(&myTask->finishedCond);
+
 		pthread_mutex_lock(&globalMutex);
 		for (t=thpool->firstThreadOfLD[myLD]; t<thpool->firstThreadOfLD[myLD+1]; t++) {
 			if (CHK_BIT(myTask->cores,t)) {
@@ -385,6 +436,7 @@ int ghost_task_add(ghost_task_t *t)
 	int q;
 
 	t->cores = (int *)ghost_malloc(GHOST_MAX_THREADS/8);
+	pthread_cond_init(&t->finishedCond,NULL);
 	memset(t->cores,0,GHOST_MAX_THREADS/8);
 
 	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
@@ -402,12 +454,13 @@ int ghost_task_add(ghost_task_t *t)
 		{
 			memcpy(t->siblings[q],t,sizeof(ghost_task_t));
 			t->siblings[q]->LD = q;
-			taskq_additem(taskqs[q],t);
+			DEBUG_LOG(1,"Adding sibling to queue %p (LD %d)",taskqs[q],q);
+			taskq_additem(taskqs[q],t->siblings[q]);
 		}
 	} 
 	else 
 	{
-		DEBUG_LOG(1,"This task goes to LD %d",t->LD);
+		DEBUG_LOG(1,"This task goes to  queue %p (LD %d)",taskqs[t->LD],t->LD);
 		if (t->LD > thpool->nLDs) {
 			WARNING_LOG("Task shall go to LD %d but there are only %d LDs. Setting LD to zero...", t->LD, thpool->nLDs);
 			t->LD = 0;
@@ -435,19 +488,19 @@ int ghost_taskq_finish()
 	killed = 1;
 
 	DEBUG_LOG(0,"Wake up all tasks");	
-//	for (t=0; t<thpool->nThreads; t++) // wake up waiting threads, i.e., post a task for each thread
-//	{ 	
-//		if (CHK_BIT(threadstate,t)) {
-//			DEBUG_LOG(1,"Waiting for thread %d to be finished",t);
-//			pthread_mutex_t mutex;
-//			pthread_mutex_lock(&mutex);
-//			pthread_cond_wait(&thpool->taskDoneConds[t],&mutex);
-//		}
-		if (sem_post(&taskSem)){
-			WARNING_LOG("Error in sem_post: %s",strerror(errno));
-			return GHOST_FAILURE;
-		}
-//	}
+	//	for (t=0; t<thpool->nThreads; t++) // wake up waiting threads, i.e., post a task for each thread
+	//	{ 	
+	//		if (CHK_BIT(threadstate,t)) {
+	//			DEBUG_LOG(1,"Waiting for thread %d to be finished",t);
+	//			pthread_mutex_t mutex;
+	//			pthread_mutex_lock(&mutex);
+	//			pthread_cond_wait(&thpool->taskDoneConds[t],&mutex);
+	//		}
+	if (sem_post(&taskSem)){
+		WARNING_LOG("Error in sem_post: %s",strerror(errno));
+		return GHOST_FAILURE;
+	}
+	//	}
 	DEBUG_LOG(0,"Join all threads");	
 	for (t=0; t<thpool->nThreads; t++)
 	{ 		
@@ -468,14 +521,17 @@ int ghost_task_test(ghost_task_t * t)
 
 int ghost_task_wait(ghost_task_t * t)
 {
-	if (t->state == GHOST_TASK_RUNNING) {
+	if (t->state != GHOST_TASK_FINISHED) {
+		DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d",t,t->executingThreadNo);
 		pthread_mutex_t mutex;
+		pthread_mutex_init(&mutex,NULL);
 
 		pthread_mutex_lock(&mutex);
-		pthread_cond_wait(&thpool->taskDoneConds[t->executingThreadNo],&mutex);
+		pthread_cond_wait(&t->finishedCond,&mutex);
 
 	}
 
+	DEBUG_LOG(1,"Task %p is done!",t);
 	return GHOST_SUCCESS;
 
 }

@@ -20,7 +20,7 @@
 
 #define GHOST_MAX_THREADS 8192
 
-#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, ## __VA_ARGS__ }
+#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID, ## __VA_ARGS__ }
 
 
 typedef struct ghost_task_t {
@@ -35,6 +35,7 @@ typedef struct ghost_task_t {
 	void *ret;
 	struct ghost_task_t *next, *prev;
 	struct ghost_task_t **siblings; //there are either zero or nQueues siblings
+	pthread_cond_t finishedCond;
 } ghost_task_t;
 
 
@@ -44,6 +45,7 @@ typedef struct ghost_taskq_t {
 	int nTasks;
 	sem_t *sem;
 	pthread_mutex_t mutex;
+	int LD;
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
@@ -55,7 +57,6 @@ typedef struct ghost_thpool_t {
 	int nThreads;
 	int idleThreads;
 	sem_t *sem;
-	pthread_cond_t *taskDoneConds;
 } ghost_thpool_t;
 
 
