@@ -30,7 +30,7 @@ typedef struct ghost_task_t {
 	void *arg;
 
 	// set by the library
-	int state;
+	int state, executingThreadNo;
 	int *cores;
 	void *ret;
 	struct ghost_task_t *next, *prev;
@@ -55,6 +55,7 @@ typedef struct ghost_thpool_t {
 	int nThreads;
 	int idleThreads;
 	sem_t *sem;
+	pthread_cond_t *taskDoneConds;
 } ghost_thpool_t;
 
 

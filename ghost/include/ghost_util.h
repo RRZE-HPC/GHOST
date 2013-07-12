@@ -61,9 +61,7 @@
 }
 #else
 #define WARNING_LOG(msg, ...) {\
-	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: " ,__FILE__,__LINE__);\
-	fprintf(stderr, msg, ##__VA_ARGS__);\
-	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
 	fflush(stderr);\
 }
 #endif
