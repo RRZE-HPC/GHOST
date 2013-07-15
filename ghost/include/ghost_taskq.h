@@ -31,6 +31,8 @@ typedef struct ghost_task_t {
 
 	// set by the library
 	int state, executingThreadNo;
+//	int LDspan;
+//	int *LDs;
 	int *cores;
 	void *ret;
 	struct ghost_task_t *next, *prev;
@@ -46,6 +48,8 @@ typedef struct ghost_taskq_t {
 	sem_t *sem;
 	pthread_mutex_t mutex;
 	int LD;
+	int nIdleCores;
+	int *threadstate;
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
@@ -55,7 +59,7 @@ typedef struct ghost_thpool_t {
 	int *firstThreadOfLD;
 	int nLDs;
 	int nThreads;
-	int idleThreads;
+	int nIdleCores;
 	sem_t *sem;
 } ghost_thpool_t;
 
