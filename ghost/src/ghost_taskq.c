@@ -470,8 +470,20 @@ int ghost_task_add(ghost_task_t *t)
 {
 	int q;
 
-	/*	t->LDspan = 1;
-		t->LDs = (int *)ghost_malloc(sizeof(int));*/
+	if (t->nThreads == GHOST_TASK_FILL_LD) {
+		if (t->LD < 0) {
+			WARNING_LOG("FILL_LD does only work when the LD is given! Not adding task!");
+			return GHOST_FAILURE;
+		}
+		t->nThreads = ghost_thpool->firstThreadOfLD[t->LD+1]-ghost_thpool->firstThreadOfLD[t->LD];
+	} else if (t->nThreads == GHOST_TASK_FILL_ALL) {
+		if (t->LD < 0) {
+			WARNING_LOG("FILL_ALL does only work when the LD is given! Not adding task!");
+			return GHOST_FAILURE;
+		}
+		t->nThreads = ghost_thpool->nThreads;
+	}
+
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
 
 	pthread_cond_init(&t->finishedCond,NULL);

@@ -6,7 +6,7 @@
 
 #define GHOST_TASK_LD_UNDEFINED -1
 #define GHOST_TASK_LD_ANY -2 // execute task on any LD
-#define GHOST_TASK_LD_ALL -3 // span across all LDs
+//#define GHOST_TASK_LD_ALL -3 // span across all LDs
 
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_NORMAL 1
@@ -17,6 +17,9 @@
 #define GHOST_TASK_ENQUEUED 1
 #define GHOST_TASK_RUNNING 2
 #define GHOST_TASK_FINISHED 3
+
+#define GHOST_TASK_FILL_LD -1
+#define GHOST_TASK_FILL_ALL -2
 
 
 #define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID, ## __VA_ARGS__ }
