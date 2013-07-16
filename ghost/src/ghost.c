@@ -4,6 +4,7 @@
 #include "ghost_util.h"
 #include "ghost_mat.h"
 #include "ghost_vec.h"
+#include "ghost_taskq.h"
 #include "cpuid.h"
 #include "sell.h"
 #include "crs.h"
@@ -281,7 +282,8 @@ int ghost_init(int argc, char **argv)
 #endif
 	
 	ghost_cpuid_init();
-	ghost_cpuid_initTopology();
+	ghost_thpool_init(ghost_cpuid_topology.numHWThreads/ghost_cpuid_topology.numThreadsPerCore);
+	ghost_taskq_init(ghost_cpuid_topology.numSockets);
 
 //	options = ghostOptions;
 

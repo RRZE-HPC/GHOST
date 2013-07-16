@@ -104,6 +104,5 @@ extern CpuTopology ghost_cpuid_topology;
 extern void ghost_cpuid_init (void);
 extern void ghost_cpuid_initTopology (void);
 extern void ghost_cpuid_initCacheTopology (void);
-extern int  ghost_cpuid_isInCpuset(void);
 
 #endif /*CPUID_H*/

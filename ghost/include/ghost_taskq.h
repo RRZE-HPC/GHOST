@@ -76,4 +76,6 @@ int ghost_task_print(ghost_task_t *t);
 
 char *ghost_task_strstate(int state);
 
+extern ghost_thpool_t *ghost_thpool; // the thread pool
+
 #endif //__GHOST_TASKQ_H__

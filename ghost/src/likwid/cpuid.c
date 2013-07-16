@@ -494,54 +494,6 @@ ghost_cpuid_init (void)
     return;
 }
 
-#define freeStrings  \
-bdestroy(filename);  \
-bdestroy(grepString); \
-bdestroy(cpulist)
-
-
-int
-ghost_cpuid_isInCpuset(void)
-{
-    int pos = 0;
-    bstring grepString = bformat("Cpus_allowed_list:");
-    bstring filename = bformat("/proc/%d/status",getpid());
-    FILE* fp = fopen(bdata(filename),"r");
-
-    if (fp == NULL)
-    {
-        bdestroy(filename);
-        bdestroy(grepString);
-        return 0;
-    } 
-    else
-    {
-        bstring  cpulist;
-        //uint32_t tmpThreads[MAX_NUM_THREADS];
-        uint32_t tmpThreads[GHOST_MAX_THREADS];
-        bstring src = bread ((bNread) fread, fp);
-        if ((pos = binstr(src,0,grepString)) != BSTR_ERR)
-        {
-            int end = bstrchrp(src, 10, pos);
-            pos = pos+blength(grepString);
-            cpulist = bmidstr(src,pos, end-pos);
-            btrimws(cpulist);
-
-            if (bstr_to_cpuset_physical(tmpThreads, cpulist) < ghost_cpuid_topology.numHWThreads)
-            {
-                freeStrings;
-                return 1;
-            }
-            else
-            {
-                freeStrings;
-                return 0;
-            }
-        }
-        return 0;
-    }
-}
-
 void
 ghost_cpuid_initTopology(void)
 {
