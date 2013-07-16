@@ -4,7 +4,9 @@
 #ifdef GHOST_MPI
 #ifndef CUDAKERNEL
 #pragma warning (disable : 869)
+#pragma warning (disable : 424)
 #include <mpi.h>
+#pragma warning (enable : 424)
 #pragma warning (enable : 869)
 #endif
 #endif

@@ -8,6 +8,7 @@
 #ifdef GHOST_MPI
 #include <mpi.h>
 #endif
+
 #ifdef OPENCL
 #include <CL/cl.h>
 #endif

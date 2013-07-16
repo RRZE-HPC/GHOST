@@ -4,7 +4,6 @@
 #include <ghost.h>
 
 #ifdef GHOST_MPI
-#include <mpi.h>
 #include "mpi/ghost_mpi_util.h"
 #endif
 
