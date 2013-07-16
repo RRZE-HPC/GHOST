@@ -25,26 +25,26 @@
 
 typedef struct ghost_task_t {
 	// user defined
-	int nThreads, LD, flags;
-	void *(*func)(void *);
-	void *arg;
+	int nThreads; // number of threads
+	int LD; // the LD in which the threads should be (preferrably) running
+	int flags; // some flags for the task
+	void *(*func)(void *); // the function to be called
+	void *arg; // the function's argument(s)
 
 	// set by the library
-	int state, executingThreadNo;
-//	int LDspan;
-//	int *LDs;
-	int *cores;
-	void *ret;
-	struct ghost_task_t *next, *prev;
-	struct ghost_task_t **siblings; //there are either zero or nQueues siblings
-	pthread_cond_t finishedCond;
+	int state; // the current state of the task
+	int executingThreadNo; // the number of the thread managing this task
+	int *cores; // list of the cores where the task's thread are running
+	void *ret; // the return value of the task function
+	struct ghost_task_t *next, *prev; // pointer to next and previous task in queue
+	struct ghost_task_t **siblings; // there are either zero or nQueues siblings
+	pthread_cond_t finishedCond; // a condition variable indicating that the task is finished
 } ghost_task_t;
 
 
 typedef struct ghost_taskq_t {
 	ghost_task_t *tail;
 	ghost_task_t *head;
-	int nTasks;
 	sem_t *sem;
 	pthread_mutex_t mutex;
 	int LD;
@@ -54,10 +54,9 @@ typedef struct ghost_taskq_t {
 
 typedef struct ghost_thpool_t {
 	pthread_t *threads;
-	int *LDs;
-	int *nThreadsPerLD;
-	int *firstThreadOfLD;
 	int nLDs;
+	int *LDs;
+	int *firstThreadOfLD;
 	int nThreads;
 	int nIdleCores;
 	sem_t *sem;
@@ -70,9 +69,12 @@ int ghost_taskq_finish();
 
 int ghost_task_add(ghost_task_t *);
 int ghost_task_wait(ghost_task_t *);
+int ghost_task_waitall();
+int ghost_task_waitsome(ghost_task_t *, int, int*);
 int ghost_task_test(ghost_task_t *);
 int ghost_task_free(ghost_task_t *); // care for free'ing siblings
 int ghost_task_print(ghost_task_t *t);
 
+char *ghost_task_strstate(int state);
 
 #endif //__GHOST_TASKQ_H__
