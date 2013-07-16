@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS, .datatype = matdt);
 	ghost_vtraits_t vtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_RHS,.datatype = vecdt);
 
-	context = ghost_createContext(fileheader.nrows,GHOST_CONTEXT_DEFAULT);
+	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
 	mat   = ghost_createMatrix(&mtraits,1);
 	vnew  = ghost_createVector(&vtraits);
 	vold  = ghost_createVector(&vtraits);

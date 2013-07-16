@@ -26,6 +26,7 @@ OBJDIR  = ./obj
 MODDIR  = ./mod
 IPATH  += -I./include/ -I./include/fortran/
 OBJS	=	$(COBJS) $(CPPOBJS) $(FOBJS) 
+FFLAGS += -module $(MODDIR)
 
 ifeq ($(MPI),1)
 MAKROS+= -DGHOST_MPI

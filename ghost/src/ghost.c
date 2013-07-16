@@ -208,14 +208,14 @@ int ghost_init(int argc, char **argv)
 #ifdef GHOST_MPI
 	int req, prov;
 
-	req = MPI_THREAD_FUNNELED; // TODO not if not all kernels configured
+	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
 
 	MPI_safecall(MPI_Initialized(&MPIwasInitialized));
 	if (!MPIwasInitialized) {
 		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
 
 		if (req != prov) {
-			DEBUG_LOG(0,"Warning! Required MPI threading level (%d) is not "
+			WARNING_LOG("Required MPI threading level (%d) is not "
 					"provided (%d)!",req,prov);
 		}
 	}

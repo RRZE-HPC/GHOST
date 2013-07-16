@@ -9,7 +9,7 @@ FC = ifort
 endif
 
 CFLAGS  = -openmp -fPIC -std=c99
-FFLAGS  = -fPIC -module $(MODDIR)
+FFLAGS  = -fPIC
 SHAREDFLAG = -shared
 
 LIBS = -limf -lm -lrt -lsvml -lintlc -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core # -lirng 
