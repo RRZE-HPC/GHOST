@@ -4,7 +4,7 @@
 #include "ghost_util.h"
 #include "ghost_mat.h"
 #include "ghost_vec.h"
-#include "ghost_cpuid.h"
+#include "cpuid.h"
 #include "sell.h"
 #include "crs.h"
 

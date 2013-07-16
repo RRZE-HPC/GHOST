@@ -18,7 +18,6 @@
 #define GHOST_TASK_RUNNING 2
 #define GHOST_TASK_FINISHED 3
 
-#define GHOST_MAX_THREADS 8192
 
 #define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID, ## __VA_ARGS__ }
 

@@ -10,23 +10,22 @@
 
 #include "ghost_taskq.h"
 #include "ghost_util.h"
-#include "ghost_cpuid.h"
+#include "cpuid.h"
 
 #define CLR_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] &= ~(1 << ((bit)%(sizeof(int)*8))))
 #define SET_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] |=  (1 << ((bit)%(sizeof(int)*8))))
 #define TGL_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] ^=  (1 << ((bit)%(sizeof(int)*8))))
 #define CHK_BIT(field,bit) (field[(bit)/(sizeof(int)*8)]  &  (1 << ((bit)%(sizeof(int)*8))))
 
-static ghost_taskq_t **taskqs;
-static ghost_thpool_t *thpool;
-static int nTasks = 0;
-static sem_t taskSem;
-static int killed = 0;
-//static int threadstate[GHOST_MAX_THREADS/sizeof(int)/8] = {0};
-static pthread_mutex_t globalMutex;
-static pthread_cond_t taskFinishedCond;
+static ghost_taskq_t **taskqs; // the task queues (one per LD)
+static ghost_thpool_t *thpool; // the thread pool
+static int nTasks = 0; // the total number of tasks in all queues 
+static sem_t taskSem;  // a semaphore for the total number of tasks in all queues
+static int killed = 0; // this will be set to 1 if the queues should be killed
+static pthread_mutex_t globalMutex; // protect accesses to global variables
+static pthread_cond_t taskFinishedCond; // will be broadcasted if a task has finished
 
-static void * thread_do(void *arg);
+static void * thread_main(void *arg);
 
 static void printThreadstate(int *threadstate)
 {
@@ -46,9 +45,9 @@ static int intcomp(const void *x, const void *y)
 }
 
 
-int ghost_thpool_init(int nThreads){
+int ghost_thpool_init(int nThreads)
+{
 	int t;
-
 
 	if ((uint32_t)nThreads > ghost_cpuid_topology.numHWThreads) {
 		WARNING_LOG("Trying to create more threads than there are hardware threads. Setting no. of threads to %u",ghost_cpuid_topology.numHWThreads);
@@ -96,7 +95,7 @@ int ghost_thpool_init(int nThreads){
 
 	for (t=0; t<nThreads; t++){
 
-		pthread_create(&(thpool->threads[t]), NULL, thread_do, (void *)(intptr_t)t);
+		pthread_create(&(thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
 
 	}
 	for (t=0; t<nThreads; t++){
@@ -294,7 +293,7 @@ static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 
 }
 
-static void * thread_do(void *arg)
+static void * thread_main(void *arg)
 {
 	ghost_task_t *myTask;
 	ghost_taskq_t *curQueue;
@@ -616,15 +615,15 @@ int ghost_task_waitall()
 }
 
 
-int ghost_task_waitsome(ghost_task_t * tasks, int nTasks, int *index)
+int ghost_task_waitsome(ghost_task_t * tasks, int nt, int *index)
 {
 	int t;
 	int ret = 0;
-	pthread_t threads[nTasks];
+	pthread_t threads[nt];
 	pthread_mutex_t mutex;
 	pthread_mutex_init(&mutex,NULL);
 
-	for (t=0; t<nTasks; t++)
+	for (t=0; t<nt; t++)
 	{ // look if one of the tasks is already finished
 		if (tasks[t].state == GHOST_TASK_FINISHED) 
 		{ // one of the tasks is already finished
@@ -641,7 +640,7 @@ int ghost_task_waitsome(ghost_task_t * tasks, int nTasks, int *index)
 	DEBUG_LOG(1,"None of the tasks has already finished. Waiting for (at least) one of them...");
 
 	
-	for (t=0; t<nTasks; t++)
+	for (t=0; t<nt; t++)
 	{
 		pthread_create(&threads[t],NULL,(void *(*)(void *))&ghost_task_wait,&tasks[t]);
 	}
@@ -649,7 +648,7 @@ int ghost_task_waitsome(ghost_task_t * tasks, int nTasks, int *index)
 	pthread_mutex_lock(&mutex);
 	pthread_cond_wait(&taskFinishedCond,&mutex);
 
-	for (t=0; t<nTasks; t++)
+	for (t=0; t<nt; t++)
 	{ // look if one of the tasks is already finished
 		if (tasks[t].state == GHOST_TASK_FINISHED) 
 		{ // one of the tasks is already finished

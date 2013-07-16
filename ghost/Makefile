@@ -21,11 +21,11 @@ include include_$(COMPILER).mk
 .PHONY: clean distclean install uninstall all header 
 
 Q       = @  
-VPATH   = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./src/cu/ 
+VPATH   = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./src/cu/ ./src/likwid/ 
 OBJDIR  = ./obj
 MODDIR  = ./mod
-IPATH  += -I./include/ -I./include/fortran/
-OBJS	=	$(COBJS) $(CPPOBJS) $(FOBJS) 
+IPATH  += -I./include/ -I./include/fortran/ -I./include/likwid/
+OBJS	= $(LIKWOBJS) $(COBJS) $(CPPOBJS) $(FOBJS) 
 
 ifeq ($(MPI),1)
 MAKROS+= -DGHOST_MPI
@@ -97,6 +97,7 @@ MAKROS+= -DCLKERNELPATH=\"$(GHOSTPATH)/lib/ghost/\"
 MAKROS+= -DHEADERPATH=\"$(GHOSTPATH)/include/ghost/\"
 
 COBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/*.c))))
+LIKWOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/likwid/*.c))))
 CPPOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.cpp,%.o, $(wildcard src/*.cpp))))
 CLOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cl/*.c))))
 CUOBJS = $(addprefix $(OBJDIR)/,$(notdir $(patsubst %.c,%.o, $(wildcard src/cu/*.c))))

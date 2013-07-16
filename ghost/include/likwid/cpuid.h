@@ -1,7 +1,39 @@
+/*
+ * =======================================================================================
+ *
+ *      Filename:  cpuid.h
+ *
+ *      Description:  Header File cpuid Module. 
+ *                    Reads out cpuid information and initilaizes a global 
+ *                    data structure cpuid_info.
+ *
+ *      Version:   3.0
+ *      Released:  29.11.2012
+ *
+ *      Author:  Jan Treibig (jt), jan.treibig@gmail.com
+ *      Project:  likwid
+ *
+ *      Copyright (C) 2012 Jan Treibig 
+ *
+ *      This program is free software: you can redistribute it and/or modify it under
+ *      the terms of the GNU General Public License as published by the Free Software
+ *      Foundation, either version 3 of the License, or (at your option) any later
+ *      version.
+ *
+ *      This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ *      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ *      PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License along with
+ *      this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * =======================================================================================
+ */
+
 #ifndef CPUID_H
 #define CPUID_H
 
-#include <stdint.h>
+#include <types.h>
 
 /* Intel P6 */
 #define PENTIUM_M_BANIAS     0x09U
@@ -52,69 +84,6 @@
 #define  K10_FAMILY       0x10U
 #define  K8_FAMILY        0xFU
 
-typedef enum {
-    NOCACHE=0,
-    DATACACHE,
-    INSTRUCTIONCACHE,
-    UNIFIEDCACHE,
-    ITLB,
-    DTLB} CacheType;
-
-typedef enum {
-    SSE=0,
-    AVX,
-    FMA} featureBit;
-
-typedef enum {
-    NODE=0,
-    SOCKET,
-    CORE,
-    THREAD} NodeLevel;
-
-typedef struct {
-    uint32_t family;
-    uint32_t model;
-    uint32_t stepping;
-    uint64_t clock;
-    int      turbo;
-    char*  name;
-    char*  features;
-    int     featureFlags;
-    uint32_t perf_version;
-    uint32_t perf_num_ctr;
-    uint32_t perf_width_ctr;
-    uint32_t perf_num_fixed_ctr;
-} CpuInfo;
-
-typedef struct {
-    uint32_t threadId;
-    uint32_t coreId;
-    uint32_t packageId;
-    uint32_t apicId;
-} HWThread;
-
-typedef struct {
-    int level;
-    CacheType type;
-    int associativity;
-    int sets;
-    int lineSize;
-    int size;
-    int threads;
-    int inclusive;
-} CacheLevel;
-
-typedef struct {
-    uint32_t numHWThreads;
-    uint32_t numSockets;
-    uint32_t numCoresPerSocket;
-    uint32_t numThreadsPerCore;
-    uint32_t numCacheLevels;
-    HWThread* threadPool;
-    CacheLevel*  cacheLevels;
-//    TreeNode* topologyTree;
-} CpuTopology;
-
 /** Structure holding cpuid information
  *
  */
@@ -132,14 +101,9 @@ extern CpuTopology ghost_cpuid_topology;
  *  - Performance counter features (Intel P6 only)
  *
  */
-void ghost_cpuid_init (void);
-void ghost_cpuid_initTopology (void);
-void ghost_cpuid_initCacheTopology (void);
-int  ghost_cpuid_isInCpuset(void);
-
-static inline int ghost_cpuid_hasFeature(featureBit bit) 
-{
-  return (ghost_cpuid_info.featureFlags & (1<<bit));
-}
+extern void ghost_cpuid_init (void);
+extern void ghost_cpuid_initTopology (void);
+extern void ghost_cpuid_initCacheTopology (void);
+extern int  ghost_cpuid_isInCpuset(void);
 
 #endif /*CPUID_H*/

@@ -1,5 +1,37 @@
-/* #####   HEADER FILE INCLUDES   ######################################### */
+/*
+ * =======================================================================================
+ *
+ *      Filename:  cpuid.c
+ *
+ *      Description:  Implementation of cpuid module.
+ *                  Provides API to extract cpuid info on x86 processors.
+ *
+ *      Version:   3.0
+ *      Released:  29.11.2012
+ *
+ *      Author:  Jan Treibig (jt), jan.treibig@gmail.com
+ *      Project:  likwid
+ *
+ *      Copyright (C) 2012 Jan Treibig 
+ *
+ *      This program is free software: you can redistribute it and/or modify it under
+ *      the terms of the GNU General Public License as published by the Free Software
+ *      Foundation, either version 3 of the License, or (at your option) any later
+ *      version.
+ *
+ *      This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ *      WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ *      PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License along with
+ *      this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * =======================================================================================
+ */
+
 #define _GNU_SOURCE
+
+/* #####   HEADER FILE INCLUDES   ######################################### */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,8 +42,12 @@
 #include <sched.h>
 #include <time.h>
 
-#include <ghost_util.h>
-#include <ghost_cpuid.h>
+#include <error.h>
+#include <cpuid.h>
+#include <tree.h>
+#include <bitUtil.h>
+#include <strUtil.h>
+#include <ghost_constants.h>
 
 /* #####   EXPORTED VARIABLES   ########################################### */
 
@@ -26,6 +62,7 @@ static int likwid_inCPUSet  = 0;
 
 /* #####   MACROS  -  LOCAL TO THIS SOURCE FILE   ######################### */
 
+/* this was taken from the linux kernel */
 #define CPUID                              \
     __asm__ volatile ("cpuid"                             \
             : "=a" (eax),     \
@@ -55,7 +92,7 @@ static char* xeon_phi_string = "Intel Xeon Phi Coprocessor";
 static char* barcelona_str = "AMD Barcelona processor";
 static char* shanghai_str = "AMD Shanghai processor";
 static char* istanbul_str = "AMD Istanbul processor";
-static char* ghost_nycours_str = "AMD Magny Cours processor";
+static char* magnycours_str = "AMD Magny Cours processor";
 static char* interlagos_str = "AMD Interlagos processor";
 static char* opteron_sc_str = "AMD Opteron single core 130nm processor";
 static char* opteron_dc_e_str = "AMD Opteron Dual Core Rev E 90nm processor";
@@ -133,46 +170,6 @@ static uint32_t amdGetAssociativity(uint32_t flag)
     return asso;
 
 }
-
-static uint32_t 
-extractBitField(uint32_t inField, uint32_t width, uint32_t offset)
-{
-    uint32_t bitMask;
-    uint32_t outField;
-
-    if ((offset+width) == 32) 
-    {
-        bitMask = (0xFFFFFFFF<<offset);
-    }
-    else 
-    {
-        bitMask = (0xFFFFFFFF<<offset) ^ (0xFFFFFFFF<<(offset+width));
-
-    }
-
-    outField = (inField & bitMask) >> offset;
-    return outField;
-}
-
-static uint32_t
-getBitFieldWidth(uint32_t number)
-{
-    uint32_t fieldWidth;
-
-    number--;
-    if (number == 0)
-    {
-        return 0;
-    }
-
-    __asm__ volatile ( "bsr %%eax, %%ecx\n\t"
-            : "=c" (fieldWidth)
-            : "a"(number));
-
-
-    return fieldWidth+1;  /* bsr returns the position, we want the width */
-}
-
 
 static int intelCpuidFunc_4(CacheLevel** cachePool)
 {
@@ -362,7 +359,7 @@ ghost_cpuid_init (void)
 
             if (isIntel)
             {
-                WARNING_LOG("Netburst architecture is not supported");
+                ERROR_PLAIN_PRINT(Netburst architecture is not supported);
             }
 
             switch ( ghost_cpuid_info.model ) 
@@ -424,7 +421,7 @@ ghost_cpuid_init (void)
                     break;
 
                 case MAGNYCOURS:
-                    ghost_cpuid_info.name = ghost_nycours_str;
+                    ghost_cpuid_info.name = magnycours_str;
                     break;
 
                 default:
@@ -438,29 +435,19 @@ ghost_cpuid_init (void)
             break;
 
         default:
-            WARNING_LOG("Processor is not supported");
+            ERROR_PLAIN_PRINT(Processor is not supported);
             break;
     }
 
-    ghost_cpuid_info.featureFlags = 0x0;
     ghost_cpuid_info.features = (char*) malloc(100*sizeof(char));
-    if (edx & (1<<25)) {
-      strcpy(ghost_cpuid_info.features, "SSE ");
-      ghost_cpuid_info.featureFlags |= (1<<SSE);
-    }
+    if (edx & (1<<25)) strcpy(ghost_cpuid_info.features, "SSE ");
     if (edx & (1<<26)) strcat(ghost_cpuid_info.features, "SSE2 ");
     if (ecx & (1<<0))  strcat(ghost_cpuid_info.features, "SSE3 ");
     if (ecx & (1<<19)) strcat(ghost_cpuid_info.features, "SSE4.1 ");
     if (ecx & (1<<20)) strcat(ghost_cpuid_info.features, "SSE4.2 ");
-    if (ecx & (1<<12)) {
-      strcat(ghost_cpuid_info.features, "FMA ");
-      ghost_cpuid_info.featureFlags |= (1<<FMA);
-    }
+    if (ecx & (1<<12)) strcat(ghost_cpuid_info.features, "FMA ");
     if (ecx & (1<<25)) strcat(ghost_cpuid_info.features, "AES ");
-    if (ecx & (1<<28)) {
-      strcat(ghost_cpuid_info.features, "AVX ");
-      ghost_cpuid_info.featureFlags |= (1<<AVX);
-    }
+    if (ecx & (1<<28)) strcat(ghost_cpuid_info.features, "AVX ");
 
     ghost_cpuid_info.perf_version   =  0;
     if( ghost_cpuid_info.family == P6_FAMILY && 0x0A <= largest_function) 
@@ -486,6 +473,8 @@ ghost_cpuid_init (void)
 
     ghost_cpuid_topology.numHWThreads = sysconf(_SC_NPROCESSORS_CONF);
 
+    //    if (!cpuid_isInCpuset())
+    //    {
     cpu_set_t cpuSet;
     CPU_ZERO(&cpuSet);
     sched_getaffinity(0,sizeof(cpu_set_t), &cpuSet);
@@ -494,7 +483,63 @@ ghost_cpuid_init (void)
 
     /* restore affinity mask of process */
     sched_setaffinity(0, sizeof(cpu_set_t), &cpuSet);
+    //    }
+    //    else
+    //    {
+    //        likwid_inCPUSet = 1;
+    //        printf("WARNING: You are running inside a restricted cpuset.\n");
+    //        printf("You can only use physical processor ids or use logical ids inside your cpuset.\n");
+    //    }
+
     return;
+}
+
+#define freeStrings  \
+bdestroy(filename);  \
+bdestroy(grepString); \
+bdestroy(cpulist)
+
+
+int
+ghost_cpuid_isInCpuset(void)
+{
+    int pos = 0;
+    bstring grepString = bformat("Cpus_allowed_list:");
+    bstring filename = bformat("/proc/%d/status",getpid());
+    FILE* fp = fopen(bdata(filename),"r");
+
+    if (fp == NULL)
+    {
+        bdestroy(filename);
+        bdestroy(grepString);
+        return 0;
+    } 
+    else
+    {
+        bstring  cpulist;
+        //uint32_t tmpThreads[MAX_NUM_THREADS];
+        uint32_t tmpThreads[GHOST_MAX_THREADS];
+        bstring src = bread ((bNread) fread, fp);
+        if ((pos = binstr(src,0,grepString)) != BSTR_ERR)
+        {
+            int end = bstrchrp(src, 10, pos);
+            pos = pos+blength(grepString);
+            cpulist = bmidstr(src,pos, end-pos);
+            btrimws(cpulist);
+
+            if (bstr_to_cpuset_physical(tmpThreads, cpulist) < ghost_cpuid_topology.numHWThreads)
+            {
+                freeStrings;
+                return 1;
+            }
+            else
+            {
+                freeStrings;
+                return 0;
+            }
+        }
+        return 0;
+    }
 }
 
 void
@@ -512,7 +557,7 @@ ghost_cpuid_initTopology(void)
     int maxNumLogicalProcs;
     int maxNumLogicalProcsPerCore;
     int maxNumCores;
- //   TreeNode* currentNode;
+    TreeNode* currentNode;
     int width;
 
     /* check if 0x0B cpuid leaf is supported */
@@ -529,7 +574,7 @@ ghost_cpuid_initTopology(void)
     }
 
     hwThreadPool = (HWThread*) malloc(ghost_cpuid_topology.numHWThreads * sizeof(HWThread));
-//    tree_init(&ghost_cpuid_topology.topologyTree, 0);
+    ghost_tree_init(&ghost_cpuid_topology.topologyTree, 0);
 
     if ( likwid_inCPUSet )
     {
@@ -728,43 +773,40 @@ ghost_cpuid_initTopology(void)
         }
     }
 
-    ghost_cpuid_topology.threadPool = hwThreadPool;
-#if 0
     for (i=0; i<  ghost_cpuid_topology.numHWThreads; i++)
     {
         /* Add node to Topology tree */
-        if (!tree_nodeExists(ghost_cpuid_topology.topologyTree,
+        if (!ghost_tree_nodeExists(ghost_cpuid_topology.topologyTree,
                     hwThreadPool[i].packageId))
         {
-            tree_insertNode(ghost_cpuid_topology.topologyTree,
+            ghost_tree_insertNode(ghost_cpuid_topology.topologyTree,
                     hwThreadPool[i].packageId);
         }
-        currentNode = tree_getNode(ghost_cpuid_topology.topologyTree,
+        currentNode = ghost_tree_getNode(ghost_cpuid_topology.topologyTree,
                 hwThreadPool[i].packageId);
 
-        if (!tree_nodeExists(currentNode, hwThreadPool[i].coreId))
+        if (!ghost_tree_nodeExists(currentNode, hwThreadPool[i].coreId))
         {
-            tree_insertNode(currentNode, hwThreadPool[i].coreId);
+            ghost_tree_insertNode(currentNode, hwThreadPool[i].coreId);
         }
-        currentNode = tree_getNode(currentNode, hwThreadPool[i].coreId);
+        currentNode = ghost_tree_getNode(currentNode, hwThreadPool[i].coreId);
 
-        if (!tree_nodeExists(currentNode, i))
+        if (!ghost_tree_nodeExists(currentNode, i))
         {
             /*
                printf("WARNING: Thread already exists!\n");
                */
-            tree_insertNode(currentNode, i);
+            ghost_tree_insertNode(currentNode, i);
         }
 
     }
 
     ghost_cpuid_topology.threadPool = hwThreadPool;
-    ghost_cpuid_topology.numSockets = tree_countChildren(ghost_cpuid_topology.topologyTree);
-    currentNode = tree_getChildNode(ghost_cpuid_topology.topologyTree);
-    ghost_cpuid_topology.numCoresPerSocket = tree_countChildren(currentNode);
-    currentNode = tree_getChildNode(currentNode);
-    ghost_cpuid_topology.numThreadsPerCore = tree_countChildren(currentNode);
-#endif
+    ghost_cpuid_topology.numSockets = ghost_tree_countChildren(ghost_cpuid_topology.topologyTree);
+    currentNode = ghost_tree_getChildNode(ghost_cpuid_topology.topologyTree);
+    ghost_cpuid_topology.numCoresPerSocket = ghost_tree_countChildren(currentNode);
+    currentNode = ghost_tree_getChildNode(currentNode);
+    ghost_cpuid_topology.numThreadsPerCore = ghost_tree_countChildren(currentNode);
 }
 
 void 
@@ -924,7 +966,7 @@ ghost_cpuid_initCacheTopology()
             break;
 
         default:
-            WARNING_LOG("Processor is not supported");
+            ERROR_PLAIN_PRINT(Processor is not supported);
             break;
     }
 
