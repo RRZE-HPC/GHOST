@@ -78,7 +78,13 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_con
 	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
 	int i;
 
+// TODO fuse loops but preserve randomness
+
 #pragma omp parallel for schedule(runtime)
+	for (i=0; i<vec->traits->nrows; i++) {
+		((v_t *)(vec->val))[i] = (v_t)0;
+	}
+	
 	for (i=0; i<vec->traits->nrows; i++) {
 		((v_t *)(vec->val))[i] = (v_t)(rand()*1./RAND_MAX); // TODO imag
 	}
