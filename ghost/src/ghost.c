@@ -819,14 +819,24 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 	n = w->traits->nvecs;
 	k = v->traits->nrows;
 
-	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+	if (v->traits->datatype != w->traits->datatype) {
+		ABORT("Dgemm with mixed datatypes does not work!");
+	}
 
+	DEBUG_LOG(1,"Calling XGEMM with (%dx%d) * (%dx%d) = (%dx%d)",m,k,k,n,m,n);
+
+	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
+			zgemm(transpose,"N", &m, &n, &k, (MKL_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (MKL_Complex16 *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
+		} else {
+			cgemm(transpose,"N", &m, &n, &k, (MKL_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (MKL_Complex8 *)beta, (*res)->val, &((*res)->traits->nrowspadded));
+		}	
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-			DEBUG_LOG(1,"Calling DGEMM with (%dx%d) * (%dx%d) = (%dx%d)",m,k,k,n,m,n);
 			dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
-
-		}
+		} else {
+			sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)beta, (*res)->val, &((*res)->traits->nrowspadded));
+		}	
 	}
 
 #ifdef GHOST_MPI
