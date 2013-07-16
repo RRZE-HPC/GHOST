@@ -840,22 +840,22 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 	}
 
 #ifdef GHOST_MPI
+	int i,j;
 	if (reduce == GHOST_GEMM_NO_REDUCE) {
 		return GHOST_SUCCESS;
 	} else if (reduce == GHOST_GEMM_ALL_REDUCE) {
-		int i,j;
 		for (i=0; i<(*res)->traits->nvecs; ++i) {
 			for (j=0; j<(*res)->traits->nrows; ++j) {
-				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,(*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
+				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)((*res)->val))+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
 			}
 		}
 	} else {
 		for (i=0; i<(*res)->traits->nvecs; ++i) {
 			for (j=0; j<(*res)->traits->nrows; ++j) {
 				if (ghost_getRank() == reduce) {
-					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,(*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)((*res)->val))+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
 				} else {
-					MPI_safecall(MPI_Reduce((*res)->val+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),NULL,1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+					MPI_safecall(MPI_Reduce(((char *)((*res)->val))+(i*(*res)->traits->nrowspadded+j)*ghost_sizeofDataType((*res)->traits->datatype),NULL,1,ghost_mpi_dataType((*res)->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
 				}
 			}
 		}
