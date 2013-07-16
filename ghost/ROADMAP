@@ -35,20 +35,22 @@ Version 0.3.2
 - exclude intrinsics kernels when scale or shift should be applied
 - multi-vector I/O 
 - add AXMY
-- fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
+- fix bug: vectors are not random because of OpenMP parallel
 
 	
 Version 0.4
 
+- implement new tasking interface
+
+
+Version x.x
+
+- fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
 - instrumentation: prefix all region names with a number according to the level of instrumentation
 - generalization of intrinsics kernels for arbitrary data types as far as possible
 - build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
 - sparse matrix addition with a pre-factor
 	special x-macro versions for +/-1
-
-
-Version x.x
-
 - make all functions return a success indicator int
 - bugtracker
 - support of special matrix structures
