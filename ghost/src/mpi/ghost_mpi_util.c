@@ -104,7 +104,7 @@ void setupSingleNodeComm()
 	free( all_hostnames );
 }
 
-int ghost_mpi_dataType(int datatype)
+MPI_Datatype ghost_mpi_dataType(int datatype)
 {
 	if (datatype & GHOST_BINCRS_DT_FLOAT) {
 		if (datatype & GHOST_BINCRS_DT_COMPLEX)

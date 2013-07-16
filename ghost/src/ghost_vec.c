@@ -573,7 +573,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	 */
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
-	int mpidt;
+	MPI_Datatype mpidt;
 
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
@@ -643,7 +643,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	//if (matrix->trait.format != GHOST_SPMFORMAT_CRS)
 	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
 
-	int mpidt;
+	MPI_Datatype mpidt;
 
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {

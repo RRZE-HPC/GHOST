@@ -1,7 +1,7 @@
 ifeq ($(MPI),1)
 CC = mpicc
-CPPC = mpiicpc
-FC = mpiifort
+CPPC = mpiCC
+FC = mpif90
 else
 CC = icc
 CPPC = icpc
