@@ -2,6 +2,8 @@
 *.swo
 pbshosts*
 *.o
+*genmod.f90*
+*genmod.mod*
 *.a
 *.so
 *.tar
