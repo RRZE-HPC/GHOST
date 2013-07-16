@@ -4,22 +4,20 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#define GHOST_TASK_LD_UNDEFINED -1
+#define GHOST_TASK_LD_UNDEFINED -1 // initializer
 #define GHOST_TASK_LD_ANY -2 // execute task on any LD
-//#define GHOST_TASK_LD_ALL -3 // span across all LDs
 
 #define GHOST_TASK_DEFAULT 0
-#define GHOST_TASK_PRIO_NORMAL 1
-#define GHOST_TASK_PRIO_HIGH 2
-#define GHOST_TASK_LD_STRICT 4 // task _must_ be executed on the defined LD
+#define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
+#define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
 
-#define GHOST_TASK_INVALID 0
-#define GHOST_TASK_ENQUEUED 1
-#define GHOST_TASK_RUNNING 2
-#define GHOST_TASK_FINISHED 3
+#define GHOST_TASK_INVALID 0 // task has not been enqueued
+#define GHOST_TASK_ENQUEUED 1 // task has been enqueued
+#define GHOST_TASK_RUNNING 2 // task is currently running
+#define GHOST_TASK_FINISHED 3 // task has finished
 
-#define GHOST_TASK_FILL_LD -1
-#define GHOST_TASK_FILL_ALL -2
+#define GHOST_TASK_FILL_LD -1 // use all threads of the given LD
+#define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
 
 
 #define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID, ## __VA_ARGS__ }
@@ -45,23 +43,22 @@ typedef struct ghost_task_t {
 
 
 typedef struct ghost_taskq_t {
-	ghost_task_t *tail;
-	ghost_task_t *head;
-	sem_t *sem;
-	pthread_mutex_t mutex;
-	int LD;
-	int nIdleCores;
-	int *threadstate;
+	ghost_task_t *head; // the first (= highest priority) element
+	ghost_task_t *tail; // the last (= lowest priority) element
+	pthread_mutex_t mutex; // serialize access to the queue
+	int LD; // the locality domain of this queue
+	int nIdleCores; // number of idle cores
+	int *coreState; // bitfield
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
 	pthread_t *threads;
-	int nLDs;
-	int *LDs;
-	int *firstThreadOfLD;
-	int nThreads;
-	int nIdleCores;
-	sem_t *sem;
+	int nLDs; // number of locality domains
+	int *LDs; // the according LD for each core/thread 
+	int *firstThreadOfLD; // the first thread of each LD, %[nLDs] = nThreads 
+	int nThreads; // the total number of threads
+	int nIdleCores; // the total number of idle cores
+	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
 
@@ -74,7 +71,7 @@ int ghost_task_wait(ghost_task_t *);
 int ghost_task_waitall();
 int ghost_task_waitsome(ghost_task_t *, int, int*);
 int ghost_task_test(ghost_task_t *);
-int ghost_task_free(ghost_task_t *); // care for free'ing siblings
+int ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
 int ghost_task_print(ghost_task_t *t);
 
 char *ghost_task_strstate(int state);

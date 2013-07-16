@@ -1300,7 +1300,7 @@ int i;
 
 static void invertCharField (struct charField * cf) {
 int i;
-	for (i=0; i < CFCLEN; i++) cf->content[i] = ~cf->content[i];
+	for (i=0; i < CFCLEN; i++) cf->content[i] = (unsigned char)~cf->content[i];
 }
 
 /* Inner engine for binchr */
@@ -2739,7 +2739,7 @@ struct genBstrList g;
 #ifdef __GNUC__
 /* Something is making gcc complain about this prototype not being here, so 
    I've just gone ahead and put it in. */
-extern int vsnprintf (char *buf, size_t count, const char *format, va_list arg);
+//extern int vsnprintf (char *buf, size_t count, const char *format, va_list arg);
 #endif
 
 #define exvsnprintf(r,b,n,f,a) {r = vsnprintf (b,n,f,a);}

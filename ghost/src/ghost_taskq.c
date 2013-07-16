@@ -27,13 +27,13 @@ static pthread_cond_t taskFinishedCond; // will be broadcasted if a task has fin
 
 static void * thread_main(void *arg);
 
-static void printThreadstate(int *threadstate)
+static void printThreadstate(int *coreState)
 {
 	UNUSED(printThreadstate);
 	int b;
 
 	for(b=0; b<GHOST_MAX_THREADS; b++)
-		printf(CHK_BIT(threadstate,b)?"1":"0");
+		printf(CHK_BIT(coreState,b)?"1":"0");
 
 	printf("\n");
 
@@ -121,12 +121,10 @@ int ghost_taskq_init(int nqs)
 		DEBUG_LOG(1,"taskq # %d: %p",q,taskqs[q]);
 		taskqs[q]->tail = NULL;
 		taskqs[q]->head = NULL;
-		taskqs[q]->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
 		taskqs[q]->LD = q;
 		taskqs[q]->nIdleCores = ghost_thpool->firstThreadOfLD[q+1]-ghost_thpool->firstThreadOfLD[q];
-		taskqs[q]->threadstate = (int *)ghost_malloc(GHOST_MAX_THREADS/8);
-		memset(taskqs[q]->threadstate,0,GHOST_MAX_THREADS/8);
-		sem_init(taskqs[q]->sem, 0, 0);
+		taskqs[q]->coreState = (int *)ghost_malloc(GHOST_MAX_THREADS/8);
+		memset(taskqs[q]->coreState,0,GHOST_MAX_THREADS/8);
 		pthread_mutex_init(&(taskqs[q]->mutex),NULL);
 	}
 
@@ -162,7 +160,7 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 
 
 
-static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
+static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 {
 	//DEBUG_LOG(1,"Trying to find a suited task in q %p",q);
 	if (q == NULL) {
@@ -250,12 +248,12 @@ static ghost_task_t * taskq_findAndDeleteTask(ghost_taskq_t *q)
 						DEBUG_LOG(1,"Thread %d looking for an empty core @ LD%d",curThread,curLD);
 
 						for (t = 0; t < (ghost_thpool->firstThreadOfLD[curLD+1]-ghost_thpool->firstThreadOfLD[curLD]); t++) {
-							if (!(CHK_BIT(taskqs[curLD]->threadstate,t))) {
+							if (!(CHK_BIT(taskqs[curLD]->coreState,t))) {
 								taskqs[curLD]->nIdleCores --;
 								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",(int)pthread_self(),ghost_thpool->firstThreadOfLD[curLD]+t,curLD,taskqs[curLD]->nIdleCores);
 								ghost_setCore(ghost_thpool->firstThreadOfLD[curLD]+t);
 								curTask->cores[reservedCores] = ghost_thpool->firstThreadOfLD[curLD]+t;
-								SET_BIT(taskqs[curLD]->threadstate,t);
+								SET_BIT(taskqs[curLD]->coreState,t);
 								reservedCores++;
 								foundCore = 1;
 								break;
@@ -337,7 +335,7 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Trying to find task in queue %d: %p",(int)pthread_self(),myLD,curQueue);	
 
 		pthread_mutex_lock(&curQueue->mutex);
-		myTask = taskq_findAndDeleteTask(curQueue);
+		myTask = taskq_findDeleteAndPinTask(curQueue);
 
 		if (myTask != NULL)
 			ghost_thpool->nIdleCores -= myTask->nThreads;
@@ -356,7 +354,7 @@ static void * thread_main(void *arg)
 
 
 				pthread_mutex_lock(&curQueue->mutex);
-				myTask = taskq_findAndDeleteTask(curQueue);
+				myTask = taskq_findDeleteAndPinTask(curQueue);
 				if (myTask != NULL)
 					ghost_thpool->nIdleCores -= myTask->nThreads;
 				pthread_mutex_unlock(&curQueue->mutex);
@@ -406,7 +404,7 @@ static void * thread_main(void *arg)
 					taskqs[curLD]->nIdleCores++;
 					//	ghost_thpool->nIdleCores++;
 					DEBUG_LOG(1,"Thread %d: Setting core # %d (loc: %d) to idle again, idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD],curLD,taskqs[curLD]->nIdleCores);
-					CLR_BIT(taskqs[curLD]->threadstate,myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD]);
+					CLR_BIT(taskqs[curLD]->coreState,myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD]);
 					pthread_mutex_unlock(&taskqs[curLD]->mutex);
 					break;
 				}
@@ -498,10 +496,6 @@ int ghost_task_add(ghost_task_t *t)
 		for (q=0; q<ghost_thpool->nLDs; q++) // create siblings
 		{
 			t->siblings[q] = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
-		}
-		// TODO fuse loops?	
-		for (q=0; q<ghost_thpool->nLDs; q++) // clone 
-		{
 			memcpy(t->siblings[q],t,sizeof(ghost_task_t));
 			t->siblings[q]->LD = q;
 			DEBUG_LOG(1,"Adding sibling to queue %p (LD %d)",taskqs[q],q);
@@ -540,7 +534,7 @@ int ghost_taskq_finish()
 	DEBUG_LOG(1,"Wake up all tasks");	
 	//	for (t=0; t<ghost_thpool->nThreads; t++) // wake up waiting threads, i.e., post a task for each thread
 	//	{ 	
-	//		if (CHK_BIT(threadstate,t)) {
+	//		if (CHK_BIT(coreState,t)) {
 	//			DEBUG_LOG(1,"Waiting for thread %d to be finished",t);
 	//			pthread_mutex_t mutex;
 	//			pthread_mutex_lock(&mutex);
@@ -678,3 +672,11 @@ int ghost_task_waitsome(ghost_task_t * tasks, int nt, int *index)
 
 }
 
+
+int ghost_task_destroy(ghost_task_t *t)
+{
+	free(t->cores);
+	free(t->siblings);
+
+	return GHOST_SUCCESS;
+}

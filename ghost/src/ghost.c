@@ -302,6 +302,8 @@ int ghost_init(int argc, char **argv)
 void ghost_finish()
 {
 
+	ghost_taskq_finish();
+
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_CLOSE;
 #endif
