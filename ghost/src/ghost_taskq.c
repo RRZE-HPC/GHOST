@@ -250,9 +250,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 						for (t = 0; t < (ghost_thpool->firstThreadOfLD[curLD+1]-ghost_thpool->firstThreadOfLD[curLD]); t++) {
 							if (!(CHK_BIT(taskqs[curLD]->coreState,t))) {
 								taskqs[curLD]->nIdleCores --;
-								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",(int)pthread_self(),ghost_thpool->firstThreadOfLD[curLD]+t,curLD,taskqs[curLD]->nIdleCores);
 								ghost_setCore(ghost_thpool->firstThreadOfLD[curLD]+t);
 								curTask->cores[reservedCores] = ghost_thpool->firstThreadOfLD[curLD]+t;
+								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",(int)pthread_self(),curTask->cores[reservedCores],curLD,taskqs[curLD]->nIdleCores);
 								SET_BIT(taskqs[curLD]->coreState,t);
 								reservedCores++;
 								foundCore = 1;
@@ -280,7 +280,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 
 		if (reservedCores < curTask->nThreads) {
-			WARNING_LOG("Too few cores reserved!");
+			WARNING_LOG("Too few cores reserved! %d < %d",reservedCores,curTask->nThreads);
 		}
 		return curTask;
 	}
@@ -394,20 +394,13 @@ static void * thread_main(void *arg)
 		pthread_mutex_unlock(&myTask->mutex);
 
 		myTask->ret = tFunc(tArg);
-	
-
-		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters and idling cores...",(int)pthread_self(),myTask);
-		pthread_mutex_lock(&myTask->mutex);
-		pthread_mutex_unlock(&myTask->mutex);
-		myTask->state = GHOST_TASK_FINISHED;
 		
-		pthread_cond_broadcast(&myTask->finishedCond);
-
 		pthread_mutex_lock(&globalMutex);
 		ghost_thpool->nIdleCores += myTask->nThreads;
 		for (t=0; t<myTask->nThreads; t++) {
 			for (curLD = 0; curLD < ghost_thpool->nLDs; curLD++) {
 				if ((myTask->cores[t]>=ghost_thpool->firstThreadOfLD[curLD]) && (myTask->cores[t]<ghost_thpool->firstThreadOfLD[curLD+1])) {
+					DEBUG_LOG(1,"%d-th thread of task resided @ LD%d",t,curLD);
 					pthread_mutex_lock(&taskqs[curLD]->mutex);
 					taskqs[curLD]->nIdleCores++;
 					//	ghost_thpool->nIdleCores++;
@@ -419,6 +412,13 @@ static void * thread_main(void *arg)
 			}
 		}
 		pthread_mutex_unlock(&globalMutex);	
+		
+		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters and idling cores...",(int)pthread_self(),myTask);
+		pthread_mutex_lock(&myTask->mutex);
+		pthread_mutex_unlock(&myTask->mutex);
+		myTask->state = GHOST_TASK_FINISHED;
+		
+		pthread_cond_broadcast(&myTask->finishedCond);
 	}
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop",(int)pthread_self());
 	return NULL;
