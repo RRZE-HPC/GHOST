@@ -195,7 +195,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 
 
-		DEBUG_LOG(1,"\tFound a suiting task! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",curTask->nThreads,q->LD,q->nIdleCores,ghost_thpool->nIdleCores);
+		DEBUG_LOG(1,"Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",curTask,curTask->nThreads,q->LD,q->nIdleCores,ghost_thpool->nIdleCores);
 
 		// if task has siblings, delete them here
 		if (curTask->siblings != NULL)
@@ -336,7 +336,6 @@ static void * thread_main(void *arg)
 
 		pthread_mutex_lock(&curQueue->mutex);
 		myTask = taskq_findDeleteAndPinTask(curQueue);
-
 		if (myTask != NULL)
 			ghost_thpool->nIdleCores -= myTask->nThreads;
 		pthread_mutex_unlock(&curQueue->mutex);
@@ -374,51 +373,49 @@ static void * thread_main(void *arg)
 			}
 		}
 
+//		pthread_mutex_lock(&myTask->mutex);
+		myTask->executingThreadNo = myCore;
+		myTask->state = GHOST_TASK_RUNNING;	
+//		pthread_mutex_unlock(&myTask->mutex);
+		
 		tFunc = myTask->func;
 		tArg = myTask->arg;
 
 		//pthread_mutex_unlock(&globalMutex);	
 
-		DEBUG_LOG(1,"Thread %d: Got a task: %p",(int)pthread_self(),myTask);
+		DEBUG_LOG(1,"Thread %d: Finally executing task: %p",(int)pthread_self(),myTask);
 
-		omp_set_num_threads(myTask->nThreads);
-		//		int reservedCores = 0;
-		t = ghost_thpool->firstThreadOfLD[myLD];
-		//		int curThread;
-
-
-		myTask->executingThreadNo = myCore;
-
-		pthread_mutex_lock(&myTask->mutex);
-		myTask->state = GHOST_TASK_RUNNING;	
-		pthread_mutex_unlock(&myTask->mutex);
+//		pthread_mutex_lock(&myTask->mutex);
+//		pthread_mutex_unlock(&myTask->mutex);
 
 		myTask->ret = tFunc(tArg);
 		
-		pthread_mutex_lock(&globalMutex);
+		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
+		
 		ghost_thpool->nIdleCores += myTask->nThreads;
 		for (t=0; t<myTask->nThreads; t++) {
 			for (curLD = 0; curLD < ghost_thpool->nLDs; curLD++) {
 				if ((myTask->cores[t]>=ghost_thpool->firstThreadOfLD[curLD]) && (myTask->cores[t]<ghost_thpool->firstThreadOfLD[curLD+1])) {
-					DEBUG_LOG(1,"%d-th thread of task resided @ LD%d",t,curLD);
+					//pthread_mutex_lock(&globalMutex);
 					pthread_mutex_lock(&taskqs[curLD]->mutex);
+					DEBUG_LOG(1,"%d-th thread of task resided @ LD%d",t,curLD);
 					taskqs[curLD]->nIdleCores++;
-					//	ghost_thpool->nIdleCores++;
 					DEBUG_LOG(1,"Thread %d: Setting core # %d (loc: %d) to idle again, idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD],curLD,taskqs[curLD]->nIdleCores);
 					CLR_BIT(taskqs[curLD]->coreState,myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD]);
+					//pthread_mutex_unlock(&globalMutex);	
 					pthread_mutex_unlock(&taskqs[curLD]->mutex);
 					break;
 				}
 			}
 		}
-		pthread_mutex_unlock(&globalMutex);	
-		
-		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters and idling cores...",(int)pthread_self(),myTask);
 		pthread_mutex_lock(&myTask->mutex);
-		pthread_mutex_unlock(&myTask->mutex);
-		myTask->state = GHOST_TASK_FINISHED;
-		
+		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p)...",(int)pthread_self(),myTask,&myTask->finishedCond);
 		pthread_cond_broadcast(&myTask->finishedCond);
+		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
+		myTask->state = GHOST_TASK_FINISHED;
+		pthread_mutex_unlock(&myTask->mutex);
+		
+		
 	}
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop",(int)pthread_self());
 	return NULL;
@@ -494,11 +491,14 @@ int ghost_task_add(ghost_task_t *t)
 
 	pthread_cond_init(&t->finishedCond,NULL);
 	pthread_mutex_init(&t->mutex,NULL);
+//	pthread_mutex_lock(&t->mutex);
+	t->state = GHOST_TASK_INVALID;
+//	pthread_mutex_unlock(&t->mutex);
 	memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
 	{
-		DEBUG_LOG(1,"This task goes to all queues");
+		DEBUG_LOG(1,"Task %p goes to all queues",t);
 		t->siblings = (ghost_task_t **)ghost_malloc(ghost_thpool->nLDs*sizeof(ghost_task_t *));
 
 		DEBUG_LOG(1,"Cloning task...");
@@ -521,13 +521,15 @@ int ghost_task_add(ghost_task_t *t)
 		t->siblings = NULL;
 		taskq_additem(taskqs[t->LD],t);
 	}
+//	pthread_mutex_lock(&t->mutex);
+	t->state = GHOST_TASK_ENQUEUED;
+//	pthread_mutex_unlock(&t->mutex);
 
 	pthread_mutex_lock(&globalMutex);
 	nTasks++;	
 	pthread_mutex_unlock(&globalMutex);	
 	sem_post(&taskSem);
 
-	t->state = GHOST_TASK_ENQUEUED;
 
 	DEBUG_LOG(1,"Task added successfully");
 
@@ -574,17 +576,19 @@ int ghost_task_test(ghost_task_t * t)
 
 int ghost_task_wait(ghost_task_t * t)
 {
+	DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d and whose state is %d",t,t->executingThreadNo,t->state);
 	pthread_mutex_lock(&t->mutex);
 
 	if (t->state != GHOST_TASK_FINISHED) {
-		DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d",t,t->executingThreadNo);
+		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p which is managed by thread %d",&t->finishedCond,t,t->executingThreadNo);
 		pthread_cond_wait(&t->finishedCond,&t->mutex);
 	} else {
+		DEBUG_LOG(1,"Task %p has already finished",t);
 		pthread_mutex_unlock(&t->mutex);
 	}
 
 	pthread_cond_broadcast(&taskFinishedCond);
-	DEBUG_LOG(1,"Task %p is done!",t);
+	DEBUG_LOG(1,"Finished waitung for task %p!",t);
 
 	return GHOST_SUCCESS;
 
@@ -681,6 +685,8 @@ int ghost_task_destroy(ghost_task_t *t)
 {
 	free(t->cores);
 	free(t->siblings);
+
+	pthread_mutex_destroy(&t->mutex);
 
 	return GHOST_SUCCESS;
 }
