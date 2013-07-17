@@ -39,6 +39,7 @@ typedef struct ghost_task_t {
 	struct ghost_task_t *next, *prev; // pointer to next and previous task in queue
 	struct ghost_task_t **siblings; // there are either zero or nQueues siblings
 	pthread_cond_t finishedCond; // a condition variable indicating that the task is finished
+	pthread_mutex_t mutex; // serialize accesses to the task's members
 } ghost_task_t;
 
 

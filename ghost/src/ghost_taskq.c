@@ -388,11 +388,19 @@ static void * thread_main(void *arg)
 
 
 		myTask->executingThreadNo = myCore;
+
+		pthread_mutex_lock(&myTask->mutex);
 		myTask->state = GHOST_TASK_RUNNING;	
+		pthread_mutex_unlock(&myTask->mutex);
 
 		myTask->ret = tFunc(tArg);
+	
 
+		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters and idling cores...",(int)pthread_self(),myTask);
+		pthread_mutex_lock(&myTask->mutex);
+		pthread_mutex_unlock(&myTask->mutex);
 		myTask->state = GHOST_TASK_FINISHED;
+		
 		pthread_cond_broadcast(&myTask->finishedCond);
 
 		pthread_mutex_lock(&globalMutex);
@@ -485,6 +493,7 @@ int ghost_task_add(ghost_task_t *t)
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
 
 	pthread_cond_init(&t->finishedCond,NULL);
+	pthread_mutex_init(&t->mutex,NULL);
 	memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
@@ -565,18 +574,18 @@ int ghost_task_test(ghost_task_t * t)
 
 int ghost_task_wait(ghost_task_t * t)
 {
+	pthread_mutex_lock(&t->mutex);
+
 	if (t->state != GHOST_TASK_FINISHED) {
 		DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d",t,t->executingThreadNo);
-		pthread_mutex_t mutex;
-		pthread_mutex_init(&mutex,NULL);
-
-		pthread_mutex_lock(&mutex);
-		pthread_cond_wait(&t->finishedCond,&mutex);
-
+		pthread_cond_wait(&t->finishedCond,&t->mutex);
+	} else {
+		pthread_mutex_unlock(&t->mutex);
 	}
 
 	pthread_cond_broadcast(&taskFinishedCond);
 	DEBUG_LOG(1,"Task %p is done!",t);
+
 	return GHOST_SUCCESS;
 
 }
@@ -655,21 +664,16 @@ int ghost_task_waitsome(ghost_task_t * tasks, int nt, int *index)
 	pthread_cond_wait(&taskFinishedCond,&mutex);
 
 	for (t=0; t<nt; t++)
-	{ // look if one of the tasks is already finished
+	{ // again look which tasks are finished
 		if (tasks[t].state == GHOST_TASK_FINISHED) 
-		{ // one of the tasks is already finished
-			ret = 1;
+		{
 			index[t] = 1;
 		} else {
 			index[t] = 0;
 		}
 	}
-//		ghost_task_wait(tasks[omp_get_thread_num()]);
-//		ret = tasks[omp_get_thread_num()];
 
 	return GHOST_SUCCESS;
-
-
 }
 
 
