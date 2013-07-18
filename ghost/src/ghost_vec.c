@@ -384,8 +384,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 
 	int v;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		pwrite(file,vec->val,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt);
-		offs += vec->traits->nrowspadded*sizeofdt; // go to next column
+		pwrite(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt+v*sizeofdt*vec->traits->nrows);
 	}
 
 	close(file);
@@ -396,7 +395,7 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-		getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec,ctx);
 
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -438,8 +437,12 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 	pread(file,&ncols,sizeof(ncols),offs+=sizeof(nrows));
 	if (ncols != 1)
 		ABORT("The number of columns has to be 1!");
+	offs+=sizeof(ncols);
 
-	pread(file,vec->val,sizeofdt*vec->traits->nrows,offs+=sizeof(ncols)+offset*sizeofdt);
+	int v;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		pread(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+(offset+v*vec->traits->nrows)*vec->traits->nrows);
+	}
 
 	close(file);
 

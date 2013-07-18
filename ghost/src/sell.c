@@ -612,10 +612,16 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 	void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int) = NULL;
 
 #ifdef SSE_INTR
+#ifndef LONGIDX
+	if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
 	kernel = SELL_kernels_SSE
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
+}
+#endif
 #elif defined(AVX_INTR)
+#ifndef LONGIDX
+	if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
 	if (SELL(mat)->chunkHeight == 4) {
 	kernel = SELL_kernels_AVX
 		[ghost_dataTypeIdx(mat->traits->datatype)]
@@ -625,21 +631,21 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 		[ghost_dataTypeIdx(mat->traits->datatype)]
 		[ghost_dataTypeIdx(lhs->traits->datatype)];
 	}
-
+	}
+#endif
 #elif defined(MIC_INTR)
 #ifndef LONGIDX
+	if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
 	if (SELL(mat)->chunkHeight == 16) {
-//	printf("$$$$$$$$$$1\n");
 		kernel = SELL_kernels_MIC_16
 			[ghost_dataTypeIdx(mat->traits->datatype)]
 			[ghost_dataTypeIdx(lhs->traits->datatype)];
 	} else if (SELL(mat)->chunkHeight == 32) {
-	printf("$$$$$$$$$$2\n");
 		kernel = SELL_kernels_MIC_32
 			[ghost_dataTypeIdx(mat->traits->datatype)]
 			[ghost_dataTypeIdx(lhs->traits->datatype)];
 	}
-
+	}
 #endif
 #else
 	kernel = SELL_kernels_plain

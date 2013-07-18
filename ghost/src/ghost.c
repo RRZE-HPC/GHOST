@@ -753,18 +753,18 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 
 
 	}
-	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank()],1);
-	else
+	if ((ctx==NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->toFile(vec,path,0,1);
+	else
+		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank()],1);
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 {
-	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank()]);
-	else
+	if ((ctx == NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->fromFile(vec,ctx,path,0);
+	else
+		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank()]);
 }
 void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *c, void *s)
 {
@@ -806,6 +806,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 	restraits->nrows = v->traits->nvecs;
 	restraits->nvecs = w->traits->nvecs;
 	restraits->datatype = v->traits->datatype;
+
 
 	*res = ghost_createVector(restraits);
 	(*res)->fromScalar(*res,NULL,&zero); //vec rows are valid, ctx can be NULL

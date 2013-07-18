@@ -34,7 +34,6 @@ Version 0.3.2
 
 - exclude intrinsics kernels when scale or shift should be applied
 - multi-vector I/O 
-- add AXMY
 - fix bug: vectors are not random because of OpenMP parallel
 
 	
@@ -45,6 +44,7 @@ Version 0.4
 
 Version x.x
 
+- add AXMY
 - fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
 - instrumentation: prefix all region names with a number according to the level of instrumentation
 - generalization of intrinsics kernels for arbitrary data types as far as possible
