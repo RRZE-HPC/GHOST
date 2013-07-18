@@ -67,7 +67,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -125,8 +125,8 @@ int main( int argc, char* argv[] )
 
 #ifdef TASKING
 	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
-	ghost_task_t createDataTask = GHOST_TASK_INIT(.nThreads = GHOST_TASK_FILL_ALL, .LD = 0, .func = &createDataFunc, .arg = &args);
-	ghost_task_add(&createDataTask);
+	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
+	ghost_task_add(createDataTask);
 #else
 	mat->fromFile(mat,context,matrixPath);
 	lhs->fromScalar(lhs,context,&zero);
@@ -138,7 +138,8 @@ int main( int argc, char* argv[] )
 	ghost_printContextInfo(context);
 
 #ifdef TASKING
-	ghost_task_wait(&createDataTask);
+	ghost_task_wait(createDataTask);
+	ghost_task_destroy(createDataTask);
 #endif
 	ghost_printMatrixInfo(mat);
 
@@ -158,10 +159,10 @@ int main( int argc, char* argv[] )
 		} else {
 
 			benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-			ghost_task_t benchTask = GHOST_TASK_INIT(.nThreads = GHOST_TASK_FILL_ALL, .LD = 0, .func = &benchFunc, .arg = &bargs);
-			ghost_task_add(&benchTask);
-			ghost_task_wait(&benchTask);
-			ghost_task_destroy(&benchTask);
+			ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
+			ghost_task_add(benchTask);
+			ghost_task_wait(benchTask);
+			ghost_task_destroy(benchTask);
 
 		}
 #else

@@ -85,8 +85,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	static commArgs cargs;
 	static compArgs cpargs;
-	ghost_task_t commTask = GHOST_TASK_INIT(.nThreads=1, .LD=1, .func=&communicate, .arg = &cargs);
-	ghost_task_t compTask = GHOST_TASK_INIT(.nThreads=ghost_thpool->nThreads-1, .LD=0, .func=&computeLocal, .arg = &cpargs);
+	static ghost_task_t *commTask;// = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
+	static ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
 
 	if (init_kernel==1){
 		me = ghost_getRank();
@@ -113,6 +113,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	//	compTask.func = &computeLocal;
 	//	compTask.arg = &cpargs;
 
+		commTask = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
+		compTask = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;
@@ -173,7 +175,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	cargs.recv_messages = recv_messages;
 	cargs.request = request;
 	cargs.status = status;
-	ghost_task_add(&commTask);
+	ghost_task_add(commTask);
 //	double time = ghost_wctime()-start;
 	//ghost_task_destroy(&commTask);
 //	printf("spawning async comm task took %f seconds\n",time);
@@ -198,9 +200,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 
 //	start = ghost_wctime();
-	ghost_task_add(&compTask);
-	ghost_task_wait(&compTask);
-	ghost_task_destroy(&compTask);
+	ghost_task_add(compTask);
+	ghost_task_wait(compTask);
+//	ghost_task_destroy(compTask);
 //	time = ghost_wctime()-start;
 	//printf("local computation took %f seconds\n",time);
 //	ghost_spawnTask(&computeLocal, &cpargs, 12, compThreads, "local compute", GHOST_TASK_SYNC/*|GHOST_TASK_EXCLUSIVE*/);
@@ -216,8 +218,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	 *******       Finishing communication: MPI_Waitall                   *******
 	 ***************************************************************************/
 
-	ghost_task_wait(&commTask);
-	ghost_task_destroy(&commTask);
+	ghost_task_wait(commTask);
+//	ghost_task_destroy(commTask);
 //	start = ghost_wctime();
 //	time = ghost_wctime()-start;
 //	printf("had to wait for comm to finish for %f seconds\n",time);
