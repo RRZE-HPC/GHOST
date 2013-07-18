@@ -20,7 +20,7 @@
 #define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
 
 
-#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID, ## __VA_ARGS__ }
+#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID,  ## __VA_ARGS__ }
 
 
 typedef struct ghost_task_t {
@@ -32,14 +32,15 @@ typedef struct ghost_task_t {
 	void *arg; // the function's argument(s)
 
 	// set by the library
-	int state; // the current state of the task
-	int executingThreadNo; // the number of the thread managing this task
+	int *state; // the current state of the task
+	int *executingThreadNo; // the number of the thread managing this task
 	int *cores; // list of the cores where the task's thread are running
 	void *ret; // the return value of the task function
 	struct ghost_task_t *next, *prev; // pointer to next and previous task in queue
 	struct ghost_task_t **siblings; // there are either zero or nQueues siblings
-	pthread_cond_t finishedCond; // a condition variable indicating that the task is finished
-	pthread_mutex_t mutex; // serialize accesses to the task's members
+//	struct ghost_task_t *parent; // this is the "managing" task for a group of siblings
+	pthread_cond_t *finishedCond; // a condition variable indicating that the task is finished
+	pthread_mutex_t *mutex; // serialize accesses to the task's members
 } ghost_task_t;
 
 
@@ -67,10 +68,11 @@ int ghost_thpool_init(int nThreads);
 int ghost_taskq_init(int nqs);
 int ghost_taskq_finish();
 
+ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
 int ghost_task_add(ghost_task_t *);
 int ghost_task_wait(ghost_task_t *);
 int ghost_task_waitall();
-int ghost_task_waitsome(ghost_task_t *, int, int*);
+int ghost_task_waitsome(ghost_task_t **, int, int*);
 int ghost_task_test(ghost_task_t *);
 int ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
 int ghost_task_print(ghost_task_t *t);
