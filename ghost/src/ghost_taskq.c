@@ -225,34 +225,38 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		int t;
 		int foundCore;
 		int curThread;
+		int curLD = q->LD; // setting this value here ensures that no thread searches in already fully occupied LDs
 
-		for (curThread=0; curThread<curTask->nThreads; curThread++)// TODO is it needed that the threads get assigned ordered?
+		for (curThread=0; curThread<curTask->nThreads; curThread++)
 		{
 #pragma omp parallel
 			{
 				if (omp_get_thread_num() == curThread)
-				{ // this block will be entered by one thread at a time
+				{ // this block will be entered by one thread at a time in ascending order
 
 					foundCore = 0;
 					self = 0;
 
-					int curLD = q->LD;
 					for (; (curLD<ghost_thpool->nLDs) && (reservedCores < curTask->nThreads); curLD++)
 					{
 						if ((self == 1) && (curLD == q->LD))
 							continue;
 
-						if (curLD != q->LD)
+						if (curLD != q->LD) // the own queue is already locked
 							pthread_mutex_lock(&taskqs[curLD]->mutex);
 
 						DEBUG_LOG(1,"Thread %d looking for an empty core @ LD%d",curThread,curLD);
 
-						for (t = 0; t < (ghost_thpool->firstThreadOfLD[curLD+1]-ghost_thpool->firstThreadOfLD[curLD]); t++) {
-							if (!(CHK_BIT(taskqs[curLD]->coreState,t))) {
+						for (t = 0; t < (ghost_thpool->firstThreadOfLD[curLD+1]-ghost_thpool->firstThreadOfLD[curLD]); t++) 
+						{
+							if (!(CHK_BIT(taskqs[curLD]->coreState,t))) 
+							{
+								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",
+										(int)pthread_self(),curTask->cores[reservedCores],curLD,taskqs[curLD]->nIdleCores);
+
 								taskqs[curLD]->nIdleCores --;
 								ghost_setCore(ghost_thpool->firstThreadOfLD[curLD]+t);
 								curTask->cores[reservedCores] = ghost_thpool->firstThreadOfLD[curLD]+t;
-								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",(int)pthread_self(),curTask->cores[reservedCores],curLD,taskqs[curLD]->nIdleCores);
 								SET_BIT(taskqs[curLD]->coreState,t);
 								reservedCores++;
 								foundCore = 1;
@@ -264,7 +268,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 							pthread_mutex_unlock(&taskqs[curLD]->mutex);
 
 						if (foundCore)
-						{ // found a core for this thread, no need to look in other LDs
+						{ // found a core for this thread, proceed to next thread
 							break;
 						}
 
