@@ -9,11 +9,15 @@ GHOST_REGISTER_DT_D(matdt)
 
 static void rhsVal (int i, int v, void *val) 
 {
+	UNUSED(i);
+	UNUSED(v);
+
 	*(vecdt_t *)val = (vecdt_t)ghost_getRank()+1;
 }
 
-void *minimalTask(void *)
+static void *minimalTask(void *arg)
 {
+	UNUSED(arg);
 	int nIter = 100;
 	double time;
 	double zero = 0.;
@@ -29,14 +33,14 @@ void *minimalTask(void *)
 	ghost_mat_t *mat;
 	//ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 
-	ghost_readMatFileHeader(argv[1],&fileheader);
+	ghost_readMatFileHeader((char *)arg,&fileheader);
 
 	ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
 	mat = ghost_createMatrix(&mtraits,1);
 	rhs = ghost_createVector(&rvtraits);
 	lhs = ghost_createVector(&lvtraits);
 
-	mat->fromFile(mat,ctx,argv[1]);
+	mat->fromFile(mat,ctx,(char *)arg);
 	lhs->fromScalar(lhs,ctx,&zero);
 	rhs->fromFunc(rhs,ctx,rhsVal);
 	
@@ -63,6 +67,8 @@ int main(int argc, char* argv[])
 {
 
 	ghost_init(argc,argv);
+	ghost_task_t *t = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &minimalTask, argv[1], GHOST_TASK_DEFAULT);
+	ghost_task_add(t);
 
 	ghost_finish();
 
