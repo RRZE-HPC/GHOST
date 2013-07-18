@@ -19,6 +19,7 @@ apps/*/
 !apps/spmvm/
 !apps/lanczos/
 !apps/taskq/
+!apps/dense/
 tags
 *stdout*
 *stderr*
