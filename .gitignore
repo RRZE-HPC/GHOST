@@ -18,6 +18,7 @@ apps/*/
 !apps/minimal/
 !apps/spmvm/
 !apps/lanczos/
+!apps/taskq/
 tags
 *stdout*
 *stderr*

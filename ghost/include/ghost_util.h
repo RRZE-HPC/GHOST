@@ -2,6 +2,7 @@
 #define __GHOST_UTIL_H__
 
 #include <ghost.h>
+#include <stdio.h>
 
 #ifdef GHOST_MPI
 #include "mpi/ghost_mpi_util.h"
@@ -44,9 +45,7 @@
 #else
 #define DEBUG_LOG(level,msg, ...) {\
 	if(DEBUG >= level) {\
-		fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);\
-		fprintf(stderr, msg, ##__VA_ARGS__);\
-		fprintf(stderr, "\n");\
+		fprintf(stderr,"%s:%d: "msg"\n",__FILE__,__LINE__,##__VA_ARGS__);\
 		fflush(stderr);\
 	}\
 }
@@ -61,9 +60,7 @@
 }
 #else
 #define WARNING_LOG(msg, ...) {\
-	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: " ,__FILE__,__LINE__);\
-	fprintf(stderr, msg, ##__VA_ARGS__);\
-	fprintf(stderr, ANSI_COLOR_RESET"\n");\
+	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
 	fflush(stderr);\
 }
 #endif
@@ -246,9 +243,9 @@ char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
 ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 void ghost_pinThreads(int options, char *procList);
-void ghost_spawnTask(ghost_task_t *task);
+//void ghost_spawnTask(ghost_task_t *task);
 //ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags);
-void ghost_waitTask(ghost_task_t *task);
+//void ghost_waitTask(ghost_task_t *task);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);

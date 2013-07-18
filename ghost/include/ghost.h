@@ -36,7 +36,7 @@
 #include "ghost_constants.h"
 
 #define GHOST_NAME "ghost"
-#define GHOST_VERSION "0.3.1"
+#define GHOST_VERSION "0.4"
 
 
 /******************************************************************************/
@@ -151,7 +151,7 @@ typedef struct
 	char *desc;
 } ghost_threadstate_t;
 
-
+/*
 typedef struct
 {
 	const char *desc;
@@ -162,7 +162,7 @@ typedef struct
 	void *(*func) (void *);
 	void *arg;
 } ghost_task_t;
-	
+*/	
 
 
 /*typedef struct{

@@ -4,6 +4,8 @@
 #include "ghost_util.h"
 #include "ghost_mat.h"
 #include "ghost_vec.h"
+#include "ghost_taskq.h"
+#include "cpuid.h"
 #include "sell.h"
 #include "crs.h"
 
@@ -45,7 +47,7 @@ MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
-extern ghost_threadstate_t *threadpool;
+//extern ghost_threadstate_t *threadpool;
 
 /*
    static ghost_mnnz_t context_gnnz (ghost_context_t * context)
@@ -281,16 +283,20 @@ DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore
 #ifdef CUDA
 	CU_init();
 #endif
+	
+	ghost_cpuid_init();
+	ghost_thpool_init(ghost_cpuid_topology.numHWThreads/ghost_cpuid_topology.numThreadsPerCore);
+	ghost_taskq_init(ghost_cpuid_topology.numSockets);
 
 	//	options = ghostOptions;
 
-	ghost_setCore(ghost_getCore());
-	threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
-	threadpool[ghost_getCore()].state = GHOST_THREAD_MGMT;
-	threadpool[ghost_getCore()].desc = "main";
-	for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
-		threadpool[i].state = GHOST_THREAD_HALTED;
-	}
+	//ghost_setCore(ghost_getCore());
+	//threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
+	//threadpool[ghost_getCore()].state = GHOST_THREAD_MGMT;
+	//threadpool[ghost_getCore()].desc = "main";
+	//for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
+//		threadpool[i].state = GHOST_THREAD_HALTED;
+//	}
 
 
 return me;
@@ -298,6 +304,8 @@ return me;
 
 void ghost_finish()
 {
+
+	ghost_taskq_finish();
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_CLOSE;

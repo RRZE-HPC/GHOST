@@ -42,9 +42,9 @@
 #define GHOST_MAX_NTASKS 1024
 //static int allocatedMem;
 
-ghost_threadstate_t *threadpool = NULL;
-static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
-static int nTasks = 0;
+//ghost_threadstate_t *threadpool = NULL;
+//static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
+//static int nTasks = 0;
 
 
 double ghost_wctime()
@@ -1096,7 +1096,7 @@ int ghost_getCore()
 	cpu_set_t  cpu_set;
 	CPU_ZERO(&cpu_set);
 	sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
-	int processorId;
+	int processorId = -1;
 
 	for (processorId=0;processorId<128;processorId++)
 	{
@@ -1333,6 +1333,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	return nnz;
 }
 
+#if 0
 static inline void *ghost_enterTask(void *arg)
 {
 	ghost_task_t *task = (ghost_task_t *)arg;
@@ -1348,7 +1349,6 @@ static inline void *ghost_enterTask(void *arg)
 	return task->func(task->arg);
 
 }
-
 
 inline void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags)
 {
@@ -1414,6 +1414,7 @@ void ghost_waitTask(ghost_task_t *task)
 
 	//omp_set_num_threads(ghost_getNumberOfThreads()+task->nThreads);
 }
+#endif
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
 {
