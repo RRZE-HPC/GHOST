@@ -224,6 +224,7 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 {
 	DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
+	if (context != NULL) {
 	if (vec->traits->nrows == 0) {
 		DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
 		if (vec->traits->flags & GHOST_VEC_DUMMY) {
@@ -257,11 +258,12 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 				vec->traits->nrowshalo = vec->traits->nrows;
 		}	
 	}
+	}
 
 
 	if (vec->traits->nrowspadded == 0) {
 		DEBUG_LOG(2,"nrowspadded for vector not given. determining it from the context");
-		vec->traits->nrowspadded = ghost_pad(vec->traits->nrowshalo,GHOST_PAD_MAX); // TODO needed?
+		vec->traits->nrowspadded = ghost_pad(MAX(vec->traits->nrowshalo,vec->traits->nrows),GHOST_PAD_MAX); // TODO needed?
 	}
 	DEBUG_LOG(1,"The vector has %d w/ %d halo elements (padded: %d) rows",
 			vec->traits->nrows,vec->traits->nrowshalo-vec->traits->nrows,vec->traits->nrowspadded);
@@ -312,7 +314,6 @@ static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
 static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	if (ctx)
 	getNrowsFromContext(vec,ctx);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
@@ -368,7 +369,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
 		int32_t datatype = vec->traits->datatype;
 		int64_t nrows = (int64_t)vec->traits->nrows;
-		int64_t ncols = (int64_t)1;
+		int64_t ncols = (int64_t)vec->traits->nvecs;
 
 		pwrite(file,&endianess,sizeof(endianess),offs);
 		pwrite(file,&version,sizeof(version),    offs+=sizeof(endianess));
@@ -381,7 +382,11 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 		offs = 4*sizeof(int32_t)+2*sizeof(int64_t); 
 	}
 
-	pwrite(file,vec->val,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt);
+	int v;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		pwrite(file,vec->val,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt);
+		offs += vec->traits->nrowspadded*sizeofdt; // go to next column
+	}
 
 	close(file);
 
@@ -391,7 +396,6 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	if (ctx)
 		getNrowsFromContext(vec,ctx);
 
 
@@ -460,8 +464,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 {
 	DEBUG_LOG(1,"Filling vector via function");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	if (ctx)
-		getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec,ctx);
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
