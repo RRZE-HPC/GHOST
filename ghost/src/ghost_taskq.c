@@ -364,7 +364,7 @@ static void * thread_main(void *arg)
 			nTasks++;	
 			pthread_mutex_unlock(&globalMutex);	
 			sem_post(&taskSem);
-			usleep(1); // give other threads a chance
+		//	usleep(1); // give other threads a chance
 			continue;
 		}
 			
@@ -461,10 +461,11 @@ int ghost_task_add(ghost_task_t *t)
 {
 	int q;
 
-//	pthread_cond_init(t->finishedCond,NULL);
-//	pthread_mutex_init(t->mutex,NULL);
-//	*(t->state) = GHOST_TASK_INVALID;
-//	memset(t->cores,0,sizeof(int)*t->nThreads);
+	// if a task is initialized _once_ but added several times, this has to be done each time it is added
+	pthread_cond_init(t->finishedCond,NULL);
+	pthread_mutex_init(t->mutex,NULL);
+	*(t->state) = GHOST_TASK_INVALID;
+	memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
 	{
@@ -472,12 +473,8 @@ int ghost_task_add(ghost_task_t *t)
 		t->siblings = (ghost_task_t **)ghost_malloc(ghost_thpool->nLDs*sizeof(ghost_task_t *));
 
 		DEBUG_LOG(1,"Cloning task...");
-		for (q=0; q<ghost_thpool->nLDs; q++) // create siblings
-		{
-		}
 		for (q=0; q<ghost_thpool->nLDs; q++)
 		{
-//			memcpy(t->siblings[q],t,sizeof(ghost_task_t));
 			t->siblings[q] = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
 			t->siblings[q]->nThreads = t->nThreads;
 			t->siblings[q]->LD = q;
@@ -505,9 +502,7 @@ int ghost_task_add(ghost_task_t *t)
 		t->siblings = NULL;
 		taskq_additem(taskqs[t->LD],t);
 	}
-//	pthread_mutex_lock(&t->mutex);
 	*(t->state) = GHOST_TASK_ENQUEUED;
-//	pthread_mutex_unlock(&t->mutex);
 
 	pthread_mutex_lock(&globalMutex);
 	nTasks++;	
@@ -527,19 +522,10 @@ int ghost_taskq_finish()
 	killed = 1;
 
 	DEBUG_LOG(1,"Wake up all tasks");	
-	//	for (t=0; t<ghost_thpool->nThreads; t++) // wake up waiting threads, i.e., post a task for each thread
-	//	{ 	
-	//		if (CHK_BIT(coreState,t)) {
-	//			DEBUG_LOG(1,"Waiting for thread %d to be finished",t);
-	//			pthread_mutex_t mutex;
-	//			pthread_mutex_lock(&mutex);
-	//			pthread_cond_wait(&ghost_thpool->taskDoneConds[t],&mutex);
-	//		}
 	if (sem_post(&taskSem)){
 		WARNING_LOG("Error in sem_post: %s",strerror(errno));
 		return GHOST_FAILURE;
 	}
-	//	}
 	DEBUG_LOG(1,"Join all threads");	
 	for (t=0; t<ghost_thpool->nThreads; t++)
 	{ 		
@@ -717,10 +703,10 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	t->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
 	t->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
 
-	pthread_cond_init(t->finishedCond,NULL);
-	pthread_mutex_init(t->mutex,NULL);
-	*(t->state) = GHOST_TASK_INVALID;
-	memset(t->cores,0,sizeof(int)*t->nThreads);
+	//pthread_cond_init(t->finishedCond,NULL);
+	//pthread_mutex_init(t->mutex,NULL);
+	//*(t->state) = GHOST_TASK_INVALID;
+	//memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	return t;
 }

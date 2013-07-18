@@ -67,7 +67,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 1;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;

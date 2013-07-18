@@ -24,6 +24,12 @@ typedef struct {
 
 static void *communicate(void *vargs)
 {
+//#pragma omp parallel
+//	{
+//#pragma omp single
+//	printf("    ######### communicate: numThreads: %d\n",omp_get_num_threads());
+//	printf("    ######### communicate: thread %d running @ core %d\n",omp_get_thread_num(), ghost_getCore());
+//	}
 	commArgs *args = (commArgs *)vargs;
 	int to_PE;
 
@@ -49,6 +55,12 @@ typedef struct {
 
 static void *computeLocal(void *vargs)
 {
+//#pragma omp parallel
+//	{
+//#pragma omp single
+//	printf("    ######### compute: numThreads: %d\n",omp_get_num_threads());
+//	printf("    ######### compute: thread %d running @ core %d\n",omp_get_thread_num(), ghost_getCore());
+//	}
 	compArgs *args = (compArgs *)vargs;
 
 	args->mat->localPart->kernel(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
@@ -102,19 +114,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		request = (MPI_Request*) ghost_malloc( 2*nprocs*sizeof(MPI_Request));
 		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
-	//	commTask.nThreads = 1;
-	//	commTask.LD = 1;
-	//	commTask.func = &communicate;
-	//	commTask.arg = &cargs;
-		
-	//	compTask.nThreads = 1;
-		//compTask.nThreads = ghost_thpool->nThreads-1;
-	//	compTask.LD = 0;
-	//	compTask.func = &computeLocal;
-	//	compTask.arg = &cpargs;
-
-		commTask = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
-		compTask = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+		commTask = ghost_task_init(1, 1, &communicate, &cargs, GHOST_TASK_DEFAULT);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;
