@@ -1,3 +1,24 @@
+2013 - 07 - 18  Moritz Kreutzer  <moritz.kreutzer@fau.de>
+
+	Release Version 0.4
+
+	+ The new tasking interface has been implemented.
+		Detailed documentation on how the tasking works will follow soon.
+		An example on how to use it can be found in apps/taskq.
+		Also, the task mode spmvm solver (as used in apps/spmvm) uses the new
+		API.
+		The performance of the new API still has to be improved. Currently,
+		it can only serve as a proof of concept.
+
+	+ Multi-vector (dense matrix) I/O has been added.
+
+	+ A function for dense matrix multiplication (ghost_gemm()) has been added.
+
+	+ Many bugfixes, check git log for details.
+
+
+
+
 2013 - 06 - 18  Moritz Kreutzer  <moritz.kreutzer@fau.de>
 
 	Release Version 0.3
