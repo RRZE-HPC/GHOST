@@ -2,6 +2,11 @@
 // are "de-mangled", i.e. how they are called in C.
 // This is machine dependent and should be fixed in
 // a general way in the ESSR (for instance by CMake).
+
+#ifdef MKL_BLAS
+#include <mkl.h>
+#endif
+
 #ifdef MKL_BLAS
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
