@@ -560,9 +560,9 @@ int ghost_task_wait(ghost_task_t * t)
 		pthread_cond_wait(t->finishedCond,t->mutex);
 	} else {
 		DEBUG_LOG(1,"Task %p has already finished",t);
-		pthread_mutex_unlock(t->mutex);
 	}
 
+	pthread_mutex_unlock(t->mutex);
 	pthread_cond_broadcast(&anyTaskFinishedCond);
 	DEBUG_LOG(1,"Finished waitung for task %p!",t);
 
