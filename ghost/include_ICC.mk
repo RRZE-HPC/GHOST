@@ -8,7 +8,7 @@ CPPC = icpc
 FC = ifort
 endif
 
-CFLAGS  = -openmp -fPIC -std=c99
+CFLAGS  = -openmp -fPIC -std=c99 -DMKL_BLAS
 FFLAGS  = -fPIC
 FMODFLAG = -module
 SHAREDFLAG = -shared
