@@ -323,7 +323,11 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Waiting for tasks (taskSem: %d)...",(int)pthread_self(),sval);
 
 		if (sem_wait(&taskSem)) 
+		{
+			if (errno == EINTR)
+				continue;
 			ABORT("Waiting for tasks failed: %s",strerror(errno));
+		}
 
 		sem_getvalue(&taskSem,&sval);
 
