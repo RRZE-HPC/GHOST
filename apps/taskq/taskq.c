@@ -3,10 +3,8 @@
 #include <unistd.h>
 #include <omp.h>
 
-//#include "thpool.h"
 #include "ghost.h"
 #include "ghost_util.h"
-//#include "ghost_cpuid.h"
 #include "ghost_taskq.h"
 
 static void *accuFunc(void *arg) 
