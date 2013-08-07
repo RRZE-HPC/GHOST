@@ -10,7 +10,7 @@
 #include <likwid.h>
 #endif
 
-// TODO other formats than CRS
+// FIXME free arrays
 
 typedef struct {
 	ghost_context_t *context;

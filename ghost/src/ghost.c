@@ -285,7 +285,7 @@ DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore
 #endif
 	
 	ghost_cpuid_init();
-	ghost_thpool_init(ghost_cpuid_topology.numHWThreads/ghost_cpuid_topology.numThreadsPerCore);
+	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 	ghost_taskq_init(ghost_cpuid_topology.numSockets);
 
 	//	options = ghostOptions;

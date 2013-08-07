@@ -1,11 +1,11 @@
 COMPILER=ICC    # one of: ICC, GCC, XLC
 LIBTYPE=shared  # static or shared (default)
-LONGIDX=0       # 0/1 = indices are 32/64 bit integers
+LONGIDX=1       # 0/1 = indices are 32/64 bit integers
 MPI=1           # 0 = no MPI support        | 1 = with MPI support
 VSX=0           # 0 = no VSX kernels        | 1 = build VSX kernels
 MIC=0           # 0 = no MIC | 1 = compile for MIC | 2 = w/ intrinsics
 AVX=0           # 0 = no AVX | 1 = compile for AVX | 2 = w/ intrinsics
-SSE=2           # 0 = no SSE | 1 = compile for SSE | 2 = w/ intrinsics
+SSE=0           # 0 = no SSE | 1 = compile for SSE | 2 = w/ intrinsics
 OPENCL=0        # 0 = no OpenCL kernels     | 1 = build OpenCL kernels
 CUDA=0          # 0 = no CUDA kernels       | 1 = build CUDA kernels
 LIKWID=0        # 0 = no instrumentation    | 1 = Likwid Marker API instrumentation

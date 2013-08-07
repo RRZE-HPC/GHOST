@@ -3,6 +3,7 @@
 #include "ghost.h"
 #include "ghost_vec.h"
 #include "ghost_mat.h"
+#include "cpuid.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -431,7 +432,8 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 	int me = ghost_getRank();
-	complex double zero = 0.+I*0.; // TODO das ist unschoen
+	char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
+	memset(zero,0,ghost_sizeofDataType(datatype));
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 	ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
@@ -445,7 +447,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	mat->fromFile(mat,context,matrixPath);
 	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 	ghost_vec_t *globRHS = ghost_createVector(&rtraits);
-	globRHS->fromScalar(globRHS,context,&zero);
+	globRHS->fromScalar(globRHS,context,zero);
 
 
 	DEBUG_LOG(2,"Collection RHS vector for reference solver");
@@ -699,13 +701,14 @@ int ghost_getNumberOfRanksOnNode()
 }
 int ghost_getNumberOfPhysicalCores()
 {
-	FILE *fp;
+	return ghost_cpuid_topology.numHWThreads/ghost_cpuid_topology.numThreadsPerCore;
+/*	FILE *fp;
 	char nCoresS[4];
 	int nCores;
-
-	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
-	if (!fp) {
-		printf("Failed to get number of physical cores\n");
+*/
+//	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
+/*	if (!fp) {
+		ABORT("Failed to get number of physical cores (popen failed): %s",strerror(errno));
 	}
 
 	fgets(nCoresS,sizeof(nCoresS)-1,fp);
@@ -714,7 +717,7 @@ int ghost_getNumberOfPhysicalCores()
 	pclose(fp);
 
 	return nCores;
-
+*/
 }
 
 int ghost_getNumberOfHwThreads()
@@ -846,10 +849,14 @@ void *ghost_malloc(const size_t size)
 {
 	void *mem = NULL;
 
+	if (size/(1024.*1024.*1024.) > 1.) {
+		DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+	}
+
 	mem = malloc(size);
 
 	if( ! mem ) {
-		ABORT("Error in memory allocation of %lu bytes",size);
+		ABORT("Error in memory allocation of %lu bytes: %s",size,strerror(errno));
 	}
 	return mem;
 }

@@ -13,7 +13,7 @@
 #include <mpi.h>
 #endif
 
-#define TASKING
+//#define TASKING
 //#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
@@ -67,7 +67,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 5;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -78,9 +78,9 @@ int main( int argc, char* argv[] )
 #endif
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
-		GHOST_SPMVM_MODE_VECTORMODE,
+		GHOST_SPMVM_MODE_VECTORMODE/*,
 		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE};
+		GHOST_SPMVM_MODE_TASKMODE*/};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -192,7 +192,7 @@ int main( int argc, char* argv[] )
 						cimag(res),
 						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
-				break;
+				//break;
 			}
 		}
 		ghost_midx_t totalerrors;
@@ -205,12 +205,10 @@ int main( int argc, char* argv[] )
 			ghost_printLine(ghost_modeName(modes[mode]),NULL,"FAILED");
 		else
 			ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
-					2*1.e-9*
-					(double)ghost_getMatNnz(mat)/time);
+					2*(1.e-9*
+					ghost_getMatNnz(mat))/time);
 #else
-		ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
-				2*1.e-9*
-				(double)ghost_getMatNnz(mat)/time);
+		ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",2*(1.e-9*ghost_getMatNnz(mat))/time);
 #endif
 
 		lhs->zero(lhs);

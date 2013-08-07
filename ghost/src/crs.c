@@ -159,8 +159,13 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	CR(mat)->nrows = cr->nrows;
 	CR(mat)->ncols = cr->ncols;
 	CR(mat)->nEnts = cr->nEnts;
+	CR(mat)->rpt = cr->rpt;
+	CR(mat)->val = cr->val;
+	CR(mat)->col = cr->col;
 
-	CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((cr->nrows+1)*sizeof(ghost_midx_t));
+	// FIXME copy or not?
+
+	/*CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((cr->nrows+1)*sizeof(ghost_midx_t));
 	CR(mat)->col = (ghost_midx_t *)ghost_malloc(cr->nEnts*sizeof(ghost_midx_t));
 	CR(mat)->val = ghost_malloc(cr->nEnts*sizeofdt);
 
@@ -176,7 +181,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 			memcpy(&CR(mat)->val[j*sizeofdt],&cr->val[j*sizeofdt],sizeofdt);
 		}
 	}
-
+*/
 	DEBUG_LOG(1,"Successfully created CRS matrix from CRS data");
 
 	// TODO OpenCL upload
@@ -319,7 +324,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	int acc_dues;
 	int *tmp_transfers;
 	int acc_wishes;
-	int nEnts_glob;
+	ghost_midx_t nEnts_glob;
 
 	/* Counter how many entries are requested from each PE */
 	int *item_from;
@@ -359,10 +364,11 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	for (i=0;i<nprocs;i++)
 		if (max_loc_elements<lcrp->lnrows[i]) max_loc_elements = lcrp->lnrows[i];
 
-	nEnts_glob = lcrp->lfEnt[nprocs-1]+lcrp->lnEnts[nprocs-1]; 
+	nEnts_glob = lcrp->lfEnt[nprocs-1]+lcrp->lnEnts[nprocs-1];
 
 	size_pval = (size_t)( max_loc_elements * sizeof(int) );
-	size_revc = (size_t)( nEnts_glob       * sizeof(int) );
+	//size_revc = (size_t)( nEnts_glob       * sizeof(int) );
+	size_revc = (size_t)( fullCR->ncols       * sizeof(int) );
 	size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 
 
@@ -372,9 +378,8 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	comm_remoteEl   = (int*) ghost_malloc(size_col);
 	present_values  = (int*) ghost_malloc(size_pval); 
 	tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
-	pseudocol       = (int*) ghost_malloc(size_col);
-	globcol         = (int*) ghost_malloc(size_col);
-	revcol          = (int*) ghost_malloc(size_revc);
+//   	DEBUG_LOG(0,"nents_glob is %"PRmatIDX,nEnts_glob);
+//	revcol          = (int*) ghost_malloc(size_revc);
 
 
 	for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
@@ -397,8 +402,10 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	wishlist        = (int**) ghost_malloc(size_nptr); 
 	cwishlist       = (int**) ghost_malloc(size_nptr); 
-	wishlist_mem    = (int*)  ghost_malloc(size_mem); 
-	cwishlist_mem   = (int*)  ghost_malloc(size_mem); 
+	//DEBUG_LOG(0,"12\n");
+	//wishlist_mem    = (int*)  ghost_malloc(size_mem); 
+	//DEBUG_LOG(0,"13\n");
+	//cwishlist_mem   = (int*)  ghost_malloc(size_mem); 
 
 	hlpi = 0;
 	for (i=0; i<nprocs; i++){
@@ -435,6 +442,10 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		}
 
 	}
+	for (i=0; i<nprocs; i++){
+		free(wishlist[i]);
+	}
+	free(wishlist);
 
 	MPI_safecall(MPI_Allgather ( lcrp->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
 				nprocs, MPI_INTEGER, MPI_COMM_WORLD )) ;
@@ -449,34 +460,116 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		acc_transfer_wishes += lcrp->wishes[i];
 		acc_transfer_dues   += lcrp->dues[i];
 	}
+	//int ** myrevcol = (int**) ghost_malloc(nprocs*sizeof(int *));
+	//for (i=0; i<nprocs; i++) {
+	//	if (lcrp->wishes[i]>0) { 
+//			myrevcol[i] = (int*) ghost_malloc(lcrp->lnrows[i]*sizeof(int));
+			//myrevcol[i] = (int*) ghost_malloc(lcrp->wishes[i]*sizeof(int));
+		//	DEBUG_LOG(0,"length(myrevcol[%d]) = %d",i,lcrp->wishes[i]);
+//		}
+//	}
 
+	pseudocol       = (int*) ghost_malloc(size_col);
+	globcol         = (int*) ghost_malloc(size_col);
 	this_pseudo_col = lcrp->lnrows[me];
 	lcrp->halo_elements = 0;
-	for (i=0; i<nprocs; i++){
+	int tt = 0;
+	i = me;
+	int meHandled = 0;
+
+	for (; i<nprocs; i++){
+		int t = 0;
+		if (meHandled && (i == me)) continue;
+
 		if (i != me){ 
 			for (j=0;j<lcrp->wishes[i];j++){
 				pseudocol[lcrp->halo_elements] = this_pseudo_col;  
 				globcol[lcrp->halo_elements]   = lcrp->lfRow[i]+cwishlist[i][j]; 
-				revcol[globcol[lcrp->halo_elements]] = lcrp->halo_elements;
+				//revcol[globcol[lcrp->halo_elements]] = lcrp->halo_elements;
+			//	fullCR->col[pseudocol[revcol[t]]] = this_pseudo_col;
+				//myrevcol[i][lcrp->halo_elements] = lcrp->halo_elements; // works but wrong of course
+			//	myrevcol[i][globcol[lcrp->halo_elements]-lcrp->lfRow[i]] = lcrp->halo_elements;
+			//	DEBUG_LOG(0,"revcol[%d] = %d",globcol[lcrp->halo_elements],lcrp->halo_elements);
+			//	DEBUG_LOG(0,"myrevcol[%d][%d] = %d",i,globcol[lcrp->halo_elements]-lcrp->lfRow[i],lcrp->halo_elements);
 				lcrp->halo_elements++;
 				this_pseudo_col++;
+			//	t++;
 			}
+//			printf(">>> %d\n",lcrp->lnrows[i]);
+			DEBUG_LOG(2,"Allocating space for myrevcol");
+			int * myrevcol = (int *)ghost_malloc(lcrp->lnrows[i]*sizeof(int));
+		//	memset(myrevcol,0,lcrp->lnrows[i]*sizeof(int));
+			for (j=0;j<lcrp->wishes[i];j++){
+			//	WARNING_LOG("myrevcol[%d] = %d (length: %d)",globcol[tt]-lcrp->lfRow[i],tt,lcrp->lnrows[i]);
+				myrevcol[globcol[tt]-lcrp->lfRow[i]] = tt;
+				tt++;
+			}
+
+			for (;t<lcrp->lnEnts[me];t++) {
+				if (comm_remotePE[t] == i) { // local
+			//	WARNING_LOG("##### pseudocol[%d] = %d, revcol[globcol[%d]] = %d, globcol[%d] = %d",t,pseudocol[revcol[fullCR->col[t]]]/*lcrp->halo_elements*/,lcrp->halo_elements,revcol[globcol[lcrp->halo_elements]],lcrp->halo_elements,globcol[lcrp->halo_elements]);
+		//		fullCR->col[t] =  pseudocol[revcol[fullCR->col[t]]];
+				fullCR->col[t] =  pseudocol[myrevcol[fullCR->col[t]-lcrp->lfRow[i]]];
+				}
+			}
+			free(myrevcol);
+		} else {
+		//	WARNING_LOG("!!! %d",lcrp->lnEnts[me]);
+			for (;t<lcrp->lnEnts[me];t++) {
+				if (comm_remotePE[t] == me) { // local
+				fullCR->col[t] =  comm_remoteEl[t];
+			//	WARNING_LOG("col[%d] = %d",t,fullCR->col[t]);
+			}
+			}
+
 		}
+
+		if (!meHandled) {
+			i = -1;
+			meHandled = 1;
+		}
+
+
+	}
+	
+
+	for (i=0; i<nprocs; i++){
+		if (i != me){ 
+			for (j=0;j<lcrp->wishes[i];j++){
+			//	pseudocol[lcrp->halo_elements] = this_pseudo_col;  
+			//	globcol[lcrp->halo_elements]   = lcrp->lfRow[i]+cwishlist[i][j]; 
+			//	revcol[globcol[lcrp->halo_elements]] = lcrp->halo_elements;
+			//	DEBUG_LOG(0,"myrevcol[%d][%d] = %d",i,globcol[t]-lcrp->lfRow[i],t);
+			//	lcrp->halo_elements++;
+			//	this_pseudo_col++;
+		//		t++;
+			}
+		} 		
 	}
 
 	for (i=0;i<lcrp->lnEnts[me];i++)
 	{
-		if (comm_remotePE[i] == me) // local
-			fullCR->col[i] =  comm_remoteEl[i];
-		else // remote
-			fullCR->col[i] = pseudocol[revcol[fullCR->col[i]]];
+	//	if (comm_remotePE[i] == me) // local
+	//		fullCR->col[i] =  comm_remoteEl[i];
+	//	else // remote
+	//		fullCR->col[i] = pseudocol[myrevcol[comm_remotePE[i]][fullCR->col[i]-lcrp->lfRow[comm_remotePE[i]]]];
+		
+		if (comm_remotePE[i] == me)  {// local
+		//	fullCR->col[i] =  comm_remoteEl[i];
+		 }else { // remote
+		//	fullCR->col[i] = pseudocol[revcol[fullCR->col[i]]];
+		 }
+		//	WARNING_LOG("2>>> col[%d] = %d", i,fullCR->col[i]);
+
+	//	if (ghost_getRank() == 2) {
+	//	}
 	}
 
 	free(comm_remoteEl);
 	free(comm_remotePE);
 	free(pseudocol);
 	free(globcol);
-	free(revcol);
+//	free(revcol);
 	free(present_values); 
 
 	size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
@@ -748,9 +841,11 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
 
 	}
-	free(wishlist_mem);
-	free(cwishlist_mem);
-	free(wishlist);
+//	free(wishlist_mem);
+//	free(cwishlist_mem);
+	//free(wishlist);
+	for (i=0; i<nprocs; i++)
+		free(cwishlist[i]);
 	free(cwishlist);
 	free(tmp_transfers);
 	free(wishlist_counts);
@@ -759,9 +854,17 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
 	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->fromCRS(mat->localPart,localCR);
+//	free(localCR->val); // TODO do this in a function
+//	free(localCR->col);
+//	free(localCR->rpt);
+//	free(localCR);
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
 	mat->remotePart->fromCRS(mat->remotePart,remoteCR);
+//	free(remoteCR->val);
+//	free(remoteCR->col);
+//	free(remoteCR->rpt);
+//	free(remoteCR);
 
 
 	/*
@@ -1086,6 +1189,7 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 	}
 	free(tmp);
 #endif
+	close(file);
 }
 
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype)
@@ -1101,7 +1205,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 	off_t offs;
 
-	file = open(matrixPath,O_RDONLY);
+//	file = open(matrixPath,O_RDONLY);
 
 	DEBUG_LOG(1,"Reading %"PRmatNNZ" cols and vals from binary file %s with offset %"PRmatNNZ,nEnts, matrixPath,offsetEnts);
 

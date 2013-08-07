@@ -4,6 +4,7 @@
 
 
 #include "ghost_util.h"
+// FIXME free arrays
 
 void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
