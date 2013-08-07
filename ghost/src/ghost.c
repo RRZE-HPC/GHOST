@@ -799,7 +799,6 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 {
 
 	// TODO if rhs vector data will not be continous
-	// TODO transpose of first matrix as argument
 	complex double zero = 0.+I*0.;
 	if (v->traits->nrows != w->traits->nrows) {
 		WARNING_LOG("GEMM with vector of different size does not work");
