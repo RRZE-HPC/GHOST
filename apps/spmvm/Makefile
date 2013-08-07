@@ -39,6 +39,10 @@ ifeq ($(strip $(MIC)),2)
 LIBS+= -limf -lsvml -lirng -lintlc
 endif
 
+ifeq ($(LONGIDX),1)
+MAKROS+= -DLONGIDX
+endif
+
 ifeq ($(strip $(LIKWID)),1)
 MAKROS+= -DLIKWID_PERMON
 IPATH += -I$(strip $(LIKWIDPATH))/include
