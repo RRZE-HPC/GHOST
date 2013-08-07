@@ -34,9 +34,10 @@
 #ifdef CUDA
 #include <cuda_runtime.h>
 #endif
-
+#ifdef BLAS_MKL
 #include <mkl.h>
-
+#endif
+#include "ghost_blas_mangle.h"
 
 //static int options;
 #ifdef GHOST_MPI
@@ -836,9 +837,9 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 
 	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-			zgemm(transpose,"N", &m, &n, &k, (MKL_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (MKL_Complex16 *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
+			zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)beta, (*res)->val, &((*res)->traits->nrowspadded));  
 		} else {
-			cgemm(transpose,"N", &m, &n, &k, (MKL_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (MKL_Complex8 *)beta, (*res)->val, &((*res)->traits->nrowspadded));
+			cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)beta, (*res)->val, &((*res)->traits->nrowspadded));
 		}	
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {

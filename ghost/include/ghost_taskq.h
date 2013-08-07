@@ -22,6 +22,11 @@
 
 //#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID,  ## __VA_ARGS__ }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 
 typedef struct ghost_task_t {
 	// user defined
@@ -80,5 +85,9 @@ int ghost_task_print(ghost_task_t *t);
 char *ghost_task_strstate(int state);
 
 extern ghost_thpool_t *ghost_thpool; // the thread pool
+
+#ifdef __cplusplus
+}// extern "C"
+#endif
 
 #endif //__GHOST_TASKQ_H__

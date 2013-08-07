@@ -63,7 +63,9 @@
 	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
 
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /******************************************************************************/
 /*----  Type definitions  ----------------------------------------------------*/
@@ -454,5 +456,9 @@ void ghost_freeVec(ghost_vec_t *vec);
 void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
 
 int ghost_gemm(char *transpose, ghost_vec_t *v,  ghost_vec_t *w, ghost_vec_t **res, void *alpha, void *beta, int reduce); 
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
