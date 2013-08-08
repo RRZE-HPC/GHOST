@@ -195,7 +195,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 
 
-		DEBUG_LOG(1,"Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",curTask,curTask->nThreads,q->LD,q->nIdleCores,ghost_thpool->nIdleCores);
+		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,q->LD,q->nIdleCores,ghost_thpool->nIdleCores);
 
 		// if task has siblings, delete them here
 		if (curTask->siblings != NULL)
@@ -252,7 +252,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 							if (!(CHK_BIT(taskqs[curLD]->coreState,t))) 
 							{
 								DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",
-										(int)pthread_self(),curTask->cores[reservedCores],curLD,taskqs[curLD]->nIdleCores);
+										(int)pthread_self(),ghost_thpool->firstThreadOfLD[curLD]+t,curLD,taskqs[curLD]->nIdleCores-1);
 
 								taskqs[curLD]->nIdleCores --;
 								ghost_setCore(ghost_thpool->firstThreadOfLD[curLD]+t);
@@ -287,7 +287,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		if (reservedCores < curTask->nThreads) {
 			WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
 		}
-		
+
 		DEBUG_LOG(1,"Pinning successful, returning");
 		return curTask;
 	}
@@ -351,7 +351,7 @@ static void * thread_main(void *arg)
 
 			curQueue = taskqs[q];
 			DEBUG_LOG(1,"Thread %d: Trying to find task in queue %d: %p",(int)pthread_self(),myLD,curQueue);	
-			
+
 			pthread_mutex_lock(&curQueue->mutex);
 			myTask = taskq_findDeleteAndPinTask(curQueue);
 			pthread_mutex_unlock(&curQueue->mutex);
@@ -372,13 +372,13 @@ static void * thread_main(void *arg)
 			nTasks++;	
 			pthread_mutex_unlock(&globalMutex);	
 			sem_post(&taskSem);
-		//	usleep(1); // give other threads a chance
+			//	usleep(1); // give other threads a chance
 			continue;
 		}
-			
+
 		*(myTask->executingThreadNo) = myCore;
 		*(myTask->state) = GHOST_TASK_RUNNING;	
-		
+
 		tFunc = myTask->func;
 		tArg = myTask->arg;
 
@@ -386,10 +386,9 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Finally executing task: %p",(int)pthread_self(),myTask);
 
 		myTask->ret = tFunc(tArg);
-		
+
 		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
-		
-		ghost_thpool->nIdleCores += myTask->nThreads;
+
 		for (t=0; t<myTask->nThreads; t++) {
 			for (curLD = 0; curLD < ghost_thpool->nLDs; curLD++) {
 				if ((myTask->cores[t]>=ghost_thpool->firstThreadOfLD[curLD]) && (myTask->cores[t]<ghost_thpool->firstThreadOfLD[curLD+1])) {
@@ -405,6 +404,8 @@ static void * thread_main(void *arg)
 				}
 			}
 		}
+			
+		ghost_thpool->nIdleCores += myTask->nThreads;
 		pthread_mutex_lock(myTask->mutex); // TODO will this cause race conditions?
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
 		*(myTask->state) = GHOST_TASK_FINISHED;
@@ -426,6 +427,30 @@ int ghost_task_print(ghost_task_t *t)
 		ghost_printLine("Last sibling",NULL,"%p",t->siblings[ghost_thpool->nLDs-1]);
 	}
 	ghost_printFooter();
+
+	return GHOST_SUCCESS;
+}
+
+int ghost_taskq_print_all() 
+{
+	int q;
+	ghost_task_t *t;
+
+	for (q=0; q<ghost_thpool->nLDs; q++)
+	{
+		pthread_mutex_lock(&taskqs[q]->mutex);
+		ghost_printHeader("LD %d",q);
+
+		t = taskqs[q]->head;
+		while (t != NULL)
+		{
+			printf("%p ",t);
+			t=t->next;
+		}
+		printf("\n");
+		ghost_printFooter();
+		pthread_mutex_unlock(&taskqs[q]->mutex);
+	}
 
 	return GHOST_SUCCESS;
 }
@@ -469,6 +494,8 @@ int ghost_task_add(ghost_task_t *t)
 {
 	int q;
 
+	pthread_mutex_lock(&globalMutex); // TODO is it needed to protect _everything_? (should be not performance critical here though)
+
 	// if a task is initialized _once_ but added several times, this has to be done each time it is added
 	pthread_cond_init(t->finishedCond,NULL);
 	pthread_mutex_init(t->mutex,NULL);
@@ -502,7 +529,7 @@ int ghost_task_add(ghost_task_t *t)
 	} 
 	else 
 	{
-		DEBUG_LOG(1,"This task goes to  queue %p (LD %d)",taskqs[t->LD],t->LD);
+		DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d), # tasks: %d",t,t->nThreads,taskqs[t->LD],t->LD,nTasks);
 		if (t->LD > ghost_thpool->nLDs) {
 			WARNING_LOG("Task shall go to LD %d but there are only %d LDs. Setting LD to zero...", t->LD, ghost_thpool->nLDs);
 			t->LD = 0;
@@ -512,13 +539,14 @@ int ghost_task_add(ghost_task_t *t)
 	}
 	*(t->state) = GHOST_TASK_ENQUEUED;
 
-	pthread_mutex_lock(&globalMutex);
+	//pthread_mutex_lock(&globalMutex);
 	nTasks++;	
-	pthread_mutex_unlock(&globalMutex);	
+	//pthread_mutex_unlock(&globalMutex);	
 	sem_post(&taskSem);
 
 
 	DEBUG_LOG(1,"Task added successfully");
+	pthread_mutex_unlock(&globalMutex);
 
 	return GHOST_SUCCESS;
 }
@@ -558,7 +586,7 @@ int ghost_task_wait(ghost_task_t * t)
 {
 	DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d and whose state is %d",t,*(t->executingThreadNo),*(t->state));
 
-		pthread_mutex_lock(t->mutex);
+	pthread_mutex_lock(t->mutex);
 	if (*(t->state) != GHOST_TASK_FINISHED) {
 		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p which is managed by thread %d",t->finishedCond,t,*(t->executingThreadNo));
 		pthread_cond_wait(t->finishedCond,t->mutex);
@@ -602,9 +630,11 @@ int ghost_task_waitall()
 	
 	for (q=0; q<ghost_thpool->nLDs; q++)
 	{
+		DEBUG_LOG(1,"Waitall: Waiting for tasks of LD %d (queue: %p)",q,taskqs[q]);
 		t = taskqs[q]->head;
 		while (t != NULL)
 		{
+			DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
 			ghost_task_wait(t);
 			t = t->next;
 		}
@@ -638,7 +668,7 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 
 	DEBUG_LOG(1,"None of the tasks has already finished. Waiting for (at least) one of them...");
 
-	
+
 	for (t=0; t<nt; t++)
 	{
 		pthread_create(&threads[t],NULL,(void *(*)(void *))&ghost_task_wait,tasks[t]);
@@ -678,7 +708,7 @@ int ghost_task_destroy(ghost_task_t *t)
 ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
 {
 	ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
-	
+
 	if (nThreads == GHOST_TASK_FILL_LD) {
 		if (LD < 0) {
 			WARNING_LOG("FILL_LD does only work when the LD is given! Not adding task!");
@@ -687,10 +717,10 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 		t->nThreads = ghost_thpool->firstThreadOfLD[LD+1]-ghost_thpool->firstThreadOfLD[LD];
 	} 
 	else if (nThreads == GHOST_TASK_FILL_ALL) {
-	/*	if (LD < 0) {
+		/*	if (LD < 0) {
 			WARNING_LOG("FILL_ALL does only work when the LD is given! Not adding task!");
 			return NULL;
-		}*/
+			}*/
 		t->nThreads = ghost_thpool->nThreads;
 	} 
 	else {
