@@ -159,10 +159,6 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 	CR(mat)->nrows = cr->nrows;
 	CR(mat)->ncols = cr->ncols;
 	CR(mat)->nEnts = cr->nEnts;
-	CR(mat)->rpt = cr->rpt;
-	CR(mat)->val = cr->val;
-	CR(mat)->col = cr->col;
-
 
 	CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((cr->nrows+1)*sizeof(ghost_midx_t));
 	CR(mat)->col = (ghost_midx_t *)ghost_malloc(cr->nEnts*sizeof(ghost_midx_t));
@@ -281,7 +277,8 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 		((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - comm->lfEnt[me]; 
 
 	/* last entry of row_ptr holds the local number of entries */
-	((CR_TYPE *)((*mat)->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me]; 
+	((CR_TYPE *)((*mat)->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me];
+
 
 	DEBUG_LOG(1,"local rows          = %"PRmatIDX,comm->lnrows[me]);
 	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,comm->lfRow[me]);
@@ -670,14 +667,14 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
 	mat->localPart->symmetry = mat->symmetry;
-	CR(mat)->val = localCR->val;
-	CR(mat)->col = localCR->col;
-	CR(mat)->rpt = localCR->rpt;
+	CR(mat->localPart)->val = localCR->val;
+	CR(mat->localPart)->col = localCR->col;
+	CR(mat->localPart)->rpt = localCR->rpt;
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
-	CR(mat)->val = remoteCR->val;
-	CR(mat)->col = remoteCR->col;
-	CR(mat)->rpt = remoteCR->rpt;
+	CR(mat->remotePart)->val = remoteCR->val;
+	CR(mat->remotePart)->col = remoteCR->col;
+	CR(mat->remotePart)->rpt = remoteCR->rpt;
 
 }
 
@@ -1250,7 +1247,6 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Reading in a global context");
 		CRS_readHeader(mat,matrixPath);
-
 		CRS_readRpt(mat,matrixPath);
 		CRS_readColValOffset(mat, matrixPath, 0, 0, CR(mat)->nrows, CR(mat)->nEnts, GHOST_IO_STD);
 	} else {
