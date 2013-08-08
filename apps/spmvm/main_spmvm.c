@@ -2,6 +2,10 @@
 #include <ghost_util.h>
 #include <ghost_taskq.h>
 
+#ifdef VT
+#include <VT.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -14,7 +18,7 @@
 #endif
 
 //#define TASKING
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -67,7 +71,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 5;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -118,7 +122,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	ghost_readMatFileHeader(matrixPath,&fileheader);
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
+	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_WORKDIST_NZE);
 	mat = ghost_createMatrix(&mtraits,1);
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);
@@ -149,12 +153,19 @@ int main( int argc, char* argv[] )
 
 	ghost_printHeader("Performance");
 
+
 	for (mode=0; mode < nModes; mode++){
 
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
 		if (modes[mode] == GHOST_SPMVM_MODE_TASKMODE) { // having a task inside a task does not work currently in this case
+#ifdef VT
+			VT_begin("foo");
+#endif
 			time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
+#ifdef VT
+			VT_end("foo");
+#endif
 
 		} else {
 
@@ -197,7 +208,7 @@ int main( int argc, char* argv[] )
 		}
 		ghost_midx_t totalerrors;
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
 #else
 		totalerrors = errcount;
 #endif
