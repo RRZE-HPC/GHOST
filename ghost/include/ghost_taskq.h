@@ -81,6 +81,7 @@ int ghost_task_waitsome(ghost_task_t **, int, int*);
 int ghost_task_test(ghost_task_t *);
 int ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
 int ghost_task_print(ghost_task_t *t);
+int ghost_taskq_print_all(); 
 
 char *ghost_task_strstate(int state);
 

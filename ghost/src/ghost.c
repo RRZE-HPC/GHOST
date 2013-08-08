@@ -811,7 +811,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t **re
 
 	ghost_vtraits_t *restraits = (ghost_vtraits_t*)ghost_malloc(sizeof(ghost_vtraits_t));;
 	restraits->flags = GHOST_VEC_DEFAULT;
-	restraits->nrows = v->traits->nvecs;
+	restraits->nrows = v->traits->nvecs; //TODO set padded, halo to zero?
 	restraits->nvecs = w->traits->nvecs;
 	restraits->datatype = v->traits->datatype;
 

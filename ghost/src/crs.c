@@ -667,15 +667,11 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
 	mat->localPart->symmetry = mat->symmetry;
-	CR(mat->localPart)->val = localCR->val;
-	CR(mat->localPart)->col = localCR->col;
+	mat->localPart->data = localCR;
 	CR(mat->localPart)->rpt = localCR->rpt;
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
-	CR(mat->remotePart)->val = remoteCR->val;
-	CR(mat->remotePart)->col = remoteCR->col;
-	CR(mat->remotePart)->rpt = remoteCR->rpt;
-
+	mat->remotePart->data = remoteCR;
 }
 
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp)

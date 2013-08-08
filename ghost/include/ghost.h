@@ -36,7 +36,7 @@
 #include "ghost_constants.h"
 
 #define GHOST_NAME "ghost"
-#define GHOST_VERSION "0.4"
+#define GHOST_VERSION "0.4.1"
 
 
 /******************************************************************************/

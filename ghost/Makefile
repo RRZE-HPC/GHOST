@@ -75,6 +75,12 @@ IPATH += -isystem $(CUDA_HOME)/include -I./include/cu
 OBJS  += $(CUOBJS)
 endif
 
+ifeq ($(strip $(ITAC)),1)
+MAKROS+= -DVT
+IPATH += -I$(ITC_INC)
+CFLAGS += -trace
+endif
+
 ifeq ($(LIKWID),1)
 MAKROS+= -DLIKWID_PERFMON
 IPATH += -I$(LIKWIDPATH)/include

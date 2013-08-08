@@ -16,6 +16,8 @@
 #include <cuComplex.h>
 #endif
 
+#include <stdint.h>
+
 
 /*#ifdef GHOST_DT_S
 #define ABS(a) fabsf(a)

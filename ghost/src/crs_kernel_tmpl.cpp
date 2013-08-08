@@ -21,7 +21,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	if (options & GHOST_SPMVM_APPLY_SCALE)
 		scale = *((v_t *)(mat->traits->scale));
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
+//#pragma omp parallel for schedule(runtime) private (hlp1, j)
 	for (i=0; i<cr->nrows; i++){
 		hlp1 = (v_t)0.0;
 		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){

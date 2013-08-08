@@ -471,6 +471,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 				//ghost_referenceKernel(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 			}
 		} else if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
+			WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
 			for (iter=0; iter<nIter; iter++) {
 				//ghost_referenceKernel_symm(globLHS->val, cr->col, cr->rpt, cr->val, globRHS->val, cr->nrows, spmvmOptions);
 			}
@@ -490,6 +491,8 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	nltraits->datatype = rhs->traits->datatype;
 	nltraits->nvecs = 1;
 	nltraits->nrows = 0;
+	nltraits->nrowspadded = 0;
+	nltraits->nrowshalo = 0;
 	ghost_vec_t *nodeLHS = ghost_createVector(nltraits);
 
 	nodeLHS->fromScalar(nodeLHS,distContext,&zero);

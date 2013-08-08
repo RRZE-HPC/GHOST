@@ -10,6 +10,7 @@ SSE:=$(strip $(SSE))
 OPENCL:=$(strip $(OPENCL))
 CUDA:=$(strip $(CUDA))
 LIKWID:=$(strip $(LIKWID))
+ITAC:=$(strip $(ITAC))
 DEBUG:=$(strip $(DEBUG))
 GHOSTPATH:=$(strip $(GHOSTPATH))
 LIKWIDPATH:=$(strip $(LIKWIDPATH))
@@ -41,6 +42,11 @@ endif
 
 ifeq ($(LONGIDX),1)
 MAKROS+= -DLONGIDX
+endif
+
+ifeq ($(strip $(ITAC)),1)
+MAKROS+= -DVT
+IPATH += -I$(ITC_INC)
 endif
 
 ifeq ($(strip $(LIKWID)),1)

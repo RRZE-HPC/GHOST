@@ -71,7 +71,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 1;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -203,7 +203,8 @@ int main( int argc, char* argv[] )
 						cimag(res),
 						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
-				//break;
+				printf("PE%d: There may be more errors...\n",ghost_getRank());
+				break;
 			}
 		}
 		ghost_midx_t totalerrors;

@@ -31,8 +31,8 @@ FFLAGS += -mmic
 endif
 
 ifneq ($(DEBUG),0)
-CFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
-FFLAGS += -g -O0
+CFLAGS += -g -O0  #-check-pointers=rw -check-pointers-dangling=all -rdynamic
+FFLAGS += -g -O0 
 else
 CFLAGS += -O3 -Wall -Wremarks -Wcheck -diag-disable 981 #-vec-report3
 FFLAGS += -O3 -warn all
