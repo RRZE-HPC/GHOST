@@ -1442,3 +1442,11 @@ int ghost_flopsPerSpmvm(int m_t, int v_t)
 
 	return flops;
 }
+
+ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
+{
+	ghost_vtraits_t *t2 = (ghost_vtraits_t *)ghost_malloc(sizeof(ghost_vtraits_t));
+	memcpy(t2,t1,sizeof(ghost_vtraits_t));
+
+	return t2;
+}

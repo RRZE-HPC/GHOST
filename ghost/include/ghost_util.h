@@ -258,6 +258,7 @@ void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
 void *ghost_malloc(const size_t size);
 void *ghost_malloc_align(const size_t size, const size_t align);
 int ghost_flopsPerSpmvm(int m_t, int v_t);
+ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
 
 #ifdef __cplusplus
 }
