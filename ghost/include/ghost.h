@@ -3,11 +3,15 @@
 
 #ifdef GHOST_MPI
 #ifndef CUDAKERNEL
+#ifdef __INTEL_COMPILER
 #pragma warning (disable : 869)
 #pragma warning (disable : 424)
+#endif
 #include <mpi.h>
+#ifdef __INTEL_COMPILER
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
+#endif
 #endif
 #endif
 

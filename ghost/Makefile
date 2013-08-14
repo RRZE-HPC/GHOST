@@ -121,9 +121,13 @@ $(OBJDIR)/%.o: %.c config.mk
 
 $(OBJDIR)/%.o: %.cpp config.mk
 	@echo "==> Compile $< -> $@"
-	${Q}${CPPC} $(CFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
+	${Q}${CPPC} $(CPPFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
-$(OBJDIR)/%.o: %.F90 config.mk $(FMODULES) 
+$(OBJDIR)/%.f90: %.F90 config.mk $(FMODULES) 
+	@echo "==> Preprocess $< -> $@"
+	${Q}${PP} -o $@ $<
+
+$(OBJDIR)/%.o: $(OBJDIR)/%.f90 config.mk $(FMODULES) 
 	@echo "==> Compile $< -> $@"
 	${Q}$(FC) $(FFLAGS) ${MAKROS} ${IPATH} -o $@ -c $<
 
