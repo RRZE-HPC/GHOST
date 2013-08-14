@@ -550,7 +550,6 @@ int ghost_task_add(ghost_task_t *t)
 int ghost_taskq_finish()
 {
 	int t;
-	pthread_mutex_t mutex;
 
 	ghost_task_waitall(); // finish all outstanding tasks
 	killed = 1;
