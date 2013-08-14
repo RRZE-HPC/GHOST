@@ -44,7 +44,7 @@ static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
 static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t *, void (*fp)(int,int,void *));
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs2, int nv);
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs);
 static void vec_fromRand(ghost_vec_t *vec, ghost_context_t *);
 static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t *, void *val);
 static void vec_fromFile(ghost_vec_t *vec, ghost_context_t *, char *path, off_t offset);
@@ -60,8 +60,9 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm);
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 static void vec_entry(ghost_vec_t *, int, void *);
-static ghost_vec_t * vec_extract (ghost_vec_t * mv, int k, int n);
-static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n);
+static ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
+static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
+static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 #ifdef CUDA
 static void vec_CUupload (ghost_vec_t *);
 static void vec_CUdownload (ghost_vec_t *);
@@ -100,6 +101,7 @@ ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 	vec->entry = &vec_entry;
 	vec->extract = &vec_extract;
 	vec->view = &vec_view;
+	vec->viewPlain = &vec_viewPlain;
 
 #ifdef CUDA
 	vec->CUupload = &vec_CUupload;
@@ -114,16 +116,6 @@ ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
 	vec->isView = 0;
 
 	DEBUG_LOG(1,"The vector has %d sub-vectors with %d rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
-	/*
-	   ghost_vidx_t i,v;
-
-#pragma omp parallel for
-for (v=0; v<traits->nvecs; v++) {
-for (i=0; i<traits->nrows; i++) {
-VAL(vec)[v*traits->nrows+i] = 0.+I*0.;
-}
-}
-	 */
 	return vec;
 	}
 
@@ -151,35 +143,39 @@ static void vec_CLdownload( ghost_vec_t *vec )
 }
 #endif
 
-static ghost_vec_t * vec_view (ghost_vec_t *src, int k, int n)
+static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
 {
-	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
+	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 	ghost_vec_t *new;
-	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
-	newTraits->flags = src->traits->flags;
-	newTraits->nrows = src->traits->nrows;
-	newTraits->nvecs = n;
-	newTraits->datatype = src->traits->datatype;
+	ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
+	newTraits->nrows = nr;
+	newTraits->nvecs = nc;
 
 	new = ghost_initVector(newTraits);
-	new->val = &VAL(src,k*src->traits->nrows);
+	new->val = &VAL(src,src->traits->nrowspadded*coffs+roffs);
 
 	new->isView = 1;
 	return new;
 }
 
-ghost_vec_t * vec_extract (ghost_vec_t * src, int k, int n)
+static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda)
 {
-	DEBUG_LOG(1,"Extracting %d sub-vectors starting from %d",n,k);
+	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix from plain data with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
+
+	vec->val = &((char *)data)[(lda*coffs+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
+	vec->isView = 1;
+}
+
+ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
+{
+	DEBUG_LOG(1,"Extracting a %"PRvecIDX"x%"PRvecIDX" dense matrix with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 	ghost_vec_t *new;
-	ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
-	newTraits->flags = src->traits->flags;
-	newTraits->nrows = src->traits->nrows;
-	newTraits->nvecs = n;
-	newTraits->datatype = src->traits->datatype;
+	ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
+	newTraits->nrows = nr;
+	newTraits->nvecs = nc;
 
 	new = ghost_initVector(newTraits);
-	new->fromVec(new,src,0,k,n);
+	new->fromVec(new,src,roffs,coffs);
 
 	return new;
 
@@ -270,18 +266,17 @@ void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
 }
 
 
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, int offs1, int offs2, int nv)
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs)
 {
-	DEBUG_LOG(2,"Cloning the vector");
+	DEBUG_LOG(1,"Initializing vector from vector w/ offset %"PRvecIDX"x%"PRvecIDX,roffs,coffs);
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec2->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	ghost_vidx_t i,v;
-	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
 #pragma omp parallel for private(i) 
-	for (v=0; v<nv; v++) {
-		for (i=0; i<nr; i++) {
-			memcpy(&VAL(vec,(offs1+v)*vec->traits->nrows+i),&VAL(vec2,(offs2+v)*vec2->traits->nrows+i),sizeofdt);
+	for (v=0; v<vec->traits->nvecs; v++) {
+		for (i=0; i<vec->traits->nrows; i++) {
+			memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),&VAL(vec2,(coffs+v)*vec2->traits->nrowspadded+roffs+i),sizeofdt);
 		}
 	}
 }
@@ -508,7 +503,7 @@ static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int
 static void ghost_zeroVector(ghost_vec_t *vec) 
 {
 	DEBUG_LOG(1,"Zeroing vector");
-	memset(vec->val,0,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	memset(vec->val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
 
 #ifdef OPENCL
 	vec->CLupload(vec);
@@ -795,18 +790,5 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 {
-	return src->extract(src,0,src->traits->nvecs);
-	/*	ghost_vec_t *new;
-		ghost_vtraits_t *newTraits = (ghost_vtraits_t *)malloc(sizeof(ghost_vtraits_t));
-		newTraits->flags = src->traits->flags;
-		newTraits->nrows = src->traits->nrows;
-		newTraits->datatype = src->traits->datatype;
-
-		new = ghost_initVector(newTraits);
-		new->fromVec(new,src,0,0,1);
-
-	//	= ghost_newVector(src->traits->nrows, src->traits->flags);
-	//	memcpy(new->val, src->val, src->traits->nrows*sizeof(ghost_dt));
-
-	return new;*/
+	return src->extract(src,src->traits->nrows,src->traits->nvecs,0,0);
 }

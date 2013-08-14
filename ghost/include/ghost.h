@@ -87,7 +87,7 @@ struct ghost_vec_t
 	void* val;
 
 	void          (*fromFunc) (ghost_vec_t *, ghost_context_t *, void (*fp)(int,int,void *));
-	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, int, int, int);
+	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
 	void          (*fromFile) (ghost_vec_t *, ghost_context_t *, char *path, off_t);
 	void          (*fromRand) (ghost_vec_t *, ghost_context_t *);
 	void          (*fromScalar) (ghost_vec_t *, ghost_context_t *, void *);
@@ -108,8 +108,9 @@ struct ghost_vec_t
 	void          (*entry) (ghost_vec_t *, int,  void *);
 
 	ghost_vec_t * (*clone) (ghost_vec_t *);
-	ghost_vec_t * (*extract) (ghost_vec_t *, int, int);
-	ghost_vec_t * (*view) (ghost_vec_t *, int, int);
+	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+	void (*viewPlain) (ghost_vec_t *, void *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
 
 	void          (*CUupload) (ghost_vec_t *);
 	void          (*CUdownload) (ghost_vec_t *);
