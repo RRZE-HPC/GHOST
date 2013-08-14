@@ -10,6 +10,7 @@ GHOST_REGISTER_DT_D(matdt)
 
 int main(int argc, char* argv[]) 
 {
+	vecdt_t zero = 0.;
 	vecdt_t one = 1.;
 
 	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS,.datatype = matdt);
@@ -37,8 +38,12 @@ int main(int argc, char* argv[])
 
 	dm2->print(dm2);
 
+	ghost_vtraits_t dm3traits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_DEFAULT, .nrows = dm1->traits->nvecs, .nvecs = dm2->traits->nvecs, .datatype=vecdt);
+	dm3 = ghost_createVector(&dm3traits);
+	dm3->fromScalar(dm3,NULL,&zero);
+
 	vecdt_t alpha = 1., beta = 0.;
-	ghost_gemm("T",dm1,dm2,&dm3,&alpha,&beta,GHOST_GEMM_ALL_REDUCE);
+	ghost_gemm("T",dm1,dm2,dm3,&alpha,&beta,GHOST_GEMM_ALL_REDUCE);
 
 	dm3->print(dm3);
 
