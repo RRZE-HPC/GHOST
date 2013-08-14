@@ -40,9 +40,9 @@ int main(int argc, char* argv[])
 
 	ghost_vtraits_t dm3traits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_DEFAULT, .nrows = dm1->traits->nvecs, .nvecs = dm2->traits->nvecs, .datatype=vecdt);
 	dm3 = ghost_createVector(&dm3traits);
-	dm3->fromScalar(dm3,NULL,&zero);
+	dm3->fromScalar(dm3,NULL,&one);
 
-	vecdt_t alpha = 1., beta = 0.;
+	vecdt_t alpha = 1., beta = 1.;
 	ghost_gemm("T",dm1,dm2,dm3,&alpha,&beta,GHOST_GEMM_ALL_REDUCE);
 
 	dm3->print(dm3);
