@@ -20,6 +20,7 @@ apps/*/
 !apps/lanczos/
 !apps/taskq/
 !apps/dense/
+!apps/test/
 tags
 *stdout*
 *stderr*
