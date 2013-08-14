@@ -284,7 +284,7 @@ DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore
 #ifdef CUDA
 	CU_init();
 #endif
-	
+
 	ghost_cpuid_init();
 	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 	ghost_taskq_init(ghost_cpuid_topology.numSockets);
@@ -296,12 +296,12 @@ DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore
 	//threadpool[ghost_getCore()].state = GHOST_THREAD_MGMT;
 	//threadpool[ghost_getCore()].desc = "main";
 	//for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
-//		threadpool[i].state = GHOST_THREAD_HALTED;
-//	}
+	//		threadpool[i].state = GHOST_THREAD_HALTED;
+	//	}
 
 
-return me;
-}
+	return me;
+	}
 
 void ghost_finish()
 {
@@ -799,7 +799,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 {
 
 	// TODO if rhs vector data will not be continous
-//	complex double zero = 0.+I*0.;
+	complex double zero = 0.+I*0.;
 	if (v->traits->nrows != w->traits->nrows) {
 		WARNING_LOG("GEMM with vector of different size does not work");
 		return GHOST_FAILURE;
@@ -809,15 +809,15 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 		return GHOST_FAILURE;
 	}
 
-//	ghost_vtraits_t *restraits = (ghost_vtraits_t*)ghost_malloc(sizeof(ghost_vtraits_t));;
-//	restraits->flags = GHOST_VEC_DEFAULT;
-//	restraits->nrows = v->traits->nvecs; //TODO set padded, halo to zero?
-//	restraits->nvecs = w->traits->nvecs;
-//	restraits->datatype = v->traits->datatype;
+	//	ghost_vtraits_t *restraits = (ghost_vtraits_t*)ghost_malloc(sizeof(ghost_vtraits_t));;
+	//	restraits->flags = GHOST_VEC_DEFAULT;
+	//	restraits->nrows = v->traits->nvecs; //TODO set padded, halo to zero?
+	//	restraits->nvecs = w->traits->nvecs;
+	//	restraits->datatype = v->traits->datatype;
 
 
-//	*res = ghost_createVector(restraits);
-//	(*res)->fromScalar(*res,NULL,&zero); //vec rows are valid, ctx can be NULL
+	//	*res = ghost_createVector(restraits);
+	//	(*res)->fromScalar(*res,NULL,&zero); //vec rows are valid, ctx can be NULL
 
 #ifdef LONGIDX // TODO
 	ABORT("GEMM with LONGIDX not implemented");
@@ -836,15 +836,48 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 
 	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-			zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)beta, x->val, &(x->traits->nrowspadded));  
+			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
+				if (ghost_getRank() == 0) { 
+					zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)beta, x->val, &(x->traits->nrowspadded)); 
+				} else {
+					zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)&zero, x->val, &(x->traits->nrowspadded)); 
+				}
+			} else {
+				zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)beta, x->val, &(x->traits->nrowspadded)); 
+			}
+
 		} else {
-			cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)beta, x->val, &(x->traits->nrowspadded));
+			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
+				if (ghost_getRank() == 0) { 
+					cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)beta, x->val, &(x->traits->nrowspadded));
+				} else {
+					cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)&zero, x->val, &(x->traits->nrowspadded));
+				}
+			} else {
+				cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)beta, x->val, &(x->traits->nrowspadded));
+			}
 		}	
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-			dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, x->val, &(x->traits->nrowspadded));  
+			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
+				if (ghost_getRank() == 0) { 
+					dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, x->val, &(x->traits->nrowspadded));
+				} else {
+					dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)&zero, x->val, &(x->traits->nrowspadded));
+				}
+			} else {
+				dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, x->val, &(x->traits->nrowspadded));
+			}
 		} else {
-			sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)beta, x->val, &(x->traits->nrowspadded));
+			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
+				if (ghost_getRank() == 0) { 
+					sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)beta, x->val, &(x->traits->nrowspadded));
+				} else {
+					sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)&zero, x->val, &(x->traits->nrowspadded));
+				}
+			} else {
+				sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)beta, x->val, &(x->traits->nrowspadded));
+			}
 		}	
 	}
 
@@ -856,6 +889,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 		for (i=0; i<x->traits->nvecs; ++i) {
 			for (j=0; j<x->traits->nrows; ++j) {
 				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
+
 			}
 		}
 	} else {
