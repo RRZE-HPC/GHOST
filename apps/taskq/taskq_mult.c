@@ -28,7 +28,7 @@ static void *shortRunningFunc(void *arg)
 
 	usleep(5e5); // sleep 500 ms
 	if (arg != NULL)
-		printf("    ######### shortRunningFunc arg: %s\n",(char *)arg);
+		printf("    ######### shortRunningFunc arg: %d\n",*(int *)arg);
 
 #pragma omp parallel
 	{
@@ -44,7 +44,7 @@ static void *longRunningFunc(void *arg)
 {
 	usleep(1e6); // sleep 1 sec
 	if (arg != NULL)
-		printf("    ######### longRunningFunc arg: %s\n",(char *)arg);
+		printf("    ######### longRunningFunc arg: %d\n",*(int *)arg);
 
 #pragma omp parallel
 	{
@@ -64,24 +64,50 @@ static void *controller1(void *arg)
 	ghost_task_t *lrTask;
 	ghost_task_t *srTask;
 
-	lrTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &longRunningFunc, NULL, GHOST_TASK_DEFAULT);
-	srTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &shortRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	lrTask = ghost_task_init(GHOST_TASK_FILL_LD, 0, &longRunningFunc, NULL, GHOST_TASK_DEFAULT);
 	ghost_task_add(lrTask);
+	lrTask = ghost_task_init(GHOST_TASK_FILL_LD, 0, &longRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	ghost_task_add(lrTask);
+	srTask = ghost_task_init(1, 1, &shortRunningFunc, NULL, GHOST_TASK_DEFAULT);
 	ghost_task_add(srTask);
+	srTask = ghost_task_init(1, 1, &shortRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	ghost_task_add(srTask);
+	srTask = ghost_task_init(1, 1, &shortRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	ghost_task_add(srTask);
+	lrTask = ghost_task_init(GHOST_TASK_FILL_LD, 0, &longRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	ghost_task_add(lrTask);
 
 	return NULL;
 }
 
-static void *controller2(void *arg)
+static void *controller2(void *i)
 {
-	UNUSED(arg);
-	
+	int *i1 = (int *)ghost_malloc(sizeof(int));
+	*i1 = 1;
+	int *i2 = (int *)ghost_malloc(sizeof(int));
+	*i2 = 2;
+	int *i3 = (int *)ghost_malloc(sizeof(int));
+	*i3 = 3;
+	int *i4 = (int *)ghost_malloc(sizeof(int));
+	*i4 = 4;
+	int *i5 = (int *)ghost_malloc(sizeof(int));
+	*i5 = 5;
+	int *i6 = (int *)ghost_malloc(sizeof(int));
+	*i6 = 6;
 	ghost_task_t *lrTask;
 	ghost_task_t *srTask;
 
-	lrTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &longRunningFunc, NULL, GHOST_TASK_DEFAULT);
-	srTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &shortRunningFunc, NULL, GHOST_TASK_DEFAULT);
+	lrTask = ghost_task_init(2, 1, &longRunningFunc, i1, GHOST_TASK_DEFAULT);
 	ghost_task_add(lrTask);
+	srTask = ghost_task_init(GHOST_TASK_FILL_LD, 1, &shortRunningFunc, i2, GHOST_TASK_DEFAULT);
+	ghost_task_add(srTask);
+	lrTask = ghost_task_init(2, 1, &longRunningFunc, i3, GHOST_TASK_DEFAULT);
+	ghost_task_add(lrTask);
+	srTask = ghost_task_init(GHOST_TASK_FILL_LD, 1, &shortRunningFunc, i4, GHOST_TASK_DEFAULT);
+	ghost_task_add(srTask);
+	lrTask = ghost_task_init(2, 1, &longRunningFunc, i5, GHOST_TASK_DEFAULT);
+	ghost_task_add(lrTask);
+	srTask = ghost_task_init(GHOST_TASK_FILL_LD, 1, &shortRunningFunc, i6, GHOST_TASK_DEFAULT);
 	ghost_task_add(srTask);
 
 	return NULL;
@@ -97,7 +123,6 @@ int main(int argc, char ** argv)
 	printf(">>> started controllers\n");	
 	pthread_join(ct1,NULL);
 	pthread_join(ct2,NULL);
-//	ghost_task_waitall();
 
 	ghost_finish();
 	return 0;
