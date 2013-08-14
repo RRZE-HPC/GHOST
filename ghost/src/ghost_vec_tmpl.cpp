@@ -75,7 +75,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_con
 		getNrowsFromContext(vec,ctx);
 
 	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
-	int i;
+	int i,v;
 
 // TODO fuse loops but preserve randomness
 
@@ -84,8 +84,10 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_con
 		((v_t *)(vec->val))[i] = (v_t)0;
 	}
 	
-	for (i=0; i<vec->traits->nrows; i++) {
-		((v_t *)(vec->val))[i] = (v_t)(rand()*1./RAND_MAX); // TODO imag
+	for (v=0; v<vec->traits->nvecs; v++) {
+		for (i=0; i<vec->traits->nrows; i++) {
+			((v_t *)(vec->val))[v*vec->traits->nrowspadded+i] = (v_t)(rand()*1./RAND_MAX); // TODO imag
+		}
 	}
 }
 
