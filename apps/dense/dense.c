@@ -10,11 +10,13 @@ GHOST_REGISTER_DT_D(matdt)
 
 int main(int argc, char* argv[]) 
 {
+	int nv = 2;
 	vecdt_t zero = 0.;
 	vecdt_t one = 1.;
+	vecdt_t dotpr[nv];
 
 	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS,.datatype = matdt);
-	ghost_vtraits_t dmtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .nvecs=2, .datatype=vecdt);
+	ghost_vtraits_t dmtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .nvecs=nv, .datatype=vecdt);
 
 	ghost_matfile_header_t fileheader;
 	ghost_context_t *ctx;
@@ -37,6 +39,15 @@ int main(int argc, char* argv[])
 	dm1->print(dm1);
 
 	dm2->print(dm2);
+	
+	for (int i=0; i<nv; i++)
+		dotpr[i] = 0.;
+
+	ghost_dotProduct(dm1,dm2,&dotpr);
+	printf("dotproduct:\n");
+	for (int i=0; i<nv; i++)
+		printf("%f ",dotpr[i]);
+	printf("\n");
 
 	ghost_vtraits_t dm3traits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_DEFAULT, .nrows = dm1->traits->nvecs, .nvecs = dm2->traits->nvecs, .datatype=vecdt);
 	dm3 = ghost_createVector(&dm3traits);

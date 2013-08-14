@@ -723,8 +723,12 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
 	vec->dotProduct(vec,vec2,res);
 #ifdef GHOST_MPI
-	if (!(vec->traits->flags & GHOST_VEC_GLOBAL))
-		MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, res, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, MPI_COMM_WORLD));
+	int v;
+	if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
+	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+		MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, MPI_COMM_WORLD));
+	}
+	}
 #endif
 
 }
