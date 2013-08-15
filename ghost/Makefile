@@ -3,6 +3,7 @@ include config.mk
 COMPILER:=$(strip $(COMPILER))
 LIBTYPE:=$(strip $(LIBTYPE))
 LONGIDX:=$(strip $(LONGIDX))
+FORTRAN:=$(strip $(FORTRAN))
 MPI:=$(strip $(MPI))
 VSX:=$(strip $(VSX))
 MIC:=$(strip $(MIC))
@@ -25,8 +26,12 @@ VPATH   = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./sr
 OBJDIR  = ./obj
 MODDIR  = ./mod
 IPATH  += -I./include/ -I./include/fortran/ -I./include/likwid/
-OBJS	= $(LIKWOBJS) $(COBJS) $(CPPOBJS) $(FOBJS) 
+OBJS	= $(LIKWOBJS) $(COBJS) $(CPPOBJS)
 FFLAGS += $(FMODFLAG) $(MODDIR)
+
+ifeq ($(FORTRAN),1)
+OBJS  += $(FOBJS)
+endif
 
 ifeq ($(MPI),1)
 MAKROS+= -DGHOST_MPI
@@ -176,8 +181,10 @@ install: all
 	@cp -rf include/* $(GHOSTPATH)/include/ghost/
 	@echo "==> Install OpenCL kernels to $(GHOSTPATH)/lib/ghost/"
 	@cp -rf src/cl/*.cl $(GHOSTPATH)/lib/ghost/
+ifeq ($(FORTRAN),1)
 	@echo "==> Install Fortran module files to $(GHOSTPATH)/lib/ghost/"
 	@cp -f $(MODDIR)/*.mod $(GHOSTPATH)/lib/ghost/
+endif
 
 uninstall: 
 	@echo "==> Uninstall from $(GHOSTPATH)"
