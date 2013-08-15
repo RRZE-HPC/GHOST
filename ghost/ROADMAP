@@ -41,11 +41,18 @@ Version 0.4
 
 - implement new tasking interface
 
+Version 0.4.1
+
+- fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
+- multi-vec dot product
+- ghost_gemm() equivalent to BLAS gemm()
+- create vector view from plain data array
+
 
 Version x.x
 
 - add AXMY
-- fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
+- add multi-vec AXPY
 - instrumentation: prefix all region names with a number according to the level of instrumentation
 - generalization of intrinsics kernels for arbitrary data types as far as possible
 - build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
