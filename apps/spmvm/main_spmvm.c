@@ -82,9 +82,9 @@ int main( int argc, char* argv[] )
 #endif
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
-		GHOST_SPMVM_MODE_VECTORMODE/*,
+		GHOST_SPMVM_MODE_VECTORMODE,
 		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE*/};
+		GHOST_SPMVM_MODE_TASKMODE};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -122,7 +122,7 @@ int main( int argc, char* argv[] )
 #endif
 
 	ghost_readMatFileHeader(matrixPath,&fileheader);
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_WORKDIST_NZE);
+	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT,matrixPath);
 	mat = ghost_createMatrix(&mtraits,1);
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);

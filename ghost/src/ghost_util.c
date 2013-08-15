@@ -442,7 +442,7 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	ghost_matfile_header_t fileheader;
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL);
+	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath);
 	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
 	mat->fromFile(mat,context,matrixPath);
 	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
@@ -661,8 +661,8 @@ char * ghost_workdistName(int options)
 {
 	if (options & GHOST_CONTEXT_WORKDIST_NZE)
 		return "Equal no. of nonzeros";
-	else if (options & GHOST_CONTEXT_WORKDIST_LNZE)
-		return "Equal no. of local nonzeros";
+	//else if (options & GHOST_CONTEXT_WORKDIST_LNZE)
+	//	return "Equal no. of local nonzeros";
 	else
 		return "Equal no. of rows";
 }

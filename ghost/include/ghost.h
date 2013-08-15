@@ -290,6 +290,7 @@ struct ghost_vec_plugin_t
 struct ghost_context_t
 {
 	ghost_solver_t *solvers;
+	ghost_midx_t *rpt; // all matrix' row pointers are being read at context creation in order to create the distribution. once the matrix is being created, the row pointers are distributed
 
 	ghost_comm_t *communicator; // TODO shorter
 //	ghost_mat_t *fullMatrix; // TODO array
@@ -449,7 +450,7 @@ ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits);
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
-ghost_context_t *ghost_createContext(int64_t, int64_t, int);
+ghost_context_t *ghost_createContext(int64_t, int64_t, int, char *);
 //ghost_mat_t *ghost_createMatrix(ghost_context_t * context, char *matrixPath, ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);

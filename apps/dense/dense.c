@@ -15,24 +15,28 @@ int main(int argc, char* argv[])
 	vecdt_t one = 1.;
 	vecdt_t dotpr[nv];
 
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS,.datatype = matdt);
+//	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS,.datatype = matdt);
 	ghost_vtraits_t dmtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .nvecs=nv, .datatype=vecdt);
 
-	ghost_matfile_header_t fileheader;
 	ghost_context_t *ctx;
 	ghost_vec_t *dm1, *dm2, *dm3;
-	ghost_mat_t *mat;
+//	ghost_mat_t *mat;
 
 	ghost_init(argc,argv);
 
-	ghost_readMatFileHeader(argv[1],&fileheader);
-
-	ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
-	mat = ghost_createMatrix(&mtraits,1); // FIXME we need the matrix in order to have the distribution. fix this bug!
+	if (argc == 1) {
+		ctx = ghost_createContext(8,8,GHOST_CONTEXT_DEFAULT,NULL);
+	} else {
+		printf("!!!\n");
+		ghost_matfile_header_t fileheader;
+		ghost_readMatFileHeader(argv[1],&fileheader);
+		ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_WORKDIST_NZE,argv[1]);
+	}
+//	mat = ghost_createMatrix(&mtraits,1); // FIXME we need the matrix in order to have the distribution. fix this bug!
 	dm1 = ghost_createVector(&dmtraits);
 	dm2 = ghost_createVector(&dmtraits);
 
-	mat->fromFile(mat,ctx,argv[1]);
+//	mat->fromFile(mat,ctx,argv[1]);
 	dm1->fromScalar(dm1,ctx,&one);
 	dm2->fromScalar(dm2,ctx,&one);
 	

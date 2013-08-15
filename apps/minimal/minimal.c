@@ -18,7 +18,7 @@ static void rhsVal (int i, int v, void *val)
 static void *minimalTask(void *arg)
 {
 	UNUSED(arg);
-	int nIter = 100;
+	int nIter = 1;
 	double time;
 	double zero = 0.;
 
@@ -35,7 +35,7 @@ static void *minimalTask(void *arg)
 
 	ghost_readMatFileHeader((char *)arg,&fileheader);
 
-	ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
+	ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT,arg);
 	mat = ghost_createMatrix(&mtraits,1);
 	rhs = ghost_createVector(&rvtraits);
 	lhs = ghost_createVector(&lvtraits);
