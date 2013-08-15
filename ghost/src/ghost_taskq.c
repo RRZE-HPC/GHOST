@@ -409,9 +409,9 @@ static void * thread_main(void *arg)
 		pthread_mutex_lock(myTask->mutex); // TODO will this cause race conditions?
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
 		*(myTask->state) = GHOST_TASK_FINISHED;
+		pthread_cond_broadcast(myTask->finishedCond);
 		pthread_mutex_unlock(myTask->mutex);
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
-		pthread_cond_broadcast(myTask->finishedCond);
 		pthread_cond_broadcast(&taskFinishedCond);
 	//	sem_getvalue(&taskSem,&sval);
 	}
