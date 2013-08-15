@@ -506,8 +506,20 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	context = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
 	context->flags = context_flags;
-	context->gnrows = (ghost_midx_t)gnrows;
-	context->gncols = (ghost_midx_t)gncols;
+
+	if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
+		ghost_matfile_header_t fileheader;
+		ghost_readMatFileHeader(matrixPath,&fileheader);
+		if (gnrows == GHOST_GET_DIM_FROM_MATRIX)
+			context->gnrows = (ghost_midx_t)fileheader.nrows;
+		if (gncols == GHOST_GET_DIM_FROM_MATRIX)
+			context->gncols = (ghost_midx_t)fileheader.ncols;
+		
+	} else {
+		context->gnrows = (ghost_midx_t)gnrows;
+		context->gncols = (ghost_midx_t)gncols;
+
+	}
 
 #ifdef GHOST_MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
@@ -543,7 +555,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
 	{ // read rpt and fill lfrow, lnrows, lfent, lnents
-		ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(gnrows+1));
+		ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
 		ghost_mnnz_t gnnz;
 
 		if (ghost_getRank() == 0) {
@@ -553,18 +565,18 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				ABORT("Could not open binary CRS file %s",matrixPath);
 			}
 #ifdef LONGIDX
-			pread(file,&rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(gnrows+1), GHOST_BINCRS_SIZE_HEADER);
+			pread(file,&rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER);
 #else // casting
 			DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
-			int64_t *tmp = (int64_t *)ghost_malloc((gnrows+1)*8);
-			pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(gnrows+1), GHOST_BINCRS_SIZE_HEADER );
-			for( i = 0; i < gnrows+1; i++ ) {
+			int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
+			pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER );
+			for( i = 0; i < context->gnrows+1; i++ ) {
 				rpt[i] = (ghost_midx_t)(tmp[i]);
 			}
 			// TODO little/big endian
 #endif
 			context->rpt = rpt;
-			gnnz = rpt[gnrows];
+			gnnz = rpt[context->gnrows];
 			ghost_mnnz_t target_nnz;
 			target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
 
@@ -572,7 +584,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			context->communicator->lfEnt[0] = 0;
 			int j = 1;
 
-			for (i=0;i<gnrows;i++){
+			for (i=0;i<context->gnrows;i++){
 				if (rpt[i] >= j*target_nnz){
 					context->communicator->lfRow[j] = i;
 					context->communicator->lfEnt[j] = rpt[i];
@@ -584,7 +596,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				context->communicator->lnEnts[i] = context->communicator->lfEnt[i+1] - context->communicator->lfEnt[i] ;
 			}
 
-			context->communicator->lnrows[nprocs-1] = gnrows - context->communicator->lfRow[nprocs-1] ;
+			context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
 			context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
 
 		}
@@ -602,7 +614,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	//	context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
 	//	context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
 
-		ghost_midx_t target_rows = (gnrows/nprocs);
+		ghost_midx_t target_rows = (context->gnrows/nprocs);
 
 		context->communicator->lfRow[0] = 0;
 
@@ -612,7 +624,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		for (i=0; i<nprocs-1; i++){
 			context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
 		}
-		context->communicator->lnrows[nprocs-1] = gnrows - context->communicator->lfRow[nprocs-1] ;
+		context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
 		MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
 		MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
 	}

@@ -38,6 +38,8 @@
 #define GHOST_CONTEXT_NO_COMBINED_SOLVERS (16) /* not configure comb. kernels */
 #define GHOST_CONTEXT_NO_SPLIT_SOLVERS    (32) /* not configure split kernels */
 
+#define GHOST_GET_DIM_FROM_MATRIX -1
+
 #define GHOST_SPM_DEFAULT       (0)
 #define GHOST_SPM_HOST          (1)
 #define GHOST_SPM_DEVICE        (2)

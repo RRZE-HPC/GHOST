@@ -88,7 +88,7 @@ int main( int argc, char* argv[] )
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
-	ghost_matfile_header_t fileheader;
+//	ghost_matfile_header_t fileheader;
 
 	ghost_mat_t *mat; // matrix
 	ghost_vec_t *lhs; // lhs vector
@@ -121,8 +121,8 @@ int main( int argc, char* argv[] )
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 #endif
 
-	ghost_readMatFileHeader(matrixPath,&fileheader);
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT,matrixPath);
+	//ghost_readMatFileHeader(matrixPath,&fileheader);
+	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath);
 	mat = ghost_createMatrix(&mtraits,1);
 	lhs = ghost_createVector(&lvtraits);
 	rhs = ghost_createVector(&rvtraits);
