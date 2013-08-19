@@ -1,7 +1,10 @@
 include ../../ghost/config.mk
+
 COMPILER:=$(strip $(COMPILER))
 LIBTYPE:=$(strip $(LIBTYPE))
 LONGIDX:=$(strip $(LONGIDX))
+OPENMP:=$(strip $(OPENMP))
+FORTRAN:=$(strip $(FORTRAN))
 MPI:=$(strip $(MPI))
 VSX:=$(strip $(VSX))
 MIC:=$(strip $(MIC))

@@ -259,6 +259,9 @@ void *ghost_malloc(const size_t size);
 void *ghost_malloc_align(const size_t size, const size_t align);
 int ghost_flopsPerSpmvm(int m_t, int v_t);
 ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
+void ghost_ompSetNumThreads(int nthreads);
+int ghost_ompGetThreadNum();
+int ghost_ompGetNumThreads();
 
 #ifdef __cplusplus
 }

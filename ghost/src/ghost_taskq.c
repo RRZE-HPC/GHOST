@@ -74,6 +74,9 @@ int ghost_thpool_init(int nThreads)
 	sem_init(&taskSem, 0, 0);
 	pthread_mutex_init(&globalMutex,NULL);
 
+	for (t=0; t<ghost_thpool->nLDs+1; t++) { //initialize
+		ghost_thpool->firstThreadOfLD[t] = 0;
+	}
 
 	DEBUG_LOG(1,"Creating thread pool with %d threads on %d LDs", nThreads, ghost_thpool->nLDs);
 	// sort and normalize LDs (avoid errors when there are, e.g. only sockets 0 and 3 on a system)	
@@ -221,7 +224,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			taskq_deleteTask(q,curTask);	
 		}
 		DEBUG_LOG(1,"Pinning the task's threads");
-		omp_set_num_threads(curTask->nThreads);
+		ghost_ompSetNumThreads(curTask->nThreads);
 
 		int reservedCores = 0;
 
@@ -235,7 +238,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		{
 #pragma omp parallel
 			{
-				if (omp_get_thread_num() == curThread)
+				if (ghost_ompGetThreadNum() == curThread)
 				{ // this block will be entered by one thread at a time in ascending order
 
 					foundCore = 0;
@@ -406,7 +409,7 @@ static void * thread_main(void *arg)
 		}
 			
 		ghost_thpool->nIdleCores += myTask->nThreads;
-		pthread_mutex_lock(myTask->mutex); // TODO will this cause race conditions?
+		pthread_mutex_lock(myTask->mutex); 
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
 		*(myTask->state) = GHOST_TASK_FINISHED;
 		pthread_cond_broadcast(myTask->finishedCond);
@@ -689,7 +692,11 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 int ghost_task_destroy(ghost_task_t *t)
 {
 	free(t->cores);
-	free(t->siblings); // TODO free each sibling recursively
+	//free(t->siblings); // TODO free each sibling recursively
+//	if (t->siblings != NULL) {
+//		free(t->siblings[0]->cores);
+//	}
+
 	free(t->state);
 	free(t->executingThreadNo);
 	free(t->ret);
@@ -716,7 +723,11 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 			WARNING_LOG("FILL_ALL does only work when the LD is given! Not adding task!");
 			return NULL;
 			}*/
+#ifdef GHOST_OPENMP
 		t->nThreads = ghost_thpool->nThreads;
+#else
+		t->nThreads = 1; //TODO is this the correct behavior?
+#endif
 	} 
 	else {
 		t->nThreads = nThreads;

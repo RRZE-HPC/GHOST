@@ -211,7 +211,11 @@ int ghost_init(int argc, char **argv)
 #ifdef GHOST_MPI
 	int req, prov;
 
+#ifdef GHOST_OPENMP
 	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
+#else
+	req = MPI_THREAD_SINGLE;
+#endif
 
 	MPI_safecall(MPI_Initialized(&MPIwasInitialized));
 	if (!MPIwasInitialized) {

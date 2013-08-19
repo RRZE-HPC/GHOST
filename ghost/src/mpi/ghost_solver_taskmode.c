@@ -28,7 +28,7 @@ static void *communicate(void *vargs)
 //	{
 //#pragma omp single
 //	printf("    ######### communicate: numThreads: %d\n",omp_get_num_threads());
-//	printf("    ######### communicate: thread %d running @ core %d\n",omp_get_thread_num(), ghost_getCore());
+//	printf("    ######### communicate: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
 //	}
 	commArgs *args = (commArgs *)vargs;
 	int to_PE;
@@ -59,7 +59,7 @@ static void *computeLocal(void *vargs)
 //	{
 //#pragma omp single
 //	printf("    ######### compute: numThreads: %d\n",omp_get_num_threads());
-//	printf("    ######### compute: thread %d running @ core %d\n",omp_get_thread_num(), ghost_getCore());
+//	printf("    ######### compute: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
 //	}
 	compArgs *args = (compArgs *)vargs;
 

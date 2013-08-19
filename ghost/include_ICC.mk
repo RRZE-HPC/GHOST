@@ -9,13 +9,22 @@ FC = ifort
 endif
 PP=cpp
 
-CFLAGS  = -openmp -fPIC -std=c99 -DMKL_BLAS
-CPPFLAGS  = -openmp -fPIC -std=c99 -DMKL_BLAS
+CFLAGS  = -fPIC -std=c99 -DMKL_BLAS
+CPPFLAGS  = -fPIC -std=c99 -DMKL_BLAS
 FFLAGS  = -fPIC
 FMODFLAG = -module
 SHAREDFLAG = -shared
 
-LIBS = -limf -lm -lrt -lsvml -lintlc -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread # -lirng 
+LIBS = -limf -lm -lrt -lsvml -lintlc -lmkl_intel_lp64 -lmkl_core -lpthread # -lirng 
+
+ifeq ($(OPENMP),1)
+CFLAGS += -openmp
+CPPFLAGS += -openmp
+FFLAGS += -openmp
+LIBS += -lmkl_intel_thread
+else 
+LIBS += -lmkl_sequential
+endif
 
 ifneq ($(AVX),0)
 CFLAGS += -mavx

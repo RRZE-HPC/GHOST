@@ -288,9 +288,10 @@ void ghost_printSysInfo()
 		int nphyscores = ghost_getNumberOfPhysicalCores();
 		int ncores = ghost_getNumberOfHwThreads();
 
+#ifdef GHOST_OPENMP
+		char omp_sched_str[32];
 		omp_sched_t omp_sched;
 		int omp_sched_mod;
-		char omp_sched_str[32];
 		omp_get_schedule(&omp_sched,&omp_sched_mod);
 		switch (omp_sched) {
 			case omp_sched_static:
@@ -309,9 +310,12 @@ void ghost_printSysInfo()
 				sprintf(omp_sched_str,"unknown");
 				break;
 		}
+#else
+		char omp_sched_str[] = "N/A";
+#endif
 #pragma omp parallel
 #pragma omp master
-		nthreads = omp_get_num_threads();
+		nthreads = ghost_ompGetNumThreads();
 
 		ghost_printHeader("System");
 		ghost_printLine("Nodes",NULL,"%d",nnodes);
@@ -385,6 +389,11 @@ void ghost_printGhostInfo()
 		ghost_printLine("SSE kernels",NULL,"enabled");
 #else
 		ghost_printLine("SSE kernels",NULL,"disabled");
+#endif
+#ifdef GHOST_OPENMP
+		ghost_printLine("OpenMP support",NULL,"enabled");
+#else
+		ghost_printLine("OpenMP support",NULL,"disabled");
 #endif
 #ifdef GHOST_MPI
 		ghost_printLine("MPI support",NULL,"enabled");
@@ -732,7 +741,7 @@ int ghost_getNumberOfThreads()
 {
 	int nthreads;
 #pragma omp parallel
-	nthreads = omp_get_num_threads();
+	nthreads = ghost_ompGetNumThreads();
 
 	return nthreads;
 }
@@ -1218,7 +1227,7 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 
 inline void ghost_setCore(int coreNumber)
 {
-	DEBUG_LOG(2,"Pinning thread %d to core %d",omp_get_thread_num(),coreNumber);
+	DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
 	cpu_set_t cpu_set;
 	CPU_ZERO(&cpu_set);
 	CPU_SET(coreNumber, &cpu_set);
@@ -1253,10 +1262,10 @@ void ghost_pinThreads(int options, char *procList)
 		}
 
 		DEBUG_LOG(1,"Adjusting number of threads to %d",nCores);
-		omp_set_num_threads(nCores);
+		ghost_ompSetNumThreads(nCores);
 
 #pragma omp parallel
-		ghost_setCore(cores[omp_get_thread_num()]);
+		ghost_setCore(cores[ghost_ompGetThreadNum()]);
 
 
 	} else {
@@ -1277,19 +1286,19 @@ void ghost_pinThreads(int options, char *procList)
 
 		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
 		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-		omp_set_num_threads(nCores/ghost_getNumberOfRanksOnNode());
+		ghost_ompSetNumThreads(nCores/ghost_getNumberOfRanksOnNode());
 
 #pragma omp parallel
 		{
 			int coreNumber;
 
 			if (options & GHOST_PIN_SMT) {
-				coreNumber = omp_get_thread_num()/SMT+(offset*(ghost_getLocalRank()))+(omp_get_thread_num()%SMT)*nPhysCores;
+				coreNumber = ghost_ompGetThreadNum()/SMT+(offset*(ghost_getLocalRank()))+(ghost_ompGetThreadNum()%SMT)*nPhysCores;
 			} else {
 				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
-					coreNumber = omp_get_thread_num()+(offset*(ghost_getLocalRank()));
+					coreNumber = ghost_ompGetThreadNum()+(offset*(ghost_getLocalRank()));
 				else
-					coreNumber = omp_get_thread_num()*SMT+(offset*(ghost_getLocalRank()));
+					coreNumber = ghost_ompGetThreadNum()*SMT+(offset*(ghost_getLocalRank()));
 			}
 
 			ghost_setCore(coreNumber);
@@ -1300,7 +1309,7 @@ void ghost_pinThreads(int options, char *procList)
 	}
 #pragma omp parallel
 	{
-		DEBUG_LOG(1,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
+		DEBUG_LOG(1,"Thread %d is running on core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
 	}
 
@@ -1449,4 +1458,29 @@ ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
 	memcpy(t2,t1,sizeof(ghost_vtraits_t));
 
 	return t2;
+}
+
+void ghost_ompSetNumThreads(int nthreads)
+{
+#ifdef GHOST_OPENMP
+	omp_set_num_threads(nCores);
+#endif
+}
+	
+int ghost_ompGetNumThreads()
+{
+#ifdef GHOST_OPENMP
+	return omp_get_num_threads();
+#else 
+	return 1;
+#endif
+}
+
+int ghost_ompGetThreadNum()
+{
+#ifdef GHOST_OPENMP
+	return omp_get_thread_num();
+#else
+	return 0;
+#endif
 }

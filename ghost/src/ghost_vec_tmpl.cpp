@@ -30,7 +30,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
 	int nthreads;
 #pragma omp parallel
-	nthreads = omp_get_num_threads();
+	nthreads = ghost_ompGetNumThreads();
 
 	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
 		v_t sum = 0;
@@ -39,7 +39,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
-			partsums[omp_get_thread_num()] += ((v_t *)(vec->val))[i]*((v_t *)(vec2->val))[i];
+			partsums[ghost_ompGetThreadNum()] += ((v_t *)(vec->val))[i]*((v_t *)(vec2->val))[i];
 		}
 
 		for (i=0; i<nthreads; i++) sum += partsums[i];

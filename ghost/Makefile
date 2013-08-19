@@ -3,6 +3,7 @@ include config.mk
 COMPILER:=$(strip $(COMPILER))
 LIBTYPE:=$(strip $(LIBTYPE))
 LONGIDX:=$(strip $(LONGIDX))
+OPENMP:=$(strip $(OPENMP))
 FORTRAN:=$(strip $(FORTRAN))
 MPI:=$(strip $(MPI))
 VSX:=$(strip $(VSX))
@@ -31,6 +32,10 @@ FFLAGS += $(FMODFLAG) $(MODDIR)
 
 ifeq ($(FORTRAN),1)
 OBJS  += $(FOBJS)
+endif
+
+ifeq ($(OPENMP),1)
+MAKROS+= -DGHOST_OPENMP
 endif
 
 ifeq ($(MPI),1)

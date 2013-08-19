@@ -142,7 +142,7 @@ int main(int argc, char ** argv)
 
 	ghost_task_waitall();
 	ghost_task_destroy(lrTask);
-	ghost_task_destroy(srTask);
+//	ghost_task_destroy(srTask);
 
 	ghost_finish();
 	return 0;
