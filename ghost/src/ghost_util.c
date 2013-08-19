@@ -499,7 +499,6 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 
 	free(zero);
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
-	return nodeLHS;
 }
 /*
 // FIXME
@@ -1455,7 +1454,7 @@ ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
 void ghost_ompSetNumThreads(int nthreads)
 {
 #ifdef GHOST_OPENMP
-	omp_set_num_threads(nCores);
+	omp_set_num_threads(nthreads);
 #endif
 }
 	
