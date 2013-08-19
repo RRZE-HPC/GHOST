@@ -565,15 +565,18 @@ res[i] = hlp1;
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
 	if(comm) {
+		int i;
 		free(comm->lnEnts);
 		free(comm->lnrows);
 		free(comm->lfEnt);
 		free(comm->lfRow);
 		free(comm->wishes);
-		//free(comm->wishlist_mem);
-		free(comm->wishlist);
 		free(comm->dues);
-		//free(comm->duelist_mem);
+		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
+			free(comm->wishlist[i]);
+			free(comm->duelist[i]);
+		}
+		free(comm->wishlist);
 		free(comm->duelist);
 		free(comm->due_displ);
 		free(comm->wish_displ);

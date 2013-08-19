@@ -232,5 +232,21 @@ ghost_tree_getNextNode(TreeNode* nodePtr)
     return nodePtr->rlink;
 }
 
+static void ghost_tree_traverseAndFree(TreeNode *node)
+{
+	if (node->llink != NULL)
+		ghost_tree_traverseAndFree(node->llink);
 
+	if (node->rlink != NULL)
+		ghost_tree_traverseAndFree(node->rlink);
+
+	free(node);
+
+}
+
+void ghost_tree_finish(TreeNode* root)
+{
+	ghost_tree_traverseAndFree(root);
+
+}
 

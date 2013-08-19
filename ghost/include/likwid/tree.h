@@ -43,5 +43,6 @@ extern void ghost_tree_sort(TreeNode* root);
 extern TreeNode* ghost_tree_getNode(TreeNode* nodePtr, int id);
 extern TreeNode* ghost_tree_getChildNode(TreeNode* nodePtr);
 extern TreeNode* ghost_tree_getNextNode(TreeNode* nodePtr);
+extern void ghost_tree_finish(TreeNode* root);
 
 #endif /*TREE_H*/

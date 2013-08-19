@@ -252,6 +252,15 @@ static int intelCpuidFunc_4(CacheLevel** cachePool)
 
 /* #####   FUNCTION DEFINITIONS  -  EXPORTED FUNCTIONS   ################## */
 
+void 
+ghost_cpuid_finish (void)
+{
+    ghost_cpuid_finishTopology();
+    ghost_cpuid_finishCacheTopology();
+	free(ghost_cpuid_info.features);
+
+}
+
 void
 ghost_cpuid_init (void)
 {
@@ -493,6 +502,15 @@ ghost_cpuid_init (void)
 
     return;
 }
+
+void 
+ghost_cpuid_finishTopology (void)
+{
+    ghost_tree_finish(ghost_cpuid_topology.topologyTree);
+	free(ghost_cpuid_topology.threadPool);
+
+}
+
 
 void
 ghost_cpuid_initTopology(void)
@@ -759,6 +777,12 @@ ghost_cpuid_initTopology(void)
     ghost_cpuid_topology.numCoresPerSocket = ghost_tree_countChildren(currentNode);
     currentNode = ghost_tree_getChildNode(currentNode);
     ghost_cpuid_topology.numThreadsPerCore = ghost_tree_countChildren(currentNode);
+}
+
+void 
+ghost_cpuid_finishCacheTopology (void)
+{
+	free(ghost_cpuid_topology.cacheLevels);
 }
 
 void 

@@ -72,6 +72,7 @@ typedef struct ghost_thpool_t {
 int ghost_thpool_init(int nThreads);
 int ghost_taskq_init(int nqs);
 int ghost_taskq_finish();
+int ghost_thpool_finish();
 
 ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
 int ghost_task_add(ghost_task_t *);

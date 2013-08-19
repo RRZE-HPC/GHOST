@@ -70,6 +70,8 @@ int main(int argc, char* argv[])
 	ghost_task_t *t = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &minimalTask, argv[1], GHOST_TASK_DEFAULT);
 	ghost_task_add(t);
 
+	ghost_task_wait(t);
+	ghost_task_destroy(t);
 	ghost_finish();
 
 	return EXIT_SUCCESS;

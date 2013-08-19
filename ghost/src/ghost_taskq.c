@@ -63,7 +63,7 @@ int ghost_thpool_init(int nThreads)
 	int oldLDs[nThreads];
 
 	ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
-	ghost_thpool->nLDs = 2; // TODO
+	ghost_thpool->nLDs = ghost_cpuid_topology.numSockets; // TODO
 	ghost_thpool->threads = (pthread_t *)ghost_malloc(nThreads*sizeof(pthread_t));
 	ghost_thpool->firstThreadOfLD = (int *)ghost_malloc((ghost_thpool->nLDs+1)*sizeof(int));
 	ghost_thpool->LDs = (int *)ghost_malloc(nThreads*sizeof(int));
@@ -570,6 +570,14 @@ int ghost_taskq_finish()
 		}
 	}
 
+	DEBUG_LOG(1,"Free task queues");	
+	int q;	
+	for (q=0; q<ghost_thpool->nLDs; q++) {
+		free(taskqs[q]->coreState);
+		free(taskqs[q]);
+	}
+	free(taskqs);
+
 	return GHOST_SUCCESS;	
 }
 
@@ -704,6 +712,11 @@ int ghost_task_destroy(ghost_task_t *t)
 	pthread_mutex_destroy(t->mutex);
 	pthread_cond_destroy(t->finishedCond);
 
+	free(t->mutex);
+	free(t->finishedCond);
+
+	free(t);
+
 	return GHOST_SUCCESS;
 }
 
@@ -753,4 +766,17 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	//memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	return t;
+}
+
+int ghost_thpool_finish()
+{
+
+	free(ghost_thpool->threads);
+	free(ghost_thpool->firstThreadOfLD);
+	free(ghost_thpool->LDs);
+	free(ghost_thpool->sem);
+
+	free(ghost_thpool);
+
+	return GHOST_SUCCESS;
 }

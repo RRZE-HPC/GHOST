@@ -102,7 +102,10 @@ extern CpuTopology ghost_cpuid_topology;
  *
  */
 extern void ghost_cpuid_init (void);
+extern void ghost_cpuid_finish (void);
 extern void ghost_cpuid_initTopology (void);
+extern void ghost_cpuid_finishTopology (void);
 extern void ghost_cpuid_initCacheTopology (void);
+extern void ghost_cpuid_finishCacheTopology (void);
 
 #endif /*CPUID_H*/
