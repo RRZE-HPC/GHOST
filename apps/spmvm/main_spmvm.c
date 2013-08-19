@@ -148,7 +148,8 @@ int main( int argc, char* argv[] )
 	ghost_printMatrixInfo(mat);
 
 #ifdef CHECK
-	ghost_vec_t *goldLHS = ghost_referenceSolver(matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
+	ghost_vec_t *goldLHS = ghost_createVector(&lvtraits);
+   	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
 
 	ghost_printHeader("Performance");

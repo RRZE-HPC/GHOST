@@ -433,7 +433,7 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+ghost_vec_t *ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
@@ -494,20 +494,22 @@ ghost_vec_t *ghost_referenceSolver(char *matrixPath, int datatype, ghost_context
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	ghost_vtraits_t *nltraits;
-	nltraits = ghost_malloc(sizeof(ghost_vtraits_t));
-	nltraits->flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
-	nltraits->datatype = rhs->traits->datatype;
-	nltraits->nvecs = 1;
-	nltraits->nrows = 0;
-	nltraits->nrowspadded = 0;
-	nltraits->nrowshalo = 0;
-	ghost_vec_t *nodeLHS = ghost_createVector(nltraits);
+//	ghost_vtraits_t *nltraits;
+//	nltraits = ghost_malloc(sizeof(ghost_vtraits_t));
+//	nltraits->flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
+//	nltraits->datatype = rhs->traits->datatype;
+//	nltraits->nvecs = 1;
+//	nltraits->nrows = 0;
+//	nltraits->nrowspadded = 0;
+//	nltraits->nrowshalo = 0;
+//	ghost_vec_t *nodeLHS = ghost_createVector(nltraits);
 
-	nodeLHS->fromScalar(nodeLHS,distContext,&zero);
-	globLHS->distribute(globLHS, &nodeLHS, distContext->communicator);
+	(*nodeLHS)->fromScalar(*nodeLHS,distContext,&zero);
+	globLHS->distribute(globLHS, nodeLHS, distContext->communicator);
 	globLHS->destroy(globLHS);
+	mat->destroy(mat);
 
+	free(zero);
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 	return nodeLHS;
 
