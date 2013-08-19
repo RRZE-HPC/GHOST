@@ -229,6 +229,7 @@ int main( int argc, char* argv[] )
 	}
 	ghost_printFooter();
 
+	mat->destroy(mat);
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);
 	ghost_freeContext( context );
