@@ -1,22 +1,4 @@
 include ../../ghost/config.mk
-
-COMPILER:=$(strip $(COMPILER))
-LIBTYPE:=$(strip $(LIBTYPE))
-LONGIDX:=$(strip $(LONGIDX))
-OPENMP:=$(strip $(OPENMP))
-FORTRAN:=$(strip $(FORTRAN))
-MPI:=$(strip $(MPI))
-VSX:=$(strip $(VSX))
-MIC:=$(strip $(MIC))
-AVX:=$(strip $(AVX))
-SSE:=$(strip $(SSE))
-OPENCL:=$(strip $(OPENCL))
-CUDA:=$(strip $(CUDA))
-LIKWID:=$(strip $(LIKWID))
-DEBUG:=$(strip $(DEBUG))
-GHOSTPATH:=$(strip $(GHOSTPATH))
-LIKWIDPATH:=$(strip $(LIKWIDPATH))
-
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean

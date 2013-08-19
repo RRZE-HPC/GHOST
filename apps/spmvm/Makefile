@@ -1,20 +1,4 @@
 include ../../ghost/config.mk
-COMPILER:=$(strip $(COMPILER))
-LIBTYPE:=$(strip $(LIBTYPE))
-LONGIDX:=$(strip $(LONGIDX))
-MPI:=$(strip $(MPI))
-VSX:=$(strip $(VSX))
-MIC:=$(strip $(MIC))
-AVX:=$(strip $(AVX))
-SSE:=$(strip $(SSE))
-OPENCL:=$(strip $(OPENCL))
-CUDA:=$(strip $(CUDA))
-LIKWID:=$(strip $(LIKWID))
-ITAC:=$(strip $(ITAC))
-DEBUG:=$(strip $(DEBUG))
-GHOSTPATH:=$(strip $(GHOSTPATH))
-LIKWIDPATH:=$(strip $(LIKWIDPATH))
-
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 WDDT=0
