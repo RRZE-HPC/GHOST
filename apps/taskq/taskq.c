@@ -106,7 +106,7 @@ int main(int argc, char ** argv)
 	ghost_task_t **tasks = (ghost_task_t **)ghost_malloc(nTasks*sizeof(ghost_task_t *));
 
 	for (t=0; t<nTasks; t++) {
-		tasks[t] = ghost_task_init(1, t%2, t==shortIdx?&shortRunningFunc:&longRunningFunc, NULL, GHOST_TASK_DEFAULT);
+		tasks[t] = ghost_task_init(1, t%ghost_thpool->nLDs, t==shortIdx?&shortRunningFunc:&longRunningFunc, NULL, GHOST_TASK_DEFAULT);
 		ghost_task_add(tasks[t]);
 	}
 

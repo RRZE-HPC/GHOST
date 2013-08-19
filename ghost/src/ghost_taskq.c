@@ -24,6 +24,7 @@ static sem_t taskSem;  // a semaphore for the total number of tasks in all queue
 static int killed = 0; // this will be set to 1 if the queues should be killed
 static pthread_mutex_t globalMutex; // protect accesses to global variables
 static pthread_cond_t anyTaskFinishedCond; // will be broadcasted in wait() if a task has finished
+static pthread_mutex_t anyTaskFinishedMutex; //
 static pthread_cond_t taskFinishedCond; // will be broadcasted if a task has finished
 
 static void * thread_main(void *arg);
@@ -133,6 +134,7 @@ int ghost_taskq_init(int nqs)
 	}
 
 	pthread_cond_init(&anyTaskFinishedCond,NULL);
+	pthread_mutex_init(&anyTaskFinishedMutex,NULL);
 	pthread_cond_init(&taskFinishedCond,NULL);
 
 	return GHOST_SUCCESS;
@@ -323,7 +325,7 @@ static void * thread_main(void *arg)
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
 
-	while ((!killed)) // as long as there are jobs stay alive
+	while (1) // as long as there are jobs stay alive
 	{
 
 //		sem_getvalue(&taskSem,&sval);
@@ -379,8 +381,10 @@ static void * thread_main(void *arg)
 			continue;
 		}
 
+		pthread_mutex_lock(myTask->mutex);
 		*(myTask->executingThreadNo) = myCore;
 		*(myTask->state) = GHOST_TASK_RUNNING;	
+		pthread_mutex_unlock(myTask->mutex);
 
 		tFunc = myTask->func;
 		tArg = myTask->arg;
@@ -417,6 +421,12 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
 		pthread_cond_broadcast(&taskFinishedCond);
 	//	sem_getvalue(&taskSem,&sval);
+		pthread_mutex_lock(&globalMutex);
+		if (killed) {
+			pthread_mutex_unlock(&globalMutex);
+			break;
+		}
+		pthread_mutex_unlock(&globalMutex);
 	}
 	sem_getvalue(&taskSem,&sval);
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
@@ -464,6 +474,11 @@ int ghost_taskq_print_all()
 
 static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
 {
+
+	if (q==NULL) {
+		WARNING_LOG("Tried to add a task to a queue which is NULL");
+		return GHOST_FAILURE;
+	}
 
 	pthread_mutex_lock(&q->mutex);
 	if ((q->head == q->tail) && (q->head == NULL)) {
@@ -555,7 +570,9 @@ int ghost_taskq_finish()
 	int t;
 
 	ghost_task_waitall(); // finish all outstanding tasks
+	pthread_mutex_lock(&globalMutex);
 	killed = 1;
+	pthread_mutex_unlock(&globalMutex);
 
 	DEBUG_LOG(1,"Wake up all threads");	
 	if (sem_post(&taskSem)){
@@ -601,7 +618,9 @@ int ghost_task_wait(ghost_task_t * t)
 	}
 
 	pthread_mutex_unlock(t->mutex);
+	pthread_mutex_lock(&anyTaskFinishedMutex);
 	pthread_cond_broadcast(&anyTaskFinishedCond);
+	pthread_mutex_unlock(&anyTaskFinishedMutex);
 	DEBUG_LOG(1,"Finished waitung for task %p!",t);
 
 	return GHOST_SUCCESS;
@@ -637,7 +656,9 @@ int ghost_task_waitall()
 	for (q=0; q<ghost_thpool->nLDs; q++)
 	{
 		DEBUG_LOG(1,"Waitall: Waiting for tasks of LD %d (queue: %p)",q,taskqs[q]);
+		pthread_mutex_lock(&globalMutex);
 		t = taskqs[q]->head;
+		pthread_mutex_unlock(&globalMutex);
 		while (t != NULL)
 		{
 			DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
@@ -655,11 +676,12 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 	int t;
 	int ret = 0;
 	pthread_t threads[nt];
-	pthread_mutex_t mutex;
-	pthread_mutex_init(&mutex,NULL);
+//	pthread_mutex_t mutex;
+//	pthread_mutex_init(&mutex,NULL);
 
 	for (t=0; t<nt; t++)
 	{ // look if one of the tasks is already finished
+		pthread_mutex_lock(tasks[t]->mutex);
 		if (*(tasks[t]->state) == GHOST_TASK_FINISHED) 
 		{ // one of the tasks is already finished
 			DEBUG_LOG(1,"One of the tasks has already finished");
@@ -668,6 +690,7 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 		} else {
 			index[t] = 0;
 		}
+		pthread_mutex_unlock(tasks[t]->mutex);
 	}
 	if (ret)
 		return GHOST_SUCCESS;
@@ -680,17 +703,20 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 		pthread_create(&threads[t],NULL,(void *(*)(void *))&ghost_task_wait,tasks[t]);
 	}
 
-	pthread_mutex_lock(&mutex);
-	pthread_cond_wait(&anyTaskFinishedCond,&mutex);
+	pthread_mutex_lock(&anyTaskFinishedMutex);
+	pthread_cond_wait(&anyTaskFinishedCond,&anyTaskFinishedMutex);
+	pthread_mutex_unlock(&anyTaskFinishedMutex);
 
 	for (t=0; t<nt; t++)
 	{ // again look which tasks are finished
+		pthread_mutex_lock(tasks[t]->mutex);
 		if (*(tasks[t]->state) == GHOST_TASK_FINISHED) 
 		{
 			index[t] = 1;
 		} else {
 			index[t] = 0;
 		}
+		pthread_mutex_unlock(tasks[t]->mutex);
 	}
 
 	return GHOST_SUCCESS;
