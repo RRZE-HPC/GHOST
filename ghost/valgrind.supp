@@ -1,0 +1,16 @@
+{
+	conditional jump from ld-2.5.so
+	Memcheck:Cond
+	obj:*/ld-2.5.so
+}
+#{
+#	conditional jump from libiomp
+#	Memcheck:Cond
+#	obj:*/libiomp5.so
+#}
+#{
+#	invalid read from libiomp
+#	Memcheck:Addr8
+#	obj:*/libiomp5.so
+#}
+
