@@ -494,8 +494,10 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 
 	(*nodeLHS)->fromScalar(*nodeLHS,distContext,&zero);
 	globLHS->distribute(globLHS, nodeLHS, distContext->communicator);
+
 	globLHS->destroy(globLHS);
 	mat->destroy(mat);
+	
 
 	free(zero);
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");

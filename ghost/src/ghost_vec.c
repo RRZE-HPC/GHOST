@@ -555,23 +555,9 @@ return vec;
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm)
 {
 	DEBUG_LOG(1,"Distributing vector");
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 #ifdef GHOST_MPI
 	int me = ghost_getRank();
-
-	/*	ghost_vidx_t nrows;
-
-		MPI_safecall(MPI_Bcast(&(vec->traits->flags),1,MPI_INT,0,MPI_COMM_WORLD));
-
-		if (vec->traits->flags & GHOST_VEC_RHS)
-		nrows = comm->lnrows[me]+comm->halo_elements;
-		else if (vec->traits->flags & GHOST_VEC_LHS)
-		nrows = comm->lnrows[me];
-		else
-		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-
-
-		DEBUG_LOG(2,"Creating local vector with %"PRvecIDX" rows",nrows);
-	 */
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
 	MPI_Datatype mpidt;
@@ -593,8 +579,6 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 
 	int nprocs = ghost_getNumberOfProcesses();
 	int i;
-	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	//vec->print(vec);
 
 	MPI_Request req[2*(nprocs-1)];
 	MPI_Status stat[2*(nprocs-1)];
@@ -614,14 +598,10 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
-	//(*nodeVec)->print(*nodeVec);
-	//	MPI_safecall(MPI_Scatterv ( vec->val, (int *)comm->lnrows, (int *)comm->lfRow, mpidt, (*nodeVec)->val, (int)comm->lnrows[me], mpidt, 0, MPI_COMM_WORLD ));
 #else
 	UNUSED(comm);
-	/*ghost_vec_t *nodeVec = ghost_newVector( vec->traits->nrows, vec->traits->flags ); 
-	  int i;
-	  for (i=0; i<vec->traits->nrows; i++) VAL(nodeVec)[i] = VAL(vec)[i];*/
-	*nodeVec = vec->clone(vec);
+	memcpy((*nodeVec)->val,vec->val,vec->traits->nrowspadded*sizeofdt);
+//	*nodeVec = vec->clone(vec);
 #endif
 
 #ifdef OPENCL
