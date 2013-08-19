@@ -2,7 +2,7 @@ COMPILER=ICC    # one of: ICC, GCC, XLC
 LIBTYPE=shared  # static or shared (default)
 LONGIDX=0       # 0/1 = indices are 32/64 bit integers
 FORTRAN=0       # 0/1 = build without/with Fortran interface
-OPENMP=0        # 0/1 = build without/with OpenMP
+OPENMP=1        # 0/1 = build without/with OpenMP
 MPI=0           # 0 = no MPI support        | 1 = with MPI support
 VSX=0           # 0 = no VSX kernels        | 1 = build VSX kernels
 MIC=0           # 0 = no MIC | 1 = compile for MIC | 2 = w/ intrinsics
@@ -20,19 +20,20 @@ LIKWIDPATH=/apps/likwid/likwid-3.1beta/     # path to LIKWID installation (if en
 
 ##### DO NOT EDIT BELOW
 
-COMPILER:=$(strip $(COMPILER))
-LIBTYPE:=$(strip $(LIBTYPE))
-LONGIDX:=$(strip $(LONGIDX))
-OPENMP:=$(strip $(OPENMP))
-FORTRAN:=$(strip $(FORTRAN))
-MPI:=$(strip $(MPI))
-VSX:=$(strip $(VSX))
-MIC:=$(strip $(MIC))
-AVX:=$(strip $(AVX))
-SSE:=$(strip $(SSE))
-OPENCL:=$(strip $(OPENCL))
-CUDA:=$(strip $(CUDA))
-LIKWID:=$(strip $(LIKWID))
-DEBUG:=$(strip $(DEBUG))
-GHOSTPATH:=$(strip $(GHOSTPATH))
-LIKWIDPATH:=$(strip $(LIKWIDPATH))
+COMPILER:=$(strip $(COMPILER))#
+LIBTYPE:=$(strip $(LIBTYPE))#
+LONGIDX:=$(strip $(LONGIDX))#
+FORTRAN:=$(strip $(FORTRAN))#
+OPENMP:=$(strip $(OPENMP))#
+MPI:=$(strip $(MPI))#
+VSX:=$(strip $(VSX))#
+MIC:=$(strip $(MIC))#
+AVX:=$(strip $(AVX))#
+SSE:=$(strip $(SSE))#
+OPENCL:=$(strip $(OPENCL))#
+CUDA:=$(strip $(CUDA))#
+LIKWID:=$(strip $(LIKWID))#
+ITAC:=$(strip $(ITAC))#
+DEBUG:=$(strip $(DEBUG))#
+GHOSTPATH:=$(strip $(GHOSTPATH))#
+LIKWIDPATH:=$(strip $(LIKWIDPATH))#
