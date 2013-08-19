@@ -1260,6 +1260,8 @@ void ghost_pinThreads(int options, char *procList)
 #pragma omp parallel
 		ghost_setCore(cores[ghost_ompGetThreadNum()]);
 
+		free(cores);
+
 
 	} else {
 		DEBUG_LOG(1,"Trying to automatically pin threads");
