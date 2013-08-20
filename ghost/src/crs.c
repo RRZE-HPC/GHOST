@@ -669,11 +669,13 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	free(item_from);
 
 	mat->localPart = ghost_initMatrix(&mat->traits[0]);
+	free(mat->localPart->data); // has been allocated in init()
 	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->data = localCR;
 	CR(mat->localPart)->rpt = localCR->rpt;
 
 	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
+	free(mat->remotePart->data); // has been allocated in init()
 	mat->remotePart->data = remoteCR;
 }
 
@@ -1273,8 +1275,8 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 
 static void CRS_free(ghost_mat_t * mat)
 {
-	DEBUG_LOG(0,"Freeing CRS matrix");
 	if (mat) {
+	DEBUG_LOG(0,"Freeing CRS matrix");
 #ifdef OPENCL
 		if (mat->traits->flags & GHOST_SPM_DEVICE) {
 			CL_freeDeviceMemory(CR(mat)->clmat->rpt);
@@ -1290,10 +1292,15 @@ static void CRS_free(ghost_mat_t * mat)
 		free(mat->rowPerm);
 		free(mat->invRowPerm);
 
+		if (mat->localPart)
+			CRS_free(mat->localPart);
+
+		if (mat->remotePart)
+			CRS_free(mat->remotePart);
 
 		free(mat);
+		DEBUG_LOG(1,"CRS matrix freed successfully");
 	}
-	DEBUG_LOG(1,"CRS matrix freed successfully");
 }
 
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)

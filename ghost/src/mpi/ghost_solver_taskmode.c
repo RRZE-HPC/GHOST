@@ -10,7 +10,6 @@
 #include <likwid.h>
 #endif
 
-// FIXME free arrays
 
 typedef struct {
 	ghost_context_t *context;
@@ -68,6 +67,7 @@ static void *computeLocal(void *vargs)
 	return NULL;
 }
 
+// if called with context==NULL: clean up variables
 void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
@@ -129,6 +129,12 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		cpargs.spmvmOptions = spmvmOptions;
 
 		init_kernel = 0;
+	}
+	if (context == NULL) {
+		free(work);
+		free(request);
+		free(status);
+		return;
 	}
 
 

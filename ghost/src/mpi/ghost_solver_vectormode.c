@@ -4,8 +4,8 @@
 
 
 #include "ghost_util.h"
-// FIXME free arrays
 
+// if called with context==NULL: clean up variables
 void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
@@ -17,13 +17,13 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
 	static int init_kernel=1; 
 	static ghost_mnnz_t max_dues;
-	static char *work;
 	static int nprocs;
 
 	static int me; 
 	int i, from_PE, to_PE;
 	int send_messages, recv_messages;
 
+	static char *work;
 	static MPI_Request *request;
 	static MPI_Status  *status;
 
@@ -45,6 +45,14 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
 		init_kernel = 0;
 	}
+
+	if (context == NULL) {
+		free(work);
+		free(request);
+		free(status);
+		return;
+	}
+
 	send_messages=0;
 	recv_messages = 0;
 	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL;

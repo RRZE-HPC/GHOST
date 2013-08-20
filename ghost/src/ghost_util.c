@@ -562,10 +562,12 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
 		free(comm->lfRow);
 		free(comm->wishes);
 		free(comm->dues);
-		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
-			free(comm->wishlist[i]);
-			free(comm->duelist[i]);
-		}
+	//	for (i=0; i<ghost_getNumberOfProcesses(); i++) {
+	//		free(comm->wishlist[i]);
+	//		free(comm->duelist[i]);
+	//	}
+		free(comm->wishlist[0]);
+		free(comm->duelist[0]);
 		free(comm->wishlist);
 		free(comm->duelist);
 		free(comm->due_displ);
@@ -752,7 +754,7 @@ int ghost_getNumberOfNodes()
 #else
 
 	int nameLen,me,size,i,distinctNames = 1;
-	char name[MPI_MAX_PROCESSOR_NAME];
+	char name[MPI_MAX_PROCESSOR_NAME] = "";
 	char *names = NULL;
 
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
@@ -937,6 +939,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
+	solver(NULL,NULL,NULL,NULL,0); // clean up
 
 #ifdef OPENCL
 	DEBUG_LOG(1,"Downloading result from OpenCL device");

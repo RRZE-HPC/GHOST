@@ -5,8 +5,7 @@
 
 #include "ghost_util.h"
 
-// FIXME free arrays
-
+// if called with context==NULL: clean up variables
 void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
@@ -46,6 +45,12 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
 		init_kernel = 0;
+	}
+	if (context == NULL) {
+		free(work);
+		free(request);
+		free(status);
+		return;
 	}
 
 

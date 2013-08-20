@@ -323,8 +323,11 @@ void ghost_finish()
 #endif
 
 #ifdef GHOST_MPI
-	if (!MPIwasInitialized)
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_Z));
+	if (!MPIwasInitialized) {
 		MPI_Finalize();
+	}
 #endif
 
 }
@@ -552,6 +555,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #endif
 
 #ifdef GHOST_MPI
+	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 	context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
 	context->communicator->halo_elements = 0;
 	int nprocs = ghost_getNumberOfProcesses();
@@ -633,6 +637,10 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
 		MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
 		MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
+	}
+
+	} else {
+	context->communicator = NULL;
 	}
 
 #else
