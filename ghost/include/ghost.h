@@ -87,6 +87,7 @@ typedef struct ghost_vtraits_t ghost_vtraits_t;
 struct ghost_vec_t 
 {
 	ghost_vtraits_t *traits;
+	ghost_context_t *context;
 	//ghost_vdat_t* val;
 	void* val;
 
@@ -231,6 +232,8 @@ struct ghost_comm_t
 //	int32_t * wish_displ_split;   
 //	ghost_midx_t * comm_start_displ;   
 	ghost_midx_t* hput_pos;
+
+	MPI_Comm mpicomm;
 }; 
 
 struct ghost_mat_t 
@@ -396,32 +399,6 @@ int ghost_init(int argc, char **argv);
  * The ghost_finish() call is usually the last call of the main program. 
  *****************************************************************************/
 void ghost_finish();
-
-/******************************************************************************
- * Creates a distributed vector with specified values in order to use it for 
- * SpMVM. Depending on the type, the length of the vector may differ.
- * If OpenCL is enabled, the vector is also being created and initialized on
- * the device.
- *
- * Arguments:
- *   - ghost_context_t *lcrp
- *     The local CRS matrix portion to use with the vector.
- *   - int type
- *     Specifies whether the vector is a right hand side vector 
- *     (GHOST_VEC_RHS), left hand side vector (GHOST_VEC_LHS) or a vector
- *     which may be used as both right and left hand side (GHOST_VEC_BOTH).
- *     The length of the vector depends on this argument.
- *   - ghost_mdat_t (*fp)(int)
- *     A function pointer to a function taking an integer value and returning
- *     a ghost_mdat_t. This function returns the initial value for the i-th (globally)
- *     element of the vector.
- *     If NULL, the vector is initialized to zero.
- *
- * Returns:
- *   a pointer to an ghost_comm_t structure which holds the local matrix data as
- *   well as the necessary data structures for communication.
- *****************************************************************************/
-ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits);
 
 /******************************************************************************
  * Perform the sparse matrix vector product using a specified kernel with a

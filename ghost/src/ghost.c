@@ -332,161 +332,6 @@ void ghost_finish()
 
 }
 
-ghost_vec_t *ghost_createVector(ghost_vtraits_t *traits)
-{
-	/*	ghost_vidx_t nrows;
-		if (traits->flags & GHOST_VEC_DUMMY) {
-		nrows = 0;
-		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (traits->flags & GHOST_VEC_GLOBAL))
-		{
-		nrows = context->gnrows;
-		} 
-		else 
-		{
-		nrows = context->communicator->lnrows[ghost_getRank()];
-		if (traits->flags & GHOST_VEC_RHS)
-		nrows += context->communicator->halo_elements;
-		}
-
-		traits->nrows = nrows;*/
-
-	ghost_vec_t *vec = ghost_initVector(traits);
-
-	/*	vec->sisters = (ghost_vec_t *)malloc(ghost_getNumberOfProcesses()*sizeof(ghost_vec_t));
-
-		int sizeofVec = sizeof(ghost_vec_t);
-		int i = ghost_getRank();
-		DEBUG_LOG(0,"sisters[%d] = %p",i,vec);
-		vec->sisters[i] = *vec;
-
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(&(vec->sisters[i]),sizeofVec,MPI_BYTE,i,MPI_COMM_WORLD));
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-
-		DEBUG_LOG(0,"%d",vec->sisters[0].traits->nrows);*/
-
-	/*	ghost_vdat_t *val;
-		ghost_vidx_t nrows;
-		size_t size_val;
-		ghost_mat_t *matrix = context->fullMatrix;
-
-
-		if ((context->flags & GHOST_CONTEXT_GLOBAL) || (flags & GHOST_VEC_GLOBAL))
-		{
-		size_val = (size_t)(ghost_pad(matrix->nrows(matrix),VEC_PAD))*sizeof(ghost_vdat_t);
-		val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
-		nrows = matrix->nrows(matrix);
-
-
-		DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX" rows",nrows);
-
-		ghost_midx_t i;
-		if (fp) {
-#pragma omp parallel for schedule(runtime)
-for (i=0; i<matrix->nrows(matrix); i++) 
-fp(i,&val[i]);
-}else {
-#ifdef GHOST_VEC_COMPLEX
-#pragma omp parallel for schedule(runtime)
-for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.+I*0.;
-#else
-#pragma omp parallel for schedule(runtime)
-for (i=0; i<matrix->nrows(matrix); i++) val[i] = 0.;
-#endif
-}
-if (matrix->traits->flags & GHOST_SPM_PERMUTECOLIDX)
-ghost_permuteVector(val,matrix->rowPerm,nrows);
-
-} 
-else 
-{
-ghost_comm_t *context->communicator = context->communicator;
-ghost_midx_t i;
-int me = ghost_getRank();
-
-if (flags & GHOST_VEC_LHS)
-nrows = context->communicator->lnrows[me];
-else if (flags & GHOST_VEC_RHS)
-nrows = context->communicator->lnrows[me]+context->communicator->halo_elements;
-else
-ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-
-size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_vdat_t) );
-
-#ifdef CUDA_PINNEDMEM
-CU_safecall(cudaHostAlloc((void **)&val,size_val,cudaHostAllocDefault));
-#else
-val = (ghost_vdat_t*) allocateMemory( size_val, "vec->val");
-#endif
-nrows = nrows;
-
-DEBUG_LOG(1,"NUMA-aware allocation of vector with %"PRmatIDX"+%"PRmatIDX" rows",context->communicator->lnrows[me],context->communicator->halo_elements);
-
-if (fp) {
-#pragma omp parallel for schedule(runtime)
-for (i=0; i<context->communicator->lnrows[me]; i++) 
-fp(context->communicator->lfRow[me]+i,&val[i]);
-#pragma omp parallel for schedule(runtime)
-for (i=context->communicator->lnrows[me]; i<nrows; i++) 
-fp(context->communicator->lfRow[me]+i,&val[i]);
-}else {
-#ifdef GHOST_VEC_COMPLEX
-#pragma omp parallel for schedule(runtime)
-for (i=0; i<context->communicator->lnrows[me]; i++) val[i] = 0.+I*0.;
-#pragma omp parallel for schedule(runtime)
-for (i=context->communicator->lnrows[me]; i<nrows; i++) val[i] = 0.+I*0.;
-#else
-#pragma omp parallel for schedule(runtime)
-	for (i=0; i<context->communicator->lnrows[me]; i++) val[i] = 0.;
-#pragma omp parallel for schedule(runtime)
-	for (i=context->communicator->lnrows[me]; i<nrows; i++) val[i] = 0.;
-#endif
-}
-}
-
-ghost_vec_t* vec;
-vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
-vec->val = val;
-vec->nrows = nrows;
-vec->flags = flags;	
-
-if (!(flags & GHOST_VEC_HOST)) {
-#ifdef OPENCL
-	DEBUG_LOG(1,"Creating vector on OpenCL device");
-	int flag;
-	flag = CL_MEM_READ_WRITE;
-	//		if (flags & GHOST_VEC_LHS) {
-	//		if (options & GHOST_SPMVM_AXPY)
-	//		flag = CL_MEM_READ_WRITE;
-	//		else
-	//		flag = CL_MEM_WRITE_ONLY;
-	//		} else if (flags & GHOST_VEC_RHS) {
-	//		flag = CL_MEM_READ_ONLY;
-	//		} else {
-	//		ABORT("No valid type for vector (has to be one of GHOST_VEC_LHS/_RHS/_BOTH");
-	//		}
-	// TODO
-	vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,vec->val,flag );
-	CL_uploadVector(vec);
-#endif
-#ifdef CUDA
-#ifdef CUDA_PINNEDMEM
-	CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-#else
-	vec->CU_val = CU_allocDeviceMemory(size_val);
-#endif
-	CU_uploadVector(vec);
-#endif
-
-
-} else {
-	DEBUG_LOG(1,"Host-only vector created successfully");
-}*/
-
-return vec;
-
-}
-
 ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 {
 	ghost_mat_t *mat;
@@ -523,7 +368,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			context->gnrows = (ghost_midx_t)fileheader.nrows;
 		if (gncols == GHOST_GET_DIM_FROM_MATRIX)
 			context->gncols = (ghost_midx_t)fileheader.ncols;
-		
+
 	} else {
 		context->gnrows = (ghost_midx_t)gnrows;
 		context->gncols = (ghost_midx_t)gncols;
@@ -556,91 +401,101 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 #ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-	context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-	context->communicator->halo_elements = 0;
-	int nprocs = ghost_getNumberOfProcesses();
-	context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-	context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-	context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-	context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
 
-	if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
-	{ // read rpt and fill lfrow, lnrows, lfent, lnents
-		ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
-		ghost_mnnz_t gnnz;
+//		context->communicator->mpicomm
+		int excl[] = {0};
+		MPI_Group group;
+		MPI_safecall(MPI_Comm_group(MPI_COMM_WORLD,&group));
+	//	MPI_safecall(MPI_Group_excl(group,1,excl,&group));
+		MPI_safecall(MPI_Comm_create(MPI_COMM_WORLD,group,&(context->communicator->mpicomm)));
 
-		if (ghost_getRank() == 0) {
-			int file;
+		context->communicator->halo_elements = 0;
+		
+		int nprocs = ghost_getNumberOfProcesses();
+		
+		context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+		context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+		context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+		context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
 
-			if ((file = open(matrixPath, O_RDONLY)) == -1){
-				ABORT("Could not open binary CRS file %s",matrixPath);
-			}
-#ifdef LONGIDX
-			pread(file,&rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER);
-#else // casting
-			DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
-			int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
-			pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER );
-			for( i = 0; i < context->gnrows+1; i++ ) {
-				rpt[i] = (ghost_midx_t)(tmp[i]);
-			}
-			// TODO little/big endian
-#endif
-			context->rpt = rpt;
-			gnnz = rpt[context->gnrows];
-			ghost_mnnz_t target_nnz;
-			target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
+		if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
+		{ // read rpt and fill lfrow, lnrows, lfent, lnents
+			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
+			ghost_mnnz_t gnnz;
 
-			context->communicator->lfRow[0]  = 0;
-			context->communicator->lfEnt[0] = 0;
-			int j = 1;
+			if (ghost_getRank() == 0) {
+				int file;
 
-			for (i=0;i<context->gnrows;i++){
-				if (rpt[i] >= j*target_nnz){
-					context->communicator->lfRow[j] = i;
-					context->communicator->lfEnt[j] = rpt[i];
-					j = j+1;
+				if ((file = open(matrixPath, O_RDONLY)) == -1){
+					ABORT("Could not open binary CRS file %s",matrixPath);
 				}
+#ifdef LONGIDX
+				pread(file,&rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER);
+#else // casting
+				DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
+				int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
+				pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER );
+				for( i = 0; i < context->gnrows+1; i++ ) {
+					rpt[i] = (ghost_midx_t)(tmp[i]);
+				}
+				// TODO little/big endian
+#endif
+				context->rpt = rpt;
+				gnnz = rpt[context->gnrows];
+				ghost_mnnz_t target_nnz;
+				target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
+
+				context->communicator->lfRow[0]  = 0;
+				context->communicator->lfEnt[0] = 0;
+				int j = 1;
+
+				for (i=0;i<context->gnrows;i++){
+					if (rpt[i] >= j*target_nnz){
+						context->communicator->lfRow[j] = i;
+						context->communicator->lfEnt[j] = rpt[i];
+						j = j+1;
+					}
+				}
+				for (i=0; i<nprocs-1; i++){
+					context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
+					context->communicator->lnEnts[i] = context->communicator->lfEnt[i+1] - context->communicator->lfEnt[i] ;
+				}
+
+				context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
+				context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
+
+			}
+			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+
+
+		} else 
+		{ // don't read rpt, only fill lfrow, lnrows
+			UNUSED(matrixPath);
+			//	int nprocs = ghost_getNumberOfProcesses();
+			//	context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+			//	context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+
+			ghost_midx_t target_rows = (context->gnrows/nprocs);
+
+			context->communicator->lfRow[0] = 0;
+
+			for (i=1; i<nprocs; i++){
+				context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows;
 			}
 			for (i=0; i<nprocs-1; i++){
 				context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
-				context->communicator->lnEnts[i] = context->communicator->lfEnt[i+1] - context->communicator->lfEnt[i] ;
 			}
-
 			context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
-			context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
-
+			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
 		}
-		MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-
-
-	} else 
-	{ // don't read rpt, only fill lfrow, lnrows
-		UNUSED(matrixPath);
-	//	int nprocs = ghost_getNumberOfProcesses();
-	//	context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-	//	context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-
-		ghost_midx_t target_rows = (context->gnrows/nprocs);
-
-		context->communicator->lfRow[0] = 0;
-
-		for (i=1; i<nprocs; i++){
-			context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows;
-		}
-		for (i=0; i<nprocs-1; i++){
-			context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
-		}
-		context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
-		MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-		MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, MPI_COMM_WORLD));
-	}
 
 	} else {
-	context->communicator = NULL;
+		context->communicator = NULL;
 	}
 
 #else

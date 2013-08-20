@@ -72,9 +72,10 @@ static void vec_CLupload (ghost_vec_t *);
 static void vec_CLdownload (ghost_vec_t *);
 #endif
 
-ghost_vec_t *ghost_initVector(ghost_vtraits_t *traits)
+ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 {
 	ghost_vec_t *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
+	vec->context = ctx;
 	vec->traits = traits;
 
 	DEBUG_LOG(1,"Initializing vector");
@@ -151,7 +152,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nr, ghost_vidx_t n
 	newTraits->nrows = nr;
 	newTraits->nvecs = nc;
 
-	new = ghost_initVector(newTraits);
+	new = ghost_createVector(src->context,newTraits);
 	new->val = &VAL(src,src->traits->nrowspadded*coffs+roffs);
 
 	new->isView = 1;
@@ -174,7 +175,7 @@ ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, 
 	newTraits->nrows = nr;
 	newTraits->nvecs = nc;
 
-	new = ghost_initVector(newTraits);
+	new = ghost_createVector(src->context,newTraits);
 	new->fromVec(new,src,roffs,coffs);
 
 	return new;

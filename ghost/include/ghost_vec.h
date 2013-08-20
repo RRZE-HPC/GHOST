@@ -20,7 +20,7 @@
 
 #define VAL(vec,k) ((char *)(vec->val))[(k)*ghost_sizeofDataType(vec->traits->datatype)]
 
-ghost_vec_t * ghost_initVector(ghost_vtraits_t *);
+ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
 
 #ifdef __cplusplus
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec);

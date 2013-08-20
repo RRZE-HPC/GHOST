@@ -1,4 +1,5 @@
 #include <ghost.h>
+#include <ghost_vec.h>
 #include <ghost_util.h>
 #include <ghost_taskq.h>
 
@@ -124,8 +125,8 @@ int main( int argc, char* argv[] )
 	//ghost_readMatFileHeader(matrixPath,&fileheader);
 	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath);
 	mat = ghost_createMatrix(&mtraits,1);
-	lhs = ghost_createVector(&lvtraits);
-	rhs = ghost_createVector(&rvtraits);
+	lhs = ghost_createVector(context,&lvtraits);
+	rhs = ghost_createVector(context,&rvtraits);
 
 #ifdef TASKING
 	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
@@ -148,7 +149,7 @@ int main( int argc, char* argv[] )
 	ghost_printMatrixInfo(mat);
 
 #ifdef CHECK
-	ghost_vec_t *goldLHS = ghost_createVector(&lvtraits);
+	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
    	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
 
