@@ -427,9 +427,9 @@ void ghost_finish();
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
-ghost_context_t *ghost_createContext(int64_t, int64_t, int, char *);
+ghost_context_t *ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm);
 //ghost_mat_t *ghost_createMatrix(ghost_context_t * context, char *matrixPath, ghost_mtraits_t *traits, int nTraits);
-ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits);
+ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits);
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/

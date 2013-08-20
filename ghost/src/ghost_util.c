@@ -78,7 +78,7 @@ double ghost_wctime()
 
 void ghost_printHeader(const char *fmt, ...)
 {
-	if(ghost_getRank() == 0) {
+	if(ghost_getRank(MPI_COMM_WORLD) == 0) {
 		va_list args;
 		va_start(args,fmt);
 		char label[1024];
@@ -126,7 +126,7 @@ void ghost_printHeader(const char *fmt, ...)
 
 void ghost_printFooter() 
 {
-	if (ghost_getRank() == 0) {
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 		int i;
 #ifdef PRETTYPRINT
 		printf("└");
@@ -143,7 +143,7 @@ void ghost_printFooter()
 
 void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 {
-	if (ghost_getRank() == 0) {
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 		va_list args;
 		va_start(args,fmt);
 		char dummy[1025];
@@ -273,7 +273,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 
 void ghost_printSysInfo()
 {
-	int nproc = ghost_getNumberOfProcesses();
+	int nproc = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 	int nnodes = ghost_getNumberOfNodes();
 
 #ifdef CUDA
@@ -283,7 +283,7 @@ void ghost_printSysInfo()
 	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
 #endif
 
-	if (ghost_getRank()==0) {
+	if (ghost_getRank(MPI_COMM_WORLD)==0) {
 		int nthreads;
 		int nphyscores = ghost_getNumberOfPhysicalCores();
 		int ncores = ghost_getNumberOfHwThreads();
@@ -351,7 +351,7 @@ void ghost_printSysInfo()
 void ghost_printGhostInfo() 
 {
 
-	if (ghost_getRank()==0) {
+	if (ghost_getRank(MPI_COMM_WORLD)==0) {
 		/*	int nDataformats;
 			char *availDataformats = NULL;
 			char *avDF = NULL;
@@ -437,10 +437,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
-#ifdef GHOST_MPI
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
-#endif
-	int me = ghost_getRank();
+	int me = ghost_getRank((*nodeLHS)->context->communicator->mpicomm);
 	char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
 	memset(zero,0,ghost_sizeofDataType(datatype));
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
@@ -451,11 +448,11 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 	ghost_matfile_header_t fileheader;
 	ghost_readMatFileHeader(matrixPath,&fileheader);
 
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath);
-	ghost_mat_t *mat = ghost_createMatrix(&trait, 1);
+	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD);
+	ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
 	mat->fromFile(mat,context,matrixPath);
 	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
-	ghost_vec_t *globRHS = ghost_createVector(&rtraits);
+	ghost_vec_t *globRHS = ghost_createVector(context, &rtraits);
 	globRHS->fromScalar(globRHS,context,zero);
 
 
@@ -468,7 +465,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 
 		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 
-		globLHS = ghost_createVector(&ltraits); 
+		globLHS = ghost_createVector(context, &ltraits); 
 		globLHS->fromScalar(globLHS,context,&zero);
 
 		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
@@ -488,7 +485,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 		ghost_freeContext(context);
 	} else {
 		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype);
-		globLHS = ghost_createVector(&ltraits);
+		globLHS = ghost_createVector(context, &ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
@@ -555,17 +552,12 @@ res[i] = hlp1;
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
 	if(comm) {
-		int i;
 		free(comm->lnEnts);
 		free(comm->lnrows);
 		free(comm->lfEnt);
 		free(comm->lfRow);
 		free(comm->wishes);
 		free(comm->dues);
-	//	for (i=0; i<ghost_getNumberOfProcesses(); i++) {
-	//		free(comm->wishlist[i]);
-	//		free(comm->duelist[i]);
-	//	}
 		free(comm->wishlist[0]);
 		free(comm->duelist[0]);
 		free(comm->wishlist);
@@ -671,7 +663,18 @@ char * ghost_workdistName(int options)
 		return "Equal no. of rows";
 }
 
-int ghost_getRank() 
+int ghost_getRank(MPI_Comm comm) 
+{
+#ifdef GHOST_MPI
+	int rank;
+	MPI_safecall(MPI_Comm_rank ( comm, &rank ));
+	return rank;
+#else
+	return 0;
+#endif
+}
+
+/*int ghost_getRank() 
 {
 #ifdef GHOST_MPI
 	int rank;
@@ -680,7 +683,7 @@ int ghost_getRank()
 #else
 	return 0;
 #endif
-}
+}*/
 
 int ghost_getLocalRank() 
 {
@@ -787,7 +790,7 @@ int ghost_getNumberOfNodes()
 #endif
 }
 
-int ghost_getNumberOfProcesses() 
+/*int ghost_getNumberOfProcesses() 
 {
 #ifndef GHOST_MPI
 	return 1;
@@ -799,6 +802,18 @@ int ghost_getNumberOfProcesses()
 
 	return nnodes;
 #endif
+}*/
+
+int ghost_getNumberOfRanks(MPI_Comm comm)
+{
+#ifndef GHOST_MPI
+	return 1;
+#else
+	int nnodes;
+	MPI_safecall(MPI_Comm_size(comm, &nnodes));
+	return nnodes;
+#endif
+
 }
 
 size_t ghost_sizeofDataType(int dt)
@@ -1156,7 +1171,7 @@ char ghost_datatypePrefix(int dt)
 ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 {
 	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		return ctx->communicator->lfRow[ghost_getRank()] + lidx;
+		return ctx->communicator->lfRow[ghost_getRank(ctx->communicator->mpicomm)] + lidx;
 
 	return lidx;	
 }
@@ -1323,7 +1338,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 		nrows = lnrows;
 	} else {
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->communicator->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
 #endif
@@ -1341,7 +1356,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 		nnz = lnnz;
 	} else {
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->communicator->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");
 #endif

@@ -84,8 +84,8 @@ int main( int argc, char* argv[] )
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
-		GHOST_SPMVM_MODE_GOODFAITH/*,
-		GHOST_SPMVM_MODE_TASKMODE*/};
+		GHOST_SPMVM_MODE_GOODFAITH,
+		GHOST_SPMVM_MODE_TASKMODE};
 	int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -123,8 +123,19 @@ int main( int argc, char* argv[] )
 #endif
 
 	//ghost_readMatFileHeader(matrixPath,&fileheader);
-	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath);
-	mat = ghost_createMatrix(&mtraits,1);
+	MPI_Group group;
+	MPI_Comm comm;
+	int ranks0[] = {0};
+	MPI_safecall(MPI_Comm_group(MPI_COMM_WORLD,&group));
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
+		MPI_safecall(MPI_Group_incl(group,1,ranks0,&group));
+	} else {
+		MPI_safecall(MPI_Group_excl(group,1,ranks0,&group));
+	}
+	MPI_safecall(MPI_Comm_create(MPI_COMM_WORLD,group,&comm));
+
+	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,comm);
+	mat = ghost_createMatrix(context,&mtraits,1);
 	lhs = ghost_createVector(context,&lvtraits);
 	rhs = ghost_createVector(context,&rvtraits);
 
@@ -199,19 +210,19 @@ int main( int argc, char* argv[] )
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){
 				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(),ghost_modeName(modes[mode]), i, creal(ref),
+						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(comm),ghost_modeName(modes[mode]), i, creal(ref),
 						cimag(ref),
 						creal(res),
 						cimag(res),
 						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
-				printf("PE%d: There may be more errors...\n",ghost_getRank());
+				printf("PE%d: There may be more errors...\n",ghost_getRank(comm));
 				break;
 			}
 		}
 		ghost_midx_t totalerrors;
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
+		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,ghost_mpi_dt_midx,MPI_SUM,comm));
 #else
 		totalerrors = errcount;
 #endif

@@ -48,77 +48,6 @@ MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
-//extern ghost_threadstate_t *threadpool;
-
-/*
-   static ghost_mnnz_t context_gnnz (ghost_context_t * context)
-   {
-   ghost_mnnz_t gnnz;
-   ghost_mnnz_t lnnz = context->fullMatrix->nnz(context->fullMatrix);
-
-#ifdef GHOST_MPI
-if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-MPI_safecall(MPI_Allreduce(&lnnz,&gnnz,1,ghost_mpi_dt_mnnz,MPI_SUM,MPI_COMM_WORLD));
-} else {
-gnnz = lnnz;
-}
-#else
-gnnz = lnnz;
-#endif
-
-return gnnz;
-}
-
-static ghost_mnnz_t context_lnnz (ghost_context_t * context)
-{
-return context->fullMatrix->nnz(context->fullMatrix);
-}
-
-static ghost_mnnz_t context_gnrows (ghost_context_t * context)
-{
-ghost_mnnz_t gnrows;
-ghost_mnnz_t lnrows = context->fullMatrix->nrows(context->fullMatrix);
-
-#ifdef GHOST_MPI
-if (context->flags & GHOST_CONTEXT_DISTRIBUTED) { 
-MPI_safecall(MPI_Allreduce(&lnrows,&gnrows,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
-} else {
-gnrows = lnrows;
-}
-#else
-gnrows = lnrows;
-#endif
-
-return gnrows;
-}
-
-static ghost_mnnz_t context_lnrows (ghost_context_t * context)
-{
-return context->fullMatrix->nrows(context->fullMatrix);
-}
-
-static ghost_mnnz_t context_gncols (ghost_context_t * context)
-{
-ghost_mnnz_t gncols;
-ghost_mnnz_t lncols = context->fullMatrix->ncols(context->fullMatrix);
-
-#ifdef GHOST_MPI
-if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-MPI_safecall(MPI_Allreduce(&lncols,&gncols,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
-} else {
-gncols = lncols;
-}
-#else
-gncols = lncols;
-#endif
-
-return gncols;
-}
-
-static ghost_mnnz_t context_lncols (ghost_context_t * context)
-{
-return context->fullMatrix->ncols(context->fullMatrix);
-}*/
 
 #ifdef GHOST_MPI
 #ifdef GHOST_VEC_COMPLEX
@@ -226,7 +155,7 @@ int ghost_init(int argc, char **argv)
 					"provided (%d)!",req,prov);
 		}
 	}
-	me = ghost_getRank();;
+	me = ghost_getRank(MPI_COMM_WORLD);
 
 	setupSingleNodeComm();
 	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
@@ -332,12 +261,13 @@ void ghost_finish()
 
 }
 
-ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
+ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
 {
 	ghost_mat_t *mat;
 	UNUSED(nTraits);
 
 	mat = ghost_initMatrix(traits);
+	mat->context = context;
 	/*	mat->fromBin(mat,matrixPath,context,options);
 
 		if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
@@ -352,7 +282,7 @@ ghost_mat_t *ghost_createMatrix(ghost_mtraits_t *traits, int nTraits)
 	return mat;
 }
 
-ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath) 
+ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm) 
 {
 	DEBUG_LOG(1,"Creating context with dimension %ldx%ld",gnrows,gncols);
 	ghost_context_t *context;
@@ -383,7 +313,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #else
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		ABORT("Creating a distributed matrix without MPI is not possible");
-	} else if (!(context->flags & GHOST_CONTEXT_GLOBAL)) {
+} else if (!(context->flags & GHOST_CONTEXT_GLOBAL)) {
 		DEBUG_LOG(1,"Context is set to be global");
 		context->flags |= GHOST_CONTEXT_GLOBAL;
 	}
@@ -403,16 +333,11 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
 
-//		context->communicator->mpicomm
-		int excl[] = {0};
-		MPI_Group group;
-		MPI_safecall(MPI_Comm_group(MPI_COMM_WORLD,&group));
-	//	MPI_safecall(MPI_Group_excl(group,1,excl,&group));
-		MPI_safecall(MPI_Comm_create(MPI_COMM_WORLD,group,&(context->communicator->mpicomm)));
+		context->communicator->mpicomm = comm;
 
 		context->communicator->halo_elements = 0;
 		
-		int nprocs = ghost_getNumberOfProcesses();
+		int nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
 		
 		context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 		context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
@@ -424,7 +349,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
 			ghost_mnnz_t gnnz;
 
-			if (ghost_getRank() == 0) {
+			if (ghost_getRank(context->communicator->mpicomm) == 0) {
 				int file;
 
 				if ((file = open(matrixPath, O_RDONLY)) == -1){
@@ -588,7 +513,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 	int v;
 	if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
 		for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-			MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, MPI_COMM_WORLD));
+			MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, vec->context->communicator->mpicomm));
 		}
 	}
 #endif
@@ -599,9 +524,9 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 {
 	int64_t nrows = vec->traits->nrows;
 #ifdef GHOST_MPI
-	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD));
+	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,vec->context->communicator->mpicomm));
 #endif
-	if (ghost_getRank() == 0) { // write header
+	if (ghost_getRank(vec->context->communicator->mpicomm) == 0) { // write header
 
 		int file;
 
@@ -631,7 +556,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 	if ((ctx==NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->toFile(vec,path,0,1);
 	else
-		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank()],1);
+		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)],1);
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
@@ -639,7 +564,7 @@ void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 	if ((ctx == NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->fromFile(vec,ctx,path,0);
 	else
-		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank()]);
+		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)]);
 }
 void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *c, void *s)
 {
@@ -703,7 +628,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank() == 0) { 
+				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
 					zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)beta, x->val, &(x->traits->nrowspadded)); 
 				} else {
 					zgemm(transpose,"N", &m, &n, &k, (BLAS_Complex16 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex16 *)&zero, x->val, &(x->traits->nrowspadded)); 
@@ -714,7 +639,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 
 		} else {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank() == 0) { 
+				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
 					cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)beta, x->val, &(x->traits->nrowspadded));
 				} else {
 					cgemm(transpose,"N", &m, &n, &k, (BLAS_Complex8 *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (BLAS_Complex8 *)&zero, x->val, &(x->traits->nrowspadded));
@@ -726,7 +651,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank() == 0) { 
+				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
 					dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)beta, x->val, &(x->traits->nrowspadded));
 				} else {
 					dgemm(transpose,"N", &m, &n, &k, (double *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (double *)&zero, x->val, &(x->traits->nrowspadded));
@@ -736,7 +661,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 			}
 		} else {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank() == 0) { 
+				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
 					sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)beta, x->val, &(x->traits->nrowspadded));
 				} else {
 					sgemm(transpose,"N", &m, &n, &k, (float *)alpha, v->val, &(v->traits->nrowspadded), w->val, &(w->traits->nrowspadded), (float *)&zero, x->val, &(x->traits->nrowspadded));
@@ -754,17 +679,17 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	} else if (reduce == GHOST_GEMM_ALL_REDUCE) {
 		for (i=0; i<x->traits->nvecs; ++i) {
 			for (j=0; j<x->traits->nrows; ++j) {
-				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,MPI_COMM_WORLD));
+				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,x->context->communicator->mpicomm));
 
 			}
 		}
 	} else {
 		for (i=0; i<x->traits->nvecs; ++i) {
 			for (j=0; j<x->traits->nrows; ++j) {
-				if (ghost_getRank() == reduce) {
-					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+				if (ghost_getRank(x->context->communicator->mpicomm) == reduce) {
+					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->communicator->mpicomm));
 				} else {
-					MPI_safecall(MPI_Reduce(((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),NULL,1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,MPI_COMM_WORLD));
+					MPI_safecall(MPI_Reduce(((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),NULL,1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->communicator->mpicomm));
 				}
 			}
 		}
