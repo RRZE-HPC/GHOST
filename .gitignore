@@ -21,6 +21,7 @@ apps/*/
 !apps/taskq/
 !apps/dense/
 !apps/test/
+!apps/multicomm/
 tags
 *stdout*
 *stderr*

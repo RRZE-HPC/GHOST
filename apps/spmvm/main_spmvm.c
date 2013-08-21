@@ -122,19 +122,7 @@ int main( int argc, char* argv[] )
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 #endif
 
-	//ghost_readMatFileHeader(matrixPath,&fileheader);
-	MPI_Group group;
-	MPI_Comm comm;
-	int ranks0[] = {0};
-	MPI_safecall(MPI_Comm_group(MPI_COMM_WORLD,&group));
-	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
-		MPI_safecall(MPI_Group_incl(group,1,ranks0,&group));
-	} else {
-		MPI_safecall(MPI_Group_excl(group,1,ranks0,&group));
-	}
-	MPI_safecall(MPI_Comm_create(MPI_COMM_WORLD,group,&comm));
-
-	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,comm);
+	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD);
 	mat = ghost_createMatrix(context,&mtraits,1);
 	lhs = ghost_createVector(context,&lvtraits);
 	rhs = ghost_createVector(context,&rvtraits);
@@ -210,19 +198,19 @@ int main( int argc, char* argv[] )
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){
 				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(comm),ghost_modeName(modes[mode]), i, creal(ref),
+						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(MPI_COMM_WORLD),ghost_modeName(modes[mode]), i, creal(ref),
 						cimag(ref),
 						creal(res),
 						cimag(res),
 						creal(mytol),cimag(mytol),creal(cabs(ref-res)));
 				errcount++;
-				printf("PE%d: There may be more errors...\n",ghost_getRank(comm));
+				printf("PE%d: There may be more errors...\n",ghost_getRank(MPI_COMM_WORLD));
 				break;
 			}
 		}
 		ghost_midx_t totalerrors;
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,ghost_mpi_dt_midx,MPI_SUM,comm));
+		MPI_safecall(MPI_Allreduce(&errcount,&totalerrors,1,ghost_mpi_dt_midx,MPI_SUM,MPI_COMM_WORLD));
 #else
 		totalerrors = errcount;
 #endif
@@ -244,7 +232,7 @@ int main( int argc, char* argv[] )
 	mat->destroy(mat);
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);
-	ghost_freeContext( context );
+	ghost_freeContext(context);
 
 #ifdef CHECK
 	goldLHS->destroy(goldLHS);

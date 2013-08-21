@@ -78,7 +78,6 @@ double ghost_wctime()
 
 void ghost_printHeader(const char *fmt, ...)
 {
-	if(ghost_getRank(MPI_COMM_WORLD) == 0) {
 		va_list args;
 		va_start(args,fmt);
 		char label[1024];
@@ -121,12 +120,10 @@ void ghost_printHeader(const char *fmt, ...)
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 		printf("\n");
 #endif
-	}
 }
 
 void ghost_printFooter() 
 {
-	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 		int i;
 #ifdef PRETTYPRINT
 		printf("└");
@@ -138,12 +135,10 @@ void ghost_printFooter()
 		for (i=0; i<PRINTWIDTH; i++) printf("-");
 #endif
 		printf("\n\n");
-	}
 }
 
 void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 {
-	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 		va_list args;
 		va_start(args,fmt);
 		char dummy[1025];
@@ -163,12 +158,14 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 		printf("│");
 #endif
 		printf("\n");
-	}
 }
 
 
 void ghost_printMatrixInfo(ghost_mat_t *mat)
 {
+	ghost_midx_t nrows = ghost_getMatNrows(mat);
+	ghost_midx_t nnz = ghost_getMatNnz(mat);
+	if (ghost_getRank(mat->context->communicator->mpicomm) == 0) {
 
 	char *matrixLocation;
 	if (mat->traits->flags & GHOST_SPM_DEVICE)
@@ -182,9 +179,9 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	ghost_printHeader(mat->name);
 	ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
 	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,ghost_getMatNrows(mat));
-	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,ghost_getMatNnz(mat));
-	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)ghost_getMatNnz(mat)/ghost_getMatNrows(mat));
+	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
+	ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
+	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nrows/nnz);
 
 	ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
 	if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
@@ -206,68 +203,29 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	mat->printInfo(mat);
 	ghost_printFooter();
 
-
+	}
 
 }
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
-	UNUSED(context);
+	int nranks = ghost_getNumberOfRanks(context->communicator->mpicomm);
 
-
-	/*	size_t ws;
-
-
-		ws = ((context->gnrows(context)+1)*sizeof(ghost_midx_t) + 
-		context->gnnz(context)*(ghost_sizeofDataType(context->fullMatrix->traits->datatype)+sizeof(ghost_midx_t)))/(1024*1024);
-
-		char *matrixLocation;
-		if (context->fullMatrix->traits->flags & GHOST_SPM_DEVICE)
-		matrixLocation = "Device";
-		else if (context->fullMatrix->traits->flags & GHOST_SPM_HOST)
-		matrixLocation = "Host";
-		else
-		matrixLocation = "Default";*/
-
-	char *contextType;
-	if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-		contextType = "Distributed";
-	else if (context->flags & GHOST_CONTEXT_GLOBAL)
-		contextType = "Global";
-
-
-	ghost_printHeader("Context");
-	//	ghost_printLine("Matrix name",NULL,"%s",context->matrixName);
-	ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
-	//	ghost_printLine("Nonzeros",NULL,"%"PRmatNNZ,context->gnnz(context));
-	//	ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)context->gnnz(context)/context->gnrows(context));
-	//	ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-	ghost_printLine("Type",NULL,"%s",contextType);
-	ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
-	/*	ghost_printLine("Global CRS size","MB","%lu",ws);
-
-		ghost_printLine("Full   matrix format",NULL,"%s",context->fullMatrix->formatName(context->fullMatrix));
+	if (ghost_getRank(context->communicator->mpicomm) == 0) {
+		char *contextType;
 		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-		{
-		ghost_printLine("Local  matrix format",NULL,"%s",context->localMatrix->formatName(context->fullMatrix));
-		ghost_printLine("Remote matrix format",NULL,"%s",context->remoteMatrix->formatName(context->fullMatrix));
-		ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(context->localMatrix->symmetry));
-		} else {
-		ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(context->fullMatrix->symmetry));
-		}
+			contextType = "Distributed";
+		else if (context->flags & GHOST_CONTEXT_GLOBAL)
+			contextType = "Global";
 
-		ghost_printLine("Full   matrix size (rank 0)","MB","%u",context->fullMatrix->byteSize(context->fullMatrix)/(1024*1024));
-		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-		{
-		ghost_printLine("Local  matrix size (rank 0)","MB","%u",context->localMatrix->byteSize(context->localMatrix)/(1024*1024));
-		ghost_printLine("Remote matrix size (rank 0)","MB","%u",context->remoteMatrix->byteSize(context->remoteMatrix)/(1024*1024));
-		}
 
-		if (context->flags & GHOST_CONTEXT_GLOBAL)
-		{ //additional information depending on format
-		context->fullMatrix->printInfo(context->fullMatrix);
-		}*/
-	ghost_printFooter();
+		ghost_printHeader("Context");
+		ghost_printLine("MPI processes",NULL,"%d",nranks);
+		ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
+		ghost_printLine("Type",NULL,"%s",contextType);
+		ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
+		ghost_printFooter();
+	}
 
 }
 
@@ -282,8 +240,8 @@ void ghost_printSysInfo()
 #ifdef OPENCL
 	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
 #endif
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 
-	if (ghost_getRank(MPI_COMM_WORLD)==0) {
 		int nthreads;
 		int nphyscores = ghost_getNumberOfPhysicalCores();
 		int ncores = ghost_getNumberOfHwThreads();
@@ -318,7 +276,8 @@ void ghost_printSysInfo()
 		nthreads = ghost_ompGetNumThreads();
 
 		ghost_printHeader("System");
-		ghost_printLine("Nodes",NULL,"%d",nnodes);
+		ghost_printLine("Overall nodes",NULL,"%d",nnodes);
+		ghost_printLine("Overall MPI processes",NULL,"%d",nproc);
 		ghost_printLine("MPI processes per node",NULL,"%d",nproc/nnodes);
 		ghost_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
 		ghost_printLine("OpenMP threads per node",NULL,"%d",nproc/nnodes*nthreads);
@@ -925,7 +884,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 	}
 
 #ifdef GHOST_MPI
-	MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+	MPI_safecall(MPI_Barrier(context->communicator->mpicomm));
 #endif
 #ifdef OPENCL
 	CL_barrier();
@@ -943,7 +902,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		CU_barrier();
 #endif
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Barrier(MPI_COMM_WORLD));
+		MPI_safecall(MPI_Barrier(context->communicator->mpicomm));
 #endif
 		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
 		//time = ghost_timediff(start,end);
