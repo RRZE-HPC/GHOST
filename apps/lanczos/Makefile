@@ -1,19 +1,4 @@
 include ../../ghost/config.mk
-COMPILER:=$(strip $(COMPILER))
-LIBTYPE:=$(strip $(LIBTYPE))
-LONGIDX:=$(strip $(LONGIDX))
-MPI:=$(strip $(MPI))
-VSX:=$(strip $(VSX))
-MIC:=$(strip $(MIC))
-AVX:=$(strip $(AVX))
-SSE:=$(strip $(SSE))
-OPENCL:=$(strip $(OPENCL))
-CUDA:=$(strip $(CUDA))
-LIKWID:=$(strip $(LIKWID))
-DEBUG:=$(strip $(DEBUG))
-GHOSTPATH:=$(strip $(GHOSTPATH))
-LIKWIDPATH:=$(strip $(LIKWIDPATH))
-
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
@@ -22,6 +7,10 @@ LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost -lifcore
 OBJS += imtql1f.o pythagf.o imtql1.o pythag.o
+
+ifeq ($(strip $(MPI)),1)
+MAKROS+= -DGHOST_MPI
+endif
 
 %.o: %.c ../../ghost/config.mk
 	@echo "==> Compile $< -> $@"

@@ -1,13 +1,13 @@
 #include <ghost.h>
+#include <ghost_vec.h>
 #include <ghost_util.h>
 #include <stdio.h>
 #include <string.h>
 
-GHOST_REGISTER_DT_D(vecdt); // vectors have double values
-GHOST_REGISTER_DT_D(matdt); // matrix has double values
+GHOST_REGISTER_DT_D(vecdt) // vectors have double values
+GHOST_REGISTER_DT_D(matdt) // matrix has double values
 
-extern void imtql1_(int *, matdt_t *, matdt_t *, int *);
-extern void imtql1f_(int *, matdt_t *, matdt_t *, int *);
+#include "lanczos.h"
 
 static int converged(matdt_t evmin)
 {
@@ -46,19 +46,17 @@ int main(int argc, char* argv[])
 	ghost_mat_t *mat;
 	ghost_vec_t *vold;
 	ghost_vec_t *vnew;
-	ghost_matfile_header_t fileheader;
 	
 	ghost_init(argc,argv); // has to be the first call
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL); // pin the threads to the physical cores (no SMT)
 	
-	ghost_readMatFileHeader(matrixPath,&fileheader); // read basic matrix information
 	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_CRS, .datatype = matdt);
 	ghost_vtraits_t vtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_RHS,.datatype = vecdt);
 
-	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT);
-	mat   = ghost_createMatrix(&mtraits,1);
-	vnew  = ghost_createVector(&vtraits);
-	vold  = ghost_createVector(&vtraits);
+	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD);
+	mat   = ghost_createMatrix(context,&mtraits,1);
+	vnew  = ghost_createVector(context,&vtraits);
+	vold  = ghost_createVector(context,&vtraits);
 
 	mat->fromFile(mat,context,matrixPath);
 	vnew->fromScalar(vnew,context,&zero); // vnew = 0
@@ -89,11 +87,11 @@ int main(int argc, char* argv[])
 		imtql1_(&n,falphas,fbetas,&ferr);
 
 		if(ferr != 0) printf("Error: the %d. eigenvalue could not be determined\n",ferr);
-		if (ghost_getRank() == 0)
+		if (ghost_getRank(MPI_COMM_WORLD) == 0)
 			printf("minimal eigenvalue: %f", falphas[0]);
 		fflush(stdout);
 	}
-	if (ghost_getRank() == 0)
+	if (ghost_getRank(MPI_COMM_WORLD) == 0)
 		printf("%s\n",converged(falphas[0])?" (converged!)":" (max. iterations reached!)");
 
 	vold->destroy(vold);
