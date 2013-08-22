@@ -1097,16 +1097,6 @@ int ghost_getCore()
 	return processorId;
 }
 
-void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin)
-{
-	if (plugin) {
-		dlclose(plugin->so);
-		free(plugin);
-	}
-
-
-}
-
 char ghost_datatypePrefix(int dt)
 {
 	char p;

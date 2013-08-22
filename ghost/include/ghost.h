@@ -79,8 +79,6 @@ typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_context_t ghost_context_t;
 typedef struct ghost_comm_t ghost_comm_t;
-typedef struct ghost_spmf_plugin_t ghost_spmf_plugin_t;
-typedef struct ghost_vec_plugin_t ghost_vec_plugin_t;
 typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 
@@ -146,66 +144,8 @@ typedef struct
 } 
 GHOST_SPM_GPUFORMATS;
 
-typedef struct
-{
-	int state;
-	char *desc;
-} ghost_threadstate_t;
-
-/*
-typedef struct
-{
-	const char *desc;
-	int flags;
-	pthread_t tid;
-	int *coreList;
-	int nThreads;
-	void *(*func) (void *);
-	void *arg;
-} ghost_task_t;
-*/	
-
-
-/*typedef struct{
-	ghost_mat_t *mat;
-	char *matrixPath;
-} CRS_readRpt_args_t;
-
-typedef struct{
-	ghost_mat_t *mat;
-	char *matrixPath;
-	ghost_mnnz_t offsetEnts;
-	ghost_midx_t offsetRows;
-	ghost_midx_t nRows;
-	ghost_mnnz_t nEnts;
-	int IOtype;
-} CRS_readColValOffset_args_t;
-
-typedef struct {
-	ghost_mat_t *mat;
-	int options;
-	ghost_comm_t *lcrp;
-} CRS_createDistribution_args_t;
-
-typedef struct {
-	ghost_mat_t *mat;
-	ghost_mat_t *lmat;
-	ghost_mat_t *rmat;
-	int options;
-	ghost_context_t *context;
-} CRS_createCommunication_args_t;
-
-#define GHOST_CRS_EXTRAFUN_READ_RPT 0
-#define GHOST_CRS_EXTRAFUN_READ_COL_VAL_OFFSET 1
-#define GHOST_CRS_EXTRAFUN_READ_HEADER 2
-#define GHOST_CRS_EXTRAFUN_CREATE_DISTRIBUTION 3
-#define GHOST_CRS_EXTRAFUN_CREATE_COMMUNICATION 4*/
-
 typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_solver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
-typedef void (*ghost_dummyfun_t)(void *);
-typedef ghost_mat_t * (*ghost_spmf_init_t) (ghost_mtraits_t *);
-typedef ghost_vec_t * (*ghost_vec_init_t) (ghost_vtraits_t *);
 
 struct ghost_comm_t 
 {
@@ -215,15 +155,11 @@ struct ghost_comm_t
 	ghost_midx_t* lnrows;
 	ghost_midx_t* lfRow;
 	int* wishes;
-	//ghost_midx_t* wishlist_mem; // TODO delete
-	int** wishlist;    // TODO delete
+	int** wishlist;    
 	int* dues;
-	//ghost_midx_t* duelist_mem;  // TODO delete
 	int** duelist;
 	ghost_midx_t* due_displ;    
-	ghost_midx_t* wish_displ;   // TODO delete
-//	int32_t * wish_displ_split;   
-//	ghost_midx_t * comm_start_displ;   
+	ghost_midx_t* wish_displ;   
 	ghost_midx_t* hput_pos;
 
 	MPI_Comm mpicomm;
@@ -231,17 +167,15 @@ struct ghost_comm_t
 
 struct ghost_mat_t 
 {
-	ghost_mtraits_t *traits; // TODO rename
-	void *so;
-	ghost_midx_t *rowPerm;     // may be NULL
-	ghost_midx_t *invRowPerm;  // may be NULL
+	ghost_mtraits_t *traits;
+	ghost_midx_t *rowPerm;    // may be NULL
+	ghost_midx_t *invRowPerm; // may be NULL
 	int symmetry;
 	ghost_mat_t *localPart;
 	ghost_mat_t *remotePart;
 	ghost_context_t *context;
 	char *name;
 	void *data;
-	ghost_dummyfun_t *extraFun; // TODO still needed?
 	// TODO MPI-IO
 	ghost_kernel_t kernel;
 
@@ -252,7 +186,6 @@ struct ghost_mat_t
 	ghost_midx_t  (*nrows) (ghost_mat_t *);
 	ghost_midx_t  (*ncols) (ghost_mat_t *);
 	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
-//	ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
 	char *     (*formatName) (ghost_mat_t *);
 	void       (*fromFile)(ghost_mat_t *, ghost_context_t *ctx, char *matrixPath);
 	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
@@ -266,46 +199,19 @@ struct ghost_mat_t
 #endif
 }; 
 
-struct ghost_spmf_plugin_t
-{
-	void *so;
-	ghost_spmf_init_t init;
-	char *name;
-	char *version;
-	char *formatID;
-};
-
-struct ghost_vec_plugin_t
-{
-	void *so;
-	ghost_vec_init_t init;
-	char *name;
-	char *version;
-};
-
 struct ghost_context_t
 {
 	ghost_solver_t *solvers;
-	ghost_midx_t *rpt; // all matrix' row pointers are being read at context creation in order to create the distribution. once the matrix is being created, the row pointers are distributed
 
-	ghost_comm_t *communicator; // TODO shorter
-//	ghost_mat_t *fullMatrix; // TODO array
-//	ghost_mat_t *localMatrix;
-//	ghost_mat_t *remoteMatrix;
-/*
-	ghost_mnnz_t  (*gnnz) (ghost_context_t *);
-	ghost_midx_t  (*gnrows) (ghost_context_t *);
-	ghost_midx_t  (*gncols) (ghost_context_t *);
-	ghost_mnnz_t  (*lnnz) (ghost_context_t *);
-	ghost_midx_t  (*lnrows) (ghost_context_t *);
-	ghost_midx_t  (*lncols) (ghost_context_t *);*/
+	// if the context is distributed by nnz, the row pointers are being read 
+	// at context creation in order to create the distribution. once the matrix 
+	// is being created, the row pointers are distributed
+	ghost_midx_t *rpt; 
 
-//	char *matrixName;
-
+	ghost_comm_t *communicator;
 	ghost_midx_t gnrows;
 	ghost_midx_t gncols;
 	int flags;
-
 };
 
 struct ghost_mtraits_t
@@ -423,15 +329,13 @@ void ghost_finish();
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
-ghost_context_t *ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm);
-//ghost_mat_t *ghost_createMatrix(ghost_context_t * context, char *matrixPath, ghost_mtraits_t *traits, int nTraits);
-ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits);
-ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
-void ghost_freeContext(ghost_context_t *context);
+ghost_context_t * ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm);
+ghost_mat_t     * ghost_createMatrix(ghost_context_t *, ghost_mtraits_t *, int);
+void              ghost_freeContext(ghost_context_t *);
 /******************************************************************************/
 void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
 
-int ghost_gemm(char *transpose, ghost_vec_t *v,  ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce); 
+int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
 
 #ifdef __cplusplus
 } // extern "C"

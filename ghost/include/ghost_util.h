@@ -208,8 +208,6 @@ void ghost_printGhostInfo();
 
 void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
 void ghost_referenceSolver(ghost_vec_t **, char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
-//void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
-//void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions);
 
 char * ghost_workdistName(int ghostOptions);
 char * ghost_modeName(int spmvmOptions);
@@ -218,11 +216,7 @@ char * ghost_symmetryName(int symmetry);
 
 int ghost_pad(int nrows, int padding);
 
-//void* allocateMemory( const size_t size, const char* desc );
-//void freeMemory(size_t, const char*, void*);
-
 void ghost_freeCommunicator( ghost_comm_t* const );
-void ghost_freeSpmfPlugin(ghost_spmf_plugin_t *plugin);
 int ghost_getNumberOfPhysicalCores();
 int ghost_getRank(MPI_Comm);
 int ghost_getLocalRank();
@@ -230,7 +224,6 @@ int ghost_getNumberOfRanksOnNode();
 int ghost_getNumberOfHwThreads();
 int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
-//int ghost_getNumberOfProcesses();
 int ghost_getNumberOfRanks(MPI_Comm);
 size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
@@ -244,9 +237,6 @@ char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
 ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 void ghost_pinThreads(int options, char *procList);
-//void ghost_spawnTask(ghost_task_t *task);
-//ghost_task_t ghost_spawnTask(void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags);
-//void ghost_waitTask(ghost_task_t *task);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
