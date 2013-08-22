@@ -40,7 +40,7 @@
 #include "ghost_constants.h"
 
 #define GHOST_NAME "ghost"
-#define GHOST_VERSION "0.4.1"
+#define GHOST_VERSION "0.5"
 
 
 /******************************************************************************/
@@ -130,12 +130,12 @@ struct ghost_vec_t
 struct ghost_vtraits_t
 {
 	int flags;
-	void * aux;
 	int datatype;
-	int nrows;
-	int nrowshalo;
-	int nrowspadded;
-	int nvecs;
+	ghost_vidx_t nrows;
+	ghost_vidx_t nrowshalo;
+	ghost_vidx_t nrowspadded;
+	ghost_vidx_t nvecs;
+	void * aux;
 }; 
 #define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
 

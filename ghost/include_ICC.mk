@@ -9,7 +9,7 @@ FC = ifort
 endif
 PP=cpp
 
-CFLAGS  = -fPIC -std=c99 -DMKL_BLAS
+CFLAGS  = -fPIC -std=c99 -DMKL_BLAS 
 CPPFLAGS  = -fPIC -std=c99 -DMKL_BLAS
 FFLAGS  = -fPIC
 FMODFLAG = -module

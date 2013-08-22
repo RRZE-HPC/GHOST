@@ -112,7 +112,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->val = NULL;
 	vec->isView = 0;
 
-	DEBUG_LOG(1,"The vector has %d sub-vectors with %d rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
+	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
 	return vec;
 	}
 
@@ -258,7 +258,7 @@ void getNrowsFromContext(ghost_vec_t *vec)
 		DEBUG_LOG(2,"nrowspadded for vector not given. determining it from the context");
 		vec->traits->nrowspadded = ghost_pad(MAX(vec->traits->nrowshalo,vec->traits->nrows),GHOST_PAD_MAX); // TODO needed?
 	}
-	DEBUG_LOG(1,"The vector has %d w/ %d halo elements (padded: %d) rows",
+	DEBUG_LOG(1,"The vector has %"PRvecIDX" w/ %"PRvecIDX" halo elements (padded: %"PRvecIDX") rows",
 			vec->traits->nrows,vec->traits->nrowshalo-vec->traits->nrows,vec->traits->nrowspadded);
 }
 
@@ -308,7 +308,7 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	getNrowsFromContext(vec);
 
-	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
+	DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
 

@@ -1,6 +1,6 @@
 COMPILER=ICC    # one of: ICC, GCC, XLC
 LIBTYPE=shared  # static or shared (default)
-LONGIDX=0       # 0/1 = indices are 32/64 bit integers
+LONGIDX=1       # 0/1 = indices are 32/64 bit integers
 FORTRAN=0       # 0/1 = build without/with Fortran interface
 OPENMP=1        # 0/1 = build without/with OpenMP
 MPI=1           # 0 = no MPI support        | 1 = with MPI support

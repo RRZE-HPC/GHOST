@@ -97,7 +97,7 @@ IPATH += -I$(LIKWIDPATH)/include
 endif
 
 ifeq ($(LONGIDX),1)
-MAKROS+= -DLONGIDX
+MAKROS+= -DLONGIDX -DMKL_ILP64
 endif
 
 ifeq ($(LIBTYPE),static)
