@@ -1293,7 +1293,13 @@ int i;
 	if (b == NULL || b->data == NULL || b->slen <= 0) return BSTR_ERR;
 	memset ((void *) cf->content, 0, sizeof (struct charField));
 	for (i=0; i < b->slen; i++) {
+#ifdef __INTEL_COMPILER
+#pragma warning (disable : 2259) // suppress warning about cast from int to char
+#endif
 		setInCharField (cf, b->data[i]);
+#ifdef __INTEL_COMPILER
+#pragma warning (enable : 2259)
+#endif
 	}
 	return BSTR_OK;
 }
