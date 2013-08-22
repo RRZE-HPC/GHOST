@@ -357,7 +357,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 
 	max_loc_elements = 0;
 	for (i=0;i<nprocs;i++)
-		if (max_loc_elements<lcrp->lnrows[i]) max_loc_elements = lcrp->lnrows[i];
+		if (max_loc_elements<lcrp->lnEnts[i]) max_loc_elements = lcrp->lnEnts[i];
 
 
 	size_pval = (size_t)( max_loc_elements * sizeof(int) );
@@ -372,7 +372,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
 
 	for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
-
+		
 	for (i=0;i<lcrp->lnEnts[me];i++){
 		for (j=nprocs-1;j>=0; j--){
 			if (lcrp->lfRow[j]<fullCR->col[i]+1) {
@@ -386,7 +386,9 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	}
 
 	acc_wishes = 0;
-	for (i=0; i<nprocs; i++) acc_wishes += wishlist_counts[i];
+	for (i=0; i<nprocs; i++) {
+		acc_wishes += wishlist_counts[i];
+	}
 
 	wishlist        = (int**) ghost_malloc(size_nptr); 
 	cwishlist       = (int**) ghost_malloc(size_nptr); 
@@ -966,10 +968,16 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 
 	if (swapReq) {
 		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+			if (tmp[i] >= (int64_t)INT_MAX) {
+				ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+			}
 			CR(mat)->rpt[i] = (ghost_midx_t)(bswap_64(tmp[i]));
 		}
 	} else {
 		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+			if (tmp[i] >= (int64_t)INT_MAX) {
+				ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+			}
 			CR(mat)->rpt[i] = (ghost_midx_t)(tmp[i]);
 		}
 	}
@@ -1037,6 +1045,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
+			if (tmp[j] >= (int64_t)INT_MAX) {
+				ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+			}
 			if (swapReq) CR(mat)->col[j] = (ghost_midx_t)(bswap_64(tmp[j]));
 			else CR(mat)->col[j] = (ghost_midx_t)tmp[j];
 		}

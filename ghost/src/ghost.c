@@ -294,15 +294,24 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
 		ghost_matfile_header_t fileheader;
 		ghost_readMatFileHeader(matrixPath,&fileheader);
+#ifndef LONGIDX
+		if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
+			ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+		}
+#endif
 		if (gnrows == GHOST_GET_DIM_FROM_MATRIX)
 			context->gnrows = (ghost_midx_t)fileheader.nrows;
 		if (gncols == GHOST_GET_DIM_FROM_MATRIX)
 			context->gncols = (ghost_midx_t)fileheader.ncols;
 
 	} else {
+#ifndef LONGIDX
+		if ((gnrows >= (int64_t)INT_MAX) || (gncols >= (int64_t)INT_MAX)) {
+			ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+		}
+#endif
 		context->gnrows = (ghost_midx_t)gnrows;
 		context->gncols = (ghost_midx_t)gncols;
-
 	}
 
 #ifdef GHOST_MPI
@@ -362,6 +371,9 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
 				pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER );
 				for( i = 0; i < context->gnrows+1; i++ ) {
+					if (tmp[i] >= (int64_t)INT_MAX) {
+						ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+					}
 					rpt[i] = (ghost_midx_t)(tmp[i]);
 				}
 				// TODO little/big endian
