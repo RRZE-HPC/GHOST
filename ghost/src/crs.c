@@ -33,11 +33,10 @@ void (*CRS_valToStr_funcs[4]) (void *, char *, int) =
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
-static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *, char *matrixPath);
+static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-//static ghost_dt CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -47,10 +46,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef GHOST_MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
-static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context);
+static void CRS_createCommunication(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
-//static int compareNZEPos( const void* a, const void* b ); 
 #ifdef OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
@@ -184,20 +182,20 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 }
 
 #ifdef GHOST_MPI
-static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * context, char * matrixPath)
+static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 {
 	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
 	ghost_midx_t i;
 
 	/* Processor rank (MPI-process) */
-	int me = ghost_getRank(context->communicator->mpicomm); 
+	int me = ghost_getRank((*mat)->context->communicator->mpicomm); 
 
-	ghost_comm_t *comm = context->communicator;
+	ghost_comm_t *comm = (*mat)->context->communicator;
 
 	//	ghost_mat_t *CRSfullMatrix;
 
-	int nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
+	int nprocs = ghost_getNumberOfRanks((*mat)->context->communicator->mpicomm);
 
 	/****************************************************************************
 	 *******            ........ Executable statements ........           *******
@@ -214,9 +212,9 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 
 	CRS_readHeader(*mat,matrixPath);  // read header
 
-	if (ghost_getRank(context->communicator->mpicomm) == 0) {
-		if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) // rpt has already been read
-			((CR_TYPE *)((*mat)->data))->rpt = context->rpt;
+	if (ghost_getRank((*mat)->context->communicator->mpicomm) == 0) {
+		if ((*mat)->context->flags & GHOST_CONTEXT_WORKDIST_NZE) // rpt has already been read
+			((CR_TYPE *)((*mat)->data))->rpt = (*mat)->context->rpt;
 		else 
 			CRS_readRpt((*mat),matrixPath);  // read rpt
 	}
@@ -224,11 +222,11 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 	comm->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
 	comm->dues     = (int *)ghost_malloc( nprocs*sizeof(int)); 
 
-	CRS_createDistribution((*mat),context->flags,comm);
+	CRS_createDistribution((*mat),(*mat)->context->flags,comm);
 
 	DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",comm->lnrows[me]);
 
-	if (ghost_getRank(context->communicator->mpicomm) != 0) {
+	if (ghost_getRank((*mat)->context->communicator->mpicomm) != 0) {
 		((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((comm->lnrows[me]+1)*sizeof(ghost_midx_t));
 	}
 
@@ -239,12 +237,12 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 	for (i=0;i<2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
-	if (ghost_getRank(context->communicator->mpicomm) != 0) {
-		MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,comm->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->communicator->mpicomm,&req[msgcount]));
+	if (ghost_getRank((*mat)->context->communicator->mpicomm) != 0) {
+		MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,comm->lnrows[me]+1,ghost_mpi_dt_midx,0,me,(*mat)->context->communicator->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[comm->lfRow[i]],comm->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->communicator->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[comm->lfRow[i]],comm->lnrows[i]+1,ghost_mpi_dt_midx,i,i,(*mat)->context->communicator->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
@@ -306,7 +304,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, ghost_context_t * co
 }
 
 
-static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
+static void CRS_createCommunication(ghost_mat_t *mat)
 {
 	CR_TYPE *fullCR = CR(mat);
 	CR_TYPE *localCR = NULL, *remoteCR = NULL;
@@ -346,7 +344,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	size_t size_wish, size_dues;
 
 	int nprocs = ghost_getNumberOfRanks(mat->context->communicator->mpicomm);
-	ghost_comm_t *lcrp = context->communicator;
+	ghost_comm_t *lcrp = mat->context->communicator;
 	size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
 	size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_midx_t)  );
@@ -570,7 +568,7 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 
 
-	if (!(context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
+	if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
 		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
 
@@ -668,13 +666,13 @@ static void CRS_createCommunication(ghost_mat_t *mat, ghost_context_t *context)
 	free(wishlist_counts);
 	free(item_from);
 
-	mat->localPart = ghost_initMatrix(&mat->traits[0]);
+	mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
 	free(mat->localPart->data); // has been allocated in init()
 	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->data = localCR;
 	CR(mat->localPart)->rpt = localCR->rpt;
 
-	mat->remotePart = ghost_initMatrix(&mat->traits[0]);
+	mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
 	free(mat->remotePart->data); // has been allocated in init()
 	mat->remotePart->data = remoteCR;
 }
@@ -1254,13 +1252,12 @@ static void CRS_upload(ghost_mat_t *mat)
   else return aRow - bRow;
   }*/
 
-static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
+static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 	DEBUG_LOG(1,"Reading CRS matrix from file");
 	mat->name = basename(matrixPath);
-	mat->context = ctx;
 
-	if (ctx->flags & GHOST_CONTEXT_GLOBAL) {
+	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Reading in a global context");
 		CRS_readHeader(mat,matrixPath);
 		CRS_readRpt(mat,matrixPath);
@@ -1268,8 +1265,8 @@ static void CRS_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath
 	} else {
 #ifdef GHOST_MPI
 		DEBUG_LOG(1,"Reading in a distributed context");
-		CRS_createDistributedContext(&mat,ctx,matrixPath);
-		mat->split(mat,ctx);
+		CRS_createDistributedContext(&mat,matrixPath);
+		mat->split(mat);
 #else
 		ABORT("Trying to create a distributed context without MPI!");
 #endif

@@ -185,15 +185,14 @@ struct ghost_mat_t
 	ghost_mnnz_t  (*nnz) (ghost_mat_t *);
 	ghost_midx_t  (*nrows) (ghost_mat_t *);
 	ghost_midx_t  (*ncols) (ghost_mat_t *);
-	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t i);
+	ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
 	char *     (*formatName) (ghost_mat_t *);
-	void       (*fromFile)(ghost_mat_t *, ghost_context_t *ctx, char *matrixPath);
-	void       (*fromMM)(ghost_mat_t *, char *matrixPath);
+	void       (*fromFile)(ghost_mat_t *, char *);
 	void       (*CLupload)(ghost_mat_t *);
 	void       (*CUupload)(ghost_mat_t *);
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
-	void       (*split)(ghost_mat_t *, ghost_context_t *);
+	void       (*split)(ghost_mat_t *);
 #ifdef OPENCL
 	cl_kernel clkernel[4];
 #endif
@@ -279,14 +278,6 @@ void ghost_freeVec(ghost_vec_t *vec);
  *   - char ** argv
  *     The arguments of the main functions (will be passed to 
  *     MPI_init_thread())
- *   - int options
- *     This argument contains the options for the sparse matrix-vector product.
- *     It can be assembled by OR-ing several of the available options which
- *     are defined as GHOST_OPTION_* (explained above).
- *
- * Returns:
- *   an integer which holds the rank of the calling MPI process within
- *   MPI_COMM_WORLD
  *
  * The call to ghost_init() has to be done before any other ghost_*() call.
  *****************************************************************************/
@@ -333,7 +324,7 @@ ghost_context_t * ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm);
 ghost_mat_t     * ghost_createMatrix(ghost_context_t *, ghost_mtraits_t *, int);
 void              ghost_freeContext(ghost_context_t *);
 /******************************************************************************/
-void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
+void ghost_matFromFile(ghost_mat_t *, char *);
 
 int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
 

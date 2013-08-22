@@ -135,8 +135,6 @@ static void MPI_add_z(MPI_z *invec, MPI_z *inoutvec, int *len)
 
 int ghost_init(int argc, char **argv)
 {
-	int me;
-
 #ifdef GHOST_MPI
 	int req, prov;
 
@@ -155,7 +153,6 @@ int ghost_init(int argc, char **argv)
 					"provided (%d)!",req,prov);
 		}
 	}
-	me = ghost_getRank(MPI_COMM_WORLD);
 
 	setupSingleNodeComm();
 	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
@@ -165,44 +162,12 @@ int ghost_init(int argc, char **argv)
 	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
 	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
-	/*
-#ifdef GHOST_MAT_COMPLEX
-if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-if (GHOST_MY_MDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_mdat));
-} else {
-MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_mdat));
-}
-MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_mdat));
-MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_mComplAdd,1,&ghost_mpi_sum_mdat));
-} 
-#endif
-#ifdef GHOST_VEC_COMPLEX
-if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_COMPLEX) {
-if (GHOST_MY_VDATATYPE & GHOST_BINCRS_DT_FLOAT) {
-MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&ghost_mpi_dt_vdat));
-} else {
-MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&ghost_mpi_dt_vdat));
-}
-MPI_safecall(MPI_Type_commit(&ghost_mpi_dt_vdat));
-MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_vComplAdd,1,&ghost_mpi_sum_vdat));
-} 
-#endif*/
 
 #else // ifdef GHOST_MPI
 	UNUSED(argc);
 	UNUSED(argv);
-	me = 0;
 
 #endif // ifdef GHOST_MPI
-
-	/*if (ghostOptions & GHOST_OPTION_PIN || ghostOptions & GHOST_OPTION_PIN_SMT) {
-	  } else {
-#pragma omp parallel
-{
-DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore());
-}
-}*/
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
@@ -222,19 +187,8 @@ DEBUG_LOG(2,"Thread %d is running on core %d",omp_get_thread_num(),ghost_getCore
 	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 	ghost_taskq_init(ghost_cpuid_topology.numSockets);
 
-	//	options = ghostOptions;
-
-	//ghost_setCore(ghost_getCore());
-	//threadpool = (ghost_threadstate_t *)ghost_malloc(sizeof(ghost_threadstate_t)*ghost_getNumberOfHwThreads());
-	//threadpool[ghost_getCore()].state = GHOST_THREAD_MGMT;
-	//threadpool[ghost_getCore()].desc = "main";
-	//for (int i=1; i<ghost_getNumberOfHwThreads(); i++) {
-	//		threadpool[i].state = GHOST_THREAD_HALTED;
-	//	}
-
-
-	return me;
-	}
+	return GHOST_SUCCESS;
+}
 
 void ghost_finish()
 {
@@ -266,20 +220,20 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 	ghost_mat_t *mat;
 	UNUSED(nTraits);
 
-	mat = ghost_initMatrix(traits);
+	switch (traits->format) {
+		case GHOST_SPM_FORMAT_CRS:
+			mat = ghost_CRS_init(traits);
+			break;
+		case GHOST_SPM_FORMAT_SELL:
+			mat = ghost_SELL_init(traits);
+			break;
+		default:
+			WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
+			traits->format = GHOST_SPM_FORMAT_CRS;
+			mat = ghost_CRS_init(traits);
+	}
 	mat->context = context;
-	/*	mat->fromBin(mat,matrixPath,context,options);
-
-		if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-		mat->split(mat,options,context,traits);
-		} else {
-		mat->localPart = NULL;
-		mat->remotePart = NULL;
-		context->communicator = NULL;
-		}*/
-
-
-	return mat;
+	return mat;	
 }
 
 ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm) 
@@ -322,7 +276,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #else
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		ABORT("Creating a distributed matrix without MPI is not possible");
-} else if (!(context->flags & GHOST_CONTEXT_GLOBAL)) {
+	} else if (!(context->flags & GHOST_CONTEXT_GLOBAL)) {
 		DEBUG_LOG(1,"Context is set to be global");
 		context->flags |= GHOST_CONTEXT_GLOBAL;
 	}
@@ -345,9 +299,9 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		context->communicator->mpicomm = comm;
 
 		context->communicator->halo_elements = 0;
-		
+
 		int nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
-		
+
 		context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 		context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 		context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
@@ -441,24 +395,6 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	DEBUG_LOG(1,"Context created successfully");
 	return context;
-}
-
-ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits)
-{
-	ghost_mat_t* mat;
-	switch (traits->format) {
-		case GHOST_SPM_FORMAT_CRS:
-			mat = ghost_CRS_init(traits);
-			break;
-		case GHOST_SPM_FORMAT_SELL:
-			mat = ghost_SELL_init(traits);
-			break;
-		default:
-			WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
-			traits->format = GHOST_SPM_FORMAT_CRS;
-			mat = ghost_CRS_init(traits);
-	}
-	return mat;	
 }
 
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
@@ -593,9 +529,9 @@ void ghost_freeVec(ghost_vec_t *vec)
 	vec->destroy(vec);
 }
 
-void ghost_matFromFile(ghost_mat_t *m, ghost_context_t *c, char *p)
+void ghost_matFromFile(ghost_mat_t *m, char *p)
 {
-	m->fromFile(m,c,p);
+	m->fromFile(m,p);
 }
 
 int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)

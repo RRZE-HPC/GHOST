@@ -64,34 +64,19 @@ void (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int 
 void (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, void *) = 
 {&s_SELL_fromCRS, &d_SELL_fromCRS, &c_SELL_fromCRS, &z_SELL_fromCRS}; 
 
-//char name[] = "SELL plugin for ghost";
-//char version[] = "0.1a";
-//char formatID[] = "SELL";
-
 static ghost_mnnz_t SELL_nnz(ghost_mat_t *mat);
 static ghost_midx_t SELL_nrows(ghost_mat_t *mat);
 static ghost_midx_t SELL_ncols(ghost_mat_t *mat);
 static void SELL_printInfo(ghost_mat_t *mat);
 static char * SELL_formatName(ghost_mat_t *mat);
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-//static ghost_dt SELL_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j);
 static size_t SELL_byteSize (ghost_mat_t *mat);
 static void SELL_fromCRS(ghost_mat_t *mat, void *crs);
 static void SELL_upload(ghost_mat_t* mat); 
 static void SELL_CUupload(ghost_mat_t *mat);
-static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *, char *);
+static void SELL_fromBin(ghost_mat_t *mat, char *);
 static void SELL_free(ghost_mat_t *mat);
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-//#ifdef SSE_INTR
-//static void SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-//#endif
-//#ifdef AVX_INTR
-//static void SELL_kernel_AVX (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-//#endif
-//#ifdef MIC_INTR
-//static void SELL_kernel_MIC (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-//static void SELL_kernel_MIC_16 (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-//#endif
 #ifdef OPENCL
 static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
@@ -101,9 +86,6 @@ static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 #ifdef VSX_INTR
 static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 #endif
-
-//static ghost_mat_t *thisMat;
-//static SELL_TYPE *SELL(mat);
 
 ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 {
@@ -117,23 +99,12 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 	mat->printInfo = &SELL_printInfo;
 	mat->formatName = &SELL_formatName;
 	mat->rowLen     = &SELL_rowLen;
-	//	mat->entry      = &SELL_entry;
 	mat->byteSize   = &SELL_byteSize;
 	mat->kernel     = &SELL_kernel_plain;
 	mat->fromCRS    = &SELL_fromCRS;
-	//#ifdef SSE_INTR
-	//	mat->kernel   = &SELL_kernel_SSE;
-	//#endif
-	//#ifdef AVX_INTR
-	//	mat->kernel   = &SELL_kernel_AVX;
-	//#endif
 #ifdef VSX_INTR
 	mat->kernel = &SELL_kernel_VSX;
 #endif
-	//#ifdef MIC_INTR
-	//	mat->kernel   = &SELL_kernel_MIC_16;
-	//	UNUSED(&SELL_kernel_MIC);
-	//#endif
 #ifdef OPENCL
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &SELL_kernel_CL;
@@ -149,21 +120,6 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
-
-
-	/*#ifdef MIC
-	  SELL(mat)->chunkHeight = 16;
-#elif defined (AVX)
-SELL(mat)->chunkHeight = 4;
-#elif defined (SSE)
-SELL(mat)->chunkHeight = 2;
-#elif defined (OPENCL) || defined (CUDA)
-SELL(mat)->chunkHeight = 256;
-#elif defined (VSX)
-SELL(mat)->chunkHeight = 2;
-#else
-SELL(mat)->chunkHeight = 4;
-#endif*/
 
 	return mat;
 }
@@ -237,24 +193,23 @@ static size_t SELL_byteSize (ghost_mat_t *mat)
 			SELL(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
-static void SELL_fromBin(ghost_mat_t *mat, ghost_context_t *ctx, char *matrixPath)
+static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
 	DEBUG_LOG(1,"Creating SELL matrix from binary file");
 	ghost_mtraits_t crsTraits = {.format = GHOST_SPM_FORMAT_CRS,.flags=GHOST_SPM_HOST,.datatype=mat->traits->datatype};
-	ghost_mat_t *crsMat = ghost_initMatrix(&crsTraits);
-	crsMat->fromFile(crsMat,ctx,matrixPath);
-	mat->context = ctx;
+	ghost_mat_t *crsMat = ghost_createMatrix(mat->context,&crsTraits,1);
+	crsMat->fromFile(crsMat,matrixPath);
 	mat->name = basename(matrixPath);
 	
 
 #ifdef GHOST_MPI
 
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
-	mat->localPart = ghost_initMatrix(&mat->traits[0]); // TODO trats[1]
+	mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1); // TODO trats[1]
 	mat->localPart->symmetry = crsMat->symmetry;
 	mat->localPart->fromCRS(mat->localPart,crsMat->localPart->data);
 
-	mat->remotePart = ghost_initMatrix(&mat->traits[0]); // TODO traits[2]
+	mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1); // TODO traits[2]
 	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
 
 
