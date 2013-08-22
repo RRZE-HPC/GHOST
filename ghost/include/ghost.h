@@ -88,43 +88,36 @@ struct ghost_vec_t
 {
 	ghost_vtraits_t *traits;
 	ghost_context_t *context;
-	//ghost_vdat_t* val;
 	void* val;
+	int isView;
 
-	void          (*fromFunc) (ghost_vec_t *, ghost_context_t *, void (*fp)(int,int,void *));
+	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
 	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
-	void          (*fromFile) (ghost_vec_t *, ghost_context_t *, char *path, off_t);
-	void          (*fromRand) (ghost_vec_t *, ghost_context_t *);
-	void          (*fromScalar) (ghost_vec_t *, ghost_context_t *, void *);
-
+	void          (*fromFile) (ghost_vec_t *, char *, off_t);
+	void          (*fromRand) (ghost_vec_t *);
+	void          (*fromScalar) (ghost_vec_t *, void *);
 	void          (*zero) (ghost_vec_t *);
-	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *comm);
-	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_context_t *, ghost_mat_t *);
+	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *);
+	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_mat_t *);
 	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
 	void          (*normalize) (ghost_vec_t *);
 	void          (*destroy) (ghost_vec_t *);
 	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
-	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
 	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*scale) (ghost_vec_t *, void *);
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*print) (ghost_vec_t *);
 	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
 	void          (*entry) (ghost_vec_t *, int,  void *);
-
-	ghost_vec_t * (*clone) (ghost_vec_t *);
-	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
-	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
-	void (*viewPlain) (ghost_vec_t *, void *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
-
+	void          (*viewPlain) (ghost_vec_t *, void *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
 	void          (*CUupload) (ghost_vec_t *);
 	void          (*CUdownload) (ghost_vec_t *);
 	void          (*CLupload) (ghost_vec_t *);
 	void          (*CLdownload) (ghost_vec_t *);
-
-	void *so;
-	
-	int isView;
+	ghost_vec_t * (*clone) (ghost_vec_t *);
+	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
 
 #ifdef OPENCL
 	cl_mem CL_val_gpu;
@@ -352,8 +345,11 @@ typedef struct
 
 void ghost_normalizeVec(ghost_vec_t *);
 void ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
-void ghost_vecToFile(ghost_vec_t *, char *, ghost_context_t *);
-void ghost_vecFromFile(ghost_vec_t *, char *, ghost_context_t *);
+void ghost_vecToFile(ghost_vec_t *, char *);
+void ghost_vecFromFile(ghost_vec_t *, char *);
+void ghost_vecFromScalar(ghost_vec_t *v, void *s);
+void ghost_vecFromFunc(ghost_vec_t *v, void (*func)(int,int,void*));
+void ghost_freeVec(ghost_vec_t *vec);
 
 /******************************************************************************/
 
@@ -433,9 +429,6 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 ghost_mat_t * ghost_initMatrix(ghost_mtraits_t *traits);
 void ghost_freeContext(ghost_context_t *context);
 /******************************************************************************/
-void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *, void *s);
-void ghost_vecFromFunc(ghost_vec_t *v, ghost_context_t *, void (*func)(int,int,void*));
-void ghost_freeVec(ghost_vec_t *vec);
 void ghost_matFromFile(ghost_mat_t *, ghost_context_t *, char *);
 
 int ghost_gemm(char *transpose, ghost_vec_t *v,  ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce); 

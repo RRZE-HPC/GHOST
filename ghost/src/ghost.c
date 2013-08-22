@@ -532,7 +532,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 
 }
 
-void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
+void ghost_vecToFile(ghost_vec_t *vec, char *path)
 {
 	int64_t nrows = vec->traits->nrows;
 #ifdef GHOST_MPI
@@ -565,27 +565,27 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
 
 
 	}
-	if ((ctx==NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
+	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->toFile(vec,path,0,1);
 	else
-		vec->toFile(vec,path,ctx->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)],1);
+		vec->toFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)],1);
 }
 
-void ghost_vecFromFile(ghost_vec_t *vec, char *path, ghost_context_t *ctx)
+void ghost_vecFromFile(ghost_vec_t *vec, char *path)
 {
-	if ((ctx == NULL) || !(ctx->flags & GHOST_CONTEXT_DISTRIBUTED))
-		vec->fromFile(vec,ctx,path,0);
+	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
+		vec->fromFile(vec,path,0);
 	else
-		vec->fromFile(vec,ctx,path,ctx->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)]);
+		vec->fromFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)]);
 }
-void ghost_vecFromScalar(ghost_vec_t *v, ghost_context_t *c, void *s)
+void ghost_vecFromScalar(ghost_vec_t *v, void *s)
 {
-	v->fromScalar(v,c,s);
+	v->fromScalar(v,s);
 }
 
-void ghost_vecFromFunc(ghost_vec_t *v, ghost_context_t *c, void (*func)(int,int,void*))
+void ghost_vecFromFunc(ghost_vec_t *v, void (*func)(int,int,void*))
 {
-	v->fromFunc(v,c,func);
+	v->fromFunc(v,func);
 }
 
 void ghost_freeVec(ghost_vec_t *vec)

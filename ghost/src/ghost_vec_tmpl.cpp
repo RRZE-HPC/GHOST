@@ -71,10 +71,10 @@ template<typename v_t> void ghost_vec_scale_tmpl(ghost_vec_t *vec, void *scale)
 	}
 }
 
-template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec, ghost_context_t * ctx)
+template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 {
 	DEBUG_LOG(1,"Filling vector with random values");
-	getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec);
 
 	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
 	int i,v;
@@ -162,17 +162,17 @@ extern "C" void z_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scal
 extern "C" void c_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_axpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
 
-extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec, ghost_context_t *ctx) 
-{ return ghost_vec_fromRand_tmpl< double >(vec,ctx); }
+extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec) 
+{ return ghost_vec_fromRand_tmpl< double >(vec); }
 
-extern "C" void s_ghost_vec_fromRand(ghost_vec_t *vec, ghost_context_t *ctx) 
-{ return ghost_vec_fromRand_tmpl< float >(vec,ctx); }
+extern "C" void s_ghost_vec_fromRand(ghost_vec_t *vec) 
+{ return ghost_vec_fromRand_tmpl< float >(vec); }
 
-extern "C" void z_ghost_vec_fromRand(ghost_vec_t *vec, ghost_context_t *ctx) 
-{ return ghost_vec_fromRand_tmpl< ghost_complex<double> >(vec,ctx); }
+extern "C" void z_ghost_vec_fromRand(ghost_vec_t *vec) 
+{ return ghost_vec_fromRand_tmpl< ghost_complex<double> >(vec); }
 
-extern "C" void c_ghost_vec_fromRand(ghost_vec_t *vec, ghost_context_t *ctx) 
-{ return ghost_vec_fromRand_tmpl< ghost_complex<float> >(vec,ctx); }
+extern "C" void c_ghost_vec_fromRand(ghost_vec_t *vec) 
+{ return ghost_vec_fromRand_tmpl< ghost_complex<float> >(vec); }
 
 extern "C" int d_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2) 
 { return ghost_vecEquals_tmpl< double >(vec,vec2); }

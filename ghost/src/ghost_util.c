@@ -412,11 +412,11 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 	mat->fromFile(mat,context,matrixPath);
 	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 	ghost_vec_t *globRHS = ghost_createVector(context, &rtraits);
-	globRHS->fromScalar(globRHS,context,zero);
+	globRHS->fromScalar(globRHS,zero);
 
 
 	DEBUG_LOG(2,"Collection RHS vector for reference solver");
-	rhs->collect(rhs,globRHS,distContext,mat);
+	rhs->collect(rhs,globRHS,mat);
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing actual reference solution with one process");
@@ -425,7 +425,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
 
 		globLHS = ghost_createVector(context, &ltraits); 
-		globLHS->fromScalar(globLHS,context,&zero);
+		globLHS->fromScalar(globLHS,&zero);
 
 		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
@@ -448,7 +448,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	(*nodeLHS)->fromScalar(*nodeLHS,distContext,&zero);
+	(*nodeLHS)->fromScalar(*nodeLHS,&zero);
 	globLHS->distribute(globLHS, nodeLHS, distContext->communicator);
 
 	globLHS->destroy(globLHS);

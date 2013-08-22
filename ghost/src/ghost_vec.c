@@ -29,32 +29,28 @@ void (*ghost_vec_scale_funcs[4]) (ghost_vec_t *, void*) =
 void (*ghost_vec_axpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
 {&s_ghost_vec_axpy, &d_ghost_vec_axpy, &c_ghost_vec_axpy, &z_ghost_vec_axpy};
 
-void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *, ghost_context_t *) = 
+void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
 int (*ghost_vecEquals_funcs[4]) (ghost_vec_t *, ghost_vec_t *) = 
 {&s_ghost_vecEquals, &d_ghost_vecEquals, &c_ghost_vecEquals, &z_ghost_vecEquals};
 
 
-//const char name[] = "Vector plugin for ghost";
-//const char version[] = "0.1a";
-
 static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
-static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t *, void (*fp)(int,int,void *));
+static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs);
-static void vec_fromRand(ghost_vec_t *vec, ghost_context_t *);
-static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t *, void *val);
-static void vec_fromFile(ghost_vec_t *vec, ghost_context_t *, char *path, off_t offset);
+static void vec_fromRand(ghost_vec_t *vec);
+static void vec_fromScalar(ghost_vec_t *vec, void *val);
+static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset);
 static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int);
 static void         ghost_zeroVector(ghost_vec_t *vec);
-//static ghost_vec_t *ghost_newVector( const int nrows, unsigned int flags );
 static void         ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
 static void         ghost_normalizeVector( ghost_vec_t *vec);
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm);
-static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_context_t *context, ghost_mat_t *mat); 
+static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat); 
 static void         ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
@@ -217,40 +213,40 @@ static void vec_print(ghost_vec_t *vec)
 
 }
 
-void getNrowsFromContext(ghost_vec_t *vec, ghost_context_t *context)
+void getNrowsFromContext(ghost_vec_t *vec)
 {
 	DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
-	if (context != NULL) {
+	if (vec->context != NULL) {
 	if (vec->traits->nrows == 0) {
 		DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
 		if (vec->traits->flags & GHOST_VEC_DUMMY) {
 			vec->traits->nrows = 0;
-		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+		} else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
 		{
 			if (vec->traits->flags & GHOST_VEC_LHS) {
-				vec->traits->nrows = context->gnrows;
+				vec->traits->nrows = vec->context->gnrows;
 			} else if (vec->traits->flags & GHOST_VEC_RHS) {
-				vec->traits->nrows = context->gncols;
+				vec->traits->nrows = vec->context->gncols;
 			}
 		} 
 		else 
 		{
-			vec->traits->nrows = context->communicator->lnrows[ghost_getRank(vec->context->communicator->mpicomm)];
+			vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->communicator->mpicomm)];
 		}
 	}
 	if (vec->traits->nrowshalo == 0) {
 		DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
 		if (vec->traits->flags & GHOST_VEC_DUMMY) {
 			vec->traits->nrowshalo = 0;
-		} else if ((context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+		} else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
 		{
 			vec->traits->nrowshalo = vec->traits->nrows;
 		} 
 		else 
 		{
 			if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS)
-				vec->traits->nrowshalo = vec->traits->nrows+context->communicator->halo_elements;
+				vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
 			else
 				vec->traits->nrowshalo = vec->traits->nrows;
 		}	
@@ -302,15 +298,15 @@ static void vec_entry(ghost_vec_t * vec, int i, void *val)
 	memcpy(val,&VAL(vec,i),ghost_sizeofDataType(vec->traits->datatype));
 }
 
-static void vec_fromRand(ghost_vec_t *vec, ghost_context_t * ctx)
+static void vec_fromRand(ghost_vec_t *vec)
 {
-	ghost_vec_fromRand_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,ctx);
+	ghost_vec_fromRand_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
 }
 
-static void vec_fromScalar(ghost_vec_t *vec, ghost_context_t * ctx, void *val)
+static void vec_fromScalar(ghost_vec_t *vec, void *val)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec);
 
 	DEBUG_LOG(1,"Initializing vector from scalar value with %d rows",vec->traits->nrows);
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -387,11 +383,11 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 
 }
 
-static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, off_t offset)
+static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec);
 
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -459,11 +455,11 @@ static void vec_fromFile(ghost_vec_t *vec, ghost_context_t * ctx, char *path, of
 
 }
 
-static void vec_fromFunc(ghost_vec_t *vec, ghost_context_t * ctx, void (*fp)(int,int,void *))
+static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 {
 	DEBUG_LOG(1,"Filling vector via function");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	getNrowsFromContext(vec,ctx);
+	getNrowsFromContext(vec);
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
@@ -617,16 +613,10 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	DEBUG_LOG(1,"Vector distributed successfully");
 }
 
-static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_context_t *context, ghost_mat_t *mat) 
+static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat) 
 {
-
 #ifdef GHOST_MPI
-	// TODO
-	//if (matrix->trait.format != GHOST_SPMFORMAT_CRS)
-	//	DEBUG_LOG(0,"Cannot handle other matrices than CRS in the MPI case!");
-
 	MPI_Datatype mpidt;
-
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -642,21 +632,13 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 		}
 	}
 	int me = ghost_getRank(vec->context->communicator->mpicomm);
-	//TODO permute
-	/*if ( 0x1<<kernel & GHOST_SPMVM_MODES_COMBINED)  {
-	  ghost_permuteVector(VAL(vec),context->fullMatrix->invRowPerm,context->communicator->lnrows[me]);
-	  } else if ( 0x1<<kernel & GHOST_SPMVM_MODES_SPLIT ) {
-	// one of those must return immediately
-	ghost_permuteVector(VAL(vec),context->localMatrix->invRowPerm,context->communicator->lnrows[me]);
-	ghost_permuteVector(VAL(vec),context->remoteMatrix->invRowPerm,context->communicator->lnrows[me]);
-	}*/
 	vec->permute(vec,mat->invRowPerm); 
 
 	int nprocs = ghost_getNumberOfRanks(vec->context->communicator->mpicomm);
 	int i;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	ghost_comm_t *comm = context->communicator;
+	ghost_comm_t *comm = vec->context->communicator;
 	MPI_Request req[2*(nprocs-1)];
 	MPI_Status stat[2*(nprocs-1)];
 	int msgcount = 0;
@@ -675,11 +657,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
-	//	MPI_safecall(MPI_Gatherv(vec->val,(int)context->communicator->lnrows[me],mpidt,totalVec->val,
-	//				(int *)context->communicator->lnrows,(int *)context->communicator->lfRow,mpidt,0,MPI_COMM_WORLD));
 #else
-	//	UNUSED(kernel);
-	UNUSED(context);
 	vec->permute(vec,mat->invRowPerm); 
 	memcpy(totalVec->val,vec->val,totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
