@@ -26,6 +26,7 @@
 
 #include <string.h>
 #include <omp.h>
+#include <errno.h>
 
 #ifdef LIKWID_PERFMON
 #include <likwid.h>
@@ -238,7 +239,6 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 
 ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm) 
 {
-	DEBUG_LOG(1,"Creating context with dimension %ldx%ld",gnrows,gncols);
 	ghost_context_t *context;
 	int i;
 
@@ -267,6 +267,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		context->gnrows = (ghost_midx_t)gnrows;
 		context->gncols = (ghost_midx_t)gncols;
 	}
+	DEBUG_LOG(1,"Creating context with dimension %ldx%ld",context->gnrows,context->gncols);
 
 #ifdef GHOST_MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
@@ -295,9 +296,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-
 		context->communicator->mpicomm = comm;
-
 		context->communicator->halo_elements = 0;
 
 		int nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
@@ -313,17 +312,25 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			ghost_mnnz_t gnnz;
 
 			if (ghost_getRank(context->communicator->mpicomm) == 0) {
-				int file;
+				FILE * filed;
+				size_t ret;
 
-				if ((file = open(matrixPath, O_RDONLY)) == -1){
+				if ((filed = fopen64(matrixPath, "r")) == NULL){
 					ABORT("Could not open binary CRS file %s",matrixPath);
 				}
+				if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+					ABORT("Seek failed");
+				}
 #ifdef LONGIDX
-				pread(file,&rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER);
+				if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, context->gnrows+1,filed)) != (context->gnrows+1)){
+					ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+				}
 #else // casting
 				DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
 				int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
-				pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(context->gnrows+1), GHOST_BINCRS_SIZE_HEADER );
+				if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, context->gnrows+1,filed)) != (context->gnrows+1)){
+					ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+				}
 				for( i = 0; i < context->gnrows+1; i++ ) {
 					if (tmp[i] >= (int64_t)INT_MAX) {
 						ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
@@ -356,6 +363,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
 				context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
 
+				fclose(filed);
 			}
 			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
 			MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
@@ -456,6 +464,28 @@ void ghost_normalizeVec(ghost_vec_t *vec)
 
 void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
+	/*	double zero = 0.;
+		ghost_context_t *context;
+		ghost_vec_t *gv1, *gv2;
+		context = ghost_createContext(vec->context->gnrows,vec->context->gncols,GHOST_CONTEXT_GLOBAL,NULL,MPI_COMM_WORLD);
+
+		ghost_vtraits_t gtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = vec->traits->datatype);
+		gv1 = ghost_createVector(context, &gtraits);
+		gv2 = ghost_createVector(context, &gtraits);
+		gv1->fromScalar(gv1,&zero);
+		gv2->fromScalar(gv2,&zero);
+
+		vec->collect(vec,gv1,NULL);
+		vec2->collect(vec2,gv2,NULL);
+
+		if (ghost_getRank(vec->context->communicator->mpicomm) == 0) {
+		gv1->dotProduct(gv1,gv2,res);	
+		}
+		MPI_safecall(MPI_Bcast(res,1,ghost_mpi_dataType(vec->traits->datatype),0,vec->context->communicator->mpicomm));
+		gv1->destroy(gv1);
+		gv2->destroy(gv2);
+	 */	
+
 	vec->dotProduct(vec,vec2,res);
 #ifdef GHOST_MPI
 	int v;

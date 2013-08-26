@@ -22,11 +22,16 @@ static int converged(matdt_t evmin)
 static void lanczosStep(ghost_context_t *context, ghost_mat_t *mat, ghost_vec_t *vnew, ghost_vec_t *vold,
 		matdt_t *alpha, matdt_t *beta)
 {
+	double foo;
 	int opt = GHOST_SPMVM_AXPY;
 	matdt_t minusbeta = -*beta;
 	vnew->scale(vnew,&minusbeta);
 	ghost_spmvm(context, vnew, mat, vold, &opt);
 	ghost_dotProduct(vnew,vold,alpha);
+	ghost_dotProduct(vnew,vnew,&foo);
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
+	//	WARNING_LOG("%e %e %e %e %e",*beta,((double *)(vold->val))[100],((double *)(vnew->val))[100],*alpha,foo);
+	}
 	matdt_t minusalpha = -*alpha;
 	vnew->axpy(vnew,vold,&minusalpha);
 	ghost_dotProduct(vnew,vnew,beta);
@@ -41,6 +46,7 @@ int main(int argc, char* argv[])
 	int ferr, n, iteration, nIter = 500;
 	char *matrixPath = argv[1];
 	double zero = 0.;
+	double one = 1.;
 
 	ghost_context_t *context;
 	ghost_mat_t *mat;
@@ -58,9 +64,10 @@ int main(int argc, char* argv[])
 	vnew  = ghost_createVector(context,&vtraits);
 	vold  = ghost_createVector(context,&vtraits);
 
-	mat->fromFile(mat,context,matrixPath);
-	vnew->fromScalar(vnew,context,&zero); // vnew = 0
-	vold->fromRand(vold,context); // vold = random
+	mat->fromFile(mat,matrixPath);
+	vnew->fromScalar(vnew,&zero); // vnew = 0
+//	vold->fromRand(vold); // vold = random
+	vold->fromScalar(vold,&one); // vold = random
 	ghost_normalizeVec(vold); // normalize vold
 	
 	matdt_t *alphas  = (matdt_t *)ghost_malloc(sizeof(matdt_t)*nIter);

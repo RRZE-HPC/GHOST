@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <libgen.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -929,12 +930,13 @@ static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath)
 
 static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 {
-	int file;
+	size_t ret;
+	FILE *filed;
 	ghost_midx_t i;
 
 	DEBUG_LOG(1,"Reading row pointers from %s",matrixPath);
 
-	if ((file = open(matrixPath, O_RDONLY)) == -1){
+	if ((filed = fopen64(matrixPath, "r")) == NULL){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 
@@ -951,18 +953,33 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 #ifdef LONGIDX
 	if (swapReq) {
 		int64_t tmp;
+		if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+			ABORT("Seek failed");
+		}
 		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
-			pread(file,&tmp, GHOST_BINCRS_SIZE_RPT_EL, GHOST_BINCRS_SIZE_HEADER+i*8);
+			if ((ret = fread(&tmp, GHOST_BINCRS_SIZE_RPT_EL, 1,filed)) != 1){
+				ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+			}
 			tmp = bswap_64(tmp);
 			CR(mat)->rpt[i] = tmp;
 		}
 	} else {
-		pread(file,&CR(mat)->rpt[0], GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER);
+		if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+			ABORT("Seek failed");
+		}
+		if ((ret = fread(CR(mat)->rpt, GHOST_BINCRS_SIZE_RPT_EL, CR(mat)->nrows+1,filed)) != (CR(mat)->nrows+1)){
+			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		}
 	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
 	int64_t *tmp = (int64_t *)malloc((CR(mat)->nrows+1)*8);
-	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*(CR(mat)->nrows+1), GHOST_BINCRS_SIZE_HEADER );
+	if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+		ABORT("Seek failed");
+	}
+	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, CR(mat)->nrows+1,filed)) != (CR(mat)->nrows+1)){
+		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+	}
 
 	if (swapReq) {
 		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
@@ -981,30 +998,37 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 	}
 	free(tmp);
 #endif
-	close(file);
+	fclose(filed);
 }
 
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype)
 {
 
+	size_t ret;
 	size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 	UNUSED(offsetRows);	
 	UNUSED(IOtype);
 
 	ghost_midx_t i, j;
 	int datatype;
-	int file;
+	FILE *filed;
 
-	off_t offs;
+	off64_t offs;
 
 	//	file = open(matrixPath,O_RDONLY);
 
 	DEBUG_LOG(1,"Reading %"PRmatNNZ" cols and vals from binary file %s with offset %"PRmatNNZ,nEnts, matrixPath,offsetEnts);
 
-	if ((file = open(matrixPath, O_RDONLY)) == -1){
+	if ((filed = fopen64(matrixPath, "r")) == NULL){
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
-	pread(file, &datatype, sizeof(int), 16);
+
+	if (fseeko(filed,16,SEEK_SET)) {
+		ABORT("Seek failed");
+	}
+	if ((ret = fread(&datatype, 4, 1,filed)) != (1)){
+		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+	}
 	if (swapReq) datatype = bswap_32(datatype);
 
 	DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
@@ -1018,7 +1042,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
 			CR(mat)->val[j*sizeofdt] = (char)0;
-			CR(mat)->col[j] = 0;
+			CR(mat)->col[j] = -1;
 		}
 	}
 
@@ -1027,20 +1051,29 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	offs = GHOST_BINCRS_SIZE_HEADER+
 		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
 		GHOST_BINCRS_SIZE_COL_EL*offsetEnts;
+	if (fseeko(filed,offs,SEEK_SET)) {
+		ABORT("Seek failed");
+	}
 #ifdef LONGIDX
 	if (swapReq) {
 		int64_t *tmp = (int64_t *)malloc(nEnts*8);
-		pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+		if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		}
 		for( i = 0; i < nEnts; i++ ) {
 			CR(mat)->col[i] = bswap_64(tmp[i]);
 		}
 	} else {
-		pread(file,&CR(mat)->col[0], GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+		if ((ret = fread(CR(mat)->col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		}
 	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
 	int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
-	pread(file,tmp, GHOST_BINCRS_SIZE_COL_EL*nEnts, offs );
+	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+	}
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
 			if (tmp[j] >= (int64_t)INT_MAX) {
@@ -1066,11 +1099,16 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 		GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
 		GHOST_BINCRS_SIZE_COL_EL*CR(mat)->nEnts+
 		ghost_sizeofDataType(datatype)*offsetEnts;
+	if (fseeko(filed,offs,SEEK_SET)) {
+		ABORT("Seek failed");
+	}
 
 	if (datatype == mat->traits->datatype) {
 		if (swapReq) {
 			uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
-			pread(file,tmpval, nEnts*valSize, offs);
+		if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+		}
 			if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
@@ -1106,7 +1144,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 			}
 		} else {
-			pread(file,&CR(mat)->val[0], ghost_sizeofDataType(datatype)*nEnts, offs );
+		if ((ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
+			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+		}
 		}
 	} else {
 		WARNING_LOG("This matrix is supposed to be of %s data but"
@@ -1114,7 +1154,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 
 		uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
-		pread(file,tmpval, nEnts*valSize, offs);
+		if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+		}
 
 		if (swapReq) {
 			ABORT("Not yet supported!");
@@ -1155,7 +1197,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 		free(tmpval);
 	}
-	close(file);
+	fclose(filed);
 }
 
 static void CRS_upload(ghost_mat_t *mat)
@@ -1338,6 +1380,7 @@ printf("row %d has diagonal 0\n",i);
 for (; j<CR(mat)->rpt[i+1]; j++){
 col = CR(mat)->col[j];
 val = CR(mat)->val[j];
+
 
 hlp1 += val * rhs->val[col];
 

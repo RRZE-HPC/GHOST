@@ -74,6 +74,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->context = ctx;
 	vec->traits = traits;
 
+	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
 	DEBUG_LOG(1,"Initializing vector");
 
 	vec->dotProduct = &vec_dotprod;
@@ -112,7 +113,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->val = NULL;
 	vec->isView = 0;
 
-	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
 	return vec;
 	}
 
@@ -251,6 +251,8 @@ void getNrowsFromContext(ghost_vec_t *vec)
 				vec->traits->nrowshalo = vec->traits->nrows;
 		}	
 	}
+	} else {
+		WARNING_LOG("The vector's context is NULL.");
 	}
 
 
@@ -392,10 +394,11 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 
 	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	DEBUG_LOG(1,"Reading vector from file %s",path);
-	int file;
+	FILE *filed;
+	size_t ret;
 
-	if ((file = open(path, O_RDONLY)) == -1){
-		ABORT("Could not open vector file %s",path);
+	if ((filed = fopen64(path, "r")) == NULL){
+		ABORT("Could not vector file %s",path);
 	}
 
 	int32_t endianess;
@@ -406,37 +409,49 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 	int64_t nrows;
 	int64_t ncols;
 
-	int offs = 0;
 
-	pread(file,&endianess,sizeof(endianess),offs);
+	if ((ret = fread(&endianess, sizeof(endianess), 1,filed)) != 1)
+		ABORT("fread failed");
+
 	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
 		ABORT("Cannot read big endian vectors");
 
-	pread(file,&version,sizeof(version),offs+=sizeof(endianess));
+	if ((ret = fread(&version, sizeof(version), 1,filed)) != 1)
+		ABORT("fread failed");
+	
 	if (version != 1)
 		ABORT("Cannot read vector files with format != 1");
 
-	pread(file,&order,sizeof(order),offs+=sizeof(version));
+	if ((ret = fread(&order, sizeof(order), 1,filed)) != 1)
+		ABORT("fread failed");
 	// Order does not matter for vectors
 
-	pread(file,&datatype,sizeof(datatype),offs+=sizeof(order));
+	if ((ret = fread(&datatype, sizeof(datatype), 1,filed)) != 1)
+		ABORT("fread failed");
 	if (datatype != vec->traits->datatype)
-		ABORT("The data types don't match!");
+		ABORT("The data types don't match! Cast-while-read is not yet implemented for vectors.");
 
-	pread(file,&nrows,sizeof(nrows),offs+=sizeof(datatype));
+	if ((ret = fread(&nrows, sizeof(nrows), 1,filed)) != 1)
+		ABORT("fread failed");
 	// I will read as many rows as the vector has
 
-	pread(file,&ncols,sizeof(ncols),offs+=sizeof(nrows));
+	if ((ret = fread(&ncols, sizeof(ncols), 1,filed)) != 1)
+		ABORT("fread failed");
 	if (ncols != 1)
 		ABORT("The number of columns has to be 1!");
-	offs+=sizeof(ncols);
 
 	int v;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		pread(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+(offset+v*vec->traits->nrows)*vec->traits->nrows);
+		if (fseeko(filed,offset*sizeofdt,SEEK_SET))
+			ABORT("Seek failed");
+
+		if ((ret = fread(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+			ABORT("fread failed");
+
+//		pread(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+(offset+v*vec->traits->nrows)*vec->traits->nrows);
 	}
 
-	close(file);
+	fclose(filed);
 
 	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
 #ifdef CUDA
@@ -632,7 +647,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 		}
 	}
 	int me = ghost_getRank(vec->context->communicator->mpicomm);
-	vec->permute(vec,mat->invRowPerm); 
+	if (mat != NULL)
+		vec->permute(vec,mat->invRowPerm); 
 
 	int nprocs = ghost_getNumberOfRanks(vec->context->communicator->mpicomm);
 	int i;
@@ -658,7 +674,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	vec->permute(vec,mat->invRowPerm); 
+	if (mat != NULL)
+		vec->permute(vec,mat->invRowPerm); 
 	memcpy(totalVec->val,vec->val,totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 }
