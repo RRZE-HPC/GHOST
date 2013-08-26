@@ -165,7 +165,15 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 {
 	ghost_midx_t nrows = ghost_getMatNrows(mat);
 	ghost_midx_t nnz = ghost_getMatNnz(mat);
-	if (ghost_getRank(mat->context->communicator->mpicomm) == 0) {
+	
+	int myrank;
+
+   	if (mat->context->communicator != NULL) {
+		myrank = ghost_getRank(mat->context->communicator->mpicomm); 
+	} else {
+		myrank = 0;
+	}
+	if (myrank == 0) {
 
 	char *matrixLocation;
 	if (mat->traits->flags & GHOST_SPM_DEVICE)
@@ -209,9 +217,18 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
-	int nranks = ghost_getNumberOfRanks(context->communicator->mpicomm);
+	int nranks;
+	int myrank;
 
-	if (ghost_getRank(context->communicator->mpicomm) == 0) {
+   	if (context->communicator != NULL) {
+		nranks = ghost_getNumberOfRanks(context->communicator->mpicomm);
+		myrank = ghost_getRank(context->communicator->mpicomm); 
+	} else {
+		nranks = 1;
+		myrank = 0;
+	}
+
+	if (myrank == 0) {
 		char *contextType;
 		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 			contextType = "Distributed";
@@ -396,7 +413,12 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
-	int me = ghost_getRank((*nodeLHS)->context->communicator->mpicomm);
+	int me;
+   	if ((*nodeLHS)->context->communicator != NULL) {
+		me = ghost_getRank((*nodeLHS)->context->communicator->mpicomm); 
+	} else {
+		me = 0;
+	}
 	char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
 	memset(zero,0,ghost_sizeofDataType(datatype));
 	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);

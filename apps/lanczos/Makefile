@@ -8,6 +8,10 @@ IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
 LIBS+=  -lghost -lifcore
 OBJS += imtql1f.o pythagf.o imtql1.o pythag.o
 
+ifeq ($(LONGIDX),1)
+MAKROS+= -DLONGIDX
+endif
+
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DGHOST_MPI
 endif

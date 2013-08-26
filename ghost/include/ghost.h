@@ -13,6 +13,9 @@
 #pragma warning (enable : 869)
 #endif
 #endif
+#else
+typedef int MPI_Comm;
+#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
 
 #ifndef GHOST_CLKERNEL
@@ -127,12 +130,12 @@ struct ghost_vec_t
 
 struct ghost_vtraits_t
 {
+	ghost_midx_t nrows;
+	ghost_midx_t nrowshalo;
+	ghost_midx_t nrowspadded;
+	ghost_midx_t nvecs;
 	int flags;
 	int datatype;
-	ghost_vidx_t nrows;
-	ghost_vidx_t nrowshalo;
-	ghost_vidx_t nrowspadded;
-	ghost_vidx_t nvecs;
 	void * aux;
 }; 
 #define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }

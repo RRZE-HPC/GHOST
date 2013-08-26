@@ -25,9 +25,15 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 
 template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
+	if (vec->traits->nrows != vec2->traits->nrows) {
+		WARNING_LOG("The input vectors of the dot product have different numbers of rows");
+	}
+	if (vec->traits->nvecs != vec2->traits->nvecs) {
+		WARNING_LOG("The input vectors of the dot product have different numbers of columns");
+	}
 	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
-
+/*
 	int nthreads;
 #pragma omp parallel
 	nthreads = ghost_ompGetNumThreads();
@@ -45,7 +51,19 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 		for (i=0; i<nthreads; i++) sum += partsums[i];
 
 		((v_t *)res)[v] = sum;
+		WARNING_LOG("rank sum: %f",sum);
 	}
+	*/
+
+	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+		v_t sum = 0;
+		for (i=0; i<nr; i++) {
+			sum += ((v_t *)(vec->val))[i]*((v_t *)(vec2->val))[i];
+		}
+		((v_t *)res)[v] = sum;
+	}
+
+	
 }
 
 template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)

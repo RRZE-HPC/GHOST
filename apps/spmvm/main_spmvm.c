@@ -21,18 +21,18 @@
 //#define TASKING
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
+	GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 #ifdef TASKING
-typedef struct {
-	ghost_context_t *ctx;
-	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
-	char *matfile;
-	vecdt_t *lhsInit;
-	void (*rhsInit)(int,int,void*);
-} createDataArgs;
+	typedef struct {
+		ghost_context_t *ctx;
+		ghost_mat_t *mat;
+		ghost_vec_t *lhs, *rhs;
+		char *matfile;
+		vecdt_t *lhsInit;
+		void (*rhsInit)(int,int,void*);
+	} createDataArgs;
 
 typedef struct {
 	ghost_context_t *ctx;
@@ -72,7 +72,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 1;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -84,12 +84,11 @@ int main( int argc, char* argv[] )
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
 		GHOST_SPMVM_MODE_VECTORMODE,
-		GHOST_SPMVM_MODE_GOODFAITH,
-		GHOST_SPMVM_MODE_TASKMODE};
-	int nModes = sizeof(modes)/sizeof(int);
+									 GHOST_SPMVM_MODE_GOODFAITH,
+									 GHOST_SPMVM_MODE_TASKMODE};
+		int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
-//	ghost_matfile_header_t fileheader;
 
 	ghost_mat_t *mat; // matrix
 	ghost_vec_t *lhs; // lhs vector
@@ -127,14 +126,19 @@ int main( int argc, char* argv[] )
 	lhs = ghost_createVector(context,&lvtraits);
 	rhs = ghost_createVector(context,&rvtraits);
 
+
 #ifdef TASKING
 	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
 	ghost_task_add(createDataTask);
 #else
-	mat->fromFile(mat,context,matrixPath);
-	lhs->fromScalar(lhs,context,&zero);
-	rhs->fromFunc(rhs,context,&rhsVal);
+	mat->fromFile(mat,matrixPath);
+	lhs->fromScalar(lhs,&zero);
+	rhs->fromFunc(rhs,&rhsVal);
+#endif
+#ifdef CHECK
+	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
+	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
 #endif
 
 	ghost_printSysInfo();
@@ -147,12 +151,9 @@ int main( int argc, char* argv[] )
 #endif
 	ghost_printMatrixInfo(mat);
 
-#ifdef CHECK
-	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
-   	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
-#endif
 
-	ghost_printHeader("Performance");
+	if (ghost_getRank(MPI_COMM_WORLD) == 0)
+		ghost_printHeader("Performance");
 
 
 	for (mode=0; mode < nModes; mode++){
@@ -181,9 +182,9 @@ int main( int argc, char* argv[] )
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 #endif
 
-
 		if (time < 0.) {
-			ghost_printLine(ghost_modeName(modes[mode]),NULL,"SKIPPED");
+			if (ghost_getRank(MPI_COMM_WORLD) == 0)
+				ghost_printLine(ghost_modeName(modes[mode]),NULL,"SKIPPED");
 			continue;
 		}
 
@@ -198,7 +199,7 @@ int main( int argc, char* argv[] )
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){
 				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"
-						"%.2ei (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(MPI_COMM_WORLD),ghost_modeName(modes[mode]), i, creal(ref),
+						"%.2ei [ref. vs. comp.] (tol: %.2e + %.2ei, diff: %e)\n", ghost_getRank(MPI_COMM_WORLD),ghost_modeName(modes[mode]), i, creal(ref),
 						cimag(ref),
 						creal(res),
 						cimag(res),
@@ -214,20 +215,26 @@ int main( int argc, char* argv[] )
 #else
 		totalerrors = errcount;
 #endif
-		if (totalerrors)
-			ghost_printLine(ghost_modeName(modes[mode]),NULL,"FAILED");
-		else
-			ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
-					2*(1.e-9*
-					ghost_getMatNnz(mat))/time);
+		if (totalerrors) {
+			if (ghost_getRank(MPI_COMM_WORLD) == 0)
+				ghost_printLine(ghost_modeName(modes[mode]),NULL,"FAILED");
+		}
+		else {
+			ghost_mnnz_t nnz = ghost_getMatNnz(mat);
+			if (ghost_getRank(MPI_COMM_WORLD) == 0)
+				ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",
+						2*(1.e-9*nnz)/time);
+		}
 #else
-		ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",2*(1.e-9*ghost_getMatNnz(mat))/time);
+		ghost_mnnz_t nnz = ghost_getMatNnz(mat);
+		if (ghost_getRank(MPI_COMM_WORLD) == 0)
+			ghost_printLine(ghost_modeName(modes[mode]),"GF/s","%.2f",2*(1.e-9*nnz)/time);
 #endif
-
 		lhs->zero(lhs);
 
 	}
-	ghost_printFooter();
+	if (ghost_getRank(MPI_COMM_WORLD) == 0)
+		ghost_printFooter();
 
 	mat->destroy(mat);
 	lhs->destroy(lhs);

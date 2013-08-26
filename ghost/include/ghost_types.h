@@ -22,7 +22,7 @@
 #ifdef LONGIDX
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
-typedef ghost_midx_t ghost_vidx_t; // type for the index of the vector
+typedef int64_t ghost_vidx_t; // type for the index of the vector
 typedef long long int ghost_blas_idx_t;
 
 
@@ -42,7 +42,7 @@ typedef cl_long ghost_cl_mnnz_t;
 
 typedef int32_t ghost_midx_t; // type for the index of the matrix
 typedef int32_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
-typedef ghost_midx_t ghost_vidx_t; // type for the index of the vector
+typedef int32_t ghost_vidx_t; // type for the index of the vector
 typedef int ghost_blas_idx_t;
 
 
