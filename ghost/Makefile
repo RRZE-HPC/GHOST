@@ -20,7 +20,7 @@ LIKWIDPATH:=$(strip $(LIKWIDPATH))
 include include_$(COMPILER).mk
 
 .SECONDARY: $(FMODULES)
-.PHONY: clean distclean install uninstall all header 
+.PHONY: clean distclean install uninstall all header doc 
 
 Q       = @  
 VPATH   = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./src/cu/ ./src/likwid/ 
@@ -166,6 +166,10 @@ $(LIBGHOST): $(OBJS)
 	@echo "==> Create shared library $(LIBGHOST)"
 	${Q}${CC} $(CFLAGS) $(SHAREDFLAG) -o $(LIBGHOST) $^
 endif
+
+doc:
+	@echo "==> Create documentation"
+	${Q}doxygen doc/ghost.doxyconf
 
 clean:
 	@echo "==> Clean"

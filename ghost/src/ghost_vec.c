@@ -412,7 +412,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 
 
 	if ((ret = fread(&endianess, sizeof(endianess), 1,filed)) != 1)
-		ABORT("fread failed");
+		ABORT("fread failed: %lu",ret);
 
 	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
 		ABORT("Cannot read big endian vectors");

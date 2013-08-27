@@ -3,8 +3,8 @@
  * @author Moritz Kreutzer (moritz.kreutzer@fau.de)
  * @date August 2013
  *
+ * In this file, the task queue functionality of GHOST is implemented.
  */
-
 
 #define _XOPEN_SOURCE 500
 #include <stdio.h>
@@ -20,20 +20,68 @@
 #include "ghost_util.h"
 #include "cpuid.h"
 
+/**
+ * @brief Clear bit in field.
+ */
 #define CLR_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] &= ~(1 << ((bit)%(sizeof(int)*8))))
+
+/**
+ * @brief Set bit in field.
+ */
 #define SET_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] |=  (1 << ((bit)%(sizeof(int)*8))))
+
+/**
+ * @brief Toggle bit in field.
+ */
 #define TGL_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] ^=  (1 << ((bit)%(sizeof(int)*8))))
+
+/**
+ * @brief Return value of bit in field.
+ */
 #define CHK_BIT(field,bit) (field[(bit)/(sizeof(int)*8)]  &  (1 << ((bit)%(sizeof(int)*8))))
 
-static ghost_taskq_t **taskqs; // the task queues (one per LD)
-ghost_thpool_t *ghost_thpool; // the thread pool
-//static int nTasks = 0; // the total number of tasks in all queues 
-static sem_t taskSem;  // a semaphore for the total number of tasks in all queues
-static int killed = 0; // this will be set to 1 if the queues should be killed
-static pthread_mutex_t globalMutex; // protect accesses to global variables
-static pthread_cond_t anyTaskFinishedCond; // will be broadcasted in wait() if a task has finished
-static pthread_mutex_t anyTaskFinishedMutex; //
-static pthread_cond_t taskFinishedCond; // will be broadcasted if a task has finished
+/**
+ * @brief The list of task queues created by ghost_task_init(). Usually, there is one task queue per locality domain.
+ */
+static ghost_taskq_t **taskqs;
+
+/**
+ * @brief The thread pool created by ghost_thpool_init(). This variable is exported in ghost_taskq.h
+ */
+ghost_thpool_t *ghost_thpool;
+
+/**
+ * @brief Holds the total number of tasks in all queues. 
+ This semaphore is being waited on by the threads. 
+ If a task is added, the first thread to return from wait gets the chance to check if it can execute the new task.
+ */
+static sem_t taskSem;
+
+/**
+ * @brief This is set to 1 if the tasqs are about to be killed. 
+ The threads will exit their infinite loops in this case.
+ */
+static int killed = 0;
+
+/**
+ * @brief Protects access to global variables.
+ */
+static pthread_mutex_t globalMutex;
+
+/**
+ * @brief This is waited for in ghost_task_waitsome() and broadcasted in ghost_task_wait() when the task has finished.
+ */
+static pthread_cond_t anyTaskFinishedCond; 
+
+/**
+ * @brief The mutex to protect anyTaskFinishedCond.
+ */
+static pthread_mutex_t anyTaskFinishedMutex;
+
+/**
+ * @brief Each of the threads in the thread pool gets assigned the task it executes via pthread_setspecific. 
+ This is the key to this specific data. It is exported in ghost_taskq.h
+ */
 pthread_key_t ghost_thread_key = 0;
 
 static void * thread_main(void *arg);
@@ -56,6 +104,15 @@ static int intcomp(const void *x, const void *y)
 }
 
 
+/**
+ * @brief Initializes a thread pool with a given number of threads.
+ * @param nThreads
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ * 
+ * A number of pthreads will be created and each one will have thread_main() as start routine.
+ * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
+ * performed before this function returns.
+ */
 int ghost_thpool_init(int nThreads)
 {
 	int t;
@@ -124,11 +181,16 @@ int ghost_thpool_init(int nThreads)
 	return GHOST_SUCCESS;
 }
 
-int ghost_taskq_init(int nqs)
+/**
+ * @brief Initializes a given number of task queues.
+ * @param nQueues
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
+int ghost_taskq_init(int nQueues)
 {
 	int q;
-	DEBUG_LOG(1,"There will be %d task queues",nqs);
-	ghost_thpool->nLDs = nqs;
+	DEBUG_LOG(1,"There will be %d task queues",nQueues);
+	ghost_thpool->nLDs = nQueues;
 
 	taskqs=(ghost_taskq_t**)ghost_malloc(ghost_thpool->nLDs*sizeof(ghost_taskq_t *));
 
@@ -146,11 +208,18 @@ int ghost_taskq_init(int nqs)
 
 	pthread_cond_init(&anyTaskFinishedCond,NULL);
 	pthread_mutex_init(&anyTaskFinishedMutex,NULL);
-	pthread_cond_init(&taskFinishedCond,NULL);
 
 	return GHOST_SUCCESS;
 }
 
+/**
+ * @brief Deletes a given task from a given queue.
+ *
+ * @param q
+ * @param t
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 {
 	if (t == q->head) {
@@ -178,9 +247,17 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 
 
 
+/**
+ * @brief Try to find a task in the given queue. 
+ If there is a suited task, delete it from the queue, reserve enough cores in order to execute the task
+ and pin the task's threads to the reserved cores
+ *
+ * @param q
+ *
+ * @return A pointer to the selected task or NULL if no suited task could be found. 
+ */
 static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 {
-	//DEBUG_LOG(1,"Trying to find a suited task in q %p",q);
 	if (q == NULL) {
 		WARNING_LOG("Tried to find a job but the queue is NULL");
 		return NULL;
@@ -340,7 +417,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 }
 
-/*! Doxygen test */
+/**
+ * @brief The main routine of each thread in the thread pool.
+ *
+ * @param arg
+ *
+ * @return 
+ */
 static void * thread_main(void *arg)
 {
 	ghost_task_t *myTask;
@@ -460,7 +543,6 @@ static void * thread_main(void *arg)
 		pthread_cond_broadcast(myTask->finishedCond);
 		pthread_mutex_unlock(myTask->mutex);
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
-		pthread_cond_broadcast(&taskFinishedCond);
 	//	sem_getvalue(&taskSem,&sval);
 		pthread_mutex_lock(&globalMutex);
 		if (killed) {
@@ -715,6 +797,15 @@ int ghost_task_waitall()
 }
 
 
+/**
+ * @brief Wait for some tasks out of a given list of tasks.
+ *
+ * @param tasks The list of task pointers that should be waited for.
+ * @param nt The length of the list.
+ * @param index Indicating which tasks of the list are now finished.
+ *
+ * @return 
+ */
 int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 {
 	int t;

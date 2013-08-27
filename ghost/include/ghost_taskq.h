@@ -88,6 +88,7 @@ int ghost_taskq_print_all();
 char *ghost_task_strstate(int state);
 
 extern ghost_thpool_t *ghost_thpool; // the thread pool
+extern pthread_key_t ghost_thread_key; 
 
 #ifdef __cplusplus
 }// extern "C"
