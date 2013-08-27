@@ -331,6 +331,8 @@ void ghost_matFromFile(ghost_mat_t *, char *);
 
 int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
 
+
+extern pthread_key_t ghost_thread_key;
 #ifdef __cplusplus
 } // extern "C"
 #endif

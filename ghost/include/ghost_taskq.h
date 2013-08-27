@@ -10,6 +10,7 @@
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
 #define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
+#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
 
 #define GHOST_TASK_INVALID 0 // task has not been enqueued
 #define GHOST_TASK_ENQUEUED 1 // task has been enqueued
@@ -43,7 +44,7 @@ typedef struct ghost_task_t {
 	void *ret; // the return value of the task function
 	struct ghost_task_t *next, *prev; // pointer to next and previous task in queue
 	struct ghost_task_t **siblings; // there are either zero or nQueues siblings
-//	struct ghost_task_t *parent; // this is the "managing" task for a group of siblings
+	struct ghost_task_t *parent; // if the task has been added from within a task
 	pthread_cond_t *finishedCond; // a condition variable indicating that the task is finished
 	pthread_mutex_t *mutex; // serialize accesses to the task's members
 } ghost_task_t;

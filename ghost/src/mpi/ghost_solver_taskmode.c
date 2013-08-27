@@ -114,8 +114,12 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		request = (MPI_Request*) ghost_malloc( 2*nprocs*sizeof(MPI_Request));
 		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
-		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
-		commTask = ghost_task_init(1, 1, &communicate, &cargs, GHOST_TASK_DEFAULT);
+		int taskflags = GHOST_TASK_DEFAULT;
+		if (pthread_getspecific(ghost_thread_key) != NULL)
+			taskflags |= GHOST_TASK_USE_PARENTS;
+
+		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, taskflags);
+		commTask = ghost_task_init(1, 1, &communicate, &cargs, taskflags);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;

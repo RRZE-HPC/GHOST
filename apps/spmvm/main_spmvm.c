@@ -19,20 +19,19 @@
 #endif
 
 //#define TASKING
-#define CHECK // compare with reference solution
+//#define CHECK // compare with reference solution
 
-	GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
 
 #ifdef TASKING
-	typedef struct {
-		ghost_context_t *ctx;
-		ghost_mat_t *mat;
-		ghost_vec_t *lhs, *rhs;
-		char *matfile;
-		vecdt_t *lhsInit;
-		void (*rhsInit)(int,int,void*);
-	} createDataArgs;
+typedef struct {
+	ghost_mat_t *mat;
+	ghost_vec_t *lhs, *rhs;
+	char *matfile;
+	vecdt_t *lhsInit;
+	void (*rhsInit)(int,int,void*);
+} createDataArgs;
 
 typedef struct {
 	ghost_context_t *ctx;
@@ -47,9 +46,9 @@ typedef struct {
 static void *createDataFunc(void *vargs)
 {
 	createDataArgs *args = (createDataArgs *)vargs;
-	args->mat->fromFile(args->mat,args->ctx,args->matfile);
-	args->lhs->fromScalar(args->lhs,args->ctx,args->lhsInit);
-	args->rhs->fromFunc(args->rhs,args->ctx,args->rhsInit);
+	args->mat->fromFile(args->mat,args->matfile);
+	args->lhs->fromScalar(args->lhs,args->lhsInit);
+	args->rhs->fromFunc(args->rhs,args->rhsInit);
 
 	return NULL;
 }
@@ -72,7 +71,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 1;
+	int  mode, nIter = 20;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -128,7 +127,7 @@ int main( int argc, char* argv[] )
 
 
 #ifdef TASKING
-	createDataArgs args = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
+	createDataArgs args = {.mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
 	ghost_task_add(createDataTask);
 #else
@@ -160,16 +159,16 @@ int main( int argc, char* argv[] )
 
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
-		if (modes[mode] == GHOST_SPMVM_MODE_TASKMODE) { // having a task inside a task does not work currently in this case
-#ifdef VT
-			VT_begin("foo");
-#endif
-			time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
-#ifdef VT
-			VT_end("foo");
-#endif
+//		if (modes[mode] == GHOST_SPMVM_MODE_TASKMODE) { // having a task inside a task does not work currently in this case
+//#ifdef VT
+//			VT_begin("foo");
+//#endif
+//			time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
+//#ifdef VT
+//			VT_end("foo");
+//#endif
 
-		} else {
+//		} else {
 
 			benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
 			ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
@@ -177,7 +176,7 @@ int main( int argc, char* argv[] )
 			ghost_task_wait(benchTask);
 			ghost_task_destroy(benchTask);
 
-		}
+	//	}
 #else
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 #endif
