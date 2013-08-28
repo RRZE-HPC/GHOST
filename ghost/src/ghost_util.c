@@ -964,7 +964,7 @@ void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 		else
-			*spmvmOptions |= GHOST_SPMVM_MODE_TASKMODE;
+			*spmvmOptions |= GHOST_SPMVM_MODE_GOODFAITH;
 #else
 		UNUSED(context);
 		*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
@@ -1109,7 +1109,7 @@ int ghost_getCore()
 	sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
 	int processorId = -1;
 
-	for (processorId=0;processorId<128;processorId++)
+	for (processorId=0;processorId<GHOST_MAX_THREADS;processorId++)
 	{
 		if (CPU_ISSET(processorId,&cpu_set))
 		{
