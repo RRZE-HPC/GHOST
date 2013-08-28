@@ -186,11 +186,6 @@ int ghost_init(int argc, char **argv)
 
 	ghost_cpuid_init();
 
-	if (ghost_thpool == NULL) {
-		ghost_thpool_init(ghost_getNumberOfPhysicalCores());
-	}
-	ghost_taskq_init(ghost_cpuid_topology.numSockets);
-
 	return GHOST_SUCCESS;
 }
 

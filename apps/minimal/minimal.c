@@ -3,6 +3,7 @@
 #include <ghost_vec.h>
 #include <ghost_util.h>
 #include <ghost_taskq.h>
+#include <cpuid.h>
 
 
 GHOST_REGISTER_DT_D(vecdt)
@@ -18,8 +19,7 @@ static void rhsVal (int i, int v, void *val)
 
 static void *minimalTask(void *arg)
 {
-	UNUSED(arg);
-	int nIter = 1;
+	int nIter = 100;
 	double time;
 	double zero = 0.;
 
@@ -28,12 +28,9 @@ static void *minimalTask(void *arg)
 	ghost_vtraits_t lvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .datatype = vecdt);
 	ghost_vtraits_t rvtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS, .datatype = vecdt);
 
-	ghost_matfile_header_t fileheader;
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs, *rhs;
 	ghost_mat_t *mat;
-
-	ghost_readMatFileHeader((char *)arg,&fileheader);
 
 	ctx = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,arg,MPI_COMM_WORLD);
 	mat = ghost_createMatrix(ctx,&mtraits,1);
@@ -49,10 +46,14 @@ static void *minimalTask(void *arg)
 	ghost_printContextInfo(ctx);
 	ghost_printMatrixInfo(mat);
 
-	ghost_printHeader("Performance");
 	time = ghost_bench_spmvm(ctx,lhs,mat,rhs,&spmvmOptions,nIter);
-	ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",ghost_flopsPerSpmvm(matdt,vecdt)*1.e-9*ghost_getMatNnz(mat)/time);
-	ghost_printFooter();
+	
+	ghost_matnnz_t nnz = ghost_getMatNnz(mat);
+	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
+		ghost_printHeader("Performance");
+		ghost_printLine(ghost_modeName(spmvmOptions),"GF/s","%.2f",ghost_flopsPerSpmvm(matdt,vecdt)*1.e-9*/time);
+		ghost_printFooter();
+	}
 	
 	lhs->destroy(lhs);
 	rhs->destroy(rhs);
@@ -60,13 +61,21 @@ static void *minimalTask(void *arg)
 	ghost_freeContext(ctx);
 
 	return NULL;
-
 }
 
 int main(int argc, char* argv[]) 
 {
-
 	ghost_init(argc,argv);
+
+#ifdef MIC 
+	// SMT-3
+	ghost_thpool_init(ghost_cpuid_topology.numHWThreads/4*3);
+#else 
+	// no SMT
+	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
+#endif
+	ghost_taskq_init(ghost_cpuid_topology.numSockets);
+
 	ghost_task_t *t = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &minimalTask, argv[1], GHOST_TASK_DEFAULT);
 	ghost_task_add(t);
 

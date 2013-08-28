@@ -12,6 +12,12 @@ ifeq ($(LONGIDX),1)
 MAKROS+= -DLONGIDX
 endif
 
+ifneq ($(strip $(MIC)),0)
+LPATH += -L$(INTEL_C_HOME)/mkl/lib/mic
+LIBS+= -limf -lsvml -lirng -lintlc
+MAKROS+= -DMIC
+endif
+
 ifeq ($(strip $(MPI)),1)
 MAKROS+= -DGHOST_MPI
 endif

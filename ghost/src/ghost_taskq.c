@@ -43,7 +43,7 @@
 /**
  * @brief The list of task queues created by ghost_task_init(). Usually, there is one task queue per locality domain.
  */
-static ghost_taskq_t **taskqs;
+static ghost_taskq_t **taskqs = NULL;
 
 /**
  * @brief The thread pool created by ghost_thpool_init(). This variable is exported in ghost_taskq.h
@@ -694,6 +694,8 @@ int ghost_task_add(ghost_task_t *t)
 int ghost_taskq_finish()
 {
 	int t;
+	if (taskqs == NULL)
+		return GHOST_SUCCESS;
 
 	ghost_task_waitall(); // finish all outstanding tasks
 	pthread_mutex_lock(&globalMutex);
@@ -932,6 +934,8 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 
 int ghost_thpool_finish()
 {
+	if (ghost_thpool == NULL)
+		return GHOST_SUCCESS;
 
 	free(ghost_thpool->threads);
 	free(ghost_thpool->firstThreadOfLD);

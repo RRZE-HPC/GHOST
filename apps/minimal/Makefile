@@ -3,15 +3,15 @@ include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
 
+Q=@  
 LPATH+= -L$(strip $(GHOSTPATH))/lib
-IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
+IPATH+= -I$(strip $(GHOSTPATH))/include/ghost -I$(strip $(GHOSTPATH))/include/ghost/likwid
 LIBS+=  -lghost -lifcore
 
-ifeq ($(strip $(MIC)),1)
+ifneq ($(strip $(MIC)),0)
+LPATH += -L$(INTEL_C_HOME)/mkl/lib/mic
 LIBS+= -limf -lsvml -lirng -lintlc
-endif
-ifeq ($(strip $(MIC)),2)
-LIBS+= -limf -lsvml -lirng -lintlc
+MAKROS+= -DMIC
 endif
 
 ifeq ($(strip $(CUDA)),1)
@@ -42,12 +42,12 @@ endif
 
 %.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
-	@$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
+	${Q}$(CC) $(CFLAGS) $(MAKROS) $(IPATH) -o $@ -c $< 
 
 
 minimal.x: minimal.o
 	@echo "==> Link $@"
-	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
+	${Q}$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 
 clean:
 	@echo "==> Clean"
