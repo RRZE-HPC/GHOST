@@ -267,7 +267,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		context->gnrows = (ghost_midx_t)gnrows;
 		context->gncols = (ghost_midx_t)gncols;
 	}
-	DEBUG_LOG(1,"Creating context with dimension %ldx%ld",context->gnrows,context->gncols);
+	DEBUG_LOG(1,"Creating context with dimension %"PRmatIDX"x%"PRmatIDX,context->gnrows,context->gncols);
 
 #ifdef GHOST_MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {

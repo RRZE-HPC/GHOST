@@ -19,10 +19,11 @@
 #endif
 
 //#define TASKING
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
-GHOST_REGISTER_DT_D(matdt)
+GHOST_REGISTER_DT_S(vecdt)
+GHOST_REGISTER_DT_S(matdt)
+#define EPS 1.e-3
 
 #ifdef TASKING
 typedef struct {
@@ -194,7 +195,7 @@ int main( int argc, char* argv[] )
 			goldLHS->entry(goldLHS,i,&ref);
 			lhs->entry(lhs,i,&res);
 
-			mytol = 1e-7 * mat->rowLen(mat,i);
+			mytol = EPS * mat->rowLen(mat,i);
 			if (creal(cabs(ref-res)) > creal(mytol) ||
 					cimag(cabs(ref-res)) > cimag(mytol)){
 				printf( "PE%d: error in %s, row %"PRmatIDX": %.2e + %.2ei vs. %.2e +"

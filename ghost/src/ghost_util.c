@@ -964,7 +964,7 @@ void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 		else
-			*spmvmOptions |= GHOST_SPMVM_MODE_VECTORMODE;
+			*spmvmOptions |= GHOST_SPMVM_MODE_TASKMODE;
 #else
 		UNUSED(context);
 		*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
