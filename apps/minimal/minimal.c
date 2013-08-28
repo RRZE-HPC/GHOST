@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <ghost.h>
+#include <ghost_vec.h>
 #include <ghost_util.h>
 #include <ghost_taskq.h>
 
@@ -12,7 +13,7 @@ static void rhsVal (int i, int v, void *val)
 	UNUSED(i);
 	UNUSED(v);
 
-	*(vecdt_t *)val = (vecdt_t)ghost_getRank()+1;
+	*(vecdt_t *)val = (vecdt_t)ghost_getRank(MPI_COMM_WORLD)+1;
 }
 
 static void *minimalTask(void *arg)
@@ -31,18 +32,17 @@ static void *minimalTask(void *arg)
 	ghost_context_t *ctx;
 	ghost_vec_t *lhs, *rhs;
 	ghost_mat_t *mat;
-	//ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 
 	ghost_readMatFileHeader((char *)arg,&fileheader);
 
-	ctx = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_DEFAULT,arg);
-	mat = ghost_createMatrix(&mtraits,1);
-	rhs = ghost_createVector(&rvtraits);
-	lhs = ghost_createVector(&lvtraits);
+	ctx = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,arg,MPI_COMM_WORLD);
+	mat = ghost_createMatrix(ctx,&mtraits,1);
+	rhs = ghost_createVector(ctx,&rvtraits);
+	lhs = ghost_createVector(ctx,&lvtraits);
 
-	mat->fromFile(mat,ctx,(char *)arg);
-	lhs->fromScalar(lhs,ctx,&zero);
-	rhs->fromFunc(rhs,ctx,rhsVal);
+	mat->fromFile(mat,(char *)arg);
+	lhs->fromScalar(lhs,&zero);
+	rhs->fromFunc(rhs,rhsVal);
 	
 	ghost_printSysInfo();
 	ghost_printGhostInfo();

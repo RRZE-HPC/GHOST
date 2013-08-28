@@ -32,6 +32,13 @@ IPATH += -I$(strip $(LIKWIDPATH))/include
 LPATH := -L$(strip $(LIKWIDPATH))/lib $(LPATH)
 LIBS += -llikwid
 endif
+ifeq ($(strip $(MPI)),1)
+MAKROS+= -DGHOST_MPI
+endif
+ifeq ($(LONGIDX),1)
+MAKROS+= -DLONGIDX
+endif
+
 
 %.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
