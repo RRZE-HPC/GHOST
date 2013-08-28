@@ -48,7 +48,7 @@ static ghost_taskq_t **taskqs;
 /**
  * @brief The thread pool created by ghost_thpool_init(). This variable is exported in ghost_taskq.h
  */
-ghost_thpool_t *ghost_thpool;
+ghost_thpool_t *ghost_thpool = NULL;
 
 /**
  * @brief Holds the total number of tasks in all queues. 
