@@ -70,6 +70,22 @@ template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *
 	}
 }
 
+template <typename v_t> void ghost_vec_gaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
+{
+	ghost_vidx_t i,v;
+	v_t *s = (v_t *)scale;
+	v_t *b = (v_t *)b_;
+	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+
+	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+#pragma omp parallel for 
+		for (i=0; i<nr; i++) {
+			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] = ((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v] * s[v] + 
+				((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] * b[v];
+		}
+	}
+}
+
 template<typename v_t> void ghost_vec_scale_tmpl(ghost_vec_t *vec, void *scale)
 {
 	ghost_vidx_t i;
@@ -171,6 +187,18 @@ extern "C" void z_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scal
 
 extern "C" void c_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_axpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
+
+extern "C" void d_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_gaxpy_tmpl< double >(vec, vec2, scale, b); }
+
+extern "C" void s_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_gaxpy_tmpl< float >(vec, vec2, scale, b); }
+
+extern "C" void z_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_gaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
+
+extern "C" void c_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_gaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
 
 extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< double >(vec); }

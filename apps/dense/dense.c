@@ -56,16 +56,19 @@ int main(int argc, char* argv[])
 	printf("\n##### write\n");
 	dm2->print(dm2);
 	ghost_vecToFile(dm2,"foo.vec");
-	ghost_vecFromFile(dm2,"foo.vec");
 	printf("##### read\n");
+	ghost_vecFromFile(dm2,"foo.vec");
 	dm2->print(dm2);
 
 	vecdt_t scale[] = {0.,1.};
 	dm1->axpy(dm1,dm2,scale);
-
 	printf("\n##### axpy\n");
 	dm1->print(dm1);
 	
+	vecdt_t b[] = {-1.,-1.};
+	dm1->gaxpy(dm1,dm2,scale,b);
+	printf("\n##### gaxpy\n");
+	dm1->print(dm1);
 
 	dm1->destroy(dm1);
 	dm2->destroy(dm2);
