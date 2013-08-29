@@ -242,6 +242,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	context = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
 	context->flags = context_flags;
+	context->mpicomm = comm;
 
 	if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
 		ghost_matfile_header_t fileheader;
@@ -294,10 +295,9 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-		context->communicator->mpicomm = comm;
 		context->communicator->halo_elements = 0;
 
-		int nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
+		int nprocs = ghost_getNumberOfRanks(context->mpicomm);
 
 		context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
 		context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
@@ -309,7 +309,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
 			ghost_mnnz_t gnnz;
 
-			if (ghost_getRank(context->communicator->mpicomm) == 0) {
+			if (ghost_getRank(context->mpicomm) == 0) {
 				FILE * filed;
 				size_t ret;
 
@@ -363,10 +363,10 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 				fclose(filed);
 			}
-			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
-			MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
-			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
-			MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 
 
 		} else 
@@ -387,8 +387,8 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
 			}
 			context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
-			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
-			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->communicator->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 		}
 
 	} else {
@@ -396,7 +396,6 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	}
 
 #else
-	UNUSED(comm);
 	context->communicator = NULL;
 #endif
 
@@ -477,10 +476,10 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 		vec->collect(vec,gv1,NULL);
 		vec2->collect(vec2,gv2,NULL);
 
-		if (ghost_getRank(vec->context->communicator->mpicomm) == 0) {
+		if (ghost_getRank(vec->context->mpicomm) == 0) {
 		gv1->dotProduct(gv1,gv2,res);	
 		}
-		MPI_safecall(MPI_Bcast(res,1,ghost_mpi_dataType(vec->traits->datatype),0,vec->context->communicator->mpicomm));
+		MPI_safecall(MPI_Bcast(res,1,ghost_mpi_dataType(vec->traits->datatype),0,vec->context->mpicomm));
 		gv1->destroy(gv1);
 		gv2->destroy(gv2);
 	 */	
@@ -490,7 +489,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 	int v;
 	if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
 		for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-			MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, vec->context->communicator->mpicomm));
+			MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), MPI_SUM, vec->context->mpicomm));
 		}
 	}
 #endif
@@ -501,9 +500,9 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 {
 	int64_t nrows = vec->traits->nrows;
 #ifdef GHOST_MPI
-	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,vec->context->communicator->mpicomm));
+	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,vec->context->mpicomm));
 #endif
-	if (ghost_getRank(vec->context->communicator->mpicomm) == 0) { // write header
+	if (ghost_getRank(vec->context->mpicomm) == 0) { // write header
 
 		int file;
 
@@ -533,7 +532,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->toFile(vec,path,0,1);
 	else
-		vec->toFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)],1);
+		vec->toFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)],1);
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path)
@@ -541,7 +540,7 @@ void ghost_vecFromFile(ghost_vec_t *vec, char *path)
 	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
 		vec->fromFile(vec,path,0);
 	else
-		vec->fromFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->communicator->mpicomm)]);
+		vec->fromFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)]);
 }
 void ghost_vecFromScalar(ghost_vec_t *v, void *s)
 {
@@ -605,7 +604,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
+				if (ghost_getRank(x->context->mpicomm) == 0) { 
 					zgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, 
 							(BLAS_Complex16 *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, 
 							(ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex16 *)beta, x->val, 
@@ -619,7 +618,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 
 		} else {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
+				if (ghost_getRank(x->context->mpicomm) == 0) { 
 					cgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex8 *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex8 *)beta, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
 				} else {
 					cgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex8 *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex8 *)&zero, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
@@ -631,7 +630,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	} else {
 		if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
+				if (ghost_getRank(x->context->mpicomm) == 0) { 
 					dgemm(transpose,"N", (ghost_blas_idx_t *)&m,(ghost_blas_idx_t *) &n, (ghost_blas_idx_t *)&k, (double *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (double *)beta, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
 				} else {
 					dgemm(transpose,"N",(ghost_blas_idx_t *) &m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (double *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (double *)&zero, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
@@ -641,7 +640,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 			}
 		} else {
 			if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-				if (ghost_getRank(x->context->communicator->mpicomm) == 0) { 
+				if (ghost_getRank(x->context->mpicomm) == 0) { 
 					sgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (float *)alpha, v->val,(ghost_blas_idx_t *) &(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (float *)beta, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
 				} else {
 					sgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (float *)alpha, v->val, (ghost_blas_idx_t *)&(v->traits->nrowspadded), w->val, (ghost_blas_idx_t *)&(w->traits->nrowspadded), (float *)&zero, x->val, (ghost_blas_idx_t *)&(x->traits->nrowspadded));
@@ -659,17 +658,17 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 	} else if (reduce == GHOST_GEMM_ALL_REDUCE) {
 		for (i=0; i<x->traits->nvecs; ++i) {
 			for (j=0; j<x->traits->nrows; ++j) {
-				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,x->context->communicator->mpicomm));
+				MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,x->context->mpicomm));
 
 			}
 		}
 	} else {
 		for (i=0; i<x->traits->nvecs; ++i) {
 			for (j=0; j<x->traits->nrows; ++j) {
-				if (ghost_getRank(x->context->communicator->mpicomm) == reduce) {
-					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->communicator->mpicomm));
+				if (ghost_getRank(x->context->mpicomm) == reduce) {
+					MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->mpicomm));
 				} else {
-					MPI_safecall(MPI_Reduce(((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),NULL,1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->communicator->mpicomm));
+					MPI_safecall(MPI_Reduce(((char *)(x->val))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),NULL,1,ghost_mpi_dataType(x->traits->datatype),MPI_SUM,reduce,x->context->mpicomm));
 				}
 			}
 		}

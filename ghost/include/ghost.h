@@ -164,8 +164,6 @@ struct ghost_comm_t
 	ghost_midx_t* due_displ;    
 	ghost_midx_t* wish_displ;   
 	ghost_midx_t* hput_pos;
-
-	MPI_Comm mpicomm;
 }; 
 
 struct ghost_mat_t 
@@ -214,6 +212,8 @@ struct ghost_context_t
 	ghost_midx_t gnrows;
 	ghost_midx_t gncols;
 	int flags;
+
+	MPI_Comm mpicomm;
 };
 
 struct ghost_mtraits_t

@@ -35,7 +35,7 @@ static void *communicate(void *vargs)
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
 
 		if (args->context->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( args->work+to_PE*args->max_dues*args->sizeofRHS, args->context->communicator->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->communicator->mpicomm, &args->request[args->recv_messages+args->send_messages] ));
+			MPI_safecall(MPI_Isend( args->work+to_PE*args->max_dues*args->sizeofRHS, args->context->communicator->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->recv_messages+args->send_messages] ));
 			args->send_messages++;
 		}
 	}
@@ -101,8 +101,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	static ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
 
 	if (init_kernel==1){
-		me = ghost_getRank(context->communicator->mpicomm);
-		nprocs = ghost_getNumberOfRanks(context->communicator->mpicomm);
+		me = ghost_getRank(context->mpicomm);
+		nprocs = ghost_getNumberOfRanks(context->mpicomm);
 		sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
 		max_dues = 0;
@@ -157,7 +157,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->communicator->mpicomm,&request[recv_messages] ));
+			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -176,7 +176,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 //	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 //		if (context->communicator->dues[to_PE]>0){
-//			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->communicator->mpicomm, &request[recv_messages+send_messages] ));
+//			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[recv_messages+send_messages] ));
 //			send_messages++;
 //		}
 //	}
@@ -291,7 +291,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 
 	if (init_kernel==1){
-		MPI_safecall(MPI_Comm_rank(context->communicator->mpicomm, &me));
+		MPI_safecall(MPI_Comm_rank(context->mpicomm, &me));
 		nprocs = ghost_getNumberOfProcesses();
 		sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
@@ -341,7 +341,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->communicator->mpicomm,&request[recv_messages] ));
+			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -362,7 +362,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 		if (context->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->communicator->mpicomm, &request[recv_messages+send_messages] ));
+			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[recv_messages+send_messages] ));
 			send_messages++;
 		}
 	}

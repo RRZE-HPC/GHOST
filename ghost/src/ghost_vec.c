@@ -188,7 +188,7 @@ static void vec_print(ghost_vec_t *vec)
 	char prefix[16];
 #ifdef GHOST_MPI
 	if (vec->context->communicator != NULL) {
-		int rank = ghost_getRank(vec->context->communicator->mpicomm);
+		int rank = ghost_getRank(vec->context->mpicomm);
 		int ndigits = floor(log10(abs(rank))) + 1;
 		snprintf(prefix,4+nDigits,"PE%d: ",rank);
 	} else {
@@ -246,7 +246,7 @@ void getNrowsFromContext(ghost_vec_t *vec)
 		} 
 		else 
 		{
-			vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->communicator->mpicomm)];
+			vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->mpicomm)];
 		}
 	}
 	if (vec->traits->nrowshalo == 0) {
@@ -584,7 +584,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 #ifdef GHOST_MPI
-	int me = ghost_getRank((*nodeVec)->context->communicator->mpicomm);
+	int me = ghost_getRank((*nodeVec)->context->mpicomm);
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
 	MPI_Datatype mpidt;
@@ -604,7 +604,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 		}
 	}
 
-	int nprocs = ghost_getNumberOfRanks((*nodeVec)->context->communicator->mpicomm);
+	int nprocs = ghost_getNumberOfRanks((*nodeVec)->context->mpicomm);
 	int i;
 
 	MPI_Request req[2*(nprocs-1)];
@@ -614,13 +614,13 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	for (i=0;i<2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
-	if (ghost_getRank((*nodeVec)->context->communicator->mpicomm) != 0) {
-		MPI_safecall(MPI_Irecv((*nodeVec)->val,comm->lnrows[me],mpidt,0,me,(*nodeVec)->context->communicator->mpicomm,&req[msgcount]));
+	if (ghost_getRank((*nodeVec)->context->mpicomm) != 0) {
+		MPI_safecall(MPI_Irecv((*nodeVec)->val,comm->lnrows[me],mpidt,0,me,(*nodeVec)->context->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
 		memcpy((*nodeVec)->val,vec->val,sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,(*nodeVec)->context->communicator->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,(*nodeVec)->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
@@ -661,11 +661,11 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 			mpidt = MPI_DOUBLE;
 		}
 	}
-	int me = ghost_getRank(vec->context->communicator->mpicomm);
+	int me = ghost_getRank(vec->context->mpicomm);
 	if (mat != NULL)
 		vec->permute(vec,mat->invRowPerm); 
 
-	int nprocs = ghost_getNumberOfRanks(vec->context->communicator->mpicomm);
+	int nprocs = ghost_getNumberOfRanks(vec->context->mpicomm);
 	int i;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
@@ -677,13 +677,13 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	for (i=0;i<2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
-	if (ghost_getRank(vec->context->communicator->mpicomm) != 0) {
-		MPI_safecall(MPI_Isend(vec->val,comm->lnrows[me],mpidt,0,me,vec->context->communicator->mpicomm,&req[msgcount]));
+	if (ghost_getRank(vec->context->mpicomm) != 0) {
+		MPI_safecall(MPI_Isend(vec->val,comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
 		memcpy(totalVec->val,vec->val,sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Irecv(((char *)(totalVec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->communicator->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Irecv(((char *)(totalVec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}

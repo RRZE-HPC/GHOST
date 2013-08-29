@@ -169,7 +169,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 	int myrank;
 
    	if (mat->context->communicator != NULL) {
-		myrank = ghost_getRank(mat->context->communicator->mpicomm); 
+		myrank = ghost_getRank(mat->context->mpicomm); 
 	} else {
 		myrank = 0;
 	}
@@ -221,8 +221,8 @@ void ghost_printContextInfo(ghost_context_t *context)
 	int myrank;
 
    	if (context->communicator != NULL) {
-		nranks = ghost_getNumberOfRanks(context->communicator->mpicomm);
-		myrank = ghost_getRank(context->communicator->mpicomm); 
+		nranks = ghost_getNumberOfRanks(context->mpicomm);
+		myrank = ghost_getRank(context->mpicomm); 
 	} else {
 		nranks = 1;
 		myrank = 0;
@@ -415,7 +415,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 	DEBUG_LOG(1,"Computing reference solution");
 	int me;
    	if ((*nodeLHS)->context->communicator != NULL) {
-		me = ghost_getRank((*nodeLHS)->context->communicator->mpicomm); 
+		me = ghost_getRank((*nodeLHS)->context->mpicomm); 
 	} else {
 		me = 0;
 	}
@@ -908,7 +908,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 	}
 
 #ifdef GHOST_MPI
-	MPI_safecall(MPI_Barrier(context->communicator->mpicomm));
+	MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
 #ifdef OPENCL
 	CL_barrier();
@@ -926,7 +926,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		CU_barrier();
 #endif
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Barrier(context->communicator->mpicomm));
+		MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
 		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
 		//time = ghost_timediff(start,end);
@@ -1144,7 +1144,7 @@ char ghost_datatypePrefix(int dt)
 ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 {
 	if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-		return ctx->communicator->lfRow[ghost_getRank(ctx->communicator->mpicomm)] + lidx;
+		return ctx->communicator->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
 
 	return lidx;	
 }
@@ -1311,7 +1311,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 		nrows = lnrows;
 	} else {
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->communicator->mpicomm));
+		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
 #endif
@@ -1329,7 +1329,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 		nnz = lnnz;
 	} else {
 #ifdef GHOST_MPI
-		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->communicator->mpicomm));
+		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");
 #endif
