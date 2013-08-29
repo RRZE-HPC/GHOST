@@ -516,7 +516,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 		int32_t version = 1;
 		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
 		int32_t datatype = vec->traits->datatype;
-		int64_t ncols = (int64_t)1;
+		int64_t ncols = (int64_t)(vec->traits->nvecs);
 
 		pwrite(file,&endianess,sizeof(endianess),offs);
 		pwrite(file,&version,sizeof(version),    offs+=sizeof(endianess));

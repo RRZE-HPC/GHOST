@@ -33,7 +33,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 	}
 	ghost_vidx_t i,v;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
-/*
+
 	int nthreads;
 #pragma omp parallel
 	nthreads = ghost_ompGetNumThreads();
@@ -45,36 +45,28 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
-			partsums[ghost_ompGetThreadNum()] += ((v_t *)(vec->val))[i]*((v_t *)(vec2->val))[i];
+			partsums[ghost_ompGetThreadNum()] += 
+				((v_t *)(vec->val))[i+vec->traits->nrowspadded*v]*((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v];
 		}
 
 		for (i=0; i<nthreads; i++) sum += partsums[i];
 
 		((v_t *)res)[v] = sum;
-		WARNING_LOG("rank sum: %f",sum);
-	}
-	*/
-
-	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-		v_t sum = 0;
-		for (i=0; i<nr; i++) {
-			sum += ((v_t *)(vec->val))[i]*((v_t *)(vec2->val))[i];
-		}
-		((v_t *)res)[v] = sum;
 	}
 
-	
 }
 
 template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
-	ghost_vidx_t i;
-	v_t s = *(v_t *)scale;
+	ghost_vidx_t i,v;
+	v_t *s = (v_t *)scale;
 	ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
+	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
 #pragma omp parallel for 
-	for (i=0; i<nr; i++) {
-		((v_t *)(vec->val))[i] += ((v_t *)(vec2->val))[i] * s;
+		for (i=0; i<nr; i++) {
+			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] += ((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v] * s[v];
+		}
 	}
 }
 
