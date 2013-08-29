@@ -452,12 +452,12 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 
 	if ((ret = fread(&ncols, sizeof(ncols), 1,filed)) != 1)
 		ABORT("fread failed");
-	if (ncols != 1)
-		ABORT("The number of columns has to be 1!");
+	//if (ncols != 1)
+	//	ABORT("The number of columns has to be 1!");
 
 	int v;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		if (fseeko(filed,offset*sizeofdt,SEEK_SET))
+		if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
 			ABORT("Seek failed");
 
 		if ((ret = fread(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
