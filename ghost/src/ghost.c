@@ -502,37 +502,34 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 #ifdef GHOST_MPI
 	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,vec->context->mpicomm));
 #endif
-	if (ghost_getRank(vec->context->mpicomm) == 0) { // write header
+/*	if (ghost_getRank(vec->context->mpicomm) == 0) { // write header
 
-		int file;
-
-		if ((file = open(path, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR)) == -1){
-			ABORT("Could not open vector file %s",path);
+		FILE *filed;
+		if ((filed = fopen64(path, "wb")) == NULL){
+			ABORT("Could not vector file %s",path);
 		}
 
-		int offs = 0;
-
+		size_t ret;
 		int32_t endianess = ghost_archIsBigEndian();
 		int32_t version = 1;
 		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
 		int32_t datatype = vec->traits->datatype;
-		int64_t ncols = (int64_t)(vec->traits->nvecs);
+		int64_t ncols = (int64_t)vec->traits->nvecs;
 
-		pwrite(file,&endianess,sizeof(endianess),offs);
-		pwrite(file,&version,sizeof(version),    offs+=sizeof(endianess));
-		pwrite(file,&order,sizeof(order),        offs+=sizeof(version));
-		pwrite(file,&datatype,sizeof(datatype),  offs+=sizeof(order));
-		pwrite(file,&nrows,sizeof(nrows),        offs+=sizeof(datatype));
-		pwrite(file,&ncols,sizeof(ncols),        offs+=sizeof(nrows));
+		if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
 
-		close(file);
-
-
-	}
-	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
-		vec->toFile(vec,path,0,1);
-	else
+		fclose(filed);
+	}*/
+	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED)) {
+		vec->toFile(vec,path,0,0);
+	} else {
 		vec->toFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)],1);
+	}
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path)

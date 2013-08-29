@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 
 #ifdef CUDA
@@ -371,17 +372,22 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeader)
 {
 	DEBUG_LOG(1,"Writing vector to file %s",path);
-	int file;
+#ifdef GHOST_MPI
+	MPI_File fileh;
+	MPI_safecall(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
 
-	if ((file = open(path, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR)) == -1){
-		ABORT("Could not open vector file %s",path);
+#else
+	FILE *filed;
+	size_t ret;
+
+	if ((filed = fopen64(path, "w")) == NULL){
+		ABORT("Could not vector file %s",path);
 	}
+#endif
 
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	int offs;
 
 	if (!skipHeader) {
-		offs = 0;
 		int32_t endianess = ghost_archIsBigEndian();
 		int32_t version = 1;
 		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
@@ -389,24 +395,27 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 		int64_t nrows = (int64_t)vec->traits->nrows;
 		int64_t ncols = (int64_t)vec->traits->nvecs;
 
-		//TODO pwrite -> fwrite
-		pwrite(file,&endianess,sizeof(endianess),offs);
-		pwrite(file,&version,sizeof(version),    offs+=sizeof(endianess));
-		pwrite(file,&order,sizeof(order),        offs+=sizeof(version));
-		pwrite(file,&datatype,sizeof(datatype),  offs+=sizeof(order));
-		pwrite(file,&nrows,sizeof(nrows),        offs+=sizeof(datatype));
-		pwrite(file,&ncols,sizeof(ncols),        offs+=sizeof(nrows));
-		offs += sizeof(ncols);
+		if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
 	} else {
-		offs = 4*sizeof(int32_t)+2*sizeof(int64_t); 
+		if (fseeko(filed,4*sizeof(int32_t)+2*sizeof(int64_t),SEEK_SET)) 
+			ABORT("Seek failed");
 	}
 
 	int v;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		pwrite(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt+v*sizeofdt*vec->traits->nrows);
+		if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
+			ABORT("Seek failed");
+		if ((ret = fwrite(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+			ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+		//pwrite(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt+v*sizeofdt*vec->traits->nrows);
 	}
 
-	close(file);
+	fclose(filed);
 
 }
 
@@ -445,7 +454,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 		ABORT("fread failed");
 	
 	if (version != 1)
-		ABORT("Cannot read vector files with format != 1");
+		ABORT("Cannot read vector files with format != 1 (is %d)",version);
 
 	if ((ret = fread(&order, sizeof(order), 1,filed)) != 1)
 		ABORT("fread failed");
