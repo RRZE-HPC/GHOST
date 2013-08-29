@@ -73,9 +73,9 @@ int main(int argc, char* argv[])
 		rhs = ghost_createVector(ctx,&rvtraits);
 		lhs = ghost_createVector(ctx,&lvtraits);
 
-		mat->fromFile(mat,ctx,argv[1]);
-		lhs->fromScalar(lhs,ctx,&zero);
-		rhs->fromFunc(rhs,ctx,rhsVal);
+		mat->fromFile(mat,argv[1]);
+		lhs->fromScalar(lhs,&zero);
+		rhs->fromFunc(rhs,rhsVal);
 
 		ghost_printContextInfo(ctx);
 		ghost_printMatrixInfo(mat);
@@ -97,9 +97,9 @@ int main(int argc, char* argv[])
 		rhs = ghost_createVector(ctx,&rvtraits);
 		lhs = ghost_createVector(ctx,&lvtraits);
 
-		mat->fromFile(mat,ctx,argv[2]);
-		lhs->fromScalar(lhs,ctx,&zero);
-		rhs->fromFunc(rhs,ctx,rhsVal);
+		mat->fromFile(mat,argv[2]);
+		lhs->fromScalar(lhs,&zero);
+		rhs->fromFunc(rhs,rhsVal);
 
 		ghost_printContextInfo(ctx);
 		ghost_printMatrixInfo(mat);
