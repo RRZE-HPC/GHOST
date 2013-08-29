@@ -886,6 +886,23 @@ int ghost_task_destroy(ghost_task_t *t)
 ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
 {
 	ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
+	if (ghost_thpool == NULL) {
+		int nthreads = 0;
+#ifdef MIC 
+		// SMT-3
+		nthreads = ghost_cpuid_topology.numHWThreads/4*3;
+#else 
+		// no SMT
+		nthreads = ghost_getNumberOfPhysicalCores();
+#endif
+		DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nthreads);
+		ghost_thpool_init(nthreads);
+	}
+	if (taskqs == NULL) {
+		int nqueues = ghost_cpuid_topology.numSockets;
+		DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now with %d queues!",nqueues);
+		ghost_taskq_init(nqueues);
+	}
 
 	if (nThreads == GHOST_TASK_FILL_LD) {
 		if (LD < 0) {

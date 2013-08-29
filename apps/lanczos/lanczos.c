@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 	ghost_init(argc,argv); // has to be the first call
 	ghost_pinThreads(GHOST_PIN_SMT,NULL); // pin the threads to the physical cores (no SMT)
 	
-	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_SELL, .datatype = matdt, .aux=&aux);
+	ghost_mtraits_t mtraits = GHOST_MTRAITS_INIT(.format = GHOST_SPM_FORMAT_SELL, .datatype = matdt);
 	ghost_vtraits_t vtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_RHS,.datatype = vecdt);
 
 	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD);
