@@ -498,38 +498,45 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 
 void ghost_vecToFile(ghost_vec_t *vec, char *path)
 {
-	int64_t nrows = vec->traits->nrows;
 #ifdef GHOST_MPI
-	MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nrows,1,MPI_INTEGER8,MPI_SUM,vec->context->mpicomm));
-#endif
-/*	if (ghost_getRank(vec->context->mpicomm) == 0) { // write header
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	
+	int32_t endianess = ghost_archIsBigEndian();
+	int32_t version = 1;
+	int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
+	int32_t datatype = vec->traits->datatype;
+	int64_t nrows = (int64_t)vec->context->gnrows;
+	int64_t ncols = (int64_t)vec->traits->nvecs;
+	MPI_File fileh;
+	MPI_Status status;
+	MPI_safecall(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
 
-		FILE *filed;
-		if ((filed = fopen64(path, "wb")) == NULL){
-			ABORT("Could not vector file %s",path);
-		}
-
-		size_t ret;
-		int32_t endianess = ghost_archIsBigEndian();
-		int32_t version = 1;
-		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
-		int32_t datatype = vec->traits->datatype;
-		int64_t ncols = (int64_t)vec->traits->nvecs;
-
-		if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-
-		fclose(filed);
-	}*/
-	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED)) {
-		vec->toFile(vec,path,0,0);
-	} else {
-		vec->toFile(vec,path,vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)],1);
+	if (ghost_getRank(vec->context->mpicomm) == 0) 
+	{ // write header AND portion
+		MPI_safecall(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&version,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&order,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
+		MPI_safecall(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
+	
+	}	
+	ghost_vidx_t v;
+	MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
+	MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
+	MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+	ghost_vidx_t vecoffset = 0;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		MPI_safecall(MPI_File_write_at(fileh,fileoffset,((char *)(vec->val))+vecoffset,vec->traits->nrows,mpidt,&status));
+		fileoffset += nrows;
+		vecoffset += vec->traits->nrowspadded*sizeofdt;
 	}
+	MPI_safecall(MPI_File_close(&fileh));
+
+
+#else
+		vec->toFile(vec,path,0,0);
+#endif
 }
 
 void ghost_vecFromFile(ghost_vec_t *vec, char *path)

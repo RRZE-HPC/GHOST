@@ -109,7 +109,7 @@ struct ghost_vec_t
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*gaxpy) (ghost_vec_t *, ghost_vec_t *, void *, void *);
 	void          (*print) (ghost_vec_t *);
-	void          (*toFile) (ghost_vec_t *, char *, off_t, int);
+	void          (*toFile) (ghost_vec_t *, char *);
 	void          (*entry) (ghost_vec_t *, int,  void *);
 	void          (*viewPlain) (ghost_vec_t *, void *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
 	void          (*CUupload) (ghost_vec_t *);

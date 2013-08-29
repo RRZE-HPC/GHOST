@@ -101,6 +101,7 @@
 #define GHOST_BINCRS_SIZE_RPT_EL 8 /* one rpt element is 8 bytes */
 #define GHOST_BINCRS_SIZE_COL_EL 8 /* one col element is 8 bytes */
 
+#define GHOST_BINVEC_SIZE_HEADER 32
 #define GHOST_BINCRS_LITTLE_ENDIAN (0)
 
 #define GHOST_BINCRS_SYMM_GENERAL        (1)

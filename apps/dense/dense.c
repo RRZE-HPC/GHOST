@@ -55,6 +55,8 @@ int main(int argc, char* argv[])
 
 	printf("\n##### write\n");
 	dm2->print(dm2);
+	if (ghost_getRank(MPI_COMM_WORLD) == 0)
+		dm2->toFile(dm2,"local.vec");
 	ghost_vecToFile(dm2,"foo.vec");
 	printf("##### read\n");
 	ghost_vecFromFile(dm2,"foo.vec");
@@ -69,6 +71,7 @@ int main(int argc, char* argv[])
 	dm1->gaxpy(dm1,dm2,scale,b);
 	printf("\n##### gaxpy\n");
 	dm1->print(dm1);
+
 
 	dm1->destroy(dm1);
 	dm2->destroy(dm2);
