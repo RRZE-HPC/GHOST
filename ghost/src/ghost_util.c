@@ -651,6 +651,7 @@ int ghost_getRank(MPI_Comm comm)
 	MPI_safecall(MPI_Comm_rank ( comm, &rank ));
 	return rank;
 #else
+	UNUSED(comm);
 	return 0;
 #endif
 }
@@ -787,12 +788,13 @@ int ghost_getNumberOfNodes()
 
 int ghost_getNumberOfRanks(MPI_Comm comm)
 {
-#ifndef GHOST_MPI
-	return 1;
-#else
+#ifdef GHOST_MPI
 	int nnodes;
 	MPI_safecall(MPI_Comm_size(comm, &nnodes));
 	return nnodes;
+#else
+	UNUSED(comm);
+	return 1;
 #endif
 
 }
