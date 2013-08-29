@@ -195,8 +195,8 @@ static void vec_print(ghost_vec_t *vec)
 #ifdef GHOST_MPI
 	if (vec->context->communicator != NULL) {
 		int rank = ghost_getRank(vec->context->mpicomm);
-		int ndigits = floor(log10(abs(rank))) + 1;
-		snprintf(prefix,4+nDigits,"PE%d: ",rank);
+		int ndigits = (int)floor(log10(abs(rank))) + 1;
+		snprintf(prefix,4+ndigits,"PE%d: ",rank);
 	} else {
 		snprintf(prefix,1,"\0");
 	}
@@ -372,28 +372,53 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeader)
 {
 	DEBUG_LOG(1,"Writing vector to file %s",path);
+	size_t ret;
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	
+	int32_t endianess = ghost_archIsBigEndian();
+	int32_t version = 1;
+	int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
+	int32_t datatype = vec->traits->datatype;
+	int64_t nrows = (int64_t)vec->context->gnrows;
+	int64_t ncols = (int64_t)vec->context->gncols;
+
 #ifdef GHOST_MPI
 	MPI_File fileh;
+	MPI_Status status;
 	MPI_safecall(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
+
+	if (ghost_getRank(vec->context->mpicomm) == 0) 
+	{ // write header AND portion
+		MPI_safecall(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&version,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&order,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
+		MPI_safecall(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
+	
+	}	
+	ghost_vidx_t v;
+	MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
+	MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
+	MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+	ghost_vidx_t vecoffset = 0;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		MPI_safecall(MPI_File_write_at(fileh,fileoffset,((char *)(vec->val))+vecoffset,vec->traits->nrows,mpidt,&status));
+		fileoffset += nrows;
+		vecoffset += vec->traits->nrowspadded*sizeofdt;
+	}
+	MPI_safecall(MPI_File_close(&fileh));
+
 
 #else
 	FILE *filed;
-	size_t ret;
 
 	if ((filed = fopen64(path, "w")) == NULL){
 		ABORT("Could not vector file %s",path);
 	}
-#endif
 
-	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
 	if (!skipHeader) {
-		int32_t endianess = ghost_archIsBigEndian();
-		int32_t version = 1;
-		int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
-		int32_t datatype = vec->traits->datatype;
-		int64_t nrows = (int64_t)vec->traits->nrows;
-		int64_t ncols = (int64_t)vec->traits->nvecs;
 
 		if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
 		if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
@@ -406,16 +431,16 @@ static void vec_toFile(ghost_vec_t *vec, char *path, off_t offset, int skipHeade
 			ABORT("Seek failed");
 	}
 
-	int v;
+	ghost_vidx_t v;
 	for (v=0; v<vec->traits->nvecs; v++) {
 		if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
 			ABORT("Seek failed");
 		if ((ret = fwrite(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
 			ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-		//pwrite(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+offset*sizeofdt+v*sizeofdt*vec->traits->nrows);
 	}
-
 	fclose(filed);
+#endif
+
 
 }
 

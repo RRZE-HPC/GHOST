@@ -1,19 +1,4 @@
 include ../../ghost/config.mk
-COMPILER:=$(strip $(COMPILER))
-LIBTYPE:=$(strip $(LIBTYPE))
-LONGIDX:=$(strip $(LONGIDX))
-MPI:=$(strip $(MPI))
-VSX:=$(strip $(VSX))
-MIC:=$(strip $(MIC))
-AVX:=$(strip $(AVX))
-SSE:=$(strip $(SSE))
-OPENCL:=$(strip $(OPENCL))
-CUDA:=$(strip $(CUDA))
-LIKWID:=$(strip $(LIKWID))
-DEBUG:=$(strip $(DEBUG))
-GHOSTPATH:=$(strip $(GHOSTPATH))
-LIKWIDPATH:=$(strip $(LIKWIDPATH))
-
 include ../../ghost/include_$(strip $(COMPILER)).mk
 
 .PHONY:clean distclean
@@ -29,6 +14,9 @@ ifeq ($(strip $(MIC)),2)
 LIBS+= -limf -lsvml -lirng -lintlc
 endif
 
+ifeq ($(strip $(MPI)),1)
+MAKROS+= -DGHOST_MPI
+endif
 ifeq ($(strip $(CUDA)),1)
 MAKROS+= -DCUDA
 LIBS  += -lcudart
