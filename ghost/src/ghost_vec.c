@@ -185,26 +185,40 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 
 static void vec_print(ghost_vec_t *vec)
 {
+	char prefix[16];
+#ifdef GHOST_MPI
+	if (vec->context->communicator != NULL) {
+		int rank = ghost_getRank(vec->context->communicator->mpicomm);
+		int ndigits = floor(log10(abs(rank))) + 1;
+		snprintf(prefix,4+nDigits,"PE%d: ",rank);
+	} else {
+		snprintf(prefix,1,"\0");
+	}
+#else
+	snprintf(prefix,1,"\0");
+#endif
+
+
 	ghost_vidx_t i,v;
 	for (i=0; i<vec->traits->nrows; i++) {
 		for (v=0; v<vec->traits->nvecs; v++) {
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: vec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							ghost_getRank(vec->context->communicator->mpicomm),v,i,
+					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							prefix,v,i,
 							crealf(((complex float *)(vec->val))[v*vec->traits->nrows+i]),
 							cimagf(((complex float *)(vec->val))[v*vec->traits->nrows+i]));
 				} else {
-					printf("PE%d: vec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							ghost_getRank(vec->context->communicator->mpicomm),v,i,
+					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							prefix,v,i,
 							creal(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
 							cimag(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("PE%d: (s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",ghost_getRank(vec->context->communicator->mpicomm),v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
 				} else {
-					printf("PE%d: (d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",ghost_getRank(vec->context->communicator->mpicomm),v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
 				}
 			}
 		}
