@@ -8,6 +8,7 @@ pbshosts*
 *.so
 *.tar
 *.tar.gz
+*.vec
 html/
 obj/
 mod/
