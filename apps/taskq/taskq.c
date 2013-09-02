@@ -60,6 +60,7 @@ int main(int argc, char ** argv)
 	int foo = 42;
 
 	ghost_init(argc,argv);
+	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 
 	printf("The thread pool consists of %d threads in %d locality domains\n",ghost_thpool->nThreads,ghost_thpool->nLDs);
 
