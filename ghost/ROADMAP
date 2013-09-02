@@ -41,6 +41,7 @@ Version 0.4
 
 - implement new tasking interface
 
+
 Version 0.4.1
 
 - fix bug: matrix has to be created before vectors now because the distribution is done in mat->from*. solution: shift distribution creation to createContext.
@@ -49,10 +50,14 @@ Version 0.4.1
 - create vector view from plain data array
 
 
-Version x.x
+Version 0.5
 
 - add AXMY
 - add multi-vec AXPY
+
+
+Version x.x
+
 - instrumentation: prefix all region names with a number according to the level of instrumentation
 - generalization of intrinsics kernels for arbitrary data types as far as possible
 - build once with AVX, SSE, CUDA etc. and detect at runtime which one to use
@@ -61,4 +66,3 @@ Version x.x
 - make all functions return a success indicator int
 - bugtracker
 - support of special matrix structures
-- dot product with a list of input vectors
