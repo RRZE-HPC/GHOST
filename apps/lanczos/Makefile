@@ -1,26 +1,8 @@
 include ../../ghost/config.mk
 include ../../ghost/include_$(strip $(COMPILER)).mk
+include ../common.mk
 
 .PHONY:clean distclean
-
-LPATH+= -L$(strip $(GHOSTPATH))/lib
-IPATH+= -I$(strip $(GHOSTPATH))/include/ghost
-LIBS+=  -lghost -lifcore
-OBJS += imtql1f.o pythagf.o imtql1.o pythag.o
-
-ifeq ($(LONGIDX),1)
-MAKROS+= -DLONGIDX
-endif
-
-ifneq ($(strip $(MIC)),0)
-LPATH += -L$(INTEL_C_HOME)/mkl/lib/mic
-LIBS+= -limf -lsvml -lirng -lintlc
-MAKROS+= -DMIC
-endif
-
-ifeq ($(strip $(MPI)),1)
-MAKROS+= -DGHOST_MPI
-endif
 
 %.o: %.c ../../ghost/config.mk
 	@echo "==> Compile $< -> $@"
