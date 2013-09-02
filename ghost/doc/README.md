@@ -1,8 +1,8 @@
-README
+README {#mainpage}
 ======
 
-Input data
-==========
+I/O
+===
 
 Input data (i.e., matrices and vectors) for GHOST have to be present in special binary data formats.
 
