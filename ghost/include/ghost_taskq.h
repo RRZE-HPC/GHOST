@@ -20,33 +20,84 @@
 #define GHOST_TASK_FILL_LD -1 // use all threads of the given LD
 #define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
 
-
-//#define GHOST_TASK_INIT(...) { .nThreads = 0, .LD = GHOST_TASK_LD_UNDEFINED, .flags = GHOST_TASK_DEFAULT, .func = NULL, .arg = NULL, .state = GHOST_TASK_INVALID,  ## __VA_ARGS__ }
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-
+/**
+ * @brief This structure represents a GHOST task.
+ *
+ * This data structure holds all necessary information for
+ * a task. The members #nThreads, #LD, #flags, #func and #arg have to be set by
+ * the user in ghost_task_init(). All other members are set by the library at
+ * some point.
+ */
 typedef struct ghost_task_t {
-	// user defined
-	int nThreads; // number of threads
-	int LD; // the LD in which the threads should be (preferrably) running
-	int flags; // some flags for the task
-	void *(*func)(void *); // the function to be called
-	void *arg; // the function's argument(s)
+	/**
+	 * @brief The number of threads the task should use. (user-defined)
+	 */
+	int nThreads;
+	/**
+	 * @brief The index of the queue in which the task should be present and
+	 * (preferrably) running. (user-defined)
+	 */
+	int LD;
+	/**
+	 * @brief Optional flags for the task. (user-defined)
+	 */
+	int flags;
+	/**
+	 * @brief The function to be executed by the task. (user-defined)
+	 */
+	void *(*func)(void *);
+	/**
+	 * @brief The arguments to the task's function. (user-defined)
+	 */
+	void *arg;
 
 	// set by the library
-	int *state; // the current state of the task
-	int *executingThreadNo; // the number of the thread managing this task
-	int *cores; // list of the cores where the task's thread are running
-	void *ret; // the return value of the task function
-	struct ghost_task_t *next, *prev; // pointer to next and previous task in queue
-	struct ghost_task_t **siblings; // there are either zero or nQueues siblings
-	struct ghost_task_t *parent; // if the task has been added from within a task
-	pthread_cond_t *finishedCond; // a condition variable indicating that the task is finished
-	pthread_mutex_t *mutex; // serialize accesses to the task's members
+	/**
+	 * @brief The current state of the task. (set by the library)
+	 */
+	int *state;
+	/**
+	 * @brief The number of the thread managing this task. (set by the library)
+	 */
+	int *executingThreadNo;
+	/**
+	 * @brief The list of cores where the task's threads are running. (set by the library)
+	 */
+	int *cores;
+	/**
+	 * @brief The return value of the task's funtion. (set by the library)
+	 */
+	void *ret;
+	/**
+	 * @brief Pointer to the next task in the queue. (set by the library)
+	 */
+	struct ghost_task_t *next; 
+	/**
+	 * @brief Pointer to the previous task in the queue. (set by the library)
+	 */
+	struct ghost_task_t *prev;
+	/**
+	 * @brief The task's siblings in case it is an GHOST_TASK_LD_ANY task. There
+	 * are either zero or nQueues siblings. (set by the library)
+	 */
+	struct ghost_task_t **siblings;
+	/**
+	 * @brief The adding task if the task has been added from within a task.
+	 * (set by the library)
+	 */
+	struct ghost_task_t *parent;
+	/**
+	 * @brief Indicator that the task is finished. (set by the library)
+	 */
+	pthread_cond_t *finishedCond;
+	/**
+	 * @brief Protect accesses to the task's members. (set by the library)
+	 */
+	pthread_mutex_t *mutex;
 } ghost_task_t;
 
 

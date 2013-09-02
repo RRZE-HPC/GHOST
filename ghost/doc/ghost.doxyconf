@@ -1,9 +1,10 @@
 PROJECT_NAME = GHOST
 OUTPUT_DIRECTORY = doc/
 EXTRACT_STATIC = yes
-INPUT = src/ inclde/ doc/
+INPUT = src/ include/ doc/
 GENERATE_LATEX = no
 GENERATE_HTML = yes
 HTML_OUTPUT = html
 SHOW_INCLUDE_FILES = no
+HIDE_UNDOC_CLASSES = yes
 

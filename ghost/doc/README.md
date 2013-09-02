@@ -58,9 +58,9 @@ Sparse matrices are stored in CRS format. The binary file is assembled as follow
 12. E*sizeof(datatype) bytes: The values of the matrix entries
 	
 > **NOTE:** In the case of any set symmetry flag except general, only the 
-right part of the matrix is to be stored. The number of entries and row 
-pointers always relate to the _stored_ matrix and not to the full one (if 
-symmetric). Due to this constraint, the stored matrix is always a valid one.
+> right part of the matrix is to be stored. The number of entries and row 
+> pointers always relate to the _stored_ matrix and not to the full one (if 
+> symmetric). Due to this constraint, the stored matrix is always a valid one.
 
 
 Dense matrices/vectors
@@ -107,7 +107,11 @@ Tasking
 The tasking functionality is based on a number of task queues and a thread pool.
 There may be multiple task queues in order to control the affinty of task
 execution.  In a regular use case, one would have one task queue per locality
-domain; and a locality domain may be equal to a NUMA domain. 
+domain; and a locality domain may be equal to a NUMA domain.
+
+However, there is only a single thread pool which contains all threads which may
+ever be used by a task. Typical scenarios may be to have one thread per physical
+core or one thread per hardware thread.
 
 Initialization
 --------------
@@ -115,7 +119,7 @@ Initialization
 Both the task queues and the thread pool have to be initialized at some point.
 This can either be done inside the application. By this, the user has full
 control over the number of threads and the number of task queues.
-If initialization is not done at this point, it will be detected in
+If initialization is not done by the user, it will be detected in
 `ghost_task_init()` (which is always the first tasking-related function being
 called) and done there with reasonable default values.
 
@@ -129,8 +133,39 @@ in an infinite loop.
 In the main loop, the threads are waiting on a semaphore which counts the number
 of tasks in all queues. As soon as a task gets added to a queue, the first
 thread returning from wait will have the chance to execute this task.
+Once the task queues are empty and subject to be killed (i.e., at termination of
+the application), the global variable `killed` is set to one and the threads
+break out of the infinite loop.
+
+
+Task types
+----------
+
+A GHOST task shall be initialized via `ghost_task_init()`, given a number of
+parameters. For detailed documentation see `ghost_task_t`.
+
+There are several types of tasks which can be distinguished by the value of
+their `flags` variable. They can be combined by bitwise OR-ing the flags.
+
+1. **GHOST_TASK_DEFAULT** identifies default tasks.
+They are added to a single task queue. However, if none of the threads in this
+locality domain takes the task out of the queue it may be executed by a thread
+running in a different locality domain.
+
+2. **GHOST_TASK_LD_STRICT** bounds a task to a locality domain. A
+strict LD task is guaranteed to be executed only by threads running in the given
+locality domain.
+
+3. **GHOST_TASK_PRIO_HIGH** assigns high priority to a task.
+It will be added to the head of the given queue(s) and thus they are probably
+chosen earlier than the other tasks in the queues.
+
+4. **GHOST_TASK_USE_PARENTS** is the flag to use in case a task is being 
+added from within another task. When this flag is set, the child task can use
+all cores which are actually reserved for the adding task.
 
 
 Task selection
 --------------
+
 

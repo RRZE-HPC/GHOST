@@ -86,23 +86,18 @@ pthread_key_t ghost_thread_key = 0;
 
 static void * thread_main(void *arg);
 
-static void printThreadstate(int *coreState)
-{
-	UNUSED(printThreadstate);
-	int b;
-
-	for(b=0; b<GHOST_MAX_THREADS; b++)
-		printf(CHK_BIT(coreState,b)?"1":"0");
-
-	printf("\n");
-
-}
-
+/**
+ * @brief Compare two integers
+ *
+ * @param x
+ * @param y
+ *
+ * @return 
+ */
 static int intcomp(const void *x, const void *y) 
 {
 	return (*(int *)x - *(int *)y);
 }
-
 
 /**
  * @brief Initializes a thread pool with a given number of threads.
@@ -244,7 +239,6 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 
 	return GHOST_SUCCESS;
 }
-
 
 
 /**
@@ -420,9 +414,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 /**
  * @brief The main routine of each thread in the thread pool.
  *
- * @param arg
+ * @param arg The core at which the thread is running.
  *
- * @return 
+ * @return NULL 
  */
 static void * thread_main(void *arg)
 {
@@ -556,6 +550,13 @@ static void * thread_main(void *arg)
 	return NULL;
 }
 
+/**
+ * @brief Print a task and all relevant informatio to stdout.
+ *
+ * @param t The task
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_task_print(ghost_task_t *t) 
 {
 	ghost_printHeader("Task %p",t);
@@ -570,6 +571,11 @@ int ghost_task_print(ghost_task_t *t)
 	return GHOST_SUCCESS;
 }
 
+/**
+ * @brief Print all tasks of all queues. 
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_taskq_print_all() 
 {
 	int q;
@@ -595,6 +601,14 @@ int ghost_taskq_print_all()
 }
 
 
+/**
+ * @brief Helper function to add a task to a queue
+ *
+ * @param q The queue
+ * @param t The task
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
 {
 
@@ -634,6 +648,11 @@ static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
 	return GHOST_SUCCESS;
 }
 
+/**
+ * @brief Execute all outstanding threads and free the task queues' resources
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_task_add(ghost_task_t *t)
 {
 	int q;
@@ -691,6 +710,11 @@ int ghost_task_add(ghost_task_t *t)
 	return GHOST_SUCCESS;
 }
 
+/**
+ * @brief Execute all outstanding threads and free the task queues' resources
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_taskq_finish()
 {
 	int t;
@@ -726,6 +750,13 @@ int ghost_taskq_finish()
 	return GHOST_SUCCESS;	
 }
 
+/**
+ * @brief Test the task's current state
+ *
+ * @param t The task to test
+ *
+ * @return  The state of the task
+ */
 int ghost_task_test(ghost_task_t * t)
 {
 	if (t->state == NULL)
@@ -733,6 +764,13 @@ int ghost_task_test(ghost_task_t * t)
 	return *(t->state);
 }
 
+/**
+ * @brief Wait for a task to finish
+ *
+ * @param t The task to wait for
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_task_wait(ghost_task_t * t)
 {
 	DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d and whose state is %d",t,*(t->executingThreadNo),*(t->state));
@@ -755,6 +793,13 @@ int ghost_task_wait(ghost_task_t * t)
 
 }
 
+/**
+ * @brief Return a string representing the task's state
+ *
+ * @param state The task to test
+ *
+ * @return The state string
+ */
 char *ghost_task_strstate(int state)
 {
 	switch (state) {
@@ -776,6 +821,11 @@ char *ghost_task_strstate(int state)
 	}
 }
 
+/**
+ * @brief Wait for all tasks in all queues to be finished.
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_task_waitall()
 {
 	int q;
@@ -806,7 +856,7 @@ int ghost_task_waitall()
  * @param nt The length of the list.
  * @param index Indicating which tasks of the list are now finished.
  *
- * @return 
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
 int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 {
@@ -860,6 +910,13 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 }
 
 
+/**
+ * @brief Free a task's resources.
+ *
+ * @param t The task to be destroyed
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_task_destroy(ghost_task_t *t)
 {
 	free(t->cores);
@@ -883,6 +940,17 @@ int ghost_task_destroy(ghost_task_t *t)
 	return GHOST_SUCCESS;
 }
 
+/**
+ * @brief Initliaze a task 
+ *
+ * @param nThreads The number of threads which are reserved for the task
+ * @param LD The index of the task queue this task should be added to
+ * @param func The function the task should execute
+ * @param arg The arguments to the task's function
+ * @param flags The task's flags
+ *
+ * @return A pointer to an initialized task
+ */
 ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
 {
 	ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
@@ -949,6 +1017,11 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	return t;
 }
 
+/**
+ * @brief Free all resources of the thread pool
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 int ghost_thpool_finish()
 {
 	if (ghost_thpool == NULL)
