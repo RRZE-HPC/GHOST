@@ -535,7 +535,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 
 
 #else
-		vec->toFile(vec,path,0,0);
+		vec->toFile(vec,path);
 #endif
 }
 
