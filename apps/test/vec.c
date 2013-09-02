@@ -1,4 +1,5 @@
 #include <ghost.h>
+#include <ghost_vec.h>
 #include <ghost_util.h>
 
 GHOST_REGISTER_DT_D(dbl)
@@ -13,8 +14,8 @@ int main()
 
 	ghost_vtraits_t v1traits = GHOST_VTRAITS_INIT(.nrows=nr, .nvecs=nc, .datatype=dbl);
 
-	v1 = ghost_createVector(&v1traits);
-	v1->fromRand(v1,NULL);
+	v1 = ghost_createVector(NULL,&v1traits);
+	v1->fromRand(v1);
 	printf("===== v1: (should be random)\n");
 	v1->print(v1);
 	printf("\n");
@@ -50,7 +51,7 @@ int main()
 	ghost_vtraits_t *v4traits = ghost_cloneVtraits(&v1traits);
 	v4traits->nvecs -= 1;
 	v4traits->nrows -= 1;
-	v4 = ghost_createVector(v4traits);
+	v4 = ghost_createVector(NULL,v4traits);
 
 	dbl_t *data = (dbl_t *)ghost_malloc(sizeof(dbl_t)*v4->traits->nrowspadded*nc);
 	for (c=0; c<nc; c++) {
