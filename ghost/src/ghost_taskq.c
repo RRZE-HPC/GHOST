@@ -84,6 +84,8 @@ static pthread_mutex_t anyTaskFinishedMutex;
  */
 pthread_key_t ghost_thread_key = 0;
 
+static int** coreidx;
+
 static void * thread_main(void *arg);
 
 /**
@@ -110,7 +112,7 @@ static int intcomp(const void *x, const void *y)
  */
 int ghost_thpool_init(int nThreads)
 {
-	int t;
+	int t,q;
 
 	if ((uint32_t)nThreads > ghost_cpuid_topology.numHWThreads) {
 		WARNING_LOG("Trying to create more threads than there are hardware threads. Setting no. of threads to %u",ghost_cpuid_topology.numHWThreads);
@@ -162,6 +164,28 @@ int ghost_thpool_init(int nThreads)
 		DEBUG_LOG(1,"Thread %d @ LD %d",t,ghost_thpool->LDs[t]);
 	}
 	ghost_thpool->firstThreadOfLD[ghost_thpool->nLDs] = nThreads;
+
+	coreidx = (int **)ghost_malloc(sizeof(int *)*ghost_thpool->nLDs);
+	for (q=0; q<ghost_thpool->nLDs; q++) {
+		int localthreads = ghost_thpool->firstThreadOfLD[q+1]-ghost_thpool->firstThreadOfLD[q];
+		coreidx[q] = (int *)ghost_malloc(sizeof(int)*nThreads);
+		
+		for (t=0; t<localthreads; t++) {
+			coreidx[q][t] = ghost_thpool->firstThreadOfLD[q]+t;
+			WARNING_LOG("%d/%d: %d",q,t,coreidx[q][t]);
+		}
+		for (; t-localthreads<ghost_thpool->firstThreadOfLD[q]; t++) {
+			coreidx[q][t] = t-ghost_thpool->firstThreadOfLD[q];
+			WARNING_LOG("%d/%d: %d",q,t,coreidx[q][t]);
+		}	
+		for (; t<nThreads; t++) {
+			coreidx[q][t] = t;
+			WARNING_LOG("%d/%d: %d",q,t,coreidx[q][t]);
+		}	
+
+
+	}
+
 
 	for (t=0; t<nThreads; t++){
 		pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
