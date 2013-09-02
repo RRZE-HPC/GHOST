@@ -18,8 +18,8 @@
 #include <mpi.h>
 #endif
 
-//#define TASKING
-#define CHECK // compare with reference solution
+#define TASKING
+//#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_S(vecdt)
 GHOST_REGISTER_DT_S(matdt)
@@ -72,7 +72,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 20;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -116,6 +116,7 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
+	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 
 #ifndef TASKING
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
