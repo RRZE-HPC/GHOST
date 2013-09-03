@@ -85,7 +85,7 @@ static pthread_mutex_t anyTaskFinishedMutex;
 pthread_key_t ghost_thread_key = 0;
 
 static int** coreidx;
-int corestate[8];
+int corestate[8]; //TODO length constant
 
 static void * thread_main(void *arg);
 
@@ -167,11 +167,12 @@ int ghost_thpool_init(int nThreads)
 	ghost_thpool->firstThreadOfLD[ghost_thpool->nLDs] = nThreads;
 
 	coreidx = (int **)ghost_malloc(sizeof(int *)*ghost_thpool->nLDs);
+
 	for (q=0; q<ghost_thpool->nLDs; q++) {
 		int localthreads = ghost_thpool->firstThreadOfLD[q+1]-ghost_thpool->firstThreadOfLD[q];
 		coreidx[q] = (int *)ghost_malloc(sizeof(int)*nThreads);
 		
-		for (t=0; t<localthreads; t++) {
+		for (t=0; t<localthreads; t++) { // my own threads
 			coreidx[q][t] = ghost_thpool->firstThreadOfLD[q]+t;
 		}
 		for (; t-localthreads<ghost_thpool->firstThreadOfLD[q]; t++) {
@@ -306,9 +307,6 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			continue;
 		}
 
-	//	pthread_mutex_lock(&globalMutex);
-	//	pthread_mutex_unlock(&globalMutex);
-
 		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,q->LD,q->nIdleCores,ghost_thpool->nIdleCores);
 
 		// if task has siblings, delete them here
@@ -317,13 +315,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			DEBUG_LOG(1,"The task is an LD_ANY-task. Deleting siblings of task");
 			int s;
 			for (s=0; s<ghost_thpool->nLDs; s++) {
-				if (s!=q->LD) {
-					pthread_mutex_lock(&taskqs[s]->mutex);
-				}
+			//	if (s!=q->LD) {
+			//		pthread_mutex_lock(&taskqs[s]->mutex);
+			//	}
 				taskq_deleteTask(taskqs[s],curTask->siblings[s]);
-				if (s!=q->LD) {
-					pthread_mutex_unlock(&taskqs[s]->mutex);
-				}
+			//	if (s!=q->LD) {
+			//		pthread_mutex_unlock(&taskqs[s]->mutex);
+			//	}
 			}
 		} else {
 			DEBUG_LOG(1,"Deleting task itself");
@@ -350,15 +348,16 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 					for (; t<ghost_thpool->nThreads; t++) {
 						int core = coreidx[q->LD][t];
+						int LD = ghost_thpool->LDs[core];
 						if (!(CHK_BIT(corestate,core))) { // the core is idle
 							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",
-									(int)pthread_self(),core,curLD,taskqs[curLD]->nIdleCores-1);
+									(int)pthread_self(),core,LD,taskqs[LD]->nIdleCores-1);
 
-							taskqs[curLD]->nIdleCores --;
+							taskqs[LD]->nIdleCores --;
 							ghost_thpool->nIdleCores --;
+							SET_BIT(corestate,core);
 							ghost_setCore(core);
 							curTask->cores[reservedCores] = core;
-							SET_BIT(corestate,core);
 							reservedCores++;
 							break;
 						}
@@ -367,7 +366,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 								 (curTask->parent->cores[curParent] == core)) // this core is part of parent's cors
 						{
 							DEBUG_LOG(1,"Thread %d: Core # %d belongs to parent, using it, idle cores @ LD%d: %d",
-									(int)pthread_self(),core,curLD,taskqs[curLD]->nIdleCores-1);
+									(int)pthread_self(),core,LD,taskqs[LD]->nIdleCores);
 
 							ghost_setCore(core);
 							curTask->cores[reservedCores] = core;
@@ -546,23 +545,31 @@ static void * thread_main(void *arg)
 		*(myTask->state) = GHOST_TASK_RUNNING;	
 		pthread_mutex_unlock(myTask->mutex);
 
-		tFunc = myTask->func;
-		tArg = myTask->arg;
-
 
 		DEBUG_LOG(1,"Thread %d: Finally executing task: %p",(int)pthread_self(),myTask);
 
 		pthread_setspecific(ghost_thread_key,myTask);
-		myTask->ret = tFunc(tArg);
+		myTask->ret = myTask->func(myTask->arg);
 		pthread_setspecific(ghost_thread_key,NULL);
 
 		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
 		
 
+		int curParent = 0;
 		for (t=0; t<myTask->nThreads; t++) {
-			CLR_BIT(corestate,myTask->cores[t]);
-			taskqs[curLD]->nIdleCores++;
-			ghost_thpool->nIdleCores ++;
+			int LD = ghost_thpool->LDs[myTask->cores[t]];
+			if ((myTask->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
+				 (myTask->parent->cores[curParent] == myTask->cores[t])) // this core is part of parent's cors
+			{
+				DEBUG_LOG(1,"Thread %d: Not setting core # %d to idle again because it was a parent's core, now idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],LD,taskqs[LD]->nIdleCores);
+				curParent++;
+			} else
+			{ 
+				DEBUG_LOG(1,"Thread %d: Setting core # %d to idle again, now idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],LD,taskqs[LD]->nIdleCores+1);
+				CLR_BIT(corestate,myTask->cores[t]);
+				taskqs[LD]->nIdleCores ++;
+				ghost_thpool->nIdleCores ++;
+			}
 
 		/*	for (curLD = 0; curLD < ghost_thpool->nLDs; curLD++) {
 				if ((myTask->cores[t]>=ghost_thpool->firstThreadOfLD[curLD]) && (myTask->cores[t]<ghost_thpool->firstThreadOfLD[curLD+1])) {
@@ -591,12 +598,12 @@ static void * thread_main(void *arg)
 		pthread_mutex_unlock(myTask->mutex);
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
 	//	sem_getvalue(&taskSem,&sval);
-		pthread_mutex_lock(&globalMutex);
+	//	pthread_mutex_lock(&globalMutex);
 		if (killed) {
-			pthread_mutex_unlock(&globalMutex);
+	//		pthread_mutex_unlock(&globalMutex);
 			break;
 		}
-		pthread_mutex_unlock(&globalMutex);
+	//	pthread_mutex_unlock(&globalMutex);
 	}
 	sem_getvalue(&taskSem,&sval);
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
