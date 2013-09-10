@@ -88,7 +88,6 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 		}
 	}
 
-
 	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
 
 #ifdef LIKWID_MARKER_FINE

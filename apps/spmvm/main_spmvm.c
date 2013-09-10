@@ -6,6 +6,7 @@
 #ifdef VT
 #include <VT.h>
 #endif
+#include <omp.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +22,8 @@
 #define TASKING
 //#define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_S(vecdt)
-GHOST_REGISTER_DT_S(matdt)
+GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(matdt)
 #define EPS 1.e-3
 
 #ifdef TASKING
@@ -55,6 +56,8 @@ static void *createDataFunc(void *vargs)
 }
 static void *benchFunc(void *vargs)
 {
+//#pragma omp parallel
+//	WARNING_LOG("Thread %d running @ core %d",omp_get_thread_num(),ghost_getCore());
 	benchArgs *args = (benchArgs *)vargs;
 	*(args->time) = ghost_bench_spmvm(args->ctx,args->lhs,args->mat,args->rhs,args->spmvmOptions,args->nIter);
 
@@ -72,7 +75,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 100;
+	int  mode, nIter = 200;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -83,9 +86,9 @@ int main( int argc, char* argv[] )
 #endif
 
 	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
-		GHOST_SPMVM_MODE_VECTORMODE,
-									 GHOST_SPMVM_MODE_GOODFAITH,
-									 GHOST_SPMVM_MODE_TASKMODE};
+		GHOST_SPMVM_MODE_VECTORMODE/*,
+		GHOST_SPMVM_MODE_GOODFAITH,
+		GHOST_SPMVM_MODE_TASKMODE*/};
 		int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -129,6 +132,9 @@ int main( int argc, char* argv[] )
 
 
 #ifdef TASKING
+//	ghost_setCore(23);
+//#pragma omp parallel
+//	WARNING_LOG("Main thread %d running @ core %d",omp_get_thread_num(),ghost_getCore());
 	createDataArgs args = {.mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
 	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
 	ghost_task_add(createDataTask);
@@ -174,6 +180,7 @@ int main( int argc, char* argv[] )
 
 			benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
 			ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
+			//ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_NO_PIN);
 			ghost_task_add(benchTask);
 			ghost_task_wait(benchTask);
 			ghost_task_destroy(benchTask);

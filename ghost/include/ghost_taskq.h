@@ -10,7 +10,8 @@
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
 #define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
-#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
+//#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
+//#define GHOST_TASK_NO_PIN 8  
 
 #define GHOST_TASK_INVALID 0 // task has not been enqueued
 #define GHOST_TASK_ENQUEUED 1 // task has been enqueued
@@ -98,6 +99,7 @@ typedef struct ghost_task_t {
 	 * @brief Protect accesses to the task's members. (set by the library)
 	 */
 	pthread_mutex_t *mutex;
+	int freed;
 } ghost_task_t;
 
 

@@ -291,16 +291,16 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			curTask = curTask->next;
 			continue;
 		}
-		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && (curTask->parent != NULL) && (ghost_thpool->nIdleCores+curTask->parent->nThreads < curTask->nThreads)) {
-			DEBUG_LOG(0,"Skipping task %p because it needs %d threads and only %d threads are idle and the parent has %d threads",curTask,curTask->nThreads,ghost_thpool->nIdleCores,curTask->parent->nThreads);
-			curTask = curTask->next;
-			continue;
-		}
-		if ((!(curTask->flags & GHOST_TASK_USE_PARENTS)) && (ghost_thpool->nIdleCores < curTask->nThreads)) {
-			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,ghost_thpool->nIdleCores);
-			curTask = curTask->next;
-			continue;
-		}
+		//if ((curTask->flags & GHOST_TASK_USE_PARENTS) && (curTask->parent != NULL) && (ghost_thpool->nIdleCores+curTask->parent->nThreads < curTask->nThreads)) {
+		//	DEBUG_LOG(0,"Skipping task %p because it needs %d threads and only %d threads are idle and the parent has %d threads",curTask,curTask->nThreads,ghost_thpool->nIdleCores,curTask->parent->nThreads);
+		//	curTask = curTask->next;
+		//	continue;
+		//}
+		//if ((!(curTask->flags & GHOST_TASK_USE_PARENTS)) && (ghost_thpool->nIdleCores < curTask->nThreads)) {
+		//	DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,ghost_thpool->nIdleCores);
+		//	curTask = curTask->next;
+	//		continue;
+	//	}
 		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (q->nIdleCores < curTask->nThreads)) {
 			DEBUG_LOG(1,"Skipping task %p because it has to be executed exclusively in LD%d and there are only %d cores available (the task needs %d)",curTask,curTask->LD,q->nIdleCores,curTask->nThreads);
 			curTask = curTask->next;
@@ -356,24 +356,32 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 							taskqs[LD]->nIdleCores --;
 							ghost_thpool->nIdleCores --;
 							SET_BIT(corestate,core);
-							ghost_setCore(core);
+							//if (!(curTask->flags & GHOST_TASK_NO_PIN)) {
+								ghost_setCore(core);
+							//} else {
+						//		DEBUG_LOG(1,"Don't pin threads");
+						//	}
 							curTask->cores[reservedCores] = core;
 							reservedCores++;
 							break;
 						}
-						if ((curTask->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
-								(curTask->parent != NULL) && 
-								 (curTask->parent->cores[curParent] == core)) // this core is part of parent's cors
-						{
-							DEBUG_LOG(1,"Thread %d: Core # %d belongs to parent, using it, idle cores @ LD%d: %d",
-									(int)pthread_self(),core,LD,taskqs[LD]->nIdleCores);
-
-							ghost_setCore(core);
-							curTask->cores[reservedCores] = core;
-							reservedCores++;
-							curParent++;	
-							break;
-						}
+						//if ((curTask->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
+					//			(curTask->parent != NULL) && 
+				//				 (curTask->parent->cores[curParent] == core)) // this core is part of parent's cors
+			//			{
+			//				DEBUG_LOG(1,"Thread %d: Core # %d belongs to parent, using it, idle cores @ LD%d: %d",
+			//						(int)pthread_self(),core,LD,taskqs[LD]->nIdleCores);
+//
+//							if (!(curTask->flags & GHOST_TASK_NO_PIN)) {
+//								ghost_setCore(core);
+//							} else {
+//								DEBUG_LOG(1,"Don't pin threads");
+//							}
+//							curTask->cores[reservedCores] = core;
+//							reservedCores++;
+//							curParent++;	
+//							break;
+//						}
 					}
 
 /*
@@ -475,11 +483,12 @@ static void * thread_main(void *arg)
 	void*(*tFunc)(void* arg);
 	void*  tArg;
 
-	ghost_setCore(core);
-	int myCore = ghost_getCore();
+//	ghost_setCore(core);
+//	int myCore = ghost_getCore();
+	int myCore = core;
 	int myLD = ghost_thpool->LDs[core];
 	int curLD = 0;
-	DEBUG_LOG(1,"Thread %d: Pinning to core %d (%d) on LD %d",(int)pthread_self(),myCore,(int)core,myLD);
+	//DEBUG_LOG(1,"Thread %d: Pinning to core %d (%d) on LD %d",(int)pthread_self(),myCore,(int)core,myLD);
 
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
@@ -546,51 +555,19 @@ static void * thread_main(void *arg)
 		pthread_mutex_unlock(myTask->mutex);
 
 
-		DEBUG_LOG(1,"Thread %d: Finally executing task: %p",(int)pthread_self(),myTask);
+		DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
 
 		pthread_setspecific(ghost_thread_key,myTask);
 		myTask->ret = myTask->func(myTask->arg);
 		pthread_setspecific(ghost_thread_key,NULL);
 
+	//	ghost_unsetCore();
+
 		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
-		
 
-		int curParent = 0;
-		for (t=0; t<myTask->nThreads; t++) {
-			int LD = ghost_thpool->LDs[myTask->cores[t]];
-			if ((myTask->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
-				 (myTask->parent->cores[curParent] == myTask->cores[t])) // this core is part of parent's cors
-			{
-				DEBUG_LOG(1,"Thread %d: Not setting core # %d to idle again because it was a parent's core, now idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],LD,taskqs[LD]->nIdleCores);
-				curParent++;
-			} else
-			{ 
-				DEBUG_LOG(1,"Thread %d: Setting core # %d to idle again, now idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],LD,taskqs[LD]->nIdleCores+1);
-				CLR_BIT(corestate,myTask->cores[t]);
-				taskqs[LD]->nIdleCores ++;
-				ghost_thpool->nIdleCores ++;
-			}
+		if (!(myTask->freed))
+			ghost_task_unpin(myTask);
 
-		/*	for (curLD = 0; curLD < ghost_thpool->nLDs; curLD++) {
-				if ((myTask->cores[t]>=ghost_thpool->firstThreadOfLD[curLD]) && (myTask->cores[t]<ghost_thpool->firstThreadOfLD[curLD+1])) {
-					//pthread_mutex_lock(&globalMutex);
-					pthread_mutex_lock(&taskqs[curLD]->mutex);
-					DEBUG_LOG(1,"%d-th thread of task resided @ LD%d",t,curLD);
-					DEBUG_LOG(1,"Thread %d: Setting core # %d (loc: %d) to idle again, idle cores @ LD%d: %d",(int)pthread_self(),myTask->cores[t],myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD],curLD,taskqs[curLD]->nIdleCores);
-					if (!((myTask->flags & GHOST_TASK_USE_PARENTS))) //&& // i should use parent's cores and
-//						 (parent->cores[curParent]-ghost_thpool->firstThreadOfLD[curLD] == t))) // this core is part of parent's cors
-							{ // TODO unset cores if TASK_PARENT is true but i did not actually use parent's cores
-								CLR_BIT(taskqs[curLD]->coreState,myTask->cores[t]-ghost_thpool->firstThreadOfLD[curLD]);
-								taskqs[curLD]->nIdleCores++;
-								ghost_thpool->nIdleCores ++;
-							}
-					//pthread_mutex_unlock(&globalMutex);	
-					pthread_mutex_unlock(&taskqs[curLD]->mutex);
-					break;
-				}
-			}*/
-		}
-			
 		pthread_mutex_lock(myTask->mutex); 
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
 		*(myTask->state) = GHOST_TASK_FINISHED;
@@ -608,6 +585,30 @@ static void * thread_main(void *arg)
 	sem_getvalue(&taskSem,&sval);
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
 	return NULL;
+}
+
+static int ghost_task_unpin(ghost_task_t *task)
+{
+	for (int t=0; t<task->nThreads; t++) {
+		int LD = ghost_thpool->LDs[task->cores[t]];
+	//	if ((task->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
+	//		 (task->parent->cores[curParent] == task->cores[t])) // this core is part of parent's cors
+	//	{
+	//		DEBUG_LOG(1,"Thread %d: Not setting core # %d to idle again because it was a parent's core, now idle cores @ LD%d: %d",(int)pthread_self(),task->cores[t],LD,taskqs[LD]->nIdleCores);
+	//			curParent++;
+	//	} else
+	//	{ 
+			DEBUG_LOG(1,"Thread %d: Setting core # %d to idle again, now idle cores @ LD%d: %d",(int)pthread_self(),task->cores[t],LD,taskqs[LD]->nIdleCores+1);
+			CLR_BIT(corestate,task->cores[t]);
+			taskqs[LD]->nIdleCores ++;
+			ghost_thpool->nIdleCores ++;
+	//	}
+	}
+	task->freed = 1;
+	
+	return GHOST_SUCCESS;
+
+
 }
 
 /**
@@ -724,6 +725,7 @@ int ghost_task_add(ghost_task_t *t)
 	memset(t->cores,0,sizeof(int)*t->nThreads);
 		
 	t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+	t->freed = 0;
 
 	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
 	{
@@ -831,23 +833,31 @@ int ghost_task_test(ghost_task_t * t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_wait(ghost_task_t * t)
+int ghost_task_wait(ghost_task_t * task)
 {
-	DEBUG_LOG(1,"Waiting for task %p which is managed by thread %d and whose state is %d",t,*(t->executingThreadNo),*(t->state));
+	DEBUG_LOG(1,"Waiting @core %d for task %p which is managed by thread %d and whose state is %d",ghost_getCore(),task,*(task->executingThreadNo),*(task->state));
 
-	pthread_mutex_lock(t->mutex);
-	if (*(t->state) != GHOST_TASK_FINISHED) {
-		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p which is managed by thread %d",t->finishedCond,t,*(t->executingThreadNo));
-		pthread_cond_wait(t->finishedCond,t->mutex);
+//	pthread_mutex_lock(&globalMutex);	
+	
+	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+	if (parent != NULL) {
+		ghost_task_unpin(parent);
+	}
+//	pthread_mutex_unlock(&globalMutex);	
+
+	pthread_mutex_lock(task->mutex);
+	if (*(task->state) != GHOST_TASK_FINISHED) {
+		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p which is managed by thread %d",task->finishedCond,task,*(task->executingThreadNo));
+		pthread_cond_wait(task->finishedCond,task->mutex);
 	} else {
-		DEBUG_LOG(1,"Task %p has already finished",t);
+		DEBUG_LOG(1,"Task %p has already finished",task);
 	}
 
-	pthread_mutex_unlock(t->mutex);
+	pthread_mutex_unlock(task->mutex);
 	pthread_mutex_lock(&anyTaskFinishedMutex);
 	pthread_cond_broadcast(&anyTaskFinishedCond);
 	pthread_mutex_unlock(&anyTaskFinishedMutex);
-	DEBUG_LOG(1,"Finished waitung for task %p!",t);
+	DEBUG_LOG(1,"Finished waitung for task %p!",task);
 
 	return GHOST_SUCCESS;
 
@@ -1059,6 +1069,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	t->arg = arg;
 	t->flags = flags;
 
+	t->freed = 0;
 	t->state = (int *)ghost_malloc(sizeof(int));
 	t->executingThreadNo = (int *)ghost_malloc(sizeof(int));
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);

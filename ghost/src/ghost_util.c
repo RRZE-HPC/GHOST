@@ -1224,6 +1224,23 @@ inline void ghost_setCore(int coreNumber)
 
 }
 
+inline void ghost_unsetCore()
+{
+	DEBUG_LOG(2,"Unpinning thread %d from core %d",ghost_ompGetThreadNum(),ghost_getCore());
+	cpu_set_t cpu_set;
+	CPU_ZERO(&cpu_set);
+	int i;
+	for (i=0; i<ghost_getNumberOfHwThreads(); i++) {
+		CPU_SET(i,&cpu_set);
+	}
+
+	int error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
+	if (error != 0) {
+		WARNING_LOG("Unpinning thread from core %d failed (%d): %s", 
+				ghost_getCore(), error, strerror(error));
+	}
+
+}
 
 void ghost_pinThreads(int options, char *procList)
 {

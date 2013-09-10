@@ -232,6 +232,7 @@ int ghost_archIsBigEndian();
 int ghost_getCoreNumbering();
 int ghost_getCore();
 void ghost_setCore(int core);
+inline void ghost_unsetCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
