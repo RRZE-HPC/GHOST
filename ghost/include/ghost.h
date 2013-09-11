@@ -107,7 +107,7 @@ struct ghost_vec_t
 	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*scale) (ghost_vec_t *, void *);
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
-	void          (*gaxpy) (ghost_vec_t *, ghost_vec_t *, void *, void *);
+	void          (*axpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
 	void          (*print) (ghost_vec_t *);
 	void          (*toFile) (ghost_vec_t *, char *);
 	void          (*entry) (ghost_vec_t *, int,  void *);

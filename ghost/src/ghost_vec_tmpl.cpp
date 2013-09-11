@@ -70,7 +70,7 @@ template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *
 	}
 }
 
-template <typename v_t> void ghost_vec_gaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
+template <typename v_t> void ghost_vec_axpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
 {
 	ghost_vidx_t i,v;
 	v_t *s = (v_t *)scale;
@@ -188,17 +188,17 @@ extern "C" void z_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scal
 extern "C" void c_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_axpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
 
-extern "C" void d_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_gaxpy_tmpl< double >(vec, vec2, scale, b); }
+extern "C" void d_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_axpby_tmpl< double >(vec, vec2, scale, b); }
 
-extern "C" void s_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_gaxpy_tmpl< float >(vec, vec2, scale, b); }
+extern "C" void s_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_axpby_tmpl< float >(vec, vec2, scale, b); }
 
-extern "C" void z_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_gaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
+extern "C" void z_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_axpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
 
-extern "C" void c_ghost_vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_gaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
+extern "C" void c_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_axpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
 
 extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< double >(vec); }

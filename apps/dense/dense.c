@@ -68,8 +68,8 @@ int main(int argc, char* argv[])
 	dm1->print(dm1);
 	
 	vecdt_t b[] = {-1.,-1.};
-	dm1->gaxpy(dm1,dm2,scale,b);
-	printf("\n##### gaxpy\n");
+	dm1->axpby(dm1,dm2,scale,b);
+	printf("\n##### axpby\n");
 	dm1->print(dm1);
 
 

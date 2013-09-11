@@ -30,8 +30,8 @@ void (*ghost_vec_scale_funcs[4]) (ghost_vec_t *, void*) =
 void (*ghost_vec_axpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
 {&s_ghost_vec_axpy, &d_ghost_vec_axpy, &c_ghost_vec_axpy, &z_ghost_vec_axpy};
 
-void (*ghost_vec_gaxpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
-{&s_ghost_vec_gaxpy, &d_ghost_vec_gaxpy, &c_ghost_vec_gaxpy, &z_ghost_vec_gaxpy};
+void (*ghost_vec_axpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
+{&s_ghost_vec_axpby, &d_ghost_vec_axpby, &c_ghost_vec_axpby, &z_ghost_vec_axpby};
 
 void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
@@ -43,7 +43,7 @@ int (*ghost_vecEquals_funcs[4]) (ghost_vec_t *, ghost_vec_t *) =
 static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
-static void vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
+static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
 static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs);
@@ -85,7 +85,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->dotProduct = &vec_dotprod;
 	vec->scale = &vec_scale;
 	vec->axpy = &vec_axpy;
-	vec->gaxpy = &vec_gaxpy;
+	vec->axpby = &vec_axpby;
 	vec->print = &vec_print;
 	vec->fromFunc = &vec_fromFunc;
 	vec->fromVec = &vec_fromVec;
@@ -305,9 +305,9 @@ static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 	ghost_vec_axpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
 }
 
-static void vec_gaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
+static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
 {
-	ghost_vec_gaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+	ghost_vec_axpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
 }
 
 static void vec_scale(ghost_vec_t *vec, void *scale)
