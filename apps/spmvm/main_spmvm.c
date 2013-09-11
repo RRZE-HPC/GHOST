@@ -20,7 +20,7 @@
 #endif
 
 #define TASKING
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -143,10 +143,6 @@ int main( int argc, char* argv[] )
 	lhs->fromScalar(lhs,&zero);
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
-#ifdef CHECK
-	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
-	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
-#endif
 
 	ghost_printSysInfo();
 	ghost_printGhostInfo();
@@ -157,6 +153,10 @@ int main( int argc, char* argv[] )
 	ghost_task_destroy(createDataTask);
 #endif
 	ghost_printMatrixInfo(mat);
+#ifdef CHECK
+	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
+	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
+#endif
 
 
 	if (ghost_getRank(MPI_COMM_WORLD) == 0)
