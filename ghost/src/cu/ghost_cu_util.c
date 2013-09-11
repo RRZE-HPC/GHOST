@@ -101,8 +101,8 @@ ghost_acc_info_t *CU_getDeviceInfo()
 	char name[CU_MAX_DEVICE_NAME_LEN];
 	char *names = NULL;
 
-	me = ghost_getRank();
-	size = ghost_getNumberOfProcesses();
+	me = ghost_getRank(MPI_COMM_WORLD);
+	size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 
 	struct cudaDeviceProp devProp;
 
@@ -115,10 +115,10 @@ ghost_acc_info_t *CU_getDeviceInfo()
 
 	if (me==0) {
 		names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
-		recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
-		displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfProcesses());
+		recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
+		displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
 		
-		for (i=0; i<ghost_getNumberOfProcesses(); i++) {
+		for (i=0; i<ghost_getNumberOfRanks(MPI_COMM_WORLD); i++) {
 			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
 			displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
 
