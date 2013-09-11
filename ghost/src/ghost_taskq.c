@@ -297,11 +297,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		//	curTask = curTask->next;
 		//	continue;
 		//}
-		//if ((!(curTask->flags & GHOST_TASK_USE_PARENTS)) && (ghost_thpool->nIdleCores < curTask->nThreads)) {
-		//	DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,ghost_thpool->nIdleCores);
-		//	curTask = curTask->next;
-		//		continue;
-		//	}
+		if (ghost_thpool->nIdleCores < curTask->nThreads) {
+			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,ghost_thpool->nIdleCores);
+			curTask = curTask->next;
+				continue;
+			}
 		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (q->nIdleCores < curTask->nThreads)) {
 			DEBUG_LOG(1,"Skipping task %p because it has to be executed exclusively in LD%d and there are only %d cores available (the task needs %d)",curTask,curTask->LD,q->nIdleCores,curTask->nThreads);
 			curTask = curTask->next;
