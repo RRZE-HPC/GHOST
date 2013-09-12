@@ -167,6 +167,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
+//	printf(">>> %d\n",nrows);
 	if (i<nrows) {
 		int cs, tid;
 		if (chunkHeight == SELL_CUDA_BLOCKSIZE) {
@@ -181,6 +182,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
 		zero<v_t>(tmp);
 
 		for (j=0; j<rowlen[i]; j++) {
+//			printf("%d/%d: %f*%f\n",i,j,rhs[col[cs + tid + j*chunkHeight]], val[cs + tid + j*chunkHeight]);
 			tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + j*chunkHeight]], val[cs + tid + j*chunkHeight]);
 		}
 		if (options & GHOST_SPMVM_AXPY)

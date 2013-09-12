@@ -19,11 +19,11 @@
 #include <mpi.h>
 #endif
 
-#define TASKING
+//#define TASKING
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_D(vecdt)
-GHOST_REGISTER_DT_D(matdt)
+GHOST_REGISTER_DT_S(vecdt)
+GHOST_REGISTER_DT_S(matdt)
 #define EPS 1.e-3
 
 #ifdef TASKING
@@ -75,7 +75,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 200;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -127,8 +127,6 @@ int main( int argc, char* argv[] )
 
 	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD);
 	mat = ghost_createMatrix(context,&mtraits,1);
-	lhs = ghost_createVector(context,&lvtraits);
-	rhs = ghost_createVector(context,&rvtraits);
 
 
 #ifdef TASKING
@@ -140,6 +138,8 @@ int main( int argc, char* argv[] )
 	ghost_task_add(createDataTask);
 #else
 	mat->fromFile(mat,matrixPath);
+	lhs = ghost_createVector(context,&lvtraits);
+	rhs = ghost_createVector(context,&rvtraits);
 	lhs->fromScalar(lhs,&zero);
 	rhs->fromFunc(rhs,&rhsVal);
 #endif

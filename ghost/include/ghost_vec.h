@@ -34,6 +34,7 @@ template<typename v_t> int ghost_vecEquals_tmpl(ghost_vec_t *a, ghost_vec_t *b);
 extern "C" {
 #endif
 void getNrowsFromContext(ghost_vec_t *vec);
+void vec_malloc(ghost_vec_t *vec);
 void d_ghost_normalizeVector(ghost_vec_t *vec); 
 void s_ghost_normalizeVector(ghost_vec_t *vec); 
 void z_ghost_normalizeVector(ghost_vec_t *vec);

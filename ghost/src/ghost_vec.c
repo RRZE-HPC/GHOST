@@ -72,12 +72,15 @@ static void vec_CUdownload (ghost_vec_t *);
 static void vec_CLupload (ghost_vec_t *);
 static void vec_CLdownload (ghost_vec_t *);
 #endif
+static void vec_upload(ghost_vec_t *vec);
+static void vec_download(ghost_vec_t *vec);
 
 ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 {
 	ghost_vec_t *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
 	vec->context = ctx;
 	vec->traits = traits;
+	getNrowsFromContext(vec);
 
 	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
 	DEBUG_LOG(1,"Initializing vector");
@@ -107,13 +110,24 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->view = &vec_view;
 	vec->viewPlain = &vec_viewPlain;
 
+	vec->upload = &vec_upload;
+	vec->download = &vec_download;
 #ifdef CUDA
+	vec->CU_val = NULL;
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
+	if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
+		DEBUG_LOG(2,"Setting vector storage to host&device");
+		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
+	}
 #endif
 #ifdef OPENCL
+	vec->CL_val_gpu = NULL;
 	vec->CLupload = &vec_CLupload;
 	vec->CLdownload = &vec_CLdownload;
+	if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
+		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
+	}
 #endif
 
 	vec->val = NULL;
@@ -122,27 +136,54 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	return vec;
 	}
 
+
+static void vec_upload(ghost_vec_t *vec)
+{
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+#ifdef CUDA
+		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+#ifdef OPENCL
+		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+	}
+}
+
+static void vec_download(ghost_vec_t *vec)
+{
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Downloading vector");
+#ifdef CUDA
+		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+#ifdef OPENCL
+		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+	}
+}
+
 #ifdef CUDA
 static void vec_CUupload (ghost_vec_t *vec)
 {
-	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static void vec_CUdownload (ghost_vec_t *vec)
 {
-	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
 
 #ifdef OPENCL
 static void vec_CLupload( ghost_vec_t *vec )
 {
-	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static void vec_CLdownload( ghost_vec_t *vec )
 {
-	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
 
@@ -233,6 +274,36 @@ static void vec_print(ghost_vec_t *vec)
 
 }
 
+void vec_malloc(ghost_vec_t *vec)
+{
+
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	if (vec->traits->flags & GHOST_VEC_HOST) {
+		if (vec->val == NULL) {
+			DEBUG_LOG(2,"Allocating host side of vector");
+			vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+		}
+	}
+
+	if (vec->traits->flags & GHOST_VEC_DEVICE) {
+#ifdef CUDA
+		if (vec->CU_val == NULL) {
+			DEBUG_LOG(2,"Allocating device side of vector");
+#ifdef CUDA_PINNEDMEM
+			CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+#else
+			vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt);
+#endif
+		}
+#endif
+#ifdef OPENCL
+		if (vec->CL_val_gpu == NULL) {
+		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt,vec->val,CL_MEM_READ_WRITE );
+		}
+#endif
+	}	
+}
+
 void getNrowsFromContext(ghost_vec_t *vec)
 {
 	DEBUG_LOG(1,"Computing the number of vector rows from the context");
@@ -265,10 +336,14 @@ void getNrowsFromContext(ghost_vec_t *vec)
 		} 
 		else 
 		{
-			if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS)
+			if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
+				if (vec->context->communicator->halo_elements == -1) {
+					ABORT("You have to make sure to read in the matrix _before_ creating the vectors in a distributed context!");
+				}
 				vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
-			else
+			 } else {
 				vec->traits->nrowshalo = vec->traits->nrows;
+			 }
 		}	
 	}
 	} else {
@@ -287,9 +362,9 @@ void getNrowsFromContext(ghost_vec_t *vec)
 
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs)
 {
+	vec_malloc(vec);
 	DEBUG_LOG(1,"Initializing vector from vector w/ offset %"PRvecIDX"x%"PRvecIDX,roffs,coffs);
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	ghost_vidx_t i,v;
 
 #pragma omp parallel for private(i) 
@@ -298,6 +373,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs,
 			memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),&VAL(vec2,(coffs+v)*vec2->traits->nrowspadded+roffs+i),sizeofdt);
 		}
 	}
+	vec->upload(vec);
 }
 
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
@@ -332,11 +408,10 @@ static void vec_fromRand(ghost_vec_t *vec)
 
 static void vec_fromScalar(ghost_vec_t *vec, void *val)
 {
-	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	getNrowsFromContext(vec);
-
+	vec_malloc(vec);
 	DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {
@@ -352,21 +427,8 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 			memcpy(&VAL(vec,i),val,sizeofdt);
 		}
 	}
+	vec->upload(vec);
 
-	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
-#ifdef CUDA
-#ifdef CUDA_PINNEDMEM
-		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-#else
-		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
-#endif
-		vec->CUupload(vec);
-#endif
-#ifdef OPENCL
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
-		vec->CLupload(vec);
-#endif
-	}	
 }
 
 static void vec_toFile(ghost_vec_t *vec, char *path)
@@ -407,13 +469,10 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
 
 static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 {
+	vec_malloc(vec);
+	DEBUG_LOG(1,"Reading vector from file %s",path);
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	getNrowsFromContext(vec);
-
-
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
-	DEBUG_LOG(1,"Reading vector from file %s",path);
 	FILE *filed;
 	size_t ret;
 
@@ -473,30 +532,16 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 
 	fclose(filed);
 
-	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
-#ifdef CUDA
-#ifdef CUDA_PINNEDMEM
-		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-#else
-		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
-#endif
-		vec->CUupload(vec);
-#endif
-#ifdef OPENCL
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
-		vec->CLupload(vec);
-#endif
-	}	
+	vec->upload(vec);
 
 }
 
 static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 {
+	vec_malloc(vec);
 	DEBUG_LOG(1,"Filling vector via function");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	getNrowsFromContext(vec);
 
-	vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
 	int i,v;
 
 	if (vec->traits->nvecs > 1) {
@@ -513,23 +558,7 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 		}
 	}
 
-
-	if (!(vec->traits->flags & GHOST_VEC_HOST)) {
-#ifdef CUDA
-#ifdef CUDA_PINNEDMEM
-		CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-#else
-		vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrows*sizeofdt);
-#endif
-		vec->CUupload(vec);
-#endif
-#ifdef OPENCL
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrows*sizeofdt,vec->val,CL_MEM_READ_WRITE );
-		vec->CLupload(vec);
-#endif
-	}	
-
-
+	vec->upload(vec);
 }
 
 static void ghost_zeroVector(ghost_vec_t *vec) 
@@ -728,7 +757,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 		if (!vec->isView) {
 #ifdef CUDA_PINNEDMEM
 			if (vec->traits->flags & GHOST_VEC_DEVICE)
-				CU_safecall(cudaFreeHost(VAL(vec)));
+				CU_safecall(cudaFreeHost(vec->val));
 #else
 			free(vec->val);
 #endif

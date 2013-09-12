@@ -408,6 +408,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 	SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 
+			DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
 	if (SELL(mat)->chunkHeight < SELL(mat)->nrowsPadded) 
 	{ // SELL NUMA initialization
 
@@ -415,7 +416,6 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 		for (c=0; c<SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; c++) 
 		{ // loop over chunks
 
-			DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
 			for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/SELL(mat)->chunkHeight; j++)
 			{
 				for (i=0; i<SELL(mat)->chunkHeight; i++)

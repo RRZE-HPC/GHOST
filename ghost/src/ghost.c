@@ -235,7 +235,7 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 	return mat;	
 }
 
-ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm) 
+ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm, double weight) 
 {
 	ghost_context_t *context;
 	int i;
@@ -295,7 +295,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 #ifdef GHOST_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-		context->communicator->halo_elements = 0;
+		context->communicator->halo_elements = -1;
 
 		int nprocs = ghost_getNumberOfRanks(context->mpicomm);
 
@@ -369,13 +369,27 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 
 
-		} else 
+		} else if (context->flags & GHOST_CONTEXT_WORKDIST_CUSTOM)
+		{ // don't read rpt, only fill lfrow, lnrows
+			
+			ghost_midx_t target_rows = (context->gnrows/nprocs);
+
+			context->communicator->lfRow[0] = 0;
+
+			for (i=1; i<nprocs; i++){
+				context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows;
+			}
+			for (i=0; i<nprocs-1; i++){
+				context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
+			}
+			context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
+			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+
+		} else
+			
 		{ // don't read rpt, only fill lfrow, lnrows
 			UNUSED(matrixPath);
-			//	int nprocs = ghost_getNumberOfProcesses();
-			//	context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-			//	context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-
 			ghost_midx_t target_rows = (context->gnrows/nprocs);
 
 			context->communicator->lfRow[0] = 0;

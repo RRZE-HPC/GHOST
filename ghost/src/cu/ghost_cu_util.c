@@ -19,13 +19,21 @@ void CU_init()
 	CU_safecall(cudaGetDeviceCount(&nDevs));
 
 	if (nDevs < ghost_getNumberOfRanksOnNode()) {
-		ABORT("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
+
+		//ABORT("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
+		WARNING_LOG("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
 	}
 
+	if (ghost_getLocalRank()<nDevs) {
 	device = ghost_getLocalRank();
 
 	DEBUG_LOG(1,"Selecting CUDA device %d",device);
+//	CUcontext context;
+//	CUdevice cudevice;
+//	cuDeviceGet(&cudevice,device);
+//	cuCtxCreate(&context,0,cudevice);
 	CU_safecall(cudaSetDevice(device));
+	}
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
@@ -57,6 +65,7 @@ void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
 
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
 {
+	//WARNING_LOG("%p %p %lu %d",devmem,hostmem,bytesize,device);
 	if (bytesize > 0)
 		CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
 }

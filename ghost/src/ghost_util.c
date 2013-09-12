@@ -670,10 +670,7 @@ int ghost_getRank(MPI_Comm comm)
 int ghost_getLocalRank() 
 {
 #ifdef GHOST_MPI
-	int rank;
-	MPI_safecall(MPI_Comm_rank ( getSingleNodeComm(), &rank));
-
-	return rank;
+	return ghost_getRank(getSingleNodeComm());
 #else
 	return 0;
 #endif
@@ -939,14 +936,8 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 	}
 	solver(NULL,NULL,NULL,NULL,0); // clean up
 
-#ifdef OPENCL
-	DEBUG_LOG(1,"Downloading result from OpenCL device");
-	res->CLdownload(res);
-#endif
-#ifdef CUDA
-	DEBUG_LOG(1,"Downloading result from CUDA device");
-	res->CUdownload(res);
-#endif
+	DEBUG_LOG(1,"Downloading result from device");
+	res->download(res);
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
 		res->permute(res,mat->invRowPerm);

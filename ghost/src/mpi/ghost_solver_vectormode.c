@@ -98,17 +98,13 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 	}
 #endif
 
-#ifdef OPENCL
-	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to OpenCL device");
-	invec->CLupload(invec);
-#endif
-#ifdef CUDA
-	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to CUDA device");
-	invec->CUupload(invec);
-#endif
+	DEBUG_LOG(1,"Vector mode kernel: Upload RHS to device");
+	invec->upload(invec);
 
 
+//	start = ghost_wctime();
 	mat->kernel(mat,res,invec,spmvmOptions);	
+//	printf("comp: %f\n",ghost_wctime()-start);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

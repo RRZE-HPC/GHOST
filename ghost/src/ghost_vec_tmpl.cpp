@@ -6,7 +6,6 @@
 #include "ghost_complex.h"
 #include <omp.h>
 
-
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
 	v_t s;
@@ -99,8 +98,9 @@ template<typename v_t> void ghost_vec_scale_tmpl(ghost_vec_t *vec, void *scale)
 
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 {
+	vec_malloc(vec);
 	DEBUG_LOG(1,"Filling vector with random values");
-	getNrowsFromContext(vec);
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
 	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
 	int i,v;
@@ -126,6 +126,8 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 			((v_t *)(vec->val))[v*vec->traits->nrowspadded+i] = (v_t)(rand()*1./RAND_MAX); // TODO imag
 		}
 	}
+	vec->upload(vec);
+
 }
 
 template<typename v_t> int ghost_vecEquals_tmpl(ghost_vec_t *a, ghost_vec_t *b)

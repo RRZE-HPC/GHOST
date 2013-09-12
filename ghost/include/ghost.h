@@ -12,6 +12,8 @@
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
 #endif
+#else
+typedef int MPI_Comm;
 #endif
 #else
 typedef int MPI_Comm;
@@ -116,6 +118,8 @@ struct ghost_vec_t
 	void          (*CUdownload) (ghost_vec_t *);
 	void          (*CLupload) (ghost_vec_t *);
 	void          (*CLdownload) (ghost_vec_t *);
+	void          (*upload) (ghost_vec_t *);
+	void          (*download) (ghost_vec_t *);
 	ghost_vec_t * (*clone) (ghost_vec_t *);
 	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
 	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
@@ -213,6 +217,7 @@ struct ghost_context_t
 	ghost_midx_t gnrows;
 	ghost_midx_t gncols;
 	int flags;
+	double weight;
 
 	MPI_Comm mpicomm;
 };
@@ -324,7 +329,7 @@ void ghost_finish();
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
-ghost_context_t * ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm);
+ghost_context_t * ghost_createContext(int64_t, int64_t, int, char *, MPI_Comm, double weight);
 ghost_mat_t     * ghost_createMatrix(ghost_context_t *, ghost_mtraits_t *, int);
 void              ghost_freeContext(ghost_context_t *);
 /******************************************************************************/

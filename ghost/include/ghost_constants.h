@@ -34,6 +34,7 @@
 #define GHOST_CONTEXT_GLOBAL        (1)
 #define GHOST_CONTEXT_DISTRIBUTED   (2)
 #define GHOST_CONTEXT_WORKDIST_NZE  (4) /* distribute by # of nonzeros */
+#define GHOST_CONTEXT_WORKDIST_CUSTOM (8) /* custom distribution (e.g., for hybrid) */
 //#define GHOST_CONTEXT_WORKDIST_LNZE (8) /* distribute by # of loc nonzeros */
 #define GHOST_CONTEXT_NO_COMBINED_SOLVERS (16) /* not configure comb. kernels */
 #define GHOST_CONTEXT_NO_SPLIT_SOLVERS    (32) /* not configure split kernels */
