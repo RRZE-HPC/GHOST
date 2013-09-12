@@ -369,28 +369,14 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 
 
-		} else if (context->flags & GHOST_CONTEXT_WORKDIST_CUSTOM)
-		{ // don't read rpt, only fill lfrow, lnrows
-			
-			ghost_midx_t target_rows = (context->gnrows/nprocs);
-
-			context->communicator->lfRow[0] = 0;
-
-			for (i=1; i<nprocs; i++){
-				context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows;
-			}
-			for (i=0; i<nprocs-1; i++){
-				context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
-			}
-			context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
-			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-			MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-
 		} else
-			
 		{ // don't read rpt, only fill lfrow, lnrows
 			UNUSED(matrixPath);
-			ghost_midx_t target_rows = (context->gnrows/nprocs);
+			double allweights;
+			MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,context->mpicomm))
+			
+//			ghost_midx_t target_rows = (context->gnrows/nprocs);
+			ghost_midx_t target_rows = (ghost_midx_t)(context->gnrows*(weight/allweights));
 
 			context->communicator->lfRow[0] = 0;
 
