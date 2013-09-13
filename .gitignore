@@ -9,6 +9,7 @@ pbshosts*
 *.tar
 *.tar.gz
 *.vec
+gmon.out
 html/
 obj/
 mod/
@@ -24,6 +25,7 @@ apps/*/
 !apps/dense/
 !apps/test/
 !apps/multicomm/
+!apps/hybrid/
 tags
 *stdout*
 *stderr*
