@@ -5,7 +5,7 @@
 #include <semaphore.h>
 
 #define GHOST_TASK_LD_UNDEFINED -1 // initializer
-#define GHOST_TASK_LD_ANY -2 // execute task on any LD
+#define GHOST_TASK_LD_ANY 0 // execute task on any LD
 
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
@@ -112,9 +112,10 @@ typedef struct ghost_taskq_t {
 	ghost_task_t *head; // the first (= highest priority) element
 	ghost_task_t *tail; // the last (= lowest priority) element
 	pthread_mutex_t mutex; // serialize access to the queue
-	int LD; // the locality domain of this queue
+//	int LD; // the locality domain of this queue
+	int *nIdleCoresAtLD; // number of idle cores @ LDs
 	int nIdleCores; // number of idle cores
-	int *coreState; // bitfield
+//	int *coreState; // bitfield
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
