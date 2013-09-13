@@ -120,6 +120,10 @@ struct ghost_vec_t
 	void          (*CLdownload) (ghost_vec_t *);
 	void          (*upload) (ghost_vec_t *);
 	void          (*download) (ghost_vec_t *);
+	void          (*uploadHalo) (ghost_vec_t *);
+	void          (*downloadHalo) (ghost_vec_t *);
+	void          (*uploadNonHalo) (ghost_vec_t *);
+	void          (*downloadNonHalo) (ghost_vec_t *);
 	ghost_vec_t * (*clone) (ghost_vec_t *);
 	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
 	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);

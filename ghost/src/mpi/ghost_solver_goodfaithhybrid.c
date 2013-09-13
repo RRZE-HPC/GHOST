@@ -102,12 +102,13 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	likwid_markerStartRegion("Kernel 2 -- local computation");
 #endif
 
-#ifdef OPENCL
+	invec->uploadNonHalo(invec);
+/*#ifdef OPENCL
 	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif
 #ifdef CUDA
 	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
-#endif
+#endif*/
 
 	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
 
@@ -133,7 +134,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
-#ifdef OPENCL
+/*#ifdef OPENCL
 	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
 			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
 			mat->nrows(mat)*sizeofRHS);
@@ -141,7 +142,8 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 #ifdef CUDA
 	CU_copyHostToDevice(&((char *)(invec->CU_val))[mat->nrows(mat)*sizeofRHS], 
 			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS);
-#endif
+#endif*/
+	invec->uploadHalo(invec);
 
 	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
 

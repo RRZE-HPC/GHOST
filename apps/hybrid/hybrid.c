@@ -39,21 +39,23 @@ static int solutionCorrect (ghost_vec_t *comp, ghost_vec_t *gold, ghost_mat_t *m
 int main(int argc, char* argv[]) 
 {
 	ghost_init(argc,argv);
-	int nIter = 20;
+	int nIter = 1;
 	double time;
 	double zero = 0.;
 
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
-	int spmvmOptions = GHOST_SPMVM_AXPY|GHOST_SPMVM_MODE_VECTORMODE;
+	int spmvmOptions = GHOST_SPMVM_AXPY|GHOST_SPMVM_MODE_TASKMODE;
 	int mflags, vflags;
 	double weight = atoi(argv[2]);
 	
 	
 	if ((argv[3] != NULL) && !(strcasecmp(argv[3],"CUDA"))) {
+		ghost_thpool_init(2);
 		mflags = GHOST_SPM_DEFAULT;
 		vflags = GHOST_VEC_DEFAULT;
 		ghost_CUDA_init(atoi(argv[4]));
 	} else {
+		ghost_thpool_init(ghost_getNumberOfPhysicalCores()-8);
 		mflags = GHOST_SPM_HOST;
 		vflags = GHOST_VEC_HOST;
 	}

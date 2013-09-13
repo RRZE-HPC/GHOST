@@ -12,7 +12,7 @@ OPENCL=0        # 0 = no OpenCL kernels     | 1 = build OpenCL kernels
 CUDA=1          # 0 = no CUDA kernels       | 1 = build CUDA kernels
 LIKWID=0        # 0 = no instrumentation    | 1 = Likwid Marker API instrumentation
 ITAC=0          # 0 = no instrumentation    | 1 = VT instrumentation
-DEBUG=0         # -1 = only debug compilation | >0 = level of DEBUG output
+DEBUG=2         # -1 = only debug compilation | >0 = level of DEBUG output
 
 GHOSTPATH=$(HOME)/local      # where to install ghost
 LIKWIDPATH=/apps/likwid/likwid-3.1beta/     # path to LIKWID installation (if enabled)

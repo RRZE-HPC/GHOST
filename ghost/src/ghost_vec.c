@@ -74,6 +74,10 @@ static void vec_CLdownload (ghost_vec_t *);
 #endif
 static void vec_upload(ghost_vec_t *vec);
 static void vec_download(ghost_vec_t *vec);
+static void vec_uploadHalo(ghost_vec_t *vec);
+static void vec_downloadHalo(ghost_vec_t *vec);
+static void vec_uploadNonHalo(ghost_vec_t *vec);
+static void vec_downloadNonHalo(ghost_vec_t *vec);
 
 ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 {
@@ -112,6 +116,10 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 
 	vec->upload = &vec_upload;
 	vec->download = &vec_download;
+	vec->uploadHalo = &vec_uploadHalo;
+	vec->downloadHalo = &vec_downloadHalo;
+	vec->uploadNonHalo = &vec_uploadNonHalo;
+	vec->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef CUDA
 	vec->CU_val = NULL;
 	vec->CUupload = &vec_CUupload;
@@ -136,6 +144,57 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	return vec;
 	}
 
+static void vec_uploadHalo(ghost_vec_t *vec)
+{
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Uploading halo elements of vector");
+		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+#ifdef CUDA
+		CU_copyHostToDevice(&((char *)(vec->CU_val))[vec->traits->nrows*sizeofdt], 
+			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt);
+#endif
+#ifdef OPENCL
+	CL_copyHostToDeviceOffset(vec->CL_val_gpu, 
+			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt,
+			vec->traits->nrows*sizeofdt);
+#endif
+	}
+}
+
+static void vec_downloadHalo(ghost_vec_t *vec)
+{
+
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Downloading halo elements of vector");
+		WARNING_LOG("Not yet implemented!");
+	}
+}
+static void vec_uploadNonHalo(ghost_vec_t *vec)
+{
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+#ifdef CUDA
+		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+#ifdef OPENCL
+		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+	}
+}
+
+static void vec_downloadNonHalo(ghost_vec_t *vec)
+{
+
+	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+		DEBUG_LOG(1,"Downloading vector");
+#ifdef CUDA
+		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+#ifdef OPENCL
+		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+	}
+}
 
 static void vec_upload(ghost_vec_t *vec)
 {

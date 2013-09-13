@@ -676,6 +676,7 @@ int ghost_task_add(ghost_task_t *t)
  */
 int ghost_taskq_finish()
 {
+	DEBUG_LOG(1,"Finishing task queue");
 	int t;
 	if (taskqs == NULL)
 		return GHOST_SUCCESS;
