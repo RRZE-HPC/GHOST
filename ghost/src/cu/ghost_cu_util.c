@@ -12,27 +12,23 @@
 
 
 static int device;
+int hasCUDAdevice;
 
-void CU_init()
+void ghost_CUDA_init(int dev)
 {
 	int nDevs = 0;
 	CU_safecall(cudaGetDeviceCount(&nDevs));
 
-	if (nDevs < ghost_getNumberOfRanksOnNode()) {
+	DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
 
-		//ABORT("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
-		WARNING_LOG("There are more MPI ranks (%d) on the node than CUDA devices available (%d)!",ghost_getNumberOfRanksOnNode(),nDevs);
-	}
+	if (dev<nDevs) {
+		device = dev;
 
-	if (ghost_getLocalRank()<nDevs) {
-	device = ghost_getLocalRank();
-
-	DEBUG_LOG(1,"Selecting CUDA device %d",device);
-//	CUcontext context;
-//	CUdevice cudevice;
-//	cuDeviceGet(&cudevice,device);
-//	cuCtxCreate(&context,0,cudevice);
-	CU_safecall(cudaSetDevice(device));
+		DEBUG_LOG(1,"Selecting CUDA device %d",device);
+		CU_safecall(cudaSetDevice(device));
+		hasCUDAdevice = 1;
+	} else {
+		hasCUDAdevice = 0;
 	}
 }
 
@@ -113,11 +109,13 @@ ghost_acc_info_t *CU_getDeviceInfo()
 	me = ghost_getRank(MPI_COMM_WORLD);
 	size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 
-	struct cudaDeviceProp devProp;
-
-	CU_safecall(cudaGetDeviceProperties(&devProp,device));
-
-	strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
+	if (hasCUDAdevice) {
+		struct cudaDeviceProp devProp;
+		CU_safecall(cudaGetDeviceProperties(&devProp,device));
+		strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
+	} else {
+		strncpy(name,"None",5);
+	}
 
 	int *displs;
 	int *recvcounts;

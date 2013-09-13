@@ -302,30 +302,6 @@ int ghost_init(int argc, char **argv);
  *****************************************************************************/
 void ghost_finish();
 
-/******************************************************************************
- * Perform the sparse matrix vector product using a specified kernel with a
- * fixed number of iterations.
- *
- * Arguments:
- *   - ghost_vec_t *res 
- *     The result vector. Its values are being accumulated if GHOST_SPMVM_AXPY
- *     is defined.  
- *   - ghost_comm_t *lcrp
- *     The local CRS matrix part.
- *   - ghost_vec_t *invec
- *     The left hand side vector.
- *   - int kernel
- *     The kernel which should be used. This has to be one out of
- *       + GHOST_SPMVM_MODE_NOMPI
- *       + GHOST_SPMVM_MODE_VECTORMODE
- *       + GHOST_SPMVM_MODE_GOODFAITH
- *       + GHOST_SPMVM_MODE_TASKMODE
- *   - int nIter
- *     The number of iterations to run.
- *     
- * Returns:
- *   the wallclock time (in seconds) the kernel execution took. 
- *****************************************************************************/
 int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions);
 
@@ -337,6 +313,8 @@ void ghost_matFromFile(ghost_mat_t *, char *);
 
 int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
 
+extern int hasCUDAdevice;
+extern int hasOPENCLdevice;
 
 #ifdef __cplusplus
 } // extern "C"

@@ -180,9 +180,9 @@ int ghost_init(int argc, char **argv)
 #ifdef OPENCL
 	CL_init();
 #endif
-#ifdef CUDA
-	CU_init();
-#endif
+//#ifdef CUDA
+//	CU_init();
+//#endif
 
 	ghost_cpuid_init();
 
@@ -376,7 +376,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,context->mpicomm))
 			
 //			ghost_midx_t target_rows = (context->gnrows/nprocs);
-			ghost_midx_t target_rows = (ghost_midx_t)(context->gnrows*(weight/allweights));
+			ghost_midx_t target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
 
 			context->communicator->lfRow[0] = 0;
 

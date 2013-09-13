@@ -310,10 +310,12 @@ void ghost_printSysInfo()
 #endif
 #ifdef CUDA
 		ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
-		ghost_printLine("CUDA devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
+		ghost_printLine("CUDA devices",NULL,NULL);
 		int i;
-		for (i=1; i<devInfo->nDistinctDevices; i++) {
-			ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
+		for (i=0; i<devInfo->nDistinctDevices; i++) {
+			if (strcasecmp(devInfo->names[i],"None")) {
+				ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
+			}
 		}
 #endif
 		ghost_printFooter();

@@ -4,7 +4,7 @@
 #include <ghost.h>
 
 
-void CU_init();
+void ghost_CUDA_init(int dev);
 void * CU_allocDeviceMemory( size_t bytesize );
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem, size_t bytesize, size_t offset);
