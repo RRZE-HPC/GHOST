@@ -413,6 +413,7 @@ int main(int argc, char** argv)
 
 	// initialize ghost queue
 	ghost_init(argc,argv);
+	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 
 	// initialize C random number generator
 	srand(time(NULL));

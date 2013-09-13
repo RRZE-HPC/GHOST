@@ -125,7 +125,7 @@ int main( int argc, char* argv[] )
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 #endif
 
-	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD);
+	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD,1.0);
 	mat = ghost_createMatrix(context,&mtraits,1);
 
 
