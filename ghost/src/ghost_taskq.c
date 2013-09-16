@@ -110,15 +110,22 @@ static int nIdleCoresAtLD(int ld);
 static int nThreadsPerLD(int ld);
 static int firstThreadOfLD(int ld);
 
+/**
+ * @brief Initializes a thread pool with a given number of threads.
+ * @param nThreads
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ * 
+ * A number of pthreads will be created and each one will have thread_main() as start routine.
+ * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
+ * performed before this function returns.
+ */
 int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 {
-	int topodepth, depth;
+	int depth;
 	int t,q,i,l,p;
-	char string[128];
 	int totalThreads = 0;
 	hwloc_obj_t obj;
 
-	topodepth = hwloc_topology_get_depth(topology);
 
 	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_CORE);
 	int ncores = hwloc_get_nbobjs_by_depth(topology,depth);
@@ -139,7 +146,6 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 	ghost_thpool->PUs = (hwloc_obj_t *)ghost_malloc(totalThreads*sizeof(hwloc_obj_t));
 	ghost_thpool->nThreads = totalThreads;
 	ghost_thpool->threads = (pthread_t *)ghost_malloc(ghost_thpool->nThreads*sizeof(pthread_t));
-	//ghost_thpool->nIdleCores = totalThreads;
 	ghost_thpool->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
 	sem_init(ghost_thpool->sem, 0, 0);
 	sem_init(&taskSem, 0, 0);
@@ -174,7 +180,7 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 				break;
 			}
 		}
-		DEBUG_LOG(1,"PE%d: Thread # %3d running @ PU %3d (OS: %3d), SMT level %2d, NUMA node %d",ghost_getLocalRank(),i,obj->logical_index,obj->os_index,i%smt,runner->logical_index);
+		DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,i%smt,runner->logical_index);
 	}
 	
 	qsort(nodes,totalThreads,sizeof(int),intcomp);
@@ -191,22 +197,17 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 		int localthreads = nThreadsPerLD(q);
 		coreidx[q] = (int *)ghost_malloc(sizeof(int)*ghost_thpool->nThreads);
 
-//		printf("%d::: %d\n",q,localthreads);
 		for (t=0; t<localthreads; t++) { // my own threads
 			coreidx[q][t] = firstThreadOfLD(q)+t;
-//			printf("cidx[%d][%d] = %d\n",q,t,coreidx[q][t]);
 		}
 		for (; t-localthreads<firstThreadOfLD(q); t++) {
 			coreidx[q][t] = t-firstThreadOfLD(q);
-//			printf("cidx[%d][%d] = %d\n",q,t,coreidx[q][t]);
 		}	
 		for (; t<ghost_thpool->nThreads; t++) {
 			coreidx[q][t] = t;
-//			printf("cidx[%d][%d] = %d\n",q,t,coreidx[q][t]);
 		}	
 	}
 
-//	exit(1);
 	for (t=0; t<ghost_thpool->nThreads; t++){
 		pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
 	}
@@ -214,51 +215,8 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 		sem_wait(ghost_thpool->sem);
 	}
 	DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
-/*
-	int nbusy;
-	hwloc_bitmap_set(ghost_thpool->busy,0);
-	hwloc_bitmap_set(ghost_thpool->busy,20);
 
-	hwloc_bitmap_t LD0 = hwloc_bitmap_alloc();
-	obj = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,1);
-	for (runner=obj; runner; runner=runner->children[0]) {
-		if (runner->type == HWLOC_OBJ_PU) {
-			hwloc_bitmap_set_range(LD0,0,runner->logical_index-1);
-			break;
-		}
-	}
-	hwloc_bitmap_t busyLD0 = hwloc_bitmap_alloc();
-   	hwloc_bitmap_and(busyLD0,ghost_thpool->busy,LD0);
-	
-	WARNING_LOG(">>1> %d",hwloc_bitmap_weight(ghost_thpool->busy));
-	WARNING_LOG(">>2> %d",hwloc_bitmap_weight(LD0));
-	WARNING_LOG(">>3> %d",hwloc_bitmap_weight(busyLD0));
-
-
-	WARNING_LOG("idle @ 0: %d",nIdleCoresAtLD(0));
-	hwloc_bitmap_set(ghost_thpool->busy,0);	
-	WARNING_LOG("idle @ 0: %d",nIdleCoresAtLD(0));	
-*//*
-	qsort(nodes,totalThreads,sizeof(int),intcomp);
-	ghost_thpool->nLDs = 1;
-	ghost_thpool->nThreadsPerLD = (int *)ghost_malloc(ghost_thpool->nLDs*sizeof(int));
-	ghost_thpool->nThreadsPerLD[ghost_thpool->nLDs-1] = 1;
-	ghost_thpool->LD = (int *)ghost_malloc(ghost_thpool->nLDs*sizeof(int));
-	
-	for (i=1; i<totalThreads; i++) {
-		if (nodes[i] != nodes[i-1]) {
-			ghost_thpool->nLDs++;
-			ghost_thpool->nThreadsPerLD = (int *)realloc(ghost_thpool->nThreadsPerLD,ghost_thpool->nLDs*sizeof(int));
-			ghost_thpool->nThreadsPerLD[ghost_thpool->nLDs-1] = 1;
-		} else {
-			ghost_thpool->nThreadsPerLD[nodes[i]]++;
-		}
-	}
-	DEBUG_LOG(0,"The thread pool has thread in %d different LDs",ghost_thpool->nLDs);
-	for (i=0; i<ghost_thpool->nLDs; i++) {
-		DEBUG_LOG(0,"Threads @ LD %d: %d",i,ghost_thpool->nThreadsPerLD[i]);
-	}
-*/	
+	return GHOST_SUCCESS;
 }
 
 static int nThreadsPerLD(int ld)
@@ -289,7 +247,9 @@ static int nIdleCoresAtLD(int ld)
    	hwloc_bitmap_andnot(busy,LDBM,ghost_thpool->busy);
 
 	int w = hwloc_bitmap_weight(busy);
-	// TODO destroy bitmaps
+
+	hwloc_bitmap_free(LDBM);
+	hwloc_bitmap_free(busy);
 	return w;
 }
 
@@ -314,159 +274,19 @@ static int firstThreadOfLD(int ld)
 
 
 /**
- * @brief Initializes a thread pool with a given number of threads.
- * @param nThreads
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
- * 
- * A number of pthreads will be created and each one will have thread_main() as start routine.
- * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
- * performed before this function returns.
- */
-static int ghost_thpool_init2(int nThreads)
-{
-/*	int topodepth, depth;
-	int t,q,i;
-	char string[128];
-
-	topodepth = hwloc_topology_get_depth(topology);
-
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_CORE);
-	int ncores = hwloc_get_nbobjs_by_depth(topology,depth);
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_PU);
-	int nthreads = hwloc_get_nbobjs_by_depth(topology,depth);
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_NODE);
-	int nnumanodes = hwloc_get_nbobjs_by_depth(topology,depth);
-
-	WARNING_LOG("%d threads @ %d cores @ %d NUMA nodes",nthreads,ncores,nnumanodes);
-
-
-
-	if ((uint32_t)nThreads > ghost_cpuid_topology.numHWThreads) {
-		WARNING_LOG("Trying to create more threads than there are hardware threads. Setting no. of threads to %u",ghost_cpuid_topology.numHWThreads);
-		nThreads = ghost_cpuid_topology.numHWThreads;
-	}
-
-	if (nThreads < 1) {
-		WARNING_LOG("Invalid number of threads given for thread pool (%d), setting to 1",nThreads);
-		nThreads=1;
-	}
-
-//	nThreads = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
-//	int firstThread = nThreads*ghost_getLocalRank();
-	int oldLDs[nThreads];
-
-	ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
-	ghost_thpool->nLDs = ghost_cpuid_topology.numSockets; // TODO
-	//ghost_thpool->nLDs = (int)ceil((double)ghost_cpuid_topology.numSockets/ghost_getNumberOfRanksOnNode()); 
-	ghost_thpool->threads = (pthread_t *)ghost_malloc(nThreads*sizeof(pthread_t));
-	ghost_thpool->firstThreadOfLD = (int *)ghost_malloc((ghost_thpool->nLDs+1)*sizeof(int));
-	ghost_thpool->LDs = (int *)ghost_malloc(nThreads*sizeof(int));
-	ghost_thpool->nThreads = nThreads;
-	ghost_thpool->nIdleCores = nThreads;
-	ghost_thpool->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
-	sem_init(ghost_thpool->sem, 0, 0);
-	sem_init(&taskSem, 0, 0);
-	pthread_mutex_init(&globalMutex,NULL);
-
-	pthread_key_create(&ghost_thread_key,NULL);
-
-	for (t=0; t<ghost_thpool->nLDs+1; t++) { //initialize
-		ghost_thpool->firstThreadOfLD[t] = 0;
-	}
-
-	DEBUG_LOG(0,"Creating thread pool with %d threads on %d LDs", nThreads, ghost_thpool->nLDs);
-	// sort and normalize LDs (avoid errors when there are, e.g. only sockets 0 and 3 on a system)	
-	for (t=0; t<nThreads; t++){
-		oldLDs[t] = ghost_cpuid_topology.threadPool[t].packageId;
-	}
-	qsort(oldLDs,ghost_thpool->nThreads,sizeof(int),intcomp);
-
-	int curLD = 0;
-	for (t=0; t<nThreads; t++){
-		if ((t > 0) && (oldLDs[t] != oldLDs[t-1])) // change in LD
-		{
-			curLD++;
-			ghost_thpool->firstThreadOfLD[curLD] = t;
-		}
-		ghost_thpool->LDs[t] = curLD;
-		//	ghost_thpool->idleThreadsPerLD[curLD]++;
-		DEBUG_LOG(1,"Thread %d @ LD %d",t,ghost_thpool->LDs[t]);
-	}
-	ghost_thpool->firstThreadOfLD[ghost_thpool->nLDs] = nThreads;
-
-	coreidx = (int **)ghost_malloc(sizeof(int *)*ghost_thpool->nLDs);
-
-	for (q=0; q<ghost_thpool->nLDs; q++) {
-		int localthreads = ghost_thpool->firstThreadOfLD[q+1]-ghost_thpool->firstThreadOfLD[q];
-		coreidx[q] = (int *)ghost_malloc(sizeof(int)*nThreads);
-
-		for (t=0; t<localthreads; t++) { // my own threads
-			coreidx[q][t] = ghost_thpool->firstThreadOfLD[q]+t;
-		}
-		for (; t-localthreads<ghost_thpool->firstThreadOfLD[q]; t++) {
-			coreidx[q][t] = t-ghost_thpool->firstThreadOfLD[q];
-		}	
-		for (; t<nThreads; t++) {
-			coreidx[q][t] = t;
-		}	
-	}
-
-	for (t=0; t<nThreads; t++){
-		pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
-	}
-	for (t=0; t<nThreads; t++){
-		sem_wait(ghost_thpool->sem);
-	}
-	DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
-
-
-*/
-	return GHOST_SUCCESS;
-}
-
-/**
- * @brief Initializes a given number of task queues.
- * @param nQueues
+ * @brief Initializes a task queues.
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_taskq_init(int nQueues)
+int ghost_taskq_init()
 {
-	int ld;
-
 	taskq=(ghost_taskq_t *)ghost_malloc(sizeof(ghost_taskq_t));
 
 	taskq->tail = NULL;
 	taskq->head = NULL;
-/*	taskq->nIdleCores = ghost_thpool->nThreads;
-	taskq->nIdleCoresAtLD = (int *)ghost_malloc(ghost_thpool->nLDs*sizeof(int));
-
-	for (ld=0; ld<ghost_thpool->nLDs; ld++) {
-		taskq->nIdleCoresAtLD[ld] = ghost_thpool->firstThreadOfLD[ld+1]-ghost_thpool->firstThreadOfLD[ld];
-	}*/
 	pthread_mutex_init(&(taskq->mutex),NULL);
 
 	pthread_cond_init(&anyTaskFinishedCond,NULL);
 	pthread_mutex_init(&anyTaskFinishedMutex,NULL);
-/*	DEBUG_LOG(1,"There will be %d task queues",nQueues);
-	ghost_thpool->nLDs = nQueues;
-
-	taskqs=(ghost_taskq_t**)ghost_malloc(ghost_thpool->nLDs*sizeof(ghost_taskq_t *));
-
-	for (q=0; q<ghost_thpool->nLDs; q++) {
-		taskqs[q] = (ghost_taskq_t *)ghost_malloc(sizeof(ghost_taskq_t));
-		DEBUG_LOG(1,"taskq # %d: %p",q,taskqs[q]);
-		taskqs[q]->tail = NULL;
-		taskqs[q]->head = NULL;
-		taskqs[q]->LD = q;
-		taskqs[q]->nIdleCores = ghost_thpool->firstThreadOfLD[q+1]-ghost_thpool->firstThreadOfLD[q];
-		taskqs[q]->coreState = (int *)ghost_malloc(GHOST_MAX_THREADS/8);
-		memset(taskqs[q]->coreState,0,GHOST_MAX_THREADS/8);
-		pthread_mutex_init(&(taskqs[q]->mutex),NULL);
-	}
-
-	pthread_cond_init(&anyTaskFinishedCond,NULL);
-	pthread_mutex_init(&anyTaskFinishedMutex,NULL);
-*/
 	return GHOST_SUCCESS;
 }
 
@@ -529,43 +349,21 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 	while(curTask != NULL)
 	{
-		//if ((curTask->flags & GHOST_TASK_LD_STRICT) && (q->LD != curTask->LD)) {
 		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (nIdleCoresAtLD(curTask->LD) < curTask->nThreads)) {
 			DEBUG_LOG(1,"Skipping task %p because there are not enough idle cores at its strict LD %d: %d < %d",curTask,curTask->LD,nIdleCoresAtLD(curTask->LD),curTask->nThreads);
 			curTask = curTask->next;
 			continue;
 		}
-		//if ((curTask->flags & GHOST_TASK_USE_PARENTS) && (curTask->parent != NULL) && (ghost_thpool->nIdleCores+curTask->parent->nThreads < curTask->nThreads)) {
-		//	DEBUG_LOG(0,"Skipping task %p because it needs %d threads and only %d threads are idle and the parent has %d threads",curTask,curTask->nThreads,ghost_thpool->nIdleCores,curTask->parent->nThreads);
-		//	curTask = curTask->next;
-		//	continue;
-		//}
 		if ((ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)) < curTask->nThreads) {
 			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
 			curTask = curTask->next;
 			continue;
 		}
 
-		//DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,0,q->nIdleCores,ghost_thpool->nIdleCores);
+		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(curTask->LD),(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
 
-		// if task has siblings, delete them here
-	/*	if (curTask->siblings != NULL)
-		{
-			DEBUG_LOG(1,"The task is an LD_ANY-task. Deleting siblings of task");
-			int s;
-			for (s=0; s<ghost_thpool->nLDs; s++) {
-				//	if (s!=q->LD) {
-				//		pthread_mutex_lock(&taskqs[s]->mutex);
-				//	}
-				taskq_deleteTask(taskqs[s],curTask->siblings[s]);
-				//	if (s!=q->LD) {
-				//		pthread_mutex_unlock(&taskqs[s]->mutex);
-				//	}
-			}
-		} else {*/
-			DEBUG_LOG(1,"Deleting task itself");
-			taskq_deleteTask(q,curTask);	
-//		}
+		DEBUG_LOG(1,"Deleting task itself");
+		taskq_deleteTask(q,curTask);	
 		DEBUG_LOG(1,"Pinning the task's threads");
 		ghost_ompSetNumThreads(curTask->nThreads);
 
@@ -583,16 +381,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 					for (; t<ghost_thpool->nThreads; t++) {
 						int core = coreidx[curTask->LD][t];
-						//int LD = ghost_thpool->LDs[core];
-						//if (!(CHK_BIT(corestate,core))) { // the core is idle
 						if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
-//							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it, idle cores @ LD%d: %d",
-//									(int)pthread_self(),core,LD,taskq->nIdleCoresAtLD[LD]-1);
+							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",
+									(int)pthread_self(),core);
 
-//							taskq->nIdleCoresAtLD[LD] --;
 							hwloc_bitmap_set(ghost_thpool->busy,core);
-//							ghost_thpool->nIdleCores --;
-							//SET_BIT(corestate,core);
 							ghost_setCore(ghost_thpool->PUs[core]->os_index);
 							curTask->cores[reservedCores] = core;
 							reservedCores++;
@@ -626,13 +419,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
  */
 static void * thread_main(void *arg)
 {
+	UNUSED(arg);
 	ghost_task_t *myTask;
-	ghost_taskq_t *curQueue;
-	intptr_t core = (intptr_t)arg;
-//	int q;
-
-	int myCore = core;
-//	int myLD = ghost_thpool->LDs[core];
 
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
@@ -654,31 +442,6 @@ static void * thread_main(void *arg)
 		}
 
 
-		int self = 0;
-//		q = myLD;
-/*		for (; q<ghost_thpool->nLDs; q++) 
-		{ // search for task in any queue, starting from the own queue
-			if ((self == 1) && (q == myLD)) // skip own queue if it has been looked in
-				continue;
-
-			curQueue = taskqs[q];
-			DEBUG_LOG(1,"Thread %d: Trying to find task in queue %d: %p",(int)pthread_self(),myLD,curQueue);	
-
-			//			pthread_mutex_lock(&curQueue->mutex);
-			pthread_mutex_lock(&globalMutex);
-			myTask = taskq_findDeleteAndPinTask(curQueue);
-			pthread_mutex_unlock(&globalMutex);
-			//			pthread_mutex_unlock(&curQueue->mutex);
-			if (myTask != NULL) {
-				break;
-			}
-
-			if (self == 0) // own LD has been looked in, start from zero now
-			{
-				q = -1;
-				self = 1; // after the first iteration, the own LD has been dealt with
-			}
-		}*/
 		pthread_mutex_lock(&globalMutex);
 		myTask = taskq_findDeleteAndPinTask(taskq);
 		pthread_mutex_unlock(&globalMutex);
@@ -691,7 +454,6 @@ static void * thread_main(void *arg)
 		}
 
 		pthread_mutex_lock(myTask->mutex);
-		*(myTask->executingThreadNo) = myCore;
 		*(myTask->state) = GHOST_TASK_RUNNING;	
 		pthread_mutex_unlock(myTask->mutex);
 
@@ -715,13 +477,9 @@ static void * thread_main(void *arg)
 		pthread_cond_broadcast(myTask->finishedCond);
 		pthread_mutex_unlock(myTask->mutex);
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
-		//	sem_getvalue(&taskSem,&sval);
-		//	pthread_mutex_lock(&globalMutex);
 		if (killed) {
-			//		pthread_mutex_unlock(&globalMutex);
 			break;
 		}
-		//	pthread_mutex_unlock(&globalMutex);
 	}
 	sem_getvalue(&taskSem,&sval);
 	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
@@ -732,20 +490,7 @@ static void * thread_main(void *arg)
 static int ghost_task_unpin(ghost_task_t *task)
 {
 	for (int t=0; t<task->nThreads; t++) {
-		//int LD = ghost_thpool->LDs[task->cores[t]];
-		//	if ((task->flags & GHOST_TASK_USE_PARENTS) && // i should use parent's cores and
-		//		 (task->parent->cores[curParent] == task->cores[t])) // this core is part of parent's cors
-		//	{
-		//		DEBUG_LOG(1,"Thread %d: Not setting core # %d to idle again because it was a parent's core, now idle cores @ LD%d: %d",(int)pthread_self(),task->cores[t],LD,taskqs[LD]->nIdleCores);
-		//			curParent++;
-		//	} else
-		//	{ 
-		//DEBUG_LOG(1,"Thread %d: Setting core # %d to idle again, now idle cores @ LD%d: %d",(int)pthread_self(),task->cores[t],LD,taskq->nIdleCoresAtLD[LD]+1);
 		hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
-		//CLR_BIT(corestate,task->cores[t]);
-		//taskq->nIdleCoresAtLD[LD] ++;
-		//ghost_thpool->nIdleCores ++;
-		//	}
 	}
 	task->freed = 1;
 
@@ -778,25 +523,20 @@ int ghost_task_print(ghost_task_t *t)
  */
 int ghost_taskq_print_all() 
 {
-	int q;
 	ghost_task_t *t;
 
-/*	for (q=0; q<ghost_thpool->nLDs; q++)
-	{
-		pthread_mutex_lock(&taskqs[q]->mutex);
-		ghost_printHeader("LD %d",q);
+	pthread_mutex_lock(&taskq->mutex);
+	ghost_printHeader("Task queue");
 
-		t = taskqs[q]->head;
-		while (t != NULL)
-		{
-			printf("%p ",t);
-			t=t->next;
-		}
-		printf("\n");
-		ghost_printFooter();
-		pthread_mutex_unlock(&taskqs[q]->mutex);
+	t = taskq->head;
+	while (t != NULL)
+	{
+		printf("%p ",t);
+		t=t->next;
 	}
-*/
+	printf("\n");
+	ghost_printFooter();
+	pthread_mutex_unlock(&taskq->mutex);
 	return GHOST_SUCCESS;
 }
 
@@ -855,8 +595,6 @@ static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
  */
 int ghost_task_add(ghost_task_t *t)
 {
-	int q;
-
 	// if a task is initialized _once_ but added several times, this has to be done each time it is added
 	pthread_cond_init(t->finishedCond,NULL);
 	pthread_mutex_init(t->mutex,NULL);
@@ -866,42 +604,8 @@ int ghost_task_add(ghost_task_t *t)
 	t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
 	t->freed = 0;
 
-/*	if (t->LD == GHOST_TASK_LD_ANY) // add to all queues
-	{
-		DEBUG_LOG(1,"Task %p goes to all queues",t);
-		t->siblings = (ghost_task_t **)ghost_malloc(ghost_thpool->nLDs*sizeof(ghost_task_t *));
-
-		DEBUG_LOG(1,"Cloning task...");
-		for (q=0; q<ghost_thpool->nLDs; q++)
-		{
-			t->siblings[q] = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
-			t->siblings[q]->nThreads = t->nThreads;
-			t->siblings[q]->LD = q;
-			t->siblings[q]->flags = t->flags;
-			t->siblings[q]->func = t->func;
-			t->siblings[q]->arg = t->arg;
-			t->siblings[q]->state = t->state;
-			t->siblings[q]->executingThreadNo = t->executingThreadNo;
-			t->siblings[q]->cores = t->cores;
-			t->siblings[q]->ret = t->ret;
-			t->siblings[q]->siblings = t->siblings;
-			t->siblings[q]->finishedCond = t->finishedCond;
-			t->siblings[q]->mutex = t->mutex;
-			t->siblings[q]->parent = t->parent;
-			DEBUG_LOG(1,"Adding sibling to queue %p (LD %d)",taskqs[q],q);
-			taskq_additem(taskqs[q],t->siblings[q]);
-		}
-	} 
-	else */
-	{
-		DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",t,t->nThreads,taskq,t->LD);
-		//if (t->LD > ghost_thpool->nLDs) {
-			//WARNING_LOG("Task shall go to LD %d but there are only %d LDs. Setting LD to zero...", t->LD, ghost_thpool->nLDs);
-		//	t->LD = 0;
-	//	}
-	//	t->siblings = NULL;
-		taskq_additem(taskq,t);
-	}
+	DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",t,t->nThreads,taskq,t->LD);
+	taskq_additem(taskq,t);
 	*(t->state) = GHOST_TASK_ENQUEUED;
 
 	sem_post(&taskSem);
@@ -976,7 +680,7 @@ int ghost_task_test(ghost_task_t * t)
  */
 int ghost_task_wait(ghost_task_t * task)
 {
-	DEBUG_LOG(1,"Waiting @core %d for task %p which is managed by thread %d and whose state is %d",ghost_getCore(),task,*(task->executingThreadNo),*(task->state));
+	DEBUG_LOG(1,"Waiting @core %d for task %p whose state is %d",ghost_getCore(),task,*(task->state));
 
 
 	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
@@ -986,7 +690,7 @@ int ghost_task_wait(ghost_task_t * task)
 
 	pthread_mutex_lock(task->mutex);
 	if (*(task->state) != GHOST_TASK_FINISHED) {
-		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p which is managed by thread %d",task->finishedCond,task,*(task->executingThreadNo));
+		DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",task->finishedCond,task);
 		pthread_cond_wait(task->finishedCond,task->mutex);
 	} else {
 		DEBUG_LOG(1,"Task %p has already finished",task);
@@ -1037,33 +741,17 @@ char *ghost_task_strstate(int state)
  */
 int ghost_task_waitall()
 {
-	int q;
 	ghost_task_t *t;
 
-/*	for (q=0; q<ghost_thpool->nLDs; q++)
+	pthread_mutex_lock(&globalMutex);
+	t = taskq->head;
+	pthread_mutex_unlock(&globalMutex);
+	while (t != NULL)
 	{
-		DEBUG_LOG(1,"Waitall: Waiting for tasks of LD %d (queue: %p)",q,taskqs[q]);
-		pthread_mutex_lock(&globalMutex);
-		t = taskqs[q]->head;
-		pthread_mutex_unlock(&globalMutex);
-		while (t != NULL)
-		{
-			DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
-			ghost_task_wait(t);
-			t = t->next;
-		}
+		DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
+		ghost_task_wait(t);
+		t = t->next;
 	}
-*/
-		DEBUG_LOG(1,"Waitall: Waiting for tasks of LD %d (queue: %p)",q,taskq);
-		pthread_mutex_lock(&globalMutex);
-		t = taskq->head;
-		pthread_mutex_unlock(&globalMutex);
-		while (t != NULL)
-		{
-			DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
-			ghost_task_wait(t);
-			t = t->next;
-		}
 	return GHOST_SUCCESS;
 }
 
@@ -1082,8 +770,6 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 	int t;
 	int ret = 0;
 	pthread_t threads[nt];
-	//	pthread_mutex_t mutex;
-	//	pthread_mutex_init(&mutex,NULL);
 
 	for (t=0; t<nt; t++)
 	{ // look if one of the tasks is already finished
@@ -1138,22 +824,14 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
  */
 int ghost_task_destroy(ghost_task_t *t)
 {
-	free(t->cores);
-	//free(t->siblings); // TODO free each sibling recursively
-	//	if (t->siblings != NULL) {
-	//		free(t->siblings[0]->cores);
-	//	}
-
-	free(t->state);
-	free(t->executingThreadNo);
-	free(t->ret);
-
 	pthread_mutex_destroy(t->mutex);
 	pthread_cond_destroy(t->finishedCond);
-
+	
+	free(t->cores);
+	free(t->state);
+	free(t->ret);
 	free(t->mutex);
 	free(t->finishedCond);
-
 	free(t);
 
 	return GHOST_SUCCESS;
@@ -1174,21 +852,18 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 {
 	ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
 	if (ghost_thpool == NULL) {
-		int nthreads = 0;
-#ifdef MIC 
-		// SMT-3
-		nthreads = ghost_cpuid_topology.numHWThreads/4*3;
-#else 
-		// no SMT
-		nthreads = ghost_getNumberOfPhysicalCores();
-#endif
-		DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nthreads);
-		ghost_thpool_init2(nthreads);
+		int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
+		int ft = ghost_getLocalRank()*nt;
+		int poolThreads[] = {nt,nt};
+		int firstThread[] = {ft,ft};
+		int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
+		int totalthreads = nt*levels;
+		WARNING_LOG("Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",totalthreads);
+		ghost_thpool_init(poolThreads,firstThread,levels);
 	}
 	if (taskq == NULL) {
-		int nqueues = ghost_cpuid_topology.numSockets;
-		DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now with %d queues!",nqueues);
-		ghost_taskq_init(nqueues);
+		DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now...");
+		ghost_taskq_init();
 	}
 
 	if (nThreads == GHOST_TASK_FILL_LD) {
@@ -1199,10 +874,6 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 		t->nThreads = nThreadsPerLD(LD);
 	} 
 	else if (nThreads == GHOST_TASK_FILL_ALL) {
-		/*	if (LD < 0) {
-			WARNING_LOG("FILL_ALL does only work when the LD is given! Not adding task!");
-			return NULL;
-			}*/
 #ifdef GHOST_OPENMP
 		t->nThreads = ghost_thpool->nThreads;
 #else
@@ -1221,19 +892,12 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	t->freed = 0;
 	t->state = (int *)ghost_malloc(sizeof(int));
 	*(t->state) = GHOST_TASK_INVALID;
-	t->executingThreadNo = (int *)ghost_malloc(sizeof(int));
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
 	t->next = NULL;
 	t->prev = NULL;
-	t->siblings = NULL;
 	t->parent = NULL;
 	t->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
 	t->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
-
-	//pthread_cond_init(t->finishedCond,NULL);
-	//pthread_mutex_init(t->mutex,NULL);
-	//*(t->state) = GHOST_TASK_INVALID;
-	//memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	return t;
 }
@@ -1249,10 +913,7 @@ int ghost_thpool_finish()
 		return GHOST_SUCCESS;
 
 	free(ghost_thpool->threads);
-	//free(ghost_thpool->firstThreadOfLD);
-	//free(ghost_thpool->LDs);
 	free(ghost_thpool->sem);
-
 	free(ghost_thpool);
 
 	return GHOST_SUCCESS;

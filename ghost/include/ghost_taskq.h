@@ -63,10 +63,6 @@ typedef struct ghost_task_t {
 	 */
 	int *state;
 	/**
-	 * @brief The number of the thread managing this task. (set by the library)
-	 */
-	int *executingThreadNo;
-	/**
 	 * @brief The list of cores where the task's threads are running. (set by the library)
 	 */
 	int *cores;
@@ -82,11 +78,6 @@ typedef struct ghost_task_t {
 	 * @brief Pointer to the previous task in the queue. (set by the library)
 	 */
 	struct ghost_task_t *prev;
-	/**
-	 * @brief The task's siblings in case it is an GHOST_TASK_LD_ANY task. There
-	 * are either zero or nQueues siblings. (set by the library)
-	 */
-	struct ghost_task_t **siblings;
 	/**
 	 * @brief The adding task if the task has been added from within a task.
 	 * (set by the library)
@@ -113,9 +104,6 @@ typedef struct ghost_taskq_t {
 	ghost_task_t *head; // the first (= highest priority) element
 	ghost_task_t *tail; // the last (= lowest priority) element
 	pthread_mutex_t mutex; // serialize access to the queue
-//	int LD; // the locality domain of this queue
-//	int *nIdleCoresAtLD; // number of idle cores @ LDs
-//	int nIdleCores; // number of idle cores
 	int *coreState; // bitfield
 } ghost_taskq_t;
 
@@ -124,13 +112,8 @@ typedef struct ghost_thpool_t {
 	hwloc_obj_t *PUs; // list of PUs to use
 	hwloc_bitmap_t cpuset;
    	hwloc_bitmap_t busy;
-	//int nLDs; // number of locality domains
-//	int *LDs; // the according LD for each core/thread 
-//	int *firstThreadOfLD; // the first thread of each LD, %[nLDs] = nThreads 
-//	int *nThreadsPerLD; //
 	int nThreads; // the total number of threads
 	int nLDs;
-//	int nIdleCores; // the total number of idle cores
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 

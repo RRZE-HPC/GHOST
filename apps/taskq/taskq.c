@@ -7,7 +7,7 @@
 #include "ghost_util.h"
 #include "ghost_taskq.h"
 
-//#define FULLNODE
+#define FULLNODE
 
 static void *accuFunc(void *arg) 
 {
