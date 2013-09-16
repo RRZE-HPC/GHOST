@@ -104,16 +104,15 @@ typedef struct ghost_taskq_t {
 	ghost_task_t *head; // the first (= highest priority) element
 	ghost_task_t *tail; // the last (= lowest priority) element
 	pthread_mutex_t mutex; // serialize access to the queue
-	int *coreState; // bitfield
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
 	pthread_t *threads;
 	hwloc_obj_t *PUs; // list of PUs to use
 	hwloc_bitmap_t cpuset;
-   	hwloc_bitmap_t busy;
+   	hwloc_bitmap_t busy; // bitmap of busy PUs
 	int nThreads; // the total number of threads
-	int nLDs;
+	int nLDs; // the number of LDs covered by the threads
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
