@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <hwloc.h>
 
 #define GHOST_TASK_LD_UNDEFINED -1 // initializer
 #define GHOST_TASK_LD_ANY 0 // execute task on any LD
@@ -113,24 +114,29 @@ typedef struct ghost_taskq_t {
 	ghost_task_t *tail; // the last (= lowest priority) element
 	pthread_mutex_t mutex; // serialize access to the queue
 //	int LD; // the locality domain of this queue
-	int *nIdleCoresAtLD; // number of idle cores @ LDs
-	int nIdleCores; // number of idle cores
-//	int *coreState; // bitfield
+//	int *nIdleCoresAtLD; // number of idle cores @ LDs
+//	int nIdleCores; // number of idle cores
+	int *coreState; // bitfield
 } ghost_taskq_t;
 
 typedef struct ghost_thpool_t {
 	pthread_t *threads;
-	int nLDs; // number of locality domains
-	int *LDs; // the according LD for each core/thread 
-	int *firstThreadOfLD; // the first thread of each LD, %[nLDs] = nThreads 
+	hwloc_obj_t *PUs; // list of PUs to use
+	hwloc_bitmap_t cpuset;
+   	hwloc_bitmap_t busy;
+	//int nLDs; // number of locality domains
+//	int *LDs; // the according LD for each core/thread 
+//	int *firstThreadOfLD; // the first thread of each LD, %[nLDs] = nThreads 
+//	int *nThreadsPerLD; //
 	int nThreads; // the total number of threads
-	int nIdleCores; // the total number of idle cores
+	int nLDs;
+//	int nIdleCores; // the total number of idle cores
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
 
-int ghost_thpool_init(int nThreads);
-int ghost_taskq_init(int nqs);
+int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
+int ghost_taskq_init();
 int ghost_taskq_finish();
 int ghost_thpool_finish();
 

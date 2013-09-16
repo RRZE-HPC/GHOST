@@ -222,6 +222,7 @@ int ghost_getRank(MPI_Comm);
 int ghost_getLocalRank();
 int ghost_getNumberOfRanksOnNode();
 int ghost_getNumberOfHwThreads();
+int ghost_getNumberOfNumaNodes();
 int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
 int ghost_getNumberOfRanks(MPI_Comm);

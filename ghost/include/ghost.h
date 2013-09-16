@@ -31,6 +31,7 @@ typedef int MPI_Comm;
 #include <inttypes.h>
 #include <sys/types.h>
 #include <pthread.h>
+#include <hwloc.h>
 
 #ifdef OPENCL
 #include <CL/cl.h>
@@ -319,6 +320,7 @@ int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, voi
 
 extern int hasCUDAdevice;
 extern int hasOPENCLdevice;
+extern hwloc_topology_t topology;
 
 #ifdef __cplusplus
 } // extern "C"

@@ -26,7 +26,7 @@ Q       = @
 VPATH   = ./src/ ./src/fortran/ ./src/fortran/modules/ ./src/cl/ ./src/mpi/ ./src/cu/ ./src/likwid/ 
 OBJDIR  = ./obj
 MODDIR  = ./mod
-IPATH  += -I./include/ -I./include/fortran/ -I./include/likwid/
+IPATH  += -I./include/ -I./include/fortran/ -I./include/likwid/ -I$(HWLOCPATH)/include/
 OBJS	= $(LIKWOBJS) $(COBJS) $(CPPOBJS)
 FFLAGS += $(FMODFLAG) $(MODDIR)
 

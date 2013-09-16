@@ -7,6 +7,8 @@
 #include "ghost_util.h"
 #include "ghost_taskq.h"
 
+//#define FULLNODE
+
 static void *accuFunc(void *arg) 
 {
 	int *ret = (int *)ghost_malloc(sizeof(int));
@@ -57,12 +59,28 @@ static void *longRunningFunc(void *arg)
 
 int main(int argc, char ** argv)
 {
+	ghost_init(argc,argv);
 	int foo = 42;
 
-	ghost_init(argc,argv);
-	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
+#ifdef FULLNODE
+	int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
+	int ft = ghost_getLocalRank()*nt;
+	int nThreads[] = {nt,nt};
+	int firstThread[] = {ft,ft};
+	int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
+	ghost_thpool_init(nThreads,firstThread,levels);
+#else
+	int nThreads[] = {4};
+	int firstThread[] = {2};
+	int levels = 1;
+	ghost_thpool_init(nThreads,firstThread,levels);
+#endif
 
-	printf("The thread pool consists of %d threads in %d locality domains\n",ghost_thpool->nThreads,ghost_thpool->nLDs);
+	ghost_taskq_init();
+	int nLDs = ghost_thpool->nLDs;
+	//ghost_thpool_init(ghost_getNumberOfPhysicalCores());
+
+	printf("The thread pool consists of %d threads @ %d NUMA nodes\n",ghost_thpool->nThreads,nLDs);
 
 	ghost_task_t *accuTask;
 	ghost_task_t *lrTask;
@@ -107,7 +125,7 @@ int main(int argc, char ** argv)
 	ghost_task_t **tasks = (ghost_task_t **)ghost_malloc(nTasks*sizeof(ghost_task_t *));
 
 	for (t=0; t<nTasks; t++) {
-		tasks[t] = ghost_task_init(1, t%ghost_thpool->nLDs, t==shortIdx?&shortRunningFunc:&longRunningFunc, NULL, GHOST_TASK_DEFAULT);
+		tasks[t] = ghost_task_init(1, t%nLDs, t==shortIdx?&shortRunningFunc:&longRunningFunc, NULL, GHOST_TASK_DEFAULT);
 		ghost_task_add(tasks[t]);
 	}
 

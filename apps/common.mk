@@ -1,6 +1,6 @@
 LPATH+= -L$(strip $(GHOSTPATH))/lib
 IPATH+= -I$(strip $(GHOSTPATH))/include/ghost -I$(strip $(GHOSTPATH))/include/ghost/likwid
-LIBS+= -lghost
+LIBS+= -lghost -lhwloc
 
 ifneq ($(strip $(MIC)),0)
 LPATH += -L$(INTEL_C_HOME)/mkl/lib/mic

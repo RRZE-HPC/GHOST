@@ -725,6 +725,12 @@ int ghost_getNumberOfThreads()
 	return nthreads;
 }
 
+int ghost_getNumberOfNumaNodes()
+{
+	int depth = hwloc_get_type_depth(topology,HWLOC_OBJ_NODE);
+	return hwloc_get_nbobjs_by_depth(topology,depth);
+}
+
 static int stringcmp(const void *x, const void *y)
 {
 	return (strcmp((char *)x, (char *)y));

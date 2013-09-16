@@ -40,6 +40,8 @@
 #endif
 #include "ghost_blas_mangle.h"
 
+hwloc_topology_t topology;
+
 //static int options;
 #ifdef GHOST_MPI
 static int MPIwasInitialized;
@@ -183,6 +185,9 @@ int ghost_init(int argc, char **argv)
 //#ifdef CUDA
 //	CU_init();
 //#endif
+	
+	hwloc_topology_init(&topology);
+	hwloc_topology_load(topology);
 
 	ghost_cpuid_init();
 
@@ -194,7 +199,8 @@ void ghost_finish()
 
 	ghost_cpuid_finish();
 	ghost_taskq_finish();
-	ghost_thpool_finish();
+	//ghost_thpool_finish();
+	hwloc_topology_destroy(topology);
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_CLOSE;
