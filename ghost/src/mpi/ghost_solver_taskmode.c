@@ -12,6 +12,7 @@
 
 
 typedef struct {
+	ghost_vec_t *rhs;
 	ghost_context_t *context;
 	int nprocs,me,send_messages,recv_messages;
 	char *work;
@@ -42,6 +43,7 @@ static void *communicate(void *vargs)
 
 	MPI_safecall(MPI_Waitall(args->send_messages+args->recv_messages, args->request, args->status));
 
+	args->rhs->uploadHalo(args->rhs);
 	return NULL;
 }
 
@@ -61,6 +63,7 @@ static void *computeLocal(void *vargs)
 //	printf("    ######### compute: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
 //	}
 	compArgs *args = (compArgs *)vargs;
+	args->invec->uploadNonHalo(args->invec);
 
 	args->mat->localPart->kernel(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
 
@@ -125,6 +128,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		cargs.nprocs = nprocs;
 	   	cargs.me = me;
 	   	cargs.work = work;
+		cargs.rhs = invec;
 	   	cargs.sizeofRHS = sizeofRHS;
 	   	cargs.max_dues = max_dues;
 		cpargs.mat = mat;
@@ -202,7 +206,6 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	likwid_markerStartRegion("Kernel 3 -- local computation");
 #endif
 
-	invec->uploadNonHalo(invec);
 /*#ifdef OPENCL
 	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif
@@ -248,7 +251,6 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
-	invec->uploadHalo(invec);
 /*#ifdef OPENCL
 	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
 			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
