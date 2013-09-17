@@ -5,7 +5,6 @@
 #include "ghost_mat.h"
 #include "ghost_vec.h"
 #include "ghost_taskq.h"
-#include "cpuid.h"
 #include "sell.h"
 #include "crs.h"
 
@@ -189,15 +188,12 @@ int ghost_init(int argc, char **argv)
 	hwloc_topology_init(&topology);
 	hwloc_topology_load(topology);
 
-	ghost_cpuid_init();
-
 	return GHOST_SUCCESS;
 }
 
 void ghost_finish()
 {
 
-	ghost_cpuid_finish();
 	ghost_taskq_finish();
 	//ghost_thpool_finish();
 	hwloc_topology_destroy(topology);

@@ -19,32 +19,6 @@
 
 #include "ghost_taskq.h"
 #include "ghost_util.h"
-#include "cpuid.h"
-
-/**
- * @brief Clear bit in field.
- */
-#define CLR_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] &= ~(1 << ((bit)%(sizeof(int)*8))))
-
-/**
- * @brief Set bit in field.
- */
-#define SET_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] |=  (1 << ((bit)%(sizeof(int)*8))))
-
-/**
- * @brief Toggle bit in field.
- */
-#define TGL_BIT(field,bit) (field[(bit)/(sizeof(int)*8)] ^=  (1 << ((bit)%(sizeof(int)*8))))
-
-/**
- * @brief Return value of bit in field.
- */
-#define CHK_BIT(field,bit) (field[(bit)/(sizeof(int)*8)]  &  (1 << ((bit)%(sizeof(int)*8))))
-
-/**
- * @brief The list of task queues created by ghost_task_init(). Usually, there is one task queue per locality domain.
- */
-//static ghost_taskq_t **taskqs = NULL;
 
 static ghost_taskq_t *taskq = NULL;
 

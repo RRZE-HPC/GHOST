@@ -3,7 +3,6 @@
 #include "ghost.h"
 #include "ghost_vec.h"
 #include "ghost_mat.h"
-#include "cpuid.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -692,28 +691,12 @@ int ghost_getNumberOfRanksOnNode()
 }
 int ghost_getNumberOfPhysicalCores()
 {
-	return ghost_cpuid_topology.numHWThreads/ghost_cpuid_topology.numThreadsPerCore;
-/*	FILE *fp;
-	char nCoresS[4];
-	int nCores;
-*/
-//	fp = popen("cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -u | wc -l","r");
-/*	if (!fp) {
-		ABORT("Failed to get number of physical cores (popen failed): %s",strerror(errno));
-	}
-
-	fgets(nCoresS,sizeof(nCoresS)-1,fp);
-	nCores = atoi(nCoresS);
-
-	pclose(fp);
-
-	return nCores;
-*/
+	return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);	
 }
 
 int ghost_getNumberOfHwThreads()
 {
-	return sysconf(_SC_NPROCESSORS_ONLN);
+	return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);	
 }
 
 int ghost_getNumberOfThreads() 
