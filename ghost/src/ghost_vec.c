@@ -128,14 +128,15 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 		DEBUG_LOG(2,"Setting vector storage to host&device");
 		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
 	}
-#endif
-#ifdef OPENCL
+#elif defined(OPENCL)
 	vec->CL_val_gpu = NULL;
 	vec->CLupload = &vec_CLupload;
 	vec->CLdownload = &vec_CLdownload;
 	if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
 		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
 	}
+#else // no CUDA, no OPENCL ==> vector has to be on host
+	vec->traits->flags |= GHOST_VEC_HOST;
 #endif
 
 	vec->val = NULL;
@@ -398,7 +399,7 @@ void getNrowsFromContext(ghost_vec_t *vec)
 		{
 			if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
 				if (vec->context->communicator->halo_elements == -1) {
-					ABORT("You have to make sure to read in the matrix _before_ creating the vectors in a distributed context!");
+					ABORT("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
 				}
 				vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
 			 } else {
