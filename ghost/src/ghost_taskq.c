@@ -95,21 +95,13 @@ static int firstThreadOfLD(int ld);
  */
 int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 {
-	int depth;
 	int t,q,i,l,p;
 	int totalThreads = 0;
 	hwloc_obj_t obj;
 
-
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_CORE);
-	int ncores = hwloc_get_nbobjs_by_depth(topology,depth);
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_PU);
-	int nthreads = hwloc_get_nbobjs_by_depth(topology,depth);
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_NODE);
-	int nnumanodes = hwloc_get_nbobjs_by_depth(topology,depth);
+	int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
+	int nthreads = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
 	int smt = nthreads/ncores;
-
-	DEBUG_LOG(1,"%d threads @ %d cores @ %d NUMA nodes",nthreads,ncores,nnumanodes);
 
 	for (l=0; l<levels; l++) {
 		DEBUG_LOG(1,"Required %d threads @ SMT level %d, starting from thread %d",nThreads[l],l,firstThread[l]);
@@ -127,12 +119,9 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 
 	pthread_key_create(&ghost_thread_key,NULL);
 
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_MACHINE);
-	obj = hwloc_get_obj_by_depth(topology,depth,0);
 	ghost_thpool->cpuset = hwloc_bitmap_alloc();
 	ghost_thpool->busy = hwloc_bitmap_alloc();
 
-	depth = hwloc_get_type_depth(topology,HWLOC_OBJ_PU);
 	int puidx;
 	hwloc_obj_t runner;
 	for (l=0; l<levels; l++) {
@@ -620,12 +609,6 @@ int ghost_taskq_finish()
 	}
 
 	DEBUG_LOG(1,"Free task queues");	
-/*	int q;	
-	for (q=0; q<ghost_thpool->nLDs; q++) {
-		free(taskqs[q]->coreState);
-		free(taskqs[q]);
-	}
-	free(taskqs);*/
 	free(taskq);
 
 	return GHOST_SUCCESS;	
@@ -888,6 +871,7 @@ int ghost_thpool_finish()
 
 	free(ghost_thpool->threads);
 	free(ghost_thpool->sem);
+	free(ghost_thpool->PUs);
 	free(ghost_thpool);
 
 	return GHOST_SUCCESS;
