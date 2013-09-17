@@ -1,5 +1,5 @@
 LPATH+= -L$(strip $(GHOSTPATH))/lib
-IPATH+= -I$(strip $(GHOSTPATH))/include/ghost -I$(strip $(GHOSTPATH))/include/ghost/likwid
+IPATH+= -I$(strip $(GHOSTPATH))/include/ghost -I$(HWLOCPATH)/include/
 LIBS+= -lghost -lhwloc
 
 ifneq ($(strip $(MIC)),0)

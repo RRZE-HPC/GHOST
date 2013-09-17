@@ -19,17 +19,19 @@
 #include <mpi.h>
 #endif
 
-//#define TASKING
+#define TASKING
 #define CHECK // compare with reference solution
 
-GHOST_REGISTER_DT_S(vecdt)
-GHOST_REGISTER_DT_S(matdt)
+GHOST_REGISTER_DT_D(vecdt)
+GHOST_REGISTER_DT_D(matdt)
 #define EPS 1.e-3
 
 #ifdef TASKING
 typedef struct {
 	ghost_mat_t *mat;
-	ghost_vec_t *lhs, *rhs;
+	ghost_vec_t **lhs, **rhs;
+	ghost_vtraits_t *ltr, *rtr;
+	ghost_context_t *ctx;
 	char *matfile;
 	vecdt_t *lhsInit;
 	void (*rhsInit)(int,int,void*);
@@ -49,8 +51,10 @@ static void *createDataFunc(void *vargs)
 {
 	createDataArgs *args = (createDataArgs *)vargs;
 	args->mat->fromFile(args->mat,args->matfile);
-	args->lhs->fromScalar(args->lhs,args->lhsInit);
-	args->rhs->fromFunc(args->rhs,args->rhsInit);
+	*(args->lhs) = ghost_createVector(args->ctx,args->ltr);
+	*(args->rhs) = ghost_createVector(args->ctx,args->rtr);
+	(*(args->lhs))->fromScalar(*(args->lhs),args->lhsInit);
+	(*(args->rhs))->fromFunc(*(args->rhs),args->rhsInit);
 
 	return NULL;
 }
@@ -94,8 +98,8 @@ int main( int argc, char* argv[] )
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
 
 	ghost_mat_t *mat; // matrix
-	ghost_vec_t *lhs; // lhs vector
-	ghost_vec_t *rhs; // rhs vector
+	ghost_vec_t *lhs = NULL; // lhs vector
+	ghost_vec_t *rhs = NULL; // rhs vector
 
 	ghost_context_t *context;
 
@@ -119,7 +123,6 @@ int main( int argc, char* argv[] )
 	}
 
 	ghost_init(argc,argv);       // basic initialization
-	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 
 #ifndef TASKING
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
@@ -133,7 +136,7 @@ int main( int argc, char* argv[] )
 //	ghost_setCore(23);
 //#pragma omp parallel
 //	WARNING_LOG("Main thread %d running @ core %d",omp_get_thread_num(),ghost_getCore());
-	createDataArgs args = {.mat = mat, .lhs = lhs, .rhs = rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal};
+	createDataArgs args = {.mat = mat, .lhs = &lhs, .rhs = &rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal, .rtr = &rvtraits, .ltr = &lvtraits, .ctx = context};
 	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
 	ghost_task_add(createDataTask);
 #else
