@@ -122,15 +122,27 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 	ghost_thpool->cpuset = hwloc_bitmap_alloc();
 	ghost_thpool->busy = hwloc_bitmap_alloc();
 
-	int puidx;
+	int puidx = 0;
+	int smtlevel = 0;
+	int coreid = 0;
 	hwloc_obj_t runner;
-	for (l=0; l<levels; l++) {
-		for (p=firstThread[l]; p<firstThread[l]+nThreads[l]; p++) {
-			i = p*smt+l;
-			puidx = (i-smt*firstThread[l])/(smt-levels+1);
-			obj = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,i);
-			hwloc_bitmap_or(ghost_thpool->cpuset,ghost_thpool->cpuset,obj->cpuset);
+
+
+	for (p=0; p<ghost_getNumberOfHwThreads(); p++) {
+		obj = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,p);
+		smtlevel = obj->sibling_rank;
+		for (runner=obj; runner; runner=runner->parent) {
+			if (runner->type == HWLOC_OBJ_CORE) {
+				coreid = runner->logical_index;
+				break;
+			}
+		}
+		if ((smtlevel < levels) && 
+				(coreid >= firstThread[smtlevel]) && 
+				(coreid < (firstThread[smtlevel]+nThreads[smtlevel]))) {
 			ghost_thpool->PUs[puidx] = obj;
+			hwloc_bitmap_or(ghost_thpool->cpuset,ghost_thpool->cpuset,obj->cpuset);
+			puidx++;
 		}
 	}
 
