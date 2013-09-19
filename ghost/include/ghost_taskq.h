@@ -22,6 +22,11 @@
 #define GHOST_TASK_FILL_LD -1 // use all threads of the given LD
 #define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
 
+#define GHOST_THPOOL_NTHREADS_FULLNODE ((int*)(0xBEEF))
+#define GHOST_THPOOL_FTHREAD_DEFAULT ((int *)(0xBEEF))
+#define GHOST_THPOOL_LEVELS_FULLSMT 0
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

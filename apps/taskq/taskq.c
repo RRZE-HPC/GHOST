@@ -62,7 +62,7 @@ int main(int argc, char ** argv)
 	ghost_init(argc,argv);
 	int foo = 42;
 
-#ifdef FULLNODE
+/*#ifdef FULLNODE
 	int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
 	int ft = ghost_getLocalRank()*nt;
 	int nThreads[] = {nt,nt};
@@ -75,7 +75,8 @@ int main(int argc, char ** argv)
 	int levels = 1;
 	ghost_thpool_init(nThreads,firstThread,levels);
 #endif
-
+*/
+	ghost_thpool_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
 	ghost_taskq_init();
 	int nLDs = ghost_thpool->nLDs;
 	//ghost_thpool_init(ghost_getNumberOfPhysicalCores());

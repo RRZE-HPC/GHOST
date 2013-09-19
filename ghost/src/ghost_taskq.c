@@ -93,15 +93,43 @@ static int firstThreadOfLD(int ld);
  * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
  * performed before this function returns.
  */
-int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
+int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 {
 	int t,q,i,l,p;
 	int totalThreads = 0;
 	hwloc_obj_t obj;
+	int *nThreads, *firstThread, levels;
 
 	int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
 	int nthreads = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
 	int smt = nthreads/ncores;
+
+	if (_levels == GHOST_THPOOL_LEVELS_FULLSMT) {
+		levels = smt;
+	} else {
+		levels = _levels;
+	}
+
+	if (_nThreads == GHOST_THPOOL_NTHREADS_FULLNODE) {
+		int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
+		nThreads = (int *)ghost_malloc(levels*sizeof(int));
+		for (l=0; l<levels; l++) {
+			nThreads[l] = nt;
+		}
+	} else {
+		nThreads = _nThreads;
+	}
+
+	if (_firstThread == GHOST_THPOOL_FTHREAD_DEFAULT) {
+		int ft = ghost_getLocalRank()*ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanksOnNode();
+		firstThread = (int *)ghost_malloc(levels*sizeof(int));
+		for (l=0; l<levels; l++) {
+			firstThread[l] = ft;
+		}
+	} else {
+		firstThread = _firstThread;
+	}
+
 
 	for (l=0; l<levels; l++) {
 		DEBUG_LOG(1,"Required %d threads @ SMT level %d, starting from thread %d",nThreads[l],l,firstThread[l]);
@@ -151,7 +179,7 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 		nodes[i] = 0;
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
-			if (runner->type == HWLOC_OBJ_NODE) {
+			if (runner->type <= HWLOC_OBJ_NODE) {
 				nodes[i] = runner->logical_index;
 				break;
 			}
@@ -202,7 +230,7 @@ static int nThreadsPerLD(int ld)
  	for (i=0; i<ghost_thpool->nThreads; i++) {	
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
-			if (runner->type == HWLOC_OBJ_NODE) {
+			if (runner->type <= HWLOC_OBJ_NODE) {
 				if (runner->logical_index == ld) {
 					n++;
 				}
@@ -237,7 +265,7 @@ static int firstThreadOfLD(int ld)
  	for (i=0; i<ghost_thpool->nThreads; i++) {	
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
-			if (runner->type == HWLOC_OBJ_NODE) {
+			if (runner->type <= HWLOC_OBJ_NODE) {
 				if (runner->logical_index == ld) {
 					return i;
 				}
