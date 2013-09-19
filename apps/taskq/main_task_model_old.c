@@ -8,7 +8,7 @@
 #include "ghost_taskq.h"
 
 //#define SYNC_WAIT
-#define DONT_PIN_CONTROL_THREADS
+//#define DONT_PIN_CONTROL_THREADS
 
 //                                                              
 // this example driver performs the following algorithm.        

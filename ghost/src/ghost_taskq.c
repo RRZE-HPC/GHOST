@@ -148,6 +148,7 @@ int ghost_thpool_init(int *nThreads, int *firstThread, int levels)
 
 	int nodes[totalThreads];
 	for (i=0; i<totalThreads; i++) {
+		nodes[i] = 0;
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
 			if (runner->type == HWLOC_OBJ_NODE) {

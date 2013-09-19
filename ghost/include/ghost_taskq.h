@@ -100,19 +100,54 @@ typedef struct ghost_task_t {
 } ghost_task_t;
 
 
+/**
+ * @brief This struct represents the task queue.
+ */
 typedef struct ghost_taskq_t {
-	ghost_task_t *head; // the first (= highest priority) element
-	ghost_task_t *tail; // the last (= lowest priority) element
-	pthread_mutex_t mutex; // serialize access to the queue
+	/**
+	 * @brief The first (= highest priority) task in the queue
+	 */
+	ghost_task_t *head;
+	/**
+	 * @brief The last (= lowest priority) task in the queue
+	 */
+	ghost_task_t *tail;
+	/**
+	 * @brief Serialize access to the queue
+	 */
+	pthread_mutex_t mutex;
 } ghost_taskq_t;
 
+/**
+ * @brief The thread pool consisting of all threads that will ever do some
+ * tasking-related work.
+ */
 typedef struct ghost_thpool_t {
+	/**
+	 * @brief The pthread of each GHOST thread.
+	 */
 	pthread_t *threads;
-	hwloc_obj_t *PUs; // list of PUs to use
+	/**
+	 * @brief The PU (Processing Unit) of each GHOST thread.
+	 */
+	hwloc_obj_t *PUs;
 	hwloc_bitmap_t cpuset;
-   	hwloc_bitmap_t busy; // bitmap of busy PUs
-	int nThreads; // the total number of threads
-	int nLDs; // the number of LDs covered by the threads
+	/**
+	 * @brief A bitmap with one bit per PU where 1 means that a PU is busy and 0 means that it is
+	 * idle.
+	 */
+   	hwloc_bitmap_t busy;
+	/**
+	 * @brief The total number of threads in the thread pool
+	 */
+	int nThreads;
+	/**
+	 * @brief The number of LDs covered by the pool's threads.
+	 */
+	int nLDs;
+	/**
+	 * @brief Counts the number of readily  
+	 */
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 

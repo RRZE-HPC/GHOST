@@ -104,14 +104,16 @@ by the same data structure.
 Tasking
 =======
 
-The tasking functionality is based on a number of task queues and a thread pool.
-There may be multiple task queues in order to control the affinty of task
-execution.  In a regular use case, one would have one task queue per locality
-domain; and a locality domain may be equal to a NUMA domain.
+The tasking functionality is based on a task queue and a thread pool.
+There is a single task queue to manage tasks, regardless of the task's
+properties such as hardware affinity.
 
-However, there is only a single thread pool which contains all threads which may
-ever be used by a task. Typical scenarios may be to have one thread per physical
-core or one thread per hardware thread.
+Besides, there is a single thread pool which contains all threads which may
+ever be used by all task. The number of threads can be specified by the
+arguments of `ghost_thpool_init`. Typical scenarios may be to have one GHOST thread per physical
+core or one GHOST thread per hardware thread (i.e., using the hardware's SMT
+capabilities).
+Affinity control of the GHOST threads is done by means of [hwloc](http://www.open-mpi.org/projects/hwloc/).
 
 Initialization
 --------------
@@ -120,8 +122,8 @@ Both the task queues and the thread pool have to be initialized at some point.
 This can either be done inside the application. By this, the user has full
 control over the number of threads and the number of task queues.
 If initialization is not done by the user, it will be detected in
-`ghost_task_init()` (which is always the first tasking-related function being
-called) and done there with reasonable default values.
+`ghost_task_init()`, i.e., at the time when the first task is being created, and
+done there with reasonable default values.
 
 
 Thread lifecycle
@@ -130,9 +132,12 @@ Thread lifecycle
 A pthread is created for each thread of the thread pool in `ghost_thpool_init()`.
 Each of the threads has `thread_main()` as the starting routine where it runs 
 in an infinite loop.
-In the main loop, the threads are waiting on a semaphore which counts the number
+In this loop, the threads are waiting on a semaphore which counts the number
 of tasks in all queues. As soon as a task gets added to a queue, the first
-thread returning from wait will have the chance to execute this task.
+thread returning from `sem_wait` will have the chance to execute this task.
+If, for any reason, the thread cannot execute the task (or any other task in the
+queue), the above-mentioned semaphore gets increased by one and the thread
+re-enters it's main loop.
 Once the task queues are empty and subject to be killed (i.e., at termination of
 the application), the global variable `killed` is set to one and the threads
 break out of the infinite loop.
