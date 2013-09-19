@@ -827,7 +827,7 @@ int ghost_task_destroy(ghost_task_t *t)
 	
 	free(t->cores);
 	free(t->state);
-	free(t->ret);
+	//free(t->ret);
 	free(t->mutex);
 	free(t->finishedCond);
 	free(t);
