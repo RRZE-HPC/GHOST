@@ -77,7 +77,7 @@ int main(int argc, char ** argv)
 #endif
 */
 	ghost_thpool_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
-	ghost_taskq_init();
+//	ghost_taskq_init();
 	int nLDs = ghost_thpool->nLDs;
 	//ghost_thpool_init(ghost_getNumberOfPhysicalCores());
 

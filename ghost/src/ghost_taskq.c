@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <omp.h>
 
+#define NIDLECORES (ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy))
 
 #include "ghost_taskq.h"
 #include "ghost_util.h"
@@ -104,7 +105,9 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 	int nthreads = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
 	int smt = nthreads/ncores;
 
+	//WARNING_LOG("ncores: %d, nthreads: %d",ncores,nthreads);
 	if (_levels == GHOST_THPOOL_LEVELS_FULLSMT) {
+		WARNING_LOG("Setting levels to %d",smt);
 		levels = smt;
 	} else {
 		levels = _levels;
@@ -115,6 +118,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		nThreads = (int *)ghost_malloc(levels*sizeof(int));
 		for (l=0; l<levels; l++) {
 			nThreads[l] = nt;
+			WARNING_LOG("nThreads[%d] = %d",l,nt);
 		}
 	} else {
 		nThreads = _nThreads;
@@ -125,6 +129,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		firstThread = (int *)ghost_malloc(levels*sizeof(int));
 		for (l=0; l<levels; l++) {
 			firstThread[l] = ft;
+			WARNING_LOG("firstThread[%d] = %d",l,ft);
 		}
 	} else {
 		firstThread = _firstThread;
@@ -160,7 +165,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		obj = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,p);
 		smtlevel = obj->sibling_rank;
 		for (runner=obj; runner; runner=runner->parent) {
-			if (runner->type == HWLOC_OBJ_CORE) {
+			if (runner->type <= HWLOC_OBJ_CORE) {
 				coreid = runner->logical_index;
 				break;
 			}
@@ -246,7 +251,7 @@ static int nIdleCoresAtLD(int ld)
 	int begin = firstThreadOfLD(ld), end = begin+nThreadsPerLD(ld);
 	hwloc_bitmap_t LDBM = hwloc_bitmap_alloc();
 
-	hwloc_bitmap_set_range(LDBM,begin,end);
+	hwloc_bitmap_set_range(LDBM,begin,end-1);
 	hwloc_bitmap_t busy = hwloc_bitmap_alloc();
    	hwloc_bitmap_andnot(busy,LDBM,ghost_thpool->busy);
 
@@ -371,6 +376,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		DEBUG_LOG(1,"Pinning the task's threads");
 		ghost_ompSetNumThreads(curTask->nThreads);
 
+		if (!(curTask->flags & GHOST_TASK_NO_PIN)) {
 		int reservedCores = 0;
 
 		int t = 0;
@@ -390,6 +396,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 									(int)pthread_self(),core);
 
 							hwloc_bitmap_set(ghost_thpool->busy,core);
+//							WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
 							ghost_setCore(ghost_thpool->PUs[core]->os_index);
 							curTask->cores[reservedCores] = core;
 							reservedCores++;
@@ -405,6 +412,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 
 		DEBUG_LOG(1,"Pinning successful, returning");
+		}
 		return curTask;
 	}
 
@@ -493,8 +501,10 @@ static void * thread_main(void *arg)
 
 static int ghost_task_unpin(ghost_task_t *task)
 {
+	if (!(task->flags & GHOST_TASK_NO_PIN)) {
 	for (int t=0; t<task->nThreads; t++) {
 		hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
+	}
 	}
 	task->freed = 1;
 
@@ -683,7 +693,9 @@ int ghost_task_wait(ghost_task_t * task)
 
 	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
 	if (parent != NULL) {
+		WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
 		ghost_task_unpin(parent);
+		WARNING_LOG("Now idle PUs: %d",NIDLECORES);
 	}
 
 	pthread_mutex_lock(task->mutex);
@@ -693,6 +705,8 @@ int ghost_task_wait(ghost_task_t * task)
 	} else {
 		DEBUG_LOG(1,"Task %p has already finished",task);
 	}
+
+	// TODO pin again if have been unpinned
 
 	pthread_mutex_unlock(task->mutex);
 	pthread_mutex_lock(&anyTaskFinishedMutex);
