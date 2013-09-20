@@ -11,7 +11,7 @@
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
 #define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
-//#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
+#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
 #define GHOST_TASK_NO_PIN 8  
 
 #define GHOST_TASK_INVALID 0 // task has not been enqueued
@@ -71,6 +71,7 @@ typedef struct ghost_task_t {
 	 * @brief The list of cores where the task's threads are running. (set by the library)
 	 */
 	int *cores;
+	hwloc_bitmap_t coremap;
 	/**
 	 * @brief The return value of the task's funtion. (set by the library)
 	 */

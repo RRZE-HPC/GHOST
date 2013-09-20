@@ -21,6 +21,9 @@
 #include "ghost_taskq.h"
 #include "ghost_util.h"
 
+/**
+ * @brief The task queue created by ghost_taskq_init().
+ */
 static ghost_taskq_t *taskq = NULL;
 
 /**
@@ -63,10 +66,13 @@ static pthread_mutex_t anyTaskFinishedMutex;
 pthread_key_t ghost_thread_key = 0;
 
 static int** coreidx;
-//int corestate[8]; //TODO length constant
 
 static void * thread_main(void *arg);
 static int ghost_task_unpin(ghost_task_t *task);
+static int nIdleCoresAtLD(hwloc_bitmap_t, int);
+static int nBusyCoresAtLD(hwloc_bitmap_t, int);
+static int nThreadsPerLD(int ld);
+static int firstThreadOfLD(int ld);
 
 /**
  * @brief Compare two integers
@@ -80,10 +86,6 @@ static int intcomp(const void *x, const void *y)
 {
 	return (*(int *)x - *(int *)y);
 }
-
-static int nIdleCoresAtLD(int ld);
-static int nThreadsPerLD(int ld);
-static int firstThreadOfLD(int ld);
 
 /**
  * @brief Initializes a thread pool with a given number of threads.
@@ -191,10 +193,10 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		}
 		DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,i%smt,runner->logical_index);
 	}
-	
+
 	qsort(nodes,totalThreads,sizeof(int),intcomp);
 	ghost_thpool->nLDs = 1;
-	
+
 	for (i=1; i<totalThreads; i++) {
 		if (nodes[i] != nodes[i-1]) {
 			ghost_thpool->nLDs++;
@@ -232,7 +234,7 @@ static int nThreadsPerLD(int ld)
 {
 	int i,n = 0;
 	hwloc_obj_t obj,runner;
- 	for (i=0; i<ghost_thpool->nThreads; i++) {	
+	for (i=0; i<ghost_thpool->nThreads; i++) {	
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
 			if (runner->type <= HWLOC_OBJ_NODE) {
@@ -246,14 +248,30 @@ static int nThreadsPerLD(int ld)
 	return n;
 }
 
-static int nIdleCoresAtLD(int ld)
+static int nIdleCoresAtLD(hwloc_bitmap_t bm, int ld)
+{
+	int begin = firstThreadOfLD(ld), end = begin+nThreadsPerLD(ld);
+	hwloc_bitmap_t LDBM = hwloc_bitmap_alloc();
+
+	hwloc_bitmap_set_range(LDBM,begin,end-1);
+	hwloc_bitmap_t idle = hwloc_bitmap_alloc();
+	hwloc_bitmap_andnot(idle,LDBM,bm);
+
+	int w = hwloc_bitmap_weight(idle);
+
+	hwloc_bitmap_free(LDBM);
+	hwloc_bitmap_free(idle);
+	return w;
+}
+
+static int nBusyCoresAtLD(hwloc_bitmap_t bm, int ld)
 {
 	int begin = firstThreadOfLD(ld), end = begin+nThreadsPerLD(ld);
 	hwloc_bitmap_t LDBM = hwloc_bitmap_alloc();
 
 	hwloc_bitmap_set_range(LDBM,begin,end-1);
 	hwloc_bitmap_t busy = hwloc_bitmap_alloc();
-   	hwloc_bitmap_andnot(busy,LDBM,ghost_thpool->busy);
+	hwloc_bitmap_and(busy,LDBM,bm);
 
 	int w = hwloc_bitmap_weight(busy);
 
@@ -266,8 +284,8 @@ static int firstThreadOfLD(int ld)
 {
 	int i;
 	hwloc_obj_t obj,runner;
-	
- 	for (i=0; i<ghost_thpool->nThreads; i++) {	
+
+	for (i=0; i<ghost_thpool->nThreads; i++) {	
 		obj = ghost_thpool->PUs[i];
 		for (runner=obj; runner; runner=runner->parent) {
 			if (runner->type <= HWLOC_OBJ_NODE) {
@@ -358,29 +376,54 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 	while(curTask != NULL)
 	{
-		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (nIdleCoresAtLD(curTask->LD) < curTask->nThreads)) {
-			DEBUG_LOG(1,"Skipping task %p because there are not enough idle cores at its strict LD %d: %d < %d",curTask,curTask->LD,nIdleCoresAtLD(curTask->LD),curTask->nThreads);
+		int availcores = 0;
+		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
+			if (curTask->flags & GHOST_TASK_LD_STRICT) {
+				availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD)+nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
+			} else {
+				availcores = NIDLECORES + hwloc_bitmap_weight(curTask->parent->coremap);
+			}
+		} else { 
+			if (curTask->flags & GHOST_TASK_LD_STRICT) {
+				availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD);
+			} else {
+				availcores = NIDLECORES;
+			}
+		}
+		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (nIdleCoresAtLD(ghost_thpool->busy,curTask->LD) < curTask->nThreads)) {
+			DEBUG_LOG(1,"Skipping task %p because there are not enough idle cores at its strict LD %d: %d < %d",curTask,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),curTask->nThreads);
 			curTask = curTask->next;
 			continue;
 		}
-		if ((ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)) < curTask->nThreads) {
-			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
+		if (NIDLECORES < curTask->nThreads) {
+			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,NIDLECORES);
 			curTask = curTask->next;
 			continue;
 		}
 
-		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(curTask->LD),(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
+		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
 
 		DEBUG_LOG(1,"Deleting task itself");
 		taskq_deleteTask(q,curTask);	
 		DEBUG_LOG(1,"Pinning the task's threads");
 		ghost_ompSetNumThreads(curTask->nThreads);
 
-		if (!(curTask->flags & GHOST_TASK_NO_PIN)) {
+		if (curTask->flags & GHOST_TASK_NO_PIN) {
+			return curTask;
+		}
+
 		int reservedCores = 0;
 
 		int t = 0;
 		int curThread;
+
+		hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
+		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
+			hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,curTask->parent->coremap);
+		} else {
+			hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
+		}
+
 
 		for (curThread=0; curThread<curTask->nThreads; curThread++)
 		{
@@ -396,8 +439,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 									(int)pthread_self(),core);
 
 							hwloc_bitmap_set(ghost_thpool->busy,core);
-//							WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
+							//							WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
 							ghost_setCore(ghost_thpool->PUs[core]->os_index);
+							hwloc_bitmap_set(curTask->coremap,core);
 							curTask->cores[reservedCores] = core;
 							reservedCores++;
 							break;
@@ -412,7 +456,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 
 		DEBUG_LOG(1,"Pinning successful, returning");
-		}
+		
 		return curTask;
 	}
 
@@ -439,7 +483,8 @@ static void * thread_main(void *arg)
 
 	while (1) // as long as there are jobs stay alive
 	{
-		if (sem_wait(&taskSem)) 
+		// TODO wait for condition when unpinned or new task
+		if (sem_wait(&taskSem)) // TODO wait for a signal in order to avoid entering the loop when nothing has changed 
 		{
 			if (errno == EINTR)
 				continue;
@@ -473,6 +518,9 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
 
 		pthread_setspecific(ghost_thread_key,myTask);
+/*		char *coremap;
+		hwloc_bitmap_asprintf(&coremap,myTask->coremap);
+		WARNING_LOG(">>>> %s <<<<",coremap);*/
 		myTask->ret = myTask->func(myTask->arg);
 		pthread_setspecific(ghost_thread_key,NULL);
 
@@ -502,9 +550,9 @@ static void * thread_main(void *arg)
 static int ghost_task_unpin(ghost_task_t *task)
 {
 	if (!(task->flags & GHOST_TASK_NO_PIN)) {
-	for (int t=0; t<task->nThreads; t++) {
-		hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
-	}
+		for (int t=0; t<task->nThreads; t++) {
+			hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
+		}
 	}
 	task->freed = 1;
 
@@ -615,6 +663,7 @@ int ghost_task_add(ghost_task_t *t)
 	*(t->state) = GHOST_TASK_INVALID;
 	memset(t->cores,0,sizeof(int)*t->nThreads);
 
+	hwloc_bitmap_zero(t->coremap);
 	t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
 	t->freed = 0;
 
@@ -692,11 +741,11 @@ int ghost_task_wait(ghost_task_t * task)
 
 
 	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
-	if (parent != NULL) {
-		WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
-		ghost_task_unpin(parent);
-		WARNING_LOG("Now idle PUs: %d",NIDLECORES);
-	}
+//	if (parent != NULL) {
+//		WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
+//		ghost_task_unpin(parent);
+//		WARNING_LOG("Now idle PUs: %d",NIDLECORES);
+//	}
 
 	pthread_mutex_lock(task->mutex);
 	if (*(task->state) != GHOST_TASK_FINISHED) {
@@ -838,9 +887,10 @@ int ghost_task_destroy(ghost_task_t *t)
 {
 	pthread_mutex_destroy(t->mutex);
 	pthread_cond_destroy(t->finishedCond);
-	
+
 	free(t->cores);
 	free(t->state);
+	hwloc_bitmap_free(t->coremap);
 	//free(t->ret);
 	free(t->mutex);
 	free(t->finishedCond);
@@ -905,6 +955,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	t->state = (int *)ghost_malloc(sizeof(int));
 	*(t->state) = GHOST_TASK_INVALID;
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
+	t->coremap = hwloc_bitmap_alloc();
 	t->next = NULL;
 	t->prev = NULL;
 	t->parent = NULL;
