@@ -56,6 +56,15 @@ Version 0.5
 - add multi-vec AXPY
 
 
+Version 0.6
+
+- new operations: 
+  - versions for axp(b)y with only a scalar scaling factor. rename the general ones: vaxp(b)y
+  - vscale: scale each column with their own scaling factor
+- vec view created without nrows and roffset
+- vec->fromVec now takes only columnoffset
+
+
 Version x.x
 
 - instrumentation: prefix all region names with a number according to the level of instrumentation

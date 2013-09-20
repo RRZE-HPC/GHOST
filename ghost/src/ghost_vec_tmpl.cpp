@@ -12,7 +12,7 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 	ghost_vec_dotprod_tmpl<v_t>(vec,vec,&s);
 	s = (v_t)sqrt(s);
 	s = (v_t)(((v_t)1.)/s);
-	ghost_vec_scale_tmpl<v_t>(vec,&s);
+	vec->scale(vec,&s);
 
 #ifdef OPENCL
 	vec->CLupload(vec);
@@ -55,7 +55,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
 }
 
-template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
 	ghost_vidx_t i,v;
 	v_t *s = (v_t *)scale;
@@ -69,7 +69,7 @@ template <typename v_t> void ghost_vec_axpy_tmpl(ghost_vec_t *vec, ghost_vec_t *
 	}
 }
 
-template <typename v_t> void ghost_vec_axpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
+template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
 {
 	ghost_vidx_t i,v;
 	v_t *s = (v_t *)scale;
@@ -85,14 +85,16 @@ template <typename v_t> void ghost_vec_axpby_tmpl(ghost_vec_t *vec, ghost_vec_t 
 	}
 }
 
-template<typename v_t> void ghost_vec_scale_tmpl(ghost_vec_t *vec, void *scale)
+template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 {
-	ghost_vidx_t i;
-	v_t s = *(v_t *)scale;
+	ghost_vidx_t i,v;
+	v_t *s = (v_t *)scale;
 
+	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for 
-	for (i=0; i<vec->traits->nrows; i++) {
-		((v_t *)(vec->val))[i] *= s;
+		for (i=0; i<vec->traits->nrows; i++) {
+			((v_t *)(vec->val))[i] *= s[v];
+		}
 	}
 }
 
@@ -166,41 +168,41 @@ extern "C" void z_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *r
 extern "C" void c_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
 { return ghost_vec_dotprod_tmpl< ghost_complex<float> >(vec,vec2,res); }
 
-extern "C" void d_ghost_vec_scale(ghost_vec_t *vec, void *scale) 
-{ return ghost_vec_scale_tmpl< double >(vec, scale); }
+extern "C" void d_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+{ return ghost_vec_vscale_tmpl< double >(vec, scale); }
 
-extern "C" void s_ghost_vec_scale(ghost_vec_t *vec, void *scale) 
-{ return ghost_vec_scale_tmpl< float  >(vec, scale); }
+extern "C" void s_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+{ return ghost_vec_vscale_tmpl< float  >(vec, scale); }
 
-extern "C" void z_ghost_vec_scale(ghost_vec_t *vec, void *scale) 
-{ return ghost_vec_scale_tmpl< ghost_complex<double> >(vec, scale); }
+extern "C" void z_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+{ return ghost_vec_vscale_tmpl< ghost_complex<double> >(vec, scale); }
 
-extern "C" void c_ghost_vec_scale(ghost_vec_t *vec, void *scale) 
-{ return ghost_vec_scale_tmpl< ghost_complex<float> >(vec, scale); }
+extern "C" void c_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+{ return ghost_vec_vscale_tmpl< ghost_complex<float> >(vec, scale); }
 
-extern "C" void d_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
-{ return ghost_vec_axpy_tmpl< double >(vec, vec2, scale); }
+extern "C" void d_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+{ return ghost_vec_vaxpy_tmpl< double >(vec, vec2, scale); }
 
-extern "C" void s_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
-{ return ghost_vec_axpy_tmpl< float >(vec, vec2, scale); }
+extern "C" void s_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+{ return ghost_vec_vaxpy_tmpl< float >(vec, vec2, scale); }
 
-extern "C" void z_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
-{ return ghost_vec_axpy_tmpl< ghost_complex<double> >(vec, vec2, scale); }
+extern "C" void z_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+{ return ghost_vec_vaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale); }
 
-extern "C" void c_ghost_vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
-{ return ghost_vec_axpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
+extern "C" void c_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+{ return ghost_vec_vaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
 
-extern "C" void d_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_axpby_tmpl< double >(vec, vec2, scale, b); }
+extern "C" void d_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_vaxpby_tmpl< double >(vec, vec2, scale, b); }
 
-extern "C" void s_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_axpby_tmpl< float >(vec, vec2, scale, b); }
+extern "C" void s_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_vaxpby_tmpl< float >(vec, vec2, scale, b); }
 
-extern "C" void z_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_axpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
+extern "C" void z_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_vaxpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
 
-extern "C" void c_ghost_vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
-{ return ghost_vec_axpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
+extern "C" void c_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+{ return ghost_vec_vaxpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
 
 extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< double >(vec); }

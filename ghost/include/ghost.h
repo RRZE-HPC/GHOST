@@ -96,7 +96,7 @@ struct ghost_vec_t
 	int isView;
 
 	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
-	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
+	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t);
 	void          (*fromFile) (ghost_vec_t *, char *, off_t);
 	void          (*fromRand) (ghost_vec_t *);
 	void          (*fromScalar) (ghost_vec_t *, void *);
@@ -109,8 +109,11 @@ struct ghost_vec_t
 	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
 	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*scale) (ghost_vec_t *, void *);
+	void          (*vscale) (ghost_vec_t *, void *);
 	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*axpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
+	void          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
+	void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
 	void          (*print) (ghost_vec_t *);
 	void          (*toFile) (ghost_vec_t *, char *);
 	void          (*entry) (ghost_vec_t *, int,  void *);
@@ -126,8 +129,8 @@ struct ghost_vec_t
 	void          (*uploadNonHalo) (ghost_vec_t *);
 	void          (*downloadNonHalo) (ghost_vec_t *);
 	ghost_vec_t * (*clone) (ghost_vec_t *);
-	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
-	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+//	ghost_vec_t * (*extract) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
+	ghost_vec_t * (*view) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
 	int           (*equals) (ghost_vec_t *, ghost_vec_t *);
 
 #ifdef OPENCL

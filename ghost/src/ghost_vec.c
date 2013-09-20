@@ -24,14 +24,14 @@ void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) =
 void (*ghost_vec_dotprod_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
 {&s_ghost_vec_dotprod, &d_ghost_vec_dotprod, &c_ghost_vec_dotprod, &z_ghost_vec_dotprod};
 
-void (*ghost_vec_scale_funcs[4]) (ghost_vec_t *, void*) = 
-{&s_ghost_vec_scale, &d_ghost_vec_scale, &c_ghost_vec_scale, &z_ghost_vec_scale};
+void (*ghost_vec_vscale_funcs[4]) (ghost_vec_t *, void*) = 
+{&s_ghost_vec_vscale, &d_ghost_vec_vscale, &c_ghost_vec_vscale, &z_ghost_vec_vscale};
 
-void (*ghost_vec_axpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
-{&s_ghost_vec_axpy, &d_ghost_vec_axpy, &c_ghost_vec_axpy, &z_ghost_vec_axpy};
+void (*ghost_vec_vaxpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
+{&s_ghost_vec_vaxpy, &d_ghost_vec_vaxpy, &c_ghost_vec_vaxpy, &z_ghost_vec_vaxpy};
 
-void (*ghost_vec_axpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
-{&s_ghost_vec_axpby, &d_ghost_vec_axpby, &c_ghost_vec_axpby, &z_ghost_vec_axpby};
+void (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
+{&s_ghost_vec_vaxpby, &d_ghost_vec_vaxpby, &c_ghost_vec_vaxpby, &z_ghost_vec_vaxpby};
 
 void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
@@ -42,27 +42,30 @@ int (*ghost_vecEquals_funcs[4]) (ghost_vec_t *, ghost_vec_t *) =
 
 static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
+static void vec_vscale(ghost_vec_t *vec, void *scale);
+static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
+static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
 static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
 static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs);
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs);
 static void vec_fromRand(ghost_vec_t *vec);
 static void vec_fromScalar(ghost_vec_t *vec, void *val);
 static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset);
 static void vec_toFile(ghost_vec_t *vec, char *path);
-static void         ghost_zeroVector(ghost_vec_t *vec);
-static void         ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
-static void         ghost_normalizeVector( ghost_vec_t *vec);
+static void ghost_zeroVector(ghost_vec_t *vec);
+static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
+static void ghost_normalizeVector( ghost_vec_t *vec);
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm);
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat); 
-static void         ghost_freeVector( ghost_vec_t* const vec );
+static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
 static void vec_entry(ghost_vec_t *, int, void *);
 static ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
-static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
+static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t roffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 #ifdef CUDA
 static void vec_CUupload (ghost_vec_t *);
@@ -90,7 +93,10 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	DEBUG_LOG(1,"Initializing vector");
 
 	vec->dotProduct = &vec_dotprod;
+	vec->vscale = &vec_vscale;
 	vec->scale = &vec_scale;
+	vec->vaxpy = &vec_vaxpy;
+	vec->vaxpby = &vec_vaxpby;
 	vec->axpy = &vec_axpy;
 	vec->axpby = &vec_axpby;
 	vec->print = &vec_print;
@@ -110,7 +116,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
-	vec->extract = &vec_extract;
+//	vec->extract = &vec_extract;
 	vec->view = &vec_view;
 	vec->viewPlain = &vec_viewPlain;
 
@@ -248,16 +254,15 @@ static void vec_CLdownload( ghost_vec_t *vec )
 }
 #endif
 
-static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
+static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
-	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
+	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix with col offset %"PRvecIDX,src->traits->nrows,nc,coffs);
 	ghost_vec_t *new;
 	ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
-	newTraits->nrows = nr;
 	newTraits->nvecs = nc;
 
 	new = ghost_createVector(src->context,newTraits);
-	new->val = &VAL(src,src->traits->nrowspadded*coffs+roffs);
+	new->val = &VAL(src,src->traits->nrowspadded*coffs);
 
 	new->isView = 1;
 	return new;
@@ -271,7 +276,7 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
 	vec->isView = 1;
 }
 
-ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
+/*ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
 {
 	DEBUG_LOG(1,"Extracting a %"PRvecIDX"x%"PRvecIDX" dense matrix with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 	ghost_vec_t *new;
@@ -284,7 +289,7 @@ ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, 
 
 	return new;
 
-}
+}*/
 
 static void ghost_normalizeVector( ghost_vec_t *vec)
 {
@@ -421,17 +426,17 @@ void getNrowsFromContext(ghost_vec_t *vec)
 }
 
 
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs, ghost_vidx_t coffs)
+static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
 {
 	vec_malloc(vec);
-	DEBUG_LOG(1,"Initializing vector from vector w/ offset %"PRvecIDX"x%"PRvecIDX,roffs,coffs);
+	DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	ghost_vidx_t i,v;
 
 #pragma omp parallel for private(i) 
 	for (v=0; v<vec->traits->nvecs; v++) {
 		for (i=0; i<vec->traits->nrows; i++) {
-			memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),&VAL(vec2,(coffs+v)*vec2->traits->nrowspadded+roffs+i),sizeofdt);
+			memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),&VAL(vec2,(coffs+v)*vec2->traits->nrowspadded+i),sizeofdt);
 		}
 	}
 	vec->upload(vec);
@@ -439,17 +444,64 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t roffs,
 
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
-	ghost_vec_axpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+	ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	char *s = (char *)ghost_malloc(nc*sizeofdt);
+
+	ghost_vidx_t i;
+	for (i=0; i<nc; i++) {
+		memcpy(&s[i*sizeofdt],scale,sizeofdt);
+	}
+
+	ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s);
+
+	free(s);
 }
 
-static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
+static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
 {
-	ghost_vec_axpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+	ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	char *s = (char *)ghost_malloc(nc*sizeofdt);
+	char *b = (char *)ghost_malloc(nc*sizeofdt);
+
+	ghost_vidx_t i;
+	for (i=0; i<nc; i++) {
+		memcpy(&s[i*sizeofdt],scale,sizeofdt);
+		memcpy(&b[i*sizeofdt],_b,sizeofdt);
+	}
+	ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s,b);
+
+	free(s);
+	free(b);
+}
+
+static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+{
+	ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+}
+
+static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
+{
+	ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
 }
 
 static void vec_scale(ghost_vec_t *vec, void *scale)
 {
-	ghost_vec_scale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
+	ghost_vidx_t nc = vec->traits->nvecs;
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	char *s = (char *)ghost_malloc(nc*sizeofdt);
+
+	ghost_vidx_t i;
+	for (i=0; i<nc; i++) {
+		memcpy(&s[i*sizeofdt],scale,sizeofdt);
+	}
+	ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s);
+}
+
+static void vec_vscale(ghost_vec_t *vec, void *scale)
+{
+	ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
 }
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
@@ -876,5 +928,9 @@ static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
 {
-	return src->extract(src,src->traits->nrows,src->traits->nvecs,0,0);
+	ghost_vec_t *new = ghost_createVector(src->context,ghost_cloneVtraits(src->traits));
+
+	new->fromVec(new,src,0);
+	return new;
+//	return src->extract(src,src->traits->nrows,src->traits->nvecs,0,0);
 }
