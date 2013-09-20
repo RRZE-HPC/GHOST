@@ -122,7 +122,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 			taskflags |= GHOST_TASK_USE_PARENTS;
 
 		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, taskflags);
-		commTask = ghost_task_init(1, 1, &communicate, &cargs, taskflags);
+		commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;

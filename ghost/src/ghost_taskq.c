@@ -390,7 +390,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 				availcores = NIDLECORES;
 			}
 		}
-		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (nIdleCoresAtLD(ghost_thpool->busy,curTask->LD) < curTask->nThreads)) {
+		WARNING_LOG("i need %d, avail %d",curTask->nThreads,availcores);
+		if (availcores < curTask->nThreads) {
+			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",curTask,curTask->nThreads,availcores);
+			curTask = curTask->next;
+			continue;
+		}
+/*		if ((curTask->flags & GHOST_TASK_LD_STRICT) && (nIdleCoresAtLD(ghost_thpool->busy,curTask->LD) < curTask->nThreads)) {
 			DEBUG_LOG(1,"Skipping task %p because there are not enough idle cores at its strict LD %d: %d < %d",curTask,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),curTask->nThreads);
 			curTask = curTask->next;
 			continue;
@@ -399,7 +405,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are idle",curTask,curTask->nThreads,NIDLECORES);
 			curTask = curTask->next;
 			continue;
-		}
+		}*/
 
 		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
 
@@ -434,7 +440,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 					for (; t<ghost_thpool->nThreads; t++) {
 						int core = coreidx[curTask->LD][t];
-						if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
+						//if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
+						if (!hwloc_bitmap_isset(mybusy,core)) {
 							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",
 									(int)pthread_self(),core);
 
@@ -551,6 +558,12 @@ static int ghost_task_unpin(ghost_task_t *task)
 {
 	if (!(task->flags & GHOST_TASK_NO_PIN)) {
 		for (int t=0; t<task->nThreads; t++) {
+			if ((task->flags & GHOST_TASK_USE_PARENTS) && 
+					task->parent && 
+					hwloc_bitmap_isset(task->parent->coremap,task->cores[t])) 
+			{
+				continue;
+			}
 			hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
 		}
 	}
