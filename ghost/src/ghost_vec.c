@@ -16,8 +16,6 @@
 #include <cuda_runtime.h> // TODO in cu_util
 #endif
 
-//#define VAL(vec) ((ghost_dt *)(vec->val))
-
 void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
@@ -54,7 +52,7 @@ static void ghost_zeroVector(ghost_vec_t *vec);
 static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
 static void ghost_normalizeVector( ghost_vec_t *vec);
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm);
-static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat); 
+static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec); 
 static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
@@ -769,7 +767,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	DEBUG_LOG(1,"Vector distributed successfully");
 }
 
-static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat) 
+static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
 {
 #ifdef GHOST_MPI
 	MPI_Datatype mpidt;
@@ -788,8 +786,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 		}
 	}
 	int me = ghost_getRank(vec->context->mpicomm);
-	if (mat != NULL)
-		vec->permute(vec,mat->invRowPerm); 
+	if (vec->context != NULL)
+		vec->permute(vec,vec->context->invRowPerm); 
 
 	int nprocs = ghost_getNumberOfRanks(vec->context->mpicomm);
 	int i;
@@ -815,8 +813,8 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	if (mat != NULL)
-		vec->permute(vec,mat->invRowPerm); 
+	if (vec->context != NULL)
+		vec->permute(vec,vec->context->invRowPerm); 
 	memcpy(totalVec->val,vec->val,totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 }

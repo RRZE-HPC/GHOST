@@ -244,6 +244,8 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	context = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
 	context->flags = context_flags;
+	context->rowPerm = NULL;
+	context->invRowPerm = NULL;
 	context->mpicomm = comm;
 
 	if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
@@ -425,6 +427,8 @@ void ghost_freeContext(ghost_context_t *context)
 	DEBUG_LOG(1,"Freeing context");
 	if (context != NULL) {
 		free(context->solvers);
+		free(context->rowPerm);
+		free(context->invRowPerm);
 		ghost_freeCommunicator(context->communicator);
 
 		free(context);

@@ -164,7 +164,7 @@ static char * SELL_formatName(ghost_mat_t *mat)
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
 	if (mat->traits->flags & GHOST_SPM_SORTED)
-		i = mat->rowPerm[i];
+		i = mat->context->rowPerm[i];
 
 	return SELL(mat)->rowLen[i];
 }
@@ -553,8 +553,6 @@ static void SELL_free(ghost_mat_t *mat)
 	free(SELL(mat)->rowLen);
 
 	free(mat->data);
-	free(mat->rowPerm);
-	free(mat->invRowPerm);
 
 	free(mat);
 

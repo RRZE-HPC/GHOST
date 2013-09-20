@@ -90,8 +90,8 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 #endif
 	mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
-	mat->rowPerm = NULL;
-	mat->invRowPerm = NULL;
+//	mat->rowPerm = NULL;
+//	mat->invRowPerm = NULL;
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
 
@@ -1337,8 +1337,6 @@ static void CRS_free(ghost_mat_t * mat)
 		free(CR(mat)->val);
 
 		free(mat->data);
-		free(mat->rowPerm);
-		free(mat->invRowPerm);
 
 		if (mat->localPart)
 			CRS_free(mat->localPart);

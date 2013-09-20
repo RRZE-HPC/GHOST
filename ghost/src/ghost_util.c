@@ -439,7 +439,7 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 
 
 	DEBUG_LOG(2,"Collection RHS vector for reference solver");
-	rhs->collect(rhs,globRHS,mat);
+	rhs->collect(rhs,globRHS);
 
 	if (me==0) {
 		DEBUG_LOG(1,"Computing actual reference solution with one process");
@@ -931,11 +931,11 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 	res->download(res);
 
 	if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
-		res->permute(res,mat->invRowPerm);
+		res->permute(res,res->context->invRowPerm);
 	} else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
 		// one of those must return immediately
-		res->permute(res,mat->localPart->invRowPerm);
-		res->permute(res,mat->remotePart->invRowPerm);
+		res->permute(res,res->context->invRowPerm);
+		res->permute(res,res->context->invRowPerm);
 	}
 
 	return time;

@@ -288,14 +288,14 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 			}
 		}
 	}
-	mat->rowPerm = rowPerm;
-	mat->invRowPerm = invRowPerm;
+	mat->context->rowPerm = rowPerm;
+	mat->context->invRowPerm = invRowPerm;
 	if (mat->traits->flags & GHOST_SPM_SORTED) {
 		rowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
 		invRowPerm = (ghost_midx_t *)ghost_malloc(cr->nrows*sizeof(ghost_midx_t));
 
-		mat->rowPerm = rowPerm;
-		mat->invRowPerm = invRowPerm;
+		mat->context->rowPerm = rowPerm;
+		mat->context->invRowPerm = invRowPerm;
 
 		DEBUG_LOG(1,"Sorting matrix rows");
 

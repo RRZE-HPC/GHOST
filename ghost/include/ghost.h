@@ -88,20 +88,84 @@ typedef struct ghost_comm_t ghost_comm_t;
 typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 
+/**
+ * @brief This struct represents a vector (dense matrix) datatype.  The
+ * according functions are accessed via function pointers. The first argument of
+ * each member function always has to be a pointer to the vector itself.
+ */
 struct ghost_vec_t 
 {
+	/**
+	 * @brief The vector's traits.
+	 */
 	ghost_vtraits_t *traits;
+	/**
+	 * @brief The context in which the vector is living.
+	 */
 	ghost_context_t *context;
+	/**
+	 * @brief The values of the vector.
+	 */
 	void* val;
+	/**
+	 * @brief Indicates whether the vector is a view. A view is a vector whose
+	 * #val pointer points to some data which is not allocated withing the
+	 * vector.
+	 */
 	int isView;
-
-	void          (*axpy) (ghost_vec_t *, ghost_vec_t *, void *);
-	void          (*axpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
+	
+	/**
+	 * @brief Performs <em>y := a*x + y</em> with scalar a
+	 *
+	 * @param y The in-/output vector
+	 * @param x The input vector
+	 * @param a Points to the scale factor.
+	 */
+	void          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
+	/**
+	 * @brief Performs <em>y := a*x + b*y</em> with scalar a and b 
+	 *
+	 * @param y The in-/output vector.
+	 * @param x The input vector
+	 * @param a Points to the scale factor a.
+	 * @param b Points to the scale factor b.
+	 */
+	void          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
+	/**
+	 * @brief \deprecated
+	 */
 	void          (*CLdownload) (ghost_vec_t *);
-	ghost_vec_t * (*clone) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
+	/**
+	 * @brief Clones a given number of columns of a source vector at a given
+	 * column offset. 
+	 *
+	 * @param vec The source vector.
+	 * @param ncols The number of columns to clone.
+	 * @param coloffset The first column to clone.
+	 *
+	 * @return A clone of the source vector.
+	 */
+	ghost_vec_t * (*clone) (ghost_vec_t *vec, ghost_vidx_t ncols, ghost_vidx_t
+			coloffset);
+	/**
+	 * @brief \deprecated
+	 */
 	void          (*CLupload) (ghost_vec_t *);
-	void          (*collect) (ghost_vec_t *, ghost_vec_t *, ghost_mat_t *);
+	/**
+	 * @brief Collects vec from all MPI ranks and combines them into globalVec.
+	 * The row permutation (if present) if vec's context is used.
+	 *
+	 * @param vec The distributed vector. 
+	 * @param globalVec The global vector.
+	 */
+	void          (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
+	/**
+	 * @brief \deprecated
+	 */
 	void          (*CUdownload) (ghost_vec_t *);
+	/**
+	 * @brief \deprecated
+	 */
 	void          (*CUupload) (ghost_vec_t *);
 	void          (*destroy) (ghost_vec_t *);
 	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *);
@@ -180,15 +244,12 @@ struct ghost_comm_t
 struct ghost_mat_t 
 {
 	ghost_mtraits_t *traits;
-	ghost_midx_t *rowPerm;    // may be NULL
-	ghost_midx_t *invRowPerm; // may be NULL
 	int symmetry;
 	ghost_mat_t *localPart;
 	ghost_mat_t *remotePart;
 	ghost_context_t *context;
 	char *name;
 	void *data;
-	// TODO MPI-IO
 	ghost_kernel_t kernel;
 
 	// access functions
@@ -224,6 +285,9 @@ struct ghost_context_t
 	ghost_midx_t gncols;
 	int flags;
 	double weight;
+
+	ghost_midx_t *rowPerm;    // may be NULL
+	ghost_midx_t *invRowPerm; // may be NULL
 
 	MPI_Comm mpicomm;
 };
