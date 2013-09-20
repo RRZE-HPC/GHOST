@@ -36,10 +36,6 @@ void (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) =
 void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
-int (*ghost_vecEquals_funcs[4]) (ghost_vec_t *, ghost_vec_t *) = 
-{&s_ghost_vecEquals, &d_ghost_vecEquals, &c_ghost_vecEquals, &z_ghost_vecEquals};
-
-
 static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_vscale(ghost_vec_t *vec, void *scale);
@@ -61,9 +57,8 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec, ghost_mat_t *mat); 
 static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
-static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b);
-static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src);
-static void vec_entry(ghost_vec_t *, int, void *);
+static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
+static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t roffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
@@ -113,11 +108,9 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->normalize = &ghost_normalizeVector;
 	vec->destroy = &ghost_freeVector;
 	vec->permute = &ghost_permuteVector;
-	vec->equals = &ghost_vecEquals;
 	vec->clone = &ghost_cloneVector;
 	vec->entry = &vec_entry;
-//	vec->extract = &vec_extract;
-	vec->view = &vec_view;
+	vec->viewVec = &vec_view;
 	vec->viewPlain = &vec_viewPlain;
 
 	vec->upload = &vec_upload;
@@ -275,21 +268,6 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
 	vec->val = &((char *)data)[(lda*coffs+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
 	vec->isView = 1;
 }
-
-/*ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs)
-{
-	DEBUG_LOG(1,"Extracting a %"PRvecIDX"x%"PRvecIDX" dense matrix with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
-	ghost_vec_t *new;
-	ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
-	newTraits->nrows = nr;
-	newTraits->nvecs = nc;
-
-	new = ghost_createVector(src->context,newTraits);
-	new->fromVec(new,src,roffs,coffs);
-
-	return new;
-
-}*/
 
 static void ghost_normalizeVector( ghost_vec_t *vec)
 {
@@ -509,9 +487,10 @@ static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 	ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
 }
 
-static void vec_entry(ghost_vec_t * vec, int i, void *val)
+static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
-	memcpy(val,&VAL(vec,i),ghost_sizeofDataType(vec->traits->datatype));
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	memcpy(val,&((char *)(vec->val))[c*sizeofdt*vec->traits->nrowspadded+r*sizeofdt],sizeofdt);
 }
 
 static void vec_fromRand(ghost_vec_t *vec)
@@ -921,16 +900,11 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 	free(tmp);
 }
 
-static int ghost_vecEquals(ghost_vec_t *a, ghost_vec_t *b)
-{
-	return ghost_vecEquals_funcs[ghost_dataTypeIdx(a->traits->datatype)](a,b);
-}
-
-static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src)
+static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
 	ghost_vec_t *new = ghost_createVector(src->context,ghost_cloneVtraits(src->traits));
+	new->traits->nvecs = nc;
 
-	new->fromVec(new,src,0);
+	new->fromVec(new,src,coffs);
 	return new;
-//	return src->extract(src,src->traits->nrows,src->traits->nvecs,0,0);
 }

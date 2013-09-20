@@ -132,18 +132,6 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 }
 
-template<typename v_t> int ghost_vecEquals_tmpl(ghost_vec_t *a, ghost_vec_t *b)
-{
-	double tol = 1e-5; // TODO as argument?
-	int i;
-	for (i=0; i<a->traits->nrows; i++) {
-		if (fabs(real((std::complex<double>)VAL(a,i) - (std::complex<double>)VAL(b,i))) > tol ||
-				fabs(imag((std::complex<double>)VAL(a,i) - (std::complex<double>)VAL(b,i))) > tol)
-			return 0;
-	}
-	return 1;
-}
-
 extern "C" void d_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< double >(vec); }
 
@@ -216,14 +204,3 @@ extern "C" void z_ghost_vec_fromRand(ghost_vec_t *vec)
 extern "C" void c_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< ghost_complex<float> >(vec); }
 
-extern "C" int d_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2) 
-{ return ghost_vecEquals_tmpl< double >(vec,vec2); }
-
-extern "C" int s_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2) 
-{ return ghost_vecEquals_tmpl< float >(vec,vec2); }
-
-extern "C" int z_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2) 
-{ return ghost_vecEquals_tmpl< ghost_complex<double> >(vec,vec2); }
-
-extern "C" int c_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2) 
-{ return ghost_vecEquals_tmpl< ghost_complex<float> >(vec,vec2); }

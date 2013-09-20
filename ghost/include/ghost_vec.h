@@ -29,7 +29,6 @@ template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t 
 template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *, void *);
 template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *vscale);
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
-template<typename v_t> int ghost_vecEquals_tmpl(ghost_vec_t *a, ghost_vec_t *b);
 
 extern "C" {
 #endif
@@ -59,10 +58,6 @@ void d_ghost_vec_fromRand(ghost_vec_t *vec);
 void s_ghost_vec_fromRand(ghost_vec_t *vec); 
 void z_ghost_vec_fromRand(ghost_vec_t *vec); 
 void c_ghost_vec_fromRand(ghost_vec_t *vec); 
-int d_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2); 
-int s_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2); 
-int z_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2); 
-int c_ghost_vecEquals(ghost_vec_t *vec, ghost_vec_t *vec2); 
 #ifdef __cplusplus
 }
 #endif
