@@ -207,7 +207,7 @@ void ghost_printGhostInfo();
 
 
 void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-void ghost_referenceSolver(ghost_vec_t **, char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+void ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
 
 char * ghost_workdistName(int ghostOptions);
 char * ghost_modeName(int spmvmOptions);

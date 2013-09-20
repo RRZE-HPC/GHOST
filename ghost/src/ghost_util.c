@@ -410,13 +410,13 @@ printf("Likwid Marker API                :      enabled\n");
 
 }
 
-void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype, ghost_context_t *distContext, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
 	DEBUG_LOG(1,"Computing reference solution");
 	int me;
-   	if ((*nodeLHS)->context->communicator != NULL) {
-		me = ghost_getRank((*nodeLHS)->context->mpicomm); 
+   	if (nodeLHS->context->communicator != NULL) {
+		me = ghost_getRank(nodeLHS->context->mpicomm); 
 	} else {
 		me = 0;
 	}
@@ -471,8 +471,8 @@ void ghost_referenceSolver(ghost_vec_t **nodeLHS, char *matrixPath, int datatype
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
 
-	(*nodeLHS)->fromScalar(*nodeLHS,&zero);
-	globLHS->distribute(globLHS, nodeLHS, distContext->communicator);
+	nodeLHS->fromScalar(nodeLHS,&zero);
+	globLHS->distribute(globLHS, nodeLHS);
 
 	globLHS->destroy(globLHS);
 	mat->destroy(mat);

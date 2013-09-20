@@ -51,7 +51,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path);
 static void ghost_zeroVector(ghost_vec_t *vec);
 static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
 static void ghost_normalizeVector( ghost_vec_t *vec);
-static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm);
+static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec);
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec); 
 static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
@@ -703,14 +703,15 @@ vec->CU_val = CU_allocDeviceMemory(size_val);
 return vec;
 }*/
 
-static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghost_comm_t *comm)
+static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 #ifdef GHOST_MPI
-	int me = ghost_getRank((*nodeVec)->context->mpicomm);
+	int me = ghost_getRank(nodeVec->context->mpicomm);
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
+	ghost_comm_t *comm = nodeVec->context->communicator;
 	MPI_Datatype mpidt;
 
 
@@ -728,7 +729,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 		}
 	}
 
-	int nprocs = ghost_getNumberOfRanks((*nodeVec)->context->mpicomm);
+	int nprocs = ghost_getNumberOfRanks(nodeVec->context->mpicomm);
 	int i;
 
 	MPI_Request req[2*(nprocs-1)];
@@ -738,30 +739,30 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t **nodeVec, ghos
 	for (i=0;i<2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
-	if (ghost_getRank((*nodeVec)->context->mpicomm) != 0) {
-		MPI_safecall(MPI_Irecv((*nodeVec)->val,comm->lnrows[me],mpidt,0,me,(*nodeVec)->context->mpicomm,&req[msgcount]));
+	if (ghost_getRank(nodeVec->context->mpicomm) != 0) {
+		MPI_safecall(MPI_Irecv(nodeVec->val,comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
-		memcpy((*nodeVec)->val,vec->val,sizeofdt*comm->lnrows[0]);
+		memcpy(nodeVec->val,vec->val,sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,(*nodeVec)->context->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
 	UNUSED(comm);
-	memcpy((*nodeVec)->val,vec->val,vec->traits->nrowspadded*sizeofdt);
+	memcpy(nodeVec->val,vec->val,vec->traits->nrowspadded*sizeofdt);
 //	*nodeVec = vec->clone(vec);
 #endif
 
 #ifdef OPENCL
-	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
-		(*nodeVec)->CLupload(*nodeVec);
+	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
+		nodeVec->CLupload(nodeVec);
 #endif
 #ifdef CUDA
-	if (!((*nodeVec)->traits->flags & GHOST_VEC_HOST))
-		(*nodeVec)->CUupload(*nodeVec);
+	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
+		nodeVec->CUupload(nodeVec);
 #endif
 
 	DEBUG_LOG(1,"Vector distributed successfully");

@@ -158,7 +158,7 @@ int main( int argc, char* argv[] )
 	ghost_printMatrixInfo(mat);
 #ifdef CHECK
 	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
-	ghost_referenceSolver(&goldLHS,matrixPath,matdt,context,rhs,nIter,spmvmOptions);	
+	ghost_referenceSolver(goldLHS,matrixPath,matdt,rhs,nIter,spmvmOptions);	
 #endif
 
 
@@ -203,8 +203,8 @@ int main( int argc, char* argv[] )
 		errcount=0;
 		vecdt_t res,ref;
 		for (i=0; i<mat->nrows(mat); i++){
-			goldLHS->entry(goldLHS,i,&ref);
-			lhs->entry(lhs,i,&res);
+			goldLHS->entry(goldLHS,i,0,&ref);
+			lhs->entry(lhs,i,0,&res);
 
 			mytol = EPS * mat->rowLen(mat,i);
 			if (creal(cabs(ref-res)) > creal(mytol) ||

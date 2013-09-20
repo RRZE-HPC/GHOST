@@ -167,13 +167,61 @@ struct ghost_vec_t
 	 * @brief \deprecated
 	 */
 	void          (*CUupload) (ghost_vec_t *);
-	void          (*destroy) (ghost_vec_t *);
-	void          (*distribute) (ghost_vec_t *, ghost_vec_t **, ghost_comm_t *);
-	void          (*dotProduct) (ghost_vec_t *, ghost_vec_t *, void *);
-	void          (*download) (ghost_vec_t *);
-	void          (*downloadHalo) (ghost_vec_t *);
-	void          (*downloadNonHalo) (ghost_vec_t *);
-	void          (*entry) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t,  void *);
+	/**
+	 * @brief Destroys a vector, i.e., frees all its data structures.
+	 *
+	 * @param vec The vector
+	 */
+	void          (*destroy) (ghost_vec_t *vec);
+	/**
+	 * @brief Distributes a global vector into node-local vetors.
+	 *
+	 * @param vec The global vector.
+	 * @param localVec The local vector.
+	 */
+	void          (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
+	/**
+	 * @brief Computes the dot product of two vectors and stores the result in
+	 * res.
+	 *
+	 * @param a The first vector.
+	 * @param b The second vector.
+	 * @param res A pointer to where the result should be stored.
+	 */
+	void          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
+	/**
+	 * @brief Downloads an entire vector from a compute device. Does nothing if
+	 * the vector is not present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*download) (ghost_vec_t *vec);
+	/**
+	 * @brief Downloads only a vector's halo elements from a compute device.
+	 * Does nothing if the vector is not present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*downloadHalo) (ghost_vec_t *vec);
+	/**
+	 * @brief Downloads only a vector's local elements (i.e., without halo
+	 * elements) from a compute device. Does nothing if the vector is not
+	 * present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*downloadNonHalo) (ghost_vec_t *vec);
+	/**
+	 * @brief Stores the entry of the vector at a given index (row i, column j)
+	 * into entry.
+	 *
+	 * @param vec The vector.
+	 * @param ghost_vidx_t i The row.
+	 * @param ghost_vidx_t j The column.
+	 * @param entry Where to store the entry.
+	 */
+	void          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
+			void *entry);
 	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
 	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t);
 	void          (*fromFile) (ghost_vec_t *, char *, off_t);

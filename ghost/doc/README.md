@@ -1,6 +1,19 @@
 README {#mainpage}
 ======
 
+GHOST stands for General, Hybrid and Optimized Sparse Toolkit. It provides
+functionality for computation with very large sparse or dense matrices.
+
+
+Data types
+==========
+
+In principle there are two main types of data, namely **sparse matrices** and
+**dense matrices** / **vectors** / **multi-vectors**:
+	1. Sparse matrices
+
+
+
 I/O
 ===
 
@@ -104,8 +117,11 @@ by the same data structure.
 Tasking
 =======
 
-The tasking functionality is based on a task queue and a thread pool.
-There is a single task queue to manage tasks, regardless of the task's
+The tasking functionality is a key feature of GHOST. It is designed to be as
+general as possible and to allow the use of (a-)synchronous tasks in many
+situations.
+The implementation is based on a task queue and a thread pool.
+There is a single task queue which holds all tasks, regardless of their
 properties such as hardware affinity.
 
 Besides, there is a single thread pool which contains all threads which may
@@ -113,7 +129,8 @@ ever be used by all task. The number of threads can be specified by the
 arguments of `ghost_thpool_init`. Typical scenarios may be to have one GHOST thread per physical
 core or one GHOST thread per hardware thread (i.e., using the hardware's SMT
 capabilities).
-Affinity control of the GHOST threads is done by means of [hwloc](http://www.open-mpi.org/projects/hwloc/).
+Affinity control of the GHOST threads is done by means of the
+[hwloc](http://www.open-mpi.org/projects/hwloc/) library.
 
 Initialization
 --------------
@@ -139,7 +156,7 @@ If, for any reason, the thread cannot execute the task (or any other task in the
 queue), the above-mentioned semaphore gets increased by one and the thread
 re-enters it's main loop.
 Once the task queues are empty and subject to be killed (i.e., at termination of
-the application), the global variable `killed` is set to one and the threads
+the application), the global variable `#killed` is set to one and the threads
 break out of the infinite loop.
 
 

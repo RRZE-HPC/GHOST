@@ -377,20 +377,19 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 	while(curTask != NULL)
 	{
 		int availcores = 0;
+		if (curTask->flags & GHOST_TASK_LD_STRICT) {
+			availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD);
+		} else {
+			availcores = NIDLECORES;
+		}
 		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
 			if (curTask->flags & GHOST_TASK_LD_STRICT) {
-				availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD)+nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
+				availcores += nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
 			} else {
-				availcores = NIDLECORES + hwloc_bitmap_weight(curTask->parent->coremap);
+				availcores += hwloc_bitmap_weight(curTask->parent->coremap);
 			}
 		} else { 
-			if (curTask->flags & GHOST_TASK_LD_STRICT) {
-				availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD);
-			} else {
-				availcores = NIDLECORES;
-			}
 		}
-		WARNING_LOG("i need %d, avail %d",curTask->nThreads,availcores);
 		if (availcores < curTask->nThreads) {
 			DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",curTask,curTask->nThreads,availcores);
 			curTask = curTask->next;
@@ -933,7 +932,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 		int firstThread[] = {ft,ft};
 		int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
 		int totalthreads = nt*levels;
-		WARNING_LOG("Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",totalthreads);
+		DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",totalthreads);
 		ghost_thpool_init(poolThreads,firstThread,levels);
 	}
 	if (taskq == NULL) {
