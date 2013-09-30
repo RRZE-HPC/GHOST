@@ -752,7 +752,7 @@ int ghost_task_wait(ghost_task_t * task)
 	DEBUG_LOG(1,"Waiting @core %d for task %p whose state is %d",ghost_getCore(),task,*(task->state));
 
 
-	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+//	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
 //	if (parent != NULL) {
 //		WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
 //		ghost_task_unpin(parent);

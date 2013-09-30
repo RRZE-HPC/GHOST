@@ -400,6 +400,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	}
 
 #else
+	UNUSED(weight);
 	context->communicator = NULL;
 #endif
 

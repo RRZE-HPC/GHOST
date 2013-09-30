@@ -20,18 +20,13 @@ int main()
 	v1->print(v1);
 	printf("\n");
 
-	v2 = v1->clone(v1);
+	v2 = v1->clone(v1,nc,0);
 	printf("===== v2: (should be a clone of v1)\n");
 	v2->print(v2);
 	printf("\n");
 	
-	v2 = v1->extract(v1,2,2,1,1);
-	printf("===== v2: (should be the inner part of v1)\n");
-	v2->print(v2);
-	printf("\n");
-	
-	v3 = v1->view(v1,2,2,1,1);
-	printf("===== v3: (should be a view of the inner part of v1)\n");
+	v3 = v1->viewVec(v1,2,1);
+	printf("===== v3: (should be a view of the inner two columns of v1)\n");
 	v3->print(v3);
 	printf("\n");
 	

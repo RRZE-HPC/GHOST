@@ -57,7 +57,6 @@ static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
 static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
-static ghost_vec_t * vec_extract (ghost_vec_t * src, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t roffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 #ifdef CUDA
@@ -751,7 +750,6 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	UNUSED(comm);
 	memcpy(nodeVec->val,vec->val,vec->traits->nrowspadded*sizeofdt);
 //	*nodeVec = vec->clone(vec);
 #endif
