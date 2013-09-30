@@ -108,15 +108,31 @@ MPI_Datatype ghost_mpi_dataType(int datatype)
 {
 	if (datatype & GHOST_BINCRS_DT_FLOAT) {
 		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return 0; // TODO
+			return GHOST_MPI_DT_C;
 		else
 			return MPI_FLOAT;
 	} else {
 		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return 0;
+			return GHOST_MPI_DT_Z;
 		else
 			return MPI_DOUBLE;
 	}
+}
+
+MPI_Op ghost_mpi_op_sum(int datatype)
+{
+	if (datatype & GHOST_BINCRS_DT_FLOAT) {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return GHOST_MPI_OP_SUM_C;
+		else
+			return MPI_SUM;
+	} else {
+		if (datatype & GHOST_BINCRS_DT_COMPLEX)
+			return GHOST_MPI_OP_SUM_Z;
+		else
+			return MPI_SUM;
+	}
+
 }
 
 void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Datatype sendtype, void *recvbuv, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm)
