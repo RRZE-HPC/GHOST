@@ -5,13 +5,13 @@
 
 #include <unistd.h>
 
-GHOST_REGISTER_DT_D(vecdt)
-GHOST_REGISTER_DT_D(matdt)
+GHOST_REGISTER_DT_Z(vecdt)
+GHOST_REGISTER_DT_Z(matdt)
 
 int main(int argc, char* argv[]) 
 {
 	int nv = 2;
-	vecdt_t one = 1.;
+	vecdt_t one = 1.+I*2.;
 	vecdt_t dotpr[nv];
 
 	ghost_vtraits_t dmtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS, .nvecs=nv, .datatype=vecdt);
@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
 	ghost_init(argc,argv);
 
-	ctx = ghost_createContext(8,8,GHOST_CONTEXT_DEFAULT,NULL,MPI_COMM_WORLD);
+	ctx = ghost_createContext(8,8,GHOST_CONTEXT_DEFAULT,NULL,MPI_COMM_WORLD,1);
 	dm1 = ghost_createVector(ctx,&dmtraits);
 	dm2 = ghost_createVector(ctx,&dmtraits);
 
