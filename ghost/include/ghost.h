@@ -222,22 +222,136 @@ struct ghost_vec_t
 	 */
 	void          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
 			void *entry);
-	void          (*fromFunc) (ghost_vec_t *, void (*fp)(int,int,void *));
-	void          (*fromVec) (ghost_vec_t *, ghost_vec_t *, ghost_vidx_t);
-	void          (*fromFile) (ghost_vec_t *, char *, off_t);
-	void          (*fromRand) (ghost_vec_t *);
-	void          (*fromScalar) (ghost_vec_t *, void *);
-	void          (*normalize) (ghost_vec_t *);
-	void          (*permute) (ghost_vec_t *, ghost_vidx_t *);
-	void          (*print) (ghost_vec_t *);
-	void          (*scale) (ghost_vec_t *, void *);
-	void          (*swap) (ghost_vec_t *, ghost_vec_t *);
-	void          (*toFile) (ghost_vec_t *, char *);
-	void          (*upload) (ghost_vec_t *);
-	void          (*uploadHalo) (ghost_vec_t *);
-	void          (*uploadNonHalo) (ghost_vec_t *);
-	void          (*viewPlain) (ghost_vec_t *, void *, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t, ghost_vidx_t);
-	ghost_vec_t * (*viewVec) (ghost_vec_t *, ghost_vidx_t, ghost_vidx_t);
+	/**
+	 * @brief Initializes a vector from a given function.
+	 * Malloc's memory for the vector's values if this hasn't happened before. 
+	 *
+	 * @param vec The vector.
+	 * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
+	 */
+	void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
+	/**
+	 * @brief Initializes a vector from another vector at a given column offset.
+	 * Malloc's memory for the vector's values if this hasn't happened before. 
+	 *
+	 * @param vec The vector.
+	 * @param src The source vector.
+	 * @param ghost_vidx_t The column offset in the source vector.
+	 */
+	void          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
+	/**
+	 * @brief Initializes a vector from a file at a given row offset.
+	 * Malloc's memory for the vector's values if this hasn't happened before. 
+	 *
+	 * @param vec The vector.
+	 * @param filename Path to the file.
+	 * @param offset The row offset.
+	 */
+	void          (*fromFile) (ghost_vec_t *vec, char *filename, off_t offset);
+	/**
+	 * @brief Initiliazes a vector from random values.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*fromRand) (ghost_vec_t *vec);
+	/**
+	 * @brief Initializes a vector from a given scalar value.
+	 *
+	 * @param vec The vector.
+	 * @param val A pointer to the value.
+	 */
+	void          (*fromScalar) (ghost_vec_t *vec, void *val);
+	/**
+	 * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*normalize) (ghost_vec_t *vec);
+	/**
+	 * @brief Permute a vector with a given permutation.
+	 *
+	 * @param vec The vector.
+	 * @param perm The permutation.
+	 */
+	void          (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
+	/**
+	 * @brief Print a vector.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*print) (ghost_vec_t *vec);
+	/**
+	 * @brief Scale a vector with a given scalar.
+	 *
+	 * @param vec The vector.
+	 * @param scale The scale factor.
+	 */
+	void          (*scale) (ghost_vec_t *vec, void *scale);
+	/**
+	 * @brief Swap two vectors.
+	 *
+	 * @param vec1 The first vector.
+	 * @param vec2 The second vector.
+	 */
+	void          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
+	/**
+	 * @brief Write a vector to a file.
+	 *
+	 * @param vec The vector.
+	 * @param filename The path to the file.
+	 */
+	void          (*toFile) (ghost_vec_t *vec, char *filename);
+	/**
+	 * @brief Uploads an entire vector to a compute device. Does nothing if
+	 * the vector is not present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*upload) (ghost_vec_t *vec);
+	/**
+	 * @brief Uploads only a vector's halo elements to a compute device.
+	 * Does nothing if the vector is not present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*uploadHalo) (ghost_vec_t *vec);
+	/**
+	 * @brief Uploads only a vector's local elements (i.e., without halo
+	 * elements) to a compute device. Does nothing if the vector is not
+	 * present on the device.
+	 *
+	 * @param vec The vector.
+	 */
+	void          (*uploadNonHalo) (ghost_vec_t *vec);
+	/**
+	 * @brief View plain data in the vector.
+	 * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided. 
+	 *
+	 * @param vec The vector.
+	 * @param data The plain data.
+	 * @param ghost_vidx_t nr The number of rows.
+	 * @param ghost_vidx_t nc The number of columns.
+	 * @param ghost_vidx_t roffs The row offset.
+	 * @param ghost_vidx_t coffs The column offset.
+	 * @param ghost_vidx_t lda The number of rows per column.
+	 */
+	void          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+	/**
+	 * @brief Create a vector as a view of another vector.
+	 *
+	 * @param src The source vector.
+	 * @param nc The nunber of columns to view.
+	 * @param coffs The column offset.
+	 *
+	 * @return The new vector.
+	 */
+	ghost_vec_t * (*viewVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
+	/**
+	 * @brief Scale each column of a vector with a given scale factor.
+	 *
+	 * @param vec The vector.
+	 * @param scale The scale factors.
+	 */
 	void          (*vscale) (ghost_vec_t *, void *);
 	void          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
 	void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
