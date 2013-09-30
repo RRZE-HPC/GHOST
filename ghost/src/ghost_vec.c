@@ -295,13 +295,13 @@ static void vec_print(ghost_vec_t *vec)
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
 							prefix,v,i,
-							crealf(((complex float *)(vec->val))[v*vec->traits->nrows+i]),
-							cimagf(((complex float *)(vec->val))[v*vec->traits->nrows+i]));
+							crealf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]),
+							cimagf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]));
 				} else {
 					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
 							prefix,v,i,
-							creal(((complex double *)(vec->val))[v*vec->traits->nrows+i]),
-							cimag(((complex double *)(vec->val))[v*vec->traits->nrows+i]));
+							creal(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]),
+							cimag(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -508,7 +508,7 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 #pragma omp parallel for schedule(runtime) private(i)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			for (i=0; i<vec->traits->nrows; i++) {
-				memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),val,sizeofdt);
+				memcpy(&((char *)(vec->val))[sizeofdt*(v*vec->traits->nrowspadded+i)],val,sizeofdt);
 			}
 		}
 	} else {
