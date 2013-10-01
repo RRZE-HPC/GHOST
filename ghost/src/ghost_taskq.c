@@ -241,6 +241,7 @@ static int nThreadsPerLD(int ld)
 				if (runner->logical_index == ld) {
 					n++;
 				}
+				break;
 			}
 		}
 	}
@@ -767,7 +768,7 @@ int ghost_task_wait(ghost_task_t * task)
 		DEBUG_LOG(1,"Task %p has already finished",task);
 	}
 
-	// TODO pin again if have been unpinned
+	// pin again if have been unpinned
 
 	pthread_mutex_unlock(task->mutex);
 	pthread_mutex_lock(&anyTaskFinishedMutex);
