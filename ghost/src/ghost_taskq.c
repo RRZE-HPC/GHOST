@@ -445,8 +445,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",
 									(int)pthread_self(),core);
 
-							hwloc_bitmap_set(ghost_thpool->busy,core);
-							//							WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
+//							hwloc_bitmap_set(ghost_thpool->busy,core);
+							hwloc_bitmap_set(mybusy,core);
+							//WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
 							ghost_setCore(ghost_thpool->PUs[core]->os_index);
 							hwloc_bitmap_set(curTask->coremap,core);
 							curTask->cores[reservedCores] = core;
@@ -457,6 +458,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 				}
 			}
 		}
+		hwloc_bitmap_or(ghost_thpool->busy,ghost_thpool->busy,mybusy);
 
 		if (reservedCores < curTask->nThreads) {
 			WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
