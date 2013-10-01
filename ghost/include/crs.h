@@ -56,6 +56,8 @@ template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, vo
 template<typename> void CRS_valToStr_tmpl(void *, char *, int);
 extern "C" {
 #endif
+	
+ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath);
 void dd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void ds_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);

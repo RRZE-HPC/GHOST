@@ -141,7 +141,7 @@ int ghost_init(int argc, char **argv)
 	int req, prov;
 
 #ifdef GHOST_OPENMP
-	req = MPI_THREAD_MULTIPLE; // TODO not if not all kernels configured
+	req = MPI_THREAD_MULTIPLE; 
 #else
 	req = MPI_THREAD_SINGLE;
 #endif
@@ -310,11 +310,13 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 		if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
 		{ // read rpt and fill lfrow, lnrows, lfent, lnents
-			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
+//			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
+			ghost_midx_t *rpt = NULL;
 			ghost_mnnz_t gnnz;
 
 			if (ghost_getRank(context->mpicomm) == 0) {
-				FILE * filed;
+				rpt = CRS_readRpt(context->gnrows+1,matrixPath);
+/*				FILE * filed;
 				size_t ret;
 
 				if ((filed = fopen64(matrixPath, "r")) == NULL){
@@ -340,7 +342,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 					rpt[i] = (ghost_midx_t)(tmp[i]);
 				}
 				// TODO little/big endian
-#endif
+#endif*/
 				context->rpt = rpt;
 				gnnz = rpt[context->gnrows];
 				ghost_mnnz_t target_nnz;
@@ -365,7 +367,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 				context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
 				context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
 
-				fclose(filed);
+				//fclose(filed);
 			}
 			MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 			MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
@@ -382,6 +384,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 //			ghost_midx_t target_rows = (context->gnrows/nprocs);
 			ghost_midx_t target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
 
+			context->rpt = NULL;
 			context->communicator->lfRow[0] = 0;
 
 			for (i=1; i<nprocs; i++){

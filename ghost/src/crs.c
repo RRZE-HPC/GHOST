@@ -42,7 +42,6 @@ static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
-static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef GHOST_MPI
@@ -214,10 +213,11 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 	CRS_readHeader(*mat,matrixPath);  // read header
 
 	if (ghost_getRank((*mat)->context->mpicomm) == 0) {
-		if ((*mat)->context->flags & GHOST_CONTEXT_WORKDIST_NZE) // rpt has already been read
+		if ((*mat)->context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
 			((CR_TYPE *)((*mat)->data))->rpt = (*mat)->context->rpt;
-		else 
-			CRS_readRpt((*mat),matrixPath);  // read rpt
+		} else {
+			CR((*mat))->rpt = CRS_readRpt(CR((*mat))->nrows+1,matrixPath);  // read rpt
+		}
 	}
 
 	comm->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
@@ -928,7 +928,7 @@ static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath)
 
 }
 
-static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
+ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 {
 	size_t ret;
 	FILE *filed;
@@ -940,13 +940,13 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 		ABORT("Could not open binary CRS file %s",matrixPath);
 	}
 
-	DEBUG_LOG(2,"Allocate memory for CR(mat)->rpt");
-	CR(mat)->rpt = (ghost_midx_t *)ghost_malloc( (CR(mat)->nrows+1)*sizeof(ghost_midx_t));
+	DEBUG_LOG(2,"Allocate memory for rpt for %d rows",nrpt);
+	ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc( nrpt*sizeof(ghost_midx_t));
 
-	DEBUG_LOG(1,"NUMA-placement for CR(mat)->rpt");
+	DEBUG_LOG(1,"NUMA-placement for rpt");
 #pragma omp parallel for schedule(runtime)
-	for( i = 0; i < CR(mat)->nrows+1; i++ ) {
-		CR(mat)->rpt[i] = 0;
+	for( i = 0; i < nrpt; i++ ) {
+		rpt[i] = 0;
 	}
 
 	DEBUG_LOG(2,"Reading array with row-offsets");
@@ -956,49 +956,51 @@ static void CRS_readRpt(ghost_mat_t *mat, char *matrixPath)
 		if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
 			ABORT("Seek failed");
 		}
-		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		for( i = 0; i < nrpt; i++ ) {
 			if ((ret = fread(&tmp, GHOST_BINCRS_SIZE_RPT_EL, 1,filed)) != 1){
 				ABORT("fread failed: %s (%lu)",strerror(errno),ret);
 			}
 			tmp = bswap_64(tmp);
-			CR(mat)->rpt[i] = tmp;
+			rpt[i] = tmp;
 		}
 	} else {
 		if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
 			ABORT("Seek failed");
 		}
-		if ((ret = fread(CR(mat)->rpt, GHOST_BINCRS_SIZE_RPT_EL, CR(mat)->nrows+1,filed)) != (CR(mat)->nrows+1)){
+		if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
 			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
 		}
 	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
-	int64_t *tmp = (int64_t *)malloc((CR(mat)->nrows+1)*8);
+	int64_t *tmp = (int64_t *)malloc((nrpt)*8);
 	if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
 		ABORT("Seek failed");
 	}
-	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, CR(mat)->nrows+1,filed)) != (CR(mat)->nrows+1)){
+	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
 		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
 	}
 
 	if (swapReq) {
-		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		for( i = 0; i < nrpt; i++ ) {
 			if (tmp[i] >= (int64_t)INT_MAX) {
 				ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
 			}
-			CR(mat)->rpt[i] = (ghost_midx_t)(bswap_64(tmp[i]));
+			rpt[i] = (ghost_midx_t)(bswap_64(tmp[i]));
 		}
 	} else {
-		for( i = 0; i < CR(mat)->nrows+1; i++ ) {
+		for( i = 0; i < nrpt; i++ ) {
 			if (tmp[i] >= (int64_t)INT_MAX) {
 				ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
 			}
-			CR(mat)->rpt[i] = (ghost_midx_t)(tmp[i]);
+			rpt[i] = (ghost_midx_t)(tmp[i]);
 		}
 	}
 	free(tmp);
 #endif
 	fclose(filed);
+
+	return rpt;
 }
 
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype)
@@ -1302,7 +1304,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		DEBUG_LOG(1,"Reading in a global context");
 		CRS_readHeader(mat,matrixPath);
-		CRS_readRpt(mat,matrixPath);
+		CR(mat)->rpt = CRS_readRpt(CR(mat)->nrows+1,matrixPath);
 		CRS_readColValOffset(mat, matrixPath, 0, 0, CR(mat)->nrows, CR(mat)->nEnts, GHOST_IO_STD);
 	} else {
 #ifdef GHOST_MPI
