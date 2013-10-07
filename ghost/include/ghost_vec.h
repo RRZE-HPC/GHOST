@@ -20,8 +20,6 @@
 
 #define VAL(vec,k) ((char *)(vec->val))[(k)*ghost_sizeofDataType(vec->traits->datatype)]
 
-ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
-
 #ifdef __cplusplus
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec);
 template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
@@ -32,6 +30,9 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
 
 extern "C" {
 #endif
+
+ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
+
 void getNrowsFromContext(ghost_vec_t *vec);
 void vec_malloc(ghost_vec_t *vec);
 void d_ghost_normalizeVector(ghost_vec_t *vec); 
