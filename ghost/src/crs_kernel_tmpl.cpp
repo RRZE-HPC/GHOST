@@ -4,11 +4,18 @@
 #include <crs.h>
 #include "ghost_complex.h"
 #include <iostream>
+#include <omp.h>
 
 // TODO shift, scale als templateparameter
 
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
+//#pragma omp parallel
+//	{
+//	if (omp_get_thread_num() == (omp_get_num_threads()-1)) {
+	//	WARNING_LOG("Thread %d/%d running @ core %d",omp_get_thread_num(),omp_get_num_threads()-1,ghost_getCore());
+//	}
+//	}
 	CR_TYPE *cr = CR(mat);
 	v_t *rhsv = (v_t *)(rhs->val);	
 	v_t *lhsv = (v_t *)(lhs->val);

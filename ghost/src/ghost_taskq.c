@@ -67,7 +67,7 @@ pthread_key_t ghost_thread_key = 0;
 
 static int** coreidx;
 
-static void * thread_main(void *arg);
+//static void * thread_main(void *arg);
 static int ghost_task_unpin(ghost_task_t *task);
 static int nIdleCoresAtLD(hwloc_bitmap_t, int);
 static int nBusyCoresAtLD(hwloc_bitmap_t, int);
@@ -109,7 +109,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 
 	//WARNING_LOG("ncores: %d, nthreads: %d",ncores,nthreads);
 	if (_levels == GHOST_THPOOL_LEVELS_FULLSMT) {
-		WARNING_LOG("Setting levels to %d",smt);
+		DEBUG_LOG(1,"Setting levels to %d",smt);
 		levels = smt;
 	} else {
 		levels = _levels;
@@ -120,7 +120,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		nThreads = (int *)ghost_malloc(levels*sizeof(int));
 		for (l=0; l<levels; l++) {
 			nThreads[l] = nt;
-			WARNING_LOG("nThreads[%d] = %d",l,nt);
+			DEBUG_LOG(1,"nThreads[%d] = %d",l,nt);
 		}
 	} else {
 		nThreads = _nThreads;
@@ -131,7 +131,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		firstThread = (int *)ghost_malloc(levels*sizeof(int));
 		for (l=0; l<levels; l++) {
 			firstThread[l] = ft;
-			WARNING_LOG("firstThread[%d] = %d",l,ft);
+			DEBUG_LOG(1,"firstThread[%d] = %d",l,ft);
 		}
 	} else {
 		firstThread = _firstThread;
@@ -219,12 +219,13 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		}	
 	}
 
+/*	WARNING_LOG("Creating %d threads for the thread pool",ghost_thpool->nThreads);
 	for (t=0; t<ghost_thpool->nThreads; t++){
 		pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
 	}
 	for (t=0; t<ghost_thpool->nThreads; t++){
 		sem_wait(ghost_thpool->sem);
-	}
+	}*/
 	DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
 
 	return GHOST_SUCCESS;
@@ -377,17 +378,36 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 	while(curTask != NULL)
 	{
+		if (curTask->flags & GHOST_TASK_NO_PIN) {
+			taskq_deleteTask(q,curTask);	
+			ghost_ompSetNumThreads(curTask->nThreads);
+			return curTask;
+		}
+
+
 		int availcores = 0;
 		if (curTask->flags & GHOST_TASK_LD_STRICT) {
 			availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD);
 		} else {
 			availcores = NIDLECORES;
 		}
+		hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); // TODO free
 		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
+		//	char *a, *b, *c;
+		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->coremap);
+		//	hwloc_bitmap_list_asprintf(&b,curTask->parent->childusedmap);
+			
+			hwloc_bitmap_andnot(parentscores,curTask->parent->coremap,curTask->parent->childusedmap);
+		//	hwloc_bitmap_list_asprintf(&c,parentscores);
+			//WARNING_LOG("(%lu) %s = %s andnot %s (%p)",(unsigned long)pthread_self(),c,a,b,curTask->parent->childusedmap);
+
+
 			if (curTask->flags & GHOST_TASK_LD_STRICT) {
-				availcores += nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
+				//availcores += nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
+				availcores += nBusyCoresAtLD(parentscores,curTask->LD);
 			} else {
-				availcores += hwloc_bitmap_weight(curTask->parent->coremap);
+				//availcores += hwloc_bitmap_weight(curTask->parent->coremap);
+				availcores += hwloc_bitmap_weight(parentscores);
 			}
 		} else { 
 		}
@@ -407,16 +427,16 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			continue;
 		}*/
 
-		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),(ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy)));
+		DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),NIDLECORES);
 
 		DEBUG_LOG(1,"Deleting task itself");
 		taskq_deleteTask(q,curTask);	
 		DEBUG_LOG(1,"Pinning the task's threads");
 		ghost_ompSetNumThreads(curTask->nThreads);
 
-		if (curTask->flags & GHOST_TASK_NO_PIN) {
-			return curTask;
-		}
+//		if (curTask->flags & GHOST_TASK_NO_PIN) {
+//			return curTask;
+//		}
 
 		int reservedCores = 0;
 
@@ -425,7 +445,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 		hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
 		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
-			hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,curTask->parent->coremap);
+		//	char *a, *b;
+		//	hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
+		//	hwloc_bitmap_list_asprintf(&b,parentscores);
+		//	DEBUG_LOG(1,"Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);
+			hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,parentscores);
 		} else {
 			hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
 		}
@@ -440,6 +464,18 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 					for (; t<ghost_thpool->nThreads; t++) {
 						int core = coreidx[curTask->LD][t];
+						/*if ((curTask->flags & GHOST_TASK_ONLY_HYPERTHREADS) && 
+								(ghost_thpool->PUs[core]->sibling_rank == 0)) {
+							WARNING_LOG("only HT");
+							continue;
+						}
+						if ((curTask->flags & GHOST_TASK_NO_HYPERTHREADS) && 
+								(ghost_thpool->PUs[core]->sibling_rank > 0)) {
+							WARNING_LOG("no HT");
+							continue;
+						}*/
+						
+
 						//if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
 						if (!hwloc_bitmap_isset(mybusy,core)) {
 							DEBUG_LOG(1,"Thread %d: Core # %d is idle, using it",
@@ -447,16 +483,25 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 //							hwloc_bitmap_set(ghost_thpool->busy,core);
 							hwloc_bitmap_set(mybusy,core);
-							//WARNING_LOG("Pinning to core %d",ghost_thpool->PUs[core]->os_index);
+							DEBUG_LOG(1,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),ghost_thpool->PUs[core]->os_index);
 							ghost_setCore(ghost_thpool->PUs[core]->os_index);
 							hwloc_bitmap_set(curTask->coremap,core);
 							curTask->cores[reservedCores] = core;
 							reservedCores++;
+							t++;
 							break;
 						}
 					}
 				}
 			}
+		}
+		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
+		//	char *a;
+		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+		//	WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+			hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
+		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+		//	WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
 		}
 		hwloc_bitmap_or(ghost_thpool->busy,ghost_thpool->busy,mybusy);
 
@@ -482,7 +527,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
  *
  * @return NULL 
  */
-static void * thread_main(void *arg)
+void * thread_main(void *arg)
 {
 	UNUSED(arg);
 	ghost_task_t *myTask;
@@ -490,6 +535,7 @@ static void * thread_main(void *arg)
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
 
+	DEBUG_LOG(1,"Shepherd thread %lu in thread_main()",(unsigned long)pthread_self());
 	while (1) // as long as there are jobs stay alive
 	{
 		// TODO wait for condition when unpinned or new task
@@ -527,18 +573,15 @@ static void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
 
 		pthread_setspecific(ghost_thread_key,myTask);
-/*		char *coremap;
-		hwloc_bitmap_asprintf(&coremap,myTask->coremap);
-		WARNING_LOG(">>>> %s <<<<",coremap);*/
 		myTask->ret = myTask->func(myTask->arg);
 		pthread_setspecific(ghost_thread_key,NULL);
 
-		//	ghost_unsetCore();
 
 		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
 
-		if (!(myTask->freed))
-			ghost_task_unpin(myTask);
+		pthread_mutex_lock(&globalMutex);
+		ghost_task_unpin(myTask);
+		pthread_mutex_unlock(&globalMutex);
 
 		pthread_mutex_lock(myTask->mutex); 
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
@@ -564,12 +607,13 @@ static int ghost_task_unpin(ghost_task_t *task)
 					task->parent && 
 					hwloc_bitmap_isset(task->parent->coremap,task->cores[t])) 
 			{
-				continue;
+				hwloc_bitmap_clr(task->parent->childusedmap,task->cores[t]);
+			} else {
+				hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
 			}
-			hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
 		}
 	}
-	task->freed = 1;
+//	task->freed = 1;
 
 	return GHOST_SUCCESS;
 
@@ -679,11 +723,13 @@ int ghost_task_add(ghost_task_t *t)
 	memset(t->cores,0,sizeof(int)*t->nThreads);
 
 	hwloc_bitmap_zero(t->coremap);
+	hwloc_bitmap_zero(t->childusedmap);
 	t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
-	t->freed = 0;
+//	t->freed = 0;
 
 	DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",t,t->nThreads,taskq,t->LD);
 	taskq_additem(taskq,t);
+	//ghost_task_destroy(&commTask);
 	*(t->state) = GHOST_TASK_ENQUEUED;
 
 	sem_post(&taskSem);
@@ -757,9 +803,9 @@ int ghost_task_wait(ghost_task_t * task)
 
 //	ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
 //	if (parent != NULL) {
-//		WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
-//		ghost_task_unpin(parent);
-//		WARNING_LOG("Now idle PUs: %d",NIDLECORES);
+	//	WARNING_LOG("Waiting on a task from within a task ===> free'ing the parent task's resources, idle PUs: %d",NIDLECORES);
+	//	ghost_task_unpin(parent);
+	//	WARNING_LOG("Now idle PUs: %d",NIDLECORES);
 //	}
 
 	pthread_mutex_lock(task->mutex);
@@ -906,6 +952,7 @@ int ghost_task_destroy(ghost_task_t *t)
 	free(t->cores);
 	free(t->state);
 	hwloc_bitmap_free(t->coremap);
+	hwloc_bitmap_free(t->childusedmap);
 	//free(t->ret);
 	free(t->mutex);
 	free(t->finishedCond);
@@ -966,11 +1013,12 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 	t->arg = arg;
 	t->flags = flags;
 
-	t->freed = 0;
+//	t->freed = 0;
 	t->state = (int *)ghost_malloc(sizeof(int));
 	*(t->state) = GHOST_TASK_INVALID;
 	t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
 	t->coremap = hwloc_bitmap_alloc();
+	t->childusedmap = hwloc_bitmap_alloc();
 	t->next = NULL;
 	t->prev = NULL;
 	t->parent = NULL;

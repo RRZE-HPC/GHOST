@@ -48,8 +48,8 @@ FFLAGS += -mmic
 endif
 
 ifneq ($(DEBUG),0)
-CFLAGS += -g -O0  -pg #-check-pointers=rw -check-pointers-dangling=all -rdynamic
-CPPFLAGS += -g -O0 -pg  #-check-pointers=rw -check-pointers-dangling=all -rdynamic
+CFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
+CPPFLAGS += -g -O0 #-check-pointers=rw -check-pointers-dangling=all -rdynamic
 FFLAGS += -g -O0 
 else
 CFLAGS += -O3 -Wall -Wremarks -Wcheck -diag-disable 981 #-vec-report3

@@ -194,8 +194,8 @@ int ghost_init(int argc, char **argv)
 void ghost_finish()
 {
 
-	ghost_taskq_finish();
-	ghost_thpool_finish();
+//	ghost_taskq_finish();
+//	ghost_thpool_finish();
 //	hwloc_topology_destroy(topology);
 
 #ifdef LIKWID_PERFMON

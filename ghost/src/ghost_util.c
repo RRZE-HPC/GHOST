@@ -1193,6 +1193,7 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 
 inline void ghost_setCore(int coreNumber)
 {
+
 	DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
 	cpu_set_t cpu_set;
 	CPU_ZERO(&cpu_set);

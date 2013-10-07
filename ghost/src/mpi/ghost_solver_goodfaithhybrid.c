@@ -78,6 +78,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	 *******       Local assembly of halo-elements  & Communication       ********
 	 ****************************************************************************/
 
+//	double start = ghost_wctime();
 #pragma omp parallel private(to_PE,i)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
@@ -85,6 +86,8 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
+//	double time = ghost_wctime()-start;
+//	printf("preparation took %f seconds\n",time);
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 		if (context->communicator->dues[to_PE]>0){
@@ -110,7 +113,10 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif*/
 
+//	start = ghost_wctime();
 	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
+//	time = ghost_wctime()-start;
+//	printf("local computation took %f seconds\n",time);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
@@ -121,7 +127,10 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	 *******       Finishing communication: MPI_Waitall                   *******
 	 ***************************************************************************/
 
+//	start = ghost_wctime();
 	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
+//	time = ghost_wctime()-start;
+//	printf("waitall took %f seconds\n",time);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel
@@ -145,7 +154,10 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 #endif*/
 	invec->uploadHalo(invec);
 
+//	start = ghost_wctime();
 	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
+//	time = ghost_wctime()-start;
+//	printf("remote computation took %f seconds\n",time);
 
 #ifdef LIKWID_MARKER_FINE
 #pragma omp parallel

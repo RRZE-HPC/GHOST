@@ -12,7 +12,9 @@
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
 #define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
 #define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
-#define GHOST_TASK_NO_PIN 8  
+#define GHOST_TASK_NO_PIN 8 
+#define GHOST_TASK_ONLY_HYPERTHREADS 16
+#define GHOST_TASK_NO_HYPERTHREADS 32
 
 #define GHOST_TASK_INVALID 0 // task has not been enqueued
 #define GHOST_TASK_ENQUEUED 1 // task has been enqueued
@@ -71,7 +73,8 @@ typedef struct ghost_task_t {
 	 * @brief The list of cores where the task's threads are running. (set by the library)
 	 */
 	int *cores;
-	hwloc_bitmap_t coremap;
+	hwloc_bitmap_t coremap; // map of cores this task is using
+	hwloc_bitmap_t childusedmap; // map of cores a child of this task is using
 	/**
 	 * @brief The return value of the task's funtion. (set by the library)
 	 */
@@ -157,6 +160,34 @@ typedef struct ghost_thpool_t {
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
+#define ghost_tasking_init(_nt,_ft,_l) \
+	ghost_thpool_init(_nt,_ft,_l); \
+	omp_set_nested(1); \
+	_Pragma("omp parallel num_threads(2)") \
+	{ \
+		if (omp_get_thread_num() == 0) { \
+			ghost_taskq_init(); \
+			int __th; \
+			for (__th=0; __th<ghost_thpool->nThreads; __th++) \
+			{ \
+				sem_wait(ghost_thpool->sem); \
+			} \
+
+#define ghost_tasking_finish(_nt,_ft,_l) \
+			ghost_taskq_finish();\
+		} else { \
+			int __threads = 0; \
+			int __level; \
+			for (__level = 0; __level<_l; __level++) { \
+				__threads += (_nt)[__level]; \
+			} \
+			_Pragma("omp parallel num_threads(ghost_thpool->nThreads)") \
+			{ \
+				thread_main(NULL); \
+			} \
+		} \
+	} \
+	ghost_thpool_finish(); \
 
 int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
 int ghost_taskq_init();
@@ -172,6 +203,7 @@ int ghost_task_test(ghost_task_t *);
 int ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
 int ghost_task_print(ghost_task_t *t);
 int ghost_taskq_print_all(); 
+void * thread_main(void *arg);
 
 char *ghost_task_strstate(int state);
 

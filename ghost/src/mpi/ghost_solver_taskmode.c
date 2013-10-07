@@ -22,16 +22,45 @@ typedef struct {
 	ghost_midx_t max_dues;
 } commArgs;
 
+static void *prepare(void *vargs)
+{
+	int to_PE, i;
+	commArgs *args = (commArgs *)vargs;
+#pragma omp parallel private(to_PE,i) 
+	{
+//#pragma omp single
+//		printf("assembly is done with %d threads\n",omp_get_num_threads());
+	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
+#pragma omp for 
+		for (i=0; i<args->context->communicator->dues[to_PE]; i++){
+			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
+		}
+	}
+	}
+	return NULL;
+
+}
+
 static void *communicate(void *vargs)
 {
+//	ghost_setCore(23);
 //#pragma omp parallel
 //	{
 //#pragma omp single
 //	printf("    ######### communicate: numThreads: %d\n",omp_get_num_threads());
 //	printf("    ######### communicate: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
 //	}
+//	WARNING_LOG("Sleeping thread %lu",(unsigned long)pthread_self());
+//	usleep(3000000);
 	commArgs *args = (commArgs *)vargs;
-	int to_PE;
+	int to_PE,i,from_PE;
+
+	for (from_PE=0; from_PE<args->nprocs; from_PE++){
+		if (args->context->communicator->wishes[from_PE]>0){
+			MPI_safecall(MPI_Irecv(&((char *)(args->rhs->val))[args->context->communicator->hput_pos[from_PE]*args->sizeofRHS], args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->recv_messages] ));
+			args->recv_messages++;
+		}
+	}
 
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
 
@@ -70,6 +99,14 @@ static void *computeLocal(void *vargs)
 	return NULL;
 }
 
+static void *computeRemote(void *vargs)
+{
+	compArgs *args = (compArgs *)vargs;
+	args->mat->remotePart->kernel(args->mat->remotePart,args->res,args->invec,args->spmvmOptions|GHOST_SPMVM_AXPY);
+
+	return NULL;
+}
+
 // if called with context==NULL: clean up variables
 void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
@@ -102,6 +139,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	static compArgs cpargs;
 	static ghost_task_t *commTask;// = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
 	static ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+	static ghost_task_t *compRTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+	static ghost_task_t *prepareTask;
 
 	if (init_kernel==1){
 		me = ghost_getRank(context->mpicomm);
@@ -118,11 +157,18 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
 		int taskflags = GHOST_TASK_DEFAULT;
-		if (pthread_getspecific(ghost_thread_key) != NULL)
+		if (pthread_getspecific(ghost_thread_key) != NULL) {
+			DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
 			taskflags |= GHOST_TASK_USE_PARENTS;
+		} else {
+			DEBUG_LOG(1,"No parent task in task mode spMVM solver");
+		}
+
 
 		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, taskflags);
+		compRTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeRemote, &cpargs, taskflags);
 		commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
+		prepareTask = ghost_task_init(ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;
@@ -158,290 +204,22 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 #pragma omp parallel
 	likwid_markerStartRegion("Kernel 3 -- communication");
 #endif
-
-	for (from_PE=0; from_PE<nprocs; from_PE++){
-		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
-			recv_messages++;
-		}
-	}
-
-#pragma omp parallel private(to_PE,i) 
-	{
-//#pragma omp single
-//		printf("assembly is done with %d threads\n",omp_get_num_threads());
-	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
-		for (i=0; i<context->communicator->dues[to_PE]; i++){
-			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
-		}
-	}
-	}
-
-//	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-//		if (context->communicator->dues[to_PE]>0){
-//			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[recv_messages+send_messages] ));
-//			send_messages++;
-//		}
-//	}
-
-//	double start = ghost_wctime();
 	cargs.send_messages = send_messages;
 	cargs.recv_messages = recv_messages;
 	cargs.request = request;
 	cargs.status = status;
-	ghost_task_add(commTask);
-//	double time = ghost_wctime()-start;
-	//ghost_task_destroy(&commTask);
-//	printf("spawning async comm task took %f seconds\n",time);
+
+//	prepare(&cargs);
 //	communicate(&cargs);
-//	commArgs *args = &cargs;
+//	computeLocal(&cpargs);
+//	computeRemote(&cpargs);
 
-	/****************************************************************************
-	 *******       Calculation of SpMVM for local entries of invec->val        *******
-	 ***************************************************************************/
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 3 -- local computation");
-#endif
-
-/*#ifdef OPENCL
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
-#endif
-#ifdef CUDA
-	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
-#endif*/
-
-
-//	start = ghost_wctime();
+	ghost_task_add(prepareTask);
+	ghost_task_wait(prepareTask);
 	ghost_task_add(compTask);
-	ghost_task_wait(compTask);
-//	ghost_task_destroy(compTask);
-//	time = ghost_wctime()-start;
-	//printf("local computation took %f seconds\n",time);
-//	ghost_spawnTask(&computeLocal, &cpargs, 12, compThreads, "local compute", GHOST_TASK_SYNC/*|GHOST_TASK_EXCLUSIVE*/);
-
-//	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 3 -- local computation");
-#endif
-
-	/****************************************************************************
-	 *******       Finishing communication: MPI_Waitall                   *******
-	 ***************************************************************************/
-
+	ghost_task_add(commTask);
 	ghost_task_wait(commTask);
-//	ghost_task_destroy(commTask);
-//	start = ghost_wctime();
-//	time = ghost_wctime()-start;
-//	printf("had to wait for comm to finish for %f seconds\n",time);
-//	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	{
-		likwid_markerStopRegion("Kernel 3 -- communication");
-		likwid_markerStartRegion("Kernel 3 -- remote computation");
-	}
-#endif
-
-	/****************************************************************************
-	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
-	 ***************************************************************************/
-/*#ifdef OPENCL
-	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
-			mat->nrows(mat)*sizeofRHS);
-#endif
-#ifdef CUDA
-	CU_copyHostToDevice(&((char *)(invec->CU_val))[mat->nrows(mat)*sizeofRHS], 
-			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS);
-#endif*/
-
-	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 3 -- remote computation");
-#endif
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 3");
-#endif
-	
-	/*static int init_kernel=1;
-	static int nprocs;
-
-	static ghost_midx_t max_dues;
-	static char *work;
-	static double hlp_sent;
-	static double hlp_recv;
-
-	static int me; 
-	int i, from_PE, to_PE;
-	int send_messages, recv_messages;
-
-	static MPI_Request *request;
-	static MPI_Status  *status;
-	//static CR_TYPE *localCR;
-
-
-	size_t sizeofRHS;
-
-
-
-	if (init_kernel==1){
-		MPI_safecall(MPI_Comm_rank(context->mpicomm, &me));
-		nprocs = ghost_getNumberOfProcesses();
-		sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
-
-		//	localCR = (CR_TYPE *)(context->localMatrix->data);
-
-		max_dues = 0;
-		for (i=0;i<nprocs;i++)
-			if (context->communicator->dues[i]>max_dues) 
-				max_dues = context->communicator->dues[i];
-
-		hlp_sent = 0.0;
-		hlp_recv = 0.0;
-		for (i=0;i<nprocs; i++){
-			hlp_sent += context->communicator->dues[i];
-			hlp_recv += context->communicator->wishes[i];
-		}
-
-		work = (char *)allocateMemory(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype), "work");
-		request = (MPI_Request*) allocateMemory( 2*nprocs*sizeof(MPI_Request), "request" );
-		status  = (MPI_Status*)  allocateMemory( 2*nprocs*sizeof(MPI_Status),  "status" );
-
-		init_kernel = 0;
-
-#pragma omp parallel 
-		{
-			if (omp_get_num_threads() < 2) {
-#pragma omp single
-				ABORT("Cannot execute task mode kernel with less than two OpenMP threads (%d)",omp_get_num_threads());
-			}
-		}
-	}
-
-
-	send_messages=0;
-	recv_messages = 0;
-
-	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL; // TODO 2*?
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 3");
-#endif
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 3 -- communication (last thread) & local computation (others)");
-#endif
-
-	for (from_PE=0; from_PE<nprocs; from_PE++){
-		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
-			recv_messages++;
-		}
-	}
-
-#pragma omp parallel private(to_PE,i)
-	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-#pragma omp for 
-		for (i=0; i<context->communicator->dues[to_PE]; i++){
-			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
-		}
-	}
-
-//	commArgs cargs = {.context = context, .nprocs = nprocs, .me = me, .send_messages = send_messages, .recv_messages = recv_messages, .work = work, .sizeofRHS = sizeofRHS, .request = request, .status = status, .max_dues = max_dues};
-
-//	ghost_task_t commTask = ghost_spawnTask(&communicate, &cargs, 1, NULL, "communicate", GHOST_TASK_ASYNC);
-//	communicate(&cargs);
-//	commArgs *args = &cargs;
-
-	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-		if (context->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[recv_messages+send_messages] ));
-			send_messages++;
-		}
-	}
-
-	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
-
-	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
-
-//	ghost_waitTask(&commTask);
-
-	#ifdef OPENCL
-	  UNUSED(localCR);
-	  if( tid == nthreads-2 ) {
-	  CL_copyHostToDevice(invec->CL_val_gpu, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
-	  context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
-	  }
-#elif defined(CUDA)
-UNUSED(localCR);
-if( tid == nthreads-2 ) {
-CU_copyHostToDevice(invec->CU_val, invec->val, context->lnrows(context)*sizeof(ghost_vdat_t));
-context->localMatrix->kernel(context->localMatrix,res,invec,spmvmOptions);
-}
-#else
-ghost_vdat_t hlp1;
-int n_per_thread, n_local;
-n_per_thread = context->communicator->lnrows[me]/(nthreads-1);
-
-if (tid < nthreads-2)  
-n_local = n_per_thread;
-else
-n_local = context->communicator->lnrows[me]-(nthreads-2)*n_per_thread;
-
-for (i=tid*n_per_thread; i<tid*n_per_thread+n_local; i++){
-hlp1 = 0.0;
-for (j=localCR->rpt[i]; j<localCR->rpt[i+1]; j++){
-hlp1 = hlp1 + (ghost_vdat_t)localCR->val[j] * invec->val[localCR->col[j]]; 
-}
-
-if (spmvmOptions & GHOST_SPMVM_AXPY) 
-res->val[i] += hlp1;
-else
-res->val[i] = hlp1;
-}
-
-#endif
-
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-{
-	likwid_markerStopRegion("Kernel 3 -- communication (last thread) & local computation (others)");
-	likwid_markerStartRegion("Kernel 3 -- remote computation");
-}
-#endif
-
-#ifdef OPENCL
-CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-		invec->val+context->lnrows(context), context->communicator->halo_elements*sizeof(ghost_vdat_t),
-		context->lnrows(context)*sizeof(ghost_vdat_t));
-#endif
-#ifdef CUDA
-CU_copyHostToDevice(&invec->CU_val[context->lnrows(context)], 
-		&invec->val[context->lnrows(context)], context->communicator->halo_elements*sizeof(ghost_vdat_t));
-#endif
-mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-likwid_markerStopRegion("Kernel 3 -- remote computation");
-#endif
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-likwid_markerStopRegion("Kernel 3");
-#endif
-
-*/
+	ghost_task_wait(compTask);
+	ghost_task_add(compRTask);
+	ghost_task_wait(compRTask);
 }

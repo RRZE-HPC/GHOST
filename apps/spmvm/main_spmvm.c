@@ -79,7 +79,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
-	int  mode, nIter = 50;
+	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
 	matdt_t shift = 0.;
@@ -89,10 +89,12 @@ int main( int argc, char* argv[] )
 	double mytol;
 #endif
 
-	int modes[] = {GHOST_SPMVM_MODE_NOMPI,
-		/*GHOST_SPMVM_MODE_VECTORMODE,*/
-		GHOST_SPMVM_MODE_GOODFAITH/*,
-		GHOST_SPMVM_MODE_TASKMODE*/};
+	int modes[] = {
+	//	GHOST_SPMVM_MODE_NOMPI,
+		GHOST_SPMVM_MODE_VECTORMODE,
+		GHOST_SPMVM_MODE_GOODFAITH,
+		GHOST_SPMVM_MODE_TASKMODE
+	};
 		int nModes = sizeof(modes)/sizeof(int);
 
 	int spmvmOptions = GHOST_SPMVM_AXPY /* | GHOST_SPMVM_APPLY_SHIFT*/;
@@ -122,20 +124,28 @@ int main( int argc, char* argv[] )
 		mtraits.aux = &aux;
 	}
 
+	int nthreads[] = {12,12};
+	int firstthr[] = {0,0};
+	int levels = 1;
 	ghost_init(argc,argv);       // basic initialization
+	ghost_tasking_init(nthreads,firstthr,levels);
+//	ghost_tasking_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
+
 
 #ifndef TASKING
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 #endif
-
+/*	char *map;
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
+	hwloc_bitmap_list_asprintf(&map,cpuset);
+	WARNING_LOG("Running @ cores %s",map);
+*/
 	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD,1.0);
 	mat = ghost_createMatrix(context,&mtraits,1);
 
 
 #ifdef TASKING
-//	ghost_setCore(23);
-//#pragma omp parallel
-//	WARNING_LOG("Main thread %d running @ core %d",omp_get_thread_num(),ghost_getCore());
 	createDataArgs args = {.mat = mat, .lhs = &lhs, .rhs = &rhs, .matfile = matrixPath, .lhsInit = &zero, .rhsInit = rhsVal, .rtr = &rvtraits, .ltr = &lvtraits, .ctx = context};
 	ghost_task_t *createDataTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &createDataFunc, &args, GHOST_TASK_DEFAULT);
 	ghost_task_add(createDataTask);
@@ -165,30 +175,20 @@ int main( int argc, char* argv[] )
 	if (ghost_getRank(MPI_COMM_WORLD) == 0)
 		ghost_printHeader("Performance");
 
-
 	for (mode=0; mode < nModes; mode++){
 
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
-//		if (modes[mode] == GHOST_SPMVM_MODE_TASKMODE) { // having a task inside a task does not work currently in this case
-//#ifdef VT
-//			VT_begin("foo");
-//#endif
-//			time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
-//#ifdef VT
-//			VT_end("foo");
-//#endif
-
-//		} else {
-
-			benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-			ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
-			//ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_NO_PIN);
-			ghost_task_add(benchTask);
-			ghost_task_wait(benchTask);
-			ghost_task_destroy(benchTask);
-
-	//	}
+		benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
+		if (modes[mode] != GHOST_SPMVM_MODE_TASKMODE) {
+		ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
+		ghost_task_add(benchTask);
+		ghost_task_wait(benchTask);
+		ghost_task_destroy(benchTask);
+		} else {
+			ghost_pinThreads(GHOST_PIN_PHYS,NULL);
+			benchFunc(&bargs);
+		}
 #else
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 #endif
@@ -256,6 +256,7 @@ int main( int argc, char* argv[] )
 	goldLHS->destroy(goldLHS);
 #endif
 
+	ghost_tasking_finish(nthreads,firstthr,levels);
 	ghost_finish();
 
 	return EXIT_SUCCESS;
