@@ -191,7 +191,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 				break;
 			}
 		}
-		DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,i%smt,runner->logical_index);
+		DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,runner->logical_index);
 	}
 
 	qsort(nodes,totalThreads,sizeof(int),intcomp);
@@ -204,18 +204,22 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 	}
 	coreidx = (int **)ghost_malloc(sizeof(int *)*ghost_thpool->nLDs);
 
+	int li;
 	for (q=0; q<ghost_thpool->nLDs; q++) {
 		int localthreads = nThreadsPerLD(q);
 		coreidx[q] = (int *)ghost_malloc(sizeof(int)*ghost_thpool->nThreads);
 
 		for (t=0; t<localthreads; t++) { // my own threads
 			coreidx[q][t] = firstThreadOfLD(q)+t;
+			//WARNING_LOG("1 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
 		}
-		for (; t-localthreads<firstThreadOfLD(q); t++) {
-			coreidx[q][t] = t-firstThreadOfLD(q);
+		for (li=0; t-localthreads<firstThreadOfLD(q); t++, li++) { // earlier LDs
+			coreidx[q][t] = li;
+			//WARNING_LOG("2 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
 		}	
-		for (; t<ghost_thpool->nThreads; t++) {
+		for (; t<ghost_thpool->nThreads; t++) { // later LDs
 			coreidx[q][t] = t;
+			//WARNING_LOG("3 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
 		}	
 	}
 
@@ -462,16 +466,16 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 					for (; t<ghost_thpool->nThreads; t++) {
 						int core = coreidx[curTask->LD][t];
-						/*if ((curTask->flags & GHOST_TASK_ONLY_HYPERTHREADS) && 
+						if ((curTask->flags & GHOST_TASK_ONLY_HYPERTHREADS) && 
 								(ghost_thpool->PUs[core]->sibling_rank == 0)) {
-							WARNING_LOG("only HT");
+						//	WARNING_LOG("only HT");
 							continue;
 						}
 						if ((curTask->flags & GHOST_TASK_NO_HYPERTHREADS) && 
 								(ghost_thpool->PUs[core]->sibling_rank > 0)) {
-							WARNING_LOG("no HT");
+						//	WARNING_LOG("no HT");
 							continue;
-						}*/
+						}
 						
 
 						//if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
@@ -759,13 +763,13 @@ int ghost_taskq_finish()
 		WARNING_LOG("Error in sem_post: %s",strerror(errno));
 		return GHOST_FAILURE;
 	}
-	DEBUG_LOG(1,"Join all threads");	
+	/*DEBUG_LOG(1,"Join all threads");	
 	for (t=0; t<ghost_thpool->nThreads; t++)
 	{ 		
 		if (pthread_join(ghost_thpool->threads[t],NULL)){
 			return GHOST_FAILURE;
 		}
-	}
+	}*/
 
 	DEBUG_LOG(1,"Free task queues");	
 	free(taskq);

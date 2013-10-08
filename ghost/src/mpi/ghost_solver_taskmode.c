@@ -165,10 +165,10 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		}
 
 
-		compTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeLocal, &cpargs, taskflags);
-		compRTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeRemote, &cpargs, taskflags);
-		commTask = ghost_task_init(ghost_thpool->nThreads, 0, &communicate, &cargs, taskflags);
-		prepareTask = ghost_task_init(ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
+		compTask = ghost_task_init(11, 0, &computeLocal, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+		compRTask = ghost_task_init(11, 0, &computeRemote, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+		commTask = ghost_task_init(1, 1, &communicate, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+		prepareTask = ghost_task_init(11, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;
@@ -214,12 +214,15 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 //	computeLocal(&cpargs);
 //	computeRemote(&cpargs);
 
-	ghost_task_add(prepareTask);
-	ghost_task_wait(prepareTask);
+	prepare(&cargs);
+//	ghost_task_add(prepareTask);
+//	ghost_task_wait(prepareTask);
 	ghost_task_add(compTask);
 	ghost_task_add(commTask);
 	ghost_task_wait(commTask);
 	ghost_task_wait(compTask);
-	ghost_task_add(compRTask);
-	ghost_task_wait(compRTask);
+
+	computeRemote(&cpargs);
+//	ghost_task_add(compRTask);
+//	ghost_task_wait(compRTask);
 }

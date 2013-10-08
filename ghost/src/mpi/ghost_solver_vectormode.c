@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef LIKWID_PERFMON
+#include <likwid.h>
+#endif
 
 #include "ghost_util.h"
 
@@ -40,6 +43,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 				max_dues = context->communicator->dues[i];
 
 		work = (char *)ghost_malloc(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
+
 		request = (MPI_Request*) ghost_malloc( 2*nprocs*sizeof(MPI_Request));
 		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
 
@@ -73,6 +77,10 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 		}
 	}
 
+//	double start = ghost_wctime();
+#ifdef LIKWID_PERFMON
+	likwid_markerStartRegion("Preparation");
+#endif
 #pragma omp parallel private(to_PE,i)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
@@ -80,6 +88,10 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
+#ifdef LIKWID_PERFMON
+	likwid_markerStopRegion("Preparation");
+#endif
+//	WARNING_LOG("preparation: %f",ghost_wctime()-start);
 
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 		if (context->communicator->dues[to_PE]>0){
@@ -88,7 +100,9 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 		}
 	}
 
+//	start = ghost_wctime();
 	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
+//	WARNING_LOG("communication: %f",ghost_wctime()-start);
 
 //	double start;
 #ifdef LIKWID_MARKER_FINE

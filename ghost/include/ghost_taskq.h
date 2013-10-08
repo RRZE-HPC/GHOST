@@ -161,8 +161,8 @@ typedef struct ghost_thpool_t {
 } ghost_thpool_t;
 
 #define ghost_tasking_init(_nt,_ft,_l) \
-	ghost_thpool_init(_nt,_ft,_l); \
 	omp_set_nested(1); \
+	ghost_thpool_init(_nt,_ft,_l); \
 	_Pragma("omp parallel num_threads(2)") \
 	{ \
 		if (omp_get_thread_num() == 0) { \
@@ -176,11 +176,6 @@ typedef struct ghost_thpool_t {
 #define ghost_tasking_finish(_nt,_ft,_l) \
 			ghost_taskq_finish();\
 		} else { \
-			int __threads = 0; \
-			int __level; \
-			for (__level = 0; __level<_l; __level++) { \
-				__threads += (_nt)[__level]; \
-			} \
 			_Pragma("omp parallel num_threads(ghost_thpool->nThreads)") \
 			{ \
 				thread_main(NULL); \
