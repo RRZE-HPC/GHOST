@@ -123,11 +123,12 @@ int main( int argc, char* argv[] )
 		aux[1] = 32; 
 		mtraits.aux = &aux;
 	}
+	ghost_init(argc,argv);       // basic initialization
 
+//	int nthreads[] = {ghost_getNumberOfPhysicalCores(),ghost_getNumberOfPhysicalCores()};
 	int nthreads[] = {12,12};
 	int firstthr[] = {0,0};
 	int levels = 1;
-	ghost_init(argc,argv);       // basic initialization
 	ghost_tasking_init(nthreads,firstthr,levels);
 //	ghost_tasking_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
 
@@ -180,15 +181,15 @@ int main( int argc, char* argv[] )
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
 		benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-		if (modes[mode] != GHOST_SPMVM_MODE_TASKMODE) {
+//		if (modes[mode] != GHOST_SPMVM_MODE_TASKMODE) {
 		ghost_task_t *benchTask = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &benchFunc, &bargs, GHOST_TASK_DEFAULT);
 		ghost_task_add(benchTask);
 		ghost_task_wait(benchTask);
 		ghost_task_destroy(benchTask);
-		} else {
-			ghost_pinThreads(GHOST_PIN_PHYS,NULL);
-			benchFunc(&bargs);
-		}
+//		} else {
+//			ghost_pinThreads(GHOST_PIN_PHYS,NULL);
+//			benchFunc(&bargs);
+//		}
 #else
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 #endif

@@ -393,15 +393,13 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		}
 		hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); // TODO free
 		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
-		//	char *a, *b, *c;
-		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->coremap);
-		//	hwloc_bitmap_list_asprintf(&b,curTask->parent->childusedmap);
+			//char *a, *b, *c;
+			//hwloc_bitmap_list_asprintf(&a,curTask->parent->coremap);
+			//hwloc_bitmap_list_asprintf(&b,curTask->parent->childusedmap);
 			
 			hwloc_bitmap_andnot(parentscores,curTask->parent->coremap,curTask->parent->childusedmap);
-		//	hwloc_bitmap_list_asprintf(&c,parentscores);
+			//hwloc_bitmap_list_asprintf(&c,parentscores);
 			//WARNING_LOG("(%lu) %s = %s andnot %s (%p)",(unsigned long)pthread_self(),c,a,b,curTask->parent->childusedmap);
-
-
 			if (curTask->flags & GHOST_TASK_LD_STRICT) {
 				//availcores += nBusyCoresAtLD(curTask->parent->coremap,curTask->LD);
 				availcores += nBusyCoresAtLD(parentscores,curTask->LD);
@@ -496,12 +494,12 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			}
 		}
 		if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
-		//	char *a;
-		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-		//	WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+			//char *a;
+			//hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+			//WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
 			hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
-		//	hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-		//	WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+			//hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+			//WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
 		}
 		hwloc_bitmap_or(ghost_thpool->busy,ghost_thpool->busy,mybusy);
 
