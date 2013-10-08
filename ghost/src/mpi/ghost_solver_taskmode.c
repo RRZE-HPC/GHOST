@@ -165,9 +165,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		}
 
 
-		compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, taskflags);
+		compTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeLocal, &cpargs, taskflags);
 		compRTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeRemote, &cpargs, taskflags);
-		commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
+		commTask = ghost_task_init(ghost_thpool->nThreads, 0, &communicate, &cargs, taskflags);
 		prepareTask = ghost_task_init(ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
 		
 		cargs.context = context;
