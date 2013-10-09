@@ -156,9 +156,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 			DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
 			taskflags |= GHOST_TASK_USE_PARENTS;
 			ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-			compTask = ghost_task_init(parent->nThreads-1, 0, &computeLocal, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+			compTask = ghost_task_init(parent->nThreads, 0, &computeLocal, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
 			compRTask = ghost_task_init(parent->nThreads, 0, &computeRemote, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-			commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+			commTask = ghost_task_init(1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
 			prepareTask = ghost_task_init(parent->nThreads, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
 		} else {
 			DEBUG_LOG(1,"No parent task in task mode spMVM solver");

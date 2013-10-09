@@ -19,7 +19,7 @@
 #include <mpi.h>
 #endif
 
-//#define TASKING
+#define TASKING
 //#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
@@ -127,22 +127,15 @@ int main( int argc, char* argv[] )
 
 //	int nthreads[] = {ghost_getNumberOfPhysicalCores(),ghost_getNumberOfPhysicalCores()}; // TODO why is SMT bad?
 //	int nthreads[] = {ghost_getNumberOfPhysicalCores(),0};
-	int nthreads[] = {12,0};
+	int nthreads[] = {12,12};
 	int firstthr[] = {0,0};
 	int levels = 2;
 	ghost_tasking_init(nthreads,firstthr,levels);
-//	ghost_tasking_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
 
 
 #ifndef TASKING
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 #endif
-/*	char *map;
-	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
-	hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
-	hwloc_bitmap_list_asprintf(&map,cpuset);
-	WARNING_LOG("Running @ cores %s",map);
-*/
 	context = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,matrixPath,MPI_COMM_WORLD,1.0);
 	mat = ghost_createMatrix(context,&mtraits,1);
 
@@ -159,15 +152,15 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
 
-//	ghost_printSysInfo();
-//	ghost_printGhostInfo();
-//	ghost_printContextInfo(context);
+	ghost_printSysInfo();
+	ghost_printGhostInfo();
+	ghost_printContextInfo(context);
 
 #ifdef TASKING
 	ghost_task_wait(createDataTask);
 	ghost_task_destroy(createDataTask);
 #endif
-//	ghost_printMatrixInfo(mat);
+	ghost_printMatrixInfo(mat);
 #ifdef CHECK
 	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
 	ghost_referenceSolver(goldLHS,matrixPath,matdt,rhs,nIter,spmvmOptions);	
