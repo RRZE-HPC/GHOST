@@ -38,6 +38,9 @@ ghost_thpool_t *ghost_thpool = NULL;
  */
 static sem_t taskSem;
 
+static pthread_cond_t newTaskCond;
+static pthread_mutex_t newTaskMutex;
+
 /**
  * @brief This is set to 1 if the tasqs are about to be killed. 
  The threads will exit their infinite loops in this case.
@@ -150,6 +153,8 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 	ghost_thpool->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
 	sem_init(ghost_thpool->sem, 0, 0);
 	sem_init(&taskSem, 0, 0);
+	pthread_cond_init(&newTaskCond,NULL);
+	pthread_mutex_init(&newTaskMutex,NULL);
 	pthread_mutex_init(&globalMutex,NULL);
 
 	pthread_key_create(&ghost_thread_key,NULL);
@@ -557,7 +562,7 @@ void * thread_main(void *arg)
 			break;
 		}
 
-
+		pthread_mutex_lock(&newTaskMutex);
 		pthread_mutex_lock(&globalMutex);
 		myTask = taskq_findDeleteAndPinTask(taskq);
 		pthread_mutex_unlock(&globalMutex);
@@ -565,9 +570,12 @@ void * thread_main(void *arg)
 		if (myTask  == NULL) // no suiting task found
 		{
 			DEBUG_LOG(1,"Thread %d: Could not find a suited task in any queue",(int)pthread_self());
+			pthread_cond_wait(&newTaskCond,&newTaskMutex);
+			pthread_mutex_unlock(&newTaskMutex);
 			sem_post(&taskSem);
 			continue;
 		}
+		pthread_mutex_unlock(&newTaskMutex);
 
 		pthread_mutex_lock(myTask->mutex);
 		*(myTask->state) = GHOST_TASK_RUNNING;	
@@ -586,6 +594,10 @@ void * thread_main(void *arg)
 		pthread_mutex_lock(&globalMutex);
 		ghost_task_unpin(myTask);
 		pthread_mutex_unlock(&globalMutex);
+		
+		pthread_mutex_lock(&newTaskMutex);
+		pthread_cond_broadcast(&newTaskCond);
+		pthread_mutex_unlock(&newTaskMutex);
 		
 		pthread_mutex_lock(myTask->mutex); 
 		DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
@@ -732,6 +744,9 @@ int ghost_task_add(ghost_task_t *t)
 	*(t->state) = GHOST_TASK_ENQUEUED;
 
 	sem_post(&taskSem);
+	pthread_mutex_lock(&newTaskMutex);
+	pthread_cond_broadcast(&newTaskCond);
+	pthread_mutex_unlock(&newTaskMutex);
 
 	DEBUG_LOG(1,"Task added successfully");
 
