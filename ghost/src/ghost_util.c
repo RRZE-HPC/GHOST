@@ -46,6 +46,7 @@
 //static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
 //static int nTasks = 0;
 
+extern char ** environ;
 
 double ghost_wctime()
 {
@@ -245,6 +246,20 @@ void ghost_printContextInfo(ghost_context_t *context)
 
 }
 
+static char *env(char *key)
+{
+	int i=0;
+	while (environ[i]) {
+		if (!strncasecmp(key,environ[i],strlen(key)))
+		{
+			return environ[i]+strlen(key)+1;
+		}
+		i++;
+	}
+	return "undefined";
+
+}
+
 void ghost_printSysInfo()
 {
 	int nproc = ghost_getNumberOfRanks(MPI_COMM_WORLD);
@@ -299,6 +314,7 @@ void ghost_printSysInfo()
 		ghost_printLine("OpenMP threads per node",NULL,"%d",nproc/nnodes*nthreads);
 		ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
+		ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
 #ifdef OPENCL
 		ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
 		ghost_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
