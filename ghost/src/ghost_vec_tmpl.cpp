@@ -93,7 +93,7 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for 
 		for (i=0; i<vec->traits->nrows; i++) {
-			((v_t *)(vec->val))[i] *= s[v];
+			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] *= s[v];
 		}
 	}
 }
