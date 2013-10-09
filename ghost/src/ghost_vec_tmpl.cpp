@@ -6,6 +6,19 @@
 #include "ghost_complex.h"
 #include <omp.h>
 
+double conjugate(double& c) {
+	return c;
+}
+
+float conjugate(float& c) {
+	return c;
+}
+
+template <typename T>
+ghost_complex<T> conjugate(ghost_complex<T>& c) {
+	return ghost_complex<T>(std::real(c),-std::imag(c));
+}
+
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
 	v_t s;

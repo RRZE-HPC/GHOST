@@ -35,14 +35,3 @@ ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) const {
 }
 
 
-double conjugate(double& c) {
-	return c;
-}
-
-float conjugate(float& c) {
-	return c;
-}
-template <typename T>
-ghost_complex<T> conjugate(ghost_complex<T>& c) {
-	return ghost_complex<T>(std::real(c),-std::imag(c));
-}
