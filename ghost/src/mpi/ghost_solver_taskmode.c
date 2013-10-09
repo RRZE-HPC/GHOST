@@ -26,16 +26,11 @@ static void *prepare(void *vargs)
 {
 	int to_PE, i;
 	commArgs *args = (commArgs *)vargs;
-#pragma omp parallel private(to_PE,i) 
-	{
-//#pragma omp single
-//		printf("assembly is done with %d threads\n",omp_get_num_threads());
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-#pragma omp for 
+#pragma omp parallel for 
 		for (i=0; i<args->context->communicator->dues[to_PE]; i++){
 			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
 		}
-	}
 	}
 	return NULL;
 
@@ -160,15 +155,20 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		if (pthread_getspecific(ghost_thread_key) != NULL) {
 			DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
 			taskflags |= GHOST_TASK_USE_PARENTS;
+			ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
+			compTask = ghost_task_init(parent->nThreads-1, 0, &computeLocal, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+			compRTask = ghost_task_init(parent->nThreads, 0, &computeRemote, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+			commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+			prepareTask = ghost_task_init(parent->nThreads, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
 		} else {
 			DEBUG_LOG(1,"No parent task in task mode spMVM solver");
+			compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cpargs, taskflags);
+			compRTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeRemote, &cpargs, taskflags);
+			commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
+			prepareTask = ghost_task_init(ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
 		}
 
 
-		compTask = ghost_task_init(11, 0, &computeLocal, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-		compRTask = ghost_task_init(11, 0, &computeRemote, &cpargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-		commTask = ghost_task_init(1, 1, &communicate, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-		prepareTask = ghost_task_init(11, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
 		
 		cargs.context = context;
 		cargs.nprocs = nprocs;
@@ -217,10 +217,35 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	prepare(&cargs);
 //	ghost_task_add(prepareTask);
 //	ghost_task_wait(prepareTask);
+//	double start = ghost_wctime();
+//	communicate(&cargs);
+//	WARNING_LOG("comm took %f sec",ghost_wctime()-start);
+//	start = ghost_wctime();
+//	computeLocal(&cpargs);
+//	WARNING_LOG("comm...loc took %f sec",ghost_wctime()-start);
+
+/*
+#pragma omp parallel num_threads(2)
+	{
+		if (omp_get_thread_num() == 0) {
+			ghost_setCore(11);
+			communicate(&cargs);
+		} else {
+			omp_set_num_threads(11);
+			ghost_pinThreads(GHOST_PIN_MANUAL,"0,1,2,3,4,5,6,7,8,9,10");
+			computeLocal(&cpargs);
+		}
+	}
+
+*/
+
+//	start = ghost_wctime();
 	ghost_task_add(compTask);
+//	communicate(&cargs);
 	ghost_task_add(commTask);
 	ghost_task_wait(commTask);
 	ghost_task_wait(compTask);
+//	WARNING_LOG("comm+loc took %f sec",ghost_wctime()-start);
 
 	computeRemote(&cpargs);
 //	ghost_task_add(compRTask);

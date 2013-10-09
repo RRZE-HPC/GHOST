@@ -20,7 +20,7 @@
 #endif
 
 #define TASKING
-//#define CHECK // compare with reference solution
+#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -125,7 +125,8 @@ int main( int argc, char* argv[] )
 	}
 	ghost_init(argc,argv);       // basic initialization
 
-//	int nthreads[] = {ghost_getNumberOfPhysicalCores(),ghost_getNumberOfPhysicalCores()};
+//	int nthreads[] = {ghost_getNumberOfPhysicalCores(),ghost_getNumberOfPhysicalCores()}; // TODO why is SMT bad?
+//	int nthreads[] = {ghost_getNumberOfPhysicalCores(),0};
 	int nthreads[] = {12,0};
 	int firstthr[] = {0,0};
 	int levels = 2;
@@ -158,9 +159,9 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
 
-//	ghost_printSysInfo();
-//	ghost_printGhostInfo();
-//	ghost_printContextInfo(context);
+	ghost_printSysInfo();
+	ghost_printGhostInfo();
+	ghost_printContextInfo(context);
 
 #ifdef TASKING
 	ghost_task_wait(createDataTask);
@@ -258,7 +259,7 @@ int main( int argc, char* argv[] )
 	goldLHS->destroy(goldLHS);
 #endif
 
-	ghost_tasking_finish(nthreads,firstthr,levels);
+	ghost_tasking_finish();
 	ghost_finish();
 
 	return EXIT_SUCCESS;

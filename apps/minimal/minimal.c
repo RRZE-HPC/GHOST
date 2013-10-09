@@ -4,6 +4,7 @@
 #include <ghost_util.h>
 #include <ghost_taskq.h>
 #include <cpuid.h>
+#include <omp.h>
 
 
 GHOST_REGISTER_DT_D(vecdt)
@@ -32,12 +33,12 @@ static void *minimalTask(void *arg)
 	ghost_vec_t *lhs, *rhs;
 	ghost_mat_t *mat;
 
-	ctx = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,arg,MPI_COMM_WORLD);
+	ctx = ghost_createContext(GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_DEFAULT,arg,MPI_COMM_WORLD,1.);
 	mat = ghost_createMatrix(ctx,&mtraits,1);
+	mat->fromFile(mat,(char *)arg);
 	rhs = ghost_createVector(ctx,&rvtraits);
 	lhs = ghost_createVector(ctx,&lvtraits);
 
-	mat->fromFile(mat,(char *)arg);
 	lhs->fromScalar(lhs,&zero);
 	rhs->fromFunc(rhs,rhsVal);
 	
@@ -66,21 +67,18 @@ static void *minimalTask(void *arg)
 int main(int argc, char* argv[]) 
 {
 	ghost_init(argc,argv);
+	int nthreads[] = {12,12};
+	int firstthr[] = {0,0};
+	int levels = 2;
+	ghost_tasking_init(nthreads,firstthr,levels);
 
-//#ifdef MIC 
-	// SMT-3
-//	ghost_thpool_init(ghost_cpuid_topology.numHWThreads/4*3);
-//#else 
-	// no SMT
-//	ghost_thpool_init(ghost_getNumberOfPhysicalCores());
-//#endif
-//	ghost_taskq_init(ghost_cpuid_topology.numSockets);
-
-	ghost_task_t *t = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &minimalTask, argv[1], GHOST_TASK_DEFAULT);
+	ghost_task_t *t = ghost_task_init(nthreads[0], 0, &minimalTask, argv[1], GHOST_TASK_NO_HYPERTHREADS);
 	ghost_task_add(t);
 
 	ghost_task_wait(t);
 	ghost_task_destroy(t);
+
+	ghost_tasking_finish();
 	ghost_finish();
 
 	return EXIT_SUCCESS;

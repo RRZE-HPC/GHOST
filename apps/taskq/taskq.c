@@ -60,6 +60,8 @@ static void *longRunningFunc(void *arg)
 int main(int argc, char ** argv)
 {
 	ghost_init(argc,argv);
+	ghost_tasking_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
+
 	int foo = 42;
 
 /*#ifdef FULLNODE
@@ -76,7 +78,7 @@ int main(int argc, char ** argv)
 	ghost_thpool_init(nThreads,firstThread,levels);
 #endif
 */
-	ghost_thpool_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
+//	ghost_thpool_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
 //	ghost_taskq_init();
 	int nLDs = ghost_thpool->nLDs;
 	//ghost_thpool_init(ghost_getNumberOfPhysicalCores());
@@ -164,6 +166,7 @@ int main(int argc, char ** argv)
 	ghost_task_destroy(lrTask);
 //	ghost_task_destroy(srTask);
 
+	ghost_tasking_finish();
 	ghost_finish();
 	return 0;
 }

@@ -173,7 +173,7 @@ typedef struct ghost_thpool_t {
 				sem_wait(ghost_thpool->sem); \
 			} \
 
-#define ghost_tasking_finish(_nt,_ft,_l) \
+#define ghost_tasking_finish() \
 			ghost_taskq_finish();\
 		} else { \
 			_Pragma("omp parallel num_threads(ghost_thpool->nThreads)") \
