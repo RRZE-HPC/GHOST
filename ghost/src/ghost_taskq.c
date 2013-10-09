@@ -38,6 +38,9 @@ ghost_thpool_t *ghost_thpool = NULL;
  */
 static sem_t taskSem;
 
+static pthread_cond_t newTaskCond;
+static pthread_mutex_t newTaskMutex;
+
 /**
  * @brief This is set to 1 if the tasqs are about to be killed. 
  The threads will exit their infinite loops in this case.
@@ -150,6 +153,8 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 	ghost_thpool->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
 	sem_init(ghost_thpool->sem, 0, 0);
 	sem_init(&taskSem, 0, 0);
+	pthread_cond_init(&newTaskCond,NULL);
+	pthread_mutex_init(&newTaskMutex,NULL);
 	pthread_mutex_init(&globalMutex,NULL);
 
 	pthread_key_create(&ghost_thread_key,NULL);
@@ -541,17 +546,24 @@ void * thread_main(void *arg)
 	while (1) // as long as there are jobs stay alive
 	{
 		// TODO wait for condition when unpinned or new task
-		if (sem_wait(&taskSem)) // TODO wait for a signal in order to avoid entering the loop when nothing has changed 
+		//if (sem_wait(&taskSem)) // TODO wait for a signal in order to avoid entering the loop when nothing has changed
+		pthread_mutex_lock(&newTaskMutex);	
+		if (pthread_cond_wait(&newTaskCond,&newTaskMutex)) 
 		{
+			pthread_mutex_unlock(&newTaskMutex);	
 			if (errno == EINTR)
 				continue;
 			ABORT("Waiting for tasks failed: %s",strerror(errno));
 		}
+		pthread_mutex_unlock(&newTaskMutex);	
 
 		if (killed) // thread has been woken by the finish() function
 		{
 			DEBUG_LOG(2,"Thread %d: Not executing any further tasks",(int)pthread_self());
-			sem_post(&taskSem); // wake up another thread
+//			sem_post(&taskSem); // wake up another thread
+			pthread_mutex_lock(&newTaskMutex);	
+			pthread_cond_broadcast(&newTaskCond);
+			pthread_mutex_unlock(&newTaskMutex);	
 			break;
 		}
 
@@ -563,7 +575,10 @@ void * thread_main(void *arg)
 		if (myTask  == NULL) // no suiting task found
 		{
 			DEBUG_LOG(1,"Thread %d: Could not find a suited task in any queue",(int)pthread_self());
-			sem_post(&taskSem);
+//			sem_post(&taskSem);
+			pthread_mutex_lock(&newTaskMutex);	
+			pthread_cond_signal(&newTaskCond);
+			pthread_mutex_unlock(&newTaskMutex);	
 			continue;
 		}
 
@@ -574,9 +589,11 @@ void * thread_main(void *arg)
 
 		DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
 
+	//	DEBUG_LOG(0,"run %p",myTask);
 		pthread_setspecific(ghost_thread_key,myTask);
 		myTask->ret = myTask->func(myTask->arg);
 		pthread_setspecific(ghost_thread_key,NULL);
+	//	DEBUG_LOG(0,"fin %p",myTask);
 
 
 		DEBUG_LOG(1,"Thread %d: Finished executing task: %p",(int)pthread_self(),myTask);
@@ -595,8 +612,8 @@ void * thread_main(void *arg)
 			break;
 		}
 	}
-	sem_getvalue(&taskSem,&sval);
-	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
+//	sem_getvalue(&taskSem,&sval);
+//	DEBUG_LOG(1,"Thread %d: Exited infinite loop (%d)",(int)pthread_self(),sval);
 	return NULL;
 }
 
@@ -734,7 +751,10 @@ int ghost_task_add(ghost_task_t *t)
 	//ghost_task_destroy(&commTask);
 	*(t->state) = GHOST_TASK_ENQUEUED;
 
-	sem_post(&taskSem);
+	//sem_post(&taskSem);
+	pthread_mutex_lock(&newTaskMutex);	
+	pthread_cond_signal(&newTaskCond);
+	pthread_mutex_unlock(&newTaskMutex);	
 
 	DEBUG_LOG(1,"Task added successfully");
 
@@ -759,10 +779,14 @@ int ghost_taskq_finish()
 	pthread_mutex_unlock(&globalMutex);
 
 	DEBUG_LOG(1,"Wake up all threads");	
-	if (sem_post(&taskSem)){
+	pthread_mutex_lock(&newTaskMutex);	
+	if (pthread_cond_broadcast(&newTaskCond)) {
+//	if (sem_post(&taskSem)){
+		pthread_mutex_unlock(&newTaskMutex);	
 		WARNING_LOG("Error in sem_post: %s",strerror(errno));
 		return GHOST_FAILURE;
 	}
+	pthread_mutex_unlock(&newTaskMutex);	
 	/*DEBUG_LOG(1,"Join all threads");	
 	for (t=0; t<ghost_thpool->nThreads; t++)
 	{ 		
