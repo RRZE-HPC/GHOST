@@ -415,7 +415,7 @@ int main(int argc, char** argv)
 	ghost_init(argc,argv);
 	int nt[] = {ghost_getNumberOfPhysicalCores()};
 	int ft[] = {0};
-	ghost_thpool_init(nt,ft,1);
+	ghost_tasking_init(nt,ft,1);
 
 	// initialize C random number generator
 	srand(time(NULL));
@@ -471,5 +471,6 @@ int main(int argc, char** argv)
 	}
 
 	// finalize ghost queue
+	ghost_tasking_finish();
 	ghost_finish();
 }

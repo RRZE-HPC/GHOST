@@ -116,6 +116,7 @@ static void *controller2(void *i)
 int main(int argc, char ** argv)
 {
 	ghost_init(argc,argv);
+	ghost_tasking_init(GHOST_THPOOL_NTHREADS_FULLNODE,GHOST_THPOOL_FTHREAD_DEFAULT,GHOST_THPOOL_LEVELS_FULLSMT);
 	pthread_t ct1, ct2;
 	pthread_create(&ct1,NULL,controller1,NULL);
 	pthread_create(&ct2,NULL,controller2,NULL);
@@ -124,6 +125,7 @@ int main(int argc, char ** argv)
 	pthread_join(ct1,NULL);
 	pthread_join(ct2,NULL);
 
+	ghost_tasking_finish();
 	ghost_finish();
 	return 0;
 }

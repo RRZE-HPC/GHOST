@@ -19,8 +19,8 @@
 #include <mpi.h>
 #endif
 
-#define TASKING
-#define CHECK // compare with reference solution
+//#define TASKING
+//#define CHECK // compare with reference solution
 
 GHOST_REGISTER_DT_D(vecdt)
 GHOST_REGISTER_DT_D(matdt)
@@ -159,15 +159,15 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
 
-	ghost_printSysInfo();
-	ghost_printGhostInfo();
-	ghost_printContextInfo(context);
+//	ghost_printSysInfo();
+//	ghost_printGhostInfo();
+//	ghost_printContextInfo(context);
 
 #ifdef TASKING
 	ghost_task_wait(createDataTask);
 	ghost_task_destroy(createDataTask);
 #endif
-	ghost_printMatrixInfo(mat);
+//	ghost_printMatrixInfo(mat);
 #ifdef CHECK
 	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
 	ghost_referenceSolver(goldLHS,matrixPath,matdt,rhs,nIter,spmvmOptions);	
@@ -182,16 +182,10 @@ int main( int argc, char* argv[] )
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
 		benchArgs bargs = {.ctx = context, .mat = mat, .lhs = lhs, .rhs = rhs, .spmvmOptions = &argOptions, .nIter = nIter, .time = &time};
-//		if (modes[mode] != GHOST_SPMVM_MODE_TASKMODE) {
 		ghost_task_t *benchTask = ghost_task_init(nthreads[0], 0, &benchFunc, &bargs, GHOST_TASK_NO_HYPERTHREADS);
 		ghost_task_add(benchTask);
 		ghost_task_wait(benchTask);
 		ghost_task_destroy(benchTask);
-//		} else {
-//		omp_set_num_threads(nthreads[0]);
-//			ghost_pinThreads(GHOST_PIN_MANUAL,"0,1,2,3,4,5,6,7,8,9,10");
-//			benchFunc(&bargs);
-//		}
 #else
 		time = ghost_bench_spmvm(context,lhs,mat,rhs,&argOptions,nIter);
 #endif
