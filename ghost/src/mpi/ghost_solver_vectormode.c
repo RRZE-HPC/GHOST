@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
+#include <omp.h>
 
 #ifdef LIKWID_PERFMON
 #include <likwid.h>
@@ -54,8 +55,10 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 		free(work);
 		free(request);
 		free(status);
+	//	kmp_set_blocktime(0);
 		return;
 	}
+	kmp_set_blocktime(1);
 
 	send_messages=0;
 	recv_messages = 0;

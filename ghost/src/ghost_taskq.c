@@ -228,13 +228,13 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		}	
 	}
 
-/*	WARNING_LOG("Creating %d threads for the thread pool",ghost_thpool->nThreads);
+//	WARNING_LOG("Creating %d threads for the thread pool",ghost_thpool->nThreads);
 	for (t=0; t<ghost_thpool->nThreads; t++){
 		pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
 	}
 	for (t=0; t<ghost_thpool->nThreads; t++){
 		sem_wait(ghost_thpool->sem);
-	}*/
+	}
 	DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
 
 	return GHOST_SUCCESS;
@@ -538,13 +538,15 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
  */
 void * thread_main(void *arg)
 {
-	UNUSED(arg);
+//	kmp_set_blocktime(200);
+//	kmp_set_library_throughput();
+//	UNUSED(arg);
 	ghost_task_t *myTask;
 
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
 
-	DEBUG_LOG(1,"Shepherd thread %lu in thread_main()",(unsigned long)pthread_self());
+	DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %d",(unsigned long)pthread_self(), (intptr_t)arg);
 	while (!killed) // as long as there are jobs stay alive
 	{
 		// TODO wait for condition when unpinned or new task
@@ -561,6 +563,10 @@ void * thread_main(void *arg)
 			sem_post(&taskSem); // wake up another thread
 			break;
 		}
+
+	//	WARNING_LOG("1 %d : %d",(intptr_t)arg,kmp_get_blocktime());
+	//	kmp_set_blocktime((intptr_t)arg);
+	//	WARNING_LOG("2 %d : %d",(intptr_t)arg,kmp_get_blocktime());
 
 		pthread_mutex_lock(&newTaskMutex);
 		pthread_mutex_lock(&globalMutex);
@@ -585,7 +591,11 @@ void * thread_main(void *arg)
 		DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
 
 		pthread_setspecific(ghost_thread_key,myTask);
+
+		kmp_set_blocktime(0);
 		myTask->ret = myTask->func(myTask->arg);
+	//	WARNING_LOG("2 %d : %d",(intptr_t)arg,kmp_get_blocktime());
+		kmp_set_blocktime(200);
 		pthread_setspecific(ghost_thread_key,NULL);
 
 		DEBUG_LOG(1,"Thread %llu: Finished executing task: %p. Free'ing resources and waking up another thread"
@@ -595,6 +605,7 @@ void * thread_main(void *arg)
 		ghost_task_unpin(myTask);
 		pthread_mutex_unlock(&globalMutex);
 		
+	//	kmp_set_blocktime(200);
 		pthread_mutex_lock(&newTaskMutex);
 		pthread_cond_broadcast(&newTaskCond);
 		pthread_mutex_unlock(&newTaskMutex);

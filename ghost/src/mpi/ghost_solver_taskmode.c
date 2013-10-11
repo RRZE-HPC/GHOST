@@ -26,8 +26,9 @@ static void *prepare(void *vargs)
 {
 	int to_PE, i;
 	commArgs *args = (commArgs *)vargs;
+#pragma omp parallel private(to_PE,i)
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-#pragma omp parallel for 
+#pragma omp for 
 		for (i=0; i<args->context->communicator->dues[to_PE]; i++){
 			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
 		}
@@ -43,7 +44,7 @@ static void *communicate(void *vargs)
 //	{
 //#pragma omp single
 //	printf("    ######### communicate: numThreads: %d\n",omp_get_num_threads());
-//	printf("    ######### communicate: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
+//	printf("    ######### communicate: thread %d (%llu) running @ core %d\n",ghost_ompGetThreadNum(), (unsigned long)pthread_self(), ghost_getCore());
 //	}
 //	WARNING_LOG("Sleeping thread %lu",(unsigned long)pthread_self());
 //	usleep(3000000);
@@ -84,7 +85,7 @@ static void *computeLocal(void *vargs)
 //	{
 //#pragma omp single
 //	printf("    ######### compute: numThreads: %d\n",omp_get_num_threads());
-//	printf("    ######### compute: thread %d running @ core %d\n",ghost_ompGetThreadNum(), ghost_getCore());
+//	printf("    ######### compute: thread %d (%llu) running @ core %d\n",ghost_ompGetThreadNum(), (unsigned long)pthread_self(), ghost_getCore());
 //	}
 	compArgs *args = (compArgs *)vargs;
 	args->invec->uploadNonHalo(args->invec);
@@ -188,6 +189,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 		free(work);
 		free(request);
 		free(status);
+	//	kmp_set_blocktime(200);
 		return;
 	}
 
@@ -213,8 +215,12 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 //	communicate(&cargs);
 //	computeLocal(&cpargs);
 //	computeRemote(&cpargs);
+//#pragma omp parallel
+	kmp_set_blocktime(1);
 
 	prepare(&cargs);
+
+
 //	ghost_task_add(prepareTask);
 //	ghost_task_wait(prepareTask);
 //	double start = ghost_wctime();

@@ -79,6 +79,7 @@ static void rhsVal (int i, int v, void *val)
 int main( int argc, char* argv[] ) 
 {
 
+	//	kmp_set_blocktime(1);
 	int  mode, nIter = 100;
 	double time;
 	vecdt_t zero = 0.;
@@ -130,7 +131,8 @@ int main( int argc, char* argv[] )
 	int nthreads[] = {12,12};
 	int firstthr[] = {0,0};
 	int levels = 2;
-	ghost_tasking_init(nthreads,firstthr,levels);
+	ghost_thpool_init(nthreads,firstthr,levels);
+//	ghost_tasking_init(nthreads,firstthr,levels);
 
 
 #ifndef TASKING
@@ -152,15 +154,15 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
 
-	ghost_printSysInfo();
-	ghost_printGhostInfo();
-	ghost_printContextInfo(context);
+//	ghost_printSysInfo();
+//	ghost_printGhostInfo();
+//	ghost_printContextInfo(context);
 
 #ifdef TASKING
 	ghost_task_wait(createDataTask);
 	ghost_task_destroy(createDataTask);
 #endif
-	ghost_printMatrixInfo(mat);
+//	ghost_printMatrixInfo(mat);
 #ifdef CHECK
 	ghost_vec_t *goldLHS = ghost_createVector(context,&lvtraits);
 	ghost_referenceSolver(goldLHS,matrixPath,matdt,rhs,nIter,spmvmOptions);	
@@ -171,6 +173,9 @@ int main( int argc, char* argv[] )
 		ghost_printHeader("Performance");
 
 	for (mode=0; mode < nModes; mode++){
+
+//		if (mode == 2)
+	//		kmp_set_blocktime(1);
 
 		int argOptions = spmvmOptions | modes[mode];
 #ifdef TASKING
@@ -246,7 +251,7 @@ int main( int argc, char* argv[] )
 	goldLHS->destroy(goldLHS);
 #endif
 
-	ghost_tasking_finish();
+	//ghost_tasking_finish();
 	ghost_finish();
 
 	return EXIT_SUCCESS;
