@@ -4,6 +4,24 @@ README {#mainpage}
 GHOST stands for General, Hybrid and Optimized Sparse Toolkit. It provides
 functionality for computation with very large sparse or dense matrices.
 
+Requirements
+============
+
+1. hwloc
+2. MKL (more supported BLAS libraries to come)
+
+
+Supported compilers
+-------------------
+
+1. Intel
+
+`KMP_BLOCKTIME=200`
+
+2. GNU
+
+`GOMP_WAIT_POLICY="passive"`
+
 
 Data types
 ==========
