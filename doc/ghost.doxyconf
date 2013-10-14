@@ -1,7 +1,8 @@
 PROJECT_NAME = GHOST
 OUTPUT_DIRECTORY = doc/
 EXTRACT_STATIC = yes
-INPUT = src/ include/ doc/
+INPUT = src/ include/ doc/ README.md
+USE_MDFILE_AS_MAINPAGE = README.md
 GENERATE_LATEX = no
 GENERATE_HTML = yes
 HTML_OUTPUT = html
