@@ -4,7 +4,7 @@ include ../common.mk
 
 .PHONY:clean distclean all
 
-all: vec.x omp.x
+all: vec.x omp.x shiftscale.x
 
 %.o: %.c ../../ghost/config.mk 
 	@echo "==> Compile $< -> $@"
@@ -15,6 +15,10 @@ vec.x: vec.o
 	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 
 omp.x: omp.o
+	@echo "==> Link $@"
+	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
+
+shiftscale.x: shiftscale.o
 	@echo "==> Link $@"
 	@$(CC) $(CFLAGS) $(LPATH) -o $@ $<  $(LIBS)
 
