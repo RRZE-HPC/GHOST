@@ -14,13 +14,20 @@ Requirements
 Supported compilers
 -------------------
 
+GHOST is tested with a range of compilers.
+
 1. Intel
 
-`KMP_BLOCKTIME=200`
+	This is the recommended compiler suite which showed to yield best performance 
+	with GHOST. A specific feature of it is the presence of the library function 
+	`kmp_setblocktime()` which allows to set the OpenMP block time at run-time which
+	is crucial in order to get the best performance.
 
 2. GNU
-
-`GOMP_WAIT_POLICY="passive"`
+	
+	In order to improve the performance with GCC, it is recommended to set the
+	environment variable `GOMP_WAIT_POLICY="PASSIVE"` and in many cases
+	`OMP_SCHEDULE="STATIC"` (the default in GCC 4.8.1 is `"DYNAMIC"`).
 
 
 Data types
