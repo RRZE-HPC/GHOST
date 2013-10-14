@@ -10,17 +10,13 @@
 
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
-//#pragma omp parallel
-//	{
-//	if (omp_get_thread_num() == (omp_get_num_threads()-1)) {
-	//	WARNING_LOG("Thread %d/%d running @ core %d",omp_get_thread_num(),omp_get_num_threads()-1,ghost_getCore());
-//	}
-//	}
 	CR_TYPE *cr = CR(mat);
 	v_t *rhsv = (v_t *)(rhs->val);	
 	v_t *lhsv = (v_t *)(lhs->val);
 	m_t *mval = (m_t *)(cr->val);	
 	ghost_midx_t i, j;
+	ghost_vidx_t v;
+
 	v_t hlp1 = 0.;
 	v_t shift, scale;
 	if (options & GHOST_SPMVM_APPLY_SHIFT)
@@ -28,42 +24,45 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	if (options & GHOST_SPMVM_APPLY_SCALE)
 		scale = *((v_t *)(mat->traits->scale));
 
+	for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+	{
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
-	for (i=0; i<cr->nrows; i++){
-		hlp1 = (v_t)0.0;
-		for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-			hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
-		}
-
-		if (options & GHOST_SPMVM_APPLY_SHIFT) {
-			if (options & GHOST_SPMVM_APPLY_SCALE) {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsv[i] += scale*(hlp1+shift*rhsv[i]);
-				} else {
-					lhsv[i] = scale*(hlp1+shift*rhsv[i]);
-				}
-			} else {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsv[i] += (hlp1+shift*rhsv[i]);
-				} else {
-					lhsv[i] = (hlp1+shift*rhsv[i]);
-				}
-			}
-		} else {
-			if (options & GHOST_SPMVM_APPLY_SCALE) {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsv[i] += scale*(hlp1);
-				} else {
-					lhsv[i] = scale*(hlp1);
-				}
-			} else {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsv[i] += (hlp1);
-				} else {
-					lhsv[i] = (hlp1);
-				}
+		for (i=0; i<cr->nrows; i++){
+			hlp1 = (v_t)0.0;
+			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+				hlp1 += ((v_t)(mval[j])) * rhsv[v*rhs->traits->nrowspadded+cr->col[j]];
 			}
 
+			if (options & GHOST_SPMVM_APPLY_SHIFT) {
+				if (options & GHOST_SPMVM_APPLY_SCALE) {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[v*lhs->traits->nrowspadded+i] += scale*(hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+					} else {
+						lhsv[v*lhs->traits->nrowspadded+i] = scale*(hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+					}
+				} else {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[v*lhs->traits->nrowspadded+i] += (hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+					} else {
+						lhsv[v*lhs->traits->nrowspadded+i] = (hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+					}
+				}
+			} else {
+				if (options & GHOST_SPMVM_APPLY_SCALE) {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[v*lhs->traits->nrowspadded+i] += scale*(hlp1);
+					} else {
+						lhsv[v*lhs->traits->nrowspadded+i] = scale*(hlp1);
+					}
+				} else {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[v*lhs->traits->nrowspadded+i] += (hlp1);
+					} else {
+						lhsv[v*lhs->traits->nrowspadded+i] = (hlp1);
+					}
+				}
+
+			}
 		}
 	}
 }
