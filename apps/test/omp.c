@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 	int levels = 1;
 
 	ghost_init(argc,argv);
-	ghost_tasking_init(nt,ft,levels);
+	ghost_thpool_init(nt,ft,levels);
 	
 	ghost_pinThreads(GHOST_PIN_PHYS,NULL);
 	ghost_task_t *t = ghost_task_init(GHOST_TASK_FILL_ALL, 0, &task, argv[1], GHOST_TASK_DEFAULT);
@@ -81,7 +81,6 @@ int main(int argc, char* argv[])
 	ghost_task_wait(t);
 	ghost_task_destroy(t);
 
-	ghost_tasking_finish(nt,ft,levels);
 	ghost_finish();
 
 	return EXIT_SUCCESS;
