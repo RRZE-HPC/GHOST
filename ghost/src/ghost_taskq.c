@@ -592,10 +592,14 @@ void * thread_main(void *arg)
 
 		pthread_setspecific(ghost_thread_key,myTask);
 
+#ifdef __INTEL_COMPILER
 		kmp_set_blocktime(0);
+#endif
 		myTask->ret = myTask->func(myTask->arg);
 	//	WARNING_LOG("2 %d : %d",(intptr_t)arg,kmp_get_blocktime());
+#ifdef __INTEL_COMPILER
 		kmp_set_blocktime(200);
+#endif
 		pthread_setspecific(ghost_thread_key,NULL);
 
 		DEBUG_LOG(1,"Thread %llu: Finished executing task: %p. Free'ing resources and waking up another thread"

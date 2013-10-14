@@ -943,7 +943,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		time = time<oldtime?time:oldtime;
 		oldtime=time;
 	}
-	DEBUG_LOG(0,"Total time: %f sec",ghost_wctime()-ttime);
+	DEBUG_LOG(2,"Total time: %f sec",ghost_wctime()-ttime);
 	solver(NULL,NULL,NULL,NULL,0); // clean up
 
 	DEBUG_LOG(1,"Downloading result from device");

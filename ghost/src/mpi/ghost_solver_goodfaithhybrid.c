@@ -54,7 +54,9 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 		return;
 	}
 
+#ifdef __INTEL_COMPILER
 	kmp_set_blocktime(1);
+#endif
 
 	send_messages=0;
 	recv_messages = 0;

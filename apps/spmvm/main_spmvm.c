@@ -154,7 +154,7 @@ int main( int argc, char* argv[] )
 	rhs->fromFunc(rhs,&rhsVal);
 #endif
 
-//	ghost_printSysInfo();
+	ghost_printSysInfo();
 //	ghost_printGhostInfo();
 //	ghost_printContextInfo(context);
 
