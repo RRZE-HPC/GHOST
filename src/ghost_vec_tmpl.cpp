@@ -118,7 +118,6 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 	DEBUG_LOG(1,"Filling vector with random values");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-	vec->val = ghost_malloc(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt);
 	int i,v;
 
 	// TODO fuse loops but preserve randomness
