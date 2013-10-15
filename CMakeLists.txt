@@ -16,6 +16,7 @@ set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
+set (GHOST_LIBS "-lhwloc")
 
 set (SOURCES 
 		src/ghost.c 
