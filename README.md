@@ -215,4 +215,61 @@ all cores which are actually reserved for the adding task.
 Task selection
 --------------
 
+Fortran interface
+=================
 
+* Fortran standard 2003 is used, mostly the iso_c_binding intrinsics, but
+also some other features.
+
+Ghost is based on a collection of C structs with
+data and function members, and some global wrapper
+functions. The Fortran interface is designed in two
+stages.
+
+ STAGE 1: 1:1 mapping from C struct to Fortran TYPE and from
+          global C functions to Fortran functions or subroutines. 
+          The pointer members (data and function) cannot be  
+          used directly in Fortran. S1 types have the exact
+          same name as in C, e.g. ghost_vec_t. S1 types
+          can be passed to global ghost functions.
+ 
+ STAGE 2: only exists in Fortran, has Fortran pointers
+          instead of C pointers so it gives full access  
+          to all functionality. Stage 2 types and the    
+          subroutines c2f have to be implemented 
+          only for objects for which more access should  
+          be available. An S2 object has a name like
+          'fghost_dvec_t', i.e. it casts the void pointers
+          to the data into the correct types directly. While
+          an S2 type does not correspond directly to a C struct,
+          it should only consist of pointers to an actual ghost
+          object, so that manipulations of the fghost object affect
+          the C object directly. Each S2 type should have a member
+          c_object pointing to the actual ghost object.
+
+ S1 interfaces are provided in ghost_types.F90 and ghost_fun.F90.
+they should be available for all structs relevant to the
+ user, and have to be kept up-to-date. The compiler/linker do NOT tell you when
+ the C structs or global functions have changed and the Fortran interface has
+ not been adjusted! This is the task of the ghost developers.
+ 
+ A Stage 2 type implementation requires an interface
+ specification for the function pointers that should be available. 
+ A start has been made in fghost.F90. It is up to the developers,
+ which functions they want to make available through the S2 interfaces.
+ The compiler and linker should be able to detect if an S2 interface is out-of-date,
+ at least to some extent. 
+
+ Strategy
+ ========
+ 
+- The basic structs ghost_vec_t, ghost_context_t etc. should be available in the S1 
+interface and always be kept up-to-date by the developers
+
+- Important functionality such as ghost_createVector(...), ghost_spMVM(...) etc. should
+be available in the S1 interface and kept up-to-date.
+
+- Important and stable functionality that is available through function pointers in ghost 
+should be available in the S2 interface, for example context%gnnz(ctx)
+
+Questions about the Fortran interface? Contact jonas.thies@dlr.de
