@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
+set(GHOST_VERSION_MAJOR 0)
+set(GHOST_VERSION_MINOR 5)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
@@ -116,9 +118,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 install(TARGETS ghost LIBRARY DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/ghost)
+install(FILES ghost.pc DESTINATION lib/pkgconfig)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake"
 	IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
+
+configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_SOURCE_DIR}/ghost.pc @ONLY)
