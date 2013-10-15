@@ -8,7 +8,7 @@
 #include "sell.h"
 #include "crs.h"
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #include "ghost_mpi_util.h"
 #endif
@@ -31,7 +31,7 @@
 #include <likwid.h>
 #endif
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h>
 #endif
 #ifdef BLAS_MKL
@@ -42,16 +42,16 @@
 hwloc_topology_t topology;
 
 //static int options;
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 static int MPIwasInitialized;
-MPI_Datatype GHOST_MPI_DT_C;
-MPI_Op GHOST_MPI_OP_SUM_C;
-MPI_Datatype GHOST_MPI_DT_Z;
-MPI_Op GHOST_MPI_OP_SUM_Z;
+MPI_Datatype GHOST_HAVE_MPI_DT_C;
+MPI_Op GHOST_HAVE_MPI_OP_SUM_C;
+MPI_Datatype GHOST_HAVE_MPI_DT_Z;
+MPI_Op GHOST_HAVE_MPI_OP_SUM_Z;
 #endif
 
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #ifdef GHOST_VEC_COMPLEX
 typedef struct 
 {
@@ -96,7 +96,7 @@ static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
 #endif
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 typedef struct 
 {
 	float x;
@@ -137,7 +137,7 @@ static void MPI_add_z(MPI_z *invec, MPI_z *inoutvec, int *len)
 
 int ghost_init(int argc, char **argv)
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int req, prov;
 
 #ifdef GHOST_OPENMP
@@ -157,19 +157,19 @@ int ghost_init(int argc, char **argv)
 	}
 
 	setupSingleNodeComm();
-	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
-	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_MPI_OP_SUM_C));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_HAVE_MPI_DT_C));
+	MPI_safecall(MPI_Type_commit(&GHOST_HAVE_MPI_DT_C));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_HAVE_MPI_OP_SUM_C));
 
-	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
-	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_HAVE_MPI_DT_Z));
+	MPI_safecall(MPI_Type_commit(&GHOST_HAVE_MPI_DT_Z));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_HAVE_MPI_OP_SUM_Z));
 
-#else // ifdef GHOST_MPI
+#else // ifdef GHOST_HAVE_MPI
 	UNUSED(argc);
 	UNUSED(argv);
 
-#endif // ifdef GHOST_MPI
+#endif // ifdef GHOST_HAVE_MPI
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_INIT;
@@ -178,10 +178,10 @@ int ghost_init(int argc, char **argv)
 
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	CL_init();
 #endif
-//#ifdef CUDA
+//#ifdef GHOST_HAVE_CUDA
 //	CU_init();
 //#endif
 	
@@ -202,13 +202,13 @@ void ghost_finish()
 	LIKWID_MARKER_CLOSE;
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	CL_finish();
 #endif
 
-#ifdef GHOST_MPI
-	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));
-	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_Z));
+#ifdef GHOST_HAVE_MPI
+	MPI_safecall(MPI_Type_free(&GHOST_HAVE_MPI_DT_C));
+	MPI_safecall(MPI_Type_free(&GHOST_HAVE_MPI_DT_Z));
 	if (!MPIwasInitialized) {
 		MPI_Finalize();
 	}
@@ -272,7 +272,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	}
 	DEBUG_LOG(1,"Creating context with dimension %"PRmatIDX"x%"PRmatIDX,context->gnrows,context->gncols);
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	if (!(context->flags & GHOST_CONTEXT_DISTRIBUTED) && !(context->flags & GHOST_CONTEXT_GLOBAL)) {
 		DEBUG_LOG(1,"Context is set to be distributed");
 		context->flags |= GHOST_CONTEXT_DISTRIBUTED;
@@ -288,7 +288,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 	context->solvers = (ghost_solver_t *)ghost_malloc(sizeof(ghost_solver_t)*GHOST_NUM_MODES);
 	for (i=0; i<GHOST_NUM_MODES; i++) context->solvers[i] = NULL;
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
 	context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
 	context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
@@ -296,7 +296,7 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 	context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 		context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
 		context->communicator->halo_elements = -1;
@@ -495,7 +495,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 	 */	
 
 	vec->dotProduct(vec,vec2,res);
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int v;
 	if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
 		for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
@@ -508,7 +508,7 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 
 void ghost_vecToFile(ghost_vec_t *vec, char *path)
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	
 	int32_t endianess = ghost_archIsBigEndian();
@@ -665,7 +665,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 		}	
 	}
 
-#ifdef GHOST_MPI // TODO get rid of for loops
+#ifdef GHOST_HAVE_MPI // TODO get rid of for loops
 	int i,j;
 	if (reduce == GHOST_GEMM_NO_REDUCE) {
 		return GHOST_SUCCESS;

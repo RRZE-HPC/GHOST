@@ -15,7 +15,7 @@ CONST_DIAG;
 
 typedef struct 
 {
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	ghost_cl_midx_t  nrows, ncols;
 	ghost_cl_mnnz_t  nEnts;
 	cl_mem rpt;

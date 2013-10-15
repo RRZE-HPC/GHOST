@@ -27,10 +27,10 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 	s = (v_t)(((v_t)1.)/s);
 	vec->scale(vec,&s);
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	vec->CLupload(vec);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	vec->CUupload(vec);
 #endif
 }

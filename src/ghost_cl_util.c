@@ -595,7 +595,7 @@ ghost_acc_info_t *CL_getDeviceInfo()
 	}
 
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	MPI_safecall(MPI_Gatherv(name,CL_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
 				recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
@@ -612,7 +612,7 @@ ghost_acc_info_t *CL_getDeviceInfo()
 		}
 	}
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 
@@ -639,7 +639,7 @@ ghost_acc_info_t *CL_getDeviceInfo()
 		free(names);
 	}
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
 	for (i=0; i<devInfo->nDistinctDevices; i++)

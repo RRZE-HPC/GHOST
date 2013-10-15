@@ -9,6 +9,8 @@ option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_OPENCL "Build with OpenCL" 0)
+set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
+set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
 
 set (SOURCES 
@@ -68,31 +70,25 @@ add_library(ghost SHARED ${SOURCES})
 
 if (USE_OPENMP)	
 	find_package(OpenMP REQUIRED)
-	add_definitions( -DGHOST_OPENMP )
+	set(GHOST_HAVE_OPENMP 1)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(BLAS "MKL" CACHE STRING "BLAS library")
 if (BLAS STREQUAL "MKL")
+	set(GHOST_HAVE_MKL 1)
 	include_directories($ENV{MKLROOT}/include)
-	add_definitions( -DMKL_BLAS )
 endif()
 
 find_package(HWLOC REQUIRED)
 include_directories(include ${HWLOC_INCLUDEDIR})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
-
-set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
-add_definitions( -DDEBUG=${VERBOSITY} )
-
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 if (USE_MPI)	
 	find_package(MPI REQUIRED)
 	set(GHOST_HAVE_MPI 1)
 	target_link_libraries(ghost ${MPI_LIBRARIES})
-	add_definitions( -DGHOST_MPI )
 	include_directories(include/mpi ${MPI_INCLUDE_PATH})
 	set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")

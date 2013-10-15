@@ -12,7 +12,7 @@
 #include <errno.h>
 
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h> // TODO in cu_util
 #endif
 
@@ -59,11 +59,11 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vid
 static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t roffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 static void vec_CUupload (ghost_vec_t *);
 static void vec_CUdownload (ghost_vec_t *);
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void vec_CLupload (ghost_vec_t *);
 static void vec_CLdownload (ghost_vec_t *);
 #endif
@@ -116,7 +116,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->downloadHalo = &vec_downloadHalo;
 	vec->uploadNonHalo = &vec_uploadNonHalo;
 	vec->downloadNonHalo = &vec_downloadNonHalo;
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	vec->CU_val = NULL;
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
@@ -145,12 +145,12 @@ static void vec_uploadHalo(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading halo elements of vector");
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 		CU_copyHostToDevice(&((char *)(vec->CU_val))[vec->traits->nrows*sizeofdt], 
 			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt);
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 		CL_copyHostToDeviceOffset(vec->CL_val_gpu, 
 			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt,
@@ -171,10 +171,10 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 	}
@@ -185,10 +185,10 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
 
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Downloading vector");
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 	}
@@ -198,10 +198,10 @@ static void vec_upload(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 	}
@@ -211,16 +211,16 @@ static void vec_download(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Downloading vector");
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 	}
 }
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 static void vec_CUupload (ghost_vec_t *vec)
 {
 	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
@@ -232,7 +232,7 @@ static void vec_CUdownload (ghost_vec_t *vec)
 }
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void vec_CLupload( ghost_vec_t *vec )
 {
 	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
@@ -274,7 +274,7 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 static void vec_print(ghost_vec_t *vec)
 {
 	char prefix[16];
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	if (vec->context->communicator != NULL) {
 		int rank = ghost_getRank(vec->context->mpicomm);
 		int ndigits = (int)floor(log10(abs(rank))) + 1;
@@ -327,17 +327,17 @@ void vec_malloc(ghost_vec_t *vec)
 	}
 
 	if (vec->traits->flags & GHOST_VEC_DEVICE) {
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		if (vec->CU_val == NULL) {
 			DEBUG_LOG(2,"Allocating device side of vector");
-#ifdef CUDA_PINNEDMEM
+#ifdef GHOST_HAVE_CUDA_PINNEDMEM
 			CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
 			vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt);
 #endif
 		}
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		if (vec->CL_val_gpu == NULL) {
 		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt,vec->val,CL_MEM_READ_WRITE );
 		}
@@ -655,10 +655,10 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 	DEBUG_LOG(1,"Zeroing vector");
 	memset(vec->val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	vec->CLupload(vec);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	vec->CUupload(vec);
 #endif
 }
@@ -683,7 +683,7 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 for( i = 0; i < nrows; i++ ) 
 VAL(vec)[i] = 0.0;
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 #ifdef CL_IMAGE
 vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,VAL(vec) );
 #else
@@ -695,7 +695,7 @@ vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,VAL(vec),CL_MEM_READ_WRIT
 //printf("after: %p\n",VAL(vec));
 //CL_uploadVector(vec);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 vec->CU_val = CU_allocDeviceMemory(size_val);
 #endif
 
@@ -706,7 +706,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int me = ghost_getRank(nodeVec->context->mpicomm);
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
@@ -716,9 +716,9 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = GHOST_MPI_DT_C;
+			mpidt = GHOST_HAVE_MPI_DT_C;
 		} else {
-			mpidt = GHOST_MPI_DT_Z;
+			mpidt = GHOST_HAVE_MPI_DT_Z;
 		}
 	} else {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -754,11 +754,11 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 //	*nodeVec = vec->clone(vec);
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
 		nodeVec->CLupload(nodeVec);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
 		nodeVec->CUupload(nodeVec);
 #endif
@@ -768,14 +768,14 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	MPI_Datatype mpidt;
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = GHOST_MPI_DT_C;
+			mpidt = GHOST_HAVE_MPI_DT_C;
 		} else {
-			mpidt = GHOST_MPI_DT_Z;
+			mpidt = GHOST_HAVE_MPI_DT_Z;
 		}
 	} else {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -825,13 +825,13 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 	dtmp = v1->val;
 	v1->val = v2->val;
 	v2->val = dtmp;
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	cl_mem tmp;
 	tmp = v1->CL_val_gpu;
 	v1->CL_val_gpu = v2->CL_val_gpu;
 	v2->CL_val_gpu = tmp;
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	dtmp = v1->CU_val;
 	v1->CU_val = v2->CU_val;
 	v2->CU_val = dtmp;
@@ -844,7 +844,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 {
 	if( vec ) {
 		if (!vec->isView) {
-#ifdef CUDA_PINNEDMEM
+#ifdef GHOST_HAVE_CUDA_PINNEDMEM
 			if (vec->traits->flags & GHOST_VEC_DEVICE)
 				CU_safecall(cudaFreeHost(vec->val));
 #else
@@ -852,11 +852,11 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #endif
 		}
 		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_dt)), "VAL(vec)",  VAL(vec) );
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CL_freeDeviceMemory( vec->CL_val_gpu );
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		if (vec->traits->flags & GHOST_VEC_DEVICE)
 			CU_freeDeviceMemory( vec->CU_val );
 #endif

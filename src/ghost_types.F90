@@ -72,12 +72,12 @@ TYPE(c_ptr) :: so
 INTEGER(c_int) :: isView
 
 ! TODO
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 !#error "not implemented in Fortran interface"
 !cl_mem CL_val_gpu;
 #endif
         
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 !#error "not implemented in Fortran interface"
 !void * CU_val;
 #endif
@@ -177,7 +177,7 @@ struct ghost_mat_t {
 	ghost_dummyfun_t *extraFun;
 	// TODO MPI-IO
 	ghost_kernel_t kernel;
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	cl_kernel clkernel;
 #endif
 	void *so;

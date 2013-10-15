@@ -44,12 +44,12 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, in
 static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
 static void CRS_createCommunication(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #endif
 
@@ -76,10 +76,10 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 	mat->ncols    = &CRS_ncols;
 	mat->destroy  = &CRS_free;
 	mat->CLupload = &CRS_upload;
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	mat->split = &CRS_createCommunication;
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (traits->flags & GHOST_SPM_HOST)
 		mat->kernel   = &CRS_kernel_plain;
 	else 
@@ -181,7 +181,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 
 }
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 {
 	DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
@@ -1205,7 +1205,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_upload(ghost_mat_t *mat)
 {
 	DEBUG_LOG(1,"Uploading CRS matrix to device");
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
 		CR(mat)->clmat = (CL_CR_TYPE *)ghost_malloc(sizeof(CL_CR_TYPE));
@@ -1307,7 +1307,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 		CR(mat)->rpt = CRS_readRpt(CR(mat)->nrows+1,matrixPath);
 		CRS_readColValOffset(mat, matrixPath, 0, 0, CR(mat)->nrows, CR(mat)->nEnts, GHOST_IO_STD);
 	} else {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		DEBUG_LOG(1,"Reading in a distributed context");
 		CRS_createDistributedContext(&mat,matrixPath);
 		mat->split(mat);
@@ -1316,7 +1316,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 #endif
 	}
 	DEBUG_LOG(1,"Matrix read in successfully");
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST))
 		mat->CLupload(mat);
 #endif
@@ -1327,7 +1327,7 @@ static void CRS_free(ghost_mat_t * mat)
 {
 	if (mat) {
 	DEBUG_LOG(1,"Freeing CRS matrix");
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		if (mat->traits->flags & GHOST_SPM_DEVICE) {
 			CL_freeDeviceMemory(CR(mat)->clmat->rpt);
 			CL_freeDeviceMemory(CR(mat)->clmat->col);
@@ -1458,7 +1458,7 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
 	CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
 	}
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];

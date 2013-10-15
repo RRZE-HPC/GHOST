@@ -1,5 +1,5 @@
-#ifndef __GHOST_MPI_UTIL_H__
-#define __GHOST_MPI_UTIL_H__
+#ifndef __GHOST_HAVE_MPI_UTIL_H__
+#define __GHOST_HAVE_MPI_UTIL_H__
 
 #include "ghost.h"
 #include "ghost_mat.h"

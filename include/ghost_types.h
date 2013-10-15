@@ -1,18 +1,18 @@
 #ifndef __GHOST_TYPES_H__
 #define __GHOST_TYPES_H__
 
-#ifdef CUDAKERNEL
-#undef GHOST_MPI // TODO
+#ifdef GHOST_HAVE_CUDAKERNEL
+#undef GHOST_HAVE_MPI // TODO
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 #include <CL/cl.h>
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 #include <cuComplex.h>
 #endif
 
@@ -29,7 +29,7 @@ typedef long long int ghost_blas_idx_t;
 #define ghost_mpi_dt_midx MPI_LONG_LONG
 #define ghost_mpi_dt_mnnz MPI_LONG_LONG
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 typedef cl_long ghost_cl_midx_t;
 typedef cl_long ghost_cl_mnnz_t;
 #endif
@@ -49,7 +49,7 @@ typedef int ghost_blas_idx_t;
 #define ghost_mpi_dt_midx MPI_INT
 #define ghost_mpi_dt_mnnz MPI_INT
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 typedef cl_int ghost_cl_midx_t;
 typedef cl_int ghost_cl_mnnz_t;
 #endif

@@ -1,7 +1,9 @@
 #ifndef __GHOST_H__
 #define __GHOST_H__
 
-#ifdef GHOST_MPI
+#include <ghost_config.h>
+
+#ifdef GHOST_HAVE_MPI
 #ifndef CUDAKERNEL
 #ifdef __INTEL_COMPILER
 #pragma warning (disable : 869)
@@ -33,11 +35,11 @@ typedef int MPI_Comm;
 #include <pthread.h>
 #include <hwloc.h>
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 #include <CL/cl.h>
 #endif
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 #include <cuda.h>
 #endif
 #endif
@@ -357,10 +359,10 @@ struct ghost_vec_t
 	void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
 	void          (*zero) (ghost_vec_t *);
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	cl_mem CL_val_gpu;
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	void * CU_val;
 #endif
 };
@@ -428,7 +430,7 @@ struct ghost_mat_t
 	size_t     (*byteSize)(ghost_mat_t *);
 	void       (*fromCRS)(ghost_mat_t *, void *);
 	void       (*split)(ghost_mat_t *);
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	cl_kernel clkernel[4];
 #endif
 }; 

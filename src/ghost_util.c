@@ -265,10 +265,10 @@ void ghost_printSysInfo()
 	int nproc = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 	int nnodes = ghost_getNumberOfNodes();
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
 #endif
 	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
@@ -315,7 +315,7 @@ void ghost_printSysInfo()
 		ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
 		ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
 		ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
 		ghost_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
 		int i;
@@ -323,7 +323,7 @@ void ghost_printSysInfo()
 			ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
 		}
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
 		ghost_printLine("CUDA devices",NULL,NULL);
 		int i;
@@ -335,7 +335,7 @@ void ghost_printSysInfo()
 #endif
 		ghost_printFooter();
 	}
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	destroyCLdeviceInfo(devInfo);
 #endif
 
@@ -388,17 +388,17 @@ void ghost_printGhostInfo()
 #else
 		ghost_printLine("OpenMP support",NULL,"disabled");
 #endif
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		ghost_printLine("MPI support",NULL,"enabled");
 #else
 		ghost_printLine("MPI support",NULL,"disabled");
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		ghost_printLine("OpenCL support",NULL,"enabled");
 #else
 		ghost_printLine("OpenCL support",NULL,"disabled");
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		ghost_printLine("CUDA support",NULL,"enabled");
 #else
 		ghost_printLine("CUDA support",NULL,"disabled");
@@ -663,7 +663,7 @@ char * ghost_workdistName(int options)
 
 int ghost_getRank(MPI_Comm comm) 
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( comm, &rank ));
 	return rank;
@@ -675,7 +675,7 @@ int ghost_getRank(MPI_Comm comm)
 
 /*int ghost_getRank() 
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int rank;
 	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
 	return rank;
@@ -686,7 +686,7 @@ int ghost_getRank(MPI_Comm comm)
 
 int ghost_getLocalRank() 
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	return ghost_getRank(getSingleNodeComm());
 #else
 	return 0;
@@ -695,7 +695,7 @@ int ghost_getLocalRank()
 
 int ghost_getNumberOfRanksOnNode()
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int size;
 	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
 
@@ -737,7 +737,7 @@ static int stringcmp(const void *x, const void *y)
 
 int ghost_getNumberOfNodes() 
 {
-#ifndef GHOST_MPI
+#ifndef GHOST_HAVE_MPI
 	UNUSED(stringcmp);
 	return 1;
 #else
@@ -778,7 +778,7 @@ int ghost_getNumberOfNodes()
 
 /*int ghost_getNumberOfProcesses() 
 {
-#ifndef GHOST_MPI
+#ifndef GHOST_HAVE_MPI
 	return 1;
 #else
 
@@ -792,7 +792,7 @@ int ghost_getNumberOfNodes()
 
 int ghost_getNumberOfRanks(MPI_Comm comm)
 {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	int nnodes;
 	MPI_safecall(MPI_Comm_size(comm, &nnodes));
 	return nnodes;
@@ -912,10 +912,10 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		return -1.0;
 	}
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 	MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	CL_barrier();
 #endif
 
@@ -925,13 +925,13 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 		time = ghost_wctime();
 		solver(context,res,mat,invec,*spmvmOptions);
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 		CL_barrier();
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 		CU_barrier();
 #endif
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
 		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
@@ -963,7 +963,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 {
 	if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		if (context->flags & GHOST_CONTEXT_GLOBAL)
 			*spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
 		else
@@ -1329,7 +1329,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nrows = lnrows;
 	} else {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
@@ -1347,7 +1347,7 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
 		nnz = lnnz;
 	} else {
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
 #else
 		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");

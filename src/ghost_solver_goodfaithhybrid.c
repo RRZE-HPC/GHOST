@@ -110,10 +110,10 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 #endif
 
 	invec->uploadNonHalo(invec);
-/*#ifdef OPENCL
+/*#ifdef GHOST_HAVE_OPENCL
 	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
 #endif*/
 
@@ -147,12 +147,12 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	/****************************************************************************
 	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
 	 ***************************************************************************/
-/*#ifdef OPENCL
+/*#ifdef GHOST_HAVE_OPENCL
 	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
 			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
 			mat->nrows(mat)*sizeofRHS);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	CU_copyHostToDevice(&((char *)(invec->CU_val))[mat->nrows(mat)*sizeofRHS], 
 			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS);
 #endif*/

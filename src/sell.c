@@ -6,7 +6,7 @@
 #include <libgen.h>
 #include <string.h>
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 //#include "private/sell_cukernel.h"
 #endif
 
@@ -53,7 +53,7 @@ void (*SELL_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, i
 	{&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
 	{&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 void (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{&ss_SELL_kernel_CU,&sd_SELL_kernel_CU,&sc_SELL_kernel_CU,&sz_SELL_kernel_CU},
 	{&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
@@ -77,10 +77,10 @@ static void SELL_CUupload(ghost_mat_t *mat);
 static void SELL_fromBin(ghost_mat_t *mat, char *);
 static void SELL_free(ghost_mat_t *mat);
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
 #ifdef VSX_INTR
@@ -105,11 +105,11 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 #ifdef VSX_INTR
 	mat->kernel = &SELL_kernel_VSX;
 #endif
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &SELL_kernel_CL;
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	if (!(traits->flags & GHOST_SPM_HOST))
 		mat->kernel   = &SELL_kernel_CU;
 #endif
@@ -202,7 +202,7 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 	mat->name = basename(matrixPath);
 	
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 
 	DEBUG_LOG(1,"Converting local and remote part to the desired data format");	
 	mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1); // TODO trats[1]
@@ -213,13 +213,13 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 	mat->remotePart->fromCRS(mat->remotePart,crsMat->remotePart->data);
 
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 		mat->localPart->CLupload(mat->localPart);
 	if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
 		mat->remotePart->CLupload(mat->remotePart);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	if (!(mat->localPart->traits->flags & GHOST_SPM_HOST))
 		mat->localPart->CUupload(mat->localPart);
 	if (!(mat->remotePart->traits->flags & GHOST_SPM_HOST))
@@ -235,11 +235,11 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 	mat->fromCRS(mat,crsMat->data);
 	crsMat->destroy(crsMat);
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST))
 		mat->CLupload(mat);
 #endif
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	if (!(mat->traits->flags & GHOST_SPM_HOST))
 		mat->CUupload(mat);
 #endif
@@ -422,7 +422,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 static void SELL_upload(ghost_mat_t* mat) 
 {
 	DEBUG_LOG(1,"Uploading SELL matrix to device");
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on OpenCL device");
 		SELL(mat)->clmat = (CL_SELL_TYPE *)ghost_malloc(sizeof(CL_SELL_TYPE));
@@ -517,7 +517,7 @@ static void SELL_upload(ghost_mat_t* mat)
 static void SELL_CUupload(ghost_mat_t* mat) 
 {
 	DEBUG_LOG(1,"Uploading SELL matrix to CUDA device");
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	if (!(mat->traits->flags & GHOST_SPM_HOST)) {
 		DEBUG_LOG(1,"Creating matrix on CUDA device");
 		SELL(mat)->cumat = (CU_SELL_TYPE *)ghost_malloc(sizeof(CU_SELL_TYPE));
@@ -618,7 +618,7 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 }
 
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	DEBUG_LOG(1,"Calling SELL CUDA kernel");
@@ -643,7 +643,7 @@ static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 }
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
 	cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];

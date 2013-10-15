@@ -4,15 +4,15 @@
 #include <ghost.h>
 #include <stdio.h>
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #include "ghost_mpi_util.h"
 #endif
 
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 #include "ghost_cl_util.h"
 #endif
 
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 #include "ghost_cu_util.h"
 #endif
 /******************************************************************************/
@@ -33,7 +33,7 @@
 //#define DEBUG_INDENT DEBUG_IDT+=2
 //#define DEBUG_OUTDENT DEBUG_IDT-=2
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #define DEBUG_LOG(level,msg, ...) {\
 	if(DEBUG >= level) {\
 		int __me;\
@@ -51,7 +51,7 @@
 }
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #define WARNING_LOG(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
@@ -65,7 +65,7 @@
 }
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #define ABORT(msg, ...) {\
 	int __me;\
 	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
@@ -92,7 +92,7 @@
 	}\
 }
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #define CL_safecall(call) {\
 	cl_int clerr = call ;\
 	if( CL_SUCCESS != clerr ){\
@@ -132,7 +132,7 @@
 } while(0)
 #endif
 
-#ifdef GHOST_MPI
+#ifdef GHOST_HAVE_MPI
 #define CU_safecall(call) {\
 	cudaError_t __cuerr = call ;\
 	if( cudaSuccess != __cuerr ){\
@@ -186,11 +186,11 @@
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
-#ifdef GHOST_MPI
-extern MPI_Datatype GHOST_MPI_DT_C;
-extern MPI_Op GHOST_MPI_OP_SUM_C;
-extern MPI_Datatype GHOST_MPI_DT_Z;
-extern MPI_Op GHOST_MPI_OP_SUM_Z;
+#ifdef GHOST_HAVE_MPI
+extern MPI_Datatype GHOST_HAVE_MPI_DT_C;
+extern MPI_Op GHOST_HAVE_MPI_OP_SUM_C;
+extern MPI_Datatype GHOST_HAVE_MPI_DT_Z;
+extern MPI_Op GHOST_HAVE_MPI_OP_SUM_Z;
 #endif
 
 #ifdef __cplusplus

@@ -6,7 +6,7 @@
 
 typedef struct 
 {
-#ifdef OPENCL
+#ifdef GHOST_HAVE_OPENCL
 	cl_mem val;
 	cl_mem col;
 	cl_mem rowLen;
@@ -20,7 +20,7 @@ CL_SELL_TYPE;
 
 typedef struct 
 {
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 	char * val;
 	ghost_midx_t * col;
 	ghost_midx_t * rowLen;
@@ -86,7 +86,7 @@ void dd_SELL_kernel_AVX(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options
 void dd_SELL_kernel_AVX_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dd_SELL_kernel_MIC_16(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dd_SELL_kernel_MIC_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-#ifdef CUDA
+#ifdef GHOST_HAVE_CUDA
 void dd_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void ds_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dc_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);

@@ -3,11 +3,11 @@
 // This is machine dependent and should be fixed in
 // a general way in the ESSR (for instance by CMake).
 
-#ifdef MKL_BLAS
+#ifdef GHOST_HAVE_MKL
 #include <mkl.h>
 #endif
 
-#ifdef MKL_BLAS
+#ifdef GHOST_HAVE_MKL
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
 #define BLAS_Complex16 MKL_Complex16 

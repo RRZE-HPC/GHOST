@@ -39,7 +39,7 @@ MAKROS+= -DGHOST_OPENMP
 endif
 
 ifeq ($(MPI),1)
-MAKROS+= -DGHOST_MPI
+MAKROS+= -DGHOST_HAVE_MPI
 IPATH += -I./include/mpi
 OBJS  += $(MPIOBJS)
 endif
