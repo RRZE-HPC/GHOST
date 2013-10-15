@@ -4,10 +4,6 @@ project (GHOST)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
-AutodetectHostArchitecture()
-OptimizeForArchitecture()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
@@ -112,6 +108,11 @@ configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
 	"${PROJECT_SOURCE_DIR}/include/ghost_config.h"
 )
+
+AutodetectHostArchitecture()
+OptimizeForArchitecture()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 install(TARGETS ghost LIBRARY DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/ghost)
