@@ -10,6 +10,7 @@ pbshosts*
 *.tar.gz
 *.tgz
 *.vec
+ghost.pc
 gmon.out
 html/
 obj/
