@@ -17,6 +17,7 @@ mod/
 jobscripts/
 bench/
 meas/
+build/
 _attic/
 apps/*/
 !apps/minimal/
