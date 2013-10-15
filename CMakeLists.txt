@@ -1,0 +1,107 @@
+cmake_minimum_required (VERSION 2.6)
+project (GHOST)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+		"${PROJECT_SOURCE_DIR}/cmake/")
+
+
+option(USE_MPI "Build with MPI" 1)
+option(USE_OPENMP "Build with OpenMP" 1)
+option(USE_CUDA "Build with CUDA" 0)
+option(USE_OPENCL "Build with OpenCL" 0)
+
+
+set (SOURCES 
+		src/ghost.c 
+		src/ghost_util.c 
+		src/ghost_mat.c 
+		src/ghost_solver_nompi.c 
+		src/ghost_vec.c 
+		src/ghost_taskq.c 
+		src/crs.c 
+		src/crs_kernel_tmpl.cpp 
+		src/sell.c 
+		src/sell_kernel_intr.c 
+		src/ghost_vec_tmpl.cpp 
+	src/sell_kernel_tmpl.cpp
+		)
+
+set (HEADERS
+		include/crs.h
+		include/ghost.h
+		include/ghost_blas_mangle.h
+		include/ghost_complex.h
+		include/ghost_config.h
+		include/ghost_constants.h
+		include/ghost_mat.h
+		include/ghost_taskq.h
+		include/ghost_types.h
+		include/ghost_util.h
+		include/ghost_vec.h
+		include/sell.h
+	)
+
+if (USE_MPI)
+	set (SOURCES ${SOURCES} 
+			src/ghost_mpi_util.c 
+			src/ghost_solver_vectormode.c 
+			src/ghost_solver_goodfaithhybrid.c 
+			src/ghost_solver_taskmode.c
+		)
+	set (HEADERS ${HEADERS}
+			include/ghost_mpi_util.h
+		)
+endif()
+
+if (USE_CUDA)
+	set (SOURCES ${SOURCES} 
+			src/ghost_cu_util.c 
+			src/bjds_kernel.cu
+		)
+	set (HEADERS ${HEADERS}
+			include/ghost_cu_util.h
+		)
+endif()
+
+add_library(ghost SHARED ${SOURCES})
+
+
+if (USE_OPENMP)	
+	find_package(OpenMP REQUIRED)
+	add_definitions( -DGHOST_OPENMP )
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+set(BLAS "MKL" CACHE STRING "BLAS library")
+if (BLAS STREQUAL "MKL")
+	include_directories($ENV{MKLROOT}/include)
+	add_definitions( -DMKL_BLAS )
+endif()
+
+find_package(HWLOC REQUIRED)
+include_directories(include ${HWLOC_INCLUDEDIR})
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
+
+set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
+add_definitions( -DDEBUG=${VERBOSITY} )
+
+
+if (USE_MPI)	
+	find_package(MPI REQUIRED)
+	set(GHOST_HAVE_MPI 1)
+	target_link_libraries(ghost ${MPI_LIBRARIES})
+	add_definitions( -DGHOST_MPI )
+	include_directories(include/mpi ${MPI_INCLUDE_PATH})
+	set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
+	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+endif()
+
+configure_file (
+	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
+	"${PROJECT_SOURCE_DIR}/include/ghost_config.h"
+)
+
+install(TARGETS ghost LIBRARY DESTINATION lib)
+install(FILES ${HEADERS} DESTINATION include/ghost)
