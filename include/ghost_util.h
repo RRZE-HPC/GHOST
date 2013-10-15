@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #ifdef GHOST_MPI
-#include "mpi/ghost_mpi_util.h"
+#include "ghost_mpi_util.h"
 #endif
 
 #ifdef OPENCL
