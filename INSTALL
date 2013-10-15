@@ -1,9 +1,12 @@
-1) CONFIGURATION
-----------------
-   Edit config.mk in order to fit your system and requirements.
+mkdir build
+cd build/
+ccmake ..
+make
+make install
 
+In order to set non-standard compilers, invoke ccmake as follows (e.g., Intel Compiler):
 
-2) INSTALLATION
----------------
-   Invoke make install to build and install the ghost library and headers 
-   to the location as specified in config.mk.
+...
+CC=icc CXX=icpc ccmake ..
+...
+
