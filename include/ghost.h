@@ -3,8 +3,11 @@
 
 #include <ghost_config.h>
 
+#ifdef CUDAKERNEL
+#undef GHOST_HAVE_MPI
+#endif
+
 #ifdef GHOST_HAVE_MPI
-#ifndef CUDAKERNEL
 #ifdef __INTEL_COMPILER
 #pragma warning (disable : 869)
 #pragma warning (disable : 424)
@@ -13,9 +16,6 @@
 #ifdef __INTEL_COMPILER
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
-#endif
-#else
-typedef int MPI_Comm;
 #endif
 #else
 typedef int MPI_Comm;
@@ -33,7 +33,10 @@ typedef int MPI_Comm;
 #include <inttypes.h>
 #include <sys/types.h>
 #include <pthread.h>
+
+#ifndef CUDAKERNEL
 #include <hwloc.h>
+#endif
 
 #ifdef GHOST_HAVE_OPENCL
 #include <CL/cl.h>
@@ -549,7 +552,9 @@ int ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, voi
 
 extern int hasCUDAdevice;
 extern int hasOPENCLdevice;
+#ifndef CUDAKERNEL
 extern hwloc_topology_t topology;
+#endif
 
 #ifdef __cplusplus
 } // extern "C"

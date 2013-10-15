@@ -5,8 +5,10 @@
 #undef GHOST_HAVE_MPI // TODO
 #endif
 
+#ifndef CUDAKERNEL
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
+#endif
 #endif
 
 #ifdef GHOST_HAVE_OPENCL

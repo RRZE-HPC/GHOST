@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
@@ -12,6 +12,7 @@ option(USE_OPENCL "Build with OpenCL" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 set (SOURCES 
 		src/ghost.c 
@@ -55,11 +56,18 @@ if (USE_MPI)
 		)
 endif()
 
+
 if (USE_CUDA)
+	find_package(CUDA REQUIRED)
+	set(GHOST_HAVE_CUDA 1)
+	cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
+	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC)
+	cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
 	set (SOURCES ${SOURCES} 
-			src/ghost_cu_util.c 
-			src/bjds_kernel.cu
+			${BJDS_KERNEL_O}
+			src/bjds_cukernel.cu	
 		)
+	include_directories(${CUDA_INCLUDE_DIRS})
 	set (HEADERS ${HEADERS}
 			include/ghost_cu_util.h
 		)
@@ -81,9 +89,8 @@ if (BLAS STREQUAL "MKL")
 endif()
 
 find_package(HWLOC REQUIRED)
-include_directories(include ${HWLOC_INCLUDEDIR})
+include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDEDIR})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 if (USE_MPI)	
 	find_package(MPI REQUIRED)

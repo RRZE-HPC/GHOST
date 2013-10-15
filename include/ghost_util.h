@@ -4,6 +4,10 @@
 #include <ghost.h>
 #include <stdio.h>
 
+#ifdef CUDAKERNEL
+#undef GHOST_HAVE_MPI
+#endif
+
 #ifdef GHOST_HAVE_MPI
 #include "ghost_mpi_util.h"
 #endif
@@ -218,14 +222,6 @@ int ghost_pad(int nrows, int padding);
 
 void ghost_freeCommunicator( ghost_comm_t* const );
 int ghost_getNumberOfPhysicalCores();
-int ghost_getRank(MPI_Comm);
-int ghost_getLocalRank();
-int ghost_getNumberOfRanksOnNode();
-int ghost_getNumberOfHwThreads();
-int ghost_getNumberOfNumaNodes();
-int ghost_getNumberOfThreads();
-int ghost_getNumberOfNodes();
-int ghost_getNumberOfRanks(MPI_Comm);
 size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
