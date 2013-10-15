@@ -1,9 +1,13 @@
 cmake_minimum_required (VERSION 2.8)
 project (GHOST)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-		"${PROJECT_SOURCE_DIR}/cmake/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
+include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
+AutodetectHostArchitecture()
+OptimizeForArchitecture()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
@@ -56,7 +60,6 @@ if (USE_MPI)
 			include/ghost_mpi_util.h
 		)
 endif()
-
 
 if (USE_CUDA)
 	find_package(CUDA REQUIRED)
