@@ -275,7 +275,7 @@ static void vec_print(ghost_vec_t *vec)
 {
 	char prefix[16];
 #ifdef GHOST_HAVE_MPI
-	if (vec->context->communicator != NULL) {
+	if (vec->context != NULL && vec->context->mpicomm != NULL) {
 		int rank = ghost_getRank(vec->context->mpicomm);
 		int ndigits = (int)floor(log10(abs(rank))) + 1;
 		snprintf(prefix,4+ndigits,"PE%d: ",rank);
