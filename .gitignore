@@ -20,6 +20,7 @@ meas/
 build/
 _attic/
 apps/*/
+ghost_config.h
 !apps/minimal/
 !apps/spmvm/
 !apps/lanczos/
