@@ -9,6 +9,7 @@ option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_OPENCL "Build with OpenCL" 0)
+option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
@@ -75,6 +76,9 @@ endif()
 
 add_library(ghost SHARED ${SOURCES})
 
+if (LONGIDX)
+	add_definitions(-DLONGIDX -DMKL_ILP64)
+endif()
 
 if (USE_OPENMP)	
 	find_package(OpenMP REQUIRED)
