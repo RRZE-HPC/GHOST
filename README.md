@@ -7,7 +7,7 @@ functionality for computation with very large sparse or dense matrices.
 Requirements
 ============
 
-1. C, C++ and Fortran compiler
+1. C/C++ compiler
 1. hwloc
 1. MKL (more supported BLAS libraries to come)
 
