@@ -119,7 +119,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 install(TARGETS ghost LIBRARY DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/ghost)
-install(FILES ghost.pc DESTINATION lib/pkgconfig)
+install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -127,4 +127,10 @@ configure_file(
 	IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
-configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_SOURCE_DIR}/ghost.pc @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
+
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
+endif()
