@@ -101,7 +101,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 if (USE_MPI)	
 	find_package(MPI REQUIRED)
 	set(GHOST_HAVE_MPI 1)
-	target_link_libraries(ghost ${MPI_LIBRARIES})
+#target_link_libraries(ghost ${MPI_LIBRARIES}) #done via mpicc
 	include_directories(include/mpi ${MPI_INCLUDE_PATH})
 	set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
