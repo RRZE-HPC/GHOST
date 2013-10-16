@@ -65,7 +65,7 @@ if (USE_CUDA)
 	if (CUDA_FOUND)
 		set(GHOST_HAVE_CUDA 1)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
-		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC)
+		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_20,code=sm_20)
 		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
 		set (SOURCES ${SOURCES} 
 				${BJDS_KERNEL_O}
