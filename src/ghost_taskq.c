@@ -540,7 +540,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 		int sval = 1;
 		sem_post(ghost_thpool->sem);
 
-		DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %d",(unsigned long)pthread_self(), (intptr_t)arg);
+		DEBUG_LOG(1,"Shepherd thread %llu in thread_main() called with %ld",(unsigned long)pthread_self(), (intptr_t)arg);
 		while (!killed) // as long as there are jobs stay alive
 		{
 			// TODO wait for condition when unpinned or new task
