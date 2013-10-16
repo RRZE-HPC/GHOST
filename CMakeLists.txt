@@ -104,10 +104,7 @@ else()
 	set(HWLOC_INCLUDEDIR "" CACHE STRING "Location of hwloc.h")
 endif()
 
-message(STATUS "${HWLOC_INCLUDEDIR}/hwloc.h")
-
 if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
-	message(STATUS "${HWLOC_INCLUDEDIR}")
 	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 endif()
 
