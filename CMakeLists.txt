@@ -101,7 +101,7 @@ find_package(PkgConfig)
 if (PkgConfig_FOUND)
 	find_package(HWLOC REQUIRED)
 else()
-	set(HWLOC_INCLUDEDIR "" CACHE STRING "Location of hwloc.h")
+	set(HWLOC_INCLUDEDIR "" CACHE PATH "Location of hwloc.h")
 endif()
 
 if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
@@ -148,3 +148,4 @@ if (DOXYGEN_FOUND)
 	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
 	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
 endif()
+
