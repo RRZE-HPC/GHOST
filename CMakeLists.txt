@@ -9,7 +9,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
-option(USE_CUDA "Build with CUDA" 0)
+option(USE_CUDA "Build with CUDA" 1)
 option(USE_OPENCL "Build with OpenCL" 0)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
@@ -61,19 +61,21 @@ if (USE_MPI)
 endif()
 
 if (USE_CUDA)
-	find_package(CUDA REQUIRED)
-	set(GHOST_HAVE_CUDA 1)
-	cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
-	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC)
-	cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
-	set (SOURCES ${SOURCES} 
-			${BJDS_KERNEL_O}
-			src/bjds_cukernel.cu	
-		)
-	include_directories(${CUDA_INCLUDE_DIRS})
-	set (HEADERS ${HEADERS}
-			include/ghost_cu_util.h
-		)
+	find_package(CUDA)
+	if (CUDA_FOUND)
+		set(GHOST_HAVE_CUDA 1)
+		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
+		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC)
+		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
+		set (SOURCES ${SOURCES} 
+				${BJDS_KERNEL_O}
+				src/bjds_cukernel.cu	
+			)
+		include_directories(${CUDA_INCLUDE_DIRS})
+		set (HEADERS ${HEADERS}
+				include/ghost_cu_util.h
+			)
+	endif()
 endif()
 
 add_library(ghost SHARED ${SOURCES})
