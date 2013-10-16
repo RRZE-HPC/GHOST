@@ -59,7 +59,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 		for (i=0; i<nr; i++) {
 			partsums[ghost_ompGetThreadNum()] += 
 				((v_t *)(vec->val))[i+vec->traits->nrowspadded*v]*
-				conjugate(((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v]);
+				conjugate(((v_t *)(vec2->val))[i+vec2->traits->nrowspadded*v]);
 		}
 
 		for (i=0; i<nthreads; i++) sum += partsums[i];

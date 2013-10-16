@@ -1027,7 +1027,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 		t->nThreads = nThreadsPerLD(LD);
 	} 
 	else if (nThreads == GHOST_TASK_FILL_ALL) {
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 		t->nThreads = ghost_thpool->nThreads;
 #else
 		t->nThreads = 1; //TODO is this the correct behavior?

@@ -160,7 +160,7 @@ typedef struct ghost_thpool_t {
 	sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
-#define ghost_tasking_init(_nt,_ft,_l) \
+/*#define ghost_tasking_init(_nt,_ft,_l) \
 	omp_set_nested(1); \
 	ghost_thpool_init(_nt,_ft,_l); \
 	_Pragma("omp parallel num_threads(2)") \
@@ -183,7 +183,7 @@ typedef struct ghost_thpool_t {
 		} \
 	} \
 	ghost_thpool_finish(); \
-
+*/
 int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
 int ghost_taskq_init();
 int ghost_taskq_finish();

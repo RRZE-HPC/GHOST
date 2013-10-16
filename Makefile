@@ -35,7 +35,7 @@ OBJS  += $(FOBJS)
 endif
 
 ifeq ($(OPENMP),1)
-MAKROS+= -DGHOST_OPENMP
+MAKROS+= -DGHOST_HAVE_OPENMP
 endif
 
 ifeq ($(MPI),1)

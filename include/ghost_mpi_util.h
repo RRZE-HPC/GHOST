@@ -14,14 +14,6 @@ MPI_Datatype ghost_mpi_dataType(int datatype);
 MPI_Op ghost_mpi_op_sum(int datatype);
 void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Datatype sendtype, void *recvbuv, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm);
 
-int ghost_getRank(MPI_Comm);
-int ghost_getLocalRank();
-int ghost_getNumberOfRanksOnNode();
-int ghost_getNumberOfHwThreads();
-int ghost_getNumberOfNumaNodes();
-int ghost_getNumberOfThreads();
-int ghost_getNumberOfNodes();
-int ghost_getNumberOfRanks(MPI_Comm);
 
 void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
 void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);

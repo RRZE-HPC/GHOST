@@ -218,6 +218,14 @@ char * ghost_modeName(int spmvmOptions);
 char * ghost_datatypeName(int datatype);
 char * ghost_symmetryName(int symmetry);
 
+int ghost_getRank(MPI_Comm);
+int ghost_getLocalRank();
+int ghost_getNumberOfRanksOnNode();
+int ghost_getNumberOfHwThreads();
+int ghost_getNumberOfNumaNodes();
+int ghost_getNumberOfThreads();
+int ghost_getNumberOfNodes();
+int ghost_getNumberOfRanks(MPI_Comm);
 int ghost_pad(int nrows, int padding);
 
 void ghost_freeCommunicator( ghost_comm_t* const );
