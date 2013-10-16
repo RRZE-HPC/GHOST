@@ -61,7 +61,7 @@ if (USE_MPI)
 endif()
 
 if (USE_CUDA)
-	find_package(CUDA)
+	find_package(CUDA QUIET)
 	if (CUDA_FOUND)
 		set(GHOST_HAVE_CUDA 1)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -96,8 +96,23 @@ if (BLAS STREQUAL "MKL")
 	include_directories($ENV{MKLROOT}/include)
 endif()
 
-find_package(HWLOC REQUIRED)
+
+find_package(PkgConfig)
+if (PkgConfig_FOUND)
+	find_package(HWLOC REQUIRED)
+else()
+	set(HWLOC_INCLUDEDIR "" CACHE STRING "Location of hwloc.h")
+endif()
+
+message(STATUS "${HWLOC_INCLUDEDIR}/hwloc.h")
+
+if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
+	message(STATUS "${HWLOC_INCLUDEDIR}")
+	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDEDIR})
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 if (USE_MPI)	

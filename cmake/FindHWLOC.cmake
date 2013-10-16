@@ -6,8 +6,6 @@
 # After that, use the directories refer to the libraries and
 # also the headers
 
-find_package(PkgConfig)
-
 if(HWLOC_ROOT)
   set(ENV{PKG_CONFIG_PATH} "${HWLOC_ROOT}/lib/pkgconfig")
 else()
