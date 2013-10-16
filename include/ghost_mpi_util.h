@@ -4,6 +4,9 @@
 #include "ghost.h"
 #include "ghost_mat.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void       setupSingleNodeComm();
 //void ghost_createDistributedContextSerial(ghost_context_t *, CR_TYPE* const, int, ghost_mtraits_t *);
 void ghost_createDistributedContext(ghost_context_t *, char *, int, ghost_mtraits_t *);
@@ -27,4 +30,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
 void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
 
+#ifdef __cplusplus
+} //extern "C"
+#endif
 #endif
