@@ -1,7 +1,7 @@
 #ifndef __GHOST_UTIL_H__
 #define __GHOST_UTIL_H__
 
-#include <ghost.h>
+#include <ghost_config.h>
 #include <stdio.h>
 
 #ifdef CUDAKERNEL
