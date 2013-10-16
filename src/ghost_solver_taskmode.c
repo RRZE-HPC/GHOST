@@ -139,6 +139,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	static ghost_task_t *prepareTask;
 
 	if (init_kernel==1){
+		DEBUG_LOG(1,"In task mode spMVM solver");
 		me = ghost_getRank(context->mpicomm);
 		nprocs = ghost_getNumberOfRanks(context->mpicomm);
 		sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);

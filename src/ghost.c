@@ -140,7 +140,7 @@ int ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_MPI
 	int req, prov;
 
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 	req = MPI_THREAD_MULTIPLE; 
 #else
 	req = MPI_THREAD_SINGLE;

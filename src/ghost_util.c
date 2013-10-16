@@ -277,7 +277,7 @@ void ghost_printSysInfo()
 		int nphyscores = ghost_getNumberOfPhysicalCores();
 		int ncores = ghost_getNumberOfHwThreads();
 
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 		char omp_sched_str[32];
 		omp_sched_t omp_sched;
 		int omp_sched_mod;
@@ -383,7 +383,7 @@ void ghost_printGhostInfo()
 #else
 		ghost_printLine("SSE kernels",NULL,"disabled");
 #endif
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 		ghost_printLine("OpenMP support",NULL,"enabled");
 #else
 		ghost_printLine("OpenMP support",NULL,"disabled");
@@ -1467,14 +1467,14 @@ ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
 
 void ghost_ompSetNumThreads(int nthreads)
 {
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 	omp_set_num_threads(nthreads);
 #endif
 }
 	
 int ghost_ompGetNumThreads()
 {
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 	return omp_get_num_threads();
 #else 
 	return 1;
@@ -1483,7 +1483,7 @@ int ghost_ompGetNumThreads()
 
 int ghost_ompGetThreadNum()
 {
-#ifdef GHOST_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 	return omp_get_thread_num();
 #else
 	return 0;
