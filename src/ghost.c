@@ -615,9 +615,9 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 #endif
 
 	ghost_vidx_t m,n,k;
-	m = v->traits->nvecs;
-	n = w->traits->nvecs;
-	k = v->traits->nrows;
+	m = nrV;
+	k = ncV;
+	n = ncW;
 
 	if (v->traits->datatype != w->traits->datatype) {
 		ABORT("Dgemm with mixed datatypes does not work!");
