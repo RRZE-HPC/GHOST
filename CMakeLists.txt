@@ -19,7 +19,6 @@ set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
-set (GHOST_LIBS "-lhwloc")
 
 set (SOURCES 
 		src/ghost.c 
@@ -33,8 +32,8 @@ set (SOURCES
 		src/sell.c 
 		src/sell_kernel_intr.c 
 		src/ghost_vec_tmpl.cpp 
-	src/sell_kernel_tmpl.cpp
-		)
+		src/sell_kernel_tmpl.cpp
+	)
 
 set (HEADERS
 		include/crs.h
@@ -70,7 +69,8 @@ if (USE_CUDA)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
 		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_20,code=sm_20)
 		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
-		set (SOURCES ${SOURCES} 
+		set (SOURCES 
+				${SOURCES} 
 				${BJDS_KERNEL_O}
 				src/bjds_cukernel.cu	
 			)
@@ -78,6 +78,7 @@ if (USE_CUDA)
 		set (HEADERS ${HEADERS}
 				include/ghost_cu_util.h
 			)
+	else ()
 	endif()
 endif()
 
@@ -118,7 +119,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 if (USE_MPI)	
 	find_package(MPI REQUIRED)
 	set(GHOST_HAVE_MPI 1)
-#target_link_libraries(ghost ${MPI_LIBRARIES}) #done via mpicc
 	include_directories(include/mpi ${MPI_INCLUDE_PATH})
 	set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
@@ -152,6 +152,4 @@ if (DOXYGEN_FOUND)
 	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
 	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
 endif()
-
-#install(EXPORT ghost-targets DESTINATION lib/ghost)
 
