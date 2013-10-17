@@ -98,7 +98,7 @@ endif()
 
 
 find_package(PkgConfig)
-if (PkgConfig_FOUND)
+if ( PKGCONFIG_FOUND )
 	find_package(HWLOC REQUIRED)
 else()
 	set(HWLOC_INCLUDEDIR "" CACHE PATH "Location of hwloc.h")
