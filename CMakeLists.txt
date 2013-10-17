@@ -85,6 +85,8 @@ if (USE_OPENCL)
 	find_package(OpenCL)
 	if (OPENCL_FOUND)
 		set(GHOST_HAVE_OPENCL 1)
+		add_definitions("-DGHOST_OPENCL_KERNEL_DIR=\"${CMAKE_INSTALL_PREFIX}/lib/ghost\"")
+		add_definitions("-DGHOST_HEADER_DIR=\"${CMAKE_INSTALL_PREFIX}/include\"")
 		set (SOURCES 
 				${SOURCES} 
 				src/ghost_cl_util.c	

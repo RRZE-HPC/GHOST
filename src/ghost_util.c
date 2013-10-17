@@ -266,10 +266,10 @@ void ghost_printSysInfo()
 	int nnodes = ghost_getNumberOfNodes();
 
 #ifdef GHOST_HAVE_CUDA
-	ghost_acc_info_t * devInfo = CU_getDeviceInfo();
+	ghost_acc_info_t * CUdevInfo = CU_getDeviceInfo();
 #endif
 #ifdef GHOST_HAVE_OPENCL
-	ghost_acc_info_t * devInfo = CL_getDeviceInfo();
+	ghost_acc_info_t * CLdevInfo = CL_getDeviceInfo();
 #endif
 	if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 
@@ -317,26 +317,26 @@ void ghost_printSysInfo()
 		ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
 #ifdef GHOST_HAVE_OPENCL
 		ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
-		ghost_printLine("OpenCL devices",NULL,"%dx %s",devInfo->nDevices[0],devInfo->names[0]);
+		ghost_printLine("OpenCL devices",NULL,"%dx %s",CLdevInfo->nDevices[0],CLdevInfo->names[0]);
 		int i;
-		for (i=1; i<devInfo->nDistinctDevices; i++) {
-			ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
+		for (i=1; i<CLdevInfo->nDistinctDevices; i++) {
+			ghost_printLine("",NULL,"%dx %s",CLdevInfo->nDevices[i],CLdevInfo->names[i]);
 		}
 #endif
 #ifdef GHOST_HAVE_CUDA
 		ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
 		ghost_printLine("CUDA devices",NULL,NULL);
-		int i;
-		for (i=0; i<devInfo->nDistinctDevices; i++) {
-			if (strcasecmp(devInfo->names[i],"None")) {
-				ghost_printLine("",NULL,"%dx %s",devInfo->nDevices[i],devInfo->names[i]);
+		int j;
+		for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
+			if (strcasecmp(CUdevInfo->names[j],"None")) {
+				ghost_printLine("",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
 			}
 		}
 #endif
 		ghost_printFooter();
 	}
 #ifdef GHOST_HAVE_OPENCL
-	destroyCLdeviceInfo(devInfo);
+	destroyCLdeviceInfo(CLdevInfo);
 #endif
 
 }

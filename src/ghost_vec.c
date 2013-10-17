@@ -145,13 +145,12 @@ static void vec_uploadHalo(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading halo elements of vector");
-#ifdef GHOST_HAVE_CUDA
 		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+#ifdef GHOST_HAVE_CUDA
 		CU_copyHostToDevice(&((char *)(vec->CU_val))[vec->traits->nrows*sizeofdt], 
 			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt);
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 		CL_copyHostToDeviceOffset(vec->CL_val_gpu, 
 			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt,
 			vec->traits->nrows*sizeofdt);

@@ -141,9 +141,9 @@ cl_program CL_registerProgram(const char *filename, const char *additionalOption
 				sizeof(cl_device_id),&deviceID,NULL));
 
 	char path[PATH_MAX];
-	snprintf(path,PATH_MAX,"%s/%s",CLKERNELPATH,filename);
+	snprintf(path,PATH_MAX,"%s/%s",GHOST_OPENCL_KERNEL_DIR,filename);
 
-	char headerPath[PATH_MAX] = HEADERPATH;
+	char headerPath[PATH_MAX] = GHOST_HEADER_DIR;
 	size_t optionsLen = strlen(headerPath)+4+strlen(additionalOptions);
 	char *options = (char *)malloc(optionsLen);
 	snprintf(options,optionsLen,"-I%s %s",headerPath, additionalOptions);
@@ -571,8 +571,8 @@ ghost_acc_info_t *CL_getDeviceInfo()
 	char name[CL_MAX_DEVICE_NAME_LEN];
 	char *names = NULL;
 
-	me = ghost_getRank();
-	size = ghost_getNumberOfProcesses();
+	me = ghost_getRank(MPI_COMM_WORLD);
+	size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 
 	CL_safecall(clGetContextInfo(context,CL_CONTEXT_DEVICES,
 				sizeof(cl_device_id),&deviceID,NULL));
