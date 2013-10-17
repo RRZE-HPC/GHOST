@@ -3,6 +3,7 @@
 #cmakedefine GHOST_HAVE_MPI 1
 #cmakedefine GHOST_HAVE_OPENMP 1
 #cmakedefine GHOST_HAVE_CUDA 1
+#cmakedefine GHOST_HAVE_OPENCL 1
 #cmakedefine GHOST_HAVE_MKL 1
 #endif
 

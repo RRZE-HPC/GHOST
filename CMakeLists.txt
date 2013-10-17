@@ -13,7 +13,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
-option(USE_OPENCL "Build with OpenCL" 0)
+option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
@@ -72,13 +72,27 @@ if (USE_CUDA)
 		set (SOURCES 
 				${SOURCES} 
 				${BJDS_KERNEL_O}
-				src/bjds_cukernel.cu	
+				src/ghost_cu_util.c	
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
 				include/ghost_cu_util.h
 			)
-	else ()
+	endif()
+endif()
+
+if (USE_OPENCL)
+	find_package(OpenCL)
+	if (OPENCL_FOUND)
+		set(GHOST_HAVE_OPENCL 1)
+		set (SOURCES 
+				${SOURCES} 
+				src/ghost_cl_util.c	
+			)
+		include_directories(${OPENCL_INCLUDE_DIRS})
+		set (HEADERS ${HEADERS}
+				include/ghost_cl_util.h
+			)
 	endif()
 endif()
 
