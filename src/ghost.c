@@ -578,11 +578,21 @@ void ghost_matFromFile(ghost_mat_t *m, char *p)
 
 int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
 {
-
+        ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
 	// TODO if rhs vector data will not be continous
 	complex double zero = 0.+I*0.;
-	if (v->traits->nrows != w->traits->nrows) {
-		WARNING_LOG("GEMM with vector of different size does not work");
+	if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
+	  {
+	  nrV=v->traits->nrows; ncV=v->traits->nvecs;
+	  }
+	else
+	  {
+	  nrV=v->traits->nvecs; ncV=v->traits->nrows;
+	  }
+	nrW=w->traits->nrows; ncW=w->traits->nvecs;
+	nrX=x->traits->nrows; ncX=w->traits->nvecs;
+	if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
+		WARNING_LOG("GEMM with incompatible vectors!");
 		return GHOST_FAILURE;
 	}
 	if (v->traits->datatype != w->traits->datatype) {
@@ -605,9 +615,9 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 #endif
 
 	ghost_vidx_t m,n,k;
-	m = v->traits->nvecs;
-	n = w->traits->nvecs;
-	k = v->traits->nrows;
+	m = nrV;
+	k = ncV;
+	n = ncW;
 
 	if (v->traits->datatype != w->traits->datatype) {
 		ABORT("Dgemm with mixed datatypes does not work!");
