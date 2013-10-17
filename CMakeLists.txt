@@ -9,7 +9,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
-option(USE_CUDA "Build with CUDA" 0)
+option(USE_CUDA "Build with CUDA" 1)
 option(USE_OPENCL "Build with OpenCL" 0)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
@@ -61,19 +61,21 @@ if (USE_MPI)
 endif()
 
 if (USE_CUDA)
-	find_package(CUDA REQUIRED)
-	set(GHOST_HAVE_CUDA 1)
-	cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
-	list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC)
-	cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
-	set (SOURCES ${SOURCES} 
-			${BJDS_KERNEL_O}
-			src/bjds_cukernel.cu	
-		)
-	include_directories(${CUDA_INCLUDE_DIRS})
-	set (HEADERS ${HEADERS}
-			include/ghost_cu_util.h
-		)
+	find_package(CUDA QUIET)
+	if (CUDA_FOUND)
+		set(GHOST_HAVE_CUDA 1)
+		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
+		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_20,code=sm_20)
+		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
+		set (SOURCES ${SOURCES} 
+				${BJDS_KERNEL_O}
+				src/bjds_cukernel.cu	
+			)
+		include_directories(${CUDA_INCLUDE_DIRS})
+		set (HEADERS ${HEADERS}
+				include/ghost_cu_util.h
+			)
+	endif()
 endif()
 
 add_library(ghost SHARED ${SOURCES})
@@ -94,8 +96,20 @@ if (BLAS STREQUAL "MKL")
 	include_directories($ENV{MKLROOT}/include)
 endif()
 
-find_package(HWLOC REQUIRED)
+
+find_package(PkgConfig)
+if ( PKGCONFIG_FOUND )
+	find_package(HWLOC REQUIRED)
+else()
+	set(HWLOC_INCLUDEDIR "" CACHE PATH "Location of hwloc.h")
+endif()
+
+if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
+	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDEDIR})
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 if (USE_MPI)	
@@ -119,7 +133,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
 install(TARGETS ghost LIBRARY DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/ghost)
-install(FILES ghost.pc DESTINATION lib/pkgconfig)
+install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -127,4 +141,11 @@ configure_file(
 	IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
-configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_SOURCE_DIR}/ghost.pc @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
+
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
+endif()
+

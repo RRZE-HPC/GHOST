@@ -17,6 +17,7 @@ obj/
 mod/
 jobscripts/
 bench/
+wiki/
 meas/
 build/
 _attic/
