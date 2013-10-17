@@ -3,6 +3,9 @@ project (GHOST)
 
 set(GHOST_VERSION_MAJOR 0)
 set(GHOST_VERSION_MINOR 5)
+set(GHOST_VERSION_BUILD 0)
+set(PACKAGE_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_BUILD}")
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
@@ -131,7 +134,8 @@ OptimizeForArchitecture()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 
-install(TARGETS ghost LIBRARY DESTINATION lib)
+install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
+install(FILES GHOST-config.cmake DESTINATION lib/ghost)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
 
@@ -148,4 +152,6 @@ if (DOXYGEN_FOUND)
 	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
 	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
 endif()
+
+#install(EXPORT ghost-targets DESTINATION lib/ghost)
 
