@@ -578,6 +578,12 @@ void ghost_matFromFile(ghost_mat_t *m, char *p)
 
 int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
 {
+	if ((v->traits->flags & GHOST_VEC_SCATTERED) || 
+			(w->traits->flags & GHOST_VEC_SCATTERED) ||
+			(x->traits->flags & GHOST_VEC_SCATTERED)) {
+		WARNING_LOG("Scattered vectors currently not supported in ghost_gemm()");
+		return GHOST_FAILURE;
+	}
         ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
 	// TODO if rhs vector data will not be continous
 	complex double zero = 0.+I*0.;

@@ -57,7 +57,8 @@ static void ghost_freeVector( ghost_vec_t* const vec );
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
 static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
-static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t roffs);
+static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
+static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 #ifdef GHOST_HAVE_CUDA
 static void vec_CUupload (ghost_vec_t *);
@@ -109,6 +110,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->entry = &vec_entry;
 	vec->viewVec = &vec_view;
 	vec->viewPlain = &vec_viewPlain;
+	vec->viewScatteredVec = &vec_viewScatteredVec;
 
 	vec->upload = &vec_upload;
 	vec->download = &vec_download;
@@ -263,6 +265,26 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
 	vec->traits->flags |= GHOST_VEC_VIEW;
 }
 
+static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs)
+{
+	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" scattered dense matrix",src->traits->nrows,nc);
+	ghost_vec_t *new;
+	ghost_vidx_t v;
+	ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
+	newTraits->nvecs = nc;
+
+	new = ghost_createVector(src->context,newTraits);
+	new->val = ghost_malloc(nc*sizeof(void *)); // TODO free val of vec only if scattered (but do not free val[0] of course!)
+
+	for (v=0; v<nc; v++) {
+		((void **)(new->val))[v] = &VAL(src,src->traits->nrowspadded*coffs[v]);
+	}	
+
+	new->traits->flags |= GHOST_VEC_VIEW;
+	new->traits->flags |= GHOST_VEC_SCATTERED;
+	return new;
+}
+
 static void ghost_normalizeVector( ghost_vec_t *vec)
 {
 	ghost_normalizeVector_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
@@ -289,21 +311,43 @@ static void vec_print(ghost_vec_t *vec)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							prefix,v,i,
+							crealf(((complex float **)(vec->val))[v][i]),
+							cimagf(((complex float **)(vec->val))[v][i]));
+					} else {
 					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
 							prefix,v,i,
 							crealf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]),
 							cimagf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]));
-				} else {
+					}
+					} else {
+					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+							prefix,v,i,
+							creal(((complex double **)(vec->val))[v][i]),
+							cimag(((complex double **)(vec->val))[v][i]));
+					} else {
 					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
 							prefix,v,i,
 							creal(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]),
 							cimag(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]));
+					}
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+						printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float **)(vec->val))[v][i]);
+					} else {
+						printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					}
 				} else {
-					printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+						printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double **)(vec->val))[v][i]);
+					} else {
+						printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
+					}
 				}
 			}
 		}
