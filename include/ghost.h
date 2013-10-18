@@ -117,7 +117,7 @@ struct ghost_vec_t
 	 * #val pointer points to some data which is not allocated withing the
 	 * vector.
 	 */
-	int isView;
+//	int isView;
 	
 	/**
 	 * @brief Performs <em>y := a*x + y</em> with scalar a

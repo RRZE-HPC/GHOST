@@ -136,8 +136,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 #endif
 
 	vec->val = NULL;
-	vec->isView = 0;
-
 	return vec;
 	}
 
@@ -253,7 +251,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
 	new = ghost_createVector(src->context,newTraits);
 	new->val = &VAL(src,src->traits->nrowspadded*coffs);
 
-	new->isView = 1;
+	new->traits->flags |= GHOST_VEC_VIEW;
 	return new;
 }
 
@@ -262,7 +260,7 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
 	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix from plain data with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 
 	vec->val = &((char *)data)[(lda*coffs+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
-	vec->isView = 1;
+	vec->traits->flags |= GHOST_VEC_VIEW;
 }
 
 static void ghost_normalizeVector( ghost_vec_t *vec)
@@ -842,7 +840,7 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 static void ghost_freeVector( ghost_vec_t* vec ) 
 {
 	if( vec ) {
-		if (!vec->isView) {
+		if (!(vec->traits->flags & GHOST_VEC_VIEW)) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
 			if (vec->traits->flags & GHOST_VEC_DEVICE)
 				CU_safecall(cudaFreeHost(vec->val));

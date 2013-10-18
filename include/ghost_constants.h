@@ -53,12 +53,13 @@
 /*----  Vector type  --------------------------------------------------------**/
 /******************************************************************************/
 #define GHOST_VEC_DEFAULT   (0)
-#define GHOST_VEC_RHS    (1)
-#define GHOST_VEC_LHS    (2)
-#define GHOST_VEC_HOST   (4)
-#define GHOST_VEC_DEVICE (8)
-#define GHOST_VEC_GLOBAL (16)
-#define GHOST_VEC_DUMMY  (32)
+#define GHOST_VEC_RHS       (1)
+#define GHOST_VEC_LHS       (2)
+#define GHOST_VEC_HOST      (4)
+#define GHOST_VEC_DEVICE    (8)
+#define GHOST_VEC_GLOBAL    (16)
+#define GHOST_VEC_DUMMY     (32)
+#define GHOST_VEC_VIEW      (64)
 /******************************************************************************/
 
 
