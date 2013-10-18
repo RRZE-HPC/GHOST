@@ -483,7 +483,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 				//if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
 				if (!hwloc_bitmap_isset(mybusy,core)) {
-					DEBUG_LOG(0,"Thread %d (%d): Core # %d is idle, using it",omp_get_thread_num(),
+					DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",omp_get_thread_num(),
 							(int)pthread_self(),core);
 
 					//							hwloc_bitmap_set(ghost_thpool->busy,core);
