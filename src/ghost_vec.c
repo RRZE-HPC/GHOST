@@ -921,10 +921,18 @@ static void ghost_freeVector( ghost_vec_t* vec )
 				}
 			}
 #else
-			for (v=0; v<vec->traits->nvecs; v++) {
+			//note: a 'scattered' vector (one with non-constant stride) is
+			//      always a view of some other (there is no method to                        
+			//      construct it otherwise), but we check anyway in case
+			//      the user has built his own funny vector in memory.
+			if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+				for (v=0; v<vec->traits->nvecs; v++) {
 					free(vec->val[v]);
+				}
 			}
-
+			else {
+				free(vec->val[0]);
+			}
 #endif
 #ifdef GHOST_HAVE_OPENCL
 			if (vec->traits->flags & GHOST_VEC_DEVICE) {
@@ -946,7 +954,6 @@ static void ghost_freeVector( ghost_vec_t* vec )
 		// TODO free traits ???
 	}
 }
-
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
 {
 	if (vec->traits->nvecs > 1) {
