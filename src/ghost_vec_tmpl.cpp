@@ -58,8 +58,8 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
 			partsums[ghost_ompGetThreadNum()] += 
-				*(v_t *)VECVAL(vec,vec->val,v,i)*
-				conjugate((v_t *)(VECVAL(vec2,vec->val,v,i)));
+				*(v_t *)VECVAL(vec2,vec2->val,v,i)*
+				conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
 		}
 
 		for (i=0; i<nthreads; i++) sum += partsums[i];
