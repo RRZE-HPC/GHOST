@@ -19,7 +19,7 @@ jobscripts/
 bench/
 wiki/
 meas/
-build/
+build*/
 _attic/
 apps/*/
 ghost_config.h
