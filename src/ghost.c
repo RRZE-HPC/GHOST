@@ -378,17 +378,20 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 		} else
 		{ // don't read rpt, only fill lfrow, lnrows
 			UNUSED(matrixPath);
+			int me = ghost_getRank(context->mpicomm);
 			double allweights;
 			MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,context->mpicomm))
 			
-//			ghost_midx_t target_rows = (context->gnrows/nprocs);
-			ghost_midx_t target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
+			ghost_midx_t my_target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
+			ghost_midx_t target_rows[nprocs];
+
+			MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,&target_rows[me],1,ghost_mpi_dt_midx,context->mpicomm));
 
 			context->rpt = NULL;
 			context->communicator->lfRow[0] = 0;
 
 			for (i=1; i<nprocs; i++){
-				context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows;
+				context->communicator->lfRow[i] = context->communicator->lfRow[i-1]+target_rows[i-1];
 			}
 			for (i=0; i<nprocs-1; i++){
 				context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
