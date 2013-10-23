@@ -137,23 +137,31 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->traits->flags |= GHOST_VEC_HOST;
 #endif
 
-	vec->val = NULL;
-	return vec;
+	// TODO free val of vec only if scattered (but do not free val[0] of course!)
+	vec->val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
+	
+	ghost_vidx_t v;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		vec->val[v] = NULL;
 	}
+	return vec;
+}
 
 static void vec_uploadHalo(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading halo elements of vector");
 		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+		ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA
-		CU_copyHostToDevice(&((char *)(vec->CU_val))[vec->traits->nrows*sizeofdt], 
-			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt);
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,vec->traits->nrows),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*sizeofdt);
+		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		CL_copyHostToDeviceOffset(vec->CL_val_gpu, 
-			&((char *)(vec->val))[vec->traits->nrows*sizeofdt], vec->context->communicator->halo_elements*sizeofdt,
-			vec->traits->nrows*sizeofdt);
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CL_copyHostToDeviceOffset(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*sizeofdt,	vec->traits->nrows*sizeofdt);
+		}
 #endif
 	}
 }
@@ -170,25 +178,36 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+		ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA
-		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrows*sizeofdt);
+		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CL_copyHostToDevice(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrows*sizeofdt);
+		}
 #endif
 	}
 }
 
 static void vec_downloadNonHalo(ghost_vec_t *vec)
 {
-
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Downloading vector");
+		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+		ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA
-		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0), VECVAL(vec,vec->CU_val,v,0),vec->traits->nrows*sizeofdt);
+		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CL_copyDeviceToHost(VECVAL(vec,vec->val,v,0),VECVAL(vec,vec->CL_val_gpu,v,0), vec->traits->nrows*sizeofdt);
+		}
 #endif
 	}
 }
@@ -197,11 +216,17 @@ static void vec_upload(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+		ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA
-		CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*sizeofdt);
+		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CL_copyHostToDevice(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*sizeofdt);
+		}
 #endif
 	}
 }
@@ -210,11 +235,17 @@ static void vec_download(ghost_vec_t *vec)
 {
 	if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
 		DEBUG_LOG(1,"Downloading vector");
+		size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+		ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA
-		CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0), VECVAL(vec,vec->CU_val,v,0),vec->traits->nrowshalo*sizeofdt);
+		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			CL_copyDeviceToHost(VECVAL(vec,vec->val,v,0),VECVAL(vec,vec->CL_val_gpu,v,0), vec->traits->nrowshalo*sizeofdt);
+		}
 #endif
 	}
 }
@@ -222,11 +253,13 @@ static void vec_download(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
 static void vec_CUupload (ghost_vec_t *vec)
 {
+	WARNING_LOG("Deprecated");
 	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static void vec_CUdownload (ghost_vec_t *vec)
 {
+	WARNING_LOG("Deprecated");
 	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
@@ -234,11 +267,13 @@ static void vec_CUdownload (ghost_vec_t *vec)
 #ifdef GHOST_HAVE_OPENCL
 static void vec_CLupload( ghost_vec_t *vec )
 {
+	WARNING_LOG("Deprecated");
 	CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static void vec_CLdownload( ghost_vec_t *vec )
 {
+	WARNING_LOG("Deprecated");
 	CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
 }
 #endif
@@ -251,7 +286,11 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
 	newTraits->nvecs = nc;
 
 	new = ghost_createVector(src->context,newTraits);
-	new->val = &VAL(src,src->traits->nrowspadded*coffs);
+	ghost_vidx_t v;
+
+	for (v=0; v<new->traits->nvecs; v++) {
+		new->val[v] = VECVAL(src,src->val,coffs+v,0);
+	}
 
 	new->traits->flags |= GHOST_VEC_VIEW;
 	return new;
@@ -261,7 +300,11 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
 {
 	DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix from plain data with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 
-	vec->val = &((char *)data)[(lda*coffs+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
+	ghost_vidx_t v;
+
+	for (v=0; v<vec->traits->nvecs; v++) {
+		vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
+	}
 	vec->traits->flags |= GHOST_VEC_VIEW;
 }
 
@@ -274,10 +317,9 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
 	newTraits->nvecs = nc;
 
 	new = ghost_createVector(src->context,newTraits);
-	new->val = ghost_malloc(nc*sizeof(void *)); // TODO free val of vec only if scattered (but do not free val[0] of course!)
 
 	for (v=0; v<nc; v++) {
-		((void **)(new->val))[v] = &VAL(src,src->traits->nrowspadded*coffs[v]);
+		new->val[v] = VECVAL(src,src->val,coffs[v],0);
 	}	
 
 	new->traits->flags |= GHOST_VEC_VIEW;
@@ -311,43 +353,21 @@ static void vec_print(ghost_vec_t *vec)
 		for (v=0; v<vec->traits->nvecs; v++) {
 			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							prefix,v,i,
-							crealf(((complex float **)(vec->val))[v][i]),
-							cimagf(((complex float **)(vec->val))[v][i]));
+						printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+								prefix,v,i,
+								crealf(*(complex float *)VECVAL(vec,vec->val,v,i)),
+								cimagf(*(complex float *)VECVAL(vec,vec->val,v,i)));
 					} else {
-					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							prefix,v,i,
-							crealf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]),
-							cimagf(((complex float *)(vec->val))[v*vec->traits->nrowspadded+i]));
-					}
-					} else {
-					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							prefix,v,i,
-							creal(((complex double **)(vec->val))[v][i]),
-							cimag(((complex double **)(vec->val))[v][i]));
-					} else {
-					printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-							prefix,v,i,
-							creal(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]),
-							cimag(((complex double *)(vec->val))[v*vec->traits->nrowspadded+i]));
-					}
+						printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
+								prefix,v,i,
+								creal(*(complex double *)VECVAL(vec,vec->val,v,i)),
+								cimag(*(complex double *)VECVAL(vec,vec->val,v,i)));
 				}
 			} else {
 				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-						printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float **)(vec->val))[v][i]);
-					} else {
-						printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((float *)(vec->val))[v*vec->traits->nrowspadded+i]);
-					}
+					printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,*(float *)VECVAL(vec,vec->val,v,i));
 				} else {
-					if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-						printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double **)(vec->val))[v][i]);
-					} else {
-						printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,((double *)(vec->val))[v*vec->traits->nrowspadded+i]);
-					}
+					printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,*(double *)VECVAL(vec,vec->val,v,i));
 				}
 			}
 		}
@@ -359,28 +379,38 @@ static void vec_print(ghost_vec_t *vec)
 void vec_malloc(ghost_vec_t *vec)
 {
 
+	ghost_vidx_t v;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	if (vec->traits->flags & GHOST_VEC_HOST) {
-		if (vec->val == NULL) {
+		if (vec->val[0] == NULL) {
 			DEBUG_LOG(2,"Allocating host side of vector");
-			vec->val = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+			vec->val[0] = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+			for (v=1; v<vec->traits->nvecs; v++) {
+				vec->val[v] = vec->val[0]+v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
+			}
 		}
 	}
 
 	if (vec->traits->flags & GHOST_VEC_DEVICE) {
+		DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
-		if (vec->CU_val == NULL) {
-			DEBUG_LOG(2,"Allocating device side of vector");
+		if (vec->CU_val[0] == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
 			CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
-			vec->CU_val = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt);
+			vec->CU_val[0] = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt);
+			for (v=1; v<vec->traits->nvecs; v++) {
+				vec->CU_val[v] = vec->CU_val[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
+			}
 #endif
 		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
-		if (vec->CL_val_gpu == NULL) {
-		vec->CL_val_gpu = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt,vec->val,CL_MEM_READ_WRITE );
+		if (vec->CL_val_gpu[0] == NULL) {
+			vec->CL_val_gpu[0] = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt,vec->val,CL_MEM_READ_WRITE );
+			for (v=1; v<vec->traits->nvecs; v++) {
+				vec->CL_val_gpu[v] = vec->CL_val_gpu[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
+			}
 		}
 #endif
 	}	
@@ -449,10 +479,10 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	ghost_vidx_t i,v;
 
-#pragma omp parallel for private(i) 
 	for (v=0; v<vec->traits->nvecs; v++) {
+#pragma omp parallel for 
 		for (i=0; i<vec->traits->nrows; i++) {
-			memcpy(&VAL(vec,v*vec->traits->nrowspadded+i),&VAL(vec2,(coffs+v)*vec2->traits->nrowspadded+i),sizeofdt);
+			memcpy(VECVAL(vec,vec->val,v,i),VECVAL(vec2,vec2->val,coffs+v,i),sizeofdt);
 		}
 	}
 	vec->upload(vec);
@@ -528,7 +558,7 @@ static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	memcpy(val,&((char *)(vec->val))[c*sizeofdt*vec->traits->nrowspadded+r*sizeofdt],sizeofdt);
+	memcpy(val,VECVAL(vec,vec->val,c,r),sizeofdt);
 }
 
 static void vec_fromRand(ghost_vec_t *vec)
@@ -544,17 +574,10 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 
 	int i,v;
 
-	if (vec->traits->nvecs > 1) {
+	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
-		for (v=0; v<vec->traits->nvecs; v++) {
-			for (i=0; i<vec->traits->nrows; i++) {
-				memcpy(&((char *)(vec->val))[sizeofdt*(v*vec->traits->nrowspadded+i)],val,sizeofdt);
-			}
-		}
-	} else {
-#pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			memcpy(&VAL(vec,i),val,sizeofdt);
+			memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
 		}
 	}
 	vec->upload(vec);
@@ -589,7 +612,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
 
 	ghost_vidx_t v;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		if ((ret = fwrite(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+		if ((ret = fwrite(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
 			ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
 	}
 	fclose(filed);
@@ -654,10 +677,9 @@ static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
 		if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
 			ABORT("Seek failed");
 
-		if ((ret = fread(((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+		if ((ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
 			ABORT("fread failed");
 
-//		pread(file,((char *)(vec->val))+v*sizeofdt*vec->traits->nrowspadded,sizeofdt*vec->traits->nrows,offs+(offset+v*vec->traits->nrows)*vec->traits->nrows);
 	}
 
 	fclose(filed);
@@ -674,17 +696,10 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 
 	int i,v;
 
-	if (vec->traits->nvecs > 1) {
+	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
-		for (v=0; v<vec->traits->nvecs; v++) {
-			for (i=0; i<vec->traits->nrows; i++) {
-				fp(i,v,&VAL(vec,v*vec->traits->nrowspadded+i));
-			}
-		}
-	} else {
-#pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			fp(i,v,((char*)(vec->val))+sizeofdt*i);
+			fp(i,v,VECVAL(vec,vec->val,v,i));
 		}
 	}
 
@@ -694,7 +709,11 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 static void ghost_zeroVector(ghost_vec_t *vec) 
 {
 	DEBUG_LOG(1,"Zeroing vector");
-	memset(vec->val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+	ghost_vidx_t v;
+
+	for (v=0; v<vec->traits->nvecs; v++) {
+		memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+	}
 
 #ifdef GHOST_HAVE_OPENCL
 	vec->CLupload(vec);
@@ -745,6 +764,9 @@ return vec;
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {
+	if ((vec->traits->nvecs > 1) || (nodeVec->traits->nvecs > 1)) {
+		WARNING_LOG("Multi-column vector distribution not yet implemented");
+	}
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 #ifdef GHOST_HAVE_MPI
@@ -780,18 +802,18 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank(nodeVec->context->mpicomm) != 0) {
-		MPI_safecall(MPI_Irecv(nodeVec->val,comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
+		MPI_safecall(MPI_Irecv(nodeVec->val[0],comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
-		memcpy(nodeVec->val,vec->val,sizeofdt*comm->lnrows[0]);
+		memcpy(nodeVec->val[0],vec->val[0],sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(((char *)(vec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Isend(vec->val[0]+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	memcpy(nodeVec->val,vec->val,vec->traits->nrowspadded*sizeofdt);
+	memcpy(nodeVec->val[0],vec->val[0],vec->traits->nrowspadded*sizeofdt);
 //	*nodeVec = vec->clone(vec);
 #endif
 
@@ -809,6 +831,9 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
 {
+	if ((vec->traits->nvecs > 1) || (totalVec->traits->nvecs > 1)) {
+		WARNING_LOG("Multi-column vector collection not yet implemented");
+	}
 #ifdef GHOST_HAVE_MPI
 	MPI_Datatype mpidt;
 
@@ -842,12 +867,12 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank(vec->context->mpicomm) != 0) {
-		MPI_safecall(MPI_Isend(vec->val,comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
+		MPI_safecall(MPI_Isend(vec->val[0],comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
 		msgcount++;
 	} else {
-		memcpy(totalVec->val,vec->val,sizeofdt*comm->lnrows[0]);
+		memcpy(totalVec->val[0],vec->val[0],sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Irecv(((char *)(totalVec->val))+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Irecv(totalVec->val+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
@@ -855,27 +880,30 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 #else
 	if (vec->context != NULL)
 		vec->permute(vec,vec->context->invRowPerm); 
-	memcpy(totalVec->val,vec->val,totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+	memcpy(totalVec->val[0],vec->val[0],totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 #endif
 }
 
 static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
 {
+	if ((v1->traits->nvecs > 1) || (v2->traits->nvecs > 1)) {
+		WARNING_LOG("Multi-column vector swapping not yet implemented");
+	}
 	char *dtmp;
 
-	dtmp = v1->val;
-	v1->val = v2->val;
-	v2->val = dtmp;
+	dtmp = v1->val[0];
+	v1->val[0] = v2->val[0];
+	v2->val[0] = dtmp;
 #ifdef GHOST_HAVE_OPENCL
 	cl_mem tmp;
-	tmp = v1->CL_val_gpu;
-	v1->CL_val_gpu = v2->CL_val_gpu;
-	v2->CL_val_gpu = tmp;
+	tmp = v1->CL_val_gpu[0];
+	v1->CL_val_gpu[0] = v2->CL_val_gpu[0];
+	v2->CL_val_gpu[0] = tmp;
 #endif
 #ifdef GHOST_HAVE_CUDA
-	dtmp = v1->CU_val;
-	v1->CU_val = v2->CU_val;
-	v2->CU_val = dtmp;
+	dtmp = v1->CU_val[0];
+	v1->CU_val[0] = v2->CU_val[0];
+	v2->CU_val[0] = dtmp;
 #endif
 
 }
@@ -885,22 +913,35 @@ static void ghost_freeVector( ghost_vec_t* vec )
 {
 	if( vec ) {
 		if (!(vec->traits->flags & GHOST_VEC_VIEW)) {
+			ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
-			if (vec->traits->flags & GHOST_VEC_DEVICE)
-				CU_safecall(cudaFreeHost(vec->val));
+			if (vec->traits->flags & GHOST_VEC_DEVICE) {
+				for (v=0; v<vec->traits->nvecs) { 
+					CU_safecall(cudaFreeHost(vec->val[v]));
+				}
+			}
 #else
-			free(vec->val);
+			for (v=0; v<vec->traits->nvecs; v++) {
+					free(vec->val[v]);
+			}
+
 #endif
-		}
-		//		freeMemory( (size_t)(vec->traits->nrows*sizeof(ghost_dt)), "VAL(vec)",  VAL(vec) );
 #ifdef GHOST_HAVE_OPENCL
-		if (vec->traits->flags & GHOST_VEC_DEVICE)
-			CL_freeDeviceMemory( vec->CL_val_gpu );
+			if (vec->traits->flags & GHOST_VEC_DEVICE) {
+				for (v=0; v<vec->traits->nvecs) { 
+					CL_freeDeviceMemory( vec->CL_val_gpu[v] );
+				}
+			}
 #endif
 #ifdef GHOST_HAVE_CUDA
-		if (vec->traits->flags & GHOST_VEC_DEVICE)
-			CU_freeDeviceMemory( vec->CU_val );
+			if (vec->traits->flags & GHOST_VEC_DEVICE) {
+				for (v=0; v<vec->traits->nvecs) { 
+					CU_freeDeviceMemory( vec->CU_val[v] );
+				}
+			}
 #endif
+		}
+		free(vec->val);
 		free(vec);
 		// TODO free traits ???
 	}
@@ -908,6 +949,9 @@ static void ghost_freeVector( ghost_vec_t* vec )
 
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
 {
+	if (vec->traits->nvecs > 1) {
+		WARNING_LOG("Permuting multi-column vectors not yet implemented");
+	}
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	ghost_midx_t i;
@@ -929,10 +973,10 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 			ABORT("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
 		}
 
-		memcpy(&tmp[sizeofdt*perm[i]],&VAL(vec,i),sizeofdt);
+		memcpy(&tmp[sizeofdt*perm[i]],VECVAL(vec,vec->val,0,i),sizeofdt);
 	}
 	for(i=0; i < len; ++i) {
-		memcpy(&VAL(vec,i),&tmp[sizeofdt*i],sizeofdt);
+		memcpy(VECVAL(vec,vec->val,0,i),&tmp[sizeofdt*i],sizeofdt);
 	}
 
 	free(tmp);

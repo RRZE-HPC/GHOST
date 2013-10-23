@@ -111,7 +111,7 @@ struct ghost_vec_t
 	/**
 	 * @brief The values of the vector.
 	 */
-	void* val;
+	char** val;
 	/**
 	 * @brief Indicates whether the vector is a view. A view is a vector whose
 	 * #val pointer points to some data which is not allocated withing the

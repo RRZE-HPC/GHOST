@@ -42,9 +42,10 @@ using namespace std;
 template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
 	DEBUG_LOG(2,"In plain SELL kernel");
-	v_t *rhsd = (v_t *)(rhs->val);
-	v_t *lhsd = (v_t *)(lhs->val);
+	v_t *rhsv;
+	v_t *lhsv;
 	ghost_midx_t i,j,c;
+	ghost_vidx_t v;
 	v_t tmp[chunkHeight];
 	SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
 
@@ -53,106 +54,126 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 		m_t shift = *((m_t *)(mat->traits->shift));
 		if (options & GHOST_SPMVM_APPLY_SCALE) {
 			m_t scale = *((m_t *)(mat->traits->scale));
+			for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+			{
+				rhsv = (v_t *)rhs->val[v];
+				lhsv = (v_t *)lhs->val[v];
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-			for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
-			{ // loop over chunks
-				for (i=0; i<chunkHeight; i++) {
-					tmp[i] = (v_t)0;
-				}
-
-				for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-				{ // loop inside chunk
+				for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
+				{ // loop over chunks
 					for (i=0; i<chunkHeight; i++) {
-						tmp[i] += (v_t)(scale*((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) + shift)) * 
-							rhsd[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
-					}
-				}
-				for (i=0; i<chunkHeight; i++) {
-					if (c*chunkHeight+i < sell->nrows) {
-						if (options & GHOST_SPMVM_AXPY)
-							lhsd[c*chunkHeight+i] += tmp[i];
-						else
-							lhsd[c*chunkHeight+i] = tmp[i];
+						tmp[i] = (v_t)0;
 					}
 
+					for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+					{ // loop inside chunk
+						for (i=0; i<chunkHeight; i++) {
+							tmp[i] += (v_t)(scale*((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) + shift)) * 
+								rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+						}
+					}
+					for (i=0; i<chunkHeight; i++) {
+						if (c*chunkHeight+i < sell->nrows) {
+							if (options & GHOST_SPMVM_AXPY)
+								lhsv[c*chunkHeight+i] += tmp[i];
+							else
+								lhsv[c*chunkHeight+i] = tmp[i];
+						}
+
+					}
 				}
 			}
 		} else {
+			for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+			{
+				rhsv = (v_t *)rhs->val[v];
+				lhsv = (v_t *)lhs->val[v];
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-			for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
-			{ // loop over chunks
-				for (i=0; i<chunkHeight; i++) {
-					tmp[i] = (v_t)0;
-				}
-
-				for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-				{ // loop inside chunk
+				for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
+				{ // loop over chunks
 					for (i=0; i<chunkHeight; i++) {
-						tmp[i] += (v_t)((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) + shift) * 
-							rhsd[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
-					}
-				}
-				for (i=0; i<chunkHeight; i++) {
-					if (c*chunkHeight+i < sell->nrows) {
-						if (options & GHOST_SPMVM_AXPY)
-							lhsd[c*chunkHeight+i] += tmp[i];
-						else
-							lhsd[c*chunkHeight+i] = tmp[i];
+						tmp[i] = (v_t)0;
 					}
 
+					for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+					{ // loop inside chunk
+						for (i=0; i<chunkHeight; i++) {
+							tmp[i] += (v_t)((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) + shift) * 
+								rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+						}
+					}
+					for (i=0; i<chunkHeight; i++) {
+						if (c*chunkHeight+i < sell->nrows) {
+							if (options & GHOST_SPMVM_AXPY)
+								lhsv[c*chunkHeight+i] += tmp[i];
+							else
+								lhsv[c*chunkHeight+i] = tmp[i];
+						}
+
+					}
 				}
 			}
 		}
 	} else {
 		if (options & GHOST_SPMVM_APPLY_SCALE) {
 			m_t scale = *((m_t *)(mat->traits->scale));
+			for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+			{
+				rhsv = (v_t *)rhs->val[v];
+				lhsv = (v_t *)lhs->val[v];
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-			for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
-			{ // loop over chunks
-				for (i=0; i<chunkHeight; i++) {
-					tmp[i] = (v_t)0;
-				}
-
-				for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-				{ // loop inside chunk
+				for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
+				{ // loop over chunks
 					for (i=0; i<chunkHeight; i++) {
-						tmp[i] += (v_t)(scale*((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]))) * 
-							rhsd[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
-					}
-				}
-				for (i=0; i<chunkHeight; i++) {
-					if (c*chunkHeight+i < sell->nrows) {
-						if (options & GHOST_SPMVM_AXPY)
-							lhsd[c*chunkHeight+i] += tmp[i];
-						else
-							lhsd[c*chunkHeight+i] = tmp[i];
+						tmp[i] = (v_t)0;
 					}
 
+					for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+					{ // loop inside chunk
+						for (i=0; i<chunkHeight; i++) {
+							tmp[i] += (v_t)(scale*((((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]))) * 
+								rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+						}
+					}
+					for (i=0; i<chunkHeight; i++) {
+						if (c*chunkHeight+i < sell->nrows) {
+							if (options & GHOST_SPMVM_AXPY)
+								lhsv[c*chunkHeight+i] += tmp[i];
+							else
+								lhsv[c*chunkHeight+i] = tmp[i];
+						}
+
+					}
 				}
 			}
 		} else {
+			for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+			{
+				rhsv = (v_t *)rhs->val[v];
+				lhsv = (v_t *)lhs->val[v];
 #pragma omp parallel for schedule(runtime) private(j,tmp,i)
-			for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
-			{ // loop over chunks
-				for (i=0; i<chunkHeight; i++) {
-					tmp[i] = (v_t)0;
-				}
-
-				for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-				{ // loop inside chunk
+				for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
+				{ // loop over chunks
 					for (i=0; i<chunkHeight; i++) {
-						tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
-							rhsd[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
-					}
-				}
-				for (i=0; i<chunkHeight; i++) {
-					if (c*chunkHeight+i < sell->nrows) {
-						if (options & GHOST_SPMVM_AXPY)
-							lhsd[c*chunkHeight+i] += tmp[i];
-						else
-							lhsd[c*chunkHeight+i] = tmp[i];
+						tmp[i] = (v_t)0;
 					}
 
+					for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+					{ // loop inside chunk
+						for (i=0; i<chunkHeight; i++) {
+							tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
+								rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+						}
+					}
+					for (i=0; i<chunkHeight; i++) {
+						if (c*chunkHeight+i < sell->nrows) {
+							if (options & GHOST_SPMVM_AXPY)
+								lhsv[c*chunkHeight+i] += tmp[i];
+							else
+								lhsv[c*chunkHeight+i] = tmp[i];
+						}
+
+					}
 				}
 			}
 		}
@@ -163,9 +184,10 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
 	DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
-	v_t *rhsd = (v_t *)(rhs->val);
-	v_t *lhsd = (v_t *)(lhs->val);
+	v_t *rhsv;
+	v_t *lhsv;
 	ghost_midx_t i,j;
+	ghost_vidx_t v;
 	v_t tmp;
 	SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
 	m_t *sellv = (m_t*)(sell->val);
@@ -176,45 +198,50 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
 		scale = *((v_t *)(mat->traits->scale));
 
 
-#pragma omp parallel for schedule(runtime) private(j,tmp)
-	for (i=0; i<sell->nrows; i++) 
+	for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
 	{
-		tmp = (v_t)0;
+		rhsv = (v_t *)rhs->val[v];
+		lhsv = (v_t *)lhs->val[v];
+#pragma omp parallel for schedule(runtime) private(j,tmp)
+		for (i=0; i<sell->nrows; i++) 
+		{
+			tmp = (v_t)0;
 
-		for (j=0; j<sell->rowLen[i]; j++) 
-		{ 
-			tmp += (v_t)sellv[sell->nrowsPadded*j+i] * 
-				rhsd[sell->col[sell->nrowsPadded*j+i]];
-		}
-		if (options & GHOST_SPMVM_APPLY_SHIFT) {
-			if (options & GHOST_SPMVM_APPLY_SCALE) {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsd[i] += scale*(tmp+shift*rhsd[i]);
+			for (j=0; j<sell->rowLen[i]; j++) 
+			{ 
+				tmp += (v_t)sellv[sell->nrowsPadded*j+i] * 
+					rhsv[sell->col[sell->nrowsPadded*j+i]];
+			}
+			if (options & GHOST_SPMVM_APPLY_SHIFT) {
+				if (options & GHOST_SPMVM_APPLY_SCALE) {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[i] += scale*(tmp+shift*rhsv[i]);
+					} else {
+						lhsv[i] = scale*(tmp+shift*rhsv[i]);
+					}
 				} else {
-					lhsd[i] = scale*(tmp+shift*rhsd[i]);
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[i] += (tmp+shift*rhsv[i]);
+					} else {
+						lhsv[i] = (tmp+shift*rhsv[i]);
+					}
 				}
 			} else {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsd[i] += (tmp+shift*rhsd[i]);
+				if (options & GHOST_SPMVM_APPLY_SCALE) {
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[i] += scale*(tmp);
+					} else {
+						lhsv[i] = scale*(tmp);
+					}
 				} else {
-					lhsd[i] = (tmp+shift*rhsd[i]);
+					if (options & GHOST_SPMVM_AXPY) {
+						lhsv[i] += (tmp);
+					} else {
+						lhsv[i] = (tmp);
+					}
 				}
-			}
-		} else {
-			if (options & GHOST_SPMVM_APPLY_SCALE) {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsd[i] += scale*(tmp);
-				} else {
-					lhsd[i] = scale*(tmp);
-				}
-			} else {
-				if (options & GHOST_SPMVM_AXPY) {
-					lhsd[i] += (tmp);
-				} else {
-					lhsd[i] = (tmp);
-				}
-			}
 
+			}
 		}
 	}
 
@@ -408,7 +435,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 	SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
 
-			DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
+	DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
 	if (SELL(mat)->chunkHeight < SELL(mat)->nrowsPadded) 
 	{ // SELL NUMA initialization
 
@@ -432,7 +459,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 #pragma omp parallel for schedule(runtime) private(j)
 		for (i=0; i<SELL(mat)->nrowsPadded; i++) { 
 			for (j=0; j<SELL(mat)->chunkLen[0]; j++) {
-			//	printf("%p %p\n",&(((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i]),&(SELL(mat)->col[SELL(mat)->nrowsPadded*j+i]));
+				//	printf("%p %p\n",&(((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i]),&(SELL(mat)->col[SELL(mat)->nrowsPadded*j+i]));
 				((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
 				SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
 			}

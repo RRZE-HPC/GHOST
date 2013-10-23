@@ -18,7 +18,8 @@
 #define VEC_PAD 16
 #endif
 
-#define VAL(vec,k) ((char *)(vec->val))[(k)*ghost_sizeofDataType(vec->traits->datatype)]
+#define VECVAL(vec,val,__x,__y) &(val[__x][__y*ghost_sizeofDataType(vec->traits->datatype)])
+//#define VECCOL(vec,__x) vec->val[__x][__y*ghost_sizeofDataType(vec->traits->datatype)]
 
 #ifdef __cplusplus
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec);
