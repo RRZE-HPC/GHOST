@@ -11,7 +11,7 @@
 #define CU_MAX_DEVICE_NAME_LEN 500
 
 
-static int device;
+int ghost_cu_device;
 int hasCUDAdevice;
 
 void ghost_CUDA_init(int dev)
@@ -22,10 +22,11 @@ void ghost_CUDA_init(int dev)
 	DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
 
 	if (dev<nDevs) {
-		device = dev;
+		ghost_cu_device = dev;
 
-		DEBUG_LOG(1,"Selecting CUDA device %d",device);
-		CU_safecall(cudaSetDevice(device));
+		DEBUG_LOG(1,"Selecting CUDA device %d",ghost_cu_device);
+		CU_safecall(cudaSetDevice(ghost_cu_device));
+
 		hasCUDAdevice = 1;
 	} else {
 		hasCUDAdevice = 0;
@@ -111,7 +112,7 @@ ghost_acc_info_t *CU_getDeviceInfo()
 
 	if (hasCUDAdevice) {
 		struct cudaDeviceProp devProp;
-		CU_safecall(cudaGetDeviceProperties(&devProp,device));
+		CU_safecall(cudaGetDeviceProperties(&devProp,ghost_cu_device));
 		strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
 	} else {
 		strncpy(name,"None",5);
@@ -183,7 +184,6 @@ ghost_acc_info_t *CU_getDeviceInfo()
 	for (i=0; i<devInfo->nDistinctDevices; i++)
 		MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 #endif
-
 
 	return devInfo;
 }

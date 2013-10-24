@@ -21,6 +21,8 @@
 #include "ghost_taskq.h"
 #include "ghost_util.h"
 
+extern int ghost_cu_device;
+
 /**
  * @brief The task queue created by ghost_taskq_init().
  */
@@ -532,6 +534,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 	 */
 	void * thread_main(void *arg)
 	{
+#if GHOST_HAVE_CUDA
+		ghost_CUDA_init(ghost_cu_device);
+#endif
 		//	kmp_set_blocktime(200);
 		//	kmp_set_library_throughput();
 		//	UNUSED(arg);
