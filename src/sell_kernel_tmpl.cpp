@@ -41,12 +41,12 @@ using namespace std;
 
 template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
-	DEBUG_LOG(2,"In plain SELL kernel");
+	SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
+	DEBUG_LOG(2,"In plain SELL kernel w/ %d chunks",sell->nrowsPadded/chunkHeight);
 	v_t *rhsd = (v_t *)(rhs->val);
 	v_t *lhsd = (v_t *)(lhs->val);
 	ghost_midx_t i,j,c;
 	v_t tmp[chunkHeight];
-	SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
 
 
 	if (options & GHOST_SPMVM_APPLY_SHIFT) {
