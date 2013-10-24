@@ -188,6 +188,13 @@ int ghost_init(int argc, char **argv)
 	hwloc_topology_init(&topology);
 	hwloc_topology_load(topology);
 
+
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_PROCESS);
+	if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
+		WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
+	}
+
 	return GHOST_SUCCESS;
 }
 
