@@ -11,8 +11,8 @@
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
 	CR_TYPE *cr = CR(mat);
-	v_t *rhsv = (v_t *)(rhs->val);	
-	v_t *lhsv = (v_t *)(lhs->val);
+	v_t *rhsv;	
+	v_t *lhsv;
 	m_t *mval = (m_t *)(cr->val);	
 	ghost_midx_t i, j;
 	ghost_vidx_t v;
@@ -26,39 +26,41 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
 	for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
 	{
+		rhsv = (v_t *)rhs->val[v];
+		lhsv = (v_t *)lhs->val[v];
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 		for (i=0; i<cr->nrows; i++){
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += ((v_t)(mval[j])) * rhsv[v*rhs->traits->nrowspadded+cr->col[j]];
+				hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
 			}
 
 			if (options & GHOST_SPMVM_APPLY_SHIFT) {
 				if (options & GHOST_SPMVM_APPLY_SCALE) {
 					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[v*lhs->traits->nrowspadded+i] += scale*(hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+						lhsv[i] += scale*(hlp1+shift*rhsv[i]);
 					} else {
-						lhsv[v*lhs->traits->nrowspadded+i] = scale*(hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+						lhsv[i] = scale*(hlp1+shift*rhsv[i]);
 					}
 				} else {
 					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[v*lhs->traits->nrowspadded+i] += (hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+						lhsv[i] += (hlp1+shift*rhsv[i]);
 					} else {
-						lhsv[v*lhs->traits->nrowspadded+i] = (hlp1+shift*rhsv[v*rhs->traits->nrowspadded+i]);
+						lhsv[i] = (hlp1+shift*rhsv[i]);
 					}
 				}
 			} else {
 				if (options & GHOST_SPMVM_APPLY_SCALE) {
 					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[v*lhs->traits->nrowspadded+i] += scale*(hlp1);
+						lhsv[i] += scale*(hlp1);
 					} else {
-						lhsv[v*lhs->traits->nrowspadded+i] = scale*(hlp1);
+						lhsv[i] = scale*(hlp1);
 					}
 				} else {
 					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[v*lhs->traits->nrowspadded+i] += (hlp1);
+						lhsv[i] += (hlp1);
 					} else {
-						lhsv[v*lhs->traits->nrowspadded+i] = (hlp1);
+						lhsv[i] = (hlp1);
 					}
 				}
 

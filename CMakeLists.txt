@@ -15,9 +15,9 @@ option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
 option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
-set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
-set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 option(BUILD_MIC "Build for Intel MIC" 0)
+option(USE_MKL "use MKL as BLAS lib" 0)
+option(VERBOSITY "Level of printed DEBUG information" 0)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
@@ -100,7 +100,9 @@ endif()
 add_library(ghost SHARED ${SOURCES})
 
 if (LONGIDX)
-	add_definitions(-DLONGIDX -DMKL_ILP64)
+        if (USE_MKL)
+		add_definitions(-DLONGIDX -DMKL_ILP64)
+	endif()
 endif()
 
 if (USE_OPENMP)	
@@ -110,9 +112,13 @@ if (USE_OPENMP)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-if (BLAS STREQUAL "MKL")
+if (USE_MKL)
+	set(BLAS "MKL")
 	set(GHOST_HAVE_MKL 1)
 	include_directories($ENV{MKLROOT}/include)
+else()
+	set(BLAS "BLAS")
+	set(GHOST_HAVE_MKL 0)
 endif()
 
 
@@ -123,9 +129,9 @@ else()
 	set(HWLOC_INCLUDEDIR "" CACHE PATH "Location of hwloc.h")
 endif()
 
-if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
-	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
-endif()
+#if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
+#	message(FATAL_ERROR "Could not find hw#loc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
+#endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDEDIR})
 

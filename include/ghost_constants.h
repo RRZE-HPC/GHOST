@@ -60,6 +60,7 @@
 #define GHOST_VEC_GLOBAL    (16)
 #define GHOST_VEC_DUMMY     (32)
 #define GHOST_VEC_VIEW      (64)
+#define GHOST_VEC_SCATTERED (128)
 /******************************************************************************/
 
 

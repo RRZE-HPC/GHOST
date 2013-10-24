@@ -111,7 +111,7 @@ struct ghost_vec_t
 	/**
 	 * @brief The values of the vector.
 	 */
-	void* val;
+	char** val;
 	/**
 	 * @brief Indicates whether the vector is a view. A view is a vector whose
 	 * #val pointer points to some data which is not allocated withing the
@@ -341,6 +341,10 @@ struct ghost_vec_t
 	 * @param ghost_vidx_t lda The number of rows per column.
 	 */
 	void          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+
+	ghost_vec_t * (*viewScatteredVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
+
+
 	/**
 	 * @brief Create a vector as a view of another vector.
 	 *

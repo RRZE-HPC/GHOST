@@ -13,9 +13,9 @@ struct ghost_complex : public std::complex<T>
 		ghost_complex<T> operator*(const ghost_complex<T>&) const;
 };
 
-template <typename T> ghost_complex<T> conjugate(ghost_complex<T>& c);
-double conjugate(double& c);
-float conjugate(float& c);
+template <typename T> ghost_complex<T> conjugate(ghost_complex<T> * c);
+double conjugate(double * c);
+float conjugate(float * c);
 
 template <typename T>
 ghost_complex<T>::operator float() const {

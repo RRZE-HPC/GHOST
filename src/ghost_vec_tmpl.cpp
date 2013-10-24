@@ -6,17 +6,17 @@
 #include "ghost_complex.h"
 #include <omp.h>
 
-double conjugate(double& c) {
-	return c;
+double conjugate(double * c) {
+	return *c;
 }
 
-float conjugate(float& c) {
-	return c;
+float conjugate(float * c) {
+	return *c;
 }
 
 template <typename T>
-ghost_complex<T> conjugate(ghost_complex<T>& c) {
-	return ghost_complex<T>(std::real(c),-std::imag(c));
+ghost_complex<T> conjugate(ghost_complex<T>* c) {
+	return ghost_complex<T>(std::real(*c),-std::imag(*c));
 }
 
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
@@ -58,8 +58,8 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
 			partsums[ghost_ompGetThreadNum()] += 
-				((v_t *)(vec->val))[i+vec->traits->nrowspadded*v]*
-				conjugate(((v_t *)(vec2->val))[i+vec2->traits->nrowspadded*v]);
+				*(v_t *)VECVAL(vec2,vec2->val,v,i)*
+				conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
 		}
 
 		for (i=0; i<nthreads; i++) sum += partsums[i];
@@ -78,7 +78,7 @@ template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t 
 	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
-			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] += ((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v] * s[v];
+			*(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
 		}
 	}
 }
@@ -93,8 +93,8 @@ template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t
 	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
 #pragma omp parallel for 
 		for (i=0; i<nr; i++) {
-			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] = ((v_t *)(vec2->val))[i+vec->traits->nrowspadded*v] * s[v] + 
-				((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] * b[v];
+			*(v_t *)VECVAL(vec,vec->val,v,i) = *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v] + 
+				*(v_t *)VECVAL(vec,vec->val,v,i) * b[v];
 		}
 	}
 }
@@ -107,7 +107,7 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for 
 		for (i=0; i<vec->traits->nrows; i++) {
-			((v_t *)(vec->val))[i+vec->traits->nrowspadded*v] *= s[v];
+			*(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
 		}
 	}
 }
@@ -122,23 +122,16 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 	// TODO fuse loops but preserve randomness
 
-	if (vec->traits->nvecs > 1) {
-#pragma omp parallel for schedule(runtime) private(i)
-		for (v=0; v<vec->traits->nvecs; v++) {
-			for (i=0; i<vec->traits->nrows; i++) {
-				((v_t *)(vec->val))[v*vec->traits->nrowspadded+i] = (v_t)0;
-			}
-		}
-	} else {
+	for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime)
 		for (i=0; i<vec->traits->nrows; i++) {
-			((v_t *)(vec->val))[i] = (v_t)0;
+			*(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)0;
 		}
 	}
 
 	for (v=0; v<vec->traits->nvecs; v++) {
 		for (i=0; i<vec->traits->nrows; i++) {
-			((v_t *)(vec->val))[v*vec->traits->nrowspadded+i] = (v_t)(rand()*1./RAND_MAX); // TODO imag
+			*(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)(rand()*1./RAND_MAX); // TODO imag
 		}
 	}
 	vec->upload(vec);
