@@ -17,6 +17,7 @@ option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library (currently only MKL supported)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
+option(BUILD_MIC "Build for Intel MIC" 0)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
@@ -67,7 +68,7 @@ if (USE_CUDA)
 	if (CUDA_FOUND)
 		set(GHOST_HAVE_CUDA 1)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
-		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_20,code=sm_20)
+		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
 		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
 		set (SOURCES 
 				${SOURCES} 
@@ -143,10 +144,16 @@ configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost_config.h"
 )
 
-AutodetectHostArchitecture()
-OptimizeForArchitecture()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
+if (BUILD_MIC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
+else()
+	AutodetectHostArchitecture()
+	OptimizeForArchitecture()
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
+endif()
+
 
 install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
 install(FILES GHOST-config.cmake DESTINATION lib/ghost)
