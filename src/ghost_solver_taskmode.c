@@ -88,7 +88,7 @@ static void *computeLocal(void *vargs)
 //	printf("    ######### compute: thread %d (%llu) running @ core %d\n",ghost_ompGetThreadNum(), (unsigned long)pthread_self(), ghost_getCore());
 //	}
 	compArgs *args = (compArgs *)vargs;
-	args->invec->uploadNonHalo(args->invec);
+//	args->invec->uploadNonHalo(args->invec);
 
 	args->mat->localPart->kernel(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
 
@@ -249,11 +249,14 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 */
 
 //	start = ghost_wctime();
+	ghost_task_add(commTask);
 	ghost_task_add(compTask);
 //	communicate(&cargs);
-	ghost_task_add(commTask);
 	ghost_task_wait(commTask);
 	ghost_task_wait(compTask);
+//	double start = ghost_wctime();
+//	computeLocal(&cpargs);
+//	WARNING_LOG("comploc took %f sec",ghost_wctime()-start);
 //	WARNING_LOG("comm+loc took %f sec",ghost_wctime()-start);
 
 	computeRemote(&cpargs);
