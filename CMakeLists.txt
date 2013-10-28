@@ -16,8 +16,8 @@ option(USE_CUDA "Build with CUDA" 1)
 option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
-option(USE_MKL "use MKL as BLAS lib" 0)
-option(VERBOSITY "Level of printed DEBUG information" 0)
+option(USE_MKL "use MKL as BLAS lib" 1)
+set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
