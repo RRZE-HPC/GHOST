@@ -3,6 +3,7 @@
 #include <ghost_vec.h>
 #include <cmath>
 #include <cstdio>
+#include <iostream>
 #include "ghost_complex.h"
 #include <omp.h>
 
@@ -137,6 +138,46 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 	vec->upload(vec);
 
 }
+
+
+template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
+{
+	char prefix[16];
+#ifdef GHOST_HAVE_MPI
+	if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
+		int rank = ghost_getRank(vec->context->mpicomm);
+		int ndigits = (int)floor(log10(abs(rank))) + 1;
+		snprintf(prefix,4+ndigits,"PE%d: ",rank);
+	} else {
+		snprintf(prefix,1,"\0");
+	}
+#else
+	snprintf(prefix,1,"\0");
+#endif
+	
+	ghost_vidx_t i,v;
+
+	std::cout.setf(std::ios::fixed, std::ios::floatfield);
+	for (i=0; i<vec->traits->nrows; i++) {
+		for (v=0; v<vec->traits->nvecs; v++) {
+			std::cout << *(v_t *)(VECVAL(vec,vec->val,v,i)) << "\t";
+		}
+		std::cout << std::endl;
+	}
+}
+
+
+extern "C" void d_ghost_printVector(ghost_vec_t *vec) 
+{ return ghost_vec_print_tmpl< double >(vec); }
+
+extern "C" void s_ghost_printVector(ghost_vec_t *vec) 
+{ return ghost_vec_print_tmpl< float >(vec); }
+
+extern "C" void z_ghost_printVector(ghost_vec_t *vec) 
+{ return ghost_vec_print_tmpl< ghost_complex<double> >(vec); }
+
+extern "C" void c_ghost_printVector(ghost_vec_t *vec) 
+{ return ghost_vec_print_tmpl< ghost_complex<float> >(vec); }
 
 extern "C" void d_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< double >(vec); }

@@ -34,6 +34,9 @@ void (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) =
 void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
+void (*ghost_vec_print_funcs[4]) (ghost_vec_t *) = 
+{&s_ghost_printVector, &d_ghost_printVector, &c_ghost_printVector, &z_ghost_printVector};
+
 static void vec_print(ghost_vec_t *vec);
 static void vec_scale(ghost_vec_t *vec, void *scale);
 static void vec_vscale(ghost_vec_t *vec, void *scale);
@@ -334,46 +337,7 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 
 static void vec_print(ghost_vec_t *vec)
 {
-	char prefix[16];
-#ifdef GHOST_HAVE_MPI
-	if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
-		int rank = ghost_getRank(vec->context->mpicomm);
-		int ndigits = (int)floor(log10(abs(rank))) + 1;
-		snprintf(prefix,4+ndigits,"PE%d: ",rank);
-	} else {
-		snprintf(prefix,1,"\0");
-	}
-#else
-	snprintf(prefix,1,"\0");
-#endif
-
-
-	ghost_vidx_t i,v;
-	for (i=0; i<vec->traits->nrows; i++) {
-		for (v=0; v<vec->traits->nvecs; v++) {
-			if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-						printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-								prefix,v,i,
-								crealf(*(complex float *)VECVAL(vec,vec->val,v,i)),
-								cimagf(*(complex float *)VECVAL(vec,vec->val,v,i)));
-					} else {
-						printf("%svec[%"PRvecIDX"][%"PRvecIDX"] = %f + %fi\t",
-								prefix,v,i,
-								creal(*(complex double *)VECVAL(vec,vec->val,v,i)),
-								cimag(*(complex double *)VECVAL(vec,vec->val,v,i)));
-				}
-			} else {
-				if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-					printf("%s(s) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,*(float *)VECVAL(vec,vec->val,v,i));
-				} else {
-					printf("%s(d) v[%"PRvecIDX"][%"PRvecIDX"] = %f\t",prefix,v,i,*(double *)VECVAL(vec,vec->val,v,i));
-				}
-			}
-		}
-		printf("\n");
-	}
-
+	ghost_vec_print_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
 }
 
 void vec_malloc(ghost_vec_t *vec)
