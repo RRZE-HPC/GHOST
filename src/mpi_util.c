@@ -22,7 +22,6 @@
 #include <complex.h>
 #include <dlfcn.h>
 
-#define MAX_NUM_THREADS 128
 #define GHOST_RANK_INVALID -1
 
 #define GHOST_SHMEM_NAME "/ghost-shmem"
@@ -36,92 +35,10 @@ MPI_Comm *ghost_mpi_comms;
 static int localRank = GHOST_RANK_INVALID;
 static int nLocalRanks = GHOST_RANK_INVALID;
 
-static inline int AtomicFetchAndAdd(int * variable, int value);
+static int g_shm_fd = -1;
+static inline int atomic_fetch_add(int * variable, int value);
 static void * shared_mem_allocate();
 static void shared_mem_deallocate(void * shmRegion);
-
-static int getProcessorId() 
-{
-
-	cpu_set_t  cpu_set;
-	int processorId;
-
-	CPU_ZERO(&cpu_set);
-	sched_getaffinity((pid_t)0,sizeof(cpu_set_t), &cpu_set);
-
-	for (processorId=0;processorId<MAX_NUM_THREADS;processorId++){
-		if (CPU_ISSET(processorId,&cpu_set))
-		{  
-			break;
-		}
-	}
-	return processorId;
-}
-
-MPI_Comm getSingleNodeComm()
-{
-
-	return single_node_comm;
-}
-
-void setupSingleNodeComm() 
-{
-
-	/* return MPI communicator between nodal MPI processes single_node_comm
-	 * and process rank me_node on local node */
-
-	int i, coreId, me, n_nodes, me_node;
-	char **all_hostnames;
-	char *all_hn_mem;
-	char hostname[MAXHOSTNAMELEN];
-	gethostname(hostname,MAXHOSTNAMELEN);
-
-	size_t size_ahnm, size_ahn, size_nint;
-	int *mymate, *acc_mates;
-
-	MPI_safecall(MPI_Comm_size ( MPI_COMM_WORLD, &n_nodes ));
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &me ));
-
-	coreId = getProcessorId();
-
-	size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
-	size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
-	size_nint = (size_t)( n_nodes    * sizeof(int) );
-
-	mymate        = (int*)      malloc( size_nint);
-	acc_mates     = (int*)      malloc( size_nint );
-	all_hn_mem    = (char*)     malloc( size_ahnm );
-	all_hostnames = (char**)    malloc( size_ahn );
-
-	for (i=0; i<n_nodes; i++){
-		all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
-		mymate[i] = 0;
-	}
-
-	/* write local hostname to all_hostnames and share */
-	MPI_safecall(MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-				&all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, MPI_COMM_WORLD ));
-
-	/* one process per node writes its global id to all its mates' fields */ 
-	if (coreId==0){
-		for (i=0; i<n_nodes; i++){
-			if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
-		}
-	}  
-
-	MPI_safecall(MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD)); 
-	/* all processes should now have the rank of their coreId 0 process in their acc_mate field;
-	 * split into comm groups with this rank as communicator ID */
-	MPI_safecall(MPI_Comm_split ( MPI_COMM_WORLD, acc_mates[me], me, &single_node_comm ));
-	MPI_safecall(MPI_Comm_rank ( single_node_comm, &me_node));
-
-	DEBUG_LOG(1,"Rank in single node comm: %d", me_node);
-
-	free( mymate );
-	free( acc_mates );
-	free( all_hn_mem );
-	free( all_hostnames );
-}
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
@@ -173,7 +90,7 @@ MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvt
 
 }
 
-static inline int AtomicFetchAndAdd(int * variable, int value)
+static inline int atomic_fetch_add(int * variable, int value)
 {
 	__asm__ volatile (
 		"lock;"
@@ -186,23 +103,31 @@ static inline int AtomicFetchAndAdd(int * variable, int value)
 	return value;
 }
 
-
-static void NodeRankByShm(MPI_Comm comm)
+int ghost_getNumberOfLocalRanks(MPI_Comm comm)
 {
-	int * nodeRankPtr = (int *)shared_mem_allocate();
-
-	int nodeRank;
-	nodeRank = AtomicFetchAndAdd(nodeRankPtr, 1);
-
-	shared_mem_deallocate((void *)nodeRankPtr);
-
-	localRank = nodeRank;
-
 	MPI_safecall(MPI_Barrier(comm));
-	nLocalRanks = nodeRank+1;
+	int * nodeRankPtr = (int *)shared_mem_allocate();
+	MPI_safecall(MPI_Barrier(comm));
+	int nodeRank;
+
+	nodeRank = atomic_fetch_add(nodeRankPtr, 1);
+	MPI_safecall(MPI_Barrier(comm));
+	int nranks = *nodeRankPtr;
+	shared_mem_deallocate((void *)nodeRankPtr);
+	return nranks;
 }
 
-static int g_shm_fd = -1;
+int ghost_getLocalRank(MPI_Comm comm)
+{
+	int * nodeRankPtr = (int *)shared_mem_allocate();
+	MPI_safecall(MPI_Barrier(comm));
+	int nodeRank;
+
+	nodeRank = atomic_fetch_add(nodeRankPtr, 1);
+	shared_mem_deallocate((void *)nodeRankPtr);
+	return nodeRank;
+}
+
 
 static void * shared_mem_allocate()
 {

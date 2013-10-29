@@ -560,16 +560,16 @@ int ghost_getRank(MPI_Comm comm)
 #endif
 }
 
-int ghost_getLocalRank() 
+/*int ghost_getLocalRank() 
 {
 #ifdef GHOST_HAVE_MPI
 	return ghost_getRank(getSingleNodeComm());
 #else
 	return 0;
 #endif
-}
+}*/
 
-int ghost_getNumberOfRanksOnNode()
+/*int ghost_getNumberOfRanksOnNode()
 {
 #ifdef GHOST_HAVE_MPI
 	int size;
@@ -580,7 +580,7 @@ int ghost_getNumberOfRanksOnNode()
 	return 1;
 #endif
 
-}
+}*/
 int ghost_getNumberOfPhysicalCores()
 {
 	return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);	
@@ -1075,21 +1075,21 @@ void ghost_pinThreads(int options, char *procList)
 		else
 			nCores = ghost_getNumberOfHwThreads();
 
-		int offset = nPhysCores/ghost_getNumberOfRanksOnNode();
+		int offset = nPhysCores/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
 		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-		ghost_ompSetNumThreads(nCores/ghost_getNumberOfRanksOnNode());
+		ghost_ompSetNumThreads(nCores/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD));
 
 #pragma omp parallel
 		{
 			int coreNumber;
 
 			if (options & GHOST_PIN_SMT) {
-				coreNumber = ghost_ompGetThreadNum()/SMT+(offset*(ghost_getLocalRank()))+(ghost_ompGetThreadNum()%SMT)*nPhysCores;
+				coreNumber = ghost_ompGetThreadNum()/SMT+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)))+(ghost_ompGetThreadNum()%SMT)*nPhysCores;
 			} else {
 				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
-					coreNumber = ghost_ompGetThreadNum()+(offset*(ghost_getLocalRank()));
+					coreNumber = ghost_ompGetThreadNum()+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)));
 				else
-					coreNumber = ghost_ompGetThreadNum()*SMT+(offset*(ghost_getLocalRank()));
+					coreNumber = ghost_ompGetThreadNum()*SMT+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)));
 			}
 
 			ghost_setCore(coreNumber);

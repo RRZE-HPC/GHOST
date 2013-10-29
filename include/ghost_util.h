@@ -220,8 +220,9 @@ char * ghost_datatypeName(int datatype);
 char * ghost_symmetryName(int symmetry);
 
 int ghost_getRank(MPI_Comm);
-int ghost_getLocalRank();
-int ghost_getNumberOfRanksOnNode();
+int ghost_getLocalRank(MPI_Comm);
+int ghost_getNumberOfLocalRanks(MPI_Comm);
+//int ghost_getNumberOfRanksOnNode();
 int ghost_getNumberOfHwThreads();
 int ghost_getNumberOfNumaNodes();
 int ghost_getNumberOfThreads();
