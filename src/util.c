@@ -2,7 +2,6 @@
 #include "ghost_util.h"
 #include "ghost.h"
 #include "ghost_vec.h"
-#include "ghost_mat.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>

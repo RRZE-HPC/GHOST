@@ -1,6 +1,5 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <ghost_mat.h>
 #include <crs.h>
 #include "ghost_complex.h"
 #include <iostream>

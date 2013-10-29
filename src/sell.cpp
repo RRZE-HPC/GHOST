@@ -1,6 +1,5 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <ghost_mat.h>
 #include <sell.h>
 #include <stdio.h>
 #include <crs.h>

@@ -2,7 +2,6 @@
 #define __GHOST_HAVE_MPI_UTIL_H__
 
 #include "ghost.h"
-#include "ghost_mat.h"
 
 #ifdef __cplusplus
 extern "C" {

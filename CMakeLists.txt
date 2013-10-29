@@ -23,17 +23,16 @@ add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY
 
 set (SOURCES 
 		src/ghost.c 
-		src/ghost_util.c 
-		src/ghost_mat.c 
-		src/ghost_solver_nompi.c 
-		src/ghost_vec.c 
-		src/ghost_taskq.c 
+		src/util.c 
+		src/spmvm_nompi.c 
+		src/vec.c 
+		src/tasking.c 
 		src/crs.c 
-		src/crs_kernel_tmpl.cpp 
+		src/crs.cpp 
 		src/sell.c 
 		src/sell_kernel_intr.c 
-		src/ghost_vec_tmpl.cpp 
-		src/sell_kernel_tmpl.cpp
+		src/vec.cpp 
+		src/sell.cpp
 	)
 
 set (HEADERS
@@ -54,9 +53,9 @@ set (HEADERS
 if (USE_MPI)
 	set (SOURCES ${SOURCES} 
 			src/ghost_mpi_util.c 
-			src/ghost_solver_vectormode.c 
-			src/ghost_solver_goodfaithhybrid.c 
-			src/ghost_solver_taskmode.c
+			src/spmvm_vectormode.c 
+			src/spmvm_goodfaithhybrid.c 
+			src/spmvm_taskmode.c
 		)
 	set (HEADERS ${HEADERS}
 			include/ghost_mpi_util.h

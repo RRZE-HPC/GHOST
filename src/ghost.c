@@ -2,7 +2,6 @@
 
 #include "ghost.h"
 #include "ghost_util.h"
-#include "ghost_mat.h"
 #include "ghost_vec.h"
 #include "ghost_taskq.h"
 #include "sell.h"

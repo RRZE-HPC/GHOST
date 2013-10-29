@@ -1,7 +1,6 @@
 #define _XOPEN_SOURCE 500
 
 #include "crs.h"
-#include "ghost_mat.h"
 #include "ghost_util.h"
 
 #include <unistd.h>
