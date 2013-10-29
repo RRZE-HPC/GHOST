@@ -19,13 +19,6 @@ int compareNZEOrgPos( const void* a, const void* b )
 	return  ((ghost_sorting_t*)a)->row - ((ghost_sorting_t*)b)->row;
 }
 
-int compareNZEPerRow( const void* a, const void* b ) 
-{
-	/* comparison function for ghost_sorting_t; 
-	 * sorts rows with higher number of non-zero elements first */
-
-	return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
-}
 
 int isMMfile(const char *filename) 
 {
