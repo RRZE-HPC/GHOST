@@ -19,11 +19,6 @@
 } 
 ghost_mm_t;*/
 
-typedef struct 
-{
-	ghost_midx_t row, nEntsInRow;
-} 
-ghost_sorting_t;
 
 #ifdef __cplusplus
 extern "C" {

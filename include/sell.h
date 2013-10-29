@@ -53,6 +53,11 @@ typedef struct
 } 
 SELL_TYPE;
 
+typedef struct 
+{
+	ghost_midx_t row, nEntsInRow;
+} 
+ghost_sorting_t;
 #define SELL(mat) ((SELL_TYPE *)(mat->data))
 
 #define SELL_CUDA_BLOCKSIZE 256
