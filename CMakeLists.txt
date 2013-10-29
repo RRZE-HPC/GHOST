@@ -52,7 +52,7 @@ set (HEADERS
 
 if (USE_MPI)
 	set (SOURCES ${SOURCES} 
-			src/ghost_mpi_util.c 
+			src/mpi_util.c 
 			src/spmvm_vectormode.c 
 			src/spmvm_goodfaithhybrid.c 
 			src/spmvm_taskmode.c
