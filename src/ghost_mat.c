@@ -14,10 +14,6 @@
 
 
 
-int compareNZEOrgPos( const void* a, const void* b ) 
-{
-	return  ((ghost_sorting_t*)a)->row - ((ghost_sorting_t*)b)->row;
-}
 
 
 int isMMfile(const char *filename) 
