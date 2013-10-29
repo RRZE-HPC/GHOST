@@ -42,7 +42,6 @@ set (HEADERS
 		include/ghost_complex.h
 		include/ghost_config.h
 		include/ghost_constants.h
-		include/ghost_mat.h
 		include/ghost_taskq.h
 		include/ghost_types.h
 		include/ghost_util.h
