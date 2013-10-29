@@ -43,10 +43,10 @@ hwloc_topology_t topology;
 
 #ifdef GHOST_HAVE_MPI
 static int MPIwasInitialized;
-MPI_Datatype GHOST_HAVE_MPI_DT_C;
-MPI_Op GHOST_HAVE_MPI_OP_SUM_C;
-MPI_Datatype GHOST_HAVE_MPI_DT_Z;
-MPI_Op GHOST_HAVE_MPI_OP_SUM_Z;
+MPI_Datatype GHOST_MPI_DT_C;
+MPI_Op GHOST_MPI_OP_SUM_C;
+MPI_Datatype GHOST_MPI_DT_Z;
+MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
 
@@ -111,13 +111,13 @@ int ghost_init(int argc, char **argv)
 	}
 
 	setupSingleNodeComm();
-	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_HAVE_MPI_DT_C));
-	MPI_safecall(MPI_Type_commit(&GHOST_HAVE_MPI_DT_C));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_HAVE_MPI_OP_SUM_C));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_c,1,&GHOST_MPI_OP_SUM_C));
 
-	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_HAVE_MPI_DT_Z));
-	MPI_safecall(MPI_Type_commit(&GHOST_HAVE_MPI_DT_Z));
-	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_HAVE_MPI_OP_SUM_Z));
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&MPI_add_z,1,&GHOST_MPI_OP_SUM_Z));
 
 #else // ifdef GHOST_HAVE_MPI
 	UNUSED(argc);
@@ -168,8 +168,8 @@ void ghost_finish()
 #endif
 
 #ifdef GHOST_HAVE_MPI
-	MPI_safecall(MPI_Type_free(&GHOST_HAVE_MPI_DT_C));
-	MPI_safecall(MPI_Type_free(&GHOST_HAVE_MPI_DT_Z));
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_Z));
 	if (!MPIwasInitialized) {
 		MPI_Finalize();
 	}

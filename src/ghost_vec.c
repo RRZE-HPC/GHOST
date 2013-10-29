@@ -743,9 +743,9 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = GHOST_HAVE_MPI_DT_C;
+			mpidt = GHOST_MPI_DT_C;
 		} else {
-			mpidt = GHOST_HAVE_MPI_DT_Z;
+			mpidt = GHOST_MPI_DT_Z;
 		}
 	} else {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -803,9 +803,9 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 
 	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = GHOST_HAVE_MPI_DT_C;
+			mpidt = GHOST_MPI_DT_C;
 		} else {
-			mpidt = GHOST_HAVE_MPI_DT_Z;
+			mpidt = GHOST_MPI_DT_Z;
 		}
 	} else {
 		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {

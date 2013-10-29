@@ -192,10 +192,10 @@
 /******************************************************************************/
 
 #ifdef GHOST_HAVE_MPI
-extern MPI_Datatype GHOST_HAVE_MPI_DT_C;
-extern MPI_Op GHOST_HAVE_MPI_OP_SUM_C;
-extern MPI_Datatype GHOST_HAVE_MPI_DT_Z;
-extern MPI_Op GHOST_HAVE_MPI_OP_SUM_Z;
+extern MPI_Datatype GHOST_MPI_DT_C;
+extern MPI_Op GHOST_MPI_OP_SUM_C;
+extern MPI_Datatype GHOST_MPI_DT_Z;
+extern MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 
 #ifdef __cplusplus
