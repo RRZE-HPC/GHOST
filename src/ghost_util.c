@@ -39,42 +39,14 @@
 
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
-#define GHOST_MAX_NTASKS 1024
-//static int allocatedMem;
-
-//ghost_threadstate_t *threadpool = NULL;
-//static ghost_task_t *tasklist[GHOST_MAX_NTASKS];
-//static int nTasks = 0;
-
 extern char ** environ;
 
 double ghost_wctime()
 {
-	/*	struct timespec ts;
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
-		return (double)(ts.tv_sec + ts.tv_nsec/1.e9);*/
 	struct timeval tp;
 	gettimeofday(&tp, NULL);
 	return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
 }
-/*static double ghost_timediff(struct timespec start, struct timespec end)
-  {
-  struct timespec tmp;
-  if (end.tv_nsec-start.tv_nsec < 0) {
-  tmp.tv_sec = end.tv_sec-start.tv_sec-1;
-  tmp.tv_nsec = 1e9+end.tv_nsec-start.tv_nsec;
-  } else {
-  tmp.tv_sec = end.tv_sec-start.tv_sec;
-  tmp.tv_nsec = end.tv_nsec-start.tv_nsec;
-
-  }
-
-  printf("%ld:%ld\n",tmp.tv_sec,tmp.tv_nsec);
-  return tmp.tv_sec + tmp.tv_nsec/1.e9;
-
-
-
-  }*/
 
 void ghost_printHeader(const char *fmt, ...)
 {
@@ -159,7 +131,6 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 #endif
 		printf("\n");
 }
-
 
 void ghost_printMatrixInfo(ghost_mat_t *mat)
 {
@@ -345,29 +316,12 @@ void ghost_printGhostInfo()
 {
 
 	if (ghost_getRank(MPI_COMM_WORLD)==0) {
-		/*	int nDataformats;
-			char *availDataformats = NULL;
-			char *avDF = NULL;
-			size_t avDFlen = 0;
-			ghost_getAvailableDataFormats(&availDataformats,&nDataformats);
-			int i;
-			for (i=0; i<nDataformats; i++) {
-			char *curFormat = availDataformats+i*GHOST_DATAFORMAT_NAME_MAX;
-			avDFlen += strlen(curFormat)+1;
-			avDF = realloc(avDF,avDFlen);
-			strncpy(avDF+avDFlen-strlen(curFormat)-1,curFormat,strlen(curFormat));
-			strncpy(avDF+avDFlen-1,",",1);
-			}
-			avDF[avDFlen-1] = '\0'; // skip trailing comma */
 
 
 		ghost_printHeader("%s", GHOST_NAME);
 		ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
-		//	ghost_printLine("Available sparse matrix formats",NULL,"%s",avDF);
 		ghost_printLine("Build date",NULL,"%s",__DATE__);
 		ghost_printLine("Build time",NULL,"%s",__TIME__);
-		//		ghost_printLine("Matrix data type",NULL,"%s",ghost_datatypeName(GHOST_MY_MDATATYPE));
-		//		ghost_printLine("Vector data type",NULL,"%s",ghost_datatypeName(GHOST_MY_VDATATYPE));
 #ifdef MIC
 		ghost_printLine("MIC kernels",NULL,"enabled");
 #else
@@ -406,24 +360,11 @@ void ghost_printGhostInfo()
 #ifdef LIKWID
 		ghost_printLine("Likwid support",NULL,"enabled");
 		printf("Likwid support                   :      enabled\n");
-		/*#ifdef LIKWID_MARKER_FINE
-		  printf("Likwid Marker API (high res)     :      enabled\n");
-#else
-#ifdef LIKWID_MARKER
-printf("Likwid Marker API                :      enabled\n");
-#endif
-#endif*/
 #else
 		ghost_printLine("Likwid support",NULL,"disabled");
 #endif
 		ghost_printFooter();
-
-		//	free(avDF);
-		//	free(availDataformats);
-
 	}
-
-
 }
 
 void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
@@ -438,7 +379,6 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 	}
 	char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
 	memset(zero,0,ghost_sizeofDataType(datatype));
-	//ghost_vec_t *res = ghost_createVector(distContext,GHOST_VEC_LHS|GHOST_VEC_HOST,NULL);
 	ghost_vec_t *globLHS; 
 	ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
 	ghost_context_t *context;
@@ -466,7 +406,6 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 		globLHS = ghost_createVector(context, &ltraits); 
 		globLHS->fromScalar(globLHS,&zero);
 
-		//CR_TYPE *cr = (CR_TYPE *)(context->fullMatrix->data);
 		int iter;
 
 		if (mat->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
@@ -497,55 +436,6 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 	free(zero);
 	DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 }
-/*
-// FIXME
-void ghost_referenceKernel_symm(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
-{
-ghost_midx_t i, j;
-ghost_vdat_t hlp1;
-
-#pragma omp	parallel for schedule(runtime) private (hlp1, j)
-for (i=0; i<nrows; i++){
-hlp1 = 0.0;
-for (j=rpt[i]; j<rpt[i+1]; j++){
-hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]];
-
-if (i!=col[j]) {	
-if (spmvmOptions & GHOST_SPMVM_AXPY) { 
-#pragma omp atomic
-res[col[j]] += (ghost_vdat_t)val[j] * rhs[i];
-} else {
-#pragma omp atomic
-res[col[j]] += (ghost_vdat_t)val[i] * rhs[i];  // FIXME non-axpy case doesnt work
-}
-}
-
-}
-if (spmvmOptions & GHOST_SPMVM_AXPY) {
-res[i] += hlp1;
-} else {
-res[i] = hlp1;
-}
-}
-}
-
-void ghost_referenceKernel(ghost_vdat_t *res, ghost_mnnz_t *col, ghost_midx_t *rpt, ghost_mdat_t *val, ghost_vdat_t *rhs, ghost_midx_t nrows, int spmvmOptions)
-{
-ghost_midx_t i, j;
-ghost_vdat_t hlp1;
-
-#pragma omp	parallel for schedule(runtime) private (hlp1, j)
-for (i=0; i<nrows; i++){
-hlp1 = 0.0;
-for (j=rpt[i]; j<rpt[i+1]; j++){
-hlp1 = hlp1 + (ghost_vdat_t)val[j] * rhs[col[j]]; // TODO do not multiply with zero if different datatypes 
-}
-if (spmvmOptions & GHOST_SPMVM_AXPY) 
-res[i] += hlp1;
-else
-res[i] = hlp1;
-}
-}*/	
 
 void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
@@ -655,8 +545,6 @@ char * ghost_workdistName(int options)
 {
 	if (options & GHOST_CONTEXT_WORKDIST_NZE)
 		return "Equal no. of nonzeros";
-	//else if (options & GHOST_CONTEXT_WORKDIST_LNZE)
-	//	return "Equal no. of local nonzeros";
 	else
 		return "Equal no. of rows";
 }
@@ -672,17 +560,6 @@ int ghost_getRank(MPI_Comm comm)
 	return 0;
 #endif
 }
-
-/*int ghost_getRank() 
-{
-#ifdef GHOST_HAVE_MPI
-	int rank;
-	MPI_safecall(MPI_Comm_rank ( MPI_COMM_WORLD, &rank ));
-	return rank;
-#else
-	return 0;
-#endif
-}*/
 
 int ghost_getLocalRank() 
 {
@@ -776,20 +653,6 @@ int ghost_getNumberOfNodes()
 #endif
 }
 
-/*int ghost_getNumberOfProcesses() 
-{
-#ifndef GHOST_HAVE_MPI
-	return 1;
-#else
-
-	int nnodes;
-
-	MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD, &nnodes));
-
-	return nnodes;
-#endif
-}*/
-
 int ghost_getNumberOfRanks(MPI_Comm comm)
 {
 #ifdef GHOST_HAVE_MPI
@@ -829,31 +692,6 @@ int ghost_pad(int nrows, int padding)
 	}
 	return nrowsPadded;
 }
-/*
-void* allocateMemory( const size_t size, const char* desc ) 
-{
-
-
-	size_t boundary = 1024;
-	int ierr;
-
-	void* mem;
-
-	DEBUG_LOG(2,"Allocating %8.2f MB of memory for %-18s  -- %6.3f", 
-			size/(1024.0*1024.0), desc, (1.0*allocatedMem)/(1024.0*1024.0));
-
-	if (  (ierr = posix_memalign(  (void**) &mem, boundary, size)) != 0 ) {
-		ABORT("Error while allocating using posix_memalign: %s",strerror(ierr));
-	}
-
-	if( ! mem ) {
-		ABORT("Error in memory allocation of %lu bytes for %s",size,desc);
-	}
-
-	allocatedMem += size;
-	return mem;
-}*/
-
 void *ghost_malloc(const size_t size)
 {
 	void *mem = NULL;
@@ -881,16 +719,6 @@ void *ghost_malloc_align(const size_t size, const size_t align)
 
 	return mem;
 }
-/*
-void freeMemory( size_t size, const char* desc, void* this_array ) 
-{
-
-	DEBUG_LOG(2,"Freeing %8.2f MB of memory for %s", size/(1024.*1024.), desc);
-
-	allocatedMem -= size;
-	free (this_array);
-
-}*/
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
 		int *spmvmOptions, int nIter)
@@ -1006,47 +834,6 @@ int ghost_dataTypeIdx(int datatype)
 	}
 }
 
-
-void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats)
-{
-	/*	char pluginPath[PATH_MAX];
-		DIR * pluginDir = opendir(PLUGINPATH);
-		struct dirent * dirEntry;
-		ghost_spmf_plugin_t myPlugin;
-
-	 *nDataformats=0;
-
-
-	 if (pluginDir) {
-	 while (0 != (dirEntry = readdir(pluginDir))) {
-	 if (dirEntry->d_name[0] == 'd') 
-	 { // only use double variant ==> only count each format once
-	 snprintf(pluginPath,PATH_MAX,"%s/%s",PLUGINPATH,dirEntry->d_name);
-	 myPlugin.so = dlopen(pluginPath,RTLD_LAZY);
-	 if (!myPlugin.so) {
-	 continue;
-	 }
-
-	 myPlugin.formatID = (char *)dlsym(myPlugin.so,"formatID");
-	 if (!myPlugin.formatID) {
-	 dlclose(myPlugin.so);
-	 continue;
-	 }
-
-	 (*nDataformats)++;
-	 *dataformats = realloc(*dataformats,(*nDataformats)*GHOST_DATAFORMAT_NAME_MAX);
-	 strncpy((*dataformats)+((*nDataformats)-1)*GHOST_DATAFORMAT_NAME_MAX,myPlugin.formatID,GHOST_DATAFORMAT_NAME_MAX);
-	 dlclose(myPlugin.so);
-	 }
-	 }
-	 closedir(pluginDir);
-	 } else {
-	 ABORT("The plugin directory does not exist");
-	 }
-	 */
-	UNUSED(dataformats);
-	UNUSED(nDataformats);
-}
 
 int ghost_archIsBigEndian()
 {
@@ -1356,89 +1143,6 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 
 	return nnz;
 }
-
-#if 0
-static inline void *ghost_enterTask(void *arg)
-{
-	ghost_task_t *task = (ghost_task_t *)arg;
-
-	omp_set_num_threads(task->nThreads);
-
-#pragma omp parallel
-	{
-		threadpool[task->coreList[omp_get_thread_num()]].state = GHOST_THREAD_RUNNING;
-		ghost_setCore(task->coreList[omp_get_thread_num()]);	
-	}
-
-	return task->func(task->arg);
-
-}
-
-inline void ghost_spawnTask(ghost_task_t *task) //void *(*func) (void *), void *arg, int nThreads, void *affinity, char *desc, int flags)
-{
-
-	DEBUG_LOG(2,"There are %d threads available",ghost_getNumberOfThreads());
-	DEBUG_LOG(1,"Starting %s task %s which requires %d threads",task->flags&GHOST_TASK_ASYNC?"asynchronous":"synchronous",task->desc,task->nThreads);
-
-	// TODO: if sync: use core 0 as well, if async: skip core 0
-
-	int i;
-
-	if (task->coreList == NULL) {
-		DEBUG_LOG(1,"Auto-selecting cores for this task");
-		task->coreList = (int *)ghost_malloc(sizeof(int)*task->nThreads);
-
-		int c = 0;
-
-		for (i=0; i<ghost_getNumberOfThreads() && c<task->nThreads; i++) {
-			if ((task->flags & GHOST_TASK_EXCLUSIVE) && (threadpool[i].state == GHOST_THREAD_RUNNING)) {
-				DEBUG_LOG(2,"Skipping core %d %d",i,threadpool[i].state);
-				continue;
-			}
-
-			DEBUG_LOG(2,"Thread %d running on core %d",c,i);
-			task->coreList[c++] = i;
-		}
-	}
-
-
-	DEBUG_LOG(2,"Calling pthread_create");	
-
-	pthread_create(&(task->tid),NULL,&ghost_enterTask,task);
-
-
-	nTasks++;
-	if (nTasks > GHOST_MAX_NTASKS) ABORT("Maximum number of tasks reached");
-	tasklist[nTasks-1] = task;
-	/*tasklist[nTasks-1].flags = flags;
-	  tasklist[nTasks-1].tid = tid;
-	  tasklist[nTasks-1].nThreads = args->nThreads;
-	  tasklist[nTasks-1].coreList = args->coreList;
-
-	 */
-
-	if (task->flags & GHOST_TASK_SYNC)
-		ghost_waitTask(tasklist[nTasks-1]);
-
-	//omp_set_num_threads(ghost_getNumberOfThreads()-nThreads);
-
-	// register task
-
-	//return tasklist[nTasks-1];
-
-}
-
-void ghost_waitTask(ghost_task_t *task)
-{
-	int i;
-	pthread_join(task->tid,NULL);
-
-	for (i=0; i<task->nThreads; i++)
-		threadpool[task->coreList[i]].state = GHOST_THREAD_HALTED;
-
-	//omp_set_num_threads(ghost_getNumberOfThreads()+task->nThreads);
-}
-#endif
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
 {
