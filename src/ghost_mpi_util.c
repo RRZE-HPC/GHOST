@@ -10,6 +10,12 @@
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <sched.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <err.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include <math.h>
 #include <omp.h>
@@ -17,9 +23,22 @@
 #include <dlfcn.h>
 
 #define MAX_NUM_THREADS 128
+#define GHOST_RANK_INVALID -1
+
+#define GHOST_SHMEM_NAME "/ghost-shmem"
+
+#ifndef PAGE_SIZE
+	#define PAGE_SIZE	4096
+#endif
 
 static MPI_Comm single_node_comm;
 MPI_Comm *ghost_mpi_comms;
+static int localRank = GHOST_RANK_INVALID;
+static int nLocalRanks = GHOST_RANK_INVALID;
+
+static inline int AtomicFetchAndAdd(int * variable, int value);
+static void * shared_mem_allocate();
+static void shared_mem_deallocate(void * shmRegion);
 
 static int getProcessorId() 
 {
@@ -153,4 +172,114 @@ MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvt
 #endif
 
 }
+
+static inline int AtomicFetchAndAdd(int * variable, int value)
+{
+	__asm__ volatile (
+		"lock;"
+		"xaddl %%eax, %2;"
+		: "=a" (value)					// output
+		: "a" (value), "m" (*variable)	// input
+		:"memory" 						// cloppered
+	);
+
+	return value;
+}
+
+
+static void NodeRankByShm(MPI_Comm comm)
+{
+	int * nodeRankPtr = (int *)shared_mem_allocate();
+
+	int nodeRank;
+	nodeRank = AtomicFetchAndAdd(nodeRankPtr, 1);
+
+	shared_mem_deallocate((void *)nodeRankPtr);
+
+	localRank = nodeRank;
+
+	MPI_safecall(MPI_Barrier(comm));
+	nLocalRanks = nodeRank+1;
+}
+
+static int g_shm_fd = -1;
+
+static void * shared_mem_allocate()
+{
+	int err;
+	int shm_fd;
+
+	// Try to create the shared memory object.
+	shm_fd = shm_open(GHOST_SHMEM_NAME, O_RDWR | O_CREAT | O_EXCL, 0600);
+
+	if (shm_fd < 0) {
+		if (errno == EEXIST) {
+			// SMO already exists, just open it.
+			shm_fd = shm_open(GHOST_SHMEM_NAME, O_RDWR, 0600);
+			if (shm_fd < 0) {
+				ABORT("shm_open failed");
+			}
+		}
+		else if (errno < 0) {
+			ABORT("shm_open failed");
+		}
+	}
+	else {
+		// g_shm_creator = 1;
+	}
+
+	g_shm_fd = shm_fd;
+
+	// TODO: is it really safe to call this from every process?
+	err = ftruncate(shm_fd, PAGE_SIZE);
+	if (err < 0) {
+		shm_unlink(GHOST_SHMEM_NAME);
+		ABORT("ftruncate failed");
+	}
+
+	void * shm_region;
+	shm_region = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+	if (shm_region == MAP_FAILED) {
+		shm_unlink(GHOST_SHMEM_NAME);
+		ABORT("mmap failed");
+	}
+
+	return shm_region;
+}
+
+
+static void shared_mem_deallocate(void * shmRegion)
+{
+	int shouldExit = 0;
+	int err;
+
+	if (shmRegion == NULL) {
+		ABORT("shared_mem_deallocate was called, but memory was not initialized");
+	}
+
+	err = munmap(shmRegion, PAGE_SIZE);
+	if (err < 0) {
+		perror("region");
+		shouldExit = 1;
+	}
+
+	err = shm_unlink(GHOST_SHMEM_NAME);
+	if (err < 0) {
+		// This error occurs if another process has already called shm_unlink.
+		if (errno != ENOENT) {
+			perror("shm_unlink");
+			shouldExit = 1;
+		}
+	}
+
+	err = close(g_shm_fd);
+
+	if (shouldExit) {
+		ABORT("shared_mem_deallocate");
+	}
+
+	return;
+}
+
 
