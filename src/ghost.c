@@ -41,7 +41,6 @@
 
 hwloc_topology_t topology;
 
-//static int options;
 #ifdef GHOST_HAVE_MPI
 static int MPIwasInitialized;
 MPI_Datatype GHOST_HAVE_MPI_DT_C;
@@ -50,51 +49,6 @@ MPI_Datatype GHOST_HAVE_MPI_DT_Z;
 MPI_Op GHOST_HAVE_MPI_OP_SUM_Z;
 #endif
 
-
-#ifdef GHOST_HAVE_MPI
-#ifdef GHOST_VEC_COMPLEX
-typedef struct 
-{
-	ghost_vdat_el_t x;
-	ghost_vdat_el_t y;
-} 
-MPI_vComplex;
-
-static void MPI_vComplAdd(MPI_vComplex *invec, MPI_vComplex *inoutvec, int *len)
-{
-	int i;
-	MPI_vComplex c;
-
-	for (i=0; i<*len; i++, invec++, inoutvec++){
-		c.x = invec->x + inoutvec->x;
-		c.y = invec->y + inoutvec->y;
-		*inoutvec = c;
-	}
-}
-#endif
-
-#ifdef GHOST_MAT_COMPLEX
-
-typedef struct 
-{
-	ghost_mdat_el_t x;
-	ghost_mdat_el_t y;
-} 
-MPI_mComplex;
-
-static void MPI_mComplAdd(MPI_mComplex *invec, MPI_mComplex *inoutvec, int *len)
-{
-	int i;
-	MPI_mComplex c;
-
-	for (i=0; i<*len; i++, invec++, inoutvec++){
-		c.x = invec->x + inoutvec->x;
-		c.y = invec->y + inoutvec->y;
-		*inoutvec = c;
-	}
-}
-#endif
-#endif
 
 #ifdef GHOST_HAVE_MPI
 typedef struct 
@@ -181,10 +135,10 @@ int ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_OPENCL
 	CL_init();
 #endif
-//#ifdef GHOST_HAVE_CUDA
-//	CU_init();
-//#endif
-	
+	//#ifdef GHOST_HAVE_CUDA
+	//	CU_init();
+	//#endif
+
 	hwloc_topology_init(&topology);
 	hwloc_topology_load(topology);
 
@@ -201,9 +155,9 @@ int ghost_init(int argc, char **argv)
 void ghost_finish()
 {
 
-//	ghost_taskq_finish();
-//	ghost_thpool_finish();
-//	hwloc_topology_destroy(topology);
+	ghost_taskq_finish();
+	ghost_thpool_finish();
+	hwloc_topology_destroy(topology);
 
 #ifdef LIKWID_PERFMON
 	LIKWID_MARKER_CLOSE;
@@ -317,40 +271,13 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 
 		if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
 		{ // read rpt and fill lfrow, lnrows, lfent, lnents
-//			ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc(sizeof(ghost_midx_t)*(context->gnrows+1));
 			ghost_midx_t *rpt = NULL;
 			ghost_mnnz_t gnnz;
 
 			if (ghost_getRank(context->mpicomm) == 0) {
 				rpt = CRS_readRpt(context->gnrows+1,matrixPath);
-/*				FILE * filed;
-				size_t ret;
-
-				if ((filed = fopen64(matrixPath, "r")) == NULL){
-					ABORT("Could not open binary CRS file %s",matrixPath);
-				}
-				if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
-					ABORT("Seek failed");
-				}
-#ifdef LONGIDX
-				if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, context->gnrows+1,filed)) != (context->gnrows+1)){
-					ABORT("fread failed: %s (%lu)",strerror(errno),ret);
-				}
-#else // casting
-				DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
-				int64_t *tmp = (int64_t *)ghost_malloc((context->gnrows+1)*8);
-				if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, context->gnrows+1,filed)) != (context->gnrows+1)){
-					ABORT("fread failed: %s (%lu)",strerror(errno),ret);
-				}
-				for( i = 0; i < context->gnrows+1; i++ ) {
-					if (tmp[i] >= (int64_t)INT_MAX) {
-						ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
-					}
-					rpt[i] = (ghost_midx_t)(tmp[i]);
-				}
-				// TODO little/big endian
-#endif*/
 				context->rpt = rpt;
+
 				gnnz = rpt[context->gnrows];
 				ghost_mnnz_t target_nnz;
 				target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
@@ -388,8 +315,8 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
 			int me = ghost_getRank(context->mpicomm);
 			double allweights;
 			MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,context->mpicomm))
-			
-			ghost_midx_t my_target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
+
+				ghost_midx_t my_target_rows = (ghost_midx_t)(context->gnrows*((double)weight/(double)allweights));
 			ghost_midx_t target_rows[nprocs];
 
 			MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,&target_rows[me],1,ghost_mpi_dt_midx,context->mpicomm));
@@ -482,28 +409,6 @@ void ghost_normalizeVec(ghost_vec_t *vec)
 
 void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
-	/*	double zero = 0.;
-		ghost_context_t *context;
-		ghost_vec_t *gv1, *gv2;
-		context = ghost_createContext(vec->context->gnrows,vec->context->gncols,GHOST_CONTEXT_GLOBAL,NULL,MPI_COMM_WORLD);
-
-		ghost_vtraits_t gtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = vec->traits->datatype);
-		gv1 = ghost_createVector(context, &gtraits);
-		gv2 = ghost_createVector(context, &gtraits);
-		gv1->fromScalar(gv1,&zero);
-		gv2->fromScalar(gv2,&zero);
-
-		vec->collect(vec,gv1,NULL);
-		vec2->collect(vec2,gv2,NULL);
-
-		if (ghost_getRank(vec->context->mpicomm) == 0) {
-		gv1->dotProduct(gv1,gv2,res);	
-		}
-		MPI_safecall(MPI_Bcast(res,1,ghost_mpi_dataType(vec->traits->datatype),0,vec->context->mpicomm));
-		gv1->destroy(gv1);
-		gv2->destroy(gv2);
-	 */	
-
 	vec->dotProduct(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
 	int v;
@@ -520,7 +425,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 {
 #ifdef GHOST_HAVE_MPI
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-	
+
 	int32_t endianess = ghost_archIsBigEndian();
 	int32_t version = 1;
 	int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
@@ -539,7 +444,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 		MPI_safecall(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
 		MPI_safecall(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
 		MPI_safecall(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
-	
+
 	}	
 	ghost_vidx_t v;
 	MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
@@ -555,7 +460,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 
 
 #else
-		vec->toFile(vec,path);
+	vec->toFile(vec,path);
 #endif
 }
 
@@ -594,17 +499,17 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 		WARNING_LOG("Scattered vectors currently not supported in ghost_gemm()");
 		return GHOST_FAILURE;
 	}
-        ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
+	ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
 	// TODO if rhs vector data will not be continous
 	complex double zero = 0.+I*0.;
 	if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
-	  {
-	  nrV=v->traits->nrows; ncV=v->traits->nvecs;
-	  }
+	{
+		nrV=v->traits->nrows; ncV=v->traits->nvecs;
+	}
 	else
-	  {
-	  nrV=v->traits->nvecs; ncV=v->traits->nrows;
-	  }
+	{
+		nrV=v->traits->nvecs; ncV=v->traits->nrows;
+	}
 	nrW=w->traits->nrows; ncW=w->traits->nvecs;
 	nrX=x->traits->nrows; ncX=w->traits->nvecs;
 	if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
@@ -615,16 +520,6 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
 		WARNING_LOG("GEMM with vector of different datatype does not work");
 		return GHOST_FAILURE;
 	}
-
-	//	ghost_vtraits_t *restraits = (ghost_vtraits_t*)ghost_malloc(sizeof(ghost_vtraits_t));;
-	//	restraits->flags = GHOST_VEC_DEFAULT;
-	//	restraits->nrows = v->traits->nvecs; //TODO set padded, halo to zero?
-	//	restraits->nvecs = w->traits->nvecs;
-	//	restraits->datatype = v->traits->datatype;
-
-
-	//	*res = ghost_createVector(restraits);
-	//	(*res)->fromScalar(*res,NULL,&zero); //vec rows are valid, ctx can be NULL
 
 #ifdef LONGIDX // TODO
 	ABORT("GEMM with LONGIDX not implemented");
