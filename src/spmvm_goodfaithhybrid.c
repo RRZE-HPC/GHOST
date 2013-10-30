@@ -118,7 +118,10 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 #endif*/
 
 //	start = ghost_wctime();
+	GHOST_INSTR_START(spmvm_gf_local);
 	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
+	GHOST_INSTR_STOP(spmvm_gf_local);
+
 //	time = ghost_wctime()-start;
 //	printf("local computation took %f seconds\n",time);
 
@@ -132,7 +135,9 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	 ***************************************************************************/
 
 //	start = ghost_wctime();
+	GHOST_INSTR_START(spmvm_gf_waitall);
 	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
+	GHOST_INSTR_STOP(spmvm_gf_waitall);
 //	time = ghost_wctime()-start;
 //	printf("waitall took %f seconds\n",time);
 
@@ -159,7 +164,9 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	invec->uploadHalo(invec);
 
 //	start = ghost_wctime();
+	GHOST_INSTR_START(spmvm_gf_remote);
 	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
+	GHOST_INSTR_STOP(spmvm_gf_remote);
 //	time = ghost_wctime()-start;
 //	printf("remote computation took %f seconds\n",time);
 
