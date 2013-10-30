@@ -192,12 +192,13 @@
 #define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
 #define GHOST_INSTR_STOP(tag) printf(ANSI_COLOR_BLUE "[GHOST_TIMING] %s: %e secs\n" ANSI_COLOR_RESET,\
 	#tag,ghost_wctime()-__start_##tag);
-#endif
-
-#if GHOST_HAVE_INSTR_LIKWID
+#elif GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #define GHOST_INSTR_START(tag) LIKWID_MARKER_START(#tag);
 #define GHOST_INSTR_STOP(tag) LIKWID_MARKER_STOP(#tag);
+#else
+#define GHOST_INSTR_START(tag)
+#define GHOST_INSTR_STOP(tag)
 #endif
 
 
