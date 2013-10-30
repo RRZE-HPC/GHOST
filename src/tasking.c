@@ -465,6 +465,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 			hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
 		}
 
+#if GHOST_HAVE_INSTR_LIKWID
+#pragma omp parallel
+	LIKWID_MARKER_THREADINIT;
+#endif
+
 #pragma omp parallel for ordered 
 		for (curThread=0; curThread<curTask->nThreads; curThread++) {
 #pragma omp ordered

@@ -26,10 +26,6 @@
 #include <omp.h>
 #include <errno.h>
 
-#ifdef LIKWID_PERFMON
-#include <likwid.h>
-#endif
-
 #ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -123,11 +119,11 @@ int ghost_init(int argc, char **argv)
 
 #endif // ifdef GHOST_HAVE_MPI
 
-#ifdef LIKWID_PERFMON
+#if GHOST_HAVE_INSTR_LIKWID
 	LIKWID_MARKER_INIT;
+
 #pragma omp parallel
 	LIKWID_MARKER_THREADINIT;
-
 #endif
 
 #ifdef GHOST_HAVE_OPENCL

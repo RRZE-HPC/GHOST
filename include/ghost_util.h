@@ -194,6 +194,12 @@
 	#tag,ghost_wctime()-__start_##tag);
 #endif
 
+#if GHOST_HAVE_INSTR_LIKWID
+#include <likwid.h>
+#define GHOST_INSTR_START(tag) LIKWID_MARKER_START(#tag);
+#define GHOST_INSTR_STOP(tag) LIKWID_MARKER_STOP(#tag);
+#endif
+
 
 
 

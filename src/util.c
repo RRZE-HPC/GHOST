@@ -7,10 +7,6 @@
 #include <unistd.h>
 #include <byteswap.h>
 
-#ifdef LIKWID
-#include <likwid.h>
-#endif
-
 #include <sched.h>
 #include <errno.h>
 #include <omp.h>
