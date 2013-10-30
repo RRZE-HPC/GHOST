@@ -18,6 +18,7 @@ option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
 option(USE_MKL "use MKL as BLAS lib" 1)
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
+set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TIMING, LIKWID)")
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
@@ -98,10 +99,22 @@ endif()
 add_library(ghost SHARED ${SOURCES})
 
 if (LONGIDX)
-        if (USE_MKL)
-		add_definitions(-DLONGIDX -DMKL_ILP64)
+	add_definitions(-DLONGIDX)
+    if (USE_MKL)
+		add_definitions(-DMKL_ILP64)
 	endif()
 endif()
+
+if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
+	if (${INSTRUMENTATION} STREQUAL "TIMING")
+		set(GHOST_HAVE_INSTR_TIMING 1)
+	endif()
+	if (${INSTRUMENTATION} STREQUAL "LIKWID")
+		set(GHOST_HAVE_INSTR_LIKWID 1)
+	endif()
+endif()
+
+	
 
 if (USE_OPENMP)	
 	find_package(OpenMP REQUIRED)

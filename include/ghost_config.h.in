@@ -5,6 +5,8 @@
 #cmakedefine GHOST_HAVE_CUDA 1
 #cmakedefine GHOST_HAVE_OPENCL 1
 #cmakedefine GHOST_HAVE_MKL 1
+#cmakedefine GHOST_HAVE_INSTR_TIMING 1
+#cmakedefine GHOST_HAVE_INSTR_LIKWID 1
 #define GHOST_OPENCL_KERNEL_DIR "${CMAKE_INSTALL_PREFIX}/lib/ghost"
 #define GHOST_HEADER_DIR "${CMAKE_INSTALL_PREFIX}/include"
 #endif
