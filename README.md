@@ -7,10 +7,10 @@ functionality for computation with very large sparse or dense matrices.
 Requirements
 ============
 
-1. C/C++ compiler
+1. A C/C++ compiler
 1. [CMake >= 2.8](http://www.cmake.org)
 1. [hwloc >= 1.7](http://www.open-mpi.org/projects/hwloc)
-1. [Intel MKL](http://software.intel.com/en-us/intel-mkl) (more supported BLAS libraries to come)
+1. A BLAS library ([Intel MKL](http://software.intel.com/en-us/intel-mkl) or [GSL](http://www.gnu.org/software/gsl/))
 
 Installation
 ============
