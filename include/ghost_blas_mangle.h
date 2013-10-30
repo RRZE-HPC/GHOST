@@ -7,10 +7,19 @@
 #include <mkl.h>
 #endif
 
+#ifdef GHOST_HAVE_GSL
+#include <gsl_blas.h>
+#include <gsl_cblas.h>
+#endif
+
 #ifdef GHOST_HAVE_MKL
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
 #define BLAS_Complex16 MKL_Complex16 
+#elif defined(GHOST_HAVE_GSL)
+#define BLAS_MANGLE(name,NAME) cblas_##name
+#define BLAS_Complex8 gsl_complex_float
+#define BLAS_Complex16 gsl_complex 
 #else
 #define BLAS_MANGLE(name,NAME) name ## _
 #define BLAS_Complex8 void
@@ -18,7 +27,26 @@
 #endif
 
 // any routines used in ghost should be added here
-#define sgemm BLAS_MANGLE(sgemm,SGEMM)
-#define dgemm BLAS_MANGLE(dgemm,DGEMM)
-#define cgemm BLAS_MANGLE(cgemm,CGEMM)
-#define zgemm BLAS_MANGLE(zgemm,ZGEMM)
+#ifdef GHOST_HAVE_MKL
+#define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(sgemm,SGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(dgemm,DGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#elif defined(GHOST_HAVE_GSL)
+#define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
+	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
+	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
+	BLAS_MANGLE(sgemm,SGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
+#define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
+	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
+	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
+	BLAS_MANGLE(dgemm,DGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
+#define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
+	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
+	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
+	BLAS_MANGLE(cgemm,CGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
+#define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
+	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
+	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
+	BLAS_MANGLE(zgemm,ZGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
+#endif
