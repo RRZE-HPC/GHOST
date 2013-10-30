@@ -450,7 +450,7 @@ void ghost_vecToFile(ghost_vec_t *vec, char *path)
 	MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
 	ghost_vidx_t vecoffset = 0;
 	for (v=0; v<vec->traits->nvecs; v++) {
-		MPI_safecall(MPI_File_write_at(fileh,fileoffset,((char *)(vec->val))+vecoffset,vec->traits->nrows,mpidt,&status));
+		MPI_safecall(MPI_File_write_at(fileh,fileoffset,VECVAL(vec,vec->val,v,0),vec->traits->nrows,mpidt,&status));
 		fileoffset += nrows;
 		vecoffset += vec->traits->nrowspadded*sizeofdt;
 	}
