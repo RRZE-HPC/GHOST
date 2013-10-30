@@ -188,6 +188,15 @@
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
 
+#if GHOST_HAVE_INSTR_TIMING
+#define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
+#define GHOST_INSTR_STOP(tag) printf(ANSI_COLOR_BLUE "[GHOST_TIMING] %s: %e secs\n" ANSI_COLOR_RESET,\
+	#tag,ghost_wctime()-__start_##tag);
+#endif
+
+
+
+
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
