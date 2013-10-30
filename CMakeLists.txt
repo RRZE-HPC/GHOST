@@ -124,14 +124,14 @@ find_package(PkgConfig)
 if ( PKGCONFIG_FOUND )
 	find_package(HWLOC REQUIRED)
 else()
-	set(HWLOC_INCLUDEDIR "" CACHE PATH "Location of hwloc.h")
+	set(HWLOC_INCLUDE_DIR "" CACHE PATH "Location of hwloc.h")
 endif()
 
 #if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
 #	message(FATAL_ERROR "Could not find hw#loc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 #endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDEDIR})
+include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDE_DIR})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
