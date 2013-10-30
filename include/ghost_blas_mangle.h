@@ -34,19 +34,55 @@
 #define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #elif defined(GHOST_HAVE_GSL)
 #define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
-	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
-	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
-	BLAS_MANGLE(sgemm,SGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
+	enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
+	if (!strncasecmp(transa,"N",1)) {\
+		gsl_transa = CblasNoTrans; \
+	} else { \
+		gsl_transa = CblasTrans; \
+	}\
+	if (!strncasecmp(transb,"N",1)) {\
+		gsl_transb = CblasNoTrans; \
+	} else {\
+		gsl_transb = CblasTrans; \
+	}\
+	BLAS_MANGLE(sgemm,SGEMM)(CblasColMajor,gsl_transa,gsl_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
 #define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
-	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
-	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
-	BLAS_MANGLE(dgemm,DGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
+	enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
+	if (!strncasecmp(transa,"N",1)) {\
+		gsl_transa = CblasNoTrans; \
+	} else {\
+		gsl_transa = CblasTrans; \
+	}\
+	if (!strncasecmp(transb,"N",1)) {\
+		gsl_transb = CblasNoTrans; \
+	} else {\
+		gsl_transb = CblasTrans; \
+	}\
+	BLAS_MANGLE(dgemm,DGEMM)(CblasColMajor,gsl_transa,gsl_transb,*m,*n,*k,*alpha,a,*lda,b,*ldb,*beta,c,*ldc)
 #define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
-	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
-	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
-	BLAS_MANGLE(cgemm,CGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
+	enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
+	if (!strncasecmp(transa,"N",1)) {\
+		gsl_transa = CblasNoTrans; \
+	} else {\
+		gsl_transa = CblasTrans; \
+	}\
+	if (!strncasecmp(transb,"N",1)) {\
+		gsl_transb = CblasNoTrans; \
+	} else {\
+		gsl_transb = CblasTrans; \
+	}\
+	BLAS_MANGLE(cgemm,CGEMM)(CblasColMajor,gsl_transa,gsl_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
 #define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
-	enum CBLAS_TRANSPOSE cblas_transa = (char)*(transa)=='Y'?CblasTrans:CblasNoTrans; \
-	enum CBLAS_TRANSPOSE cblas_transb = (char)*(transb)=='Y'?CblasTrans:CblasNoTrans; \
-	BLAS_MANGLE(zgemm,ZGEMM)(CblasColMajor,cblas_transa,cblas_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
+	enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
+	if (!strncasecmp(transa,"N",1)) {\
+		gsl_transa = CblasNoTrans; \
+	} else {\
+		gsl_transa = CblasTrans; \
+	}\
+	if (!strncasecmp(transb,"N",1)) {\
+		gsl_transb = CblasNoTrans; \
+	} else {\
+		gsl_transb = CblasTrans; \
+	}\
+	BLAS_MANGLE(zgemm,ZGEMM)(CblasColMajor,gsl_transa,gsl_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
 #endif
