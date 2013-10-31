@@ -252,7 +252,6 @@ size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
 int ghost_archIsBigEndian();
-int ghost_getCoreNumbering();
 int ghost_getCore();
 void ghost_setCore(int core);
 void ghost_unsetCore();

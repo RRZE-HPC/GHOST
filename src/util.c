@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <byteswap.h>
 
-#include <sched.h>
 #include <errno.h>
 #include <omp.h>
 #include <string.h>
@@ -838,70 +837,13 @@ int ghost_archIsBigEndian()
 	return (endiantest[0] == 0);
 }
 
-int ghost_getCoreNumbering()
-{
-	int i,j;
-	int fd;
-	char cpuFile[1024];
-	char siblings[32];
-	char sblPhysicalFirst[32];
-
-	int physFirst = 0;
-	int smtFirst = 0;
-	char sblSmtFirst[32];
-
-	int nSMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-
-	for (i=0; i<ghost_getNumberOfHwThreads(); i++)
-	{
-		sprintf(cpuFile,"/sys/devices/system/cpu/cpu%d/topology/thread_siblings_list",i);
-		fd = open(cpuFile,O_RDONLY);
-		read(fd,siblings,31);
-		close(fd);
-
-		strtok(siblings,"\n");
-
-		sblPhysicalFirst[0] = '\0';
-		for (j=0; j<nSMT; j++) {
-			sprintf(sblPhysicalFirst+strlen(sblPhysicalFirst),"%d,",
-					i+ghost_getNumberOfPhysicalCores()*(j-i/ghost_getNumberOfPhysicalCores()));
-		}
-		sblPhysicalFirst[strlen(sblPhysicalFirst)-1] = '\0';
-
-		sprintf(sblSmtFirst,"%d-%d",i-i%nSMT,i+(nSMT-i%nSMT)-1);
-
-		if (!strcmp(siblings,sblPhysicalFirst))
-			physFirst++;
-		else if (!strcmp(siblings,sblSmtFirst))
-			smtFirst++;
-
-
-	}
-
-	if (physFirst == ghost_getNumberOfHwThreads())
-		return GHOST_CORENUMBERING_PHYSICAL_FIRST;
-	else if (smtFirst == ghost_getNumberOfHwThreads())
-		return GHOST_CORENUMBERING_SMT_FIRST;
-	else
-		return GHOST_CORENUMBERING_INVALID;
-
-}
-
 int ghost_getCore()
 {
-	cpu_set_t  cpu_set;
-	CPU_ZERO(&cpu_set);
-	sched_getaffinity(syscall(SYS_gettid),sizeof(cpu_set_t), &cpu_set);
-	int processorId = -1;
-
-	for (processorId=0;processorId<GHOST_MAX_THREADS;processorId++)
-	{
-		if (CPU_ISSET(processorId,&cpu_set))
-		{
-			break;
-		}
-	}
-	return processorId;
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
+	int pu = hwloc_bitmap_first(cpuset);
+	hwloc_bitmap_free(cpuset);
+	return pu;
 }
 
 char ghost_datatypePrefix(int dt)
@@ -994,36 +936,21 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 
 inline void ghost_setCore(int coreNumber)
 {
-
 	DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
-	cpu_set_t cpu_set;
-	CPU_ZERO(&cpu_set);
-	CPU_SET(coreNumber, &cpu_set);
-
-	int error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
-	if (error != 0) {
-		WARNING_LOG("Pinning thread to core %d failed (%d): %s", 
-				coreNumber, error, strerror(error));
-	}
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_bitmap_set(cpuset,coreNumber);
+	hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
+	hwloc_bitmap_free(cpuset);
 
 }
 
 inline void ghost_unsetCore()
 {
 	DEBUG_LOG(2,"Unpinning thread %d from core %d",ghost_ompGetThreadNum(),ghost_getCore());
-	cpu_set_t cpu_set;
-	CPU_ZERO(&cpu_set);
-	int i;
-	for (i=0; i<ghost_getNumberOfHwThreads(); i++) {
-		CPU_SET(i,&cpu_set);
-	}
-
-	int error = sched_setaffinity((pid_t)0, sizeof(cpu_set_t), &cpu_set);
-	if (error != 0) {
-		WARNING_LOG("Unpinning thread from core %d failed (%d): %s", 
-				ghost_getCore(), error, strerror(error));
-	}
-
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_bitmap_set_range(cpuset,0,hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU));
+	hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
+	hwloc_bitmap_free(cpuset);
 }
 
 void ghost_pinThreads(int options, char *procList)
@@ -1053,54 +980,37 @@ void ghost_pinThreads(int options, char *procList)
 		ghost_setCore(cores[ghost_ompGetThreadNum()]);
 
 		free(cores);
-
-
 	} else {
 		DEBUG_LOG(1,"Trying to automatically pin threads");
-		int numbering = ghost_getCoreNumbering();
-		if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST) {
-			DEBUG_LOG(1,"The core numbering seems to be 'physical cores first'");
+
+		int nranks = ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
+		int npus = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
+		int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
+		int nthreads;
+		if (options & GHOST_PIN_SMT) {
+			nthreads = npus/nranks;
 		} else {
-			DEBUG_LOG(1,"The core numbering seems to be 'SMT threads first'");
+			nthreads = ncores/nranks;
 		}
+	
+		ghost_ompSetNumThreads(nthreads);	
+		int t;
+		hwloc_obj_t pu = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,0);
 
-		int nCores;
-		int nPhysCores = ghost_getNumberOfPhysicalCores();
-		if (options & GHOST_PIN_PHYS)
-			nCores = nPhysCores;
-		else
-			nCores = ghost_getNumberOfHwThreads();
+#pragma omp parallel for ordered schedule(static,1)
+		for (t=0; t<nthreads; t++) {
+#pragma omp ordered
+			for (; pu != NULL; pu=pu->next_cousin) {
+				if ((options & GHOST_PIN_PHYS) && (pu->sibling_rank != 0)) {
+					continue;
+				}
+				ghost_setCore(pu->os_index);
 
-		int offset = nPhysCores/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
-		int SMT = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-		ghost_ompSetNumThreads(nCores/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD));
-
-#pragma omp parallel
-		{
-			int coreNumber;
-
-			if (options & GHOST_PIN_SMT) {
-				coreNumber = ghost_ompGetThreadNum()/SMT+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)))+(ghost_ompGetThreadNum()%SMT)*nPhysCores;
-			} else {
-				if (numbering == GHOST_CORENUMBERING_PHYSICAL_FIRST)
-					coreNumber = ghost_ompGetThreadNum()+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)));
-				else
-					coreNumber = ghost_ompGetThreadNum()*SMT+(offset*(ghost_getLocalRank(MPI_COMM_WORLD)));
+				pu = pu->next_cousin;
+				break;
 			}
-
-			ghost_setCore(coreNumber);
-
-
 		}
-
 	}
-#pragma omp parallel
-	{
-		DEBUG_LOG(1,"Thread %d is running on core %d",ghost_ompGetThreadNum(),ghost_getCore());
-
-	}
-
-
 }
 
 ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)

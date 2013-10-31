@@ -9,7 +9,6 @@
 #include <sys/param.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
-#include <sched.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
