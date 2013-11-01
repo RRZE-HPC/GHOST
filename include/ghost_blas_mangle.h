@@ -27,12 +27,7 @@
 #endif
 
 // any routines used in ghost should be added here
-#ifdef GHOST_HAVE_MKL
-#define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(sgemm,SGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
-#define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(dgemm,DGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
-#define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
-#define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
-#elif defined(GHOST_HAVE_GSL)
+#if defined(GHOST_HAVE_GSL)
 #define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
 	enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
 	if (!strncasecmp(transa,"N",1)) {\
@@ -85,4 +80,9 @@
 		gsl_transb = CblasTrans; \
 	}\
 	BLAS_MANGLE(zgemm,ZGEMM)(CblasColMajor,gsl_transa,gsl_transb,*m,*n,*k,alpha,a,*lda,b,*ldb,beta,c,*ldc)
+#else
+#define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(sgemm,SGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(dgemm,DGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #endif
