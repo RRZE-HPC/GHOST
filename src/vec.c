@@ -738,22 +738,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
 
 	ghost_comm_t *comm = nodeVec->context->communicator;
-	MPI_Datatype mpidt;
-
-
-	if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = GHOST_MPI_DT_C;
-		} else {
-			mpidt = GHOST_MPI_DT_Z;
-		}
-	} else {
-		if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-			mpidt = MPI_FLOAT;
-		} else {
-			mpidt = MPI_DOUBLE;
-		}
-	}
+	MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
 
 	int nprocs = ghost_getNumberOfRanks(nodeVec->context->mpicomm);
 	int i;
@@ -836,7 +821,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 	} else {
 		memcpy(totalVec->val[0],vec->val[0],sizeofdt*comm->lnrows[0]);
 		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Irecv(totalVec->val+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+			MPI_safecall(MPI_Irecv(totalVec->val[0]+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
 			msgcount++;
 		}
 	}
