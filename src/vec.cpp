@@ -159,6 +159,7 @@ template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
 
 	std::cout.setf(std::ios::fixed, std::ios::floatfield);
 	for (i=0; i<vec->traits->nrows; i++) {
+		std::cout << prefix << "\t";
 		for (v=0; v<vec->traits->nvecs; v++) {
 			std::cout << *(v_t *)(VECVAL(vec,vec->val,v,i)) << "\t";
 		}
