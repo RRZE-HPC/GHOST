@@ -72,7 +72,7 @@ if (USE_CUDA)
 		set (SOURCES 
 				${SOURCES} 
 				${BJDS_KERNEL_O}
-				src/ghost_cu_util.c	
+				src/cu_util.c	
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
