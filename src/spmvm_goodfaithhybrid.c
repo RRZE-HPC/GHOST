@@ -50,7 +50,6 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 		free(work);
 		free(request);
 		free(status);
-	//	kmp_set_blocktime(0);
 		return;
 	}
 
@@ -62,15 +61,6 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	recv_messages = 0;
 	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL;
 
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 2");
-#endif
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 2 -- communication");
-#endif
-
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
 			MPI_safecall(MPI_Irecv(&((char *)(invec->val[0]))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
@@ -78,11 +68,6 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 		}
 	}
 
-	/*****************************************************************************
-	 *******       Local assembly of halo-elements  & Communication       ********
-	 ****************************************************************************/
-
-//	double start = ghost_wctime();
 #pragma omp parallel private(to_PE,i)
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
@@ -90,9 +75,6 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val[0]))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
-//	double time = ghost_wctime()-start;
-//	printf("preparation took %f seconds\n",time);
-
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 		if (context->communicator->dues[to_PE]>0){
 			MPI_safecall(MPI_Isend( work+to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[recv_messages+send_messages] ));
@@ -100,85 +82,18 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 		}
 	}
 
-	/****************************************************************************
-	 *******       Calculation of SpMVM for local entries of invec->val        *******
-	 ***************************************************************************/
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStartRegion("Kernel 2 -- local computation");
-#endif
-
-	invec->uploadNonHalo(invec);
-/*#ifdef GHOST_HAVE_OPENCL
-	CL_copyHostToDevice(invec->CL_val_gpu, invec->val, mat->nrows(mat)*sizeofRHS);
-#endif
-#ifdef GHOST_HAVE_CUDA
-	CU_copyHostToDevice(invec->CU_val, invec->val, mat->nrows(mat)*sizeofRHS);
-#endif*/
-
-//	start = ghost_wctime();
 	GHOST_INSTR_START(spmvm_gf_local);
 	mat->localPart->kernel(mat->localPart,res,invec,spmvmOptions);
 	GHOST_INSTR_STOP(spmvm_gf_local);
 
-//	time = ghost_wctime()-start;
-//	printf("local computation took %f seconds\n",time);
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 2 -- local computation");
-#endif
-
-	/****************************************************************************
-	 *******       Finishing communication: MPI_Waitall                   *******
-	 ***************************************************************************/
-
-//	start = ghost_wctime();
 	GHOST_INSTR_START(spmvm_gf_waitall);
 	MPI_safecall(MPI_Waitall(send_messages+recv_messages, request, status));
 	GHOST_INSTR_STOP(spmvm_gf_waitall);
-//	time = ghost_wctime()-start;
-//	printf("waitall took %f seconds\n",time);
 
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	{
-		likwid_markerStopRegion("Kernel 2 -- communication");
-		likwid_markerStartRegion("Kernel 2 -- remote computation");
-	}
-#endif
-
-	/****************************************************************************
-	 *******     Calculation of SpMVM for non-local entries of invec->val      *******
-	 ***************************************************************************/
-/*#ifdef GHOST_HAVE_OPENCL
-	CL_copyHostToDeviceOffset(invec->CL_val_gpu, 
-			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS,
-			mat->nrows(mat)*sizeofRHS);
-#endif
-#ifdef GHOST_HAVE_CUDA
-	CU_copyHostToDevice(&((char *)(invec->CU_val))[mat->nrows(mat)*sizeofRHS], 
-			&((char *)(invec->val))[mat->nrows(mat)*sizeofRHS], context->communicator->halo_elements*sizeofRHS);
-#endif*/
 	invec->uploadHalo(invec);
 
-//	start = ghost_wctime();
 	GHOST_INSTR_START(spmvm_gf_remote);
 	mat->remotePart->kernel(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
 	GHOST_INSTR_STOP(spmvm_gf_remote);
-//	time = ghost_wctime()-start;
-//	printf("remote computation took %f seconds\n",time);
-
-#ifdef LIKWID_MARKER_FINE
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 2 -- remote computation");
-#endif
-
-#ifdef LIKWID_MARKER
-#pragma omp parallel
-	likwid_markerStopRegion("Kernel 2");
-#endif
-
 
 }
