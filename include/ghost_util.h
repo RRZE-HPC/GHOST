@@ -194,8 +194,12 @@
 	#tag,ghost_wctime()-__start_##tag);
 #elif GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
-#define GHOST_INSTR_START(tag) LIKWID_MARKER_START(#tag);
-#define GHOST_INSTR_STOP(tag) LIKWID_MARKER_STOP(#tag);
+#define GHOST_INSTR_START(tag) { \
+#pragma omp parallel \
+LIKWID_MARKER_START(#tag); }
+#define GHOST_INSTR_STOP(tag) { \
+#pragma omp parallel \
+LIKWID_MARKER_STOP(#tag); }
 #else
 #define GHOST_INSTR_START(tag)
 #define GHOST_INSTR_STOP(tag)
