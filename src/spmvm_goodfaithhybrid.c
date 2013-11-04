@@ -73,7 +73,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 
 	for (from_PE=0; from_PE<nprocs; from_PE++){
 		if (context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(invec->val))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
+			MPI_safecall(MPI_Irecv(&((char *)(invec->val[0]))[context->communicator->hput_pos[from_PE]*sizeofRHS], context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[recv_messages] ));
 			recv_messages++;
 		}
 	}
@@ -87,7 +87,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 	for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
 		for (i=0; i<context->communicator->dues[to_PE]; i++){
-			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
+			memcpy(work+(to_PE*max_dues+i)*sizeofRHS,&((char *)(invec->val[0]))[context->communicator->duelist[to_PE][i]*sizeofRHS],sizeofRHS);
 		}
 	}
 //	double time = ghost_wctime()-start;

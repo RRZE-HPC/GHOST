@@ -30,7 +30,7 @@ static void *prepare(void *vargs)
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
 #pragma omp for 
 		for (i=0; i<args->context->communicator->dues[to_PE]; i++){
-			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
+			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val[0]))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
 		}
 	}
 	return NULL;
@@ -53,7 +53,7 @@ static void *communicate(void *vargs)
 
 	for (from_PE=0; from_PE<args->nprocs; from_PE++){
 		if (args->context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(args->rhs->val))[args->context->communicator->hput_pos[from_PE]*args->sizeofRHS], args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->recv_messages] ));
+			MPI_safecall(MPI_Irecv(&((char *)(args->rhs->val[0]))[args->context->communicator->hput_pos[from_PE]*args->sizeofRHS], args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->recv_messages] ));
 			args->recv_messages++;
 		}
 	}
