@@ -20,6 +20,6 @@ Check the INSTALL file for installation notes.
 Documentation
 =============
 
-For general documentation see the Wiki pages on bitbucket.
-For API documentation check out the sources, switch to the build/ directory and type `make doc`.
+For general documentation see the [Wiki](https://bitbucket.org/essex/ghost/wiki) pages on Bitbucket.
+For API documentation switch to the build/ directory and type `make doc`.
 You can now open build/doc/html/index.html with a web browser.
