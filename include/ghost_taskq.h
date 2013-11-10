@@ -146,6 +146,9 @@ typedef struct ghost_thpool_t {
 	 * @brief The PU (Processing Unit) of each GHOST thread.
 	 */
 	hwloc_obj_t *PUs;
+	/**
+	 * @brief The cpuset this thread pool is covering. 
+	 */
 	hwloc_bitmap_t cpuset;
 	/**
 	 * @brief A bitmap with one bit per PU where 1 means that a PU is busy and 0 means that it is
