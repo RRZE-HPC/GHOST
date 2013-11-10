@@ -732,9 +732,6 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {
-	if ((vec->traits->nvecs > 1) || (nodeVec->traits->nvecs > 1)) {
-		WARNING_LOG("Multi-column vector distribution not yet implemented");
-	}
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 #ifdef GHOST_HAVE_MPI
@@ -746,27 +743,34 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 	int nprocs = ghost_getNumberOfRanks(nodeVec->context->mpicomm);
 	int i;
+	ghost_vidx_t c;
 
-	MPI_Request req[2*(nprocs-1)];
-	MPI_Status stat[2*(nprocs-1)];
+	MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
+	MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
 	int msgcount = 0;
 
-	for (i=0;i<2*(nprocs-1);i++) 
+	for (i=0;i<vec->traits->nvecs*2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank(nodeVec->context->mpicomm) != 0) {
-		MPI_safecall(MPI_Irecv(nodeVec->val[0],comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
-		msgcount++;
-	} else {
-		memcpy(nodeVec->val[0],vec->val[0],sizeofdt*comm->lnrows[0]);
-		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(vec->val[0]+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+		for (c=0; c<vec->traits->nvecs; c++) {
+			MPI_safecall(MPI_Irecv(nodeVec->val[c],comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
 			msgcount++;
+		}
+	} else {
+		for (c=0; c<vec->traits->nvecs; c++) {
+			memcpy(nodeVec->val[c],vec->val[c],sizeofdt*comm->lnrows[0]);
+			for (i=1;i<nprocs;i++) {
+				MPI_safecall(MPI_Isend(VECVAL(vec,vec->val,c,comm->lfRow[i]),comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+				msgcount++;
+			}
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	memcpy(nodeVec->val[0],vec->val[0],vec->traits->nrowspadded*sizeofdt);
+	for (c=0; c<vec->traits->nvecs) {
+		memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrowspadded*sizeofdt);
+	}
 //	*nodeVec = vec->clone(vec);
 #endif
 
@@ -784,9 +788,6 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
 {
-	if ((vec->traits->nvecs > 1) || (totalVec->traits->nvecs > 1)) {
-		WARNING_LOG("Multi-column vector collection not yet implemented");
-	}
 #ifdef GHOST_HAVE_MPI
 	MPI_Datatype mpidt;
 
@@ -809,31 +810,39 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 
 	int nprocs = ghost_getNumberOfRanks(vec->context->mpicomm);
 	int i;
+	ghost_vidx_t c;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
 	ghost_comm_t *comm = vec->context->communicator;
-	MPI_Request req[2*(nprocs-1)];
-	MPI_Status stat[2*(nprocs-1)];
+	MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
+	MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
 	int msgcount = 0;
 
-	for (i=0;i<2*(nprocs-1);i++) 
+	for (i=0;i<vec->traits->nvecs*2*(nprocs-1);i++) 
 		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank(vec->context->mpicomm) != 0) {
-		MPI_safecall(MPI_Isend(vec->val[0],comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
-		msgcount++;
-	} else {
-		memcpy(totalVec->val[0],vec->val[0],sizeofdt*comm->lnrows[0]);
-		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Irecv(totalVec->val[0]+sizeofdt*comm->lfRow[i],comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+		for (c=0; c<vec->traits->nvecs; c++) {
+			MPI_safecall(MPI_Isend(vec->val[c],comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
 			msgcount++;
+		}
+	} else {
+		for (c=0; c<vec->traits->nvecs; c++) {
+			memcpy(totalVec->val[c],vec->val[c],sizeofdt*comm->lnrows[0]);
+			for (i=1;i<nprocs;i++) {
+				MPI_safecall(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,comm->lfRow[i]),comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+				msgcount++;
+			}
 		}
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
 	if (vec->context != NULL)
-		vec->permute(vec,vec->context->invRowPerm); 
-	memcpy(totalVec->val[0],vec->val[0],totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		vec->permute(vec,vec->context->invRowPerm);
+		for (c=0; c<vec->traits->nvecs; c++) {
+			memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+		}
+	}
 #endif
 }
 
@@ -909,13 +918,11 @@ static void ghost_freeVector( ghost_vec_t* vec )
 }
 static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
 {
-	if (vec->traits->nvecs > 1) {
-		WARNING_LOG("Permuting multi-column vectors not yet implemented");
-	}
+	// TODO enhance performance
 	/* permutes values in vector so that i-th entry is mapped to position perm[i] */
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 	ghost_midx_t i;
-	ghost_vidx_t len = vec->traits->nrows;
+	ghost_vidx_t len = vec->traits->nrows, c;
 	char* tmp;
 
 	if (perm == NULL) {
@@ -926,20 +933,20 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 	}
 
 
-	tmp = ghost_malloc(sizeofdt*len);
+	for (c=0; c<vec->traits->nvecs; c++) {
+		tmp = ghost_malloc(sizeofdt*len);
+		for(i = 0; i < len; ++i) {
+			if( perm[i] >= len ) {
+				ABORT("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
+			}
 
-	for(i = 0; i < len; ++i) {
-		if( perm[i] >= len ) {
-			ABORT("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
+			memcpy(&tmp[sizeofdt*perm[i]],VECVAL(vec,vec->val,c,i),sizeofdt);
 		}
-
-		memcpy(&tmp[sizeofdt*perm[i]],VECVAL(vec,vec->val,0,i),sizeofdt);
+		for(i=0; i < len; ++i) {
+			memcpy(VECVAL(vec,vec->val,c,i),&tmp[sizeofdt*i],sizeofdt);
+		}
+		free(tmp);
 	}
-	for(i=0; i < len; ++i) {
-		memcpy(VECVAL(vec,vec->val,0,i),&tmp[sizeofdt*i],sizeofdt);
-	}
-
-	free(tmp);
 }
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)

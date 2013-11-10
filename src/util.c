@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <ghost_config.h>
 #include "ghost_util.h"
 #include "ghost.h"
 #include "ghost_vec.h"
@@ -392,7 +393,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
 	ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
 	mat->fromFile(mat,matrixPath);
-	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
+	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype,.nvecs=rhs->traits->nvecs);
 	ghost_vec_t *globRHS = ghost_createVector(context, &rtraits);
 	globRHS->fromScalar(globRHS,zero);
 
@@ -404,7 +405,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 		DEBUG_LOG(1,"Computing actual reference solution with one process");
 
 
-		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype);
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype, .nvecs = rhs->traits->nvecs);
 
 		globLHS = ghost_createVector(context, &ltraits); 
 		globLHS->fromScalar(globLHS,&zero);
@@ -424,7 +425,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 		globRHS->destroy(globRHS);
 		ghost_freeContext(context);
 	} else {
-		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype);
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype, .nvecs = rhs->traits->nvecs);
 		globLHS = ghost_createVector(context, &ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
@@ -891,6 +892,8 @@ int ghost_init(int argc, char **argv)
 			WARNING_LOG("Required MPI threading level (%d) is not "
 					"provided (%d)!",req,prov);
 		}
+	} else {
+		WARNING_LOG("MPI was already initialized, not doing it!");
 	}
 
 	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
