@@ -1,9 +1,16 @@
-#include <ghost.h>
-#include <ghost_util.h>
-#include <ghost_sell.h>
+#include <ghost_config.h>
+
+#if GHOST_HAVE_MPI
+#include <mpi.h> //mpi.h has to be included before stdio.h
+#endif
 #include <stdio.h>
-#include <ghost_crs.h>
+
 #include <ghost_complex.h>
+#include <ghost_util.h>
+#include <ghost_crs.h>
+#include <ghost_sell.h>
+#include <ghost_vec.h>
+#include <cstdio>
 
 #define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \
 	switch(ch) { \

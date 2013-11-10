@@ -1,10 +1,15 @@
-#include <ghost.h>
+#include <ghost_config.h>
+
+#if GHOST_HAVE_MPI
+#include <mpi.h> //mpi.h has to be included before stdio.h
+#endif
+#include <stdio.h>
+
+#include <ghost_complex.h>
 #include <ghost_util.h>
 #include <ghost_vec.h>
-#include <cmath>
 #include <cstdio>
 #include <iostream>
-#include "ghost_complex.h"
 #include <omp.h>
 
 double conjugate(double * c) {

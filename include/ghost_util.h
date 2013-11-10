@@ -2,10 +2,6 @@
 #define __GHOST_UTIL_H__
 
 #include <ghost_config.h>
-#include <ghost_types.h>
-#include <hwloc.h>
-#include <stdio.h>
-#include <complex.h>
 
 #ifdef GHOST_HAVE_MPI
 #include "ghost_mpi_util.h"
@@ -18,6 +14,12 @@
 #ifdef GHOST_HAVE_CUDA
 #include "ghost_cu_util.h"
 #endif
+
+#include <ghost_types.h>
+#include <hwloc.h>
+#include <stdio.h>
+#include <complex.h>
+
 /******************************************************************************/
 /****** Makros ****************************************************************/
 /******************************************************************************/
