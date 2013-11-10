@@ -73,8 +73,14 @@ typedef struct ghost_task_t {
 	 * @brief The list of cores where the task's threads are running. (set by the library)
 	 */
 	int *cores;
-	hwloc_bitmap_t coremap; // map of cores this task is using
-	hwloc_bitmap_t childusedmap; // map of cores a child of this task is using
+	/**
+	 * @brief Map of cores this task is using. (set by the library)
+	 */
+	hwloc_bitmap_t coremap;
+	/**
+	 * @brief Map of cores a child of this task is using. (set by the library)
+	 */
+	hwloc_bitmap_t childusedmap;
 	/**
 	 * @brief The return value of the task's funtion. (set by the library)
 	 */
