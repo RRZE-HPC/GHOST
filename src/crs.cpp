@@ -1,7 +1,7 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <crs.h>
-#include "ghost_complex.h"
+#include <ghost_crs.h>
+#include <ghost_complex.h>
 #include <iostream>
 #include <omp.h>
 

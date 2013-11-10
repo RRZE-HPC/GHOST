@@ -1,7 +1,7 @@
 #include <ghost_types.h>
 #include <ghost_util.h>
 #include <ghost_context.h>
-#include <crs.h>
+#include <ghost_crs.h>
 
 
 ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context_flags, char *matrixPath, MPI_Comm comm, double weight) 

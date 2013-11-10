@@ -1,6 +1,6 @@
 #include <ghost_types.h>
-#include <crs.h>
-#include <sell.h>
+#include <ghost_crs.h>
+#include <ghost_sell.h>
 #include <ghost_mat.h>
 
 ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)

@@ -4,8 +4,8 @@
 #include <cuda_runtime.h>
 //#include <ghost_util.h>
 #include <ghost_types.h>
-#include <sell.h>
-#include "ghost_complex.h"
+#include <ghost_sell.h>
+#include <ghost_complex.h>
 #include <cuComplex.h>
 
 #define CHOOSE_KERNEL(dt1,dt2,ch, ...) \

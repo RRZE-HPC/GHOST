@@ -1,7 +1,6 @@
+#include <ghost_sell.h>
+#include <ghost_util.h>
 #include <immintrin.h>
-#include "sell.h"
-#include <stdio.h>
-#include "ghost_util.h"
 
 void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
@@ -15,7 +14,6 @@ void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * inve
 	__m128d val;
 	__m128d rhs;
 
-//	printf("in SSE kernel %d %d %d\n",SELL(mat)->nrowsPadded,lhs->traits->nrows,SELL(mat)->chunkHeight);
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
 	for (c=0; c<SELL(mat)->nrowsPadded>>1; c++) 
 	{ // loop over chunks

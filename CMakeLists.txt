@@ -41,7 +41,7 @@ set (SOURCES
 	)
 
 set (HEADERS
-		include/crs.h
+		include/ghost_crs.h
 		include/ghost.h
 		include/ghost_blas_mangle.h
 		include/ghost_complex.h
@@ -55,7 +55,7 @@ set (HEADERS
 		include/ghost_mat.h
 		include/ghost_math.h
 		include/ghost_affinity.h	
-		include/sell.h
+		include/ghost_sell.h
 	)
 
 if (USE_MPI)

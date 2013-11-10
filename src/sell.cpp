@@ -1,9 +1,9 @@
 #include <ghost.h>
 #include <ghost_util.h>
-#include <sell.h>
+#include <ghost_sell.h>
 #include <stdio.h>
-#include <crs.h>
-#include "ghost_complex.h"
+#include <ghost_crs.h>
+#include <ghost_complex.h>
 
 #define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \
 	switch(ch) { \
