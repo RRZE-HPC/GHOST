@@ -2,6 +2,7 @@
 
 #include "crs.h"
 #include "ghost_util.h"
+#include <ghost_mat.h>
 
 #include <unistd.h>
 #include <sys/types.h>

@@ -18,6 +18,7 @@
 
 #define NIDLECORES (ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy))
 
+#include <ghost_constants.h>
 #include "ghost_taskq.h"
 #include "ghost_util.h"
 

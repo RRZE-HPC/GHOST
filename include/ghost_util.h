@@ -2,12 +2,10 @@
 #define __GHOST_UTIL_H__
 
 #include <ghost_config.h>
-#include <ghost.h>
+#include <ghost_types.h>
+#include <hwloc.h>
 #include <stdio.h>
-
-#ifdef CUDAKERNEL
-#undef GHOST_HAVE_MPI
-#endif
+#include <complex.h>
 
 #ifdef GHOST_HAVE_MPI
 #include "ghost_mpi_util.h"
@@ -188,6 +186,26 @@
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
 
+#define GHOST_REGISTER_DT_D(name) \
+	typedef double name ## _t; \
+	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_S(name) \
+	typedef float name ## _t; \
+	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
+
+#define GHOST_REGISTER_DT_C(name) \
+	typedef complex float name ## _t; \
+	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
+
+#define GHOST_REGISTER_DT_Z(name) \
+	typedef complex double name ## _t; \
+	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
+
+#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
+
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
+
 #if GHOST_HAVE_INSTR_TIMING
 #define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
 #define GHOST_INSTR_STOP(tag) printf(ANSI_COLOR_BLUE "[GHOST_TIMING] %s: %e secs\n" ANSI_COLOR_RESET,\
@@ -211,16 +229,20 @@ LIKWID_MARKER_STOP(#tag); }
 #define UNUSED(x) (void)(x)
 /******************************************************************************/
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef GHOST_HAVE_MPI
 extern MPI_Datatype GHOST_MPI_DT_C;
 extern MPI_Op GHOST_MPI_OP_SUM_C;
 extern MPI_Datatype GHOST_MPI_DT_Z;
 extern MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern int hasCUDAdevice;
+extern int hasOPENCLdevice;
+extern hwloc_topology_t topology;
 
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 
@@ -266,9 +288,6 @@ ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 void ghost_pinThreads(int options, char *procList);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
-void ghost_getAvailableDataFormats(char **dataformats, int *nDataformats);
-ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat);
-ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
 double ghost_wctime();
 
 double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
@@ -280,6 +299,8 @@ ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
 void ghost_ompSetNumThreads(int nthreads);
 int ghost_ompGetThreadNum();
 int ghost_ompGetNumThreads();
+int ghost_init(int argc, char **argv);
+void ghost_finish();
 
 #ifdef __cplusplus
 }

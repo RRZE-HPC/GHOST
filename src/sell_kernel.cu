@@ -1,8 +1,8 @@
-#define CUDAKERNEL
+#undef GHOST_HAVE_MPI
 #include <ghost.h>
 #include <stdio.h>
 #include <cuda_runtime.h>
-#include <ghost_util.h>
+//#include <ghost_util.h>
 #include <ghost_types.h>
 #include <sell.h>
 #include "ghost_complex.h"

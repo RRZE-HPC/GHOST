@@ -1,6 +1,7 @@
 #include "sell.h"
 #include "crs.h"
 #include "ghost_util.h"
+#include <ghost_mat.h>
 
 #include <libgen.h>
 #include <string.h>

@@ -8,6 +8,7 @@
 #include <sys/param.h>
 #include <CL/cl_ext.h>
 
+#define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU
 #define CL_MAX_DEVICE_NAME_LEN 500
 
 static cl_command_queue queue;

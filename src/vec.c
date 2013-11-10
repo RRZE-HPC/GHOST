@@ -49,7 +49,7 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs);
 static void vec_fromRand(ghost_vec_t *vec);
 static void vec_fromScalar(ghost_vec_t *vec, void *val);
-static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset);
+static void vec_fromFile(ghost_vec_t *vec, char *path);
 static void vec_toFile(ghost_vec_t *vec, char *path);
 static void ghost_zeroVector(ghost_vec_t *vec);
 static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
@@ -550,6 +550,43 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 
 static void vec_toFile(ghost_vec_t *vec, char *path)
 {
+#ifdef GHOST_HAVE_MPI
+	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+
+	int32_t endianess = ghost_archIsBigEndian();
+	int32_t version = 1;
+	int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
+	int32_t datatype = vec->traits->datatype;
+	int64_t nrows = (int64_t)vec->context->gnrows;
+	int64_t ncols = (int64_t)vec->traits->nvecs;
+	MPI_File fileh;
+	MPI_Status status;
+	MPI_safecall(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
+
+	if (ghost_getRank(vec->context->mpicomm) == 0) 
+	{ // write header AND portion
+		MPI_safecall(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&version,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&order,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
+		MPI_safecall(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
+		MPI_safecall(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
+
+	}	
+	ghost_vidx_t v;
+	MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
+	MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
+	MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+	ghost_vidx_t vecoffset = 0;
+	for (v=0; v<vec->traits->nvecs; v++) {
+		MPI_safecall(MPI_File_write_at(fileh,fileoffset,VECVAL(vec,vec->val,v,0),vec->traits->nrows,mpidt,&status));
+		fileoffset += nrows;
+		vecoffset += vec->traits->nrowspadded*sizeofdt;
+	}
+	MPI_safecall(MPI_File_close(&fileh));
+
+
+#else
 	DEBUG_LOG(1,"Writing (local) vector to file %s",path);
 	size_t ret;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
@@ -580,12 +617,18 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
 			ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
 	}
 	fclose(filed);
-
+#endif
 
 }
 
-static void vec_fromFile(ghost_vec_t *vec, char *path, off_t offset)
+static void vec_fromFile(ghost_vec_t *vec, char *path)
 {
+	off_t offset;
+	if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
+		offset = 0;
+	else
+		offset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+	
 	vec_malloc(vec);
 	DEBUG_LOG(1,"Reading vector from file %s",path);
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
@@ -686,45 +729,6 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 	vec->CUupload(vec);
 #endif
 }
-/*
-   static ghost_vec_t* ghost_newVector( const int nrows, unsigned int flags ) 
-   {
-   UNUSED(nrows);
-   UNUSED(flags);
-   ghost_vec_t* vec = NULL;
-   size_t size_val;
-   int i;
-
-   size_val = (size_t)( ghost_pad(nrows,VEC_PAD) * sizeof(ghost_dt) );
-   vec = (ghost_vec_t*) allocateMemory( sizeof( ghost_vec_t ), "vec");
-
-
-   VAL(vec) = (ghost_dt*) allocateMemory( size_val, "VAL(vec)");
-   vec->traits->nrows = nrows;
-   vec->traits->flags = flags;
-
-#pragma omp parallel for schedule(runtime) 
-for( i = 0; i < nrows; i++ ) 
-VAL(vec)[i] = 0.0;
-
-#ifdef GHOST_HAVE_OPENCL
-#ifdef CL_IMAGE
-vec->CL_val_gpu = CL_allocDeviceMemoryCached( size_val,VAL(vec) );
-#else
-vec->CL_val_gpu = CL_allocDeviceMemoryMapped( size_val,VAL(vec),CL_MEM_READ_WRITE );
-#endif
-//vec->CL_val_gpu = CL_allocDeviceMemory( size_val );
-//printf("before: %p\n",VAL(vec));
-//VAL(vec) = CL_mapBuffer(vec->CL_val_gpu,size_val);
-//printf("after: %p\n",VAL(vec));
-//CL_uploadVector(vec);
-#endif
-#ifdef GHOST_HAVE_CUDA
-vec->CU_val = CU_allocDeviceMemory(size_val);
-#endif
-
-return vec;
-}*/
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {

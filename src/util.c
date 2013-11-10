@@ -2,6 +2,8 @@
 #include "ghost_util.h"
 #include "ghost.h"
 #include "ghost_vec.h"
+#include <ghost_context.h>
+#include <ghost_mat.h>
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -14,11 +16,20 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifndef PAGE_SIZE
+	#define PAGE_SIZE	4096
+#endif
+static int g_shm_fd = -1;
+static inline int atomic_fetch_add(int * variable, int value);
+static void * shared_mem_allocate();
+static void shared_mem_deallocate(void * shmRegion);
+#define GHOST_SHMEM_NAME "/ghost-shmem"
 
 //#define PRETTYPRINT
 
@@ -32,6 +43,15 @@
 #endif
 
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
+
+#ifdef GHOST_HAVE_MPI
+static int MPIwasInitialized;
+MPI_Datatype GHOST_MPI_DT_C;
+MPI_Op GHOST_MPI_OP_SUM_C;
+MPI_Datatype GHOST_MPI_DT_Z;
+MPI_Op GHOST_MPI_OP_SUM_Z;
+#endif
+hwloc_topology_t topology;
 
 extern char ** environ;
 
@@ -555,27 +575,6 @@ int ghost_getRank(MPI_Comm comm)
 #endif
 }
 
-/*int ghost_getLocalRank() 
-{
-#ifdef GHOST_HAVE_MPI
-	return ghost_getRank(getSingleNodeComm());
-#else
-	return 0;
-#endif
-}*/
-
-/*int ghost_getNumberOfRanksOnNode()
-{
-#ifdef GHOST_HAVE_MPI
-	int size;
-	MPI_safecall(MPI_Comm_size ( getSingleNodeComm(), &size));
-
-	return size;
-#else
-	return 1;
-#endif
-
-}*/
 int ghost_getNumberOfPhysicalCores()
 {
 	return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);	
@@ -1013,40 +1012,129 @@ void ghost_pinThreads(int options, char *procList)
 	}
 }
 
-ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
+static inline int atomic_fetch_add(int * variable, int value)
 {
-	ghost_mnnz_t nrows;
-	ghost_mnnz_t lnrows = mat->nrows(mat);
+	__asm__ volatile (
+		"lock;"
+		"xaddl %%eax, %2;"
+		: "=a" (value)					// output
+		: "a" (value), "m" (*variable)	// input
+		:"memory" 						// cloppered
+	);
 
-	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
-		nrows = lnrows;
-	} else {
-#ifdef GHOST_HAVE_MPI
-		MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->mpicomm));
-#else
-		ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
-#endif
-	}
-
-	return nrows;
+	return value;
 }
 
-ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
-{
-	ghost_mnnz_t nnz;
-	ghost_mnnz_t lnnz = mat->nnz(mat);
 
-	if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
-		nnz = lnnz;
-	} else {
-#ifdef GHOST_HAVE_MPI
-		MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
-#else
-		ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");
-#endif
+
+static void * shared_mem_allocate()
+{
+	int err;
+	int shm_fd;
+
+	// Try to create the shared memory object.
+	shm_fd = shm_open(GHOST_SHMEM_NAME, O_RDWR | O_CREAT | O_EXCL, 0600);
+
+	if (shm_fd < 0) {
+		if (errno == EEXIST) {
+			// SMO already exists, just open it.
+			shm_fd = shm_open(GHOST_SHMEM_NAME, O_RDWR, 0600);
+			if (shm_fd < 0) {
+				ABORT("shm_open failed");
+			}
+		}
+		else if (errno < 0) {
+			ABORT("shm_open failed");
+		}
+	}
+	else {
+		// g_shm_creator = 1;
 	}
 
-	return nnz;
+	g_shm_fd = shm_fd;
+
+	// TODO: is it really safe to call this from every process?
+	err = ftruncate(shm_fd, PAGE_SIZE);
+	if (err < 0) {
+		shm_unlink(GHOST_SHMEM_NAME);
+		ABORT("ftruncate failed");
+	}
+
+	void * shm_region;
+	shm_region = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+	if (shm_region == MAP_FAILED) {
+		shm_unlink(GHOST_SHMEM_NAME);
+		ABORT("mmap failed");
+	}
+
+	return shm_region;
+}
+
+
+static void shared_mem_deallocate(void * shmRegion)
+{
+	int shouldExit = 0;
+	int err;
+
+	if (shmRegion == NULL) {
+		ABORT("shared_mem_deallocate was called, but memory was not initialized");
+	}
+
+	err = munmap(shmRegion, PAGE_SIZE);
+	if (err < 0) {
+		perror("region");
+		shouldExit = 1;
+	}
+
+	err = shm_unlink(GHOST_SHMEM_NAME);
+	if (err < 0) {
+		// This error occurs if another process has already called shm_unlink.
+		if (errno != ENOENT) {
+			perror("shm_unlink");
+			shouldExit = 1;
+		}
+	}
+
+	err = close(g_shm_fd);
+
+	if (shouldExit) {
+		ABORT("shared_mem_deallocate");
+	}
+
+	return;
+}
+int ghost_getNumberOfLocalRanks(MPI_Comm comm)
+{
+#if GHOST_HAVE_MPI
+	MPI_safecall(MPI_Barrier(comm));
+	int * nodeRankPtr = (int *)shared_mem_allocate();
+	MPI_safecall(MPI_Barrier(comm));
+	int nodeRank;
+
+	nodeRank = atomic_fetch_add(nodeRankPtr, 1);
+	MPI_safecall(MPI_Barrier(comm));
+	int nranks = *nodeRankPtr;
+	shared_mem_deallocate((void *)nodeRankPtr);
+	return nranks;
+#else
+	return 1;
+#endif
+}
+
+int ghost_getLocalRank(MPI_Comm comm)
+{
+#if GHOST_HAVE_MPI
+	int * nodeRankPtr = (int *)shared_mem_allocate();
+	MPI_safecall(MPI_Barrier(comm));
+	int nodeRank;
+
+	nodeRank = atomic_fetch_add(nodeRankPtr, 1);
+	shared_mem_deallocate((void *)nodeRankPtr);
+	return nodeRank;
+#else
+	return 0;
+#endif
 }
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
@@ -1098,3 +1186,91 @@ int ghost_ompGetThreadNum()
 	return 0;
 #endif
 }
+
+int ghost_init(int argc, char **argv)
+{
+#ifdef GHOST_HAVE_MPI
+	int req, prov;
+
+#ifdef GHOST_HAVE_OPENMP
+	req = MPI_THREAD_MULTIPLE; 
+#else
+	req = MPI_THREAD_SINGLE;
+#endif
+
+	MPI_safecall(MPI_Initialized(&MPIwasInitialized));
+	if (!MPIwasInitialized) {
+		MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
+
+		if (req != prov) {
+			WARNING_LOG("Required MPI threading level (%d) is not "
+					"provided (%d)!",req,prov);
+		}
+	}
+
+	MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
+
+	MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
+	MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
+
+#else // ifdef GHOST_HAVE_MPI
+	UNUSED(argc);
+	UNUSED(argv);
+
+#endif // ifdef GHOST_HAVE_MPI
+
+#if GHOST_HAVE_INSTR_LIKWID
+	LIKWID_MARKER_INIT;
+
+#pragma omp parallel
+	LIKWID_MARKER_THREADINIT;
+#endif
+
+#ifdef GHOST_HAVE_OPENCL
+	CL_init();
+#endif
+	//#ifdef GHOST_HAVE_CUDA
+	//	CU_init();
+	//#endif
+
+	hwloc_topology_init(&topology);
+	hwloc_topology_load(topology);
+
+
+	hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+	hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_PROCESS);
+	if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
+		WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
+	}
+
+	return GHOST_SUCCESS;
+}
+
+void ghost_finish()
+{
+
+	ghost_taskq_finish();
+	ghost_thpool_finish();
+	hwloc_topology_destroy(topology);
+
+#ifdef LIKWID_PERFMON
+	LIKWID_MARKER_CLOSE;
+#endif
+
+#ifdef GHOST_HAVE_OPENCL
+	CL_finish();
+#endif
+
+#ifdef GHOST_HAVE_MPI
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));
+	MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_Z));
+	if (!MPIwasInitialized) {
+		MPI_Finalize();
+	}
+#endif
+
+}
+

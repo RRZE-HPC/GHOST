@@ -34,6 +34,9 @@ set (SOURCES
 		src/sell_kernel_intr.c 
 		src/vec.cpp 
 		src/sell.cpp
+		src/context.c
+		src/mat.c
+		src/math.c
 	)
 
 set (HEADERS
@@ -47,6 +50,9 @@ set (HEADERS
 		include/ghost_types.h
 		include/ghost_util.h
 		include/ghost_vec.h
+		include/ghost_context.h
+		include/ghost_mat.h
+		include/ghost_math.h	
 		include/sell.h
 	)
 
