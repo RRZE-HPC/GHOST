@@ -37,6 +37,7 @@ set (SOURCES
 		src/context.c
 		src/mat.c
 		src/math.c
+		src/affinity.c
 	)
 
 set (HEADERS
@@ -52,7 +53,8 @@ set (HEADERS
 		include/ghost_vec.h
 		include/ghost_context.h
 		include/ghost_mat.h
-		include/ghost_math.h	
+		include/ghost_math.h
+		include/ghost_affinity.h	
 		include/sell.h
 	)
 

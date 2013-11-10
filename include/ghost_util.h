@@ -261,31 +261,17 @@ char * ghost_modeName(int spmvmOptions);
 char * ghost_datatypeName(int datatype);
 char * ghost_symmetryName(int symmetry);
 
-int ghost_getRank(MPI_Comm);
-int ghost_getLocalRank(MPI_Comm);
-int ghost_getNumberOfLocalRanks(MPI_Comm);
-//int ghost_getNumberOfRanksOnNode();
-int ghost_getNumberOfHwThreads();
-int ghost_getNumberOfNumaNodes();
-int ghost_getNumberOfThreads();
-int ghost_getNumberOfNodes();
-int ghost_getNumberOfRanks(MPI_Comm);
 int ghost_pad(int nrows, int padding);
 
 void ghost_freeCommunicator( ghost_comm_t* const );
-int ghost_getNumberOfPhysicalCores();
 size_t ghost_sizeofDataType(int dt);
 int ghost_datatypeValid(int datatype);
 int ghost_symmetryValid(int symmetry);
 int ghost_archIsBigEndian();
-int ghost_getCore();
-void ghost_setCore(int core);
-void ghost_unsetCore();
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 char ghost_datatypePrefix(int dt);
 int ghost_dataTypeIdx(int datatype);
 ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
-void ghost_pinThreads(int options, char *procList);
 
 int ghost_getSpmvmModeIdx(int spmvmOptions);
 double ghost_wctime();

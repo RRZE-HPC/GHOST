@@ -37,6 +37,6 @@
 #include <ghost_math.h>
 #include <ghost_mat.h>
 #include <ghost_context.h>
-
+#include <ghost_affinity.h>
 
 #endif
