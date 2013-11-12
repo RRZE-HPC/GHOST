@@ -47,6 +47,7 @@ typedef struct
 	ghost_mnnz_t nnz;
 	ghost_mnnz_t nEnts;
 	double beta;
+	int T; // number of threads per row (if applicable)
 	ghost_midx_t *chunkMin; // for version with remainder loop
 	ghost_midx_t *chunkLen; // for version with remainder loop
 	ghost_midx_t *rowLen;   // for version with remainder loop

@@ -9,40 +9,42 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 
-#define CHOOSE_KERNEL(dt1,dt2,ch, ...) \
-	switch(ch) { \
-		case 1: \
-				SELL_kernel_CU_tmpl< dt1, dt2, 1 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 2: \
-				SELL_kernel_CU_tmpl< dt1, dt2, 2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 4: \
-				SELL_kernel_CU_tmpl< dt1, dt2, 4 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 8: \
-				SELL_kernel_CU_tmpl< dt1, dt2, 8 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 16: \
-				 SELL_kernel_CU_tmpl< dt1, dt2, 16 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 32: \
-				 SELL_kernel_CU_tmpl< dt1, dt2, 32 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 64: \
-				 SELL_kernel_CU_tmpl< dt1, dt2, 64 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		case 256: \
-				 SELL_kernel_CU_tmpl< dt1, dt2, 256 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		break; \
-		default: \
-				 DEBUG_LOG(2,"Calling ELLPACK kernel"); \
-				 SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-		}
-	/*	default: \
-				 return SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)ch),ch >>> ( __VA_ARGS__ ); \
-		break; \
-	}*/
+extern __shared__ char shared[];
+
+//#define SWITCH_T
+
+#define CHOOSE_KERNEL(func,dt1,dt2,ch, ...) \
+	if (mat->T == 1) {\
+		switch(ch) { \
+			case 1: \
+					func< dt1, dt2, 1 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 2: \
+					func< dt1, dt2, 2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 4: \
+					func< dt1, dt2, 4 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 8: \
+					func< dt1, dt2, 8 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 16: \
+					 func< dt1, dt2, 16 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 32: \
+					 func< dt1, dt2, 32 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 64: \
+					 func< dt1, dt2, 64 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			case 256: \
+					 func< dt1, dt2, 256 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+			break; \
+			default: \
+					 DEBUG_LOG(2,"Calling ELLPACK kernel"); \
+					 SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
+		}\
+	}
 
 template<typename T>
 __device__ inline void zero(T &val)
@@ -168,28 +170,77 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
-//	printf(">>> %d\n",nrows);
 	if (i<nrows) {
 		int cs, tid;
 		if (chunkHeight == SELL_CUDA_BLOCKSIZE) {
-		cs = chunkstart[blockIdx.x];
-		tid = threadIdx.x;
+			cs = chunkstart[blockIdx.x];
+			tid = threadIdx.x;
 		} else {
-		cs = chunkstart[i/chunkHeight];
-		tid = threadIdx.x%chunkHeight;
+			cs = chunkstart[i/chunkHeight];
+			tid = threadIdx.x%chunkHeight;
 		}
 		int j;
 		v_t tmp;
 		zero<v_t>(tmp);
 
 		for (j=0; j<rowlen[i]; j++) {
-//			printf("%d/%d: %f*%f\n",i,j,rhs[col[cs + tid + j*chunkHeight]], val[cs + tid + j*chunkHeight]);
 			tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + j*chunkHeight]], val[cs + tid + j*chunkHeight]);
 		}
 		if (options & GHOST_SPMVM_AXPY)
 			lhs[i] = axpy<v_t,float>(lhs[i],tmp,1.f);
 		else 
 			lhs[i] = tmp;
+	}
+}
+
+template<typename m_t, typename v_t, int chunkHeight, int T>  
+__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen)
+{
+	int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (i<nrows) {
+		int tib = threadIdx.x*blockDim.x+threadIdx.y; // thread idx in block
+		int cs, tid; // chunk start, thread row in block
+		int j;
+		v_t tmp;
+		v_t *smem = (v_t *)smem;
+		
+		if (chunkHeight == SELL_CUDA_BLOCKSIZE) {
+			cs = chunkstart[blockIdx.x];
+			tid = threadIdx.x;
+		} else {
+			cs = chunkstart[i/chunkHeight];
+			tid = threadIdx.x%chunkHeight;
+		}
+		zero<v_t>(tmp);
+
+		for (j=0; j<rowlen[i]; j++) {
+			tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + T*j*chunkHeight]], val[cs + tid + T*j*chunkHeight]);
+		}
+		smem[threadIdx.x*T+threadIdx.y] = tmp;
+		if (T>2) {
+			if (T>4) {
+				if (T>8) {
+					if (T>16) {
+						if (threadIdx.y<16)
+							smem[threadIdx.x*T]+=smem[threadIdx.x*T+16];
+					}
+					if (threadIdx.y<8)
+						smem[threadIdx.x*T]+=smem[threadIdx.x*T+8];
+				}
+				if (threadIdx.y<4)
+					smem[threadIdx.x*T]+=smem[threadIdx.x*T+4];
+			}
+			if (threadIdx.y<2)
+				smem[threadIdx.x*T]+=smem[threadIdx.x*T+2];
+		}
+		
+		if (threadIdx.y == 0) {
+			if (options & GHOST_SPMVM_AXPY)
+				lhs[i] = axpy<v_t,float>(lhs[i],smem[threadIdx.x*T]+smem[threadIdx.x*T+1],1.f);
+			else 
+				lhs[i] = tmp;
+		}
 	}
 }
 
