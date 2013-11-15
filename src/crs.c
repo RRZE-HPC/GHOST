@@ -543,27 +543,15 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
 	int msgcount = 0;
 	for(i=0; i<nprocs; i++) 
-	{ // scatter _my_ wishes to _other_ processes' dues
-		/*MPI_safecall(MPI_Scatterv ( 
-		  lcrp->wishlist[0], (int *)lcrp->wishes, lcrp->wish_displ, MPI_INTEGER, 
-		  lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, mat->context->mpicomm ));
-		 */
-		if (lcrp->wishes[i]>0){
-			//	DEBUG_LOG(0,"Doing recv to duelist from proc %d",i);
-			MPI_safecall(MPI_Irecv(lcrp->duelist[i],lcrp->dues[i],MPI_INTEGER,i,i,mat->context->mpicomm,&req[msgcount]));
-			msgcount++;
-		}
-
-		/*	ghost_scatterv(lcrp->wishlist_mem, (int *)lcrp->wishes, lcrp->wish_displ, ghost_mpi_dt_midx, 
-			lcrp->duelist[i], (int)lcrp->dues[i], MPI_INTEGER, i, mat->context->mpicomm);*/
+	{ // receive _my_ dues from _other_ processes' wishes
+		MPI_safecall(MPI_Irecv(lcrp->duelist[i],lcrp->dues[i],MPI_INTEGER,i,i,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
 	}
 
 
 	for(i=0; i<nprocs; i++) { 
-		if (lcrp->dues[i]>0){
-			MPI_safecall(MPI_Isend(lcrp->wishlist[i],lcrp->wishes[i],MPI_INTEGER,i,me,mat->context->mpicomm,&req[msgcount]));
-			msgcount++;
-		}
+		MPI_safecall(MPI_Isend(lcrp->wishlist[i],lcrp->wishes[i],MPI_INTEGER,i,me,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
 	}
 
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
