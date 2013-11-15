@@ -14,7 +14,7 @@
 typedef struct {
 	ghost_vec_t *rhs;
 	ghost_context_t *context;
-	int nprocs,me,send_messages,recv_messages;
+	int nprocs,me,msgcount;
 	char *work;
 	size_t sizeofRHS;
 	MPI_Request *request;
@@ -25,12 +25,15 @@ typedef struct {
 static void *prepare(void *vargs)
 {
 	int to_PE, i;
+	ghost_vidx_t c;
 	commArgs *args = (commArgs *)vargs;
-#pragma omp parallel private(to_PE,i)
+#pragma omp parallel private(to_PE,i,c)
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
+		for (c=0; c<args->rhs->traits->nvecs; c++) {
 #pragma omp for 
-		for (i=0; i<args->context->communicator->dues[to_PE]; i++){
-			memcpy(args->work+(to_PE*args->max_dues+i)*args->sizeofRHS,&((char *)(args->rhs->val[0]))[args->context->communicator->duelist[to_PE][i]*args->sizeofRHS],args->sizeofRHS);
+			for (i=0; i<args->context->communicator->dues[to_PE]; i++){
+				memcpy(args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + (to_PE*args->max_dues+i)*args->sizeofRHS,VECVAL(args->rhs,args->rhs->val,c,args->context->communicator->duelist[to_PE][i]),args->sizeofRHS);
+			}
 		}
 	}
 	return NULL;
@@ -50,23 +53,27 @@ static void *communicate(void *vargs)
 //	usleep(3000000);
 	commArgs *args = (commArgs *)vargs;
 	int to_PE,i,from_PE;
+	ghost_vidx_t c;
 
 	for (from_PE=0; from_PE<args->nprocs; from_PE++){
 		if (args->context->communicator->wishes[from_PE]>0){
-			MPI_safecall(MPI_Irecv(&((char *)(args->rhs->val[0]))[args->context->communicator->hput_pos[from_PE]*args->sizeofRHS], args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->recv_messages] ));
-			args->recv_messages++;
+			for (c=0; c<args->rhs->traits->nvecs; c++) {
+				MPI_safecall(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->communicator->hput_pos[from_PE]), args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount] ));
+				args->msgcount++;
+			}
 		}
 	}
-
+	
 	for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-
 		if (args->context->communicator->dues[to_PE]>0){
-			MPI_safecall(MPI_Isend( args->work+to_PE*args->max_dues*args->sizeofRHS, args->context->communicator->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->recv_messages+args->send_messages] ));
-			args->send_messages++;
+			for (c=0; c<args->rhs->traits->nvecs; c++) {
+				MPI_safecall(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->communicator->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount] ));
+				args->msgcount++;
+			}
 		}
 	}
 
-	MPI_safecall(MPI_Waitall(args->send_messages+args->recv_messages, args->request, args->status));
+	MPI_safecall(MPI_Waitall(args->msgcount, args->request, args->status));
 
 	args->rhs->uploadHalo(args->rhs);
 	return NULL;
@@ -124,7 +131,6 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
 	static int me; 
 	int i, from_PE, to_PE;
-	int send_messages, recv_messages;
 
 	static MPI_Request *request;
 	static MPI_Status  *status;
@@ -149,9 +155,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 			if (context->communicator->dues[i]>max_dues) 
 				max_dues = context->communicator->dues[i];
 
-		work = (char *)ghost_malloc(max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
-		request = (MPI_Request*) ghost_malloc( 2*nprocs*sizeof(MPI_Request));
-		status  = (MPI_Status*)  ghost_malloc( 2*nprocs*sizeof(MPI_Status));
+		work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
+		request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
+		status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
 		int taskflags = GHOST_TASK_DEFAULT;
 		if (pthread_getspecific(ghost_thread_key) != NULL) {
@@ -195,9 +201,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 	}
 
 
-	send_messages=0;
-	recv_messages = 0;
-	for (i=0;i<nprocs;i++) request[i] = MPI_REQUEST_NULL;
+	for (i=0;i<invec->traits->nvecs*2*nprocs;i++) {
+		request[i] = MPI_REQUEST_NULL;
+	}
 
 #ifdef LIKWID_MARKER
 #pragma omp parallel
@@ -207,8 +213,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 #pragma omp parallel
 	likwid_markerStartRegion("Kernel 3 -- communication");
 #endif
-	cargs.send_messages = send_messages;
-	cargs.recv_messages = recv_messages;
+	cargs.msgcount = 0;
 	cargs.request = request;
 	cargs.status = status;
 
