@@ -423,7 +423,8 @@ void getNrowsFromContext(ghost_vec_t *vec)
 		}	
 	}
 	} else {
-		WARNING_LOG("The vector's context is NULL.");
+	        // the case context==NULL is allowed - the vector is local.
+		DEBUG_LOG(1,"The vector's context is NULL.");
 	}
 
 
