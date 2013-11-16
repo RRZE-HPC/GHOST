@@ -89,8 +89,8 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 #endif
 	mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
-//	mat->rowPerm = NULL;
-//	mat->invRowPerm = NULL;
+	//	mat->rowPerm = NULL;
+	//	mat->invRowPerm = NULL;
 	mat->localPart = NULL;
 	mat->remotePart = NULL;
 
@@ -127,16 +127,6 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
 	return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
 }
-
-/*static ghost_dt CRS_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
-  {
-  ghost_midx_t e;
-  for (e=CR(mat)->rpt[i]; e<CR(mat)->rpt[i+1]; e++) {
-  if (CR(mat)->col[e] == j)
-  return CR(mat)->val[e];
-  }
-  return 0.;
-  }*/
 
 static size_t CRS_byteSize (ghost_mat_t *mat)
 {
@@ -188,27 +178,9 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 
 	ghost_midx_t i;
 
-	/* Processor rank (MPI-process) */
 	int me = ghost_getRank((*mat)->context->mpicomm); 
-
 	ghost_comm_t *comm = (*mat)->context->communicator;
-
-	//	ghost_mat_t *CRSfullMatrix;
-
 	int nprocs = ghost_getNumberOfRanks((*mat)->context->mpicomm);
-
-	/****************************************************************************
-	 *******            ........ Executable statements ........           *******
-	 ***************************************************************************/
-
-	DEBUG_LOG(1,"Entering context_communication_parallel");
-
-	//comm = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-	//context->communicator = comm;
-
-	//	ghost_mtraits_t crsTraits = {.format="CRS",.flags=GHOST_SPM_DEFAULT,.aux=NULL};
-	//	CRSfullMatrix = ghost_initMatrix(&crsTraits);
-
 
 	CRS_readHeader(*mat,matrixPath);  // read header
 
@@ -249,36 +221,12 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 
-
-
-	/*if (ghost_getRank(context->mpicomm) == 0) {
-	  MPI_safecall(MPI_Scatterv(
-	  ((CR_TYPE *)((*mat)->data))->rpt, 
-	  (int *)comm->lnrows, 
-	  (int *)comm->lfRow, 
-	  ghost_mpi_dt_midx,
-	  MPI_IN_PLACE,
-	  (int)comm->lnrows[me],
-	  MPI_INTEGER, 0, context->mpicomm));
-	  } else {
-	  MPI_safecall(MPI_Scatterv(
-	  ((CR_TYPE *)((*mat)->data))->rpt, 
-	  (int *)comm->lnrows, 
-	  (int *)comm->lfRow, 
-	  ghost_mpi_dt_midx,
-	  ((CR_TYPE *)((*mat)->data))->rpt,
-	  (int)comm->lnrows[me],
-	  MPI_INTEGER, 0, context->mpicomm));
-	  }*/
-
 	DEBUG_LOG(1,"Adjusting row pointers");
 
 	for (i=0;i<comm->lnrows[me]+1;i++)
 		((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - comm->lfEnt[me]; 
 
-	/* last entry of row_ptr holds the local number of entries */
 	((CR_TYPE *)((*mat)->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me];
-
 
 	DEBUG_LOG(1,"local rows          = %"PRmatIDX,comm->lnrows[me]);
 	DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,comm->lfRow[me]);
@@ -290,16 +238,6 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 	DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
 	((CR_TYPE *)((*mat)->data))->nrows = comm->lnrows[me];
 	((CR_TYPE *)((*mat)->data))->nEnts = comm->lnEnts[me];
-
-	//	*mat = ghost_initMatrix(&traits[0]);
-
-	//	(*mat)->fromCRS(*mat,(*mat)->data);
-	//	printf("$$$ %p %p\n",CR((*mat)),CR((*mat))->col);
-	//	CR_TYPE *locCR = NULL;
-	//	CR_TYPE *remCR = NULL;
-
-	//	CRS_createCommunication((*mat),&locCR,&remCR,options,context);
-
 
 	// TODO clean up
 }
@@ -371,7 +309,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 	tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
 
 	for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
-		
+
 	for (i=0;i<lcrp->lnEnts[me];i++){
 		for (j=nprocs-1;j>=0; j--){
 			if (lcrp->lfRow[j]<fullCR->col[i]+1) {
@@ -670,52 +608,19 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 {
 	CR_TYPE *cr = CR(mat);
 	int me = ghost_getRank(mat->context->mpicomm); 
-	//ghost_mnnz_t j;
 	ghost_midx_t i;
-	//int hlpi;
-	//int target_rows;
 	int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 
-	//	lcrp->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-	//	lcrp->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-	//lcrp->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-	//lcrp->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-
-	/****************************************************************************
-	 *******  Calculate a fair partitioning of NZE and ROWS on master PE  *******
-	 ***************************************************************************/
-
-	if (options & GHOST_CONTEXT_WORKDIST_NZE){
-		if (me==0){
-			/*			DEBUG_LOG(1,"Distribute Matrix with EQUAL_NZE on each PE");
-						ghost_mnnz_t target_nnz;
-
-						target_nnz = (cr->nEnts/nprocs)+1; // sonst bleiben welche uebrig!
-
-						lcrp->lfRow[0]  = 0;
-						lcrp->lfEnt[0] = 0;
-						j = 1;
-
-						for (i=0;i<cr->nrows;i++){
-						if (cr->rpt[i] >= j*target_nnz){
-						lcrp->lfRow[j] = i;
-						lcrp->lfEnt[j] = cr->rpt[i];
-						j = j+1;
-						}
-						}*/
-		}
-
-	}
 	/*	else if (options & GHOST_CONTEXT_WORKDIST_LNZE){
 		if (me==0){
 		WARNING_LOG("Distribution by LNZE is currently not supported");
 		options |= GHOST_CONTEXT_WORKDIST_NZE;
-	//	if (!(options & GHOST_OPTION_SERIAL_IO)) {
+		if (!(options & GHOST_OPTION_SERIAL_IO)) {
 	//	  DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
 	//	  "implemented for parallel IO! Switching to "
 	//	  "GHOST_OPTION_WORKDIST_NZE");
 	//	  options |= GHOST_CONTEXT_WORKDIST_NZE;
-	//	  } else {
+	} else {
 	DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
 	ghost_mnnz_t *loc_count;
 	int target_lnze;
@@ -775,7 +680,7 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 	prev_rows  = lcrp->lnrows[i];
 	prev_count = loc_count[i];
 
-	while (ideal==0){
+	while (ideal==0) {
 
 	trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
 
@@ -836,75 +741,63 @@ DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=
 free(loc_count);
 }
 }*/
-else {
 
-	if (me==0){
-		//	lcrp->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); //TODO needed? 
-		//	lcrp->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-		DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
-		//target_rows = (cr->nrows/nprocs);
+if (me==0){
+	//	lcrp->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); //TODO needed? 
+	//	lcrp->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+	DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
+	//target_rows = (cr->nrows/nprocs);
 
-		//	lcrp->lfRow[0] = 0;
-		lcrp->lfEnt[0] = 0;
+	//	lcrp->lfRow[0] = 0;
+	lcrp->lfEnt[0] = 0;
 
-		for (i=1; i<nprocs; i++){
-			//		lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
-			lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
-		}
-		for (i=0; i<nprocs-1; i++){
-			//	lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-			lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-		}
-
-		//	lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-		lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+	for (i=1; i<nprocs; i++){
+		//		lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
+		lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
 	}
-	MPI_Request req[nprocs];
-	MPI_Status stat[nprocs];
-	int msgcount = 0;
-
-	for (i=0;i<nprocs;i++) 
-		req[i] = MPI_REQUEST_NULL;
-
-	if (me != 0) {
-		MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-		msgcount++;
-	} else {
-		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
-			msgcount++;
-		}
+	for (i=0; i<nprocs-1; i++){
+		//	lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
+		lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
 	}
-	MPI_safecall(MPI_Waitall(msgcount,req,stat));
-	msgcount = 0;
 
-	for (i=0;i<nprocs;i++) 
-		req[i] = MPI_REQUEST_NULL;
-
-	if (me != 0) {
-		MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-		msgcount++;
-	} else {
-		for (i=1;i<nprocs;i++) {
-			MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
-			msgcount++;
-		}
-	}
-	MPI_safecall(MPI_Waitall(msgcount,req,stat));
-
-	// TODO why Bcast fails?
-
-//	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-//	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+	//	lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
+	lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
 }
+MPI_Request req[nprocs];
+MPI_Status stat[nprocs];
+int msgcount = 0;
 
+for (i=0;i<nprocs;i++) 
+req[i] = MPI_REQUEST_NULL;
 
-/****************************************************************************
- *******            Distribute correct share to all PEs               *******
- ***************************************************************************/
+if (me != 0) {
+	MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+	msgcount++;
+} else {
+	for (i=1;i<nprocs;i++) {
+		MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
+	}
+}
+MPI_safecall(MPI_Waitall(msgcount,req,stat));
+msgcount = 0;
 
-//	MPI_safecall(MPI_Bcast(lcrp->lfRow,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-//	MPI_safecall(MPI_Bcast(lcrp->lnrows, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+for (i=0;i<nprocs;i++) 
+req[i] = MPI_REQUEST_NULL;
+
+if (me != 0) {
+	MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+	msgcount++;
+} else {
+	for (i=1;i<nprocs;i++) {
+		MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
+	}
+}
+MPI_safecall(MPI_Waitall(msgcount,req,stat));
+
+// TODO why Bcast fails?
+
 //	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
 //	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
 
@@ -1131,9 +1024,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	if (datatype == mat->traits->datatype) {
 		if (swapReq) {
 			uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
-		if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
-			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
-		}
+			if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+				ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+			}
 			if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
 					for (i = 0; i<nEnts; i++) {
@@ -1169,9 +1062,9 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 			}
 		} else {
-		if ((ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
-			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
-		}
+			if ((ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
+				ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+			}
 		}
 	} else {
 		DEBUG_LOG(1,"This matrix is supposed to be of %s data but"
@@ -1349,7 +1242,7 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 static void CRS_free(ghost_mat_t * mat)
 {
 	if (mat) {
-	DEBUG_LOG(1,"Freeing CRS matrix");
+		DEBUG_LOG(1,"Freeing CRS matrix");
 #ifdef GHOST_HAVE_OPENCL
 		if (mat->traits->flags & GHOST_SPM_DEVICE) {
 			CL_freeDeviceMemory(CR(mat)->clmat->rpt);
