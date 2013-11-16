@@ -859,8 +859,43 @@ else {
 		//	lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
 		lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
 	}
-	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+	MPI_Request req[nprocs];
+	MPI_Status stat[nprocs];
+	int msgcount = 0;
+
+	for (i=0;i<nprocs;i++) 
+		req[i] = MPI_REQUEST_NULL;
+
+	if (me != 0) {
+		MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
+	} else {
+		for (i=1;i<nprocs;i++) {
+			MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+			msgcount++;
+		}
+	}
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
+	msgcount = 0;
+
+	for (i=0;i<nprocs;i++) 
+		req[i] = MPI_REQUEST_NULL;
+
+	if (me != 0) {
+		MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+		msgcount++;
+	} else {
+		for (i=1;i<nprocs;i++) {
+			MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+			msgcount++;
+		}
+	}
+	MPI_safecall(MPI_Waitall(msgcount,req,stat));
+
+	// TODO why Bcast fails?
+
+//	MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+//	MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
 }
 
 
