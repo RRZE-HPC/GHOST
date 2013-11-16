@@ -231,11 +231,11 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 		((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((comm->lnrows[me]+1)*sizeof(ghost_midx_t));
 	}
 
-	MPI_Request req[2*(nprocs-1)];
-	MPI_Status stat[2*(nprocs-1)];
+	MPI_Request req[nprocs];
+	MPI_Status stat[nprocs];
 	int msgcount = 0;
 
-	for (i=0;i<2*(nprocs-1);i++) 
+	for (i=0;i<nprocs;i++) 
 		req[i] = MPI_REQUEST_NULL;
 
 	if (ghost_getRank((*mat)->context->mpicomm) != 0) {
@@ -534,7 +534,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
 	MPI_Request req[2*nprocs];
 	MPI_Status stat[2*nprocs];
-	for (i=0;i<2*(nprocs-1);i++) 
+	for (i=0;i<2*nprocs;i++) 
 		req[i] = MPI_REQUEST_NULL;
 
 	for (i=0; i<nprocs; i++) 
