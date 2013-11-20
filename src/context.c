@@ -1,6 +1,8 @@
 #include <ghost_types.h>
 #include <ghost_util.h>
 #include <ghost_context.h>
+#include <ghost_constants.h>
+#include <ghost_affinity.h>
 #include <ghost_crs.h>
 
 

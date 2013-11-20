@@ -3,6 +3,8 @@
 #include <ghost_crs.h>
 #include <ghost_util.h>
 #include <ghost_mat.h>
+#include <ghost_constants.h>
+#include <ghost_affinity.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -874,7 +876,7 @@ ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 		}
 		for( i = 0; i < nrpt; i++ ) {
 			if ((ret = fread(&tmp, GHOST_BINCRS_SIZE_RPT_EL, 1,filed)) != 1){
-				ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+				ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 			}
 			tmp = bswap_64(tmp);
 			rpt[i] = tmp;
@@ -884,7 +886,7 @@ ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 			ABORT("Seek failed");
 		}
 		if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
-			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+			ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 		}
 	}
 #else // casting
@@ -894,7 +896,7 @@ ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 		ABORT("Seek failed");
 	}
 	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
-		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 	}
 
 	if (swapReq) {
@@ -945,7 +947,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 		ABORT("Seek failed");
 	}
 	if ((ret = fread(&datatype, 4, 1,filed)) != (1)){
-		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 	}
 	if (swapReq) datatype = bswap_32(datatype);
 
@@ -976,21 +978,21 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 	if (swapReq) {
 		int64_t *tmp = (int64_t *)malloc(nEnts*8);
 		if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
-			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+			ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 		}
 		for( i = 0; i < nEnts; i++ ) {
 			CR(mat)->col[i] = bswap_64(tmp[i]);
 		}
 	} else {
 		if ((ret = fread(CR(mat)->col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
-			ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+			ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 		}
 	}
 #else // casting
 	DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
 	int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
 	if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
-		ABORT("fread failed: %s (%lu)",strerror(errno),ret);
+		ABORT("fread failed: %s (%zu)",strerror(errno),ret);
 	}
 	for(i = 0 ; i < nRows; ++i) {
 		for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
@@ -1025,7 +1027,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 		if (swapReq) {
 			uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
 			if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
-				ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+				ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
 			}
 			if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
 				if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -1063,7 +1065,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 			}
 		} else {
 			if ((ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
-				ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+				ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
 			}
 		}
 	} else {
@@ -1073,7 +1075,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 		uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
 		if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
-			ABORT("fread failed for val: %s (%lu)",strerror(errno),ret);
+			ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
 		}
 
 		if (swapReq) {

@@ -8,9 +8,11 @@
 #include <ghost_complex.h>
 #include <ghost_util.h>
 #include <ghost_vec.h>
+#include <ghost_constants.h>
+#include <ghost_affinity.h>
+
 #include <cstdio>
 #include <iostream>
-#include <omp.h>
 
 double conjugate(double * c) {
 	return *c;
@@ -56,9 +58,9 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 #pragma omp parallel
 	nthreads = ghost_ompGetNumThreads();
 
+	v_t *partsums = (v_t *)ghost_malloc(nthreads*sizeof(v_t));
 	for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
 		v_t sum = 0;
-		v_t partsums[nthreads];
 		for (i=0; i<nthreads; i++) partsums[i] = (v_t)0.;
 
 #pragma omp parallel for 
@@ -72,6 +74,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
 		((v_t *)res)[v] = sum;
 	}
+	free(partsums);
 
 }
 
@@ -154,10 +157,10 @@ template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
 		int ndigits = (int)floor(log10(abs(rank))) + 1;
 		snprintf(prefix,4+ndigits,"PE%d: ",rank);
 	} else {
-		snprintf(prefix,1,"\0");
+		snprintf(prefix,1,"");
 	}
 #else
-	snprintf(prefix,1,"\0");
+	snprintf(prefix,1,"");
 #endif
 	
 	ghost_vidx_t i,v;

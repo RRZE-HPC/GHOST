@@ -2,6 +2,7 @@
 #include <ghost_constants.h>
 #include <ghost_util.h>
 #include <ghost_math.h>
+#include <ghost_affinity.h>
 #include <ghost_blas_mangle.h>
 #include <strings.h>
 #include <math.h>

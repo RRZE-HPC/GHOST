@@ -1,13 +1,13 @@
+#include <ghost_types.h>
+#include <ghost_affinity.h>
+#include <ghost_vec.h>
+#include <ghost_util.h>
+#include <ghost_constants.h>
+
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
-#include <omp.h>
 
-#ifdef LIKWID_PERFMON
-#include <likwid.h>
-#endif
-
-#include "ghost_util.h"
 
 // if called with context==NULL: clean up variables
 void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)

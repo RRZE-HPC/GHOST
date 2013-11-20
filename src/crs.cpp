@@ -8,8 +8,8 @@
 #include <ghost_complex.h>
 #include <ghost_util.h>
 #include <ghost_crs.h>
+#include <ghost_constants.h>
 #include <iostream>
-#include <omp.h>
 
 // TODO shift, scale als templateparameter
 

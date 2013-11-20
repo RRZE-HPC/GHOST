@@ -1,7 +1,9 @@
 #define _XOPEN_SOURCE 500 
-#include "ghost_types.h"
-#include "ghost_vec.h"
-#include "ghost_util.h"
+#include <ghost_types.h>
+#include <ghost_vec.h>
+#include <ghost_util.h>
+#include <ghost_constants.h>
+#include <ghost_affinity.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -85,7 +87,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->traits = traits;
 	getNrowsFromContext(vec);
 
-	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %lu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
+	DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %zu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
 	DEBUG_LOG(1,"Initializing vector");
 
 	vec->dotProduct = &vec_dotprod;
@@ -605,17 +607,17 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
 		ABORT("Could not vector file %s",path);
 	}
 
-	if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-	if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-	if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-	if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-	if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
-	if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+	if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
 
 	ghost_vidx_t v;
 	for (v=0; v<vec->traits->nvecs; v++) {
 		if ((ret = fwrite(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
-			ABORT("fwrite failed (%lu): %s",ret,strerror(errno));
+			ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
 	}
 	fclose(filed);
 #endif
@@ -651,7 +653,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
 
 
 	if ((ret = fread(&endianess, sizeof(endianess), 1,filed)) != 1)
-		ABORT("fread failed: %lu",ret);
+		ABORT("fread failed: %zu",ret);
 
 	if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
 		ABORT("Cannot read big endian vectors");

@@ -11,7 +11,9 @@
 #include <byteswap.h>
 
 #include <errno.h>
+#if GHOST_HAVE_OPENMP
 #include <omp.h>
+#endif
 #include <string.h>
 #include <stdarg.h>
 #include <sys/types.h>
@@ -393,7 +395,11 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 	context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
 	ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
 	mat->fromFile(mat,matrixPath);
-	ghost_vtraits_t rtraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_RHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype,.nvecs=rhs->traits->nvecs);
+	ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
+	rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
+	rtraits.datatype = rhs->traits->datatype;;
+   	rtraits.nvecs=rhs->traits->nvecs;
+
 	ghost_vec_t *globRHS = ghost_createVector(context, &rtraits);
 	globRHS->fromScalar(globRHS,zero);
 
@@ -405,7 +411,10 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 		DEBUG_LOG(1,"Computing actual reference solution with one process");
 
 
-		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST, .datatype = rhs->traits->datatype, .nvecs = rhs->traits->nvecs);
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+		ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
+		ltraits.datatype = rhs->traits->datatype;
+		ltraits.nvecs = rhs->traits->nvecs;
 
 		globLHS = ghost_createVector(context, &ltraits); 
 		globLHS->fromScalar(globLHS,&zero);
@@ -425,7 +434,10 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 		globRHS->destroy(globRHS);
 		ghost_freeContext(context);
 	} else {
-		ghost_vtraits_t ltraits = GHOST_VTRAITS_INIT(.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY, .datatype = rhs->traits->datatype, .nvecs = rhs->traits->nvecs);
+		ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+		ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
+		ltraits.datatype = rhs->traits->datatype;
+		ltraits.nvecs = rhs->traits->nvecs;
 		globLHS = ghost_createVector(context, &ltraits);
 	}
 	DEBUG_LOG(1,"Scattering result of reference solution");
@@ -593,7 +605,7 @@ void *ghost_malloc(const size_t size)
 	mem = malloc(size);
 
 	if( ! mem ) {
-		ABORT("Error in memory allocation of %lu bytes: %s",size,strerror(errno));
+		ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
 	}
 	return mem;
 }

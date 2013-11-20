@@ -1,10 +1,13 @@
+#include <ghost_types.h>
+#include <ghost_affinity.h>
+#include <ghost_vec.h>
+#include <ghost_taskq.h>
+#include <ghost_constants.h>
+#include <ghost_util.h>
+
 #include <mpi.h>
-#include <omp.h>
 #include <sys/types.h>
 #include <string.h>
-
-#include "ghost_util.h"
-#include "ghost_taskq.h"
 
 #ifdef LIKWID
 #include <likwid.h>

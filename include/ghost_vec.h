@@ -1,7 +1,7 @@
 #ifndef __GHOST_VEC_H__
 #define __GHOST_VEC_H__
 
-#include "ghost.h"
+#include <ghost_types.h>
 
 #ifdef MIC
 //#define SELL_LEN 8

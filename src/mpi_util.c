@@ -16,7 +16,6 @@
 #include <errno.h>
 
 #include <math.h>
-#include <omp.h>
 #include <complex.h>
 #include <dlfcn.h>
 

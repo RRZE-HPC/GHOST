@@ -1,7 +1,7 @@
 #ifndef __GHOST_HAVE_MPI_UTIL_H__
 #define __GHOST_HAVE_MPI_UTIL_H__
 
-#include "ghost.h"
+#include <ghost_types.h>
 
 #ifdef __cplusplus
 extern "C" {

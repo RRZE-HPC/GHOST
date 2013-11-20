@@ -367,7 +367,8 @@ struct ghost_vtraits_t
 	int flags;
 	int datatype;
 	void * aux;
-}; 
+};
+extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 
 struct ghost_mat_t 
 {
@@ -409,6 +410,7 @@ struct ghost_mtraits_t
 	void * shift; 
 	void * scale; 
 };
+extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 
 struct ghost_context_t
 {

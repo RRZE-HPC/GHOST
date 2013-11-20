@@ -2,7 +2,7 @@
 #ifndef __GHOST_SPMFORMAT_SELL__
 #define __GHOST_SPMFORMAT_SELL__
 
-#include "ghost.h"
+#include <ghost_types.h>
 
 typedef struct 
 {

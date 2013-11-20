@@ -10,6 +10,7 @@
 #include <ghost_crs.h>
 #include <ghost_sell.h>
 #include <ghost_vec.h>
+#include <ghost_constants.h>
 #include <cstdio>
 
 #define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \

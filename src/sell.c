@@ -2,6 +2,7 @@
 #include <ghost_crs.h>
 #include <ghost_util.h>
 #include <ghost_mat.h>
+#include <ghost_constants.h>
 
 #include <libgen.h>
 #include <string.h>

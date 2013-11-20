@@ -14,7 +14,6 @@
 #include <semaphore.h>
 #include <errno.h>
 #include <unistd.h>
-#include <omp.h>
 
 #define NIDLECORES (ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy))
 
@@ -491,7 +490,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
 				//if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
 				if (!hwloc_bitmap_isset(mybusy,core)) {
-					DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",omp_get_thread_num(),
+					DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_ompGetThreadNum(),
 							(int)pthread_self(),core);
 
 					//							hwloc_bitmap_set(ghost_thpool->busy,core);
@@ -551,7 +550,7 @@ void * thread_main(void *arg)
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
 
-	DEBUG_LOG(1,"Shepherd thread %llu in thread_main() called with %ld",(unsigned long)pthread_self(), (intptr_t)arg);
+	DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %d",(unsigned long)pthread_self(), (intptr_t)arg);
 	while (!killed) // as long as there are jobs stay alive
 	{
 		// TODO wait for condition when unpinned or new task
@@ -607,7 +606,7 @@ void * thread_main(void *arg)
 #endif
 		pthread_setspecific(ghost_thread_key,NULL);
 
-		DEBUG_LOG(1,"Thread %llu: Finished executing task: %p. Free'ing resources and waking up another thread"
+		DEBUG_LOG(1,"Thread %lu: Finished executing task: %p. Free'ing resources and waking up another thread"
 				,(unsigned long)pthread_self(),myTask);
 
 		pthread_mutex_lock(&globalMutex);
