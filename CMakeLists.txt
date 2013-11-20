@@ -45,7 +45,7 @@ set (HEADERS
 		include/ghost_affinity.h	
 		include/ghost_blas_mangle.h
 		include/ghost_complex.h
-		include/ghost_config.h
+		${PROJECT_BINARY_DIR}/ghost_config.h
 		include/ghost_constants.h
 		include/ghost_context.h
 		include/ghost_crs.h
@@ -152,7 +152,7 @@ endif()
 #	message(FATAL_ERROR "Could not find hw#loc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 #endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/include ${HWLOC_INCLUDE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${HWLOC_INCLUDE_DIR})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
@@ -166,7 +166,7 @@ endif()
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
-	"${PROJECT_SOURCE_DIR}/include/ghost_config.h"
+	"${PROJECT_BINARY_DIR}/ghost_config.h"
 )
 
 if (BUILD_MIC)
