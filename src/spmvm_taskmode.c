@@ -1,3 +1,4 @@
+#include <ghost_config.h>
 #include <ghost_types.h>
 #include <ghost_affinity.h>
 #include <ghost_vec.h>
@@ -13,6 +14,9 @@
 #include <likwid.h>
 #endif
 
+#if GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
 
 typedef struct {
 	ghost_vec_t *rhs;

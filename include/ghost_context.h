@@ -1,6 +1,7 @@
 #ifndef __GHOST_CONTEXT_H__
 #define __GHOST_CONTEXT_H__
 
+#include <ghost_config.h>
 #include <ghost_types.h>
 
 #ifdef __cplusplus

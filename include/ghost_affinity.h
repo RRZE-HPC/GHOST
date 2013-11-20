@@ -3,11 +3,13 @@
 
 #include <ghost_config.h>
 #include <ghost_types.h>
+#include <hwloc.h>
 
 #if GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
 
+extern hwloc_topology_t topology;
 #ifdef __cplusplus
 extern "C" {
 #endif

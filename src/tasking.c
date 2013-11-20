@@ -22,6 +22,10 @@
 #include "ghost_taskq.h"
 #include "ghost_util.h"
 
+#if GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
+
 extern int ghost_cu_device;
 
 /**
@@ -550,7 +554,7 @@ void * thread_main(void *arg)
 	int sval = 1;
 	sem_post(ghost_thpool->sem);
 
-	DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %d",(unsigned long)pthread_self(), (intptr_t)arg);
+	DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %"PRIdPTR,(unsigned long)pthread_self(), (intptr_t)arg);
 	while (!killed) // as long as there are jobs stay alive
 	{
 		// TODO wait for condition when unpinned or new task

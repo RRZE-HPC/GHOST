@@ -1,5 +1,8 @@
-#include "ghost_util.h"
-#include "ghost_mat.h"
+#include <ghost_context.h>
+#include <ghost_types.h>
+#include <ghost_util.h>
+#include <ghost_mat.h>
+#include <ghost_affinity.h>
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>

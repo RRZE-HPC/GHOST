@@ -1,3 +1,4 @@
+#include <ghost_config.h>
 #include <ghost_types.h>
 #include <ghost_affinity.h>
 #include <ghost_vec.h>
@@ -8,6 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#if GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
 
 // if called with context==NULL: clean up variables
 void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)

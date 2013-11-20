@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE 500 
+#include <ghost_config.h>
 #include <ghost_types.h>
 #include <ghost_vec.h>
 #include <ghost_util.h>
@@ -901,14 +902,14 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #endif
 #ifdef GHOST_HAVE_OPENCL
 			if (vec->traits->flags & GHOST_VEC_DEVICE) {
-				for (v=0; v<vec->traits->nvecs) { 
+				for (v=0; v<vec->traits->nvecs; v++) { 
 					CL_freeDeviceMemory( vec->CL_val_gpu[v] );
 				}
 			}
 #endif
 #ifdef GHOST_HAVE_CUDA
 			if (vec->traits->flags & GHOST_VEC_DEVICE) {
-				for (v=0; v<vec->traits->nvecs) { 
+				for (v=0; v<vec->traits->nvecs; v++) { 
 					CU_freeDeviceMemory( vec->CU_val[v] );
 				}
 			}

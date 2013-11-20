@@ -613,6 +613,7 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
 	ghost_midx_t i;
 	int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 
+	UNUSED(options);
 	/*	else if (options & GHOST_CONTEXT_WORKDIST_LNZE){
 		if (me==0){
 		WARNING_LOG("Distribution by LNZE is currently not supported");

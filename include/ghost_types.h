@@ -1,7 +1,6 @@
 #ifndef __GHOST_TYPES_H__
 #define __GHOST_TYPES_H__
 
-#include <ghost_config.h>
 #ifdef GHOST_HAVE_MPI
 #ifdef __INTEL_COMPILER
 #pragma warning (disable : 869)
@@ -351,10 +350,10 @@ struct ghost_vec_t
 	void          (*zero) (ghost_vec_t *);
 
 #ifdef GHOST_HAVE_OPENCL
-	cl_mem CL_val_gpu;
+	cl_mem * CL_val_gpu;
 #endif
 #ifdef GHOST_HAVE_CUDA
-	void * CU_val;
+	char ** CU_val;
 #endif
 };
 

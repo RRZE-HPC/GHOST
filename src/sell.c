@@ -6,6 +6,7 @@
 
 #include <libgen.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifdef GHOST_HAVE_CUDA
 //#include "private/sell_cukernel.h"

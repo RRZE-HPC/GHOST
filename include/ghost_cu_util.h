@@ -1,9 +1,6 @@
 #ifndef __GHOST_CU_UTIL_H__
 #define __GHOST_CU_UTIL_H__
 
-#include <ghost_types.h>
-
-
 void ghost_CUDA_init(int dev);
 void * CU_allocDeviceMemory( size_t bytesize );
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);

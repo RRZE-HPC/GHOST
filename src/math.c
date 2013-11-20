@@ -1,3 +1,4 @@
+#include <ghost_config.h>
 #include <ghost_types.h>
 #include <ghost_constants.h>
 #include <ghost_util.h>

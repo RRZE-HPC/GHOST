@@ -1,6 +1,7 @@
 #ifndef __GHOST_CL_UTIL_H__
 #define __GHOST_CL_UTIL_H__
 
+#include <ghost_config.h>
 #include <ghost_types.h>
 
 #include <CL/cl.h>

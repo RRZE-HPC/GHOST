@@ -12,6 +12,7 @@
 #include <ghost_vec.h>
 #include <ghost_constants.h>
 #include <cstdio>
+#include <cstdlib>
 
 #define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \
 	switch(ch) { \

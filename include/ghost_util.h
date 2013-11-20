@@ -16,7 +16,6 @@
 #endif
 
 #include <ghost_types.h>
-#include <hwloc.h>
 #ifndef __cplusplus
 #include <stdio.h>
 #include <complex.h>
@@ -248,7 +247,6 @@ extern MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 extern int hasCUDAdevice;
 extern int hasOPENCLdevice;
-extern hwloc_topology_t topology;
 
 void ghost_printHeader(const char *fmt, ...);
 void ghost_printFooter(); 

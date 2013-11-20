@@ -1,7 +1,10 @@
+#include <ghost_config.h>
 #undef GHOST_HAVE_MPI
 #include <ghost_types.h>
 #include <ghost_sell.h>
 #include <ghost_complex.h>
+#include <ghost_util.h>
+#include <ghost_constants.h>
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>

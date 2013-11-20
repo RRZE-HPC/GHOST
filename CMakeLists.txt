@@ -74,12 +74,13 @@ if (USE_CUDA)
 	find_package(CUDA QUIET)
 	if (CUDA_FOUND)
 		set(GHOST_HAVE_CUDA 1)
-		cuda_include_directories(${CMAKE_SOURCE_DIR}/include)
+		cuda_include_directories(${CMAKE_SOURCE_DIR}/include
+				${CMAKE_BINARY_DIR})
 		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
-		cuda_compile(BJDS_KERNEL_O src/bjds_cukernel.cu)
+		cuda_compile(SELL_KERNEL_O src/sell_kernel.cu)
 		set (SOURCES 
 				${SOURCES} 
-				${BJDS_KERNEL_O}
+				${SELL_KERNEL_O}
 				src/cu_util.c	
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
