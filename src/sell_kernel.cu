@@ -1,12 +1,10 @@
 #undef GHOST_HAVE_MPI
-#include <ghost.h>
-#include <stdio.h>
-#include <cuda_runtime.h>
-//#include <ghost_util.h>
 #include <ghost_types.h>
 #include <ghost_sell.h>
 #include <ghost_complex.h>
 #include <cuComplex.h>
+#include <stdio.h>
+#include <cuda_runtime.h>
 
 #define CHOOSE_KERNEL(dt1,dt2,ch, ...) \
 	switch(ch) { \

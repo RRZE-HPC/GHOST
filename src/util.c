@@ -1,10 +1,14 @@
 #define _GNU_SOURCE
 #include <ghost_config.h>
-#include "ghost_util.h"
-#include "ghost.h"
-#include "ghost_vec.h"
+#include <ghost_types.h>
+#include <ghost_util.h>
+#include <ghost_vec.h>
 #include <ghost_context.h>
 #include <ghost_mat.h>
+#include <ghost_math.h>
+#include <ghost_taskq.h>
+#include <ghost_constants.h>
+#include <ghost_affinity.h>
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>

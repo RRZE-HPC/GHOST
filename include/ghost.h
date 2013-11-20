@@ -25,8 +25,6 @@
 #include <cuda.h>
 #endif
 #endif*/
-#define GHOST_NAME "GHOST"
-#define GHOST_VERSION "0.5"
 
 #include <ghost_types.h>
 #include <ghost_util.h>

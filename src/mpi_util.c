@@ -1,7 +1,9 @@
 #define _GNU_SOURCE
-#include "ghost_mpi_util.h"
-#include "ghost.h"
-#include "ghost_util.h"
+
+#include <ghost_types.h>
+#include <ghost_mpi_util.h>
+#include <ghost_util.h>
+#include <ghost_constants.h>
 
 #include <stdio.h>
 #include <string.h>

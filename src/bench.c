@@ -1,4 +1,3 @@
-#include "ghost.h"
 #include "ghost_util.h"
 #include "ghost_bench.h"
 

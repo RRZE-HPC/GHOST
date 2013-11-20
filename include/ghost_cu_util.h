@@ -1,7 +1,7 @@
 #ifndef __GHOST_CU_UTIL_H__
 #define __GHOST_CU_UTIL_H__
 
-#include <ghost.h>
+#include <ghost_types.h>
 
 
 void ghost_CUDA_init(int dev);
