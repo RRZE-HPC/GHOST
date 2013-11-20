@@ -80,6 +80,7 @@
 	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
 	fflush(stderr);\
 	MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
+	exit(EXIT_FAILURE);\
 }
 #else
 #define ABORT(msg, ...) {\
