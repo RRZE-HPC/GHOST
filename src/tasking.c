@@ -125,6 +125,11 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 		levels = _levels;
 	}
 
+	if (levels<1) {
+		WARNING_LOG("Less than 1 SMT levels");
+		return GHOST_FAILURE;
+	}
+
 	if (_nThreads == GHOST_THPOOL_NTHREADS_FULLNODE) {
 		int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
 		nThreads = (int *)ghost_malloc(levels*sizeof(int));
@@ -151,6 +156,11 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 	for (l=0; l<levels; l++) {
 		DEBUG_LOG(1,"Required %d threads @ SMT level %d, starting from thread %d",nThreads[l],l,firstThread[l]);
 		totalThreads += nThreads[l];
+	}
+
+	if (totalThreads < 1) {
+		WARNING_LOG("Less than 1 threads in the thread pool");
+		return GHOST_FAILURE;
 	}
 
 	ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
@@ -713,7 +723,7 @@ static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
 	}
 
 	pthread_mutex_lock(&q->mutex);
-	if ((q->tail == NULL) && (q->head == NULL)) {
+	if ((q->tail == NULL) || (q->head == NULL)) {
 		DEBUG_LOG(1,"Adding task %p to empty queue",t);
 		q->head = t;
 		q->tail = t;
@@ -1018,8 +1028,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 		int poolThreads[] = {nt,nt};
 		int firstThread[] = {ft,ft};
 		int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-		int totalthreads = nt*levels;
-		DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",totalthreads);
+		DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nt*levels);
 		ghost_thpool_init(poolThreads,firstThread,levels);
 	}
 	if (taskq == NULL) {

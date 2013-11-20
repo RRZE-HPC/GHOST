@@ -107,6 +107,12 @@ static void shared_mem_deallocate(void * shmRegion)
 	}
 
 	err = close(g_shm_fd);
+	if (err < 0) {
+		if (errno != ENOENT) {
+			perror("close");
+			shouldExit = 1;
+		}
+	}
 
 	if (shouldExit) {
 		ABORT("shared_mem_deallocate");
@@ -120,9 +126,8 @@ int ghost_getNumberOfLocalRanks(MPI_Comm comm)
 	MPI_safecall(MPI_Barrier(comm));
 	int * nodeRankPtr = (int *)shared_mem_allocate();
 	MPI_safecall(MPI_Barrier(comm));
-	int nodeRank;
 
-	nodeRank = atomic_fetch_add(nodeRankPtr, 1);
+	atomic_fetch_add(nodeRankPtr, 1);
 	MPI_safecall(MPI_Barrier(comm));
 	int nranks = *nodeRankPtr;
 	shared_mem_deallocate((void *)nodeRankPtr);
@@ -169,9 +174,12 @@ void ghost_pinThreads(int options, char *procList)
 		DEBUG_LOG(1,"Adjusting number of threads to %d",nCores);
 		ghost_ompSetNumThreads(nCores);
 
+		if (cores != NULL) {
 #pragma omp parallel
-		ghost_setCore(cores[ghost_ompGetThreadNum()]);
+			ghost_setCore(cores[ghost_ompGetThreadNum()]);
+		}
 
+		free(list);
 		free(cores);
 	} else {
 		DEBUG_LOG(1,"Trying to automatically pin threads");

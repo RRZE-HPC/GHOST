@@ -210,7 +210,7 @@ void ghost_printContextInfo(ghost_context_t *context)
 	}
 
 	if (myrank == 0) {
-		char *contextType;
+		char *contextType = "";
 		if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
 			contextType = "Distributed";
 		else if (context->flags & GHOST_CONTEXT_GLOBAL)

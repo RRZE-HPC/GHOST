@@ -497,6 +497,9 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 				if (j<SELL(mat)->rowLen[row]) {
 					if (flags & GHOST_SPM_SORTED) {
+						if (invRowPerm == NULL) {
+							ABORT("The matris is sorted but the permutation vector is NULL");
+						}
 						((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(invRowPerm)[row]]+j];
 						if (flags & GHOST_SPM_PERMUTECOLIDX)
 							SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (rowPerm)[cr->col[cr->rpt[(invRowPerm)[row]]+j]];

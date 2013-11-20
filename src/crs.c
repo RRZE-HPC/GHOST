@@ -277,7 +277,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 	int *comm_remotePE, *comm_remoteEl;
 	ghost_mnnz_t lnEnts_l, lnEnts_r;
 	int current_l, current_r;
-	ghost_midx_t pseudo_ldim;
 	int acc_transfer_wishes, acc_transfer_dues;
 
 	size_t size_nint, size_col;
@@ -499,8 +498,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
 	if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
-		pseudo_ldim = lcrp->lnrows[me]+lcrp->halo_elements ;
-
 		lnEnts_l=0;
 		for (i=0; i<lcrp->lnEnts[me];i++) {
 			if (fullCR->col[i]<lcrp->lnrows[me]) lnEnts_l++;
@@ -510,7 +507,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 		lnEnts_r = lcrp->lnEnts[me]-lnEnts_l;
 
 		DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
-				me, lcrp->lnrows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me], pseudo_ldim );
+				me, lcrp->lnrows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me],lcrp->lnrows[me]+lcrp->halo_elements  );
 
 		localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
 		remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
@@ -599,7 +596,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 	free(mat->localPart->data); // has been allocated in init()
 	mat->localPart->symmetry = mat->symmetry;
 	mat->localPart->data = localCR;
-	CR(mat->localPart)->rpt = localCR->rpt;
+	//CR(mat->localPart)->rpt = localCR->rpt;
 
 	mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
 	free(mat->remotePart->data); // has been allocated in init()
