@@ -6,11 +6,11 @@
 
 typedef struct
 {
-/*	ghost_midx_t len;
+	ghost_midx_t len;
 	ghost_midx_t idx;
-	ghost_dt val;
+	void *val;
 	ghost_midx_t minRow;
-	ghost_midx_t maxRow;*/
+	ghost_midx_t maxRow;
 }
 CONST_DIAG;
 
@@ -22,6 +22,8 @@ typedef struct
 	cl_mem rpt;
 	cl_mem col;
 	cl_mem val;
+#else
+	void *empty;
 #endif
 } 
 CL_CR_TYPE;

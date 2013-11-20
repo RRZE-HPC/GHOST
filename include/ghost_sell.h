@@ -15,6 +15,8 @@ typedef struct
 	cl_mem chunkLen;
 	ghost_cl_midx_t nrows;
 	ghost_cl_midx_t nrowsPadded;
+#else
+	void *empty;
 #endif
 } 
 CL_SELL_TYPE;
@@ -29,6 +31,8 @@ typedef struct
 	ghost_midx_t * chunkLen;
 	ghost_midx_t nrows;
 	ghost_midx_t nrowsPadded;
+#else
+	void *empty;
 #endif
 } 
 CU_SELL_TYPE;
