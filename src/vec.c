@@ -958,6 +958,10 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_
 	ghost_vec_t *new = ghost_createVector(src->context,ghost_cloneVtraits(src->traits));
 	new->traits->nvecs = nc;
 
+	// copy the data even if the input vector is itself a view
+	// (bitwise NAND operation to unset the view flag if set)
+	new->traits->flags &= ~GHOST_VEC_VIEW;
+
 	new->fromVec(new,src,coffs);
 	return new;
 }
