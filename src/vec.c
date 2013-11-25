@@ -732,12 +732,7 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 		memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
 	}
 
-#ifdef GHOST_HAVE_OPENCL
-	vec->CLupload(vec);
-#endif
-#ifdef GHOST_HAVE_CUDA
-	vec->CUupload(vec);
-#endif
+	vec->upload(vec);
 }
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
@@ -785,14 +780,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 //	*nodeVec = vec->clone(vec);
 #endif
 
-#ifdef GHOST_HAVE_OPENCL
-	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
-		nodeVec->CLupload(nodeVec);
-#endif
-#ifdef GHOST_HAVE_CUDA
-	if (!(nodeVec->traits->flags & GHOST_VEC_HOST))
-		nodeVec->CUupload(nodeVec);
-#endif
+	nodeVec->upload(nodeVec);
 
 	DEBUG_LOG(1,"Vector distributed successfully");
 }
