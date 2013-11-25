@@ -83,6 +83,7 @@ static void vec_downloadNonHalo(ghost_vec_t *vec);
 
 ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 {
+	ghost_vidx_t v;
 	ghost_vec_t *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
 	vec->context = ctx;
 	vec->traits = traits;
@@ -125,12 +126,19 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	vec->uploadNonHalo = &vec_uploadNonHalo;
 	vec->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
-	vec->CU_val = NULL;
 	vec->CUupload = &vec_CUupload;
 	vec->CUdownload = &vec_CUdownload;
 	if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
 		DEBUG_LOG(2,"Setting vector storage to host&device");
 		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
+	}
+	if (vec->traits->flags & GHOST_VEC_DEVICE) {
+		vec->CU_val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
+		for (v=0; v<vec->traits->nvecs; v++) {
+			vec->CU_val[v] = NULL;
+		}
+	} else {
+		vec->CU_val = NULL;
 	}
 #elif defined(OPENCL)
 	vec->CL_val_gpu = NULL;
@@ -146,7 +154,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 	// TODO free val of vec only if scattered (but do not free val[0] of course!)
 	vec->val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
 	
-	ghost_vidx_t v;
 	for (v=0; v<vec->traits->nvecs; v++) {
 		vec->val[v] = NULL;
 	}
