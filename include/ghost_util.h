@@ -19,9 +19,11 @@
 #ifndef __cplusplus
 #include <stdio.h>
 #include <complex.h>
+#include <stdlib.h>
 #else
 #include <cstdio>
 #include <complex>
+#include <cstdlib>
 #endif
 /******************************************************************************/
 /****** Makros ****************************************************************/

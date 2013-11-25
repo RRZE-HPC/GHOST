@@ -737,6 +737,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 {
 	DEBUG_LOG(1,"Distributing vector");
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+	ghost_vidx_t c;
 #ifdef GHOST_HAVE_MPI
 	int me = ghost_getRank(nodeVec->context->mpicomm);
 	DEBUG_LOG(2,"Scattering global vector to local vectors");
@@ -746,7 +747,6 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 	int nprocs = ghost_getNumberOfRanks(nodeVec->context->mpicomm);
 	int i;
-	ghost_vidx_t c;
 
 	MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
 	MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
@@ -771,7 +771,8 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	for (c=0; c<vec->traits->nvecs) {
+
+	for (c=0; c<vec->traits->nvecs; c++) {
 		memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrowspadded*sizeofdt);
 	}
 //	*nodeVec = vec->clone(vec);
@@ -791,6 +792,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
 static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
 {
+	ghost_vidx_t c;
 #ifdef GHOST_HAVE_MPI
 	MPI_Datatype mpidt;
 
@@ -813,7 +815,6 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 
 	int nprocs = ghost_getNumberOfRanks(vec->context->mpicomm);
 	int i;
-	ghost_vidx_t c;
 	size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
 	ghost_comm_t *comm = vec->context->communicator;
@@ -840,7 +841,7 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 	}
 	MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #else
-	if (vec->context != NULL)
+	if (vec->context != NULL) {
 		vec->permute(vec,vec->context->invRowPerm);
 		for (c=0; c<vec->traits->nvecs; c++) {
 			memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
