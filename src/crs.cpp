@@ -29,12 +29,12 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 	if (options & GHOST_SPMVM_APPLY_SCALE)
 		scale = *((v_t *)(mat->traits->scale));
 
-	for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
-	{
-		rhsv = (v_t *)rhs->val[v];
-		lhsv = (v_t *)lhs->val[v];
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-		for (i=0; i<cr->nrows; i++){
+#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv)
+	for (i=0; i<cr->nrows; i++){
+		for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+		{
+			rhsv = (v_t *)rhs->val[v];
+			lhsv = (v_t *)lhs->val[v];
 			hlp1 = (v_t)0.0;
 			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
 				hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
