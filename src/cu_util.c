@@ -19,65 +19,65 @@ int hasCUDAdevice;
 
 void ghost_CUDA_init(int dev)
 {
-	int nDevs = 0;
-	CU_safecall(cudaGetDeviceCount(&nDevs));
+    int nDevs = 0;
+    CU_safecall(cudaGetDeviceCount(&nDevs));
 
-	DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
+    DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
 
-	if (dev<nDevs) {
-		ghost_cu_device = dev;
+    if (dev<nDevs) {
+        ghost_cu_device = dev;
 
-		DEBUG_LOG(1,"Selecting CUDA device %d",ghost_cu_device);
-		CU_safecall(cudaSetDevice(ghost_cu_device));
+        DEBUG_LOG(1,"Selecting CUDA device %d",ghost_cu_device);
+        CU_safecall(cudaSetDevice(ghost_cu_device));
 
-		hasCUDAdevice = 1;
-	} else {
-		hasCUDAdevice = 0;
-	}
+        hasCUDAdevice = 1;
+    } else {
+        hasCUDAdevice = 0;
+    }
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
 {
-	if (bytesize == 0)
-		return NULL;
+    if (bytesize == 0)
+        return NULL;
 
-	void *ret;
-	CU_safecall(cudaMalloc(&ret,bytesize));
+    void *ret;
+    CU_safecall(cudaMalloc(&ret,bytesize));
 
-	return ret;
+    return ret;
 }
 
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
 {
-	if (bytesize > 0)
-		CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
+    if (bytesize > 0)
+        CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
 }
 
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
-		size_t bytesize, size_t offset)
+        size_t bytesize, size_t offset)
 {
-	UNUSED(devmem);
-	UNUSED(hostmem);
-	UNUSED(bytesize);
-	UNUSED(offset);
-	ABORT("not implemented yet");
+    UNUSED(devmem);
+    UNUSED(hostmem);
+    UNUSED(bytesize);
+    UNUSED(offset);
+    ABORT("not implemented yet");
 }
 
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
 {
-	//WARNING_LOG("%p %p %lu %d",devmem,hostmem,bytesize,device);
-	if (bytesize > 0)
-		CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
+    //WARNING_LOG("%p %p %lu %d",devmem,hostmem,bytesize,device);
+    if (bytesize > 0)
+        CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
 }
 
 void CU_freeDeviceMemory(void * mem)
 {
-	CU_safecall(cudaFree(mem));
+    CU_safecall(cudaFree(mem));
 }
 
 void CU_barrier()
 {
-	CU_safecall(cudaDeviceSynchronize());
+    CU_safecall(cudaDeviceSynchronize());
 }
 
 void CU_finish() 
@@ -88,115 +88,115 @@ void CU_finish()
 
 void CU_uploadVector( ghost_vec_t *vec )
 {
-	CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+    CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 void CU_downloadVector( ghost_vec_t *vec )
 {
-	CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+    CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static int stringcmp(const void *x, const void *y)
 {
-	return (strcmp((char *)x, (char *)y));
+    return (strcmp((char *)x, (char *)y));
 }
 
 ghost_acc_info_t *CU_getDeviceInfo() 
 {
-	ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
-	devInfo->nDistinctDevices = 1;
+    ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
+    devInfo->nDistinctDevices = 1;
 
-	int me,size,i;
-	char name[CU_MAX_DEVICE_NAME_LEN];
-	char *names = NULL;
+    int me,size,i;
+    char name[CU_MAX_DEVICE_NAME_LEN];
+    char *names = NULL;
 
-	me = ghost_getRank(MPI_COMM_WORLD);
-	size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
+    me = ghost_getRank(MPI_COMM_WORLD);
+    size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 
-	if (hasCUDAdevice) {
-		struct cudaDeviceProp devProp;
-		CU_safecall(cudaGetDeviceProperties(&devProp,ghost_cu_device));
-		strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
-	} else {
-		strncpy(name,"None",5);
-	}
+    if (hasCUDAdevice) {
+        struct cudaDeviceProp devProp;
+        CU_safecall(cudaGetDeviceProperties(&devProp,ghost_cu_device));
+        strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
+    } else {
+        strncpy(name,"None",5);
+    }
 
-	int *displs;
-	int *recvcounts;
+    int *displs;
+    int *recvcounts;
 
-	if (me==0) {
-		names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
-		recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
-		displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
-		
-		for (i=0; i<ghost_getNumberOfRanks(MPI_COMM_WORLD); i++) {
-			recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
-			displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
+    if (me==0) {
+        names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
+        recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
+        displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
+        
+        for (i=0; i<ghost_getNumberOfRanks(MPI_COMM_WORLD); i++) {
+            recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
+            displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
 
-		}
-	}
+        }
+    }
 
 
 #ifdef GHOST_HAVE_MPI
-	MPI_safecall(MPI_Gatherv(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
-				recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Gatherv(name,CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+                recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
-	strncpy(names,name,CU_MAX_DEVICE_NAME_LEN);
+    strncpy(names,name,CU_MAX_DEVICE_NAME_LEN);
 #endif
 
-	if (me==0) {
-		qsort(names,size,CU_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
-		for (i=1; i<size; i++) {
-			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
-						names+i*CU_MAX_DEVICE_NAME_LEN)) {
-				devInfo->nDistinctDevices++;
-			}
-		}
-	}
+    if (me==0) {
+        qsort(names,size,CU_MAX_DEVICE_NAME_LEN*sizeof(char),stringcmp);
+        for (i=1; i<size; i++) {
+            if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
+                        names+i*CU_MAX_DEVICE_NAME_LEN)) {
+                devInfo->nDistinctDevices++;
+            }
+        }
+    }
 
 #ifdef GHOST_HAVE_MPI
-	MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 
-	devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
-	devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
-	for (i=0; i<devInfo->nDistinctDevices; i++) {
-		devInfo->names[i] = ghost_malloc(sizeof(char)*CU_MAX_DEVICE_NAME_LEN);
-		devInfo->nDevices[i] = 1;
-	}
+    devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
+    devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
+    for (i=0; i<devInfo->nDistinctDevices; i++) {
+        devInfo->names[i] = ghost_malloc(sizeof(char)*CU_MAX_DEVICE_NAME_LEN);
+        devInfo->nDevices[i] = 1;
+    }
 
-	if (me==0) {
-		strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
+    if (me==0) {
+        strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
 
-		int distIdx = 1;
-		for (i=1; i<size; i++) {
-			if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
-						names+i*CU_MAX_DEVICE_NAME_LEN)) {
-				strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
-				distIdx++;
-			} else {
-				devInfo->nDevices[distIdx-1]++;
-			}
-		}
-		free(names);
-	}
+        int distIdx = 1;
+        for (i=1; i<size; i++) {
+            if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
+                        names+i*CU_MAX_DEVICE_NAME_LEN)) {
+                strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
+                distIdx++;
+            } else {
+                devInfo->nDevices[distIdx-1]++;
+            }
+        }
+        free(names);
+    }
 
 #ifdef GHOST_HAVE_MPI
-	MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
-	for (i=0; i<devInfo->nDistinctDevices; i++)
-		MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+    for (i=0; i<devInfo->nDistinctDevices; i++)
+        MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
 #endif
 
-	return devInfo;
+    return devInfo;
 }
 
 const char * CU_getVersion()
 {
-	int rtVersion, drVersion;
-	CU_safecall(cudaRuntimeGetVersion(&rtVersion));
-	CU_safecall(cudaDriverGetVersion(&drVersion));
-	char *version = (char *)malloc(1024); // TODO as parameter, else: leak
-	snprintf(version,1024,"Runtime: %d, Driver: %d",rtVersion,drVersion);
-	return version;
+    int rtVersion, drVersion;
+    CU_safecall(cudaRuntimeGetVersion(&rtVersion));
+    CU_safecall(cudaDriverGetVersion(&drVersion));
+    char *version = (char *)malloc(1024); // TODO as parameter, else: leak
+    snprintf(version,1024,"Runtime: %d, Driver: %d",rtVersion,drVersion);
+    return version;
 }

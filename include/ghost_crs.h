@@ -6,46 +6,46 @@
 
 typedef struct
 {
-	ghost_midx_t len;
-	ghost_midx_t idx;
-	void *val;
-	ghost_midx_t minRow;
-	ghost_midx_t maxRow;
+    ghost_midx_t len;
+    ghost_midx_t idx;
+    void *val;
+    ghost_midx_t minRow;
+    ghost_midx_t maxRow;
 }
 CONST_DIAG;
 
 typedef struct 
 {
 #ifdef GHOST_HAVE_OPENCL
-	ghost_cl_midx_t  nrows, ncols;
-	ghost_cl_mnnz_t  nEnts;
-	cl_mem rpt;
-	cl_mem col;
-	cl_mem val;
+    ghost_cl_midx_t  nrows, ncols;
+    ghost_cl_mnnz_t  nEnts;
+    cl_mem rpt;
+    cl_mem col;
+    cl_mem val;
 #else
-	void *empty;
+    void *empty;
 #endif
 } 
 CL_CR_TYPE;
 
 typedef struct 
 {
-	ghost_midx_t  nrows, ncols;
-	ghost_mnnz_t  nEnts;
-	ghost_midx_t  *rpt;
-	ghost_midx_t  *col;
-	char *val;
+    ghost_midx_t  nrows, ncols;
+    ghost_mnnz_t  nEnts;
+    ghost_midx_t  *rpt;
+    ghost_midx_t  *col;
+    char *val;
 
-	CL_CR_TYPE *clmat;
-	ghost_midx_t nConstDiags;
-	CONST_DIAG *constDiags;
+    CL_CR_TYPE *clmat;
+    ghost_midx_t nConstDiags;
+    CONST_DIAG *constDiags;
 } 
 CR_TYPE;
 
 /*typedef struct 
 {
-	ghost_midx_t row, col, nThEntryInRow;
-	ghost_dt val;
+    ghost_midx_t row, col, nThEntryInRow;
+    ghost_dt val;
 } 
 NZE_TYPE;*/
 
@@ -59,7 +59,7 @@ template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, vo
 template<typename> void CRS_valToStr_tmpl(void *, char *, int);
 extern "C" {
 #endif
-	
+    
 ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath);
 void dd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void ds_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);

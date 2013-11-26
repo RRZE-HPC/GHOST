@@ -45,145 +45,145 @@
 
 #ifdef GHOST_HAVE_MPI
 #define DEBUG_LOG(level,msg, ...) {\
-	if(DEBUG >= level) {\
-		int __me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stderr,"PE%d at %s:%d: "msg"\n",__me,__FILE__,__LINE__,##__VA_ARGS__);\
-		fflush(stderr);\
-	}\
+    if(DEBUG >= level) {\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stderr,"PE%d at %s:%d: "msg"\n",__me,__FILE__,__LINE__,##__VA_ARGS__);\
+        fflush(stderr);\
+    }\
 }
 #else
 #define DEBUG_LOG(level,msg, ...) {\
-	if(DEBUG >= level) {\
-		fprintf(stderr,"%s:%d: "msg"\n",__FILE__,__LINE__,##__VA_ARGS__);\
-		fflush(stderr);\
-	}\
+    if(DEBUG >= level) {\
+        fprintf(stderr,"%s:%d: "msg"\n",__FILE__,__LINE__,##__VA_ARGS__);\
+        fflush(stderr);\
+    }\
 }
 #endif
 
 #ifdef GHOST_HAVE_MPI
 #define WARNING_LOG(msg, ...) {\
-	int __me;\
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
-	fflush(stderr);\
+    int __me;\
+    MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+    fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
+    fflush(stderr);\
 }
 #else
 #define WARNING_LOG(msg, ...) {\
-	fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
-	fflush(stderr);\
+    fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
+    fflush(stderr);\
 }
 #endif
 
 #ifdef GHOST_HAVE_MPI
 #define ABORT(msg, ...) {\
-	int __me;\
-	MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-	fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
-	fflush(stderr);\
-	MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
-	exit(EXIT_FAILURE);\
+    int __me;\
+    MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+    fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
+    fflush(stderr);\
+    MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
+    exit(EXIT_FAILURE);\
 }
 #else
 #define ABORT(msg, ...) {\
-	fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: ",__FILE__,__LINE__);\
-	fprintf(stderr,msg, ##__VA_ARGS__);\
-	fprintf(stderr, ANSI_COLOR_RESET"\n");\
-	fflush(stderr);\
-	exit(EXIT_FAILURE);\
+    fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: ",__FILE__,__LINE__);\
+    fprintf(stderr,msg, ##__VA_ARGS__);\
+    fprintf(stderr, ANSI_COLOR_RESET"\n");\
+    fflush(stderr);\
+    exit(EXIT_FAILURE);\
 }
 #endif
 
 #define MPI_safecall(call) {\
-	int mpierr = call ;\
-	if( MPI_SUCCESS != mpierr ){\
-		fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
-				__FILE__, __LINE__, mpierr);\
-		fflush(stderr);\
-	}\
+    int mpierr = call ;\
+    if( MPI_SUCCESS != mpierr ){\
+        fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
+                __FILE__, __LINE__, mpierr);\
+        fflush(stderr);\
+    }\
 }
 
 #ifdef GHOST_HAVE_MPI
 #define CL_safecall(call) {\
-	cl_int clerr = call ;\
-	if( CL_SUCCESS != clerr ){\
-		int __me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__me, __FILE__, __LINE__, CL_errorString(clerr));\
-		fflush(stderr);\
-	}\
+    cl_int clerr = call ;\
+    if( CL_SUCCESS != clerr ){\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __me, __FILE__, __LINE__, CL_errorString(clerr));\
+        fflush(stderr);\
+    }\
 }
 
 #define CL_checkerror(clerr) do{\
-	if( CL_SUCCESS != clerr ){\
-		int __me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__me, __FILE__, __LINE__, CL_errorString(clerr));\
-		fflush(stdout);\
-	}\
+    if( CL_SUCCESS != clerr ){\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __me, __FILE__, __LINE__, CL_errorString(clerr));\
+        fflush(stdout);\
+    }\
 } while(0)
 #else
 #define CL_safecall(call) {\
-	cl_int clerr = call ;\
-	if( CL_SUCCESS != clerr ){\
-		fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__FILE__, __LINE__, CL_errorString(clerr));\
-		fflush(stderr);\
-	}\
+    cl_int clerr = call ;\
+    if( CL_SUCCESS != clerr ){\
+        fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __FILE__, __LINE__, CL_errorString(clerr));\
+        fflush(stderr);\
+    }\
 }
 
 #define CL_checkerror(clerr) do{\
-	if( CL_SUCCESS != clerr ){\
-		fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__FILE__, __LINE__, CL_errorString(clerr));\
-		fflush(stdout);\
-	}\
+    if( CL_SUCCESS != clerr ){\
+        fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __FILE__, __LINE__, CL_errorString(clerr));\
+        fflush(stdout);\
+    }\
 } while(0)
 #endif
 
 #ifdef GHOST_HAVE_MPI
 #define CU_safecall(call) {\
-	cudaError_t __cuerr = call ;\
-	if( cudaSuccess != __cuerr ){\
-		int __me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-		fflush(stdout);\
-	}\
+    cudaError_t __cuerr = call ;\
+    if( cudaSuccess != __cuerr ){\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+        fflush(stdout);\
+    }\
 }
 
 #define CU_checkerror() {\
-	cudaError_t __cuerr = cudaGetLastError();\
-	if( cudaSuccess != __cuerr ){\
-		int __me;\
-		MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-		fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-		fflush(stdout);\
-	}\
+    cudaError_t __cuerr = cudaGetLastError();\
+    if( cudaSuccess != __cuerr ){\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+        fflush(stdout);\
+    }\
 }
 
 #else
 
 #define CU_safecall(call) {\
-	cudaError_t __cuerr = call ;\
-	if( cudaSuccess != __cuerr ){\
-		fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-		fflush(stdout);\
-	}\
+    cudaError_t __cuerr = call ;\
+    if( cudaSuccess != __cuerr ){\
+        fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+        fflush(stdout);\
+    }\
 }
 
 #define CU_checkerror() {\
-	cudaError_t __cuerr = cudaGetLastError();\
-	if( cudaSuccess != __cuerr ){\
-		fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-				__FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-		fflush(stdout);\
-	}\
+    cudaError_t __cuerr = cudaGetLastError();\
+    if( cudaSuccess != __cuerr ){\
+        fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
+                __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+        fflush(stdout);\
+    }\
 }
 #endif
 
@@ -195,20 +195,20 @@
 #endif
 
 #define GHOST_REGISTER_DT_D(name) \
-	typedef double name ## _t; \
-	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
+    typedef double name ## _t; \
+    int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
 
 #define GHOST_REGISTER_DT_S(name) \
-	typedef float name ## _t; \
-	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
+    typedef float name ## _t; \
+    int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
 
 #define GHOST_REGISTER_DT_C(name) \
-	typedef complex float name ## _t; \
-	int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
+    typedef complex float name ## _t; \
+    int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
 
 #define GHOST_REGISTER_DT_Z(name) \
-	typedef complex double name ## _t; \
-	int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
+    typedef complex double name ## _t; \
+    int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
 
 #define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
 
@@ -217,7 +217,7 @@
 #if GHOST_HAVE_INSTR_TIMING
 #define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
 #define GHOST_INSTR_STOP(tag) printf(ANSI_COLOR_BLUE "[GHOST_TIMING] %s: %e secs\n" ANSI_COLOR_RESET,\
-	#tag,ghost_wctime()-__start_##tag);
+    #tag,ghost_wctime()-__start_##tag);
 #elif GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #define GHOST_INSTR_START(tag) { \

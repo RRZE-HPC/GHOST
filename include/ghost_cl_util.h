@@ -16,7 +16,7 @@ cl_mem CL_allocDeviceMemoryCached( size_t bytesize, void *hostPtr );
 void * CL_mapBuffer(cl_mem devmem, size_t bytesize);
 void CL_copyDeviceToHost( void*, cl_mem, size_t );
 cl_event CL_copyDeviceToHostNonBlocking( void* hostmem, cl_mem devmem,
-	   	size_t bytesize );
+           size_t bytesize );
 void CL_copyHostToDevice( cl_mem, void*, size_t );
 void CL_copyHostToDeviceOffset( cl_mem, void*, size_t, size_t);
 void CL_freeDeviceMemory( cl_mem );

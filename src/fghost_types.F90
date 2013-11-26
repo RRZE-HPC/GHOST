@@ -46,7 +46,7 @@ TYPE, BIND(C) :: ghost_vec_t
   TYPE(c_funptr) :: fromFile !(ghost_vec_t *, char *path, off_t);
   TYPE(c_funptr) :: fromRand !(ghost_vec_t *);
   TYPE(c_funptr) :: fromScalar !(ghost_vec_t *, void *);
-  TYPE(c_funptr) :: zero !	!(ghost_vec_t *);
+  TYPE(c_funptr) :: zero !    !(ghost_vec_t *);
   TYPE(c_funptr) :: distribute !(ghost_vec_t *, ghost_vec_t **, ghost_comm_t *comm);
   TYPE(c_funptr) :: collect !(ghost_vec_t *, ghost_vec_t *, ghost_context_t *);
   TYPE(c_funptr) :: swap !(ghost_vec_t *, ghost_vec_t *);
@@ -140,54 +140,54 @@ END TYPE ghost_mtraits_t
 #if 0
 
 struct ghost_comm_t {
-	ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
-	ghost_mnnz_t* lnEnts;
-	ghost_mnnz_t* lfEnt;
-	ghost_midx_t* lnrows;
-	ghost_midx_t* lfRow;
-	ghost_mnnz_t* wishes;
-	int* wishlist_mem; // TODO delete
-	int** wishlist; // TODO delete
-	ghost_mnnz_t* dues;
-	int* duelist_mem; // TODO delete
-	int** duelist;
-	int* due_displ;
-	int* wish_displ; // TODO delete
-	int* hput_pos;
+    ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
+    ghost_mnnz_t* lnEnts;
+    ghost_mnnz_t* lfEnt;
+    ghost_midx_t* lnrows;
+    ghost_midx_t* lfRow;
+    ghost_mnnz_t* wishes;
+    int* wishlist_mem; // TODO delete
+    int** wishlist; // TODO delete
+    ghost_mnnz_t* dues;
+    int* duelist_mem; // TODO delete
+    int** duelist;
+    int* due_displ;
+    int* wish_displ; // TODO delete
+    int* hput_pos;
 };
 
 struct ghost_mat_t {
-	ghost_mtraits_t *traits; // TODO rename
+    ghost_mtraits_t *traits; // TODO rename
 
-	// access functions
-	void (*destroy) (ghost_mat_t *);
-	void (*printInfo) (ghost_mat_t *);
-	ghost_mnnz_t (*nnz) (ghost_mat_t *);
-	ghost_midx_t (*nrows) (ghost_mat_t *);
-	ghost_midx_t (*ncols) (ghost_mat_t *);
-	ghost_midx_t (*rowLen) (ghost_mat_t *, ghost_midx_t i); // ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
-	char * (*formatName) (ghost_mat_t *);
-	void (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
-	void (*fromMM)(ghost_mat_t *, char *matrixPath);
-	void (*CLupload)(ghost_mat_t *);
-	void (*CUupload)(ghost_mat_t *);
-	size_t (*byteSize)(ghost_mat_t *);
-	void (*fromCRS)(ghost_mat_t *, void *);
-	void (*split)(ghost_mat_t *, int options, ghost_context_t *, ghost_mtraits_t *traits);
-	ghost_dummyfun_t *extraFun;
-	// TODO MPI-IO
-	ghost_kernel_t kernel;
+    // access functions
+    void (*destroy) (ghost_mat_t *);
+    void (*printInfo) (ghost_mat_t *);
+    ghost_mnnz_t (*nnz) (ghost_mat_t *);
+    ghost_midx_t (*nrows) (ghost_mat_t *);
+    ghost_midx_t (*ncols) (ghost_mat_t *);
+    ghost_midx_t (*rowLen) (ghost_mat_t *, ghost_midx_t i); // ghost_mdat_t (*entry) (ghost_mat_t *, ghost_midx_t i, ghost_midx_t j);
+    char * (*formatName) (ghost_mat_t *);
+    void (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
+    void (*fromMM)(ghost_mat_t *, char *matrixPath);
+    void (*CLupload)(ghost_mat_t *);
+    void (*CUupload)(ghost_mat_t *);
+    size_t (*byteSize)(ghost_mat_t *);
+    void (*fromCRS)(ghost_mat_t *, void *);
+    void (*split)(ghost_mat_t *, int options, ghost_context_t *, ghost_mtraits_t *traits);
+    ghost_dummyfun_t *extraFun;
+    // TODO MPI-IO
+    ghost_kernel_t kernel;
 #ifdef GHOST_HAVE_OPENCL
-	cl_kernel clkernel;
+    cl_kernel clkernel;
 #endif
-	void *so;
+    void *so;
 
-	ghost_midx_t *rowPerm; // may be NULL
-	ghost_midx_t *invRowPerm; // may be NULL
+    ghost_midx_t *rowPerm; // may be NULL
+    ghost_midx_t *invRowPerm; // may be NULL
 
-	int symmetry;
+    int symmetry;
 
-	void *data;
+    void *data;
 };
 
 #endif !structs not needed for now

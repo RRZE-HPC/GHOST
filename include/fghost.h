@@ -36,19 +36,19 @@
    */
 #define GHOST_REGISTER_DT_D(name) \
         integer, parameter :: name ## _t = KIND(c_double); \
-	integer, parameter :: name = IOR(GHOST_BINCRS_DT_DOUBLE,GHOST_BINCRS_DT_REAL) \
+    integer, parameter :: name = IOR(GHOST_BINCRS_DT_DOUBLE,GHOST_BINCRS_DT_REAL) \
 
 #define GHOST_REGISTER_DT_S(name) \
         integer, parameter :: name ## _t = KIND(c_float); \
-	integer, parameter :: name = IOR(GHOST_BINCRS_DT_FLOAT,GHOST_BINCRS_DT_REAL) \
+    integer, parameter :: name = IOR(GHOST_BINCRS_DT_FLOAT,GHOST_BINCRS_DT_REAL) \
 
 #define GHOST_REGISTER_DT_C(name) \
         integer, parameter :: name ## _t = KIND(c_float); \
-	integer, parameter :: name = IOR(GHOST_BINCRS_DT_FLOAT,GHOST_BINCRS_DT_COMPLEX) \
+    integer, parameter :: name = IOR(GHOST_BINCRS_DT_FLOAT,GHOST_BINCRS_DT_COMPLEX) \
 
 #define GHOST_REGISTER_DT_Z(name) \
         integer, parameter :: name ## _t = KIND(c_double); \
-	integer, parameter :: name = IOR(GHOST_BINCRS_DT_DOUBLE,GHOST_BINCRS_DT_COMPLEX) \
+    integer, parameter :: name = IOR(GHOST_BINCRS_DT_DOUBLE,GHOST_BINCRS_DT_COMPLEX) \
 
 
 #endif

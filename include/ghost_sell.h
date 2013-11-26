@@ -8,15 +8,15 @@
 typedef struct 
 {
 #ifdef GHOST_HAVE_OPENCL
-	cl_mem val;
-	cl_mem col;
-	cl_mem rowLen;
-	cl_mem chunkStart;
-	cl_mem chunkLen;
-	ghost_cl_midx_t nrows;
-	ghost_cl_midx_t nrowsPadded;
+    cl_mem val;
+    cl_mem col;
+    cl_mem rowLen;
+    cl_mem chunkStart;
+    cl_mem chunkLen;
+    ghost_cl_midx_t nrows;
+    ghost_cl_midx_t nrowsPadded;
 #else
-	void *empty;
+    void *empty;
 #endif
 } 
 CL_SELL_TYPE;
@@ -24,50 +24,50 @@ CL_SELL_TYPE;
 typedef struct 
 {
 #ifdef GHOST_HAVE_CUDA
-	char * val;
-	ghost_midx_t * col;
-	ghost_midx_t * rowLen;
-	ghost_midx_t * rowLenPadded;
-	ghost_mnnz_t * chunkStart;
-	ghost_midx_t * chunkLen;
-	ghost_midx_t nrows;
-	ghost_midx_t nrowsPadded;
-	int T; // number of threads per row (if applicable)
-	ghost_midx_t chunkHeight;
+    char * val;
+    ghost_midx_t * col;
+    ghost_midx_t * rowLen;
+    ghost_midx_t * rowLenPadded;
+    ghost_mnnz_t * chunkStart;
+    ghost_midx_t * chunkLen;
+    ghost_midx_t nrows;
+    ghost_midx_t nrowsPadded;
+    int T; // number of threads per row (if applicable)
+    ghost_midx_t chunkHeight;
 #else
-	void *empty;
+    void *empty;
 #endif
 } 
 CU_SELL_TYPE;
 
 typedef struct 
 {
-	char *val;
-	ghost_midx_t *col;
-	ghost_mnnz_t *chunkStart;
-	ghost_midx_t nrows;
-	ghost_midx_t nrowsPadded;
-	ghost_mnnz_t nnz;
-	ghost_mnnz_t nEnts;
-	double beta;
-	int T; // number of threads per row (if applicable)
-	ghost_midx_t *chunkMin; // for version with remainder loop
-	ghost_midx_t *chunkLen; // for version with remainder loop
-	ghost_midx_t *chunkLenPadded; // for version with remainder loop
-	ghost_midx_t *rowLen;   // for version with remainder loop
-	ghost_midx_t *rowLenPadded; // for SELL-T 
-	ghost_midx_t maxRowLen;
-	ghost_midx_t chunkHeight;
-	ghost_midx_t scope;
-	
-	CL_SELL_TYPE *clmat;
-	CU_SELL_TYPE *cumat;
+    char *val;
+    ghost_midx_t *col;
+    ghost_mnnz_t *chunkStart;
+    ghost_midx_t nrows;
+    ghost_midx_t nrowsPadded;
+    ghost_mnnz_t nnz;
+    ghost_mnnz_t nEnts;
+    double beta;
+    int T; // number of threads per row (if applicable)
+    ghost_midx_t *chunkMin; // for version with remainder loop
+    ghost_midx_t *chunkLen; // for version with remainder loop
+    ghost_midx_t *chunkLenPadded; // for version with remainder loop
+    ghost_midx_t *rowLen;   // for version with remainder loop
+    ghost_midx_t *rowLenPadded; // for SELL-T 
+    ghost_midx_t maxRowLen;
+    ghost_midx_t chunkHeight;
+    ghost_midx_t scope;
+    
+    CL_SELL_TYPE *clmat;
+    CU_SELL_TYPE *cumat;
 } 
 SELL_TYPE;
 
 typedef struct 
 {
-	ghost_midx_t row, nEntsInRow;
+    ghost_midx_t row, nEntsInRow;
 } 
 ghost_sorting_t;
 #define SELL(mat) ((SELL_TYPE *)(mat->data))

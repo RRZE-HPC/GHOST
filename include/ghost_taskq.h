@@ -42,76 +42,76 @@ extern "C" {
  * some point.
  */
 typedef struct ghost_task_t {
-	/**
-	 * @brief The number of threads the task should use. (user-defined)
-	 */
-	int nThreads;
-	/**
-	 * @brief The index of the queue in which the task should be present and
-	 * (preferrably) running. (user-defined)
-	 */
-	int LD;
-	/**
-	 * @brief Optional flags for the task. (user-defined)
-	 */
-	int flags;
-	/**
-	 * @brief The function to be executed by the task. (user-defined)
-	 */
-	void *(*func)(void *);
-	/**
-	 * @brief The arguments to the task's function. (user-defined)
-	 */
-	void *arg;
+    /**
+     * @brief The number of threads the task should use. (user-defined)
+     */
+    int nThreads;
+    /**
+     * @brief The index of the queue in which the task should be present and
+     * (preferrably) running. (user-defined)
+     */
+    int LD;
+    /**
+     * @brief Optional flags for the task. (user-defined)
+     */
+    int flags;
+    /**
+     * @brief The function to be executed by the task. (user-defined)
+     */
+    void *(*func)(void *);
+    /**
+     * @brief The arguments to the task's function. (user-defined)
+     */
+    void *arg;
 
-	// set by the library
-	/**
-	 * @brief The current state of the task. (set by the library)
-	 */
-	int *state;
-	/**
-	 * @brief The list of cores where the task's threads are running. (set by the library)
-	 */
-	int *cores;
-	/**
-	 * @brief Map of cores this task is using. (set by the library)
-	 */
-	hwloc_bitmap_t coremap;
-	/**
-	 * @brief Map of cores a child of this task is using. (set by the library)
-	 */
-	hwloc_bitmap_t childusedmap;
-	/**
-	 * @brief The return value of the task's funtion. (set by the library)
-	 */
-	void *ret;
-	/**
-	 * @brief Pointer to the next task in the queue. (set by the library)
-	 */
-	struct ghost_task_t *next; 
-	/**
-	 * @brief Pointer to the previous task in the queue. (set by the library)
-	 */
-	struct ghost_task_t *prev;
-	/**
-	 * @brief The adding task if the task has been added from within a task.
-	 * (set by the library)
-	 */
-	struct ghost_task_t *parent;
-	/**
-	 * @brief Indicator that the task is finished. (set by the library)
-	 */
-	pthread_cond_t *finishedCond;
-	/**
-	 * @brief Protect accesses to the task's members. (set by the library)
-	 */
-	pthread_mutex_t *mutex;
-	/**
-	 * @brief Set to one as soon as the task's resources have been free'd.
-	 * This can be the case when the task waits for a child-task to finish or
-	 * when the task itself is finished.
-	 */
-	int freed;
+    // set by the library
+    /**
+     * @brief The current state of the task. (set by the library)
+     */
+    int *state;
+    /**
+     * @brief The list of cores where the task's threads are running. (set by the library)
+     */
+    int *cores;
+    /**
+     * @brief Map of cores this task is using. (set by the library)
+     */
+    hwloc_bitmap_t coremap;
+    /**
+     * @brief Map of cores a child of this task is using. (set by the library)
+     */
+    hwloc_bitmap_t childusedmap;
+    /**
+     * @brief The return value of the task's funtion. (set by the library)
+     */
+    void *ret;
+    /**
+     * @brief Pointer to the next task in the queue. (set by the library)
+     */
+    struct ghost_task_t *next; 
+    /**
+     * @brief Pointer to the previous task in the queue. (set by the library)
+     */
+    struct ghost_task_t *prev;
+    /**
+     * @brief The adding task if the task has been added from within a task.
+     * (set by the library)
+     */
+    struct ghost_task_t *parent;
+    /**
+     * @brief Indicator that the task is finished. (set by the library)
+     */
+    pthread_cond_t *finishedCond;
+    /**
+     * @brief Protect accesses to the task's members. (set by the library)
+     */
+    pthread_mutex_t *mutex;
+    /**
+     * @brief Set to one as soon as the task's resources have been free'd.
+     * This can be the case when the task waits for a child-task to finish or
+     * when the task itself is finished.
+     */
+    int freed;
 } ghost_task_t;
 
 
@@ -119,18 +119,18 @@ typedef struct ghost_task_t {
  * @brief This struct represents the task queue.
  */
 typedef struct ghost_taskq_t {
-	/**
-	 * @brief The first (= highest priority) task in the queue
-	 */
-	ghost_task_t *head;
-	/**
-	 * @brief The last (= lowest priority) task in the queue
-	 */
-	ghost_task_t *tail;
-	/**
-	 * @brief Serialize access to the queue
-	 */
-	pthread_mutex_t mutex;
+    /**
+     * @brief The first (= highest priority) task in the queue
+     */
+    ghost_task_t *head;
+    /**
+     * @brief The last (= lowest priority) task in the queue
+     */
+    ghost_task_t *tail;
+    /**
+     * @brief Serialize access to the queue
+     */
+    pthread_mutex_t mutex;
 } ghost_taskq_t;
 
 /**
@@ -138,35 +138,35 @@ typedef struct ghost_taskq_t {
  * tasking-related work.
  */
 typedef struct ghost_thpool_t {
-	/**
-	 * @brief The pthread of each GHOST thread.
-	 */
-	pthread_t *threads;
-	/**
-	 * @brief The PU (Processing Unit) of each GHOST thread.
-	 */
-	hwloc_obj_t *PUs;
-	/**
-	 * @brief The cpuset this thread pool is covering. 
-	 */
-	hwloc_bitmap_t cpuset;
-	/**
-	 * @brief A bitmap with one bit per PU where 1 means that a PU is busy and 0 means that it is
-	 * idle.
-	 */
-   	hwloc_bitmap_t busy;
-	/**
-	 * @brief The total number of threads in the thread pool
-	 */
-	int nThreads;
-	/**
-	 * @brief The number of LDs covered by the pool's threads.
-	 */
-	int nLDs;
-	/**
-	 * @brief Counts the number of readily  
-	 */
-	sem_t *sem; // counts the number of initialized threads
+    /**
+     * @brief The pthread of each GHOST thread.
+     */
+    pthread_t *threads;
+    /**
+     * @brief The PU (Processing Unit) of each GHOST thread.
+     */
+    hwloc_obj_t *PUs;
+    /**
+     * @brief The cpuset this thread pool is covering. 
+     */
+    hwloc_bitmap_t cpuset;
+    /**
+     * @brief A bitmap with one bit per PU where 1 means that a PU is busy and 0 means that it is
+     * idle.
+     */
+       hwloc_bitmap_t busy;
+    /**
+     * @brief The total number of threads in the thread pool
+     */
+    int nThreads;
+    /**
+     * @brief The number of LDs covered by the pool's threads.
+     */
+    int nLDs;
+    /**
+     * @brief Counts the number of readily  
+     */
+    sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
 int ghost_thpool_init(int *nThreads, int *firstThread, int levels);

@@ -15,87 +15,87 @@
 
 template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
 {
-	CR_TYPE *cr = CR(mat);
-	v_t *rhsv;	
-	v_t *lhsv;
-	m_t *mval = (m_t *)(cr->val);	
-	ghost_midx_t i, j;
-	ghost_vidx_t v;
+    CR_TYPE *cr = CR(mat);
+    v_t *rhsv;    
+    v_t *lhsv;
+    m_t *mval = (m_t *)(cr->val);    
+    ghost_midx_t i, j;
+    ghost_vidx_t v;
 
-	v_t hlp1 = 0.;
-	v_t shift, scale;
-	if (options & GHOST_SPMVM_APPLY_SHIFT)
-		shift = *((v_t *)(mat->traits->shift));
-	if (options & GHOST_SPMVM_APPLY_SCALE)
-		scale = *((v_t *)(mat->traits->scale));
+    v_t hlp1 = 0.;
+    v_t shift, scale;
+    if (options & GHOST_SPMVM_APPLY_SHIFT)
+        shift = *((v_t *)(mat->traits->shift));
+    if (options & GHOST_SPMVM_APPLY_SCALE)
+        scale = *((v_t *)(mat->traits->scale));
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv)
-	for (i=0; i<cr->nrows; i++){
-		for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
-		{
-			rhsv = (v_t *)rhs->val[v];
-			lhsv = (v_t *)lhs->val[v];
-			hlp1 = (v_t)0.0;
-			for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-				hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
-			}
+    for (i=0; i<cr->nrows; i++){
+        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+        {
+            rhsv = (v_t *)rhs->val[v];
+            lhsv = (v_t *)lhs->val[v];
+            hlp1 = (v_t)0.0;
+            for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+                hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
+            }
 
-			if (options & GHOST_SPMVM_APPLY_SHIFT) {
-				if (options & GHOST_SPMVM_APPLY_SCALE) {
-					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[i] += scale*(hlp1+shift*rhsv[i]);
-					} else {
-						lhsv[i] = scale*(hlp1+shift*rhsv[i]);
-					}
-				} else {
-					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[i] += (hlp1+shift*rhsv[i]);
-					} else {
-						lhsv[i] = (hlp1+shift*rhsv[i]);
-					}
-				}
-			} else {
-				if (options & GHOST_SPMVM_APPLY_SCALE) {
-					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[i] += scale*(hlp1);
-					} else {
-						lhsv[i] = scale*(hlp1);
-					}
-				} else {
-					if (options & GHOST_SPMVM_AXPY) {
-						lhsv[i] += (hlp1);
-					} else {
-						lhsv[i] = (hlp1);
-					}
-				}
+            if (options & GHOST_SPMVM_APPLY_SHIFT) {
+                if (options & GHOST_SPMVM_APPLY_SCALE) {
+                    if (options & GHOST_SPMVM_AXPY) {
+                        lhsv[i] += scale*(hlp1+shift*rhsv[i]);
+                    } else {
+                        lhsv[i] = scale*(hlp1+shift*rhsv[i]);
+                    }
+                } else {
+                    if (options & GHOST_SPMVM_AXPY) {
+                        lhsv[i] += (hlp1+shift*rhsv[i]);
+                    } else {
+                        lhsv[i] = (hlp1+shift*rhsv[i]);
+                    }
+                }
+            } else {
+                if (options & GHOST_SPMVM_APPLY_SCALE) {
+                    if (options & GHOST_SPMVM_AXPY) {
+                        lhsv[i] += scale*(hlp1);
+                    } else {
+                        lhsv[i] = scale*(hlp1);
+                    }
+                } else {
+                    if (options & GHOST_SPMVM_AXPY) {
+                        lhsv[i] += (hlp1);
+                    } else {
+                        lhsv[i] = (hlp1);
+                    }
+                }
 
-			}
-		}
-	}
+            }
+        }
+    }
 }
 
 template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts)
 {
-	ghost_mnnz_t i;
-	m_t *md = (m_t *)matrixData;
-	f_t *fd = (f_t *)fileData;
+    ghost_mnnz_t i;
+    m_t *md = (m_t *)matrixData;
+    f_t *fd = (f_t *)fileData;
 
-	for (i = 0; i<nEnts; i++) {
-		md[i] = (m_t)(fd[i]);
-	}
+    for (i = 0; i<nEnts; i++) {
+        md[i] = (m_t)(fd[i]);
+    }
 }
 
 template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
 {
-	if (val == NULL) {
-		UNUSED(str);
-		//str = "0.";
-	} else {
-		UNUSED(str);
-		UNUSED(n);
-		// TODO
-		//snprintf(str,n,"%g",*((m_t *)(val)));
-	}
+    if (val == NULL) {
+        UNUSED(str);
+        //str = "0.";
+    } else {
+        UNUSED(str);
+        UNUSED(n);
+        // TODO
+        //snprintf(str,n,"%g",*((m_t *)(val)));
+    }
 }
 
 

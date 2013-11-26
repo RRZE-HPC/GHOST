@@ -29,32 +29,32 @@ MPI_Comm *ghost_mpi_comms;
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
-	if (datatype & GHOST_BINCRS_DT_FLOAT) {
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return GHOST_MPI_DT_C;
-		else
-			return MPI_FLOAT;
-	} else {
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return GHOST_MPI_DT_Z;
-		else
-			return MPI_DOUBLE;
-	}
+    if (datatype & GHOST_BINCRS_DT_FLOAT) {
+        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+            return GHOST_MPI_DT_C;
+        else
+            return MPI_FLOAT;
+    } else {
+        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+            return GHOST_MPI_DT_Z;
+        else
+            return MPI_DOUBLE;
+    }
 }
 
 MPI_Op ghost_mpi_op_sum(int datatype)
 {
-	if (datatype & GHOST_BINCRS_DT_FLOAT) {
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return GHOST_MPI_OP_SUM_C;
-		else
-			return MPI_SUM;
-	} else {
-		if (datatype & GHOST_BINCRS_DT_COMPLEX)
-			return GHOST_MPI_OP_SUM_Z;
-		else
-			return MPI_SUM;
-	}
+    if (datatype & GHOST_BINCRS_DT_FLOAT) {
+        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+            return GHOST_MPI_OP_SUM_C;
+        else
+            return MPI_SUM;
+    } else {
+        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+            return GHOST_MPI_OP_SUM_Z;
+        else
+            return MPI_SUM;
+    }
 
 }
 
@@ -62,15 +62,15 @@ void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Data
 {
 #ifdef LONGIDX
 
-	UNUSED(sendbuf);
-	UNUSED(sendcnts);
-	UNUSED(displs);
-	UNUSED(sendtype);
-	UNUSED(recvbuv);
-	UNUSED(recvcnt);
-	UNUSED(recvtype);
-	UNUSED(root);
-	UNUSED(comm);
+    UNUSED(sendbuf);
+    UNUSED(sendcnts);
+    UNUSED(displs);
+    UNUSED(sendtype);
+    UNUSED(recvbuv);
+    UNUSED(recvcnt);
+    UNUSED(recvtype);
+    UNUSED(root);
+    UNUSED(comm);
 #else
 MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvtype,root,comm));
 #endif
