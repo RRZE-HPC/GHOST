@@ -15,6 +15,8 @@ extern __shared__ char shared[];
 extern int ghost_cu_device;
 
 #define CHOOSE_KERNEL(dt1,dt2) {\
+	if ((SELL(mat)->T > 32) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
+		WARNING_LOG("Invalid T: %d (must be power of two <33",SELL(mat)->T);\
 	if (SELL(mat)->chunkHeight == SELL(mat)->nrowsPadded) {\
 		if (SELL(mat)->T > 1) {\
 			WARNING_LOG("ELLPACK-T kernel not available!");\
