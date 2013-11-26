@@ -14,6 +14,37 @@
 extern __shared__ char shared[];
 extern int ghost_cu_device;
 
+#define CHOOSE_KERNEL(dt1,dt2) {\
+	if (SELL(mat)->chunkHeight == SELL(mat)->nrowsPadded) {\
+		if (SELL(mat)->T > 1) {\
+			WARNING_LOG("ELLPACK-T kernel not available!");\
+		} else {\
+			SELL_kernel_CU_ELLPACK_tmpl\
+				<dt1,dt2>\
+				<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
+				((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+		}\
+	}else{\
+		if (SELL(mat)->T > 1) {\
+			size_t reqSmem = ghost_sizeofDataType(lhs->traits->datatype)*SELL_CUDA_THREADSPERBLOCK;\
+			struct cudaDeviceProp prop;\
+			CU_safecall(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+			if (prop.sharedMemPerBlock < reqSmem) {\
+				WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+			}\
+			dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+			SELLT_kernel_CU_tmpl\
+				<dt1,dt2>\
+				<<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
+				((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+		} else {\
+			SELL_kernel_CU_tmpl\
+				<dt1,dt2>\
+				<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
+				((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+		}\
+	}\
+}
 //#define SWITCH_T
 
 /*#define CHOOSE_KERNEL(func,dt1,dt2,ch, ...) \
@@ -267,144 +298,80 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 
 extern "C" void dd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
-	if (SELL(mat)->T > 1) {
-		DEBUG_LOG(1,"Calling SELL-T kernel w/ T=%d, block: %dx%d, grid: %d",SELL(mat)->T,SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T,SELL_CUDA_NBLOCKS);
-		size_t reqSmem = ghost_sizeofDataType(lhs->traits->datatype)*SELL_CUDA_THREADSPERBLOCK;
-		struct cudaDeviceProp prop;
-		CU_safecall(cudaGetDeviceProperties(&prop,ghost_cu_device));
-		if (prop.sharedMemPerBlock < reqSmem) {
-			WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
-		}
-		dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);
-		SELLT_kernel_CU_tmpl
-			<double,double>
-			<<< SELL_CUDA_NBLOCKS,block,reqSmem >>>
-			((double *)lhs->CU_val[0],(double *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);
-	} else {
-		SELL_kernel_CU_tmpl
-			<double,double>
-			<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-			((double *)lhs->CU_val[0],(double *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);
-	}	
-
+	CHOOSE_KERNEL(double,double);
 }
 
 extern "C" void ds_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<double,float>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((float *)lhs->CU_val[0],(float *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(double,float);
 }
 
 extern "C" void dc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<double,cuFloatComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuFloatComplex *)lhs->CU_val[0],(cuFloatComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(double,cuFloatComplex);
 }
 
 extern "C" void dz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<double,cuDoubleComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuDoubleComplex *)lhs->CU_val[0],(cuDoubleComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(double,cuDoubleComplex);
 }
 
 extern "C" void sd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<float,double>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((double *)lhs->CU_val[0],(double *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(float,double);
 }
 
 extern "C" void ss_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<float,float>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((float *)lhs->CU_val[0],(float *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(float,float);
 }
 
 extern "C" void sc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<float,cuFloatComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuFloatComplex *)lhs->CU_val[0],(cuFloatComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(float,cuFloatComplex);
 }
 
 extern "C" void sz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<float,cuDoubleComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuDoubleComplex *)lhs->CU_val[0],(cuDoubleComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(float *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(float,cuDoubleComplex);
 }
 
 extern "C" void zd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuDoubleComplex,double>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((double *)lhs->CU_val[0],(double *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuDoubleComplex,double);
 }
 
 extern "C" void zs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuDoubleComplex,float>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((float *)lhs->CU_val[0],(float *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuDoubleComplex,float);
 }
 
 extern "C" void zc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuDoubleComplex,cuFloatComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuFloatComplex *)lhs->CU_val[0],(cuFloatComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuDoubleComplex,cuFloatComplex);
 }
 
 extern "C" void zz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuDoubleComplex,cuDoubleComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuDoubleComplex *)lhs->CU_val[0],(cuDoubleComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuDoubleComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuDoubleComplex,cuDoubleComplex);
 }
 
 extern "C" void cd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuFloatComplex,double>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((double *)lhs->CU_val[0],(double *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuFloatComplex,double);
 }
 
 extern "C" void cs_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuFloatComplex,float>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((float *)lhs->CU_val[0],(float *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuFloatComplex,float);
 }
 
 extern "C" void cc_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuFloatComplex,cuFloatComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuFloatComplex *)lhs->CU_val[0],(cuFloatComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuFloatComplex,cuFloatComplex);
 }
 
 extern "C" void cz_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { 
-	SELLT_kernel_CU_tmpl
-		<cuFloatComplex,cuDoubleComplex>
-		<<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>
-		((cuDoubleComplex *)lhs->CU_val[0],(cuDoubleComplex *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(cuFloatComplex *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T); 
+	CHOOSE_KERNEL(cuFloatComplex,cuDoubleComplex);
 }
