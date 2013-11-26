@@ -133,10 +133,8 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
 		vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
 	}
 	if (vec->traits->flags & GHOST_VEC_DEVICE) {
-		vec->CU_val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
-		for (v=0; v<vec->traits->nvecs; v++) {
-			vec->CU_val[v] = NULL;
-		}
+		vec->CU_val = NULL;
+		//TODO
 	} else {
 		vec->CU_val = NULL;
 	}
@@ -368,20 +366,22 @@ void vec_malloc(ghost_vec_t *vec)
 	if (vec->traits->flags & GHOST_VEC_DEVICE) {
 		DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
-		if (vec->CU_val[0] == NULL) {
+		if (vec->CU_val == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
 			CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
-			vec->CU_val[0] = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt);
+			vec->CU_val = ghost_malloc(sizeof(void *));
+			vec->CU_val[0] = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt);
+		/*	WARNING_LOG("%p %lu bytes",vec->CU_val[0],vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt);
 			for (v=1; v<vec->traits->nvecs; v++) {
 				vec->CU_val[v] = vec->CU_val[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
-			}
+			}*/
 #endif
 		}
 #endif
 #ifdef GHOST_HAVE_OPENCL
 		if (vec->CL_val_gpu[0] == NULL) {
-			vec->CL_val_gpu[0] = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowshalo*sizeofdt,vec->val,CL_MEM_READ_WRITE );
+			vec->CL_val_gpu[0] = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,vec->val,CL_MEM_READ_WRITE );
 			for (v=1; v<vec->traits->nvecs; v++) {
 				vec->CL_val_gpu[v] = vec->CL_val_gpu[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
 			}
