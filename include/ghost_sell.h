@@ -27,10 +27,13 @@ typedef struct
 	char * val;
 	ghost_midx_t * col;
 	ghost_midx_t * rowLen;
+	ghost_midx_t * rowLenPadded;
 	ghost_mnnz_t * chunkStart;
 	ghost_midx_t * chunkLen;
 	ghost_midx_t nrows;
 	ghost_midx_t nrowsPadded;
+	int T; // number of threads per row (if applicable)
+	ghost_midx_t chunkHeight;
 #else
 	void *empty;
 #endif
@@ -50,7 +53,10 @@ typedef struct
 	int T; // number of threads per row (if applicable)
 	ghost_midx_t *chunkMin; // for version with remainder loop
 	ghost_midx_t *chunkLen; // for version with remainder loop
+	ghost_midx_t *chunkLenPadded; // for version with remainder loop
 	ghost_midx_t *rowLen;   // for version with remainder loop
+	ghost_midx_t *rowLenPadded; // for SELL-T 
+	ghost_midx_t maxRowLen;
 	ghost_midx_t chunkHeight;
 	ghost_midx_t scope;
 	
@@ -66,7 +72,10 @@ typedef struct
 ghost_sorting_t;
 #define SELL(mat) ((SELL_TYPE *)(mat->data))
 
-#define SELL_CUDA_BLOCKSIZE 256
+#define SELL_CUDA_THREADSPERBLOCK 256
+
+enum GHOST_SELL_C {GHOST_SELL_C_1 = 1, GHOST_SELL_C_2 = 2, GHOST_SELL_C_4 = 4, GHOST_SELL_C_256 = 256};
+enum GHOST_SELL_T {GHOST_SELL_T_1 = 1, GHOST_SELL_T_2 = 2, GHOST_SELL_T_4 = 4, GHOST_SELL_T_256 = 256};
 
 ghost_mat_t * ghost_SELL_init(ghost_mtraits_t *);
 #ifdef __cplusplus

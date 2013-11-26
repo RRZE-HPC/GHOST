@@ -314,6 +314,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 	if (mat->traits->aux == NULL) {
 		SELL(mat)->scope = 1;
+		SELL(mat)->T = 1;
 		SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
 		SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);
 	} else {
@@ -334,6 +335,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 				SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);
 			}
 		}
+		SELL(mat)->T = ((int *)(mat->traits->aux))[2];
 	}
 	mat->context->rowPerm = rowPerm;
 	mat->context->invRowPerm = invRowPerm;
@@ -405,11 +407,15 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 	SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
 	SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
 	SELL(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
+	SELL(mat)->chunkLenPadded = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
 	SELL(mat)->rowLen = (ghost_midx_t *)ghost_malloc((SELL(mat)->nrowsPadded)*sizeof(ghost_midx_t));
+	SELL(mat)->rowLenPadded = (ghost_midx_t *)ghost_malloc((SELL(mat)->nrowsPadded)*sizeof(ghost_midx_t));
 	SELL(mat)->chunkStart[0] = 0;
+	SELL(mat)->maxRowLen = 0;
 
 	ghost_midx_t chunkMin = cr->ncols;
 	ghost_midx_t chunkLen = 0;
+	ghost_midx_t chunkLenPadded = 0;
 	ghost_midx_t chunkEnts = 0;
 	ghost_mnnz_t nnz = 0;
 	double chunkAvg = 0.;
@@ -428,27 +434,33 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 			SELL(mat)->rowLen[i] = 0;
 		}
 		nnz += SELL(mat)->rowLen[i];
+		SELL(mat)->rowLenPadded[i] = ghost_pad(SELL(mat)->rowLen[i],SELL(mat)->T);
 
 
-		chunkMin = SELL(mat)->rowLen[i]<chunkMin?SELL(mat)->rowLen[i]:chunkMin;
+		chunkMin = SELL(mat)->rowLen[i]<chunkMin?SELL(mat)->rowLenPadded[i]:chunkMin;
 		chunkLen = SELL(mat)->rowLen[i]>chunkLen?SELL(mat)->rowLen[i]:chunkLen;
-		chunkAvg += SELL(mat)->rowLen[i];
-		chunkEnts += SELL(mat)->rowLen[i];
+		chunkLenPadded = SELL(mat)->rowLenPadded[i]>chunkLen?SELL(mat)->rowLenPadded[i]:chunkLen;
+		chunkAvg += SELL(mat)->rowLenPadded[i];
+		chunkEnts += SELL(mat)->rowLenPadded[i];
 
 		if ((i+1)%SELL(mat)->chunkHeight == 0) {
 			chunkAvg /= (double)SELL(mat)->chunkHeight;
 
-			SELL(mat)->nEnts += SELL(mat)->chunkHeight*chunkLen;
+			SELL(mat)->nEnts += SELL(mat)->chunkHeight*chunkLenPadded;
 			SELL(mat)->chunkStart[curChunk] = SELL(mat)->nEnts;
 			SELL(mat)->chunkMin[curChunk-1] = chunkMin;
 			SELL(mat)->chunkLen[curChunk-1] = chunkLen;
+			SELL(mat)->chunkLenPadded[curChunk-1] = chunkLenPadded;
 
 			chunkMin = cr->ncols;
 			chunkLen = 0;
+			chunkLenPadded = 0;
 			chunkAvg = 0;
 			curChunk++;
 			chunkEnts = 0;
 		}
+
+		SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,SELL(mat)->rowLenPadded[i]);
 	}
 	SELL(mat)->beta = nnz*1.0/(double)SELL(mat)->nEnts;
 
@@ -478,7 +490,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 #pragma omp parallel for schedule(runtime) private(j)
 		for (i=0; i<SELL(mat)->nrowsPadded; i++) { 
-			for (j=0; j<SELL(mat)->chunkLen[0]; j++) {
+			for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) {
 				//	printf("%p %p\n",&(((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i]),&(SELL(mat)->col[SELL(mat)->nrowsPadded*j+i]));
 				((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
 				SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
