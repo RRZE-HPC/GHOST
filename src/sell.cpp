@@ -474,8 +474,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 #pragma omp parallel for schedule(runtime) private(j,i)
         for (c=0; c<SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; c++) 
         { // loop over chunks
-
-            for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/SELL(mat)->chunkHeight; j++)
+            for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) 
             {
                 for (i=0; i<SELL(mat)->chunkHeight; i++)
                 {
@@ -488,12 +487,16 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     { // ELLPACK NUMA
         DEBUG_LOG(2,"Doing ELLPACK NUMA first-touch initialization");
 
-#pragma omp parallel for schedule(runtime) private(j)
-        for (i=0; i<SELL(mat)->nrowsPadded; i++) { 
-            for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) {
-                //    printf("%p %p\n",&(((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i]),&(SELL(mat)->col[SELL(mat)->nrowsPadded*j+i]));
-                ((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
-                SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
+#pragma omp parallel for schedule(runtime) private(j,i)
+        for (i=0; i<SELL(mat)->nrowsPadded; i++) 
+        { 
+            for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) 
+            {
+                for (i=0; i<SELL(mat)->chunkHeight; i++)
+                {
+                    ((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
+                    SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
+                }
             }
         }
     }
@@ -526,11 +529,9 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
                     ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (m_t)0.0;
                     SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = 0;
                 }
-                //printf("%f ",((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i]);
             }
         }
     }
-    //    printf("\n");
     DEBUG_LOG(1,"Successfully created SELL");
 }
 
