@@ -353,7 +353,8 @@ struct ghost_vec_t
     cl_mem * CL_val_gpu;
 #endif
 #ifdef GHOST_HAVE_CUDA
-    char ** CU_val;
+    char * CU_val;
+    size_t CU_pitch;
 #endif
 };
 
