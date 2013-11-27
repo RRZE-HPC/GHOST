@@ -170,7 +170,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
     ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
     ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
     ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
-    ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nrows/nnz);
+    ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
 
     ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
