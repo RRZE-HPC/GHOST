@@ -19,7 +19,18 @@ extern int ghost_cu_device;
         WARNING_LOG("Invalid T: %d (must be power of two <33",SELL(mat)->T);\
     if (SELL(mat)->chunkHeight == SELL(mat)->nrowsPadded) {\
         if (SELL(mat)->T > 1) {\
-            WARNING_LOG("ELLPACK-T kernel not available!");\
+            INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
+            size_t reqSmem = ghost_sizeofDataType(lhs->traits->datatype)*SELL_CUDA_THREADSPERBLOCK;\
+            struct cudaDeviceProp prop;\
+            CU_safecall(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+            if (prop.sharedMemPerBlock < reqSmem) {\
+                WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+            }\
+            dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+            SELLT_kernel_CU_tmpl\
+                <dt1,dt2>\
+                <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
+                ((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         } else {\
             SELL_kernel_CU_ELLPACK_tmpl\
                 <dt1,dt2>\
