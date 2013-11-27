@@ -77,6 +77,9 @@ if (USE_CUDA)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include
 				${CMAKE_BINARY_DIR})
 		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
+        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+		    list(APPEND CUDA_NVCC_FLAGS -G -g)
+        endif()
 		cuda_compile(SELL_KERNEL_O src/sell_kernel.cu)
 		set (SOURCES 
 				${SOURCES} 
