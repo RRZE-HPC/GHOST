@@ -58,41 +58,6 @@ extern int ghost_cu_device;
         }\
     }\
 }
-//#define SWITCH_T
-
-/*#define CHOOSE_KERNEL(func,dt1,dt2,ch, ...) \
-    if (mat->T == 1) {\
-        switch(ch) { \
-            case 1: \
-                    func< dt1, dt2, 1 > <<< ,SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 2: \
-                    func< dt1, dt2, 2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 4: \
-                    func< dt1, dt2, 4 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 8: \
-                    func< dt1, dt2, 8 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 16: \
-                     func< dt1, dt2, 16 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 32: \
-                     func< dt1, dt2, 32 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 64: \
-                     func< dt1, dt2, 64 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            case 256: \
-                     func< dt1, dt2, 256 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-            break; \
-            default: \
-                     DEBUG_LOG(2,"Calling ELLPACK kernel"); \
-                     SELL_kernel_CU_ELLPACK_tmpl< dt1, dt2 > <<< (int)ceil(SELL(mat)->cumat->nrows/(double)SELL_CUDA_BLOCKSIZE),SELL_CUDA_BLOCKSIZE >>> ( __VA_ARGS__ ); \
-        }\
-    }*/
-
 
 template<typename T>
 __device__ inline void zero(T &val)
