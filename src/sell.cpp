@@ -472,15 +472,15 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     { // SELL NUMA initialization
 
 #pragma omp parallel for schedule(runtime) private(j,i)
-        for (c=0; c<SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; c++) 
+        for (c=0; c<nChunks; c++) 
         { // loop over chunks
 
-            for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/SELL(mat)->chunkHeight; j++)
+            for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++)
             {
                 for (i=0; i<SELL(mat)->chunkHeight; i++)
                 {
-                    ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (m_t)0.;
-                    SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = 0;
+                    ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (m_t)-1.0;
+                    SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = -1;
                 }
             }
         }
@@ -498,6 +498,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
         }
     }
 
+    WARNING_LOG("%d %d",SELL(mat)->rowLen[111],SELL(mat)->rowLenPadded[111]);
 
     DEBUG_LOG(2,"Copying CRS to SELL");
     for (c=0; c<nChunks; c++) {

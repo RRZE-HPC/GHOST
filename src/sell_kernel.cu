@@ -31,12 +31,12 @@ extern int ghost_cu_device;
             SELLT_kernel_CU_tmpl\
                 <dt1,dt2>\
                 <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
-                ((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         } else {\
             SELL_kernel_CU_ELLPACK_tmpl\
                 <dt1,dt2>\
                 <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
-                ((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         }\
     }else{\
         if (SELL(mat)->T > 1) {\
@@ -50,16 +50,16 @@ extern int ghost_cu_device;
             SELLT_kernel_CU_tmpl\
                 <dt1,dt2>\
                 <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
-                ((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         } else {\
             SELL_kernel_CU_tmpl\
                 <dt1,dt2>\
                 <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
-                ((dt2 *)lhs->CU_val[0],(dt2 *)rhs->CU_val[0],options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         }\
     }\
 }
-
+ 
 template<typename T>
 __device__ inline void zero(T &val)
 {
@@ -202,6 +202,8 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
         zero<v_t>(tmp);
 
         for (j=0; j<rowlen[i]; j++) {
+            if (i==111)
+                printf("rl[i]=%d, %f*%f\n",rowlen[i],rhs[col[cs + tid + j*C]], val[cs + tid + j*C]);
             tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + j*C]], val[cs + tid + j*C]);
         }
         if (options & GHOST_SPMVM_AXPY)
@@ -234,6 +236,8 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 
 
         for (j=0; j<rowlen[i]/T; j++) {
+            if (i==111)
+                printf("rl[i]=%d, %f*%f\n",rowlen[i],rhs[col[cs + tid + (threadIdx.y+j*blockDim.y)*C]], val[cs + tid + (threadIdx.y+j*blockDim.y)*C]);
 #ifdef SELLT_STRIDE_ONE
             tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]], val[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]);
 #else

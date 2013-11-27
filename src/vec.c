@@ -134,9 +134,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     }
     if (vec->traits->flags & GHOST_VEC_DEVICE) {
         vec->CU_val = NULL;
-        //TODO
-    } else {
-        vec->CU_val = NULL;
     }
 #elif defined(OPENCL)
     vec->CL_val_gpu = NULL;
@@ -165,7 +162,7 @@ static void vec_uploadHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,vec->traits->nrows),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -192,7 +189,7 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -211,7 +208,7 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0), VECVAL(vec,vec->CU_val,v,0),vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->CU_pitch*v],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -223,14 +220,14 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
     }
 }
 
-static void vec_upload(ghost_vec_t *vec)
+static void vec_upload(ghost_vec_t *vec) 
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(VECVAL(vec,vec->CU_val,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -249,7 +246,7 @@ static void vec_download(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0), VECVAL(vec,vec->CU_val,v,0),vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->CU_pitch*v],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -351,10 +348,11 @@ static void vec_print(ghost_vec_t *vec)
 void vec_malloc(ghost_vec_t *vec)
 {
 
+    int allocd = (vec->val[0] != NULL);
     ghost_vidx_t v;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     if (vec->traits->flags & GHOST_VEC_HOST) {
-        if (vec->val[0] == NULL) {
+        if (!allocd) {
             DEBUG_LOG(2,"Allocating host side of vector");
             vec->val[0] = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
             for (v=1; v<vec->traits->nvecs; v++) {
@@ -366,16 +364,12 @@ void vec_malloc(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_DEVICE) {
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
-        if (vec->CU_val == NULL) {
+        if (!allocd) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
-            vec->CU_val = ghost_malloc(sizeof(void *));
-            vec->CU_val[0] = CU_allocDeviceMemory(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt);
-        /*    WARNING_LOG("%p %lu bytes",vec->CU_val[0],vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt);
-            for (v=1; v<vec->traits->nvecs; v++) {
-                vec->CU_val[v] = vec->CU_val[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
-            }*/
+            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*sizeofdt);
+//            CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->CU_pitch,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
 #endif
         }
 #endif
@@ -862,9 +856,9 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
     v2->CL_val_gpu[0] = tmp;
 #endif
 #ifdef GHOST_HAVE_CUDA
-    dtmp = v1->CU_val[0];
-    v1->CU_val[0] = v2->CU_val[0];
-    v2->CU_val[0] = dtmp;
+    dtmp = v1->CU_val;
+    v1->CU_val = v2->CU_val;
+    v2->CU_val = dtmp;
 #endif
 
 }
@@ -904,9 +898,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #endif
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits->flags & GHOST_VEC_DEVICE) {
-                for (v=0; v<vec->traits->nvecs; v++) { 
-                    CU_freeDeviceMemory( vec->CU_val[v] );
-                }
+                CU_freeDeviceMemory( vec->CU_val );
             }
 #endif
         }
