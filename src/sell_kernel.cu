@@ -268,7 +268,6 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
                 __syncthreads();
             }
         }
-        __syncthreads();
         
         if (threadIdx.y == 0) {
             if (options & GHOST_SPMVM_AXPY)
