@@ -439,7 +439,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
         chunkMin = SELL(mat)->rowLen[i]<chunkMin?SELL(mat)->rowLenPadded[i]:chunkMin;
         chunkLen = SELL(mat)->rowLen[i]>chunkLen?SELL(mat)->rowLen[i]:chunkLen;
-        chunkLenPadded = SELL(mat)->rowLenPadded[i]>chunkLen?SELL(mat)->rowLenPadded[i]:chunkLen;
+        chunkLenPadded = SELL(mat)->rowLenPadded[i]>chunkLenPadded?SELL(mat)->rowLenPadded[i]:chunkLenPadded;
         chunkAvg += SELL(mat)->rowLenPadded[i];
         chunkEnts += SELL(mat)->rowLenPadded[i];
 
