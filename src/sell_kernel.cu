@@ -10,6 +10,7 @@
 #include <cuda_runtime.h>
 
 #define SELL_CUDA_NBLOCKS (int)ceil(SELL(mat)->cumat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
+//#define SELLT_STRIDE_ONE
 
 extern __shared__ char shared[];
 extern int ghost_cu_device;
@@ -233,8 +234,13 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 
 
         for (j=0; j<rowlen[i]/T; j++) {
+#ifdef SELLT_STRIDE_ONE
             tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]], val[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]);
+#else
+            tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + (threadIdx.y+j*blockDim.y)*C]], val[cs + tid + (threadIdx.y+j*blockDim.y)*C]);
+#endif
         }
+
         smem[tib] = tmp;
         __syncthreads();
         
