@@ -368,8 +368,7 @@ void vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
-            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*sizeofdt);
-//            CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->CU_pitch,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
+            CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->CU_pitch,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
 #endif
         }
 #endif
