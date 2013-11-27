@@ -3,6 +3,7 @@
 #include <ghost_constants.h>
 #include <ghost_util.h>
 #include <ghost_math.h>
+#include <ghost_vec.h>
 #include <ghost_affinity.h>
 #include <ghost_blas_mangle.h>
 #include <strings.h>
@@ -75,6 +76,13 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
         WARNING_LOG("Scattered vectors currently not supported in ghost_gemm()");
         return GHOST_FAILURE;
     }
+    
+    if (reduce >= ghost_getNumberOfRanks(x->context->mpicomm)) {
+        WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
+                reduce,ghost_getNumberOfRanks(x->context->mpicomm));
+        reduce = 0;
+    }
+
     ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
     // TODO if rhs vector data will not be continous
     complex double zero = 0.+I*0.;
@@ -162,25 +170,20 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
         }    
     }
 
-#ifdef GHOST_HAVE_MPI // TODO get rid of for loops
-    int i,j;
+#ifdef GHOST_HAVE_MPI 
+    ghost_vidx_t i,j;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
     } else if (reduce == GHOST_GEMM_ALL_REDUCE) {
         for (i=0; i<x->traits->nvecs; ++i) {
-            for (j=0; j<x->traits->nrows; ++j) {
-                MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,((char *)(x->val[0]))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
-
-            }
+            MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,VECVAL(x,x->val,i,0),x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
         }
     } else {
         for (i=0; i<x->traits->nvecs; ++i) {
-            for (j=0; j<x->traits->nrows; ++j) {
-                if (ghost_getRank(v->context->mpicomm) == reduce) {
-                    MPI_safecall(MPI_Reduce(MPI_IN_PLACE,((char *)(x->val[0]))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),1,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
-                } else {
-                    MPI_safecall(MPI_Reduce(((char *)(x->val[0]))+(i*x->traits->nrowspadded+j)*ghost_sizeofDataType(x->traits->datatype),NULL,1,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
-                }
+            if (ghost_getRank(v->context->mpicomm) == reduce) {
+                MPI_safecall(MPI_Reduce(MPI_IN_PLACE,VECVAL(x,x->val,i,0),x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+            } else {
+                MPI_safecall(MPI_Reduce(VECVAL(x,x->val,i,0),NULL,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
             }
         }
     }
