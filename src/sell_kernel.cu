@@ -202,8 +202,6 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
         zero<v_t>(tmp);
 
         for (j=0; j<rowlen[i]; j++) {
-            if (i==111)
-                printf("rl[i]=%d, %f*%f\n",rowlen[i],rhs[col[cs + tid + j*C]], val[cs + tid + j*C]);
             tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + j*C]], val[cs + tid + j*C]);
         }
         if (options & GHOST_SPMVM_AXPY)
@@ -236,8 +234,6 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 
 
         for (j=0; j<rowlen[i]/T; j++) {
-            if (i==111)
-                printf("rl[i]=%d, %f*%f\n",rowlen[i],rhs[col[cs + tid + (threadIdx.y+j*blockDim.y)*C]], val[cs + tid + (threadIdx.y+j*blockDim.y)*C]);
 #ifdef SELLT_STRIDE_ONE
             tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]], val[cs + tid + (threadIdx.y*rowlen[i]/T+j)*C]);
 #else
