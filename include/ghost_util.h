@@ -157,6 +157,16 @@
         fflush(stdout);\
     }\
 }
+#define CUBLAS_safecall(call) {\
+    cublasStatus_t __stat = call ;\
+    if( CUBLAS_STATUS_SUCCESS != __stat ){\
+        int __me;\
+        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
+        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUBLAS error at %s:%d\n" ANSI_COLOR_RESET,\
+                __me, __FILE__, __LINE__);\
+        fflush(stdout);\
+    }\
+}
 
 #define CU_checkerror() {\
     cudaError_t __cuerr = cudaGetLastError();\
@@ -176,6 +186,14 @@
     if( cudaSuccess != __cuerr ){\
         fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
                 __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
+        fflush(stdout);\
+    }\
+}
+#define CUBLAS_safecall(call) {\
+    cublasStatus_t __stat = call ;\
+    if( CUBLAS_STATUS_SUCCESS != __stat ){\
+        fprintf(stdout, ANSI_COLOR_RED "CUBLAS error at %s:%d\n" ANSI_COLOR_RESET,\
+                 __FILE__, __LINE__);\
         fflush(stdout);\
     }\
 }

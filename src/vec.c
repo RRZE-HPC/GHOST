@@ -14,9 +14,10 @@
 #include <unistd.h>
 #include <errno.h>
 
-
 #ifdef GHOST_HAVE_CUDA
 #include <cuda_runtime.h> // TODO in cu_util
+#include <cublas_v2.h>
+extern cublasHandle_t ghost_cublas_handle;
 #endif
 
 void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
@@ -520,7 +521,45 @@ static void vec_vscale(ghost_vec_t *vec, void *scale)
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
-    ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+    if (vec->traits->flags & vec2->traits->flags  & GHOST_VEC_HOST)
+    {
+        ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+    }
+    else if (vec->traits->flags & vec2->traits->flags  & GHOST_VEC_DEVICE)
+    {
+#if GHOST_HAVE_CUDA
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
+                            (const cuDoubleComplex *)vec->CU_val,1,(const cuDoubleComplex *)vec2->CU_val,1,res));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
+                            (const cuFloatComplex *)vec->CU_val,1,(const cuFloatComplex *)vec2->CU_val,1,res));
+            }
+        }
+        else
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
+                            (const double *)vec->CU_val,1,(const double *)vec2->CU_val,1,res));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
+                            (const float *)vec->CU_val,1,(const float *)vec2->CU_val,1,res));
+            }
+        }
+#endif
+    } 
+    else
+    {
+        WARNING_LOG("Vector has neither host nor device placement, not doing the dot product");
+    }
 }
 
 static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
