@@ -62,18 +62,21 @@
 #endif
 
 #ifdef GHOST_HAVE_MPI
-#define WARNING_LOG(msg, ...) {\
+#define LOG(type,color,msg, ...) {\
     int __me;\
     MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr,ANSI_COLOR_YELLOW "PE%d WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
+    fprintf(stderr,color "PE%d "#type" at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
     fflush(stderr);\
 }
 #else
-#define WARNING_LOG(msg, ...) {\
-    fprintf(stderr,ANSI_COLOR_YELLOW "WARNING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
+#define LOG(type,color,msg, ...) {\
+    fprintf(stderr,color #type" at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
     fflush(stderr);\
 }
 #endif
+
+#define WARNING_LOG(msg, ...) LOG(WARNING,ANSI_COLOR_YELLOW,msg,__VA_ARGS__)
+#define INFO_LOG(msg, ...) LOG(INFO,ANSI_COLOR_BLUE,msg,__VA_ARGS__)
 
 #ifdef GHOST_HAVE_MPI
 #define ABORT(msg, ...) {\
