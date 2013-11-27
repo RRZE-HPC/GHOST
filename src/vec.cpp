@@ -126,25 +126,28 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
     vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
+    ghost_vidx_t i,v;
 
-    int i,v;
-
-    // TODO fuse loops but preserve randomness
-
-    for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for schedule(runtime)
-        for (i=0; i<vec->traits->nrows; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)0;
-        }
-    }
-
-    for (v=0; v<vec->traits->nvecs; v++) {
-        for (i=0; i<vec->traits->nrows; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)(rand()*1./RAND_MAX); // TODO imag
+#pragma omp parallel private (v,i)
+    {
+        srand(int(time(NULL)) ^ ghost_ompGetThreadNum());
+        for (v=0; v<vec->traits->nvecs; v++) {
+#pragma omp for
+            for (i=0; i<vec->traits->nrows; i++) {
+                *(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)(rand()*1./RAND_MAX);
+                
+                if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+                { // let's trust the branch prediction...
+                    if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
+                        *(double *)(VECVAL(vec,vec->val,v,i)+sizeof(double)) = (double)(rand()*1./RAND_MAX);
+                    } else {
+                        *(float *)(VECVAL(vec,vec->val,v,i)+sizeof(float)) = (float)(rand()*1./RAND_MAX);
+                    }
+                }
+            }
         }
     }
     vec->upload(vec);
-
 }
 
 
