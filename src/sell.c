@@ -148,7 +148,7 @@ static void SELL_printInfo(ghost_mat_t *mat)
 {
     ghost_printLine("Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
     ghost_printLine("Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_printLine("Threads per row (T)",NULL,"%f",SELL(mat)->T);
+    ghost_printLine("Threads per row (T)",NULL,"%d",SELL(mat)->T);
     if (mat->traits->flags & GHOST_SPM_SORTED) {
         ghost_printLine("Sorted",NULL,"yes");
         ghost_printLine("Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
