@@ -135,7 +135,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 #pragma omp for
             for (i=0; i<vec->traits->nrows; i++) {
                 *(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)(rand()*1./RAND_MAX);
-                
+
                 if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
                 { // let's trust the branch prediction...
                     if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
@@ -165,39 +165,22 @@ template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
 #else
     snprintf(prefix,1,"");
 #endif
-    
-    if (vec->traits->flags & GHOST_VEC_HOST)
-    {
-        ghost_vidx_t i,v;
-        std::cout.setf(std::ios::fixed, std::ios::floatfield);
-        for (i=0; i<vec->traits->nrows; i++) {
-            std::cout << prefix << "\t";
-            for (v=0; v<vec->traits->nvecs; v++) {
-                std::cout << *(v_t *)(VECVAL(vec,vec->val,v,i)) << "\t";
-            }
-            std::cout << std::endl;
-        }
-    }
-    else if (vec->traits->flags & GHOST_VEC_DEVICE)
-    {
+
+    ghost_vidx_t i,v;
+    std::cout.setf(std::ios::fixed, std::ios::floatfield);
+    for (i=0; i<vec->traits->nrows; i++) {
+        std::cout << prefix << "\t";
+        for (v=0; v<vec->traits->nvecs; v++) {
+            v_t val;
+            if (vec->traits->flags & GHOST_VEC_DEVICE)
+            {
 #if GHOST_HAVE_CUDA
-        ghost_vidx_t i,v;
-        std::cout.setf(std::ios::fixed, std::ios::floatfield);
-        for (i=0; i<vec->traits->nrows; i++) {
-            std::cout << prefix << "\t";
-            for (v=0; v<vec->traits->nvecs; v++) {
-                v_t val;
                 CU_copyDeviceToHost(&val,&vec->CU_val[v*vec->CU_pitch+i*sizeof(v_t)],sizeof(v_t));
-                CU_barrier();
-                std::cout << val << "\t";
-            }
-            std::cout << std::endl;
-        }
 #endif
-    }
-    else
-    {
-        WARNING_LOG("Invalid vector placement");
+            }
+            std::cout << val << "\t";
+        }
+        std::cout << std::endl;
     }
 }
 
