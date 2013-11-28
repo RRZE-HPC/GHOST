@@ -191,17 +191,38 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
     ghost_vidx_t i,j;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
-    } else if (reduce == GHOST_GEMM_ALL_REDUCE) {
-        for (i=0; i<x->traits->nvecs; ++i) {
-            MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,VECVAL(x,x->val,i,0),x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
-        }
-    } else {
-        for (i=0; i<x->traits->nvecs; ++i) {
-            if (ghost_getRank(v->context->mpicomm) == reduce) {
-                MPI_safecall(MPI_Reduce(MPI_IN_PLACE,VECVAL(x,x->val,i,0),x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
-            } else {
-                MPI_safecall(MPI_Reduce(VECVAL(x,x->val,i,0),NULL,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+    } else 
+    {
+        for (i=0; i<x->traits->nvecs; ++i) 
+        {
+            int copied = 0;
+            void *val;
+            if (x->traits->flags & GHOST_VEC_DEVICE)
+            {
+#if GHOST_HAVE_CUDA
+                val = ghost_malloc(x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
+                CU_copyDeviceToHost(val,&x->CU_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
+                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
+                copied = 1;
+#endif
             }
+            else if (x->traits->flags & GHOST_VEC_HOST)
+            {
+                val = VECVAL(x,x->val,i,0);
+            }
+
+            if (reduce == GHOST_GEMM_ALL_REDUCE) 
+            {
+                MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
+            } else {
+                if (ghost_getRank(v->context->mpicomm) == reduce) {
+                    MPI_safecall(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+                } else {
+                    MPI_safecall(MPI_Reduce(val,NULL,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+                }
+            }
+            if (copied)
+                free(val);
         }
     }
 #else

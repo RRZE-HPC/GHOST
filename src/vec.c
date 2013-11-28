@@ -604,9 +604,24 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
     MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
     ghost_vidx_t vecoffset = 0;
     for (v=0; v<vec->traits->nvecs; v++) {
-        MPI_safecall(MPI_File_write_at(fileh,fileoffset,VECVAL(vec,vec->val,v,0),vec->traits->nrows,mpidt,&status));
+        char *val = NULL;
+        int copied = 0;
+        if (vec->traits->flags & GHOST_VEC_HOST)
+        {
+            vec->download(vec);
+            val = VECVAL(vec,vec->val,v,0);
+        }
+        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        {
+            val = ghost_malloc(vec->traits->nrows*sizeofdt);
+            copied = 1;
+            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+        }
+        MPI_safecall(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
         fileoffset += nrows;
         vecoffset += vec->traits->nrowspadded*sizeofdt;
+        if (copied)
+            free(val);
     }
     MPI_safecall(MPI_File_close(&fileh));
 
@@ -650,11 +665,6 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
             CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
-        }
-        else 
-        {
-            WARNING_LOG("Invalid vector placement, not writing vector");
-            fclose(filed);
         }
 
         if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
