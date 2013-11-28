@@ -175,7 +175,7 @@ static void vec_uploadHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDeviceOffset(&vec->CU_val[vec->CU_pitch*v],
+            CU_copyHostToDeviceOffset(&vec->CU_val[vec->traits->nrowspadded*v],
                     VECVAL(vec,vec->val,v,vec->traits->nrows), 
                     vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
                     vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
@@ -205,7 +205,7 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -224,7 +224,7 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->CU_pitch*v],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -243,7 +243,7 @@ static void vec_upload(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -262,7 +262,7 @@ static void vec_download(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->CU_pitch*v],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -357,7 +357,8 @@ void ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
 #else
-            CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->CU_pitch,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
+            //CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
+            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #endif
         }
 #endif
@@ -615,7 +616,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
         {
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
-            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->CU_pitch],vec->traits->nrows*sizeofdt);
+            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded],vec->traits->nrows*sizeofdt);
         }
         else 
         {
@@ -707,7 +708,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
             char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
             if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
                 ABORT("fread failed");
-            CU_copyHostToDevice(&vec->CU_val[v*vec->CU_pitch],val,vec->traits->nrows*sizeofdt);
+            CU_copyHostToDevice(&vec->CU_val[v*vec->traits->nrowspadded],val,vec->traits->nrows*sizeofdt);
             free(val);
         }
         else

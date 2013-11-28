@@ -354,7 +354,6 @@ struct ghost_vec_t
 #endif
 #ifdef GHOST_HAVE_CUDA
     char * CU_val;
-    size_t CU_pitch;
 #endif
 };
 

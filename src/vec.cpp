@@ -175,7 +175,7 @@ template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
             if (vec->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                CU_copyDeviceToHost(&val,&vec->CU_val[v*vec->CU_pitch+i*sizeof(v_t)],sizeof(v_t));
+                CU_copyDeviceToHost(&val,&vec->CU_val[v*vec->traits->nrowspadded+i*sizeof(v_t)],sizeof(v_t));
 #endif
             }
             std::cout << val << "\t";
