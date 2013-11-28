@@ -442,18 +442,24 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
         {
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
+#if GHOST_HAVE_CUDA
                 CU_copyDeviceToDevice(CUVECVAL(vec,vec->CU_val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+#endif
             }
             else
             {
+#if GHOST_HAVE_CUDA
                 CU_copyHostToDevice(CUVECVAL(vec,vec->CU_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+#endif
             }
         }
         else
         {
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
+#if GHOST_HAVE_CUDA
                 CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+#endif
             }
             else
             {
@@ -732,11 +738,13 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
         }
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
+#if GHOST_HAVE_CUDA
             char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
             if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
                 ABORT("fread failed");
             CU_copyHostToDevice(&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],val,vec->traits->nrows*sizeofdt);
             free(val);
+#endif
         }
         else
         {
@@ -782,7 +790,9 @@ static void ghost_zeroVector(ghost_vec_t *vec)
     } 
     else
     {
+#if GHOST_HAVE_CUDA
         CU_memset(vec->CU_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+#endif
     }
 }
 
