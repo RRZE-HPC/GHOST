@@ -13,6 +13,7 @@ void * CU_allocDeviceMemory( size_t bytesize );
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem, size_t bytesize, size_t offset);
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize);
+void CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize);
 void CU_freeDeviceMemory(void * mem);
 void CU_barrier();
 void CU_finish();
