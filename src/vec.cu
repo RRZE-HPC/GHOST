@@ -8,6 +8,7 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <cublas_v2.h>
+#include <curand.h>
 
 #include <ghost_cu_complex_helper.h>
 
@@ -386,6 +387,49 @@ extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
             cu_fromscalar_kernel<float><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (float *)vec->CU_val, *(float *)a,
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
+        }
+    }
+}
+
+void ghost_vec_cu_fromRand(ghost_vec_t *vec)
+{
+    ghost_vec_malloc(vec);
+    curandGenerator_t gen;
+    CURAND_safecall(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
+    CURAND_safecall(curandSetPseudoRandomGeneratorSeed(gen,(int)time(NULL)));
+
+    ghost_vidx_t v;
+    for (v=0; v<vec->traits->nvecs; v++)
+    {
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CURAND_safecall(curandGenerateUniformDouble(gen,
+                            &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],
+                            vec->traits->nrows*2));
+            } 
+            else 
+            {
+                CURAND_safecall(curandGenerateUniform(gen,
+                            &((float *)(vec->CU_val))[v*vec->traits->nrowspadded],
+                            vec->traits->nrows*2));
+            }
+        }
+        else
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CURAND_safecall(curandGenerateUniformDouble(gen,
+                            &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],
+                            vec->traits->nrows));
+            } 
+            else 
+            {
+                CURAND_safecall(curandGenerateUniform(gen,
+                            &((float *)(vec->CU_val))[v*vec->traits->nrowspadded],
+                            vec->traits->nrows));
+            }
         }
     }
 }

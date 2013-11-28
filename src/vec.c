@@ -105,6 +105,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->scale = &ghost_vec_cu_scale;
         vec->vscale = &ghost_vec_cu_vscale;
         vec->fromScalar = &ghost_vec_cu_fromScalar;
+        vec->fromRand = &ghost_vec_cu_fromRand;
 #endif
     }
     else
@@ -117,13 +118,13 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->scale = &vec_scale;
         vec->vscale = &vec_vscale;
         vec->fromScalar = &vec_fromScalar;
+        vec->fromRand = &vec_fromRand;
     }
 
 
     vec->print = &vec_print;
     vec->fromFunc = &vec_fromFunc;
     vec->fromVec = &vec_fromVec;
-    vec->fromRand = &vec_fromRand;
     vec->fromFile = &vec_fromFile;
     vec->toFile = &vec_toFile;
     vec->zero = &ghost_zeroVector;
