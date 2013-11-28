@@ -164,30 +164,37 @@ extern "C" void ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *
         WARNING_LOG("Cannot DOT vectors with different data types");
         return;
     }
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    
+    ghost_vidx_t v;
+    for (v=0; v<vec->traits->nvecs; v++)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        char *v1 = &vec->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
+        char *v2 = &vec2->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
         {
-            CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
-                        (const cuDoubleComplex *)vec->CU_val,1,(const cuDoubleComplex *)vec2->CU_val,1,(cuDoubleComplex *)res));
-        } 
-        else 
-        {
-            CUBLAS_safecall(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
-                        (const cuFloatComplex *)vec->CU_val,1,(const cuFloatComplex *)vec2->CU_val,1,(cuFloatComplex *)res));
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
+                            (const cuDoubleComplex *)v1,1,(const cuDoubleComplex *)v2,1,&((cuDoubleComplex *)res)[v]));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
+                            (const cuFloatComplex *)v1,1,(const cuFloatComplex *)v2,1,&((cuFloatComplex *)res)[v]));
+            }
         }
-    }
-    else
-    {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        else
         {
-            CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
-                        (const double *)vec->CU_val,1,(const double *)vec2->CU_val,1,(double *)res));
-        } 
-        else 
-        {
-            CUBLAS_safecall(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
-                        (const float *)vec->CU_val,1,(const float *)vec2->CU_val,1,(float *)res));
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            {
+                CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
+                            (const double *)v1,1,(const double *)v2,1,&((double *)res)[v]));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
+                            (const float *)v1,1,(const float *)v2,1,&((float *)res)[v]));
+            }
         }
     }
 }
