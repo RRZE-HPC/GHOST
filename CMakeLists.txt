@@ -45,7 +45,6 @@ set (HEADERS
 		include/ghost_affinity.h	
 		include/ghost_blas_mangle.h
 		include/ghost_complex.h
-		${PROJECT_BINARY_DIR}/ghost_config.h
 		include/ghost_constants.h
 		include/ghost_context.h
 		include/ghost_crs.h
@@ -186,11 +185,11 @@ elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 endif()
 
-
 install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
 install(FILES GHOST-config.cmake DESTINATION lib/ghost)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
+install(FILES ${CMAKE_BINARY_DIR}/ghost_config.h DESTINATION include/ghost)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
