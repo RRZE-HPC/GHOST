@@ -24,6 +24,7 @@
 #endif
 
 #define VECVAL(vec,val,__x,__y) &(val[__x][__y*ghost_sizeofDataType(vec->traits->datatype)])
+#define CUVECVAL(vec,val,__x,__y) &(val[(__x*vec->traits->nrowspadded+__y)*ghost_sizeofDataType(vec->traits->datatype)])
 
 #ifdef __cplusplus
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec);

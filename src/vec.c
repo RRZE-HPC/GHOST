@@ -438,12 +438,30 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
     ghost_vidx_t i,v;
 
     for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for 
-        for (i=0; i<vec->traits->nrows; i++) {
-            memcpy(VECVAL(vec,vec->val,v,i),VECVAL(vec2,vec2->val,coffs+v,i),sizeofdt);
+        if (vec->traits->flags & GHOST_VEC_DEVICE)
+        {
+            if (vec2->traits->flags & GHOST_VEC_DEVICE)
+            {
+                CU_copyDeviceToDevice(CUVECVAL(vec,vec->CU_val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+            }
+            else
+            {
+                CU_copyHostToDevice(CUVECVAL(vec,vec->CU_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+            }
         }
+        else
+        {
+            if (vec2->traits->flags & GHOST_VEC_DEVICE)
+            {
+                CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+            }
+            else
+            {
+                memcpy(VECVAL(vec,vec->val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+            }
+        }
+                
     }
-    vec->upload(vec);
 }
 
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
