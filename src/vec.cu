@@ -326,3 +326,4 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
         }
     }
 }
+

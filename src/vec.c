@@ -330,6 +330,7 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 static void vec_print(ghost_vec_t *vec)
 {
     ghost_vec_print_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    
 }
 
 void vec_malloc(ghost_vec_t *vec)
