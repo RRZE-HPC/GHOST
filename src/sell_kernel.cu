@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 
+#include <ghost_cu_complex_helper.h>
+
 #define SELL_CUDA_NBLOCKS (int)ceil(SELL(mat)->cumat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
 //#define SELLT_STRIDE_ONE
 
@@ -60,105 +62,6 @@ extern int ghost_cu_device;
     }\
 }
  
-template<typename T>
-__device__ inline void zero(T &val)
-{
-    val = 0.;
-}
-
-template<>
-__device__ inline void zero<cuFloatComplex>(cuFloatComplex &val)
-{
-    val = make_cuFloatComplex(0.,0.);
-}
-
-template<>
-__device__ inline void zero<cuDoubleComplex>(cuDoubleComplex &val)
-{
-    val = make_cuDoubleComplex(0.,0.);
-}
-
-// val += val2*val3
-template<typename T, typename T2>
-__device__ inline T axpy(T val, T val2, T2 val3)
-{
-    return val+val2*val3;
-}
-
-template<>
-__device__ inline cuFloatComplex axpy<cuFloatComplex,cuFloatComplex>(cuFloatComplex val, cuFloatComplex val2, cuFloatComplex val3)
-{
-    return cuCaddf(val,cuCmulf(val2,val3));
-}
-
-template<>
-__device__ inline cuFloatComplex axpy<cuFloatComplex,double>(cuFloatComplex val, cuFloatComplex val2, double val3)
-{
-    return cuCaddf(val,cuCmulf(val2,make_cuFloatComplex((float)val3,0.f)));
-}
-
-template<>
-__device__ inline cuFloatComplex axpy<cuFloatComplex,float>(cuFloatComplex val, cuFloatComplex val2, float val3)
-{
-    return cuCaddf(val,cuCmulf(val2,make_cuFloatComplex(val3,0.f)));
-}
-
-template<>
-__device__ inline cuFloatComplex axpy<cuFloatComplex,cuDoubleComplex>(cuFloatComplex val, cuFloatComplex val2, cuDoubleComplex val3)
-{
-    return cuCaddf(val,cuCmulf(val2,make_cuFloatComplex((float)(cuCreal(val3)),(float)(cuCimag(val3)))));
-}
-
-template<>
-__device__ inline cuDoubleComplex axpy<cuDoubleComplex,double>(cuDoubleComplex val, cuDoubleComplex val2, double val3)
-{
-    return cuCadd(val,cuCmul(val2,make_cuDoubleComplex(val3,0.)));
-}
-
-template<>
-__device__ inline cuDoubleComplex axpy<cuDoubleComplex,float>(cuDoubleComplex val, cuDoubleComplex val2, float val3)
-{
-    return cuCadd(val,cuCmul(val2,make_cuDoubleComplex((double)val3,0.)));
-}
-
-template<>
-__device__ inline cuDoubleComplex axpy<cuDoubleComplex,cuDoubleComplex>(cuDoubleComplex val, cuDoubleComplex val2, cuDoubleComplex val3)
-{
-    return cuCadd(val,cuCmul(val2,val3));
-}
-
-template<>
-__device__ inline cuDoubleComplex axpy<cuDoubleComplex,cuFloatComplex>(cuDoubleComplex val, cuDoubleComplex val2, cuFloatComplex val3)
-{
-    return cuCadd(val,cuCmul(val2,make_cuDoubleComplex((double)(cuCrealf(val3)),(double)(cuCimagf(val3)))));
-}
-
-template<>
-__device__ inline double axpy<double,cuFloatComplex>(double val, double val2, cuFloatComplex val3)
-{
-    return val+val2*(double)cuCrealf(val3);
-}
-
-
-template<>
-__device__ inline double axpy<double,cuDoubleComplex>(double val, double val2, cuDoubleComplex val3)
-{
-    return val+val2*cuCreal(val3);
-}
-
-template<>
-__device__ inline float axpy<float,cuFloatComplex>(float val, float val2, cuFloatComplex val3)
-{
-    return val+val2*cuCrealf(val3);
-}
-
-
-template<>
-__device__ inline float axpy<float,cuDoubleComplex>(float val, float val2, cuDoubleComplex val3)
-{
-    return val+val2*(float)cuCreal(val3);
-}
-
 template<typename m_t, typename v_t>  
 __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen, int C, int T)
 {

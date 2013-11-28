@@ -67,14 +67,6 @@ static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
 static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
-#ifdef GHOST_HAVE_CUDA
-static void vec_CUupload (ghost_vec_t *);
-static void vec_CUdownload (ghost_vec_t *);
-#endif
-#ifdef GHOST_HAVE_OPENCL
-static void vec_CLupload (ghost_vec_t *);
-static void vec_CLdownload (ghost_vec_t *);
-#endif
 static void vec_upload(ghost_vec_t *vec);
 static void vec_download(ghost_vec_t *vec);
 static void vec_uploadHalo(ghost_vec_t *vec);
@@ -93,13 +85,39 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %zu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
     DEBUG_LOG(1,"Initializing vector");
 
-    vec->dotProduct = &vec_dotprod;
-    vec->vscale = &vec_vscale;
-    vec->scale = &vec_scale;
-    vec->vaxpy = &vec_vaxpy;
-    vec->vaxpby = &vec_vaxpby;
-    vec->axpy = &vec_axpy;
-    vec->axpby = &vec_axpby;
+    if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE)))
+    { // no placement specified
+        DEBUG_LOG(2,"Setting vector placement");
+        vec->traits->flags |= GHOST_VEC_HOST;
+#if GHOST_HAVE_CUDA
+        vec->traits->flags |= GHOST_VEC_DEVICE;
+#endif
+    }
+
+    if (vec->traits->flags & GHOST_VEC_DEVICE)
+    {
+#if GHOST_HAVE_CUDA
+        vec->dotProduct = &ghost_vec_cu_dotprod;
+        vec->vaxpy = &ghost_vec_cu_vaxpy;
+        vec->vaxpby = &ghost_vec_cu_vaxpby;
+        vec->axpy = &ghost_vec_cu_axpy;
+        vec->axpby = &ghost_vec_cu_axpby;
+        vec->scale = &ghost_vec_cu_scale;
+        vec->vscale = &ghost_vec_cu_vscale;
+#endif
+    }
+    else
+    {
+        vec->dotProduct = &vec_dotprod;
+        vec->vaxpy = &vec_vaxpy;
+        vec->vaxpby = &vec_vaxpby;
+        vec->axpy = &vec_axpy;
+        vec->axpby = &vec_axpby;
+        vec->scale = &vec_scale;
+        vec->vscale = &vec_vscale;
+    }
+
+
     vec->print = &vec_print;
     vec->fromFunc = &vec_fromFunc;
     vec->fromVec = &vec_fromVec;
@@ -127,32 +145,25 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     vec->uploadNonHalo = &vec_uploadNonHalo;
     vec->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
-    vec->CUupload = &vec_CUupload;
-    vec->CUdownload = &vec_CUdownload;
-    if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
-        DEBUG_LOG(2,"Setting vector storage to host&device");
-        vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
-    }
     if (vec->traits->flags & GHOST_VEC_DEVICE) {
         vec->CU_val = NULL;
     }
 #elif defined(OPENCL)
     vec->CL_val_gpu = NULL;
-    vec->CLupload = &vec_CLupload;
-    vec->CLdownload = &vec_CLdownload;
     if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
         vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
     }
-#else // no CUDA, no OPENCL ==> vector has to be on host
-    vec->traits->flags |= GHOST_VEC_HOST;
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
     vec->val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
-    
+
     for (v=0; v<vec->traits->nvecs; v++) {
         vec->val[v] = NULL;
     }
+
+
+
     return vec;
 }
 
@@ -163,7 +174,10 @@ static void vec_uploadHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(&vec->CU_val[vec->CU_pitch*v],VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype));
+            CU_copyHostToDeviceOffset(&vec->CU_val[vec->CU_pitch*v],
+                    VECVAL(vec,vec->val,v,vec->traits->nrows), 
+                    vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
+                    vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
@@ -258,34 +272,6 @@ static void vec_download(ghost_vec_t *vec)
 #endif
     }
 }
-
-#ifdef GHOST_HAVE_CUDA
-static void vec_CUupload (ghost_vec_t *vec)
-{
-    WARNING_LOG("Deprecated");
-    CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-}
-
-static void vec_CUdownload (ghost_vec_t *vec)
-{
-    WARNING_LOG("Deprecated");
-    CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-}
-#endif
-
-#ifdef GHOST_HAVE_OPENCL
-static void vec_CLupload( ghost_vec_t *vec )
-{
-    WARNING_LOG("Deprecated");
-    CL_copyHostToDevice(vec->CL_val_gpu,vec->val,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-}
-
-static void vec_CLdownload( ghost_vec_t *vec )
-{
-    WARNING_LOG("Deprecated");
-    CL_copyDeviceToHost(vec->val,vec->CL_val_gpu,vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-}
-#endif
 
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
@@ -389,45 +375,45 @@ void getNrowsFromContext(ghost_vec_t *vec)
     DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
     if (vec->context != NULL) {
-    if (vec->traits->nrows == 0) {
-        DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
-        if (vec->traits->flags & GHOST_VEC_DUMMY) {
-            vec->traits->nrows = 0;
-        } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
-        {
-            if (vec->traits->flags & GHOST_VEC_LHS) {
-                vec->traits->nrows = vec->context->gnrows;
-            } else if (vec->traits->flags & GHOST_VEC_RHS) {
-                vec->traits->nrows = vec->context->gncols;
-            }
-        } 
-        else 
-        {
-            vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->mpicomm)];
-        }
-    }
-    if (vec->traits->nrowshalo == 0) {
-        DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
-        if (vec->traits->flags & GHOST_VEC_DUMMY) {
-            vec->traits->nrowshalo = 0;
-        } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
-        {
-            vec->traits->nrowshalo = vec->traits->nrows;
-        } 
-        else 
-        {
-            if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
-                if (vec->context->communicator->halo_elements == -1) {
-                    ABORT("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+        if (vec->traits->nrows == 0) {
+            DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
+            if (vec->traits->flags & GHOST_VEC_DUMMY) {
+                vec->traits->nrows = 0;
+            } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            {
+                if (vec->traits->flags & GHOST_VEC_LHS) {
+                    vec->traits->nrows = vec->context->gnrows;
+                } else if (vec->traits->flags & GHOST_VEC_RHS) {
+                    vec->traits->nrows = vec->context->gncols;
                 }
-                vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
-             } else {
+            } 
+            else 
+            {
+                vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->mpicomm)];
+            }
+        }
+        if (vec->traits->nrowshalo == 0) {
+            DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
+            if (vec->traits->flags & GHOST_VEC_DUMMY) {
+                vec->traits->nrowshalo = 0;
+            } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            {
                 vec->traits->nrowshalo = vec->traits->nrows;
-             }
-        }    
-    }
+            } 
+            else 
+            {
+                if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
+                    if (vec->context->communicator->halo_elements == -1) {
+                        ABORT("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+                    }
+                    vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
+                } else {
+                    vec->traits->nrowshalo = vec->traits->nrows;
+                }
+            }    
+        }
     } else {
-            // the case context==NULL is allowed - the vector is local.
+        // the case context==NULL is allowed - the vector is local.
         DEBUG_LOG(1,"The vector's context is NULL.");
     }
 
@@ -521,45 +507,7 @@ static void vec_vscale(ghost_vec_t *vec, void *scale)
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
-    if (vec->traits->flags & vec2->traits->flags  & GHOST_VEC_HOST)
-    {
-        ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
-    }
-    else if (vec->traits->flags & vec2->traits->flags  & GHOST_VEC_DEVICE)
-    {
-#if GHOST_HAVE_CUDA
-        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-        {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
-            {
-                CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
-                            (const cuDoubleComplex *)vec->CU_val,1,(const cuDoubleComplex *)vec2->CU_val,1,res));
-            } 
-            else 
-            {
-                CUBLAS_safecall(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
-                            (const cuFloatComplex *)vec->CU_val,1,(const cuFloatComplex *)vec2->CU_val,1,res));
-            }
-        }
-        else
-        {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
-            {
-                CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
-                            (const double *)vec->CU_val,1,(const double *)vec2->CU_val,1,res));
-            } 
-            else 
-            {
-                CUBLAS_safecall(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
-                            (const float *)vec->CU_val,1,(const float *)vec2->CU_val,1,res));
-            }
-        }
-#endif
-    } 
-    else
-    {
-        WARNING_LOG("Vector has neither host nor device placement, not doing the dot product");
-    }
+    ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
 }
 
 static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
@@ -579,15 +527,34 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-    int i,v;
-
-    for (v=0; v<vec->traits->nvecs; v++) {
+    if (vec->traits->flags & GHOST_VEC_HOST)
+    {
+        int i,v;
+        for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
-        for (i=0; i<vec->traits->nrows; i++) {
-            memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
+            for (i=0; i<vec->traits->nrows; i++) {
+                memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
+            }
         }
+        vec->upload(vec);
     }
-    vec->upload(vec);
+    else if (vec->traits->flags & GHOST_VEC_DEVICE)
+    {
+#if GHOST_HAVE_CUDA
+        // TODO not copy one by one
+        int i,v;
+        for (v=0; v<vec->traits->nvecs; v++) {
+            for (i=0; i<vec->traits->nrows; i++) {
+                CU_copyHostToDevice(&vec->CU_val[v*vec->CU_pitch+i*sizeofdt],val,sizeofdt);
+            }
+        }
+        CU_barrier();
+#endif
+    }
+    else
+    {
+        WARNING_LOG("Invalid vector placement");
+    }
 
 }
 
@@ -633,7 +600,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
     DEBUG_LOG(1,"Writing (local) vector to file %s",path);
     size_t ret;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-    
+
     int32_t endianess = ghost_archIsBigEndian();
     int32_t version = 1;
     int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
@@ -656,8 +623,30 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
 
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++) {
-        if ((ret = fwrite(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+        char *val = NULL;
+        int copied = 0;
+        if (vec->traits->flags & GHOST_VEC_HOST)
+        {
+            vec->download(vec);
+            val = VECVAL(vec,vec->val,v,0);
+        }
+        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        {
+            val = ghost_malloc(vec->traits->nrows*sizeofdt);
+            copied = 1;
+            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->CU_pitch],vec->traits->nrows*sizeofdt);
+        }
+        else 
+        {
+            WARNING_LOG("Invalid vector placement, not writing vector");
+            fclose(filed);
+        }
+
+        if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
             ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+
+        if (copied)
+            free(val);
     }
     fclose(filed);
 #endif
@@ -671,7 +660,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
         offset = 0;
     else
         offset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
-    
+
     vec_malloc(vec);
     DEBUG_LOG(1,"Reading vector from file %s",path);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
@@ -700,7 +689,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
 
     if ((ret = fread(&version, sizeof(version), 1,filed)) != 1)
         ABORT("fread failed");
-    
+
     if (version != 1)
         ABORT("Cannot read vector files with format != 1 (is %d)",version);
 
@@ -726,15 +715,30 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
     for (v=0; v<vec->traits->nvecs; v++) {
         if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
             ABORT("Seek failed");
-
-        if ((ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
-            ABORT("fread failed");
+        if (vec->traits->flags & GHOST_VEC_HOST)
+        {
+            if ((ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+                ABORT("fread failed");
+            vec->upload(vec);
+        }
+        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        {
+            char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
+            if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+                ABORT("fread failed");
+            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->CU_pitch],vec->traits->nrows*sizeofdt);
+            free(val);
+        }
+        else
+        {
+            WARNING_LOG("Invalid vector placement, not writing vector");
+            fclose(filed);
+        }
 
     }
 
     fclose(filed);
 
-    vec->upload(vec);
 
 }
 
@@ -809,7 +813,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
     for (c=0; c<vec->traits->nvecs; c++) {
         memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrowspadded*sizeofdt);
     }
-//    *nodeVec = vec->clone(vec);
+    //    *nodeVec = vec->clone(vec);
 #endif
 
     nodeVec->upload(nodeVec);

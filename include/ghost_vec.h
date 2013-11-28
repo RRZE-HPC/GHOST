@@ -4,6 +4,10 @@
 #include <ghost_config.h>
 #include <ghost_types.h>
 
+#if GHOST_HAVE_CUDA
+#include <ghost_cu_vec.h>
+#endif
+
 #ifdef MIC
 //#define SELL_LEN 8
 #define VEC_PAD 16

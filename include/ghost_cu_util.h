@@ -4,6 +4,10 @@
 #include <ghost_config.h>
 #include <ghost_types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void ghost_CUDA_init(int dev);
 void * CU_allocDeviceMemory( size_t bytesize );
 void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);
@@ -17,4 +21,8 @@ void CU_downloadVector( ghost_vec_t *vec );
 const char * CU_getVersion();
 ghost_acc_info_t *CU_getDeviceInfo();
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif 

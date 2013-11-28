@@ -80,15 +80,18 @@ if (USE_CUDA)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 		    list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
-		cuda_compile(SELL_KERNEL_O src/sell_kernel.cu)
+		cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
+		cuda_compile(VEC_CU_O src/vec.cu)
 		set (SOURCES 
 				${SOURCES} 
-				${SELL_KERNEL_O}
-				src/cu_util.c	
+				${SELL_KERNEL_CU_O}
+				${VEC_CU_O}
+				src/cu_util.c
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
 				include/ghost_cu_util.h
+                include/ghost_cu_vec.h
 			)
 	endif()
 endif()
