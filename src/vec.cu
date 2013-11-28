@@ -20,7 +20,7 @@ __global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_vidx_t nrows, g
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
-    if (idx < nrows)
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x)
     {
         ghost_vidx_t v;
         for (v=0; v<nvecs; v++) {
@@ -34,7 +34,7 @@ __global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_vidx_t n
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
-    if (idx < nrows)
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x)
     {
         ghost_vidx_t v;
         for (v=0; v<nvecs; v++) {
@@ -48,7 +48,7 @@ __global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_vidx_t nrow
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
-    if (idx < nrows)
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x)
     {
         ghost_vidx_t v;
         for (v=0; v<nvecs; v++) {
@@ -62,7 +62,7 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_vidx_t nrows, ghost_
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
-    if (idx < nrows)
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x)
     {
         ghost_vidx_t v;
         for (v=0; v<nvecs; v++) {
