@@ -324,18 +324,20 @@ extern "C" void ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
 
 extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
 {
+    void *d_a = CU_allocDeviceMemory(vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+    CU_copyHostToDevice(d_a,a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
     if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
         {
             cu_vscale_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuDoubleComplex *)vec->CU_val, (cuDoubleComplex *)a,
+                    (cuDoubleComplex *)vec->CU_val, (cuDoubleComplex *)d_a,
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         } 
         else 
         {
             cu_vscale_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (cuFloatComplex *)vec->CU_val, (cuFloatComplex *)a,
+                    (cuFloatComplex *)vec->CU_val, (cuFloatComplex *)d_a,
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         }
     }
@@ -344,13 +346,13 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
         if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
         {
             cu_vscale_kernel<double><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (double *)vec->CU_val, (double *)a,
+                    (double *)vec->CU_val, (double *)d_a,
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         } 
         else 
         {
             cu_vscale_kernel<float><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
-                    (float *)vec->CU_val, (float *)a,
+                    (float *)vec->CU_val, (float *)d_a,
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         }
     }

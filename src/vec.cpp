@@ -8,6 +8,7 @@
 #include <ghost_complex.h>
 #include <ghost_util.h>
 #include <ghost_vec.h>
+#include <ghost_math.h>
 #include <ghost_constants.h>
 #include <ghost_affinity.h>
 
@@ -29,18 +30,17 @@ ghost_complex<T> conjugate(ghost_complex<T>* c) {
 
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
-    v_t s;
-    ghost_vec_dotprod_tmpl<v_t>(vec,vec,&s);
-    s = (v_t)sqrt(s);
-    s = (v_t)(((v_t)1.)/s);
-    vec->scale(vec,&s);
+    ghost_vidx_t v;
+    v_t s[vec->traits->nvecs];
+    ghost_dotProduct(vec,vec,s);
 
-#ifdef GHOST_HAVE_OPENCL
-    vec->CLupload(vec);
-#endif
-#ifdef GHOST_HAVE_CUDA
-    vec->CUupload(vec);
-#endif
+    for (v=0; v<vec->traits->nvecs; v++)
+    {
+        s[v] = (v_t)sqrt(s[v]);
+        s[v] = (v_t)(((v_t)1.)/s[v]);
+    }
+    vec->vscale(vec,&s);
+
 }
 
 template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
