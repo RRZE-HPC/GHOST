@@ -707,7 +707,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
             char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
             if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
                 ABORT("fread failed");
-            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->CU_pitch],vec->traits->nrows*sizeofdt);
+            CU_copyHostToDevice(&vec->CU_val[v*vec->CU_pitch],val,vec->traits->nrows*sizeofdt);
             free(val);
         }
         else
