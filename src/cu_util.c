@@ -60,6 +60,10 @@ void CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize)
 
 } 
 
+void CU_memset(void *s, int c, size_t n)
+{
+    CU_safecall(cudaMemset(s,c,n));
+} 
 
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
         size_t bytesize, size_t offset)

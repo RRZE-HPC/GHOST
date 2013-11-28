@@ -773,11 +773,17 @@ static void ghost_zeroVector(ghost_vec_t *vec)
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
-        memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+    if (vec->traits->flags & GHOST_VEC_HOST)
+    {
+        for (v=0; v<vec->traits->nvecs; v++) 
+        {
+            memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+        }
+    } 
+    else
+    {
+        CU_memset(vec->CU_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
     }
-
-    vec->upload(vec);
 }
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)

@@ -15,6 +15,7 @@ void CU_copyHostToDeviceOffset(void * devmem, void *hostmem, size_t bytesize, si
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize);
 void CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize);
 void CU_freeDeviceMemory(void * mem);
+void CU_memset(void *s, int c, size_t n);
 void CU_barrier();
 void CU_finish();
 void CU_uploadVector( ghost_vec_t *vec );
