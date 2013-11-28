@@ -15,6 +15,8 @@ void ghost_vec_cu_axpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a);
 void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, void *b);
 void ghost_vec_cu_scale(ghost_vec_t *v, void *a);
 void ghost_vec_cu_vscale(ghost_vec_t *v, void *a);
+void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *val);
+
 
 #ifdef __cplusplus
 }

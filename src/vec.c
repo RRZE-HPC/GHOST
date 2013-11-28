@@ -104,6 +104,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->axpby = &ghost_vec_cu_axpby;
         vec->scale = &ghost_vec_cu_scale;
         vec->vscale = &ghost_vec_cu_vscale;
+        vec->fromScalar = &ghost_vec_cu_fromScalar;
 #endif
     }
     else
@@ -115,6 +116,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->axpby = &vec_axpby;
         vec->scale = &vec_scale;
         vec->vscale = &vec_vscale;
+        vec->fromScalar = &vec_fromScalar;
     }
 
 
@@ -122,7 +124,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     vec->fromFunc = &vec_fromFunc;
     vec->fromVec = &vec_fromVec;
     vec->fromRand = &vec_fromRand;
-    vec->fromScalar = &vec_fromScalar;
     vec->fromFile = &vec_fromFile;
     vec->toFile = &vec_toFile;
     vec->zero = &ghost_zeroVector;
@@ -333,7 +334,7 @@ static void vec_print(ghost_vec_t *vec)
     
 }
 
-void vec_malloc(ghost_vec_t *vec)
+void ghost_vec_malloc(ghost_vec_t *vec)
 {
 
     int allocd = (vec->val[0] != NULL);
@@ -430,7 +431,7 @@ void getNrowsFromContext(ghost_vec_t *vec)
 
 static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
 {
-    vec_malloc(vec);
+    ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     ghost_vidx_t i,v;
@@ -524,39 +525,18 @@ static void vec_fromRand(ghost_vec_t *vec)
 
 static void vec_fromScalar(ghost_vec_t *vec, void *val)
 {
-    vec_malloc(vec);
+    ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-    if (vec->traits->flags & GHOST_VEC_HOST)
-    {
-        int i,v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+    int i,v;
+    for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
-            for (i=0; i<vec->traits->nrows; i++) {
-                memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
-            }
+        for (i=0; i<vec->traits->nrows; i++) {
+            memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
         }
-        vec->upload(vec);
     }
-    else if (vec->traits->flags & GHOST_VEC_DEVICE)
-    {
-#if GHOST_HAVE_CUDA
-        // TODO not copy one by one
-        int i,v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            for (i=0; i<vec->traits->nrows; i++) {
-                CU_copyHostToDevice(&vec->CU_val[v*vec->CU_pitch+i*sizeofdt],val,sizeofdt);
-            }
-        }
-        CU_barrier();
-#endif
-    }
-    else
-    {
-        WARNING_LOG("Invalid vector placement");
-    }
-
+    vec->upload(vec);
 }
 
 static void vec_toFile(ghost_vec_t *vec, char *path)
@@ -662,7 +642,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
     else
         offset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
 
-    vec_malloc(vec);
+    ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Reading vector from file %s",path);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
@@ -745,7 +725,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
 
 static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 {
-    vec_malloc(vec);
+    ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector via function");
 
     int i,v;

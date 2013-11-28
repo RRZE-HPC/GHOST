@@ -3,6 +3,7 @@
 #include <ghost_types.h>
 #include <ghost_util.h>
 #include <ghost_constants.h>
+#include <ghost_vec.h>
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -67,6 +68,20 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_vidx_t nrows, ghost_
         ghost_vidx_t v;
         for (v=0; v<nvecs; v++) {
             vec[v*nrowspadded+idx] = scale<T>(a[v],vec[v*nrowspadded+idx]);
+        }
+    }
+}
+
+template<typename T>  
+__global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_vidx_t nrows, ghost_vidx_t nvecs, ghost_vidx_t nrowspadded)
+{
+    int idx = blockIdx.x*blockDim.x+threadIdx.x;
+
+    for (;idx < nrows; idx+=gridDim.x*blockDim.x)
+    {
+        ghost_vidx_t v;
+        for (v=0; v<nvecs; v++) {
+            vec[v*nrowspadded+idx] = a;
         }
     }
 }
@@ -327,3 +342,37 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
     }
 }
 
+extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
+{
+    ghost_vec_malloc(vec);
+    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    {
+        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        {
+            cu_fromscalar_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                    (cuDoubleComplex *)vec->CU_val, *(cuDoubleComplex *)a,
+                    vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
+        } 
+        else 
+        {
+            cu_fromscalar_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                    (cuFloatComplex *)vec->CU_val, *(cuFloatComplex *)a,
+                    vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
+        }
+    }
+    else
+    {
+        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        {
+            cu_fromscalar_kernel<double><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                    (double *)vec->CU_val, *(double *)a,
+                    vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
+        } 
+        else 
+        {
+            cu_fromscalar_kernel<float><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
+                    (float *)vec->CU_val, *(float *)a,
+                    vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
+        }
+    }
+}

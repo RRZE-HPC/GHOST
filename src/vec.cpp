@@ -123,7 +123,7 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 {
-    vec_malloc(vec);
+    ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     ghost_vidx_t i,v;

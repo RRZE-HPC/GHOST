@@ -40,7 +40,7 @@ extern "C" {
 ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
 
 void getNrowsFromContext(ghost_vec_t *vec);
-void vec_malloc(ghost_vec_t *vec);
+void ghost_vec_malloc(ghost_vec_t *vec);
 void d_ghost_printVector(ghost_vec_t *vec); 
 void s_ghost_printVector(ghost_vec_t *vec); 
 void z_ghost_printVector(ghost_vec_t *vec);
