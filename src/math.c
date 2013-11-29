@@ -234,9 +234,11 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
             }
             if (copied)
             {
+#if GHOST_HAVE_CUDA
                 CU_copyHostToDevice(&x->CU_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 free(val);
+#endif
             }
         }
     }
