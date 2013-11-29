@@ -74,11 +74,17 @@ int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, gh
 
 int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
 {
-    if ((v->traits->flags & GHOST_VEC_SCATTERED) || 
-            (w->traits->flags & GHOST_VEC_SCATTERED) ||
-            (x->traits->flags & GHOST_VEC_SCATTERED)) {
-        WARNING_LOG("Scattered vectors currently not supported in ghost_gemm()");
-        return GHOST_FAILURE;
+    if (v->traits->flags & GHOST_VEC_SCATTERED)
+    {
+        v->compress(v);
+    }
+    if (w->traits->flags & GHOST_VEC_SCATTERED)
+    {
+        w->compress(w);
+    }
+    if (x->traits->flags & GHOST_VEC_SCATTERED)
+    {
+        x->compress(x);
     }
 
     if (reduce >= ghost_getNumberOfRanks(x->context->mpicomm)) {
