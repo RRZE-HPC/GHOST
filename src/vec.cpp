@@ -15,18 +15,12 @@
 #include <cstdio>
 #include <iostream>
 
-double conjugate(double * c) {
-    return *c;
+template <typename T> 
+static ghost_complex<T> conjugate(ghost_complex<T> * c) {
+    return ghost_complex<T>((T)std::real(std::real(*c)),(T)std::real(-std::imag(*c)));
 }
-
-float conjugate(float * c) {
-    return *c;
-}
-
-template <typename T>
-ghost_complex<T> conjugate(ghost_complex<T>* c) {
-    return ghost_complex<T>(std::real(*c),-std::imag(*c));
-}
+static double conjugate(double * c) {return *c;}
+static float conjugate(float * c) {return *c;}
 
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {

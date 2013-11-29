@@ -14,10 +14,6 @@ struct ghost_complex : public std::complex<T>
         ghost_complex<T> operator*(const ghost_complex<T>&) const;
 };
 
-template <typename T> ghost_complex<T> conjugate(ghost_complex<T> * c);
-double conjugate(double * c);
-float conjugate(float * c);
-
 template <typename T>
 ghost_complex<T>::operator float() const {
     return (float)(std::real(*this));
@@ -31,8 +27,8 @@ ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) const {
 template <typename T>
 ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) const {
     return ghost_complex<T>(
-            std::real(*this)*std::real(c) - std::imag(*this)*std::imag(c), 
-            std::real(*this)*std::imag(c) + std::imag(*this)*std::real(c));
+            std::real(std::real(*this)*std::real(c) - std::imag(*this)*std::imag(c)), 
+            std::real(std::real(*this)*std::imag(c) + std::imag(*this)*std::real(c)));
 }
 
 
