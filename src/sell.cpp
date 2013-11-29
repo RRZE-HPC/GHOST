@@ -290,11 +290,6 @@ static int compareNZEPerRow( const void* a, const void* b )
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
 
-static int compareNZEOrgPos( const void* a, const void* b ) 
-{
-    return  ((ghost_sorting_t*)a)->row - ((ghost_sorting_t*)b)->row;
-}
-
 template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 {
     DEBUG_LOG(1,"Creating SELL matrix");
