@@ -356,7 +356,9 @@ void ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         if (vec->CU_val == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
-            CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+            WARNING_LOG("CUDA pinned memory is disabled");
+            //CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
+            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #else
             //CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
             vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
@@ -950,10 +952,19 @@ static void ghost_freeVector( ghost_vec_t* vec )
         if (!(vec->traits->flags & GHOST_VEC_VIEW)) {
             ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
-            if (vec->traits->flags & GHOST_VEC_DEVICE) {
-                for (v=0; v<vec->traits->nvecs) { 
+            WARNING_LOG("CUDA pinned memory is disabled");
+            /*if (vec->traits->flags & GHOST_VEC_DEVICE) {
+                for (v=0; v<vec->traits->nvecs; v++) { 
                     CU_safecall(cudaFreeHost(vec->val[v]));
                 }
+            }*/
+            if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+                for (v=0; v<vec->traits->nvecs; v++) {
+                    free(vec->val[v]);
+                }
+            }
+            else {
+                free(vec->val[0]);
             }
 #else
             //note: a 'scattered' vector (one with non-constant stride) is

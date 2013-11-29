@@ -37,6 +37,9 @@ void ghost_CUDA_init(int dev)
         hasCUDAdevice = 0;
     }
     CUBLAS_safecall(cublasCreate(&ghost_cublas_handle));
+#if GHOST_HAVE_CUDA_PINNEDMEM
+    CU_safecall(cudaSetDeviceFlags(cudaDeviceMapHost));
+#endif
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
@@ -214,4 +217,20 @@ const char * CU_getVersion()
     char *version = (char *)malloc(1024); // TODO as parameter, else: leak
     snprintf(version,1024,"Runtime: %d, Driver: %d",rtVersion,drVersion);
     return version;
+}
+
+void *ghost_cu_malloc_mapped(const size_t size)
+{
+    void *mem = NULL;
+
+    if (size/(1024.*1024.*1024.) > 1.) {
+        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+    }
+
+    cudaHostAlloc(&mem,size,cudaHostAllocMapped);
+
+    if( ! mem ) {
+        ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
+    }
+    return mem;
 }

@@ -13,6 +13,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
+option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
@@ -92,6 +93,9 @@ if (USE_CUDA)
 				include/ghost_cu_util.h
                 include/ghost_cu_vec.h
 			)
+        if (USE_CUDA_PINNEDMEM)
+            set(GHOST_HAVE_CUDA_PINNEDMEM 1)
+        endif()
 	endif()
 endif()
 
