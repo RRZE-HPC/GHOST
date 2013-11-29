@@ -137,6 +137,13 @@ struct ghost_vec_t
     ghost_vec_t * (*clone) (ghost_vec_t *vec, ghost_vidx_t ncols, ghost_vidx_t
             coloffset);
     /**
+     * @brief Compresses a vector, i.e., make it non-scattered.
+     * If the vector is a view, it will no longer be one afterwards.
+     *
+     * @param vec The vector.
+     */
+    void          (*compress) (ghost_vec_t *vec);
+    /**
      * @brief \deprecated
      */
     void          (*CLupload) (ghost_vec_t *);

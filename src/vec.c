@@ -67,6 +67,7 @@ static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
 static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+static void vec_compress(ghost_vec_t *vec);
 static void vec_upload(ghost_vec_t *vec);
 static void vec_download(ghost_vec_t *vec);
 static void vec_uploadHalo(ghost_vec_t *vec);
@@ -121,7 +122,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->fromRand = &vec_fromRand;
     }
 
-
+    vec->compress = &vec_compress;
     vec->print = &vec_print;
     vec->fromFunc = &vec_fromFunc;
     vec->fromVec = &vec_fromVec;
@@ -1030,4 +1031,38 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_
 
     new->fromVec(new,src,coffs);
     return new;
+}
+
+static void vec_compress(ghost_vec_t *vec)
+{
+    if (!(vec->traits->flags & GHOST_VEC_SCATTERED))
+        return;
+
+    ghost_vidx_t v,i;
+    
+    char *val = (char *)ghost_malloc(vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+   
+#pragma omp parallel for schedule(runtime) private(v)
+    for (i=0; i<vec->traits->nrowspadded; i++)
+    {
+        for (v=0; v<vec->traits->nvecs; v++)
+        {
+            val[(v*vec->traits->nrowspadded+i)*ghost_sizeofDataType(vec->traits->datatype)] = 0;
+        }
+    }
+        
+    for (v=0; v<vec->traits->nvecs; v++)
+    {
+        memcpy(&val[(v*vec->traits->nrowspadded)*ghost_sizeofDataType(vec->traits->datatype)],
+                VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+        
+        if (!(vec->traits->flags & GHOST_VEC_VIEW))
+        {
+            free(vec->val[v]);
+        }
+        vec->val[v] = &val[(v*vec->traits->nrowspadded)*ghost_sizeofDataType(vec->traits->datatype)];
+    }
+
+    vec->traits->flags &= ~GHOST_VEC_VIEW;
+    vec->traits->flags &= ~GHOST_VEC_SCATTERED;
 }
