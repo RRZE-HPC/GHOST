@@ -31,7 +31,7 @@ ghost_complex<T> conjugate(ghost_complex<T>* c) {
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
     ghost_vidx_t v;
-    v_t s[vec->traits->nvecs];
+    v_t *s = (v_t *)ghost_malloc(vec->traits->nvecs*sizeof(v_t));
     ghost_dotProduct(vec,vec,s);
 
     for (v=0; v<vec->traits->nvecs; v++)
@@ -39,7 +39,7 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
     }
-    vec->vscale(vec,&s);
+    vec->vscale(vec,s);
 
 }
 
