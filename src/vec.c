@@ -438,7 +438,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-    ghost_vidx_t i,v;
+    ghost_vidx_t v;
 
     for (v=0; v<vec->traits->nvecs; v++) {
         if (vec->traits->flags & GHOST_VEC_DEVICE)
@@ -747,7 +747,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
             ABORT("Seek failed");
         if (vec->traits->flags & GHOST_VEC_HOST)
         {
-            if ((ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
+            if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
                 ABORT("fread failed");
             vec->upload(vec);
         }

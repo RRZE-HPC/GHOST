@@ -893,7 +893,7 @@ ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
     if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
         ABORT("Seek failed");
     }
-    if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
+    if ((ghost_midx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nrpt,filed)) != (nrpt)){
         ABORT("fread failed: %s (%zu)",strerror(errno),ret);
     }
 
@@ -989,7 +989,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 #else // casting
     DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
     int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
-    if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+    if ((ghost_midx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
         ABORT("fread failed: %s (%zu)",strerror(errno),ret);
     }
     for(i = 0 ; i < nRows; ++i) {
@@ -1024,7 +1024,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
     if (datatype == mat->traits->datatype) {
         if (swapReq) {
             uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
-            if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+            if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
                 ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
             }
             if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
@@ -1062,7 +1062,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
             }
         } else {
-            if ((ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
+            if ((ghost_midx_t)(ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
                 ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
             }
         }
@@ -1072,7 +1072,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 
 
         uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
-        if ((ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+        if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
             ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
         }
 
