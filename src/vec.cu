@@ -395,10 +395,11 @@ extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
 
 void ghost_vec_cu_fromRand(ghost_vec_t *vec)
 {
+    long pid = getpid();
     ghost_vec_malloc(vec);
     curandGenerator_t gen;
     CURAND_safecall(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
-    CURAND_safecall(curandSetPseudoRandomGeneratorSeed(gen,(int)time(NULL)));
+    CURAND_safecall(curandSetPseudoRandomGeneratorSeed(gen,abs(((time(NULL)*181)*((pid-83)*359))%104729)));
 
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++)
