@@ -26,11 +26,6 @@
 #include <dirent.h>
 #include <dlfcn.h>
 
-#ifdef GHOST_HAVE_CUDA
-#include <cublas_v2.h>
-cublasHandle_t ghost_cublas_handle;
-#endif
-
 //#define PRETTYPRINT
 
 #define PRINTWIDTH 80
@@ -939,9 +934,6 @@ int ghost_init(int argc, char **argv)
 
 #ifdef GHOST_HAVE_OPENCL
     CL_init();
-#endif
-#if GHOST_HAVE_CUDA
-    CUBLAS_safecall(cublasCreate(&ghost_cublas_handle));
 #endif
     
     //#ifdef GHOST_HAVE_CUDA

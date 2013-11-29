@@ -10,10 +10,12 @@
 #include <sys/param.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
+#include <cublas_v2.h>
 
 #define CU_MAX_DEVICE_NAME_LEN 500
 
 
+cublasHandle_t ghost_cublas_handle;
 int ghost_cu_device;
 int hasCUDAdevice;
 
@@ -34,6 +36,7 @@ void ghost_CUDA_init(int dev)
     } else {
         hasCUDAdevice = 0;
     }
+    CUBLAS_safecall(cublasCreate(&ghost_cublas_handle));
 }
 
 void * CU_allocDeviceMemory( size_t bytesize )
