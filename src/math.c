@@ -105,74 +105,60 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
         return GHOST_FAILURE;
     }
     if (v->traits->datatype != w->traits->datatype) {
-        WARNING_LOG("GEMM with vector of different datatype does not work");
+        WARNING_LOG("GEMM with vectors of different datatype does not work");
         return GHOST_FAILURE;
     }
 
 #ifdef LONGIDX // TODO
-    ABORT("GEMM with LONGIDX not implemented");
+    WARNING_LOG("GEMM with LONGIDX not implemented");
+    return GHOST_FAILURE;
 #endif
 
-    ghost_vidx_t m,n,k;
-    m = nrV;
-    k = ncV;
-    n = ncW;
+    ghost_blas_idx_t *m, *n, *k;
+    m = (ghost_blas_idx_t *)&nrV;
+    k = (ghost_blas_idx_t *)&ncV;
+    n = (ghost_blas_idx_t *)&ncW;
+    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)&(v->traits->nrowspadded);
+    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits->nrowspadded);
+    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits->nrowspadded);
 
     if (v->traits->datatype != w->traits->datatype) {
         ABORT("Dgemm with mixed datatypes does not work!");
     }
+    
+    void *mybeta;
+    if ((reduce == GHOST_GEMM_ALL_REDUCE) && (ghost_getRank(v->context->mpicomm) == 0)) 
+    { // make sure that the initial value of x only gets added up once
+        mybeta = &zero;
+    }
+    else 
+    {
+        mybeta = beta;
+    }
 
-    DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",m,k,k,n,m,n);
+    DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_HOST)
     {
 
-        if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-                    if (ghost_getRank(v->context->mpicomm) == 0) { 
-                        zgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, 
-                                (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex16 *)w->val[0], 
-                                (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex16 *)beta, (BLAS_Complex16 *)x->val[0], 
-                                (ghost_blas_idx_t *)&(x->traits->nrowspadded)); 
-                    } else {
-                        zgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex16 *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex16 *)&zero, (BLAS_Complex16 *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded)); 
-                    }
-                } else {
-                    zgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex16 *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex16 *)beta, (BLAS_Complex16 *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded)); 
-                }
+        if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+                zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
 
-            } else {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-                    if (ghost_getRank(v->context->mpicomm) == 0) { 
-                        cgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex8 *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex8 *)beta, (BLAS_Complex8 *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    } else {
-                        cgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex8 *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex8 *)&zero, (BLAS_Complex8 *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    }
-                } else {
-                    cgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (BLAS_Complex8 *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (BLAS_Complex8 *)beta, (BLAS_Complex8 *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                }
-            }    
+            } 
+            else 
+            {
+                cgemm(transpose,"N", m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
+            }
         } else {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-                    if (ghost_getRank(v->context->mpicomm) == 0) { 
-                        dgemm(transpose,"N", (ghost_blas_idx_t *)&m,(ghost_blas_idx_t *) &n, (ghost_blas_idx_t *)&k, (double *)alpha, (double *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (double *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (double *)beta, (double *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    } else {
-                        dgemm(transpose,"N",(ghost_blas_idx_t *) &m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (double *)alpha, (double *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (double *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (double *)&zero, (double *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    }
-                } else {
-                    dgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (double *)alpha, (double *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (double *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (double *)beta, (double *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                }
-            } else {
-                if (reduce == GHOST_GEMM_ALL_REDUCE) { // make sure that the initial value of x only gets added up once
-                    if (ghost_getRank(v->context->mpicomm) == 0) { 
-                        sgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (float *)alpha, (float *)v->val[0],(ghost_blas_idx_t *) &(v->traits->nrowspadded), (float *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (float *)beta, (float *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    } else {
-                        sgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (float *)alpha, (float *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (float *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (float *)&zero, (float *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                    }
-                } else {
-                    sgemm(transpose,"N", (ghost_blas_idx_t *)&m, (ghost_blas_idx_t *)&n, (ghost_blas_idx_t *)&k, (float *)alpha, (float *)v->val[0], (ghost_blas_idx_t *)&(v->traits->nrowspadded), (float *)w->val[0], (ghost_blas_idx_t *)&(w->traits->nrowspadded), (float *)beta, (float *)x->val[0], (ghost_blas_idx_t *)&(x->traits->nrowspadded));
-                }
+            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+                dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
+            } 
+            else 
+            {
+                sgemm(transpose,"N", m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
             }    
         }
     }
