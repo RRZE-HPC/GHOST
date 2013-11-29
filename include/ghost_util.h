@@ -20,10 +20,12 @@
 #include <stdio.h>
 #include <complex.h>
 #include <stdlib.h>
+#include <string.h>
 #else
 #include <cstdio>
 #include <complex>
 #include <cstdlib>
+#include <cstring>
 #endif
 /******************************************************************************/
 /****** Makros ****************************************************************/
@@ -36,63 +38,64 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#define IF_DEBUG(level) if( DEBUG >= level )
 //#define DEBUG_IDT 0
 //extern int DEBUG_IDT;
 
 //#define DEBUG_INDENT DEBUG_IDT+=2
 //#define DEBUG_OUTDENT DEBUG_IDT-=2
 
-#ifdef GHOST_HAVE_MPI
-#define DEBUG_LOG(level,msg, ...) {\
-    if(DEBUG >= level) {\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stderr,"PE%d at %s:%d: "msg"\n",__me,__FILE__,__LINE__,##__VA_ARGS__);\
-        fflush(stderr);\
-    }\
-}
-#else
-#define DEBUG_LOG(level,msg, ...) {\
-    if(DEBUG >= level) {\
-        fprintf(stderr,"%s:%d: "msg"\n",__FILE__,__LINE__,##__VA_ARGS__);\
-        fflush(stderr);\
-    }\
-}
-#endif
+#define IF_DEBUG(level) if(DEBUG >= level)
+
+#define FILE_BASENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+/* stolen from http://stackoverflow.com/a/11172679 */
+/* expands to the first argument */
+#define FIRST(...) FIRST_HELPER(__VA_ARGS__, throwaway)
+#define FIRST_HELPER(first, ...) first
+
+/*
+ * if there's only one argument, expands to nothing.  if there is more
+ * than one argument, expands to a comma followed by everything but
+ * the first argument.  only supports up to 9 arguments but can be
+ * trivially expanded.
+ */
+#define REST(...) REST_HELPER(NUM(__VA_ARGS__), __VA_ARGS__)
+#define REST_HELPER(qty, ...) REST_HELPER2(qty, __VA_ARGS__)
+#define REST_HELPER2(qty, ...) REST_HELPER_##qty(__VA_ARGS__)
+#define REST_HELPER_ONE(first)
+#define REST_HELPER_TWOORMORE(first, ...) , __VA_ARGS__
+#define NUM(...) \
+    SELECT_10TH(__VA_ARGS__, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE,\
+            TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, ONE, throwaway)
+#define SELECT_10TH(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...) a10
 
 #ifdef GHOST_HAVE_MPI
-#define LOG(type,color,msg, ...) {\
+#define LOG(type,color,...) {\
     int __me;\
     MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr,color "PE%d "#type" at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
+    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) "\n", __me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
     fflush(stderr);\
-}
+    }
 #else
-#define LOG(type,color,msg, ...) {\
-    fprintf(stderr,color #type" at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__FILE__,__LINE__,##__VA_ARGS__);\
-    fflush(stderr);\
-}
+#define LOG(type,color,...) {\
+    fprintf(stderr, color #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
+    }
 #endif
 
-#define WARNING_LOG(msg, ...) LOG(WARNING,ANSI_COLOR_YELLOW,msg,__VA_ARGS__)
-#define INFO_LOG(msg, ...) LOG(INFO,ANSI_COLOR_BLUE,msg,__VA_ARGS__)
+
+#define DEBUG_LOG(level,...) {if(DEBUG >= level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
+#define INFO_LOG(...) LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__)
+#define WARNING_LOG(...) LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__)
 
 #ifdef GHOST_HAVE_MPI
-#define ABORT(msg, ...) {\
-    int __me;\
-    MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr,ANSI_COLOR_MAGENTA "PE%d ABORTING at %s:%d: "msg"\n"ANSI_COLOR_RESET ,__me,__FILE__,__LINE__,##__VA_ARGS__);\
-    fflush(stderr);\
+#define ABORT(...) {\
+    LOG(ABORT,ANSI_COLOR_MAGENTA,__VA_ARGS__)\
     MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
     exit(EXIT_FAILURE);\
 }
 #else
-#define ABORT(msg, ...) {\
-    fprintf(stderr,ANSI_COLOR_MAGENTA "ABORTING at %s:%d: ",__FILE__,__LINE__);\
-    fprintf(stderr,msg, ##__VA_ARGS__);\
-    fprintf(stderr, ANSI_COLOR_RESET"\n");\
-    fflush(stderr);\
+#define ABORT(...) {\
+    LOG(ABORT,ANSI_COLOR_MAGENTA,__VA_ARGS__)\
     exit(EXIT_FAILURE);\
 }
 #endif
@@ -203,7 +206,7 @@
     cublasStatus_t __stat = call ;\
     if( CUBLAS_STATUS_SUCCESS != __stat ){\
         fprintf(stdout, ANSI_COLOR_RED "CUBLAS error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                 __FILE__, __LINE__, __stat);\
+                __FILE__, __LINE__, __stat);\
         fflush(stdout);\
     }\
 }
@@ -211,7 +214,7 @@
     curandStatus_t __stat = call ;\
     if( CURAND_STATUS_SUCCESS != __stat ){\
         fprintf(stdout, ANSI_COLOR_RED "CURAND error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                 __FILE__, __LINE__, __stat);\
+                __FILE__, __LINE__, __stat);\
         fflush(stdout);\
     }\
 }
@@ -235,19 +238,19 @@
 
 #define GHOST_REGISTER_DT_D(name) \
     typedef double name ## _t; \
-    int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
+int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL; \
 
 #define GHOST_REGISTER_DT_S(name) \
     typedef float name ## _t; \
-    int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
+int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_REAL; \
 
 #define GHOST_REGISTER_DT_C(name) \
     typedef complex float name ## _t; \
-    int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
+int name = GHOST_BINCRS_DT_FLOAT|GHOST_BINCRS_DT_COMPLEX; \
 
 #define GHOST_REGISTER_DT_Z(name) \
     typedef complex double name ## _t; \
-    int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
+int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
 
 #define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
 
@@ -256,15 +259,15 @@
 #if GHOST_HAVE_INSTR_TIMING
 #define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
 #define GHOST_INSTR_STOP(tag) printf(ANSI_COLOR_BLUE "[GHOST_TIMING] %s: %e secs\n" ANSI_COLOR_RESET,\
-    #tag,ghost_wctime()-__start_##tag);
+#tag,ghost_wctime()-__start_##tag);
 #elif GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #define GHOST_INSTR_START(tag) { \
 #pragma omp parallel \
-LIKWID_MARKER_START(#tag); }
+    LIKWID_MARKER_START(#tag); }
 #define GHOST_INSTR_STOP(tag) { \
 #pragma omp parallel \
-LIKWID_MARKER_STOP(#tag); }
+    LIKWID_MARKER_STOP(#tag); }
 #else
 #define GHOST_INSTR_START(tag)
 #define GHOST_INSTR_STOP(tag)
@@ -282,57 +285,57 @@ extern "C" {
 #endif
 
 #ifdef GHOST_HAVE_MPI
-extern MPI_Datatype GHOST_MPI_DT_C;
-extern MPI_Op GHOST_MPI_OP_SUM_C;
-extern MPI_Datatype GHOST_MPI_DT_Z;
-extern MPI_Op GHOST_MPI_OP_SUM_Z;
+    extern MPI_Datatype GHOST_MPI_DT_C;
+    extern MPI_Op GHOST_MPI_OP_SUM_C;
+    extern MPI_Datatype GHOST_MPI_DT_Z;
+    extern MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
-extern int hasCUDAdevice;
-extern int hasOPENCLdevice;
+    extern int hasCUDAdevice;
+    extern int hasOPENCLdevice;
 
-void ghost_printHeader(const char *fmt, ...);
-void ghost_printFooter(); 
-void ghost_printLine(const char *label, const char *unit, const char *format, ...);
-void ghost_printContextInfo(ghost_context_t *context);
-void ghost_printMatrixInfo(ghost_mat_t *matrix);
-void ghost_printSysInfo();
-void ghost_printGhostInfo();
+    void ghost_printHeader(const char *fmt, ...);
+    void ghost_printFooter(); 
+    void ghost_printLine(const char *label, const char *unit, const char *format, ...);
+    void ghost_printContextInfo(ghost_context_t *context);
+    void ghost_printMatrixInfo(ghost_mat_t *matrix);
+    void ghost_printSysInfo();
+    void ghost_printGhostInfo();
 
 
-void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-void ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+    void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
+    void ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
 
-char * ghost_workdistName(int ghostOptions);
-char * ghost_modeName(int spmvmOptions);
-char * ghost_datatypeName(int datatype);
-char * ghost_symmetryName(int symmetry);
+    char * ghost_workdistName(int ghostOptions);
+    char * ghost_modeName(int spmvmOptions);
+    char * ghost_datatypeName(int datatype);
+    char * ghost_symmetryName(int symmetry);
 
-int ghost_pad(int nrows, int padding);
+    int ghost_pad(int nrows, int padding);
 
-void ghost_freeCommunicator( ghost_comm_t* const );
-size_t ghost_sizeofDataType(int dt);
-int ghost_datatypeValid(int datatype);
-int ghost_symmetryValid(int symmetry);
-int ghost_archIsBigEndian();
-void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
-char ghost_datatypePrefix(int dt);
-int ghost_dataTypeIdx(int datatype);
-ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
+    void ghost_freeCommunicator( ghost_comm_t* const );
+    size_t ghost_sizeofDataType(int dt);
+    int ghost_datatypeValid(int datatype);
+    int ghost_symmetryValid(int symmetry);
+    int ghost_archIsBigEndian();
+    void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
+    char ghost_datatypePrefix(int dt);
+    int ghost_dataTypeIdx(int datatype);
+    ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
 
-int ghost_getSpmvmModeIdx(int spmvmOptions);
-double ghost_wctime();
+    int ghost_getSpmvmModeIdx(int spmvmOptions);
+    double ghost_wctime();
 
-double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
-void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
-void *ghost_malloc(const size_t size);
-void *ghost_malloc_align(const size_t size, const size_t align);
-int ghost_flopsPerSpmvm(int m_t, int v_t);
-ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
-void ghost_ompSetNumThreads(int nthreads);
-int ghost_ompGetThreadNum();
-int ghost_ompGetNumThreads();
-int ghost_init(int argc, char **argv);
-void ghost_finish();
+    double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
+    void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
+    void *ghost_malloc(const size_t size);
+    void *ghost_malloc_align(const size_t size, const size_t align);
+    int ghost_flopsPerSpmvm(int m_t, int v_t);
+    ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
+    void ghost_ompSetNumThreads(int nthreads);
+    int ghost_ompGetThreadNum();
+    int ghost_ompGetNumThreads();
+    int ghost_init(int argc, char **argv);
+    void ghost_finish();
 
 #ifdef __cplusplus
 }

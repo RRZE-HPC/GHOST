@@ -59,7 +59,7 @@ static void *communicate(void *vargs)
 //    WARNING_LOG("Sleeping thread %lu",(unsigned long)pthread_self());
 //    usleep(3000000);
     commArgs *args = (commArgs *)vargs;
-    int to_PE,i,from_PE;
+    int to_PE,from_PE;
     ghost_vidx_t c;
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
@@ -137,7 +137,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     static int nprocs;
 
     static int me; 
-    int i, from_PE, to_PE;
+    int i;
 
     static MPI_Request *request;
     static MPI_Status  *status;

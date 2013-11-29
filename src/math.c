@@ -199,7 +199,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
     }
 
 #ifdef GHOST_HAVE_MPI 
-    ghost_vidx_t i,j;
+    ghost_vidx_t i;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
     } 

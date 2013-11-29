@@ -631,7 +631,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
     DEBUG_LOG(1,"Benchmarking the SpMVM");
     int it;
     double time = 0;
-    double ttime = 0;
+//    double ttime = 0;
     double oldtime=1e9;
     //struct timespec end,start;
 
@@ -867,6 +867,8 @@ void ghost_ompSetNumThreads(int nthreads)
 {
 #ifdef GHOST_HAVE_OPENMP
     omp_set_num_threads(nthreads);
+#else
+    UNUSED(nthreads);
 #endif
 }
     

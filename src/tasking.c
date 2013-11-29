@@ -265,7 +265,7 @@ static int nThreadsPerLD(int ld)
         obj = ghost_thpool->PUs[i];
         for (runner=obj; runner; runner=runner->parent) {
             if (runner->type <= HWLOC_OBJ_NODE) {
-                if (runner->logical_index == ld) {
+                if ((int)runner->logical_index == ld) {
                     n++;
                 }
                 break;
@@ -317,7 +317,7 @@ static int firstThreadOfLD(int ld)
         obj = ghost_thpool->PUs[i];
         for (runner=obj; runner; runner=runner->parent) {
             if (runner->type <= HWLOC_OBJ_NODE) {
-                if (runner->logical_index == ld) {
+                if ((int)runner->logical_index == ld) {
                     return i;
                 }
             }
@@ -561,7 +561,6 @@ void * thread_main(void *arg)
     //    UNUSED(arg);
     ghost_task_t *myTask;
 
-    int sval = 1;
     sem_post(ghost_thpool->sem);
 
     DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %"PRIdPTR,(unsigned long)pthread_self(), (intptr_t)arg);
@@ -794,7 +793,6 @@ int ghost_task_add(ghost_task_t *t)
 int ghost_taskq_finish()
 {
     DEBUG_LOG(1,"Finishing task queue");
-    int t;
     if (taskq == NULL)
         return GHOST_SUCCESS;
 
@@ -808,7 +806,8 @@ int ghost_taskq_finish()
         WARNING_LOG("Error in sem_post: %s",strerror(errno));
         return GHOST_FAILURE;
     }
-    /*DEBUG_LOG(1,"Join all threads");    
+    /*DEBUG_LOG(1,"Join all threads");
+      int t; 
       for (t=0; t<ghost_thpool->nThreads; t++)
       {         
       if (pthread_join(ghost_thpool->threads[t],NULL)){

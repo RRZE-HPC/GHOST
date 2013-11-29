@@ -22,10 +22,7 @@
 #include <complex.h>
 #include <dlfcn.h>
 
-
-static MPI_Comm single_node_comm;
 MPI_Comm *ghost_mpi_comms;
-
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {

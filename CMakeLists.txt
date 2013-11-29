@@ -164,7 +164,7 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${HWLOC_INCLUDE_DIR})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Werror -Wextra -pedantic")
 
 if (USE_MPI)	
 	find_package(MPI REQUIRED)
