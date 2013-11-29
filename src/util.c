@@ -951,6 +951,7 @@ int ghost_init(int argc, char **argv)
     if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
         WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
     }
+    hwloc_bitmap_free(cpuset);
 
     return GHOST_SUCCESS;
 }
