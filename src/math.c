@@ -145,13 +145,14 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
             if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
             {
                 zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
-
             } 
             else 
             {
                 cgemm(transpose,"N", m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
             }
-        } else {
+        } 
+        else 
+        {
             if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
             {
                 dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
@@ -165,19 +166,38 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
     else if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        CUBLAS_safecall(cublasDgemm(ghost_cublas_handle,CUBLAS_OP_T,CUBLAS_OP_N,m,n,k,(double *)alpha,(double *)v->CU_val,v->traits->nrowspadded,(double *)w->CU_val,w->traits->nrowspadded,(double *)beta,(double *)x->CU_val,x->traits->nrowspadded));
+        cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
+        if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+                CUBLAS_safecall(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->CU_val,*ldv,(cuDoubleComplex *)w->CU_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->CU_val,*ldx));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasCgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->CU_val,*ldv,(cuFloatComplex *)w->CU_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->CU_val,*ldx));
+            }
+        } 
+        else 
+        {
+            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+                CUBLAS_safecall(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->CU_val,*ldv,(double *)w->CU_val,*ldw,(double *)mybeta,(double *)x->CU_val,*ldx));
+            } 
+            else 
+            {
+                CUBLAS_safecall(cublasSgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(float *)alpha,(float *)v->CU_val,*ldv,(float *)w->CU_val,*ldw,(float *)mybeta,(float *)x->CU_val,*ldx));
+            }    
+        }
 #endif
-    }
-    else
-    {
-        WARNING_LOG("Invalid vector placement");
     }
 
 #ifdef GHOST_HAVE_MPI 
     ghost_vidx_t i,j;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
-    } else 
+    } 
+    else 
     {
         for (i=0; i<x->traits->nvecs; ++i) 
         {
@@ -200,15 +220,24 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
             if (reduce == GHOST_GEMM_ALL_REDUCE) 
             {
                 MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
-            } else {
-                if (ghost_getRank(v->context->mpicomm) == reduce) {
+            } 
+            else 
+            {
+                if (ghost_getRank(v->context->mpicomm) == reduce) 
+                {
                     MPI_safecall(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
-                } else {
+                } 
+                else 
+                {
                     MPI_safecall(MPI_Reduce(val,NULL,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
                 }
             }
             if (copied)
+            {
+                CU_copyHostToDevice(&x->CU_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
+                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 free(val);
+            }
         }
     }
 #else
