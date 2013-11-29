@@ -613,9 +613,11 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
         }
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
+#if GHOST_HAVE_CUDA
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
             CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+#endif
         }
         MPI_safecall(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
         fileoffset += nrows;
