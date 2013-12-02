@@ -73,12 +73,12 @@
 #define LOG(type,color,...) {\
     int __me;\
     MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) "\n", __me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
     fflush(stderr);\
     }
 #else
 #define LOG(type,color,...) {\
-    fprintf(stderr, color #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
+    fprintf(stderr, color #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
     }
 #endif
 
