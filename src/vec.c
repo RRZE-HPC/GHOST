@@ -667,9 +667,11 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
         }
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
+#if GHOST_HAVE_CUDA
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
             CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+#endif
         }
 
         if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
