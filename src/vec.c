@@ -109,7 +109,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->fromRand = &ghost_vec_cu_fromRand;
 #endif
     }
-    else
+    if (vec->traits->flags & GHOST_VEC_HOST)
     {
         vec->dotProduct = &vec_dotprod;
         vec->vaxpy = &vec_vaxpy;
@@ -567,9 +567,9 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     int i,v;
-    for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for schedule(runtime) private(i)
+#pragma omp parallel for schedule(runtime) private(v)
         for (i=0; i<vec->traits->nrows; i++) {
+    for (v=0; v<vec->traits->nvecs; v++) {
             memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
         }
     }
