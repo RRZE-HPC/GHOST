@@ -13,6 +13,8 @@
 #include <ghost_constants.h>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
+#include <iostream>
 
 #define CHOOSE_KERNEL(kernel,dt1,dt2,ch,mat,lhs,rhs,options) \
     switch(ch) { \
@@ -419,6 +421,8 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
     // TODO CHECK FOR OVERFLOW
 
+    std::map<int,int> rowlengths;
+
     for (i=0; i<SELL(mat)->nrowsPadded; i++) {
         if (i<cr->nrows) {
             if (flags & GHOST_SPM_SORTED)
@@ -428,9 +432,12 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
         } else {
             SELL(mat)->rowLen[i] = 0;
         }
+        
         nnz += SELL(mat)->rowLen[i];
+        
+        rowlengths[SELL(mat)->rowLen[i]]++;
+        
         SELL(mat)->rowLenPadded[i] = ghost_pad(SELL(mat)->rowLen[i],SELL(mat)->T);
-
 
         chunkMin = SELL(mat)->rowLen[i]<chunkMin?SELL(mat)->rowLenPadded[i]:chunkMin;
         chunkLen = SELL(mat)->rowLen[i]>chunkLen?SELL(mat)->rowLen[i]:chunkLen;
@@ -458,6 +465,19 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
         SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,SELL(mat)->rowLenPadded[i]);
     }
     SELL(mat)->beta = nnz*1.0/(double)SELL(mat)->nEnts;
+
+    double avgRowlen = nnz*1.0/(double)SELL(mat)->nrows;
+
+    rowlengths.erase(0); // erase padded rows
+    SELL(mat)->variance = 0.;
+    SELL(mat)->deviation = 0.;
+    for (std::map<int,int>::const_iterator it = rowlengths.begin(); it != rowlengths.end(); it++) {
+        SELL(mat)->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
+    }
+    SELL(mat)->variance /= SELL(mat)->nrows;
+    SELL(mat)->deviation = sqrt(SELL(mat)->variance);
+
+    SELL(mat)->nMaxRows = rowlengths.rbegin()->second;
 
     SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);

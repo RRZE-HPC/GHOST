@@ -146,8 +146,12 @@ static ghost_midx_t SELL_ncols(ghost_mat_t *mat)
 
 static void SELL_printInfo(ghost_mat_t *mat)
 {
+    ghost_printLine("Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
     ghost_printLine("Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
     ghost_printLine("Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
+    ghost_printLine("Row length variance",NULL,"%f",SELL(mat)->variance);
+    ghost_printLine("Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
+    ghost_printLine("Row length coefficient of variation",NULL,"%f",SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)));
     ghost_printLine("Threads per row (T)",NULL,"%d",SELL(mat)->T);
     if (mat->traits->flags & GHOST_SPM_SORTED) {
         ghost_printLine("Sorted",NULL,"yes");
