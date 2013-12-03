@@ -18,8 +18,8 @@ extern __shared__ char shared[];
 extern int ghost_cu_device;
 
 #define CHOOSE_KERNEL(dt1,dt2) {\
-    if ((SELL(mat)->T > 32) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
-        WARNING_LOG("Invalid T: %d (must be power of two <33",SELL(mat)->T);\
+    if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
+    WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
     if (SELL(mat)->chunkHeight == SELL(mat)->nrowsPadded) {\
         if (SELL(mat)->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
@@ -31,14 +31,14 @@ extern int ghost_cu_device;
             }\
             dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
             SELLT_kernel_CU_tmpl\
-                <dt1,dt2>\
-                <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
-                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+            <dt1,dt2>\
+            <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
+            ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         } else {\
             SELL_kernel_CU_ELLPACK_tmpl\
-                <dt1,dt2>\
-                <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
-                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+            <dt1,dt2>\
+            <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
+            ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         }\
     }else{\
         if (SELL(mat)->T > 1) {\
@@ -50,19 +50,19 @@ extern int ghost_cu_device;
             }\
             dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
             SELLT_kernel_CU_tmpl\
-                <dt1,dt2>\
-                <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
-                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+            <dt1,dt2>\
+            <<< SELL_CUDA_NBLOCKS,block,reqSmem >>>\
+            ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLenPadded,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         } else {\
             SELL_kernel_CU_tmpl\
-                <dt1,dt2>\
-                <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
-                ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
+            <dt1,dt2>\
+            <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>>\
+            ((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T);\
         }\
     }\
 }
- 
-template<typename m_t, typename v_t>  
+
+    template<typename m_t, typename v_t>  
 __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen, int C, int T)
 {
     UNUSED(C);
@@ -85,7 +85,7 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int
     }
 }
 
-template<typename m_t, typename v_t>  
+    template<typename m_t, typename v_t>  
 __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, int nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen, int C, int T)
 {
     UNUSED(T);
@@ -114,7 +114,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
     }
 }
 
-template<typename m_t, typename v_t>  
+    template<typename m_t, typename v_t>  
 __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx_t nrows, ghost_midx_t nrowspadded, ghost_midx_t *rowlen, ghost_midx_t *col, m_t *val, ghost_mnnz_t *chunkstart, ghost_midx_t *chunklen, ghost_midx_t C, int T)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -125,7 +125,7 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
         int j;
         v_t tmp;
         v_t *smem = (v_t *)shared;
-        
+
         if (C == blockDim.x) {
             cs = chunkstart[blockIdx.x];
             tid = threadIdx.x;
@@ -146,11 +146,23 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 
         smem[tib] = tmp;
         __syncthreads();
-        
+
         if (T>2) {
             if (T>4) {
                 if (T>8) {
                     if (T>16) {
+                        if (T>32) {
+                            if (T>64) {
+                                if (threadIdx.y<64) {
+                                    smem[tib] = axpy<v_t,float>(smem[tib],smem[tib+64],1.f);
+                                    __syncthreads();
+                                }
+                            }
+                            if (threadIdx.y<32) {
+                                smem[tib] = axpy<v_t,float>(smem[tib],smem[tib+32],1.f);
+                                __syncthreads();
+                            }
+                        }
                         if (threadIdx.y<16) {
                             smem[tib] = axpy<v_t,float>(smem[tib],smem[tib+16],1.f);
                             __syncthreads();
@@ -171,7 +183,7 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
                 __syncthreads();
             }
         }
-        
+
         if (threadIdx.y == 0) {
             if (options & GHOST_SPMVM_AXPY)
                 lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,float>(smem[tib],smem[tib+1],1.f),1.f);
