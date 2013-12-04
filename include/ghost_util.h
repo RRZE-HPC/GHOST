@@ -336,6 +336,7 @@ extern "C" {
     int ghost_ompGetNumThreads();
     int ghost_init(int argc, char **argv);
     void ghost_finish();
+    size_t ghost_getSizeOfLLC();
 
 #ifdef __cplusplus
 }

@@ -295,6 +295,7 @@ void ghost_printSysInfo()
         ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
         ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
         ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
+        ghost_printLine("LLC size","MiB","%.2f",ghost_getSizeOfLLC()*1.0/(1024.*1024.));
 #ifdef GHOST_HAVE_OPENCL
         ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
         ghost_printLine("OpenCL devices",NULL,"%dx %s",CLdevInfo->nDevices[0],CLdevInfo->names[0]);
@@ -981,3 +982,21 @@ void ghost_finish()
 
 }
 
+size_t ghost_getSizeOfLLC()
+{
+    hwloc_obj_t obj;
+    int depth;
+    size_t size = 0;
+
+    for (depth=0; depth<hwloc_topology_get_depth(topology); depth++) {
+        obj = hwloc_get_obj_by_depth(topology,depth,0);
+        if (obj->type == HWLOC_OBJ_CACHE) {
+            size = obj->attr->cache.size;
+            break;
+        }
+    }
+#if GHOST_HAVE_MIC
+    size = size*ghost_getNumberOfPhysicalCores(); // the cache is shared but not reported so
+#endif
+    return size;
+}
