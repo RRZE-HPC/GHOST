@@ -32,11 +32,15 @@
     enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
     if (!strncasecmp(transa,"N",1)) {\
         gsl_transa = CblasNoTrans; \
-    } else { \
+    } else if (!strncasecmp(transa,"C",1)) { \
+        gsl_transa = CblasConjTrans; \
+    } else {\
         gsl_transa = CblasTrans; \
     }\
     if (!strncasecmp(transb,"N",1)) {\
         gsl_transb = CblasNoTrans; \
+    } else if (!strncasecmp(transb,"C",1)) { \
+        gsl_transb = CblasConjTrans; \
     } else {\
         gsl_transb = CblasTrans; \
     }\
@@ -45,11 +49,15 @@
     enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
     if (!strncasecmp(transa,"N",1)) {\
         gsl_transa = CblasNoTrans; \
+    } else if (!strncasecmp(transa,"C",1)) { \
+        gsl_transa = CblasConjTrans; \
     } else {\
         gsl_transa = CblasTrans; \
     }\
     if (!strncasecmp(transb,"N",1)) {\
         gsl_transb = CblasNoTrans; \
+    } else if (!strncasecmp(transb,"C",1)) { \
+        gsl_transb = CblasConjTrans; \
     } else {\
         gsl_transb = CblasTrans; \
     }\
@@ -58,11 +66,15 @@
     enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
     if (!strncasecmp(transa,"N",1)) {\
         gsl_transa = CblasNoTrans; \
+    } else if (!strncasecmp(transa,"C",1)) { \
+        gsl_transa = CblasConjTrans; \
     } else {\
         gsl_transa = CblasTrans; \
     }\
     if (!strncasecmp(transb,"N",1)) {\
         gsl_transb = CblasNoTrans; \
+    } else if (!strncasecmp(transb,"C",1)) { \
+        gsl_transb = CblasConjTrans; \
     } else {\
         gsl_transb = CblasTrans; \
     }\
@@ -71,11 +83,15 @@
     enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
     if (!strncasecmp(transa,"N",1)) {\
         gsl_transa = CblasNoTrans; \
+    } else if (!strncasecmp(transa,"C",1)) { \
+        gsl_transa = CblasConjTrans; \
     } else {\
         gsl_transa = CblasTrans; \
     }\
     if (!strncasecmp(transb,"N",1)) {\
         gsl_transb = CblasNoTrans; \
+    } else if (!strncasecmp(transb,"C",1)) { \
+        gsl_transb = CblasConjTrans; \
     } else {\
         gsl_transb = CblasTrans; \
     }\
