@@ -549,7 +549,7 @@ static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *v
         CU_copyDeviceToHost(val,&vec->CU_val[(c*vec->traits->nrowspadded+r)*sizeofdt],sizeofdt);
 #endif
     }
-    else if (vec->traits->flags & GHOST_VEC_HOST)
+    if (vec->traits->flags & GHOST_VEC_HOST)
     {
         memcpy(val,VECVAL(vec,vec->val,c,r),sizeofdt);
     }
