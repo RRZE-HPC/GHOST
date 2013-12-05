@@ -171,7 +171,7 @@ template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec)
                 CU_copyDeviceToHost(&val,&(((v_t *)vec->CU_val)[v*vec->traits->nrowspadded+i]),sizeof(v_t));
 #endif
             }
-            else
+            if (vec->traits->flags & GHOST_VEC_HOST)
             {
                 val = *(v_t *)VECVAL(vec,vec->val,v,i);
             }
