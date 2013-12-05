@@ -964,7 +964,7 @@ void ghost_finish()
     ghost_thpool_finish();
     hwloc_topology_destroy(topology);
 
-#ifdef LIKWID_PERFMON
+#if GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
 #endif
 
