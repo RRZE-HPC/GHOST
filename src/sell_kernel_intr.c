@@ -1,10 +1,13 @@
+#include <ghost_config.h>
+#include <ghost_types.h>
 #include <ghost_sell.h>
+#include <ghost_constants.h>
 #include <ghost_util.h>
 #include <immintrin.h>
 
 void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
-#ifdef SSE_INTR
+#if GHOST_HAVE_SSE
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -43,7 +46,7 @@ void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * inve
 
 void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-#ifdef AVX_INTR
+#if GHOST_HAVE_AVX
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -88,7 +91,7 @@ void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, 
 
 void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-#ifdef AVX_INTR
+#if GHOST_HAVE_AVX
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -217,7 +220,7 @@ void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 
 void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-#ifdef MIC_INTR
+#if GHOST_HAVE_MIC
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -270,7 +273,7 @@ void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 
 void dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
-#ifdef MIC_INTR
+#if GHOST_HAVE_MIC
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
