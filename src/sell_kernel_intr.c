@@ -300,6 +300,11 @@ void dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
 
         for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])>>5; j++) 
         { // loop inside chunk
+//        _mm_prefetch(&((const char*)mval)[offs+512], _MM_HINT_T1);
+//        _mm_prefetch(&((const char*)SELL(mat)->col)[offs+512], _MM_HINT_T1);
+//        _mm_prefetch(&((const char*)mval)[offs+100000], _MM_HINT_NTA);
+//        _mm_prefetch(&((const char *)SELL(mat)->col)[offs+500000], _MM_HINT_T0);
+ 
             val = _mm512_load_pd(&mval[offs]);
             idx = _mm512_load_epi32(&SELL(mat)->col[offs]);
             rhs = _mm512_i32logather_pd(idx,rval,8);
