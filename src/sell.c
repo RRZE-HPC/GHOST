@@ -8,6 +8,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#if GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
+
 #ifdef GHOST_HAVE_CUDA
 //#include "private/sell_cukernel.h"
 #endif
@@ -407,7 +411,24 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 
     void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int) = NULL;
 
-#ifdef SSE_INTR
+#if GHOST_HAVE_OPENMP
+/*    static int first = 1;
+    if ((mat->byteSize(mat) < ghost_getSizeOfLLC()) || (SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)) < 0.4)) {
+        if (first) {
+            INFO_LOG("Setting OpenMP scheduling to STATIC for SELL SpMVM kernel");
+        }
+        omp_set_schedule(omp_sched_static,0);
+    } else {
+        if (first) {
+            INFO_LOG("Setting OpenMP scheduling to GUIDED,4 for SELL SpMVM kernel");
+        }
+        omp_set_schedule(omp_sched_guided,4);
+    }
+    first=0;*/
+#endif
+
+
+#if GHOST_HAVE_SSE
 #ifndef LONGIDX
     if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
     kernel = SELL_kernels_SSE
