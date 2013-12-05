@@ -436,7 +436,7 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
         [ghost_dataTypeIdx(lhs->traits->datatype)];
 }
 #endif
-#elif defined(AVX_INTR)
+#elif GHOST_HAVE_AVX
 #ifndef LONGIDX
     if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
     if (SELL(mat)->chunkHeight == 4) {
@@ -450,18 +450,18 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
     }
     }
 #endif
-#elif defined(MIC_INTR)
+#elif GHOST_HAVE_MIC
 #ifndef LONGIDX
-    if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
-    if (SELL(mat)->chunkHeight == 16) {
-        kernel = SELL_kernels_MIC_16
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
-    } else if (SELL(mat)->chunkHeight == 32) {
-        kernel = SELL_kernels_MIC_32
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
-    }
+    if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT) || (SELL(mat)->T > 1))) {
+        if (SELL(mat)->chunkHeight == 16) {
+            kernel = SELL_kernels_MIC_16
+                [ghost_dataTypeIdx(mat->traits->datatype)]
+                [ghost_dataTypeIdx(lhs->traits->datatype)];
+        } else if (SELL(mat)->chunkHeight == 32) {
+            kernel = SELL_kernels_MIC_32
+                [ghost_dataTypeIdx(mat->traits->datatype)]
+                [ghost_dataTypeIdx(lhs->traits->datatype)];
+        }
     }
 #endif
 #else
@@ -471,7 +471,7 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 #endif
 
     if (kernel == NULL) {
-        WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
+        //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
             [ghost_dataTypeIdx(mat->traits->datatype)]
             [ghost_dataTypeIdx(lhs->traits->datatype)];
