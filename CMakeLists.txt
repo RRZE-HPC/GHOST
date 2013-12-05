@@ -175,20 +175,29 @@ if (USE_MPI)
 	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif()
 
-configure_file (
-	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
-	"${PROJECT_BINARY_DIR}/ghost_config.h"
-)
 
 if (BUILD_MIC)
+	set(GHOST_HAVE_MIC 1)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	AutodetectHostArchitecture()
 	OptimizeForArchitecture()
+    if (AVX_FOUND)
+	    set(GHOST_HAVE_AVX 1)
+    endif()
+    if (SSE_FOUND)
+	    set(GHOST_HAVE_SSE 1)
+    endif()
+
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 endif()
+
+configure_file (
+	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
+	"${PROJECT_BINARY_DIR}/ghost_config.h"
+)
 
 install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
 install(FILES GHOST-config.cmake DESTINATION lib/ghost)

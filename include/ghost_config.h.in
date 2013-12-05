@@ -7,6 +7,9 @@
 #cmakedefine GHOST_HAVE_OPENCL 1
 #cmakedefine GHOST_HAVE_MKL 1
 #cmakedefine GHOST_HAVE_GSL 1
+#cmakedefine GHOST_HAVE_MIC 1
+#cmakedefine GHOST_HAVE_AVX 1
+#cmakedefine GHOST_HAVE_SSE 1
 #cmakedefine GHOST_HAVE_INSTR_TIMING 1
 #cmakedefine GHOST_HAVE_INSTR_LIKWID 1
 #define GHOST_OPENCL_KERNEL_DIR "${CMAKE_INSTALL_PREFIX}/lib/ghost"
