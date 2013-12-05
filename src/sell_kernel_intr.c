@@ -244,6 +244,7 @@ void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
             val = _mm512_load_pd(&mval[offs]);
             idx = _mm512_load_epi32(&SELL(mat)->col[offs]);
             rhs = _mm512_i32logather_pd(idx,rval,8);
+//            rhs = _mm512_extload_pd(&rval[SELL(mat)->col[offs]],_MM_UPCONV_PD_NONE,_MM_BROADCAST_1X8,_MM_HINT_NONE);
             tmp1 = _mm512_add_pd(tmp1,_mm512_mul_pd(val,rhs));
 
             offs += 8;
@@ -251,6 +252,7 @@ void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
             val = _mm512_load_pd(&mval[offs]);
             idx = _mm512_permute4f128_epi32(idx,_MM_PERM_BADC);
             rhs = _mm512_i32logather_pd(idx,rval,8);
+//            rhs = _mm512_extload_pd(&rval[SELL(mat)->col[offs]],_MM_UPCONV_PD_NONE,_MM_BROADCAST_1X8,_MM_HINT_NONE);
             tmp2 = _mm512_add_pd(tmp2,_mm512_mul_pd(val,rhs));
 
             offs += 8;
