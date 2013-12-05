@@ -853,7 +853,7 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 #else
 
     for (c=0; c<vec->traits->nvecs; c++) {
-        memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrowspadded*sizeofdt);
+        memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrows*sizeofdt);
     }
     //    *nodeVec = vec->clone(vec);
 #endif
