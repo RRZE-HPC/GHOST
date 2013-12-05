@@ -11,8 +11,8 @@ void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * inve
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = lhs->val;
-    double *rval = invec->val;
+    double *lval = lhs->val[0];
+    double *rval = invec->val[0];
     __m128d tmp;
     __m128d val;
     __m128d rhs;
@@ -50,8 +50,8 @@ void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, 
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = res->val;
-    double *rval = invec->val;
+    double *lval = (double *)res->val[0];
+    double *rval = (double *)invec->val[0];
     __m256d tmp;
     __m256d val;
     __m256d rhs;
@@ -95,8 +95,8 @@ void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = res->val;
-    double *rval = invec->val;
+    double *lval = (double *)res->val[0];
+    double *rval = (double *)invec->val[0];
     __m256d tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8;
     __m256d val;
     __m256d rhs;
@@ -224,8 +224,8 @@ void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = (double *)res->val;
-    double *rval = (double *)invec->val;
+    double *lval = (double *)res->val[0];
+    double *rval = (double *)invec->val[0];
     __m512d tmp1;
     __m512d tmp2;
     __m512d val;
@@ -277,8 +277,8 @@ void dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     ghost_midx_t c,j;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = (double *)res->val;
-    double *rval = (double *)invec->val;
+    double *lval = (double *)res->val[0];
+    double *rval = (double *)invec->val[0];
     __m512d tmp1;
     __m512d tmp2;
     __m512d tmp3;
