@@ -90,9 +90,9 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     { // no placement specified
         DEBUG_LOG(2,"Setting vector placement");
         vec->traits->flags |= GHOST_VEC_HOST;
-#if GHOST_HAVE_CUDA
-        vec->traits->flags |= GHOST_VEC_DEVICE;
-#endif
+        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+            vec->traits->flags |= GHOST_VEC_DEVICE;
+        }
     }
 
     if (vec->traits->flags & GHOST_VEC_DEVICE)

@@ -131,7 +131,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
     }
 
     if (_nThreads == GHOST_THPOOL_NTHREADS_FULLNODE) {
-        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
+        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
         nThreads = (int *)ghost_malloc(levels*sizeof(int));
         for (l=0; l<levels; l++) {
             nThreads[l] = nt;
@@ -142,7 +142,7 @@ int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
     }
 
     if (_firstThread == GHOST_THPOOL_FTHREAD_DEFAULT) {
-        int ft = ghost_getLocalRank(MPI_COMM_WORLD)*ghost_getNumberOfPhysicalCores()/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
+        int ft = ghost_getRank(ghost_node_comm)*ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
         firstThread = (int *)ghost_malloc(levels*sizeof(int));
         for (l=0; l<levels; l++) {
             firstThread[l] = ft;
@@ -1022,8 +1022,8 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 {
     ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
     if (ghost_thpool == NULL) {
-        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
-        int ft = ghost_getLocalRank(MPI_COMM_WORLD)*nt;
+        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
+        int ft = ghost_getRank(ghost_node_comm)*nt;
         int poolThreads[] = {nt,nt};
         int firstThread[] = {ft,ft};
         int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();

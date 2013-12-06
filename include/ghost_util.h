@@ -298,6 +298,7 @@ extern "C" {
 #endif
     extern int hasCUDAdevice;
     extern int hasOPENCLdevice;
+    extern ghost_type_t ghost_type; 
 
     void ghost_printHeader(const char *fmt, ...);
     void ghost_printFooter(); 
@@ -343,6 +344,8 @@ extern "C" {
     int ghost_init(int argc, char **argv);
     void ghost_finish();
     size_t ghost_getSizeOfLLC();
+
+    int ghost_setType(ghost_type_t t);
 
 #ifdef __cplusplus
 }

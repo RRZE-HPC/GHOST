@@ -20,6 +20,7 @@ void CU_barrier();
 void CU_finish();
 void CU_uploadVector( ghost_vec_t *vec );
 void CU_downloadVector( ghost_vec_t *vec );
+int CU_getDeviceCount(int *devcount);
 const char * CU_getVersion();
 ghost_acc_info_t *CU_getDeviceInfo();
 void *ghost_cu_malloc_mapped(const size_t size);

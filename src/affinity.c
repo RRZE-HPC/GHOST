@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+
 #ifndef PAGE_SIZE
     #define PAGE_SIZE    4096
 #endif
@@ -120,7 +121,7 @@ static void shared_mem_deallocate(void * shmRegion)
 
     return;
 }
-int ghost_getNumberOfLocalRanks(MPI_Comm comm)
+/*int ghost_getNumberOfLocalRanks(MPI_Comm comm)
 {
 #if GHOST_HAVE_MPI
     MPI_safecall(MPI_Barrier(comm));
@@ -150,7 +151,7 @@ int ghost_getLocalRank(MPI_Comm comm)
 #else
     return 0;
 #endif
-}
+}*/
 void ghost_pinThreads(int options, char *procList)
 {
     if (procList != NULL) {
@@ -184,7 +185,7 @@ void ghost_pinThreads(int options, char *procList)
     } else {
         DEBUG_LOG(1,"Trying to automatically pin threads");
 
-        int nranks = ghost_getNumberOfLocalRanks(MPI_COMM_WORLD);
+        int nranks = ghost_getNumberOfRanks(ghost_node_comm);
         int npus = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
         int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
         int nthreads;

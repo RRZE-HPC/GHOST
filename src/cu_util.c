@@ -3,6 +3,7 @@
 #include <ghost_util.h>
 #include <ghost_mat.h>
 #include <ghost_affinity.h>
+#include <ghost_constants.h>
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -17,7 +18,6 @@
 
 cublasHandle_t ghost_cublas_handle;
 int ghost_cu_device;
-int hasCUDAdevice;
 
 void ghost_CUDA_init(int dev)
 {
@@ -31,10 +31,6 @@ void ghost_CUDA_init(int dev)
 
         DEBUG_LOG(1,"Selecting CUDA device %d",ghost_cu_device);
         CU_safecall(cudaSetDevice(ghost_cu_device));
-
-        hasCUDAdevice = 1;
-    } else {
-        hasCUDAdevice = 0;
     }
     CUBLAS_safecall(cublasCreate(&ghost_cublas_handle));
 #if GHOST_HAVE_CUDA_PINNEDMEM
@@ -74,11 +70,8 @@ void CU_memset(void *s, int c, size_t n)
 void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
         size_t bytesize, size_t offset)
 {
-    UNUSED(devmem);
-    UNUSED(hostmem);
-    UNUSED(bytesize);
-    UNUSED(offset);
-    ABORT("not implemented yet");
+    if (bytesize > 0)
+        CU_safecall(cudaMemcpy(((char *)devmem)+offset,((char *)hostmem)+offset,bytesize,cudaMemcpyHostToDevice));
 }
 
 void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
@@ -119,6 +112,14 @@ static int stringcmp(const void *x, const void *y)
     return (strcmp((char *)x, (char *)y));
 }
 
+int CU_getDeviceCount(int *devcount)
+{
+    CU_safecall(cudaGetDeviceCount(devcount));
+
+    return GHOST_SUCCESS;
+}
+
+
 ghost_acc_info_t *CU_getDeviceInfo() 
 {
     ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
@@ -131,7 +132,7 @@ ghost_acc_info_t *CU_getDeviceInfo()
     me = ghost_getRank(MPI_COMM_WORLD);
     size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
 
-    if (hasCUDAdevice) {
+    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
         struct cudaDeviceProp devProp;
         CU_safecall(cudaGetDeviceProperties(&devProp,ghost_cu_device));
         strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);

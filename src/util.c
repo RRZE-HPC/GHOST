@@ -48,6 +48,7 @@ MPI_Op GHOST_MPI_OP_SUM_Z;
 #endif
 hwloc_topology_t topology;
 
+ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 extern char ** environ;
 
 double ghost_wctime()
@@ -569,9 +570,6 @@ char * ghost_workdistName(int options)
         return "Equal no. of rows";
 }
 
-
-
-
 size_t ghost_sizeofDataType(int dt)
 {
     size_t size;
@@ -921,6 +919,8 @@ int ghost_init(int argc, char **argv)
     MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
     MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
     MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
+    
+    ghost_setupNodeMPI(MPI_COMM_WORLD);
 
 #else // ifdef GHOST_HAVE_MPI
     UNUSED(argc);
@@ -939,10 +939,6 @@ int ghost_init(int argc, char **argv)
     CL_init();
 #endif
     
-    //#ifdef GHOST_HAVE_CUDA
-    //    CU_init();
-    //#endif
-
     hwloc_topology_init(&topology);
     hwloc_topology_load(topology);
 
@@ -953,6 +949,82 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
     }
     hwloc_bitmap_free(cpuset);
+ 
+
+    // auto-set rank types 
+    int nnoderanks = ghost_getNumberOfRanks(ghost_node_comm);
+    int noderank = ghost_getRank(ghost_node_comm);
+    
+    int ncudadevs = 0;
+    int ndomains = 0;
+    int nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
+    ndomains += nnumanodes;
+#if GHOST_HAVE_CUDA
+    CU_getDeviceCount(&ncudadevs);
+#endif
+    ndomains += ncudadevs;
+   // INFO_LOG("There are %d ranks for %d potential domains: the host system (w/ %d NUMA nodes) and %d CUDA devices",nnoderanks, ndomains, nnumanodes, ncudadevs);
+    if ((nnoderanks > ncudadevs+1) && (nnoderanks < ncudadevs+ndomains)) {
+        WARNING_LOG("Invalid number of ranks on node");
+    }
+
+    if (ghost_type == GHOST_TYPE_INVALID) {
+        if (noderank == 0) {
+            ghost_setType(GHOST_TYPE_COMPUTE);
+        } else if (noderank <= ncudadevs) {
+            ghost_setType(GHOST_TYPE_CUDAMGMT);
+        } else {
+            ghost_setType(GHOST_TYPE_COMPUTE);
+        }
+    } 
+
+#ifndef GHOST_HAVE_CUDA
+    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+        WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
+        ghost_setType(GHOST_TYPE_COMPUTE);
+    }
+#endif
+
+
+    int nLocalCompute = ghost_type==GHOST_TYPE_COMPUTE;
+    int nLocalCuda = ghost_type==GHOST_TYPE_CUDAMGMT;
+
+#if GHOST_HAVE_MPI
+    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCompute,1,MPI_INT,MPI_SUM,ghost_node_comm));
+    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
+
+#ifdef GHOST_HAVE_CUDA
+    if (ncudadevs < nLocalCuda) {
+        WARNING_LOG("There are %d CUDA management ranks on this node but only %d CUDA devices.",nLocalCuda,ncudadevs);
+    }
+#endif
+
+    int localTypes[nnoderanks];
+
+    int i;
+    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        localTypes[i] = GHOST_TYPE_INVALID;
+    }
+    localTypes[noderank] = ghost_type;
+
+    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
+#endif   
+
+  //  INFO_LOG("On this node: %d compute ranks, %d CUDA management ranks",nLocalCompute,nLocalCuda);
+
+#if GHOST_HAVE_CUDA
+    int cudaDevice = 0;
+    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+    //    INFO_LOG("Local type[%d]: %d",i,localTypes[i]);
+        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
+            if (i == ghost_getRank(ghost_node_comm)) {
+     //           INFO_LOG("I'm a CUDA rank and my device is %d",cudaDevice);
+                ghost_CUDA_init(cudaDevice);
+            }
+            cudaDevice++;
+        }
+    }
+#endif
 
     return GHOST_SUCCESS;
 }
@@ -1000,3 +1072,11 @@ size_t ghost_getSizeOfLLC()
 #endif
     return size;
 }
+    
+int ghost_setType(ghost_type_t t)
+{
+    ghost_type = t;
+
+    return GHOST_SUCCESS;
+}
+
