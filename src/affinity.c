@@ -220,7 +220,9 @@ void ghost_setCore(int coreNumber)
     DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_bitmap_set(cpuset,coreNumber);
-    hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
+    if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD)) {
+        WARNING_LOG("CPU binding failed: %s",strerror(errno));
+    }
     hwloc_bitmap_free(cpuset);
 
 }
