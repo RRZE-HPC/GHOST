@@ -1101,7 +1101,7 @@ void ghost_finish()
     CL_finish();
 #endif
 
-#ifdef GHOST_HAVE_MPI
+#if GHOST_HAVE_MPI
     MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));
     MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_Z));
     if (!MPIwasInitialized) {
