@@ -1038,6 +1038,8 @@ int ghost_thpool_finish()
     free(ghost_thpool->sem);
     free(ghost_thpool->PUs);
     free(ghost_thpool);
+    hwloc_bitmap_free(ghost_thpool->cpuset);
+    hwloc_bitmap_free(ghost_thpool->busy);
 
     return GHOST_SUCCESS;
 }
