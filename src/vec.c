@@ -109,7 +109,7 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
         vec->fromRand = &ghost_vec_cu_fromRand;
 #endif
     }
-    if (vec->traits->flags & GHOST_VEC_HOST)
+    else if (vec->traits->flags & GHOST_VEC_HOST)
     {
         vec->dotProduct = &vec_dotprod;
         vec->vaxpy = &vec_vaxpy;
