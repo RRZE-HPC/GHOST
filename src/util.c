@@ -1075,12 +1075,14 @@ int ghost_init(int argc, char **argv)
     } 
 /*    char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
-    INFO_LOG("my cpuset: %s",cpusetstr);
+    INFO_LOG("Process cpuset: %s",cpusetstr);
     if (hwloc_bitmap_weight(globcpuset) > 0) {
         WARNING_LOG("There are unassigned cores");
     }*/
     ghost_thpool_init(mycpuset);
-        
+     
+    hwloc_bitmap_free(mycpuset);   
+    hwloc_bitmap_free(globcpuset);   
     return GHOST_SUCCESS;
 }
 
