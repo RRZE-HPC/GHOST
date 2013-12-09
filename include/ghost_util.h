@@ -21,11 +21,13 @@
 #include <complex.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 #else
 #include <cstdio>
 #include <complex>
 #include <cstdlib>
 #include <cstring>
+#include <cfloat>
 #endif
 /******************************************************************************/
 /****** Makros ****************************************************************/
@@ -278,6 +280,22 @@ _Pragma("omp parallel")\
 #define GHOST_INSTR_STOP(tag)
 
 #endif
+
+#define GHOST_TIME(_niter,_func,...)\
+    double _func ## _start, _func ## _end, _func ## _tstart;\
+    double _func ## _tmin = DBL_MAX;\
+    double _func ## _tmax = 0.;\
+    double _func ## _tavg = 0.;\
+    int _func ## _it;\
+    _func ## _tstart=ghost_wctime();\
+    for (_func ## _it=0; _func ## _it<_niter; _func ## _it++) {\
+       _func ## _start = ghost_wctime();\
+       _func(__VA_ARGS__);\
+       _func ## _end = ghost_wctime();\
+       _func ## _tmin = MIN(_func ## _end-_func ## _start,_func ## _tmin);\
+       _func ## _tmin = MAX(_func ## _end-_func ## _start,_func ## _tmin);\
+    }\
+    _func ## _tavg = (ghost_wctime()-_func ## _tstart)/((double)_niter);
 
 
 
