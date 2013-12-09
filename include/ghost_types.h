@@ -66,6 +66,7 @@ typedef cl_int ghost_cl_mnnz_t;
 
 
 typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
+typedef enum {GHOST_INVALID, GHOST_ONEPERNODE, GHOST_ONEPERNUMA, GHOST_ONEPERCORE} ghost_hybridmode_t;
 
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;

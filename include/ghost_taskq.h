@@ -169,7 +169,8 @@ typedef struct ghost_thpool_t {
     sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
-int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
+//int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
+int ghost_thpool_init(hwloc_cpuset_t cpuset);
 int ghost_taskq_init();
 int ghost_taskq_finish();
 int ghost_thpool_finish();

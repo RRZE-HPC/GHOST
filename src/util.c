@@ -964,7 +964,16 @@ int ghost_init(int argc, char **argv)
 #endif
     ndomains += ncudadevs;
    // INFO_LOG("There are %d ranks for %d potential domains: the host system (w/ %d NUMA nodes) and %d CUDA devices",nnoderanks, ndomains, nnumanodes, ncudadevs);
-    if ((nnoderanks > ncudadevs+1) && (nnoderanks < ncudadevs+ndomains)) {
+
+    ghost_hybridmode_t hybridmode = GHOST_INVALID;
+    if (nnoderanks <=  ncudadevs+1) {
+        hybridmode = GHOST_ONEPERNODE;
+    } else if (nnoderanks == ncudadevs+nnumanodes) {
+        hybridmode = GHOST_ONEPERNUMA;
+    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
+        hybridmode = GHOST_ONEPERCORE;
+        WARNING_LOG("One MPI process per core not supported");
+    } else {
         WARNING_LOG("Invalid number of ranks on node");
     }
 
@@ -1025,6 +1034,71 @@ int ghost_init(int argc, char **argv)
         }
     }
 #endif
+
+    hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
+    hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
+
+    globcpuset = hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset;
+
+    // CUDA ranks have a physical core
+    int availcores = ghost_getNumberOfPhysicalCores();
+  //  int corestaken[availcores];
+ //   for (i=0; i<availcores; i++) corestaken[i] = 0;
+
+    cudaDevice = 0;
+    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
+            hwloc_obj_t mynode = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,cudaDevice%nnumanodes);
+            hwloc_obj_t runner = mynode;
+            while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
+                runner = runner->first_child;
+            }
+            if (i == ghost_getRank(ghost_node_comm)) {
+                mycpuset = runner->cpuset;
+            //    corestaken[runner->logical_index] = 1;
+            }
+            cudaDevice++;
+
+            // delete CUDA cores from global cpuset
+            hwloc_bitmap_andnot(globcpuset,globcpuset,runner->cpuset);
+//            availcores--;
+        }
+    }
+    
+    if (hybridmode == GHOST_ONEPERNODE) {
+        if (ghost_type == GHOST_TYPE_COMPUTE) {
+            hwloc_bitmap_copy(mycpuset,globcpuset);
+        }
+        hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
+    } else if (hybridmode == GHOST_ONEPERNUMA) {
+        int numaNode = 0;
+        for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+            if (localTypes[i] == GHOST_TYPE_COMPUTE) {
+                if (i == ghost_getRank(ghost_node_comm)) {
+                    hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                }
+                hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                numaNode++;
+            }
+        }
+    } 
+/*    char *cpusetstr, *mycpusetstr;
+    hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
+    INFO_LOG("my cpuset: %s",cpusetstr);
+    if (hwloc_bitmap_weight(globcpuset) > 0) {
+        WARNING_LOG("There are unassigned cores");
+    }*/
+    ghost_thpool_init(mycpuset);
+        
+   /* for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        if (localTypes[i] == GHOST_TYPE_COMPUTE) {
+            if (i == ghost_getRank(ghost_node_comm)) {
+          //      myncores = computecores+(computecoresrem>0?1:0);
+            }
+        }
+    }*/
+//    INFO_LOG("I have %d cores and my first core is %d",myncores,myfirstcore);
+
 
     return GHOST_SUCCESS;
 }
