@@ -106,63 +106,11 @@ static int intcomp(const void *x, const void *y)
  * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
  * performed before this function returns.
  */
-//int ghost_thpool_init(int *_nThreads, int *_firstThread, int _levels)
 int ghost_thpool_init(hwloc_cpuset_t cpuset)
 {
     int t,q,i,l,p;
     int totalThreads = hwloc_bitmap_weight(cpuset);;
     hwloc_obj_t obj;
- /*   int *nThreads, *firstThread, levels;
-
-    int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
-    int nthreads = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
-    int smt = nthreads/ncores;
-
-    //WARNING_LOG("ncores: %d, nthreads: %d",ncores,nthreads);
-    if (_levels == GHOST_THPOOL_LEVELS_FULLSMT) {
-        DEBUG_LOG(1,"Setting levels to %d",smt);
-        levels = smt;
-    } else {
-        levels = _levels;
-    }
-
-    if (levels<1) {
-        WARNING_LOG("Less than 1 SMT levels");
-        return GHOST_FAILURE;
-    }
-
-    if (_nThreads == GHOST_THPOOL_NTHREADS_FULLNODE) {
-        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
-        nThreads = (int *)ghost_malloc(levels*sizeof(int));
-        for (l=0; l<levels; l++) {
-            nThreads[l] = nt;
-            DEBUG_LOG(1,"nThreads[%d] = %d",l,nt);
-        }
-    } else {
-        nThreads = _nThreads;
-    }
-
-    if (_firstThread == GHOST_THPOOL_FTHREAD_DEFAULT) {
-        int ft = ghost_getRank(ghost_node_comm)*ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
-        firstThread = (int *)ghost_malloc(levels*sizeof(int));
-        for (l=0; l<levels; l++) {
-            firstThread[l] = ft;
-            DEBUG_LOG(1,"firstThread[%d] = %d",l,ft);
-        }
-    } else {
-        firstThread = _firstThread;
-    }
-
-
-    for (l=0; l<levels; l++) {
-        DEBUG_LOG(1,"Required %d threads @ SMT level %d, starting from thread %d",nThreads[l],l,firstThread[l]);
-        totalThreads += nThreads[l];
-    }
-
-    if (totalThreads < 1) {
-        WARNING_LOG("Less than 1 threads in the thread pool");
-        return GHOST_FAILURE;
-    }*/
 
     ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
     ghost_thpool->PUs = (hwloc_obj_t *)ghost_malloc(totalThreads*sizeof(hwloc_obj_t));
@@ -181,29 +129,6 @@ int ghost_thpool_init(hwloc_cpuset_t cpuset)
     hwloc_bitmap_copy(ghost_thpool->cpuset,cpuset);
     ghost_thpool->busy = hwloc_bitmap_alloc();
 
-   /* int puidx = 0;
-    int smtlevel = 0;
-    int coreid = 0;
-    hwloc_obj_t runner;
-
-
-    for (p=0; p<ghost_getNumberOfHwThreads(); p++) {
-        obj = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,p);
-        smtlevel = obj->sibling_rank;
-        for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_CORE) {
-                coreid = runner->logical_index;
-                break;
-            }
-        }
-        if ((smtlevel < levels) && 
-                (coreid >= firstThread[smtlevel]) && 
-                (coreid < (firstThread[smtlevel]+nThreads[smtlevel]))) {
-            ghost_thpool->PUs[puidx] = obj;
-            hwloc_bitmap_or(ghost_thpool->cpuset,ghost_thpool->cpuset,obj->cpuset);
-            puidx++;
-        }
-    }*/
     int cpu;
     hwloc_obj_t runner;
 
@@ -214,7 +139,6 @@ int ghost_thpool_init(hwloc_cpuset_t cpuset)
 
     int nodes[totalThreads];
     for (i=0; i<totalThreads; i++) {
-//        ghost_thpool->PUs[i] = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,ghost_thpool->
         nodes[i] = 0;
         obj = ghost_thpool->PUs[i];
         for (runner=obj; runner; runner=runner->parent) {
@@ -1035,13 +959,14 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
 {
     ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
     if (ghost_thpool == NULL) {
-        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
+        WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");
+/*        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
         int ft = ghost_getRank(ghost_node_comm)*nt;
         int poolThreads[] = {nt,nt};
         int firstThread[] = {ft,ft};
         int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
         //DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nt*levels);
-        //ghost_thpool_init(poolThreads,firstThread,levels);
+        //ghost_thpool_init(poolThreads,firstThread,levels);*/
     }
     if (taskq == NULL) {
         DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now...");
