@@ -87,7 +87,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
         x->compress(x);
     }
 
-    if (reduce >= ghost_getNumberOfRanks(x->context->mpicomm)) {
+    if (reduce >= ghost_getNumberOfRanks(v->context->mpicomm)) {
         WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
                 reduce,ghost_getNumberOfRanks(x->context->mpicomm));
         reduce = 0;
