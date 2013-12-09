@@ -18,6 +18,7 @@ option(USE_OPENCL "Build with OpenCL" 1)
 option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL or GSL)")
+set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (may be SHARED or STATIC)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TIMING, LIKWID)")
 
@@ -117,7 +118,16 @@ if (USE_OPENCL)
 	endif()
 endif()
 
-add_library(ghost SHARED ${SOURCES})
+if (${LIBTYPE} STREQUAL "STATIC")
+    add_library(ghost STATIC ${SOURCES})
+elseif (${LIBTYPE} STREQUAL "SHARED")
+    add_library(ghost SHARED ${SOURCES})
+else ()
+    message(SEND_ERROR "Unknown library type. Setting it to SHARED")
+    set(LIBTYPE "SHARED")
+    add_library(ghost SHARED ${SOURCES})
+endif()
+
 
 if (LONGIDX)
 	add_definitions(-DLONGIDX)
@@ -205,7 +215,11 @@ configure_file (
 	"${PROJECT_BINARY_DIR}/ghost_config.h"
 )
 
+if (${LIBTYPE} STREQUAL "STATIC")
+install(TARGETS ghost EXPORT GHOST-targets ARCHIVE DESTINATION lib/ghost)
+elseif (${LIBTYPE} STREQUAL "SHARED")
 install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
+endif()
 install(FILES GHOST-config.cmake DESTINATION lib/ghost)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
