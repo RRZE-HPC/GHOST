@@ -24,6 +24,7 @@ int ghost_getNumberOfNodes();
 int ghost_getNumberOfRanks(MPI_Comm);
 int ghost_getNumberOfPhysicalCores();
 int ghost_getCore();
+int ghost_getSMTlevel();
 void ghost_setCore(int core);
 void ghost_unsetCore();
 void ghost_pinThreads(int options, char *procList);

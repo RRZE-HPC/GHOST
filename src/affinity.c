@@ -265,6 +265,11 @@ int ghost_getNumberOfHwThreads()
     return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);    
 }
 
+int ghost_getSMTlevel()
+{
+    return ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
+}
+
 int ghost_getNumberOfThreads() 
 {
     int nthreads;
