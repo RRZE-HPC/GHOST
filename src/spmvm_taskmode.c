@@ -104,7 +104,7 @@ static void *computeLocal(void *vargs)
     compArgs *args = (compArgs *)vargs;
 //    args->invec->uploadNonHalo(args->invec);
 
-    args->mat->localPart->kernel(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
+    args->mat->localPart->spmv(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
 
     return NULL;
 }
@@ -112,7 +112,7 @@ static void *computeLocal(void *vargs)
 static void *computeRemote(void *vargs)
 {
     compArgs *args = (compArgs *)vargs;
-    args->mat->remotePart->kernel(args->mat->remotePart,args->res,args->invec,args->spmvmOptions|GHOST_SPMVM_AXPY);
+    args->mat->remotePart->spmv(args->mat->remotePart,args->res,args->invec,args->spmvmOptions|GHOST_SPMVM_AXPY);
 
     return NULL;
 }

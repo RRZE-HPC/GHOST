@@ -102,6 +102,6 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     MPI_safecall(MPI_Waitall(msgcount, request, status));
 
     invec->uploadHalo(invec);
-    mat->kernel(mat,res,invec,spmvmOptions);    
+    mat->spmv(mat,res,invec,spmvmOptions);    
 }
 

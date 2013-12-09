@@ -89,11 +89,11 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
 #endif
 #ifdef GHOST_HAVE_OPENCL
     if (traits->flags & GHOST_SPM_HOST)
-        mat->kernel   = &CRS_kernel_plain;
+        mat->spmv   = &CRS_kernel_plain;
     else 
-        mat->kernel   = &CRS_kernel_CL;
+        mat->spmv   = &CRS_kernel_CL;
 #else
-    mat->kernel   = &CRS_kernel_plain;
+    mat->spmv   = &CRS_kernel_plain;
 #endif
     mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 

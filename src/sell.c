@@ -114,7 +114,7 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
     mat->formatName = &SELL_formatName;
     mat->rowLen     = &SELL_rowLen;
     mat->byteSize   = &SELL_byteSize;
-    mat->kernel     = &SELL_kernel_plain;
+    mat->spmv     = &SELL_kernel_plain;
     mat->fromCRS    = &SELL_fromCRS;
 #ifdef VSX_INTR
     mat->kernel = &SELL_kernel_VSX;
@@ -125,7 +125,7 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
 #endif
 #ifdef GHOST_HAVE_CUDA
     if (!(traits->flags & GHOST_SPM_HOST))
-        mat->kernel   = &SELL_kernel_CU;
+        mat->spmv   = &SELL_kernel_CU;
 #endif
     mat->nnz      = &SELL_nnz;
     mat->nrows    = &SELL_nrows;

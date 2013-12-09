@@ -78,8 +78,8 @@ typedef struct ghost_acc_info_t ghost_acc_info_t;
 typedef struct ghost_matfile_header_t ghost_matfile_header_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
-typedef void (*ghost_kernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
-typedef void (*ghost_solver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
+typedef void (*ghost_spmvkernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
+typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
 
 /**
  * @brief This struct represents a vector (dense matrix) datatype.  The
@@ -389,7 +389,7 @@ struct ghost_mat_t
     ghost_context_t *context;
     char *name;
     void *data;
-    ghost_kernel_t kernel;
+    ghost_spmvkernel_t spmv;
 
     // access functions
     void       (*destroy) (ghost_mat_t *);
@@ -424,7 +424,7 @@ extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 
 struct ghost_context_t
 {
-    ghost_solver_t *solvers;
+    ghost_spmvsolver_t *spmvsolvers;
 
     // if the context is distributed by nnz, the row pointers are being read 
     // at context creation in order to create the distribution. once the matrix 

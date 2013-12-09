@@ -56,14 +56,14 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
     }
 #endif
 
-    context->solvers = (ghost_solver_t *)ghost_malloc(sizeof(ghost_solver_t)*GHOST_NUM_MODES);
-    for (i=0; i<GHOST_NUM_MODES; i++) context->solvers[i] = NULL;
+    context->spmvsolvers = (ghost_spmvsolver_t *)ghost_malloc(sizeof(ghost_spmvsolver_t)*GHOST_NUM_MODES);
+    for (i=0; i<GHOST_NUM_MODES; i++) context->spmvsolvers[i] = NULL;
 #ifdef GHOST_HAVE_MPI
-    context->solvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
-    context->solvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
-    context->solvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
+    context->spmvsolvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
+    context->spmvsolvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
+    context->spmvsolvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
 #else
-    context->solvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
+    context->spmvsolvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
 
 #ifdef GHOST_HAVE_MPI
@@ -162,7 +162,7 @@ void ghost_freeContext(ghost_context_t *context)
 {
     DEBUG_LOG(1,"Freeing context");
     if (context != NULL) {
-        free(context->solvers);
+        free(context->spmvsolvers);
         free(context->rowPerm);
         free(context->invRowPerm);
         ghost_freeCommunicator(context->communicator);

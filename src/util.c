@@ -428,7 +428,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 
         if (mat->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
             for (iter=0; iter<nIter; iter++) {
-                mat->kernel(mat,globLHS,globRHS,spmvmOptions);
+                mat->spmv(mat,globLHS,globRHS,spmvmOptions);
             }
         } else if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
             WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
@@ -634,10 +634,10 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
     double oldtime=1e9;
     //struct timespec end,start;
 
-    ghost_solver_t solver = NULL;
+    ghost_spmvsolver_t solver = NULL;
 
     ghost_pickSpMVMMode(context,spmvmOptions);
-    solver = context->solvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
+    solver = context->spmvsolvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
     if (!solver) {
         DEBUG_LOG(1,"The solver for the specified is not available, skipping");
