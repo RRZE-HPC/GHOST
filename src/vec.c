@@ -549,7 +549,7 @@ static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *v
         CU_copyDeviceToHost(val,&vec->CU_val[(c*vec->traits->nrowspadded+r)*sizeofdt],sizeofdt);
 #endif
     }
-    if (vec->traits->flags & GHOST_VEC_HOST)
+    else if (vec->traits->flags & GHOST_VEC_HOST)
     {
         memcpy(val,VECVAL(vec,vec->val,c,r),sizeofdt);
     }
@@ -797,7 +797,13 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 {
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
-
+    
+    if (vec->traits->flags & GHOST_VEC_DEVICE)
+    {
+#if GHOST_HAVE_CUDA
+        CU_memset(vec->CU_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+#endif
+    }
     if (vec->traits->flags & GHOST_VEC_HOST)
     {
         for (v=0; v<vec->traits->nvecs; v++) 
@@ -805,12 +811,6 @@ static void ghost_zeroVector(ghost_vec_t *vec)
             memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
         }
     } 
-    else
-    {
-#if GHOST_HAVE_CUDA
-        CU_memset(vec->CU_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
-#endif
-    }
 }
 
 static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
