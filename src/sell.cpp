@@ -408,7 +408,9 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     SELL(mat)->variance /= SELL(mat)->nrows;
     SELL(mat)->deviation = sqrt(SELL(mat)->variance);
 
-    SELL(mat)->nMaxRows = rowlengths.rbegin()->second;
+    if (rowlengths.size() > 0) {
+        SELL(mat)->nMaxRows = rowlengths.rbegin()->second;
+    }
 
     SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
@@ -436,13 +438,10 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
 #pragma omp parallel for schedule(runtime) private(j,i)
         for (i=0; i<SELL(mat)->nrowsPadded; i++) 
         { 
-            for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
+            for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) 
             {
-                for (i=0; i<SELL(mat)->chunkHeight; i++)
-                {
                     ((m_t *)(SELL(mat)->val))[SELL(mat)->nrowsPadded*j+i] = (m_t)0.;
                     SELL(mat)->col[SELL(mat)->nrowsPadded*j+i] = 0;
-                }
             }
         }
     }
