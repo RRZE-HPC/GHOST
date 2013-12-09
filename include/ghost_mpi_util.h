@@ -9,7 +9,7 @@
 #endif
 
 extern MPI_Comm ghost_node_comm;
-extern MPI_Comm ghost_node_rank;
+extern int ghost_node_rank;
 #ifdef __cplusplus
 extern "C" {
 #endif
