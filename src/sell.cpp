@@ -407,6 +407,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     }
     SELL(mat)->variance /= SELL(mat)->nrows;
     SELL(mat)->deviation = sqrt(SELL(mat)->variance);
+    SELL(mat)->cv = SELL(mat)->deviation*1./(nnz*1.0/(double)SELL(mat)->nrows);
 
     if (rowlengths.size() > 0) {
         SELL(mat)->nMaxRows = rowlengths.rbegin()->second;

@@ -52,6 +52,7 @@ typedef struct
     double beta; // chunk occupancy
     double variance; // row length variance
     double deviation; // row lenght standard deviation
+    double cv; // row lenght coefficient of variation
     int T; // number of threads per row (if applicable)
     ghost_midx_t *chunkMin; // for version with remainder loop
     ghost_midx_t *chunkLen; // for version with remainder loop
