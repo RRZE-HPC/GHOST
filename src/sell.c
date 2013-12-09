@@ -98,6 +98,14 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
     ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
     mat->traits = traits;
     DEBUG_LOG(1,"Setting functions for SELL matrix");
+    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    { // no placement specified
+        DEBUG_LOG(2,"Setting matrix placement");
+        mat->traits->flags |= GHOST_SPM_HOST;
+        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+            mat->traits->flags |= GHOST_SPM_DEVICE;
+        }
+    }
 
     mat->CLupload = &SELL_upload;
     mat->CUupload = &SELL_CUupload;

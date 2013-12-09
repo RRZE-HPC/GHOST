@@ -64,14 +64,20 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
     mat->traits = traits;
 
     DEBUG_LOG(1,"Initializing CRS functions");
+    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    { // no placement specified
+        DEBUG_LOG(2,"Setting matrix placement");
+        mat->traits->flags |= GHOST_SPM_HOST;
+        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+            mat->traits->flags |= GHOST_SPM_DEVICE;
+        }
+    }
 
     mat->fromFile = &CRS_fromBin;
-    //    mat->fromMM = &CRS_fromMM;
     mat->fromCRS = &CRS_fromCRS;
     mat->printInfo = &CRS_printInfo;
     mat->formatName = &CRS_formatName;
     mat->rowLen   = &CRS_rowLen;
-    //    mat->entry    = &CRS_entry;
     mat->byteSize = &CRS_byteSize;
     mat->nnz      = &CRS_nnz;
     mat->nrows    = &CRS_nrows;
