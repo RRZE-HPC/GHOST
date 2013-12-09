@@ -108,9 +108,22 @@ static int intcomp(const void *x, const void *y)
  */
 int ghost_thpool_init(hwloc_cpuset_t cpuset)
 {
+    static int initialized = 0;
     int t,q,i,l,p;
-    int totalThreads = hwloc_bitmap_weight(cpuset);;
+    int totalThreads;
     hwloc_obj_t obj;
+
+    if (initialized) {
+        WARNING_LOG("The thread pool has already been initialized.");
+        return GHOST_FAILURE;
+    }
+    if (!cpuset) {
+        WARNING_LOG("The thread pool's cpuset is NULL.");
+        return GHOST_FAILURE;
+    }
+    initialized=1;
+
+    totalThreads = hwloc_bitmap_weight(cpuset);
 
     ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
     ghost_thpool->PUs = (hwloc_obj_t *)ghost_malloc(totalThreads*sizeof(hwloc_obj_t));
