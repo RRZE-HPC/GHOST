@@ -82,16 +82,19 @@ if (USE_CUDA)
         endif()
 		cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
 		cuda_compile(VEC_CU_O src/vec.cu)
+		cuda_compile(CRS_CU_O src/crs.cu)
 		set (SOURCES 
 				${SOURCES} 
 				${SELL_KERNEL_CU_O}
 				${VEC_CU_O}
+				${CRS_CU_O}
 				src/cu_util.c
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
 				include/ghost_cu_util.h
                 include/ghost_cu_vec.h
+                include/ghost_cu_crs.h
 			)
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)

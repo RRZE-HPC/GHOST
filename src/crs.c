@@ -72,6 +72,18 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
             mat->traits->flags |= GHOST_SPM_DEVICE;
         }
     }
+    
+    if (mat->traits->flags & GHOST_SPM_DEVICE)
+    {
+#if GHOST_HAVE_CUDA
+        WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
+     //   mat->spmv = &ghost_cu_crsspmv;
+#endif
+    }
+    else if (mat->traits->flags & GHOST_SPM_HOST)
+    {
+        mat->spmv   = &CRS_kernel_plain;
+    }
 
     mat->fromFile = &CRS_fromBin;
     mat->fromCRS = &CRS_fromCRS;
@@ -92,8 +104,6 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
         mat->spmv   = &CRS_kernel_plain;
     else 
         mat->spmv   = &CRS_kernel_CL;
-#else
-    mat->spmv   = &CRS_kernel_plain;
 #endif
     mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
