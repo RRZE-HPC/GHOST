@@ -963,7 +963,6 @@ int ghost_init(int argc, char **argv)
     CU_getDeviceCount(&ncudadevs);
 #endif
     ndomains += ncudadevs;
-   // INFO_LOG("There are %d ranks for %d potential domains: the host system (w/ %d NUMA nodes) and %d CUDA devices",nnoderanks, ndomains, nnumanodes, ncudadevs);
 
     ghost_hybridmode_t hybridmode = GHOST_INVALID;
     if (nnoderanks <=  ncudadevs+1) {
@@ -1019,32 +1018,24 @@ int ghost_init(int argc, char **argv)
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
 
-  //  INFO_LOG("On this node: %d compute ranks, %d CUDA management ranks",nLocalCompute,nLocalCuda);
-
-#if GHOST_HAVE_CUDA
-    int cudaDevice = 0;
-    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
-    //    INFO_LOG("Local type[%d]: %d",i,localTypes[i]);
-        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
-            if (i == ghost_getRank(ghost_node_comm)) {
-     //           INFO_LOG("I'm a CUDA rank and my device is %d",cudaDevice);
-                ghost_CUDA_init(cudaDevice);
-            }
-            cudaDevice++;
-        }
-    }
-#endif
-
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
     globcpuset = hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset;
 
-    // CUDA ranks have a physical core
-    int availcores = ghost_getNumberOfPhysicalCores();
-  //  int corestaken[availcores];
- //   for (i=0; i<availcores; i++) corestaken[i] = 0;
+#if GHOST_HAVE_CUDA
+    int cudaDevice = 0;
+    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
+            if (i == ghost_getRank(ghost_node_comm)) {
+                ghost_CUDA_init(cudaDevice);
+            }
+            cudaDevice++;
+        }
+    }
 
+
+    // CUDA ranks have a physical core
     cudaDevice = 0;
     for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
         if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
@@ -1061,9 +1052,9 @@ int ghost_init(int argc, char **argv)
 
             // delete CUDA cores from global cpuset
             hwloc_bitmap_andnot(globcpuset,globcpuset,runner->cpuset);
-//            availcores--;
         }
     }
+#endif
     
     if (hybridmode == GHOST_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
@@ -1090,16 +1081,6 @@ int ghost_init(int argc, char **argv)
     }*/
     ghost_thpool_init(mycpuset);
         
-   /* for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
-        if (localTypes[i] == GHOST_TYPE_COMPUTE) {
-            if (i == ghost_getRank(ghost_node_comm)) {
-          //      myncores = computecores+(computecoresrem>0?1:0);
-            }
-        }
-    }*/
-//    INFO_LOG("I have %d cores and my first core is %d",myncores,myfirstcore);
-
-
     return GHOST_SUCCESS;
 }
 
