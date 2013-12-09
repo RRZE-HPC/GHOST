@@ -133,15 +133,22 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
     }
     
     void *mybeta;
-    if ((reduce == GHOST_GEMM_ALL_REDUCE) && (ghost_getRank(v->context->mpicomm) == 0)) 
-    { // make sure that the initial value of x only gets added up once
-        mybeta = &zero;
-    }
-    else 
+    if (reduce == GHOST_GEMM_ALL_REDUCE)
     {
+      // careful, we should only access the comm of v, and only if 
+      // a reduction operation is requested. The user may have all matrices
+      // local as long as he does not request a reduction operation, or he
+      // may have w and/or x local in a distributed context
+      if  (ghost_getRank(v->context->mpicomm) != 0)
+      {
+        // make sure that the initial value of x only gets added up once
+        mybeta = &zero;
+      }
+      else
+      {
         mybeta = beta;
+      }
     }
-
     DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_HOST)
     {
