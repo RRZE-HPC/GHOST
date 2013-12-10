@@ -1021,7 +1021,7 @@ int ghost_init(int argc, char **argv)
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
-    globcpuset = hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset;
+    globcpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
 
 #if GHOST_HAVE_CUDA
     int cudaDevice = 0;
@@ -1045,7 +1045,7 @@ int ghost_init(int argc, char **argv)
                 runner = runner->first_child;
             }
             if (i == ghost_getRank(ghost_node_comm)) {
-                mycpuset = runner->cpuset;
+                hwloc_bitmap_copy(mycpuset,runner->cpuset);
             //    corestaken[runner->logical_index] = 1;
             }
             cudaDevice++;
@@ -1073,7 +1073,7 @@ int ghost_init(int argc, char **argv)
             }
         }
     } 
-/*    char *cpusetstr, *mycpusetstr;
+   /* char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset: %s",cpusetstr);
     if (hwloc_bitmap_weight(globcpuset) > 0) {
