@@ -23,45 +23,38 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
      ********                serielles Umkopieren und Senden              ********
      ****************************************************************************/
 
-    static int init_kernel=1; 
-    static ghost_mnnz_t max_dues;
-    static int nprocs;
+    ghost_mnnz_t max_dues;
+    int nprocs;
 
-    static int me; 
+    int me; 
     int i, from_PE, to_PE;
     int msgcount;
     ghost_vidx_t c;
 
-    static char *work;
-    static MPI_Request *request;
-    static MPI_Status  *status;
+    char *work = NULL;
+    MPI_Request *request = NULL;
+    MPI_Status  *status = NULL;
 
-    static size_t sizeofRHS;
+    size_t sizeofRHS;
 
-    if (init_kernel==1){
-        me = ghost_getRank(context->mpicomm);
-        nprocs = ghost_getNumberOfRanks(context->mpicomm);
-        sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
+    if (context == NULL)
+      return;
 
-        max_dues = 0;
-        for (i=0;i<nprocs;i++)
-            if (context->communicator->dues[i]>max_dues) 
-                max_dues = context->communicator->dues[i];
+    me = ghost_getRank(context->mpicomm);
+    nprocs = ghost_getNumberOfRanks(context->mpicomm);
+    sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
-        work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
+    max_dues = 0;
+    for (i=0;i<nprocs;i++)
+        if (context->communicator->dues[i]>max_dues) 
+            max_dues = context->communicator->dues[i];
 
-        request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
-        status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
+    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
-        init_kernel = 0;
-    }
+    request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
+    status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
-    if (context == NULL) {
-        free(work);
-        free(request);
-        free(status);
-        return;
-    }
+
 #ifdef __INTEL_COMPILER
     kmp_set_blocktime(1);
 #endif
@@ -103,5 +96,9 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
     invec->uploadHalo(invec);
     mat->spmv(mat,res,invec,spmvmOptions);    
+
+    free(work);
+    free(request);
+    free(status);
 }
 
