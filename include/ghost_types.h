@@ -76,10 +76,12 @@ typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 typedef struct ghost_acc_info_t ghost_acc_info_t;
 typedef struct ghost_matfile_header_t ghost_matfile_header_t;
+typedef struct ghost_spm_hint_t ghost_spm_hint_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
 typedef void (*ghost_spmvkernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
+typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 
 /**
  * @brief This struct represents a vector (dense matrix) datatype.  The
@@ -401,6 +403,7 @@ struct ghost_mat_t
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
     void       (*fromFile)(ghost_mat_t *, char *);
+    void       (*fromRowFunc)(ghost_mat_t *, ghost_spm_hint_t *hint, int base, ghost_spmFromRowFunc_t func, int);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
@@ -491,4 +494,11 @@ struct ghost_matfile_header_t
     int64_t ncols;
     int64_t nnz;
 };
+
+struct ghost_spm_hint_t
+{
+    ghost_mnnz_t nnz;
+    ghost_midx_t maxrowlen;
+};
+
 #endif
