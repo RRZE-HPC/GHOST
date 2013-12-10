@@ -418,7 +418,8 @@ struct ghost_mtraits_t
     int nAux;
     int datatype;
     void * shift; 
-    void * scale; 
+    void * scale;
+    void * beta; // scale factor for AXPBY 
 };
 extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 

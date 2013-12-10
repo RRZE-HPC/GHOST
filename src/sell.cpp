@@ -59,11 +59,14 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
     ghost_vidx_t v;
     v_t tmp[chunkHeight];
     
-    v_t shift, scale;
+    v_t shift, scale, beta;
     if (options & GHOST_SPMVM_APPLY_SHIFT)
         shift = *((v_t *)(mat->traits->shift));
     if (options & GHOST_SPMVM_APPLY_SCALE)
         scale = *((v_t *)(mat->traits->scale));
+    if (options & GHOST_SPMVM_AXPBY)
+        beta = *((v_t *)(mat->traits->beta));
+
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,v)
     for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
     { // loop over chunks
@@ -88,27 +91,35 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
                     if (options & GHOST_SPMVM_APPLY_SHIFT) {
                         if (options & GHOST_SPMVM_APPLY_SCALE) {
                             if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += scale*(tmp[i]+shift*rhsv[c*chunkHeight+i]);
+                                lhsv[c*chunkHeight+i] += scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
+                            } else if (options & GHOST_SPMVM_AXPBY) {
+                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
                             } else {
-                                lhsv[c*chunkHeight+i] = scale*(tmp[i]+shift*rhsv[c*chunkHeight+i]);
+                                lhsv[c*chunkHeight+i] = scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
                             }
                         } else {
                             if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += (tmp[i]+shift*rhsv[c*chunkHeight+i]);
+                                lhsv[c*chunkHeight+i] += (tmp[i]-shift*rhsv[c*chunkHeight+i]);
+                            } else if (options & GHOST_SPMVM_AXPBY) {
+                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i]-shift*rhsv[c*chunkHeight+i];
                             } else {
-                                lhsv[c*chunkHeight+i] = (tmp[i]+shift*rhsv[c*chunkHeight+i]);
+                                lhsv[c*chunkHeight+i] = (tmp[i]-shift*rhsv[c*chunkHeight+i]);
                             }
                         }
                     } else {
                         if (options & GHOST_SPMVM_APPLY_SCALE) {
                             if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += scale*(tmp[i]);
+                                lhsv[c*chunkHeight+i] += scale*(v_t)(tmp[i]);
+                            } else if (options & GHOST_SPMVM_AXPBY) {
+                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + scale*(v_t)tmp[i];
                             } else {
-                                lhsv[c*chunkHeight+i] = scale*(tmp[i]);
+                                lhsv[c*chunkHeight+i] = scale*(v_t)(tmp[i]);
                             }
                         } else {
                             if (options & GHOST_SPMVM_AXPY) {
                                 lhsv[c*chunkHeight+i] += tmp[i];
+                            } else if (options & GHOST_SPMVM_AXPBY) {
+                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i];
                             } else {
                                 lhsv[c*chunkHeight+i] = tmp[i];
                             }
@@ -132,11 +143,13 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
     v_t tmp;
     SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
-    v_t shift, scale;
+    v_t shift, scale, beta;
     if (options & GHOST_SPMVM_APPLY_SHIFT)
         shift = *((v_t *)(mat->traits->shift));
     if (options & GHOST_SPMVM_APPLY_SCALE)
         scale = *((v_t *)(mat->traits->scale));
+    if (options & GHOST_SPMVM_AXPBY)
+        beta = *((v_t *)(mat->traits->beta));
 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,v)
@@ -156,27 +169,35 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
             if (options & GHOST_SPMVM_APPLY_SHIFT) {
                 if (options & GHOST_SPMVM_APPLY_SCALE) {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(tmp+shift*rhsv[i]);
+                        lhsv[i] += scale*(v_t)(tmp-shift*rhsv[i]);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + scale*(v_t)(tmp-shift*rhsv[i]);
                     } else {
-                        lhsv[i] = scale*(tmp+shift*rhsv[i]);
+                        lhsv[i] = scale*(v_t)(tmp-shift*rhsv[i]);
                     }
                 } else {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (tmp+shift*rhsv[i]);
+                        lhsv[i] += (tmp-shift*rhsv[i]);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + tmp-shift*rhsv[i];
                     } else {
-                        lhsv[i] = (tmp+shift*rhsv[i]);
+                        lhsv[i] = (tmp-shift*rhsv[i]);
                     }
                 }
             } else {
                 if (options & GHOST_SPMVM_APPLY_SCALE) {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(tmp);
+                        lhsv[i] += scale*(v_t)(tmp);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + scale*(v_t)tmp;
                     } else {
-                        lhsv[i] = scale*(tmp);
+                        lhsv[i] = scale*(v_t)(tmp);
                     }
                 } else {
                     if (options & GHOST_SPMVM_AXPY) {
                         lhsv[i] += (tmp);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + tmp;
                     } else {
                         lhsv[i] = (tmp);
                     }

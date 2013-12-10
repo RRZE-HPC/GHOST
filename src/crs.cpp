@@ -23,11 +23,13 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     ghost_vidx_t v;
 
     v_t hlp1 = 0.;
-    v_t shift, scale;
+    v_t shift, scale, beta;
     if (options & GHOST_SPMVM_APPLY_SHIFT)
         shift = *((v_t *)(mat->traits->shift));
     if (options & GHOST_SPMVM_APPLY_SCALE)
         scale = *((v_t *)(mat->traits->scale));
+    if (options & GHOST_SPMVM_AXPBY)
+        beta = *((v_t *)(mat->traits->beta));
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
     for (i=0; i<cr->nrows; i++){
@@ -43,27 +45,35 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             if (options & GHOST_SPMVM_APPLY_SHIFT) {
                 if (options & GHOST_SPMVM_APPLY_SCALE) {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(hlp1+shift*rhsv[i]);
+                        lhsv[i] += scale*(v_t)(hlp1-shift*rhsv[i]);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + scale*(v_t)(hlp1-shift*rhsv[i]);
                     } else {
-                        lhsv[i] = scale*(hlp1+shift*rhsv[i]);
+                        lhsv[i] = scale*(v_t)(hlp1-shift*rhsv[i]);
                     }
                 } else {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (hlp1+shift*rhsv[i]);
+                        lhsv[i] += (hlp1-shift*rhsv[i]);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + hlp1-shift*rhsv[i];
                     } else {
-                        lhsv[i] = (hlp1+shift*rhsv[i]);
+                        lhsv[i] = (hlp1-shift*rhsv[i]);
                     }
                 }
             } else {
                 if (options & GHOST_SPMVM_APPLY_SCALE) {
                     if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(hlp1);
+                        lhsv[i] += scale*(v_t)(hlp1);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + scale*(v_t)hlp1;
                     } else {
-                        lhsv[i] = scale*(hlp1);
+                        lhsv[i] = scale*(v_t)(hlp1);
                     }
                 } else {
                     if (options & GHOST_SPMVM_AXPY) {
                         lhsv[i] += (hlp1);
+                    } else if (options & GHOST_SPMVM_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + hlp1;
                     } else {
                         lhsv[i] = (hlp1);
                     }

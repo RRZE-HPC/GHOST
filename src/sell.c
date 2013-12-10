@@ -437,7 +437,9 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 
 #if GHOST_HAVE_SSE
 #ifndef LONGIDX
-    if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
+    if (!((options & GHOST_SPMVM_AXPBY) ||
+            (options & GHOST_SPMVM_APPLY_SCALE) ||
+            (options & GHOST_SPMVM_APPLY_SHIFT))) {
     kernel = SELL_kernels_SSE
         [ghost_dataTypeIdx(mat->traits->datatype)]
         [ghost_dataTypeIdx(lhs->traits->datatype)];
@@ -445,7 +447,9 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 #endif
 #elif GHOST_HAVE_AVX
 #ifndef LONGIDX
-    if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT))) {
+    if (!((options & GHOST_SPMVM_AXPBY) ||
+            (options & GHOST_SPMVM_APPLY_SCALE) ||
+            (options & GHOST_SPMVM_APPLY_SHIFT))) {
     if (SELL(mat)->chunkHeight == 4) {
     kernel = SELL_kernels_AVX
         [ghost_dataTypeIdx(mat->traits->datatype)]
@@ -459,7 +463,9 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
 #endif
 #elif GHOST_HAVE_MIC
 #ifndef LONGIDX
-    if (!((options & GHOST_SPMVM_APPLY_SCALE) || (options & GHOST_SPMVM_APPLY_SHIFT) || (SELL(mat)->T > 1))) {
+    if (!((options & GHOST_SPMVM_AXPBY) ||
+            (options & GHOST_SPMVM_APPLY_SCALE) ||
+            (options & GHOST_SPMVM_APPLY_SHIFT))) {
         if (SELL(mat)->chunkHeight == 16) {
             kernel = SELL_kernels_MIC_16
                 [ghost_dataTypeIdx(mat->traits->datatype)]
