@@ -173,6 +173,7 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
     ghost_midx_t i,j;
 
     // TODO read first line from context and call func with global idx
+    // TODO divide nnz by number of ranks
 
     CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
@@ -185,10 +186,10 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
         
-       /* INFO_LOG("rpt[%d] = %d",i+1,CR(mat)->rpt[i+1]);
+        INFO_LOG("rpt[%d] = %d",i+1,CR(mat)->rpt[i+1]);
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
             INFO_LOG("%d:%f",CR(mat)->col[j],((double *)CR(mat)->val)[j]);
-        }*/
+        }
 
 
     }
