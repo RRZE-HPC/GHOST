@@ -148,8 +148,9 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
       // a reduction operation is requested. The user may have all matrices
       // local as long as he does not request a reduction operation, or he
       // may have w and/or x local in a distributed context
-    if (((reduce == GHOST_GEMM_ALL_REDUCE) && (myrank == 0)) ||
-            ((reduce != GHOST_GEMM_NO_REDUCE) && (myrank == reduce))) 
+    if (((reduce == GHOST_GEMM_ALL_REDUCE) && (myrank == 0))     ||
+        ((reduce != GHOST_GEMM_NO_REDUCE) && (myrank == reduce)) ||
+         (reduce == GHOST_GEMM_NO_REDUCE)                         ) 
     { // make sure that the initial value of x only gets added up once
         mybeta = beta;
     }
