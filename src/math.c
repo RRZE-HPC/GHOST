@@ -132,13 +132,24 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
         ABORT("Dgemm with mixed datatypes does not work!");
     }
     
+    //note: if no reduction is requested, none of the input vecs may have
+    // a context (or an MPI comm). If any reduction is requested, only v
+    // needs context and comm, the others may be replicated. So we must
+    // take the comm from v if and only if a reduction is requested.
+    int myrank=0;
+    if (reduce!=GHOST_GEMM_NO_REDUCE)
+      {
+      myrank=ghost_getRank(v->context->mpicomm);
+      }
+
     void *mybeta;
+
       // careful, we should only access the comm of v, and only if 
       // a reduction operation is requested. The user may have all matrices
       // local as long as he does not request a reduction operation, or he
       // may have w and/or x local in a distributed context
-    if (((reduce == GHOST_GEMM_ALL_REDUCE) && (ghost_getRank(v->context->mpicomm) == 0)) ||
-            ((reduce != GHOST_GEMM_NO_REDUCE) && (ghost_getRank(v->context->mpicomm) == reduce))) 
+    if (((reduce == GHOST_GEMM_ALL_REDUCE) && (myrank == 0)) ||
+            ((reduce != GHOST_GEMM_NO_REDUCE) && (myrank == reduce))) 
     { // make sure that the initial value of x only gets added up once
         mybeta = beta;
     }
@@ -233,7 +244,7 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
             } 
             else 
             {
-                if (ghost_getRank(v->context->mpicomm) == reduce) 
+                if (myrank == reduce) 
                 {
                     MPI_safecall(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
                 } 
