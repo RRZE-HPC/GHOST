@@ -37,6 +37,7 @@ static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
+static void CRS_fromFunc(ghost_mat_t *mat,  int64_t(*crsMat)(int64_t, int64_t *,void *));
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -46,6 +47,7 @@ static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, in
 static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
+static void CRS_readHeader_fromFunc(ghost_mat_t *mat,  int64_t(*crsMat)(int64_t, int64_t *,void *));
 #ifdef GHOST_HAVE_MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
 static void CRS_createCommunication(ghost_mat_t *mat);
@@ -66,6 +68,7 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
     DEBUG_LOG(1,"Initializing CRS functions");
 
     mat->fromFile = &CRS_fromBin;
+    mat->fromFunc = &CRS_fromFunc;
     //    mat->fromMM = &CRS_fromMM;
     mat->fromCRS = &CRS_fromCRS;
     mat->printInfo = &CRS_printInfo;
@@ -844,6 +847,45 @@ static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath)
 
 }
 
+static void CRS_readHeader_fromFunc(ghost_mat_t *mat,  int64_t(*crsMat)(int64_t, int64_t *,void *))
+{
+    ghost_matfile_header_t header;
+
+    crsMat( -1L, NULL, &header );
+
+    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+        DEBUG_LOG(1,"Need to convert from little to big endian.");
+        swapReq = 1;
+    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+        DEBUG_LOG(1,"Need to convert from big to little endian.");
+        swapReq = 1;
+    } else {
+        DEBUG_LOG(1,"OK, file and library have same endianess.");
+    }
+
+    if (header.version != 1)
+        ABORT("Can not read version %d of binary CRS format!",header.version);
+
+    if (header.base != 0)
+        ABORT("Can not read matrix with %d-based indices!",header.base);
+
+    if (!ghost_symmetryValid(header.symmetry))
+        ABORT("Symmetry is invalid! (%d)",header.symmetry);
+    if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL)
+        ABORT("Can not handle symmetry different to general at the moment!");
+    mat->symmetry = header.symmetry;
+
+    if (!ghost_datatypeValid(header.datatype))
+        ABORT("Datatype is invalid! (%d)",header.datatype);
+
+    CR(mat)->nrows = (ghost_midx_t)header.nrows;
+    CR(mat)->ncols = (ghost_midx_t)header.ncols;
+    CR(mat)->nEnts = (ghost_midx_t)header.nrows*(ghost_midx_t)header.nnz;  // TODO
+
+    DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+
+}
+
 ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 {
     size_t ret;
@@ -918,6 +960,57 @@ ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath)
 
     return rpt;
 }
+
+ghost_midx_t * CRS_readRpt_fromFunc(ghost_midx_t nrpt, int64_t(*crsMat)(int64_t, int64_t *,void *))
+{
+    size_t ret;
+    ghost_midx_t i;
+
+    DEBUG_LOG(1,"Reading row pointers from function");
+
+    ghost_matfile_header_t header;
+    crsMat( -1L, NULL, &header );
+    int64_t nnz = header.nnz;
+    int64_t *cols = malloc(nnz*8);
+    void    *vals = malloc(nnz*16);
+    if( (int64_t)(nrpt) != header.rows + 1 )   ABORT("CRS_fromFunc is corrupt.");
+
+    DEBUG_LOG(2,"Allocate memory for rpt for %d rows",nrpt);
+    ghost_midx_t *rpt = (ghost_midx_t *)ghost_malloc( nrpt*sizeof(ghost_midx_t));
+
+    DEBUG_LOG(1,"NUMA-placement for rpt");
+#pragma omp parallel for schedule(runtime)
+    for( i = 0; i < nrpt; i++ ) {
+        rpt[i] = 0;
+    }
+
+    DEBUG_LOG(2,"Reading array with row-offsets");
+#ifdef LONGIDX
+        for( i = 0; i < nrpt-1; i++ ) {
+            rpt[i+1] = rpt[i] + crsMat( i, cols, vars );
+            }
+#else // casting
+    DEBUG_LOG(1,"Casting from 64 bit to 32 bit row pointers");
+    int64_t *tmp = (int64_t *)malloc((nrpt)*8);
+    tmp[0]=0L;
+    for( i = 0; i < nrpt-1; i++ ) {
+              tmp[i+1] = tmp[i] + crsMat( (int64_t)i, cols, vars );
+            }
+    
+    for( i = 0; i < nrpt; i++ ) {
+            if (tmp[i] >= (int64_t)INT_MAX) {
+                ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+            }
+            rpt[i] = (ghost_midx_t)(tmp[i]);
+        }
+    free(tmp);
+#endif
+    free(cols);
+    free(vals);
+    return rpt;
+}
+
+
 
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype)
 {
@@ -1118,6 +1211,209 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
     fclose(filed);
 }
 
+
+static void CRS_readColValOffset_fromFunc(ghost_mat_t *mat, int64_t(*crsMat)(int64_t, int64_t *,void *), ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype)
+{
+    ghost_matfile_header_t header;
+    crsMat( -1L, NULL, &header );
+
+    size_t ret;
+    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
+    UNUSED(offsetRows);    
+    UNUSED(IOtype);
+
+    ghost_midx_t i, j;
+    int datatype = header.datatype;
+//    FILE *filed;
+
+    off64_t offs;
+
+    
+
+    DEBUG_LOG(1,"Reading %"PRmatNNZ" cols and vals from binary function with offset %"PRmatNNZ,nEnts, offsetEnts);
+
+    
+    DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",CR(mat)->nrows,CR(mat)->ncols,CR(mat)->nEnts);
+
+    DEBUG_LOG(2,"Allocate memory for CR(mat)->col and CR(mat)->val");
+    
+    int64_t * cols_tmp = ghost_malloc(header.nnz*rows*8);
+    int64_t * vals_tmp = ghost_malloc(header.nnz*rows*sizeofdt);
+    
+    /*
+    CR(mat)->col       = (ghost_midx_t *) ghost_malloc( nEnts * sizeof(ghost_midx_t));
+    CR(mat)->val       = ghost_malloc( nEnts * sizeofdt);
+    
+    DEBUG_LOG(2,"NUMA-placement for CR(mat)->val and CR(mat)->col");
+#pragma omp parallel for schedule(runtime) private(j)
+    for(i = 0 ; i < nRows; ++i) {
+        for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
+            CR(mat)->val[j*sizeofdt] = (char)0;
+            CR(mat)->col[j] = -1;
+        }
+    }
+    */
+
+
+    DEBUG_LOG(1,"Reading array with column indices");
+    offs = GHOST_BINCRS_SIZE_HEADER+
+        GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
+        GHOST_BINCRS_SIZE_COL_EL*offsetEnts;
+    if (fseeko(filed,offs,SEEK_SET)) {
+        ABORT("Seek failed");
+    }
+#ifdef LONGIDX
+    if (swapReq) {
+        int64_t *tmp = (int64_t *)malloc(nEnts*8);
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+            ABORT("fread failed: %s (%zu)",strerror(errno),ret);
+        }
+        for( i = 0; i < nEnts; i++ ) {
+            CR(mat)->col[i] = bswap_64(tmp[i]);
+        }
+    } else {
+        if ((ret = fread(CR(mat)->col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+            ABORT("fread failed: %s (%zu)",strerror(errno),ret);
+        }
+    }
+#else // casting
+    DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
+    int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
+    if ((ghost_midx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+        ABORT("fread failed: %s (%zu)",strerror(errno),ret);
+    }
+    for(i = 0 ; i < nRows; ++i) {
+        for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
+            if (tmp[j] >= (int64_t)INT_MAX) {
+                ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+            }
+            if (swapReq) CR(mat)->col[j] = (ghost_midx_t)(bswap_64(tmp[j]));
+            else CR(mat)->col[j] = (ghost_midx_t)tmp[j];
+        }
+    }
+    free(tmp);
+#endif
+    // minimal size of value
+    size_t valSize = sizeof(float);
+    if (datatype & GHOST_BINCRS_DT_DOUBLE)
+        valSize *= 2;
+
+    if (datatype & GHOST_BINCRS_DT_COMPLEX)
+        valSize *= 2;
+
+
+    DEBUG_LOG(1,"Reading array with values");
+    offs = GHOST_BINCRS_SIZE_HEADER+
+        GHOST_BINCRS_SIZE_RPT_EL*(CR(mat)->nrows+1)+
+        GHOST_BINCRS_SIZE_COL_EL*CR(mat)->nEnts+
+        ghost_sizeofDataType(datatype)*offsetEnts;
+    if (fseeko(filed,offs,SEEK_SET)) {
+        ABORT("Seek failed");
+    }
+
+    if (datatype == mat->traits->datatype) {
+        if (swapReq) {
+            uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
+            if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+                ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
+            }
+            if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+                if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t *a = (uint32_t *)tmpval;
+                        uint32_t rswapped = bswap_32(a[2*i]);
+                        uint32_t iswapped = bswap_32(a[2*i+1]);
+                        memcpy(&(CR(mat)->val[i]),&rswapped,4);
+                        memcpy(&(CR(mat)->val[i])+4,&iswapped,4);
+                    }
+                } else {
+                    for (i = 0; i<nEnts; i++) {
+                        uint64_t *a = (uint64_t *)tmpval;
+                        uint64_t rswapped = bswap_64(a[2*i]);
+                        uint64_t iswapped = bswap_64(a[2*i+1]);
+                        memcpy(&(CR(mat)->val[i]),&rswapped,8);
+                        memcpy(&(CR(mat)->val[i])+8,&iswapped,8);
+                    }
+                }
+            } else {
+                if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t *a = (uint32_t *)tmpval;
+                        uint32_t swapped = bswap_32(a[i]);
+                        memcpy(&(CR(mat)->val[i]),&swapped,4);
+                    }
+                } else {
+                    for (i = 0; i<nEnts; i++) {
+                        uint64_t *a = (uint64_t *)tmpval;
+                        uint64_t swapped = bswap_64(a[i]);
+                        memcpy(&(CR(mat)->val[i]),&swapped,8);
+                    }
+                }
+
+            }
+        } else {
+            if ((ghost_midx_t)(ret = fread(CR(mat)->val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
+                ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
+            }
+        }
+    } else {
+        DEBUG_LOG(1,"This matrix is supposed to be of %s data but"
+                " the file contains %s data. Casting...",ghost_datatypeName(mat->traits->datatype),ghost_datatypeName(datatype));
+
+
+        uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
+        if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
+            ABORT("fread failed for val: %s (%zu)",strerror(errno),ret);
+        }
+
+        if (swapReq) {
+            ABORT("Not yet supported!");
+            if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+                if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t re = bswap_32(tmpval[i*valSize]);
+                        uint32_t im = bswap_32(tmpval[i*valSize+valSize/2]);
+                        memcpy(&CR(mat)->val[i*sizeofdt],&re,4);
+                        memcpy(&CR(mat)->val[i*sizeofdt+4],&im,4);
+                    }
+                } else {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t re = bswap_64(tmpval[i*valSize]);
+                        uint32_t im = bswap_64(tmpval[i*valSize+valSize/2]);
+                        memcpy(&CR(mat)->val[i*sizeofdt],&re,8);
+                        memcpy(&CR(mat)->val[i*sizeofdt+8],&im,8);
+                    }
+                }
+            } else {
+                if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t val = bswap_32(tmpval[i*valSize]);
+                        memcpy(&CR(mat)->val[i*sizeofdt],&val,4);
+                    }
+                } else {
+                    for (i = 0; i<nEnts; i++) {
+                        uint32_t val = bswap_64(tmpval[i*valSize]);
+                        memcpy(&CR(mat)->val[i*sizeofdt],&val,8);
+                    }
+                }
+
+            }
+
+        } else {
+            CRS_castData_funcs[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(datatype)](CR(mat)->val,tmpval,nEnts);
+        }
+
+        free(tmpval);
+    }
+    fclose(filed);
+}
+
+
+
+
+
+
+
 static void CRS_upload(ghost_mat_t *mat)
 {
     DEBUG_LOG(1,"Uploading CRS matrix to device");
@@ -1238,6 +1534,34 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 #endif
 
 }
+
+static void CRS_fromFunc(ghost_mat_t *mat,  int64_t(*crsMat)(int64_t , int64_t *,void *) )
+{
+    DEBUG_LOG(1,"Reading CRS matrix from function");
+    //mat->name = basename(matrixPath);
+
+    if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
+        DEBUG_LOG(1,"Reading in a global context");
+        CRS_readHeader_fromFunc(mat, &crsMat);
+        CR(mat)->rpt = CRS_readRpt_fromFunc(CR(mat)->nrows+1,&crsMat);
+        CRS_readColValOffset(mat, matrixPath, 0, 0, CR(mat)->nrows, CR(mat)->nEnts, GHOST_IO_STD);
+    } else {
+#ifdef GHOST_HAVE_MPI
+        DEBUG_LOG(1,"Reading in a distributed context");
+        CRS_createDistributedContext(&mat,matrixPath);
+        mat->split(mat);
+#else
+        ABORT("Trying to create a distributed context without MPI!");
+#endif
+    }
+    DEBUG_LOG(1,"Matrix read in successfully");
+#ifdef GHOST_HAVE_OPENCL
+    if (!(mat->traits->flags & GHOST_SPM_HOST))
+        mat->CLupload(mat);
+#endif
+
+}
+
 
 static void CRS_free(ghost_mat_t * mat)
 {

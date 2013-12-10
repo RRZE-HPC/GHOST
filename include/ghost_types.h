@@ -226,6 +226,7 @@ struct ghost_vec_t
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
      */
     void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
+    //void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int64_t,int64_t,void *));
     /**
      * @brief Initializes a vector from another vector at a given column offset.
      * Malloc's memory for the vector's values if this hasn't happened before. 
@@ -396,6 +397,7 @@ struct ghost_mat_t
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
     void       (*fromFile)(ghost_mat_t *, char *);
+    void       (*fromFunc)(ghost_mat_t *, int64_t(*crsMat)(int64_t, int64_t *,void *) );
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
