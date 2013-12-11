@@ -86,7 +86,7 @@ typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t 
  * according functions are accessed via function pointers. The first argument of
  * each member function always has to be a pointer to the vector itself.
  */
-struct ghost_vec_t 
+struct ghost_vec_t
 {
     /**
      * @brief The vector's traits.
@@ -106,7 +106,7 @@ struct ghost_vec_t
      * vector.
      */
 //    int isView;
-    
+
     /**
      * @brief Performs <em>y := a*x + y</em> with scalar a
      *
@@ -116,7 +116,7 @@ struct ghost_vec_t
      */
     void          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
     /**
-     * @brief Performs <em>y := a*x + b*y</em> with scalar a and b 
+     * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
      *
      * @param y The in-/output vector.
      * @param x The input vector
@@ -130,7 +130,7 @@ struct ghost_vec_t
     void          (*CLdownload) (ghost_vec_t *);
     /**
      * @brief Clones a given number of columns of a source vector at a given
-     * column offset. 
+     * column offset.
      *
      * @param vec The source vector.
      * @param ncols The number of columns to clone.
@@ -155,7 +155,7 @@ struct ghost_vec_t
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
      *
-     * @param vec The distributed vector. 
+     * @param vec The distributed vector.
      * @param globalVec The global vector.
      */
     void          (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
@@ -224,7 +224,7 @@ struct ghost_vec_t
             void *entry);
     /**
      * @brief Initializes a vector from a given function.
-     * Malloc's memory for the vector's values if this hasn't happened before. 
+     * Malloc's memory for the vector's values if this hasn't happened before.
      *
      * @param vec The vector.
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
@@ -232,7 +232,7 @@ struct ghost_vec_t
     void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
     /**
      * @brief Initializes a vector from another vector at a given column offset.
-     * Malloc's memory for the vector's values if this hasn't happened before. 
+     * Malloc's memory for the vector's values if this hasn't happened before.
      *
      * @param vec The vector.
      * @param src The source vector.
@@ -241,7 +241,7 @@ struct ghost_vec_t
     void          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
     /**
      * @brief Initializes a vector from a file.
-     * Malloc's memory for the vector's values if this hasn't happened before. 
+     * Malloc's memory for the vector's values if this hasn't happened before.
      *
      * @param vec The vector.
      * @param filename Path to the file.
@@ -324,7 +324,7 @@ struct ghost_vec_t
     void          (*uploadNonHalo) (ghost_vec_t *vec);
     /**
      * @brief View plain data in the vector.
-     * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided. 
+     * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided.
      *
      * @param vec The vector.
      * @param data The plain data.
@@ -377,10 +377,11 @@ struct ghost_vtraits_t
     int flags;
     int datatype;
     void * aux;
+    void * dot_product;
 };
 extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 
-struct ghost_mat_t 
+struct ghost_mat_t
 {
     ghost_mtraits_t *traits;
     int symmetry;
@@ -408,7 +409,7 @@ struct ghost_mat_t
 #ifdef GHOST_HAVE_OPENCL
     cl_kernel clkernel[4];
 #endif
-}; 
+};
 
 struct ghost_mtraits_t
 {
@@ -417,9 +418,9 @@ struct ghost_mtraits_t
     void * aux;
     int nAux;
     int datatype;
-    void * shift; 
+    void * shift;
     void * scale;
-    void * beta; // scale factor for AXPBY 
+    void * beta; // scale factor for AXPBY
 };
 extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 
@@ -427,10 +428,10 @@ struct ghost_context_t
 {
     ghost_spmvsolver_t *spmvsolvers;
 
-    // if the context is distributed by nnz, the row pointers are being read 
-    // at context creation in order to create the distribution. once the matrix 
+    // if the context is distributed by nnz, the row pointers are being read
+    // at context creation in order to create the distribution. once the matrix
     // is being created, the row pointers are distributed
-    ghost_midx_t *rpt; 
+    ghost_midx_t *rpt;
 
     ghost_comm_t *communicator;
     ghost_midx_t gnrows;
@@ -444,7 +445,7 @@ struct ghost_context_t
     MPI_Comm mpicomm;
 };
 
-struct ghost_comm_t 
+struct ghost_comm_t
 {
     ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
     ghost_mnnz_t* lnEnts;
@@ -452,13 +453,13 @@ struct ghost_comm_t
     ghost_midx_t* lnrows;
     ghost_midx_t* lfRow;
     int* wishes;
-    int** wishlist;    
+    int** wishlist;
     int* dues;
     int** duelist;
-    ghost_midx_t* due_displ;    
-    ghost_midx_t* wish_displ;   
+    ghost_midx_t* due_displ;
+    ghost_midx_t* wish_displ;
     ghost_midx_t* hput_pos;
-}; 
+};
 
 struct ghost_acc_info_t
 {

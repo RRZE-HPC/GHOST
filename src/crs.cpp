@@ -13,12 +13,13 @@
 
 // TODO shift, scale als templateparameter
 
-template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options) 
+template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     CR_TYPE *cr = CR(mat);
-    v_t *rhsv;    
+    v_t *rhsv;
     v_t *lhsv;
-    m_t *mval = (m_t *)(cr->val);    
+    v_t *local_dot_product;
+    m_t *mval = (m_t *)(cr->val);
     ghost_midx_t i, j;
     ghost_vidx_t v;
 
@@ -30,6 +31,9 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         scale = *((v_t *)(mat->traits->scale));
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
+    if (options & GHOST_SPMVM_APPLY_LOCAL_DOTPRODUCT)
+        local_dot_product = *((v_t *)(lhsv->traits->beta));
+
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
     for (i=0; i<cr->nrows; i++){
@@ -80,6 +84,12 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
                 }
 
             }
+
+            if (options & GHOST_SPMVM_APPLY_LOCAL_DOTPRODUCT) {
+		local_dot_product[v                       ] += dot(lhsv[i],lhsv[i]);  //todo dot( , ) fuer alle datentypen
+		local_dot_product[v +   lhs->traits->nvecs] += dot(lhsv[i],rhsv[i]);
+		local_dot_product[v + 2*lhs->traits->nvecs] += dot(rhsv[i],rhsv[i]);
+                }
         }
     }
 }
