@@ -35,8 +35,13 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT)
         local_dot_product = ((v_t *)(lhs->traits->localdot));
 
+    int nthreads;
+#pragma omp parallel
+    nthreads = ghost_ompGetNumThreads();
+    
+    v_t *partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
+#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v) shared (partsums)
     for (i=0; i<cr->nrows; i++){
         for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
         {
@@ -87,10 +92,17 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
 
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                local_dot_product[v                       ] += conjugate(&lhsv[i])*lhsv[i];
-                local_dot_product[v +   lhs->traits->nvecs] += conjugate(&lhsv[i])*rhsv[i];
-                local_dot_product[v + 2*lhs->traits->nvecs] += conjugate(&rhsv[i])*rhsv[i];
+                partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*lhsv[i];
+                partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*rhsv[i];
+                partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[i])*rhsv[i];
             }
+        }
+    }
+    for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+        for (i=0; i<nthreads; i++) {
+            local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
+            local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
+            local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
         }
     }
 }
