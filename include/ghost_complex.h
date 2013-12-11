@@ -3,11 +3,9 @@
 #include <complex>
 
 template <typename T> 
-class ghost_complex
+struct ghost_complex
 {
-    private:
         T re, im;
-    public:
         ghost_complex() {re = 0.; im = 0.;}
         ghost_complex(T a)  {re = a; im = 0.;}
         ghost_complex(T a, T b) { re = a; im = b;}

@@ -3,9 +3,11 @@
 #include <ghost_complex.h>
 #include <ghost_math.h>
 
-template <typename T> 
-ghost_complex<T> conjugate(ghost_complex<T> * c) {
-    return ghost_complex<T>(c->re,-c->im);
+ghost_complex<double> conjugate(ghost_complex<double> * c) {
+    return ghost_complex<double>(c->re,-c->im);
+}
+ghost_complex<float> conjugate(ghost_complex<float> * c) {
+    return ghost_complex<float>(c->re,-c->im);
 }
 double conjugate(double * c) {return *c;}
 float conjugate(float * c) {return *c;}
