@@ -159,8 +159,9 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
     UNUSED(base);
     UNUSED(flags);
 
+    int me = ghost_getRank(mat->context->mpicomm);
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    CR(mat)->nrows = mat->context->communicator->lnrows[ghost_getRank(mat->context->mpicomm)];
+    CR(mat)->nrows = mat->context->communicator->lnrows[me];
     CR(mat)->ncols = mat->context->gncols;
 
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
@@ -177,7 +178,7 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
 
     CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
-        func(i,&rowlen,tmpcol,tmpval);
+        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
         if (hint->nnz < CR(mat)->rpt[i]) {
             INFO_LOG("%d<%d... Need to allocate more. not implemented",hint->nnz,CR(mat)->rpt[i]);
@@ -186,10 +187,6 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
         
-        INFO_LOG("rpt[%d] = %d",i+1,CR(mat)->rpt[i+1]);
-        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            INFO_LOG("%d:%f",CR(mat)->col[j],((double *)CR(mat)->val)[j]);
-        }
 
 
     }
@@ -198,9 +195,25 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
         ghost_comm_t *comm = mat->context->communicator;
+       int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
+        
         comm->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
-        comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
-        CRS_createDistribution(mat,mat->context->flags,comm);
+        comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
+        
+        comm->lnEnts[me] = CR(mat)->nEnts;
+
+        ghost_mnnz_t nents[nprocs];
+        nents[me] = comm->lnEnts[me];
+        MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
+        
+        for (i=0; i<nprocs; i++) {
+           comm->lfEnt[i] = 0;
+        } 
+
+        for (i=1; i<nprocs; i++) {
+           comm->lfEnt[i] = comm->lfEnt[i-1]+nents[i-1];
+        } 
+
         mat->split(mat);
 #endif
     }
