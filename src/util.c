@@ -479,8 +479,10 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
         free(comm->lfRow);
         free(comm->wishes);
         free(comm->dues);
-        free(comm->wishlist[0]);
-        free(comm->duelist[0]);
+        if (comm->wishlist)
+            free(comm->wishlist[0]);
+        if (comm->duelist)
+            free(comm->duelist[0]);
         free(comm->wishlist);
         free(comm->duelist);
         free(comm->due_displ);
