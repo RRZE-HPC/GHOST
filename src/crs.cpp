@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include <ghost_complex.h>
+#include <ghost_math.h>
 #include <ghost_util.h>
 #include <ghost_crs.h>
 #include <ghost_constants.h>
@@ -31,8 +32,8 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         scale = *((v_t *)(mat->traits->scale));
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
-    if (options & GHOST_SPMVM_APPLY_LOCAL_DOTPRODUCT)
-        local_dot_product = *((v_t *)(lhsv->traits->beta));
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT)
+        local_dot_product = ((v_t *)(lhs->traits->localdot));
 
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
@@ -85,11 +86,11 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
             }
 
-            if (options & GHOST_SPMVM_APPLY_LOCAL_DOTPRODUCT) {
-		local_dot_product[v                       ] += dot(lhsv[i],lhsv[i]);  //todo dot( , ) fuer alle datentypen
-		local_dot_product[v +   lhs->traits->nvecs] += dot(lhsv[i],rhsv[i]);
-		local_dot_product[v + 2*lhs->traits->nvecs] += dot(rhsv[i],rhsv[i]);
-                }
+            if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                local_dot_product[v                       ] += conjugate(&lhsv[i])*lhsv[i];
+                local_dot_product[v +   lhs->traits->nvecs] += conjugate(&lhsv[i])*rhsv[i];
+                local_dot_product[v + 2*lhs->traits->nvecs] += conjugate(&rhsv[i])*rhsv[i];
+            }
         }
     }
 }

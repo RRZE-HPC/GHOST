@@ -377,7 +377,7 @@ struct ghost_vtraits_t
     int flags;
     int datatype;
     void * aux;
-    void * dot_product;
+    void * localdot;
 };
 extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 
