@@ -41,7 +41,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
         partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
 
-        for (i=0; i<3*lhs->traits->nvecs*nthreads*sizeof(v_t); i++) {
+        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
