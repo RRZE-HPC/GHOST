@@ -101,11 +101,13 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
     if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
-        mat->traits->flags |= GHOST_SPM_HOST;
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
             mat->traits->flags |= GHOST_SPM_DEVICE;
+        } else {
+            mat->traits->flags |= GHOST_SPM_HOST;
         }
     }
+    //TODO is it reasonable that a matrix has HOST&DEVICE?
 
     mat->CLupload = &SELL_upload;
     mat->CUupload = &SELL_CUupload;
@@ -123,9 +125,10 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
     if (!(traits->flags & GHOST_SPM_HOST))
         mat->kernel   = &SELL_kernel_CL;
 #endif
-#ifdef GHOST_HAVE_CUDA
-    if (!(traits->flags & GHOST_SPM_HOST))
+#if GHOST_HAVE_CUDA
+    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
         mat->spmv   = &SELL_kernel_CU;
+    }
 #endif
     mat->nnz      = &SELL_nnz;
     mat->nrows    = &SELL_nrows;
