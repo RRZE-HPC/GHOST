@@ -19,10 +19,11 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     CR_TYPE *cr = CR(mat);
     v_t *rhsv;
     v_t *lhsv;
-    v_t *local_dot_product;
+    v_t *local_dot_product, *partsums;
     m_t *mval = (m_t *)(cr->val);
     ghost_midx_t i, j;
     ghost_vidx_t v;
+    int nthreads = 1;
 
     v_t hlp1 = 0.;
     v_t shift, scale, beta;
@@ -32,14 +33,18 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         scale = *((v_t *)(mat->traits->scale));
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
-    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT)
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         local_dot_product = ((v_t *)(lhs->traits->localdot));
 
-    int nthreads;
 #pragma omp parallel
-    nthreads = ghost_ompGetNumThreads();
-    
-    v_t *partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+        nthreads = ghost_ompGetNumThreads();
+
+        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+
+        for (i=0; i<3*lhs->traits->nvecs*nthreads*sizeof(v_t); i++) {
+            partsums[i] = 0.;
+        }
+    }
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v) shared (partsums)
     for (i=0; i<cr->nrows; i++){
@@ -98,11 +103,13 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
         }
     }
-    for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
-        for (i=0; i<nthreads; i++) {
-            local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
-            local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
-            local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+            }
         }
     }
 }
