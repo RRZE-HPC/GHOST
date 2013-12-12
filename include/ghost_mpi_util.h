@@ -8,8 +8,6 @@
 #include <mpi.h>
 #endif
 
-extern MPI_Comm ghost_node_comm;
-extern int ghost_node_rank;
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -45,6 +45,11 @@ MPI_Datatype GHOST_MPI_DT_C;
 MPI_Op GHOST_MPI_OP_SUM_C;
 MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
+MPI_Comm ghost_node_comm = MPI_COMM_NULL;
+int ghost_node_rank = -1;
+#else
+int ghost_node_comm = 0;
+int ghost_node_rank = 0;
 #endif
 hwloc_topology_t topology;
 
@@ -1004,6 +1009,13 @@ int ghost_init(int argc, char **argv)
     int nLocalCompute = ghost_type==GHOST_TYPE_COMPUTE;
     int nLocalCuda = ghost_type==GHOST_TYPE_CUDAMGMT;
 
+    int i;
+    int localTypes[nnoderanks];
+
+    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        localTypes[i] = GHOST_TYPE_INVALID;
+    }
+    localTypes[noderank] = ghost_type;
 #if GHOST_HAVE_MPI
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCompute,1,MPI_INT,MPI_SUM,ghost_node_comm));
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
@@ -1014,13 +1026,6 @@ int ghost_init(int argc, char **argv)
     }
 #endif
 
-    int localTypes[nnoderanks];
-
-    int i;
-    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
-        localTypes[i] = GHOST_TYPE_INVALID;
-    }
-    localTypes[noderank] = ghost_type;
 
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
@@ -1032,6 +1037,7 @@ int ghost_init(int argc, char **argv)
 
 #if GHOST_HAVE_CUDA
     int cudaDevice = 0;
+
     for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
         if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
             if (i == ghost_getRank(ghost_node_comm)) {

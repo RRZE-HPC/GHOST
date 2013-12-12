@@ -25,8 +25,6 @@
 
 #define LOCAL_HOSTNAME_MAX 	256
 
-MPI_Comm ghost_node_comm = MPI_COMM_NULL;
-int ghost_node_rank = -1;
 
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
