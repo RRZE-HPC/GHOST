@@ -349,6 +349,7 @@ extern "C" {
 
     int ghost_getSpmvmModeIdx(int spmvmOptions);
     double ghost_wctime();
+    double ghost_wctimemilli();
 
     double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
     void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
