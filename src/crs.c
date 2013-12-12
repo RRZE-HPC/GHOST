@@ -11,6 +11,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <errno.h>
+#include <math.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -158,31 +159,38 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
 {
     UNUSED(base);
     UNUSED(flags);
+    int nprocs = 1;
+#if GHOST_HAVE_MPI
+     nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
+#endif
 
+    ghost_mnnz_t mynnz = hint->nnz/nprocs;
     int me = ghost_getRank(mat->context->mpicomm);
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
     CR(mat)->nrows = mat->context->communicator->lnrows[me];
     CR(mat)->ncols = mat->context->gncols;
 
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
-    CR(mat)->col = (ghost_midx_t *)ghost_malloc(hint->nnz*sizeof(ghost_midx_t));
-    CR(mat)->val = ghost_malloc(hint->nnz*sizeofdt);
+    CR(mat)->col = (ghost_midx_t *)ghost_malloc(mynnz*sizeof(ghost_midx_t));
+    CR(mat)->val = ghost_malloc(mynnz*sizeofdt);
 
     void *tmpval = ghost_malloc(hint->maxrowlen*sizeofdt);
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(hint->maxrowlen*sizeof(ghost_midx_t));
     ghost_midx_t rowlen;
     ghost_midx_t i,j;
 
-    // TODO read first line from context and call func with global idx
-    // TODO divide nnz by number of ranks
-
     CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
         func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
-        if (hint->nnz < CR(mat)->rpt[i]) {
-            INFO_LOG("%d<%d... Need to allocate more. not implemented",hint->nnz,CR(mat)->rpt[i]);
-            return;
+        if (mynnz < CR(mat)->rpt[i+1]) {
+            INFO_LOG("%d<%d... Need to allocate more.",mynnz,CR(mat)->rpt[i+1]);
+            double scale = 1.5;
+            mynnz = (ghost_mnnz_t)ceil(scale*mynnz);
+            INFO_LOG("Allocating space for %"PRmatNNZ" nonzeros",mynnz);
+            CR(mat)->col = (ghost_midx_t *)realloc(CR(mat)->col,mynnz*sizeof(ghost_midx_t));
+            CR(mat)->val = realloc(CR(mat)->val,mynnz*sizeofdt);
+
         } 
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
@@ -195,7 +203,6 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
         ghost_comm_t *comm = mat->context->communicator;
-       int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
         
         comm->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
         comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
