@@ -10,7 +10,7 @@ struct ghost_complex
         ghost_complex(T a)  {re = a; im = 0.;}
         ghost_complex(T a, T b) { re = a; im = b;}
         //ghost_complex(const std::complex<T> &a) : std::complex<T>(a) {re = a.real();}
-        //ghost_complex(const ghost_complex<float> &a) : std::complex<T>(a) {re = a.re;}
+        ghost_complex(const ghost_complex<float> &a) {re = a.re; im = a.im;}
         operator T() const;
         ghost_complex<T> operator-(const ghost_complex<T>&) const;
         ghost_complex<T> operator+(const ghost_complex<T>&) const;
