@@ -10,6 +10,7 @@
 #include <ghost_crs.h>
 #include <ghost_sell.h>
 #include <ghost_vec.h>
+#include <ghost_math.h>
 #include <ghost_constants.h>
 #include <cstdio>
 #include <cstdlib>
@@ -55,8 +56,10 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
     DEBUG_LOG(2,"In plain SELL kernel w/ %d chunks",sell->nrowsPadded/chunkHeight);
     v_t *rhsv;
     v_t *lhsv;
+    v_t *local_dot_product, *partsums;
     ghost_midx_t i,j,c;
     ghost_vidx_t v;
+    int nthreads = 1;
     v_t tmp[chunkHeight];
     
     v_t shift, scale, beta;
@@ -66,6 +69,18 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
         scale = *((v_t *)(mat->traits->scale));
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        local_dot_product = ((v_t *)(lhs->traits->localdot));
+
+#pragma omp parallel
+        nthreads = ghost_ompGetNumThreads();
+
+        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+
+        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,i,v)
     for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
@@ -126,9 +141,24 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
                         }
                     }
                 }
+                if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                    partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                    partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                    partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                }
             }
+
         }
 
+    }
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+            }
+        }
     }
 }
 
@@ -138,6 +168,8 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
     v_t *rhsv;
     v_t *lhsv;
+    v_t *local_dot_product, *partsums;
+    int nthreads = 1;
     ghost_midx_t i,j;
     ghost_vidx_t v;
     v_t tmp;
@@ -150,6 +182,18 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
         scale = *((v_t *)(mat->traits->scale));
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        local_dot_product = ((v_t *)(lhs->traits->localdot));
+
+#pragma omp parallel
+        nthreads = ghost_ompGetNumThreads();
+
+        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+
+        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
 
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,v)
@@ -203,6 +247,20 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
                     }
                 }
 
+            }
+            if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*lhsv[i];
+                partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*rhsv[i];
+                partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[i])*rhsv[i];
+            }
+        }
+    }
+    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
             }
         }
     }
