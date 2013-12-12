@@ -19,6 +19,9 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
 
 #ifdef __cplusplus
 } //extern "C"
+
+#include <ghost_complex.h>
+
 ghost_complex<float> conjugate(ghost_complex<float> * c);
 ghost_complex<double> conjugate(ghost_complex<double> * c);
 double conjugate(double * c);
