@@ -365,6 +365,7 @@ extern "C" {
     size_t ghost_getSizeOfLLC();
 
     int ghost_setType(ghost_type_t t);
+    int ghost_hash(int a, int b, int c);
 
 #ifdef __cplusplus
 }
