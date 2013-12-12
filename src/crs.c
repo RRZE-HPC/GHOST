@@ -38,7 +38,7 @@ static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
-static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *info, int base, ghost_spmFromRowFunc_t func, int flags);
+static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -155,50 +155,44 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
             CR(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
-static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, ghost_spmFromRowFunc_t func, int flags)
+static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags)
 {
     UNUSED(base);
     UNUSED(flags);
     int nprocs = 1;
 #if GHOST_HAVE_MPI
-     nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
+    nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 #endif
-
-    ghost_mnnz_t mynnz = hint->nnz/nprocs;
-    int me = ghost_getRank(mat->context->mpicomm);
-    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    CR(mat)->nrows = mat->context->communicator->lnrows[me];
-    CR(mat)->ncols = mat->context->gncols;
-
-    CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
-    CR(mat)->col = (ghost_midx_t *)ghost_malloc(mynnz*sizeof(ghost_midx_t));
-    CR(mat)->val = ghost_malloc(mynnz*sizeofdt);
-
-    void *tmpval = ghost_malloc(hint->maxrowlen*sizeofdt);
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(hint->maxrowlen*sizeof(ghost_midx_t));
+    
     ghost_midx_t rowlen;
     ghost_midx_t i,j;
+    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
+    void *tmpval = ghost_malloc(maxrowlen*sizeofdt);
+    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+    int me = ghost_getRank(mat->context->mpicomm);
+    CR(mat)->ncols = mat->context->gncols;
+    CR(mat)->nrows = mat->context->communicator->lnrows[me];
+    CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
+    CR(mat)->nEnts = 0;
+    
+    for( i = 0; i < CR(mat)->nrows; i++ ) {
+        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+        CR(mat)->nEnts += rowlen;
+    }
+
+    CR(mat)->col = (ghost_midx_t *)ghost_malloc(CR(mat)->nEnts*sizeof(ghost_midx_t));
+    CR(mat)->val = ghost_malloc(CR(mat)->nEnts*sizeofdt);
+
+
+    // TODO load balancing if distribution by nnz
 
     CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
         func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
-        if (mynnz < CR(mat)->rpt[i+1]) {
-            INFO_LOG("%d<%d... Need to allocate more.",mynnz,CR(mat)->rpt[i+1]);
-            double scale = 1.5;
-            mynnz = (ghost_mnnz_t)ceil(scale*mynnz);
-            INFO_LOG("Allocating space for %"PRmatNNZ" nonzeros",mynnz);
-            CR(mat)->col = (ghost_midx_t *)realloc(CR(mat)->col,mynnz*sizeof(ghost_midx_t));
-            CR(mat)->val = realloc(CR(mat)->val,mynnz*sizeofdt);
-
-        } 
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
-        
-
-
     }
-    CR(mat)->nEnts = CR(mat)->rpt[CR(mat)->nrows];
 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
