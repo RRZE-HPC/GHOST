@@ -81,6 +81,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, void *crs);
 static void SELL_upload(ghost_mat_t* mat); 
 static void SELL_CUupload(ghost_mat_t *mat);
 static void SELL_fromBin(ghost_mat_t *mat, char *);
+static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *info, int base, ghost_spmFromRowFunc_t func, int flags);
 static void SELL_free(ghost_mat_t *mat);
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 #ifdef GHOST_HAVE_OPENCL
@@ -112,6 +113,7 @@ ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
     mat->CLupload = &SELL_upload;
     mat->CUupload = &SELL_CUupload;
     mat->fromFile = &SELL_fromBin;
+    mat->fromRowFunc = &SELL_fromRowFunc;
     mat->printInfo = &SELL_printInfo;
     mat->formatName = &SELL_formatName;
     mat->rowLen     = &SELL_rowLen;
@@ -212,6 +214,11 @@ static size_t SELL_byteSize (ghost_mat_t *mat)
 {
     return (size_t)((SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_mnnz_t) + 
             SELL(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
+}
+
+static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_spm_hint_t *hint, int base, ghost_spmFromRowFunc_t func, int flags)
+{
+    WARNING_LOG("not implemented");
 }
 
 static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
