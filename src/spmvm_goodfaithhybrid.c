@@ -29,6 +29,14 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     static char *work;
     static int nprocs;
 
+    int localopts = spmvmOptions;
+    localopts &= ~GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT;
+    
+    int remoteopts = spmvmOptions;
+    remoteopts &= ~GHOST_SPMVM_AXPBY;
+    remoteopts &= ~GHOST_SPMVM_APPLY_SHIFT;
+    remoteopts |= GHOST_SPMVM_AXPY;
+
     static int me; 
     int i, from_PE, to_PE;
     int msgcount;
@@ -99,7 +107,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     }
 
     GHOST_INSTR_START(spmvm_gf_local);
-    mat->localPart->spmv(mat->localPart,res,invec,spmvmOptions);
+    mat->localPart->spmv(mat->localPart,res,invec,localopts);
     GHOST_INSTR_STOP(spmvm_gf_local);
 
     GHOST_INSTR_START(spmvm_gf_waitall);
@@ -109,7 +117,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     invec->uploadHalo(invec);
 
     GHOST_INSTR_START(spmvm_gf_remote);
-    mat->remotePart->spmv(mat->remotePart,res,invec,spmvmOptions|GHOST_SPMVM_AXPY);
+    mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);
     GHOST_INSTR_STOP(spmvm_gf_remote);
 
 }
