@@ -153,3 +153,47 @@ __device__ inline cuDoubleComplex scale<cuDoubleComplex>(cuDoubleComplex y, cuDo
     return cuCmul(a,y);
 }
 
+template<typename T1, typename T2>
+__device__ inline T1 scale2(T1 y, T2 a)
+{
+    return a*y;
+}
+
+template<>
+__device__ inline cuFloatComplex scale2<cuFloatComplex,cuFloatComplex>(cuFloatComplex y, cuFloatComplex a)
+{
+    return cuCmulf(a,y);
+}
+
+template<>
+__device__ inline cuFloatComplex scale2<cuFloatComplex,float>(cuFloatComplex y, float a)
+{
+    return cuCmulf(make_cuFloatComplex(a,a),y);
+}
+
+template<>
+__device__ inline cuFloatComplex scale2<cuFloatComplex,double>(cuFloatComplex y, double a)
+{
+    return cuCmulf(make_cuFloatComplex(a,a),y);
+}
+
+template<>
+__device__ inline cuDoubleComplex scale2<cuDoubleComplex,cuDoubleComplex>(cuDoubleComplex y, cuDoubleComplex a)
+{
+    return cuCmul(a,y);
+}
+
+
+template<>
+__device__ inline cuDoubleComplex scale2<cuDoubleComplex,float>(cuDoubleComplex y, float a)
+{
+    return cuCmul(make_cuDoubleComplex(a,a),y);
+}
+
+template<>
+__device__ inline cuDoubleComplex scale2<cuDoubleComplex,double>(cuDoubleComplex y, double a)
+{
+    return cuCmul(make_cuDoubleComplex(a,a),y);
+}
+
+
