@@ -117,7 +117,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 #pragma omp parallel private (v,i)
     {
-        srand(int(time(NULL)) ^ ghost_ompGetThreadNum());
+        srand(ghost_hash(int(ghost_wctimemilli()),clock(),ghost_ompGetThreadNum()));
         for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp for
             for (i=0; i<vec->traits->nrows; i++) {
