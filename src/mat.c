@@ -13,17 +13,16 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
-            mat = ghost_CRS_init(traits);
+            mat = ghost_CRS_init(context,traits);
             break;
         case GHOST_SPM_FORMAT_SELL:
-            mat = ghost_SELL_init(traits);
+            mat = ghost_SELL_init(context,traits);
             break;
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
             traits->format = GHOST_SPM_FORMAT_CRS;
-            mat = ghost_CRS_init(traits);
+            mat = ghost_CRS_init(context,traits);
     }
-    mat->context = context;
     return mat;    
 }
 ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)

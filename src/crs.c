@@ -60,9 +60,10 @@ static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static int swapReq = 0;
 
 
-ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
+ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
 {
     ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    mat->context = ctx;
     mat->traits = traits;
 
     DEBUG_LOG(1,"Initializing CRS functions");

@@ -94,9 +94,10 @@ static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 #endif
 
-ghost_mat_t * ghost_SELL_init(ghost_mtraits_t * traits)
+ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 {
     ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    mat->context = ctx;
     mat->traits = traits;
     DEBUG_LOG(1,"Setting functions for SELL matrix");
     if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))

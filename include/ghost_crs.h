@@ -56,7 +56,7 @@ NZE_TYPE;*/
 
 #define CR(mat) ((CR_TYPE *)(mat->data))
 
-ghost_mat_t * ghost_CRS_init(ghost_mtraits_t *);
+ghost_mat_t * ghost_CRS_init(ghost_context_t *, ghost_mtraits_t *);
 #ifdef __cplusplus
 template<typename, typename> void CRS_kernel_plain_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
 template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts);
