@@ -1,6 +1,7 @@
 #include <ghost_sell.h>
 #include <ghost_crs.h>
 #include <ghost_util.h>
+#include <ghost_affinity.h>
 #include <ghost_mat.h>
 #include <ghost_constants.h>
 
@@ -84,6 +85,7 @@ static void SELL_fromBin(ghost_mat_t *mat, char *);
 static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void SELL_free(ghost_mat_t *mat);
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+static int ghost_selectSellChunkHeight(int datatype);
 #ifdef GHOST_HAVE_OPENCL
 static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
@@ -97,6 +99,7 @@ static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rh
 ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 {
     ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    mat->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
     mat->context = ctx;
     mat->traits = traits;
     DEBUG_LOG(1,"Setting functions for SELL matrix");
@@ -140,6 +143,38 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 
     mat->localPart = NULL;
     mat->remotePart = NULL;
+   
+    int me = ghost_getRank(mat->context->mpicomm);
+
+    SELL(mat)->nrows = mat->context->communicator->lnrows[me];
+   // SELL(mat)->ncols = mat->context->gncols;
+
+    if (mat->traits->aux == NULL) {
+        SELL(mat)->scope = 1;
+        SELL(mat)->T = 1;
+        SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+        SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);
+    } else {
+        SELL(mat)->scope = *(int *)(mat->traits->aux);
+        if (SELL(mat)->scope == GHOST_SELL_SORT_GLOBALLY) {
+            SELL(mat)->scope = mat->context->communicator->lnrows[me];
+        }
+
+        if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
+            SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+            SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);
+        } else {
+            if (((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
+                SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,GHOST_PAD_MAX); // TODO padding anpassen an architektur
+                SELL(mat)->chunkHeight = SELL(mat)->nrowsPadded;
+            } else {
+                SELL(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
+                SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);
+            }
+        }
+        SELL(mat)->T = ((int *)(mat->traits->aux))[2];
+    }
+    SELL(mat)->nrowsPadded = ghost_pad(SELL(mat)->nrows,SELL(mat)->chunkHeight);;
 
     return mat;
 }
@@ -584,3 +619,31 @@ static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
     }
 }
 #endif
+
+static int ghost_selectSellChunkHeight(int datatype) {
+    int ch = 1;
+
+    if (datatype & GHOST_BINCRS_DT_FLOAT)
+        ch *= 2;
+
+    if (datatype & GHOST_BINCRS_DT_REAL)
+        ch *= 2;
+
+#ifdef AVX
+    ch *= 2;
+#endif
+
+#ifdef MIC
+    ch *= 4;
+#ifndef LONGIDX
+    ch *= 2;
+#endif
+#endif
+
+#if defined (OPENCL) || defined (CUDA)
+    ch = 256;
+#endif
+
+    return ch;
+}
+
