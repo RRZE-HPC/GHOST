@@ -458,7 +458,7 @@ struct ghost_comm_t
     /**
      * @brief Index of first element into the global matrix for each rank
      */
-    ghost_mnnz_t* lfEnt;
+    ghost_mnnz_t* lfEnt; // TODO rename firstLclEnt
     /**
      * @brief Number of matrix rows for each rank
      */
@@ -466,7 +466,7 @@ struct ghost_comm_t
     /**
      * @brief Index of first matrix row for each rank
      */
-    ghost_midx_t* lfRow;
+    ghost_midx_t* lfRow; // TODO rename firstLclRow
     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */

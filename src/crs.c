@@ -5,6 +5,7 @@
 #include <ghost_mat.h>
 #include <ghost_constants.h>
 #include <ghost_affinity.h>
+#include <ghost_context.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -266,7 +267,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
-
     int hlpi;
     int j;
     int i;
@@ -303,6 +303,10 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     ghost_comm_t *lcrp = mat->context->communicator;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
+    me = ghost_getRank(mat->context->mpicomm);
+
+    ghost_setupCommunication(mat->context,fullCR->col);
+#if 0
     size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_midx_t)  );
     size_nptr = (size_t)( nprocs             * sizeof(ghost_midx_t*) );
     size_a2ai = (size_t)( nprocs*nprocs * sizeof(ghost_midx_t)  );
@@ -591,6 +595,11 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
     MPI_safecall(MPI_Waitall(msgcount,req,stat));
 
+#endif
+    /**************
+     * SPLIT HERE *
+     **************/
+
 
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
@@ -681,12 +690,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         MPI_safecall(MPI_Barrier(mat->context->mpicomm));
 
     }
-    for (i=0; i<nprocs; i++)
-        free(cwishlist[i]);
-    free(cwishlist);
-    free(tmp_transfers);
-    free(wishlist_counts);
-    free(item_from);
 
     mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
     free(mat->localPart->data); // has been allocated in init()

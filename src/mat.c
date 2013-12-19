@@ -61,3 +61,4 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 
     return nnz;
 }
+
