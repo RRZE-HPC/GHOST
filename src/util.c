@@ -483,8 +483,8 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
         free(comm->duelist[0]);
         free(comm->wishlist);
         free(comm->duelist);
-        free(comm->due_displ);
-        free(comm->wish_displ);
+        //free(comm->due_displ);
+        //free(comm->wish_displ);
         free(comm->hput_pos);
         free(comm);
     }
