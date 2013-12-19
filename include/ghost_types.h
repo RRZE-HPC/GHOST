@@ -447,18 +447,46 @@ struct ghost_context_t
 
 struct ghost_comm_t
 {
-    ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
-    ghost_mnnz_t* lnEnts;
+    /**
+     * @brief Number of remote elements with unique colidx
+     */
+    ghost_midx_t halo_elements; // TODO rename nHaloElements
+    /**
+     * @brief Number of matrix elements for each rank
+     */
+    ghost_mnnz_t* lnEnts; // TODO rename nLclEnts
+    /**
+     * @brief Index of first element into the global matrix for each rank
+     */
     ghost_mnnz_t* lfEnt;
-    ghost_midx_t* lnrows;
+    /**
+     * @brief Number of matrix rows for each rank
+     */
+    ghost_midx_t* lnrows; // TODO rename nLclRows
+    /**
+     * @brief Index of first matrix row for each rank
+     */
     ghost_midx_t* lfRow;
-    int* wishes;
-    int** wishlist;
-    int* dues;
-    int** duelist;
-    ghost_midx_t* due_displ;
-    ghost_midx_t* wish_displ;
-    ghost_midx_t* hput_pos;
+    /**
+     * @brief Number of wishes (= unique RHS elements to get) from each rank
+     */
+    int* wishes; // TODO rename nWishes
+    /**
+     * @brief Column idx of wishes from each rank
+     */
+    int** wishlist; // TODO rename wishes
+    /**
+     * @brief Number of dues (= unique RHS elements from myself) to each rank
+     */
+    int* dues; // TODO rename nDues
+    /**
+     * @brief Column indices of dues to each rank
+     */
+    int** duelist; // TODO rename dues
+    /**
+     * @brief First index to get RHS elements coming from each rank
+     */
+    ghost_midx_t* hput_pos; // TODO rename 
 };
 
 struct ghost_acc_info_t
