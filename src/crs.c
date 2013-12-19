@@ -12,6 +12,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <errno.h>
+#include <math.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -38,6 +39,7 @@ static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
+static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -59,9 +61,10 @@ static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static int swapReq = 0;
 
 
-ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
+ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
 {
     ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    mat->context = ctx;
     mat->traits = traits;
 
     DEBUG_LOG(1,"Initializing CRS functions");
@@ -87,6 +90,7 @@ ghost_mat_t *ghost_CRS_init(ghost_mtraits_t *traits)
     }
 
     mat->fromFile = &CRS_fromBin;
+    mat->fromRowFunc = &CRS_fromRowFunc;
     mat->fromCRS = &CRS_fromCRS;
     mat->printInfo = &CRS_printInfo;
     mat->formatName = &CRS_formatName;
@@ -153,6 +157,72 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
             CR(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
+static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags)
+{
+    UNUSED(base);
+    UNUSED(flags);
+    int nprocs = 1;
+#if GHOST_HAVE_MPI
+    nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
+#endif
+    
+    ghost_midx_t rowlen;
+    ghost_midx_t i,j;
+    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
+    void *tmpval = ghost_malloc(maxrowlen*sizeofdt);
+    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+    int me = ghost_getRank(mat->context->mpicomm);
+    CR(mat)->ncols = mat->context->gncols;
+    CR(mat)->nrows = mat->context->communicator->lnrows[me];
+    CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
+    CR(mat)->nEnts = 0;
+    
+    for( i = 0; i < CR(mat)->nrows; i++ ) {
+        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+        CR(mat)->nEnts += rowlen;
+    }
+
+    CR(mat)->col = (ghost_midx_t *)ghost_malloc(CR(mat)->nEnts*sizeof(ghost_midx_t));
+    CR(mat)->val = ghost_malloc(CR(mat)->nEnts*sizeofdt);
+
+
+    // TODO load balancing if distribution by nnz
+
+    CR(mat)->rpt[0] = 0;
+    for( i = 0; i < CR(mat)->nrows; i++ ) {
+        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+        CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+        memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
+        memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
+    }
+
+    if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
+#if GHOST_HAVE_MPI
+        ghost_comm_t *comm = mat->context->communicator;
+        
+        comm->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
+        comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
+        
+        comm->lnEnts[me] = CR(mat)->nEnts;
+
+        ghost_mnnz_t nents[nprocs];
+        nents[me] = comm->lnEnts[me];
+        MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
+        
+        for (i=0; i<nprocs; i++) {
+           comm->lfEnt[i] = 0;
+        } 
+
+        for (i=1; i<nprocs; i++) {
+           comm->lfEnt[i] = comm->lfEnt[i-1]+nents[i-1];
+        } 
+
+        mat->split(mat);
+#endif
+    }
+    free(tmpval);
+    free(tmpcol);
+}
 
 static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 {

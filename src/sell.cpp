@@ -313,10 +313,10 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     ghost_midx_t *invRowPerm = NULL;
 
     ghost_sorting_t* rowSort = NULL;
-    mat->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
-
-    SELL(mat)->nrows = cr->nrows;
+    //mat->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
     SELL(mat)->nnz = cr->nEnts;
+
+   /* SELL(mat)->nrows = cr->nrows;
     SELL(mat)->nEnts = 0;
 
     if (mat->traits->aux == NULL) {
@@ -343,7 +343,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
             }
         }
         SELL(mat)->T = ((int *)(mat->traits->aux))[2];
-    }
+    }*/
     mat->context->rowPerm = rowPerm;
     mat->context->invRowPerm = invRowPerm;
     if (mat->traits->flags & GHOST_SPM_SORTED) {

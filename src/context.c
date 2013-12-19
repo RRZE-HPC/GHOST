@@ -66,17 +66,18 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
     context->spmvsolvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
 
+    int nprocs = ghost_getNumberOfRanks(context->mpicomm);
+    context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
+    context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+    context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+    context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+    context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t));
+
 #ifdef GHOST_HAVE_MPI
     if (context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        context->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
         context->communicator->halo_elements = -1;
 
-        int nprocs = ghost_getNumberOfRanks(context->mpicomm);
 
-        context->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-        context->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-        context->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-        context->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
 
         if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
@@ -145,11 +146,18 @@ ghost_context_t *ghost_createContext(int64_t gnrows, int64_t gncols, int context
         }
 
     } else {
-        context->communicator = NULL;
+        context->communicator->lnrows[0] = context->gnrows;
+        context->communicator->lfRow[0] = 0;
+        context->communicator->lnEnts[0] = 0;
+        context->communicator->lfEnt[0] = 0;
     }
 
 #else
     UNUSED(weight);
+    context->communicator->lnrows[0] = context->gnrows;
+    context->communicator->lfRow[0] = 0;
+    context->communicator->lnEnts[0] = 0;
+    context->communicator->lfEnt[0] = 0;
     context->communicator = NULL;
 #endif
 
