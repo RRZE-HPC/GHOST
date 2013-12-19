@@ -317,6 +317,24 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     size_pval = (size_t)( max_loc_elements * sizeof(int) );
     size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
 
+    /*       / 1  2  .  3  4  . \
+     *       | .  5  6  7  .  . |
+     * mat = | 8  9  .  .  . 10 |
+     *       | . 11 12 13  .  . |
+     *       | .  .  .  . 14 15 |
+     *       \16  .  .  . 17 18 /
+     *
+     * nprocs = 3
+     * max_loc_elements = 4
+     * item_from       = <{0,0,0},{0,0,0},{0,0,0}>
+     * wishlist_counts = <{0,0,0},{0,0,0},{0,0,0}>
+     * comm_remotePE   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
+     * comm_remoteEl   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
+     * present_values  = <{0,0,0,0,0,0,0},{0,0,0,0,0,0,0},{0,0,0,0,0,0,0}> 
+     * tmp_transfers   = <{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0}>
+     */
+
+      
 
     item_from       = (int*) ghost_malloc( size_nint); 
     wishlist_counts = (ghost_mnnz_t *) ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
@@ -327,6 +345,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
+    
     for (i=0;i<lcrp->lnEnts[me];i++){
         for (j=nprocs-1;j>=0; j--){
             if (lcrp->lfRow[j]<fullCR->col[i]+1) {
@@ -338,14 +357,28 @@ static void CRS_createCommunication(ghost_mat_t *mat)
             }
         }
     }
+    /*
+     * wishlist_counts = <{3,3,1},{3,2,1},{1,0,4}>
+     * comm_remotePE   = <{0,0,1,2,0,1,1},{0,0,2,0,1,1},{2,2,0,2,2}>
+     * comm_remoteEl   = <{0,1,1,0,1,0,1},{0,1,1,1,0,1},{0,1,0,0,1}>
+     */
 
     acc_wishes = 0;
     for (i=0; i<nprocs; i++) {
         acc_wishes += wishlist_counts[i];
     }
 
+    /*
+     * acc_wishes = <7,6,5> equal to lnEnts
+     */
+
     wishlist        = (int**) ghost_malloc(size_nptr); 
-    cwishlist       = (int**) ghost_malloc(size_nptr); 
+    cwishlist       = (int**) ghost_malloc(size_nptr);
+
+    /*
+     * wishlist  = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
+     * cwishlist = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
+     */
 
     hlpi = 0;
     for (i=0; i<nprocs; i++){
@@ -353,6 +386,10 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         wishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
         hlpi += wishlist_counts[i];
     }
+    /*
+     * wishlist  = <{{0,0,0},{0,0,0},{0}},{{0,0,0},{0,0},{0}},{{0},NULL,{0,0,0,0}}>
+     * cwishlist = <{{0,0,0},{0,0,0},{0}},{{0,0,0},{0,0},{0}},{{0},NULL,{0,0,0,0}}>
+     */
 
     for (i=0;i<nprocs;i++) item_from[i] = 0;
 
@@ -360,6 +397,12 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         wishlist[comm_remotePE[i]][item_from[comm_remotePE[i]]] = comm_remoteEl[i];
         item_from[comm_remotePE[i]]++;
     }
+    /*
+     * wishlist  = <{{0,1,1},{1,0,1},{0}},{{0,1,1},{0,1},{1}},{{0},NULL,{0,1,0,1}}> local column idx of wishes
+     * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
+     */
+
+
 
     for (i=0; i<nprocs; i++) {
         for (j=0; j<max_loc_elements; j++) 
@@ -380,6 +423,12 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         }
 
     }
+
+    /* 
+     * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
+     * lcrp->wishes = <{0,2,1},{2,0,1},{1,0,0}>
+     */
+
     for (i=0; i<nprocs; i++){
         free(wishlist[i]);
     }
@@ -388,9 +437,15 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     MPI_safecall(MPI_Allgather ( lcrp->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
                 nprocs, MPI_INTEGER, mat->context->mpicomm )) ;
 
-    for (i=0; i<nprocs; i++) lcrp->dues[i] = tmp_transfers[i*nprocs+me];
+    for (i=0; i<nprocs; i++) {
+        lcrp->dues[i] = tmp_transfers[i*nprocs+me];
+    }
 
     lcrp->dues[me] = 0; 
+    
+    /* 
+     * lcrp->dues = <{0,2,1},{2,0,0},{1,1,0}>
+     */
 
     acc_transfer_dues = 0;
     acc_transfer_wishes = 0;
@@ -398,45 +453,73 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         acc_transfer_wishes += lcrp->wishes[i];
         acc_transfer_dues   += lcrp->dues[i];
     }
+    
+    /* 
+     * acc_transfer_wishes = <3,3,1>
+     * acc_transfer_dues = <3,2,2>
+     */
 
     pseudocol       = (int*) ghost_malloc(size_col);
     globcol         = (int*) ghost_malloc(size_col);
+    
+    /*
+     * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
+     * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
+     */
+
     this_pseudo_col = lcrp->lnrows[me];
     lcrp->halo_elements = 0;
     int tt = 0;
     i = me;
     int meHandled = 0;
 
-    for (; i<nprocs; i++){
+    /*
+     * fullCR->col[i] = <{0,1,3,4,1,2,3},{0,1,5,1,2,3},{4,5,0,4,5}>
+     */
+
+    for (; i<nprocs; i++) { // iterate i=me,..,nprocs,0,..,me-1
         int t = 0;
         if (meHandled && (i == me)) continue;
 
         if (i != me){ 
             for (j=0;j<lcrp->wishes[i];j++){
-                pseudocol[lcrp->halo_elements] = this_pseudo_col;  
+                pseudocol[lcrp->halo_elements] = this_pseudo_col; 
                 globcol[lcrp->halo_elements]   = lcrp->lfRow[i]+cwishlist[i][j]; 
                 lcrp->halo_elements++;
                 this_pseudo_col++;
             }
+            /*
+             * pseudocol = <{0,1,2},{0,1,2},{0}> colidx of each halo element starting from 0
+             * globcol   = <{2,3,4},{2,3,4},{2}> colidx of each halo element starting from lnrows[me]
+             */
+
+            // myrevcol maps the actual colidx to the new colidx
             DEBUG_LOG(2,"Allocating space for myrevcol");
             int * myrevcol = (int *)ghost_malloc(lcrp->lnrows[i]*sizeof(int));
             for (j=0;j<lcrp->wishes[i];j++){
                 myrevcol[globcol[tt]-lcrp->lfRow[i]] = tt;
                 tt++;
             }
+            /*
+             * 1st iter: myrevcol = <{1,0},{0,1},{0,#}>
+             * 2nd iter: myrevcol = <{2,#},{#,2},{#,#}>
+             */
 
             for (;t<lcrp->lnEnts[me];t++) {
-                if (comm_remotePE[t] == i) { // local
+                if (comm_remotePE[t] == i) { // local element for rank i
                     fullCR->col[t] =  pseudocol[myrevcol[fullCR->col[t]-lcrp->lfRow[i]]];
                 }
             }
             free(myrevcol);
-        } else {
+        } else { // first i iteration goes here
             for (;t<lcrp->lnEnts[me];t++) {
-                if (comm_remotePE[t] == me) { // local
+                if (comm_remotePE[t] == me) { // local element for myself
                     fullCR->col[t] =  comm_remoteEl[t];
                 }
             }
+            /*
+             * fullCR->col[i] = <{0,1,3,4,1,2,3},{0,1,5,1,0,1},{0,1,0,0,1}> local idx changed after first iteration
+             */
 
         }
 
@@ -447,6 +530,9 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
 
     }
+    /*
+     * fullCR->col[i] = <{0,1,2,4,1,3,2},{2,3,4,3,0,1},{0,1,2,0,1}>
+     */
 
     free(comm_remoteEl);
     free(comm_remotePE);
@@ -463,8 +549,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     lcrp->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
     int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
     int *duel_mem   = (int *)  ghost_malloc(size_dues); // we need a contiguous array in memory
-    lcrp->wish_displ    = (ghost_midx_t*)  ghost_malloc(nprocs * sizeof(ghost_midx_t)); 
-    lcrp->due_displ     = (ghost_midx_t*)  ghost_malloc(size_nint); 
     lcrp->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
 
     acc_dues = 0;
@@ -472,10 +556,6 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
 
     for (i=0; i<nprocs; i++){
-
-        lcrp->due_displ[i]  = acc_dues;
-        lcrp->wish_displ[i] = acc_wishes;
-
 
         lcrp->duelist[i]    = &(duel_mem[acc_dues]);
         lcrp->wishlist[i]   = &(wishl_mem[acc_wishes]);
