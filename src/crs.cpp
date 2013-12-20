@@ -1,15 +1,15 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>
 
-#include <ghost_complex.h>
-#include <ghost_math.h>
-#include <ghost_util.h>
-#include <ghost_crs.h>
-#include <ghost_constants.h>
+#include "ghost/complex.h"
+#include "ghost/math.h"
+#include "ghost/util.h"
+#include "ghost/crs.h"
+#include "ghost/constants.h"
 #include <iostream>
 
 // TODO shift, scale als templateparameter

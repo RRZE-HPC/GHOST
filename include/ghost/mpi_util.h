@@ -1,9 +1,9 @@
 #ifndef __GHOST_HAVE_MPI_UTIL_H__
 #define __GHOST_HAVE_MPI_UTIL_H__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_error.h>
+#include "config.h"
+#include "types.h"
+#include "error.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h>

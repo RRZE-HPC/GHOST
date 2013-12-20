@@ -1,16 +1,16 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>
 
-#include <ghost_complex.h>
-#include <ghost_util.h>
-#include <ghost_vec.h>
-#include <ghost_math.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/complex.h"
+#include "ghost/util.h"
+#include "ghost/vec.h"
+#include "ghost/math.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
 
 #include <cstdio>
 #include <iostream>

@@ -1,10 +1,10 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_util.h>
-#include <ghost_context.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
-#include <ghost_crs.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/context.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
+#include "ghost/crs.h"
 
 
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, char *matrixPath, MPI_Comm comm, double weight) 

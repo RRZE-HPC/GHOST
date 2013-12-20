@@ -1,10 +1,10 @@
-#include <ghost_sell.h>
-#include <ghost_crs.h>
-#include <ghost_util.h>
-#include <ghost_affinity.h>
-#include <ghost_mat.h>
-#include <ghost_constants.h>
-#include <ghost_context.h>
+#include "ghost/sell.h"
+#include "ghost/crs.h"
+#include "ghost/util.h"
+#include "ghost/affinity.h"
+#include "ghost/mat.h"
+#include "ghost/constants.h"
+#include "ghost/context.h"
 
 #include <libgen.h>
 #include <string.h>

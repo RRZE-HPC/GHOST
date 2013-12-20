@@ -1,11 +1,11 @@
 #define _GNU_SOURCE
 
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_mpi_util.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/mpi_util.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
 
 #include <stdio.h>
 #include <string.h>

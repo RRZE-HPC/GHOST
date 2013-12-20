@@ -1,15 +1,15 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 #undef GHOST_HAVE_MPI
-#include <ghost_types.h>
-#include <ghost_sell.h>
-#include <ghost_complex.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
+#include "ghost/types.h"
+#include "ghost/sell.h"
+#include "ghost/complex.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>
 
-#include <ghost_cu_complex_helper.h>
+#include "ghost/cu_complex_helper.h"
 
 #define SELL_CUDA_NBLOCKS (int)ceil(SELL(mat)->cumat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
 //#define SELLT_STRIDE_ONE

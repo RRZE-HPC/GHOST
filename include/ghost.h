@@ -1,40 +1,16 @@
 #ifndef __GHOST_H__
 #define __GHOST_H__
 
-#include <ghost_config.h>
-
-/*
-#ifndef GHOST_CLKERNEL
-#include <stdlib.h>
-#ifndef __cplusplus
-#include <math.h>
-#include <complex.h>
-#else
-#include <complex>
-#endif
-#include <sys/types.h>
-#include <pthread.h>
-
-#include <hwloc.h>
-
-#ifdef GHOST_HAVE_OPENCL
-#include <CL/cl.h>
-#endif
-
-#ifdef GHOST_HAVE_CUDA
-#include <cuda.h>
-#endif
-#endif*/
-
-#include <ghost_types.h>
-#include <ghost_util.h>
-#include <ghost_math.h>
-#include <ghost_constants.h>
-#include <ghost_taskq.h>
-#include <ghost_vec.h>
-#include <ghost_math.h>
-#include <ghost_mat.h>
-#include <ghost_context.h>
-#include <ghost_affinity.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/math.h"
+#include "ghost/constants.h"
+#include "ghost/taskq.h"
+#include "ghost/vec.h"
+#include "ghost/math.h"
+#include "ghost/mat.h"
+#include "ghost/context.h"
+#include "ghost/affinity.h"
 
 #endif

@@ -1,11 +1,11 @@
 #define _XOPEN_SOURCE 500
 
-#include <ghost_crs.h>
-#include <ghost_util.h>
-#include <ghost_mat.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
-#include <ghost_context.h>
+#include "ghost/crs.h"
+#include "ghost/util.h"
+#include "ghost/mat.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
+#include "ghost/context.h"
 
 #include <unistd.h>
 #include <sys/types.h>

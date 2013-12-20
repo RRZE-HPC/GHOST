@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <hwloc.h>
-#include <ghost_error.h>
+#include "error.h"
 
 #define GHOST_TASK_LD_UNDEFINED -1 // initializer
 #define GHOST_TASK_LD_ANY 0 // execute task on any LD

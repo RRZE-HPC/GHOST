@@ -1,8 +1,8 @@
 #ifndef __GHOST_AFFINITY_H__
 #define __GHOST_AFFINITY_H__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
+#include "config.h"
+#include "types.h"
 #include <hwloc.h>
 
 #if GHOST_HAVE_MPI

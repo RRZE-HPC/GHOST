@@ -11,7 +11,7 @@
 #endif
 
 #include <cl/ghost_cl_types.h>
-#include <ghost_constants.h>
+#include "ghost/constants.h"
 
 
 kernel void SELL_kernel(global ghost_cl_vdat_t *lhs, global ghost_cl_vdat_t *rhsVec, int options, unsigned int nRows, unsigned int nRowsPadded, global unsigned int *rowLen, global unsigned int *col, global ghost_cl_mdat_t *val, global unsigned int *chunkStart, global unsigned int *chunkLen, ghost_cl_mdat_t shift)

@@ -1,11 +1,11 @@
 #ifndef __GHOST_SPMFORMAT_CRS__
 #define __GHOST_SPMFORMAT_CRS__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
+#include "config.h"
+#include "types.h"
 
 #if GHOST_HAVE_CUDA
-#include <ghost_cu_crs.h>
+#include "cu_crs.h"
 #endif
 
 typedef struct

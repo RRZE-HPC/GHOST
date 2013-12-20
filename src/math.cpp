@@ -1,7 +1,7 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_complex.h>
-#include <ghost_math.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/complex.h"
+#include "ghost/math.h"
 
 ghost_complex<double> conjugate(ghost_complex<double> * c) {
     return ghost_complex<double>(c->re,-c->im);

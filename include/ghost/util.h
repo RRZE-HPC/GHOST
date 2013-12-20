@@ -1,10 +1,11 @@
 #ifndef __GHOST_UTIL_H__
 #define __GHOST_UTIL_H__
 
-#include <ghost_config.h>
+#include "config.h"
+#include "types.h"
 
 #ifdef GHOST_HAVE_MPI
-#include "ghost_mpi_util.h"
+#include "mpi_util.h"
 #endif
 
 #ifdef GHOST_HAVE_OPENCL
@@ -12,10 +13,9 @@
 #endif
 
 #ifdef GHOST_HAVE_CUDA
-#include "ghost_cu_util.h"
+#include "cu_util.h"
 #endif
 
-#include <ghost_types.h>
 #ifndef __cplusplus
 #include <stdio.h>
 #include <complex.h>

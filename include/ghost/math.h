@@ -2,9 +2,9 @@
 #define __GHOST_MATH_H__
 
 
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_error.h>
+#include "config.h"
+#include "types.h"
+#include "error.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +21,7 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
 #ifdef __cplusplus
 } //extern "C"
 
-#include <ghost_complex.h>
+#include "ghost/complex.h"
 
 ghost_complex<float> conjugate(ghost_complex<float> * c);
 ghost_complex<double> conjugate(ghost_complex<double> * c);
