@@ -50,7 +50,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef GHOST_HAVE_MPI
-static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp);
+static void CRS_createDistribution(ghost_mat_t *mat, int options);
 static void CRS_createCommunication(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
@@ -167,18 +167,18 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, 
 #endif
     
     ghost_midx_t rowlen;
-    ghost_midx_t i,j;
+    ghost_midx_t i;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
     void *tmpval = ghost_malloc(maxrowlen*sizeofdt);
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
     int me = ghost_getRank(mat->context->mpicomm);
     CR(mat)->ncols = mat->context->gncols;
-    CR(mat)->nrows = mat->context->communicator->lnrows[me];
+    CR(mat)->nrows = mat->context->lnrows[me];
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
     CR(mat)->nEnts = 0;
     
     for( i = 0; i < CR(mat)->nrows; i++ ) {
-        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+        func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->nEnts += rowlen;
     }
 
@@ -190,7 +190,7 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, 
 
     CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
-        func(mat->context->communicator->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+        func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
@@ -198,23 +198,21 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, 
 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
-        ghost_comm_t *comm = mat->context->communicator;
+        mat->context->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
+        mat->context->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
         
-        comm->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
-        comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
-        
-        comm->lnEnts[me] = CR(mat)->nEnts;
+        mat->context->lnEnts[me] = CR(mat)->nEnts;
 
         ghost_mnnz_t nents[nprocs];
-        nents[me] = comm->lnEnts[me];
+        nents[me] = mat->context->lnEnts[me];
         MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
         
         for (i=0; i<nprocs; i++) {
-           comm->lfEnt[i] = 0;
+           mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-           comm->lfEnt[i] = comm->lfEnt[i-1]+nents[i-1];
+           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
         } 
 
         mat->split(mat);
@@ -267,29 +265,29 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 
     ghost_midx_t i;
 
-    int me = ghost_getRank((*mat)->context->mpicomm); 
-    ghost_comm_t *comm = (*mat)->context->communicator;
-    int nprocs = ghost_getNumberOfRanks((*mat)->context->mpicomm);
+    ghost_context_t *context = (*mat)->context;
+    int me = ghost_getRank(context->mpicomm); 
+    int nprocs = ghost_getNumberOfRanks(context->mpicomm);
 
     CRS_readHeader(*mat,matrixPath);  // read header
 
-    if (ghost_getRank((*mat)->context->mpicomm) == 0) {
-        if ((*mat)->context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
-            ((CR_TYPE *)((*mat)->data))->rpt = (*mat)->context->rpt;
+    if (ghost_getRank(context->mpicomm) == 0) {
+        if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
+            ((CR_TYPE *)((*mat)->data))->rpt = context->rpt;
         } else {
             CR((*mat))->rpt = CRS_readRpt(CR((*mat))->nrows+1,matrixPath);  // read rpt
         }
     }
 
-    comm->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
-    comm->dues     = (int *)ghost_malloc( nprocs*sizeof(int)); 
+    context->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
+    context->dues     = (int *)ghost_malloc( nprocs*sizeof(int)); 
 
-    CRS_createDistribution((*mat),(*mat)->context->flags,comm);
+    CRS_createDistribution((*mat),context->flags);
 
-    DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",comm->lnrows[me]);
+    DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
 
-    if (ghost_getRank((*mat)->context->mpicomm) != 0) {
-        ((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((comm->lnrows[me]+1)*sizeof(ghost_midx_t));
+    if (ghost_getRank(context->mpicomm) != 0) {
+        ((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((context->lnrows[me]+1)*sizeof(ghost_midx_t));
     }
 
     MPI_Request req[nprocs];
@@ -299,12 +297,12 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
     for (i=0;i<nprocs;i++) 
         req[i] = MPI_REQUEST_NULL;
 
-    if (ghost_getRank((*mat)->context->mpicomm) != 0) {
-        MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,comm->lnrows[me]+1,ghost_mpi_dt_midx,0,me,(*mat)->context->mpicomm,&req[msgcount]));
+    if (ghost_getRank(context->mpicomm) != 0) {
+        MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]));
         msgcount++;
     } else {
         for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[comm->lfRow[i]],comm->lnrows[i]+1,ghost_mpi_dt_midx,i,i,(*mat)->context->mpicomm,&req[msgcount]));
+            MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     }
@@ -312,65 +310,40 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 
     DEBUG_LOG(1,"Adjusting row pointers");
 
-    for (i=0;i<comm->lnrows[me]+1;i++)
-        ((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - comm->lfEnt[me]; 
+    for (i=0;i<context->lnrows[me]+1;i++)
+        ((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - context->lfEnt[me]; 
 
-    ((CR_TYPE *)((*mat)->data))->rpt[comm->lnrows[me]] = comm->lnEnts[me];
+    ((CR_TYPE *)((*mat)->data))->rpt[context->lnrows[me]] = context->lnEnts[me];
 
-    DEBUG_LOG(1,"local rows          = %"PRmatIDX,comm->lnrows[me]);
-    DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,comm->lfRow[me]);
-    DEBUG_LOG(1,"local entries          = %"PRmatNNZ,comm->lnEnts[me]);
-    DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,comm->lfEnt[me]);
+    DEBUG_LOG(1,"local rows          = %"PRmatIDX,context->lnrows[me]);
+    DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,context->lfRow[me]);
+    DEBUG_LOG(1,"local entries          = %"PRmatNNZ,context->lnEnts[me]);
+    DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,context->lfEnt[me]);
 
-    CRS_readColValOffset((*mat),matrixPath, comm->lfEnt[me], comm->lfRow[me], comm->lnrows[me], comm->lnEnts[me], GHOST_IO_STD);
+    CRS_readColValOffset((*mat),matrixPath, context->lfEnt[me], context->lfRow[me], context->lnrows[me], context->lnEnts[me], GHOST_IO_STD);
 
     DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
-    ((CR_TYPE *)((*mat)->data))->nrows = comm->lnrows[me];
-    ((CR_TYPE *)((*mat)->data))->nEnts = comm->lnEnts[me];
+    ((CR_TYPE *)((*mat)->data))->nrows = context->lnrows[me];
+    ((CR_TYPE *)((*mat)->data))->nEnts = context->lnEnts[me];
 
     // TODO clean up
 }
 
 
 static void CRS_createCommunication(ghost_mat_t *mat)
-{
+    {
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
-    int hlpi;
     int j;
     int i;
     int me;
-    ghost_mnnz_t max_loc_elements, thisentry;
-    int *present_values;
-    int acc_dues;
-    int *tmp_transfers;
-    int acc_wishes;
 
     /* Counter how many entries are requested from each PE */
-    int *item_from;
 
-    ghost_mnnz_t *wishlist_counts;
-
-    int **wishlist;
-    int **cwishlist;
-
-
-    int this_pseudo_col;
-    int *pseudocol;
-    int *globcol;
-
-    int *comm_remotePE, *comm_remoteEl;
     ghost_mnnz_t lnEnts_l, lnEnts_r;
     int current_l, current_r;
-    int acc_transfer_wishes, acc_transfer_dues;
 
-    size_t size_nint, size_col;
-    size_t size_a2ai, size_nptr, size_pval;  
-    size_t size_wish, size_dues;
-
-    int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
-    ghost_comm_t *lcrp = mat->context->communicator;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
     me = ghost_getRank(mat->context->mpicomm);
@@ -674,31 +647,31 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
         lnEnts_l=0;
-        for (i=0; i<lcrp->lnEnts[me];i++) {
-            if (fullCR->col[i]<lcrp->lnrows[me]) lnEnts_l++;
+        for (i=0; i<mat->context->lnEnts[me];i++) {
+            if (fullCR->col[i]<mat->context->lnrows[me]) lnEnts_l++;
         }
 
 
-        lnEnts_r = lcrp->lnEnts[me]-lnEnts_l;
+        lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;
 
         DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
-                me, lcrp->lnrows[me], lnEnts_l, lnEnts_r, lcrp->lnEnts[me],lcrp->lnrows[me]+lcrp->halo_elements  );
+                me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
         localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
         remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
 
         localCR->val = ghost_malloc(lnEnts_l*sizeofdt); 
         localCR->col = (ghost_midx_t*) ghost_malloc(lnEnts_l*sizeof( ghost_midx_t )); 
-        localCR->rpt = (ghost_midx_t*) ghost_malloc((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t )); 
+        localCR->rpt = (ghost_midx_t*) ghost_malloc((mat->context->lnrows[me]+1)*sizeof( ghost_midx_t )); 
 
         remoteCR->val = ghost_malloc(lnEnts_r*sizeofdt); 
         remoteCR->col = (ghost_midx_t*) ghost_malloc(lnEnts_r*sizeof( ghost_midx_t )); 
-        remoteCR->rpt = (ghost_midx_t*) ghost_malloc((lcrp->lnrows[me]+1)*sizeof( ghost_midx_t )); 
+        remoteCR->rpt = (ghost_midx_t*) ghost_malloc((mat->context->lnrows[me]+1)*sizeof( ghost_midx_t )); 
 
-        localCR->nrows = lcrp->lnrows[me];
+        localCR->nrows = mat->context->lnrows[me];
         localCR->nEnts = lnEnts_l;
 
-        remoteCR->nrows = lcrp->lnrows[me];
+        remoteCR->nrows = mat->context->lnrows[me];
         remoteCR->nEnts = lnEnts_r;
 
 #pragma omp parallel for schedule(runtime)
@@ -719,18 +692,18 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
         MPI_safecall(MPI_Barrier(mat->context->mpicomm));
         DEBUG_LOG(1,"PE%d: lnrows=%"PRmatIDX" row_ptr=%"PRmatIDX"..%"PRmatIDX,
-                me, lcrp->lnrows[me], fullCR->rpt[0], fullCR->rpt[lcrp->lnrows[me]]);
+                me, mat->context->lnrows[me], fullCR->rpt[0], fullCR->rpt[mat->context->lnrows[me]]);
         fflush(stdout);
         MPI_safecall(MPI_Barrier(mat->context->mpicomm));
 
-        for (i=0; i<lcrp->lnrows[me]; i++){
+        for (i=0; i<mat->context->lnrows[me]; i++){
 
             current_l = 0;
             current_r = 0;
 
             for (j=fullCR->rpt[i]; j<fullCR->rpt[i+1]; j++){
 
-                if (fullCR->col[j]<lcrp->lnrows[me]){
+                if (fullCR->col[j]<mat->context->lnrows[me]){
                     localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j];
                     memcpy(&localCR->val[(localCR->rpt[i]+current_l)*sizeofdt],&fullCR->val[j*sizeofdt],sizeofdt);
                     current_l++;
@@ -748,12 +721,12 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         }
 
         IF_DEBUG(3){
-            for (i=0; i<lcrp->lnrows[me]+1; i++)
+            for (i=0; i<mat->context->lnrows[me]+1; i++)
                 DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%d local=%"PRmatIDX" remote=%"PRmatIDX, 
                         me, i, localCR->rpt[i], remoteCR->rpt[i]);
-            for (i=0; i<localCR->rpt[lcrp->lnrows[me]]; i++)
+            for (i=0; i<localCR->rpt[mat->context->lnrows[me]]; i++)
                 DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%d]=%"PRmatIDX, me, i, localCR->col[i]);
-            for (i=0; i<remoteCR->rpt[lcrp->lnrows[me]]; i++)
+            for (i=0; i<remoteCR->rpt[mat->context->lnrows[me]]; i++)
                 DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%d]=%"PRmatIDX, me, i, remoteCR->col[i]);
         }
         fflush(stdout);
@@ -772,9 +745,10 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     mat->remotePart->data = remoteCR;
 }
 
-static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *lcrp)
+static void CRS_createDistribution(ghost_mat_t *mat, int options)
 {
     CR_TYPE *cr = CR(mat);
+    ghost_context_t *context = mat->context;
     int me = ghost_getRank(mat->context->mpicomm); 
     ghost_midx_t i;
     int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
@@ -786,19 +760,19 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
         //target_rows = (cr->nrows/nprocs);
 
         //    lcrp->lfRow[0] = 0;
-        lcrp->lfEnt[0] = 0;
+        context->lfEnt[0] = 0;
 
         for (i=1; i<nprocs; i++){
-            //        lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
-            lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
+            //        lcrp->lfRow[i] = context->lfRow[i-1]+target_rows;
+            context->lfEnt[i] = cr->rpt[context->lfRow[i]];
         }
         for (i=0; i<nprocs-1; i++){
             //    lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-            lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
+            context->lnEnts[i] = context->lfEnt[i+1] - context->lfEnt[i] ;
         }
 
         //    lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-        lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+        context->lnEnts[nprocs-1] = cr->nEnts - context->lfEnt[nprocs-1];
     }
     MPI_Request req[nprocs];
     MPI_Status stat[nprocs];
@@ -808,11 +782,11 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
         req[i] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Irecv(context->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
         msgcount++;
     } else {
         for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+            MPI_safecall(MPI_Isend(context->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     }
@@ -823,11 +797,11 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
         req[i] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Irecv(context->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
         msgcount++;
     } else {
         for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+            MPI_safecall(MPI_Isend(context->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     }

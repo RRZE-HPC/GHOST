@@ -159,13 +159,8 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
     ghost_midx_t nrows = ghost_getMatNrows(mat);
     ghost_midx_t nnz = ghost_getMatNnz(mat);
     
-    int myrank;
+    int myrank = ghost_getRank(mat->context->mpicomm);;
 
-       if (mat->context->communicator != NULL) {
-        myrank = ghost_getRank(mat->context->mpicomm); 
-    } else {
-        myrank = 0;
-    }
     if (myrank == 0) {
 
     char *matrixLocation;
@@ -210,18 +205,10 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
-    int nranks;
-    int myrank;
+    int nranks = ghost_getNumberOfPhysicalCores(context->mpicomm);
+    int myrank = ghost_getRank(context->mpicomm);
 
-       if (context->communicator != NULL) {
-        nranks = ghost_getNumberOfRanks(context->mpicomm);
-        myrank = ghost_getRank(context->mpicomm); 
-    } else {
-        nranks = 1;
-        myrank = 0;
-    }
-
-    if (myrank == 0) {
+        if (myrank == 0) {
         char *contextType = "";
         if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
             contextType = "Distributed";
@@ -394,12 +381,8 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 {
 
     DEBUG_LOG(1,"Computing reference solution");
-    int me;
-       if (nodeLHS->context->communicator != NULL) {
-        me = ghost_getRank(nodeLHS->context->mpicomm); 
-    } else {
-        me = 0;
-    }
+    int me = ghost_getRank(nodeLHS->context->mpicomm);
+    
     char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
     memset(zero,0,ghost_sizeofDataType(datatype));
     ghost_vec_t *globLHS; 
@@ -470,7 +453,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 }
 
-void ghost_freeCommunicator( ghost_comm_t* const comm ) 
+/*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
     if(comm) {
         free(comm->lnEnts);
@@ -490,7 +473,7 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
         free(comm->hput_pos);
         free(comm);
     }
-}
+}*/
 
 char * ghost_modeName(int spmvmOptions) 
 {
@@ -785,7 +768,7 @@ char ghost_datatypePrefix(int dt)
 ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 {
     if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-        return ctx->communicator->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
+        return ctx->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
 
     return lidx;    
 }
@@ -1132,7 +1115,7 @@ size_t ghost_getSizeOfLLC()
     int depth;
     size_t size = 0;
 
-    for (depth=0; depth<hwloc_topology_get_depth(topology); depth++) {
+    for (depth=0; depth<(int)hwloc_topology_get_depth(topology); depth++) {
         obj = hwloc_get_obj_by_depth(topology,depth,0);
         if (obj->type == HWLOC_OBJ_CACHE) {
             size = obj->attr->cache.size;

@@ -342,7 +342,7 @@ extern "C" {
 
     int ghost_pad(int nrows, int padding);
 
-    void ghost_freeCommunicator( ghost_comm_t* const );
+//    void ghost_freeCommunicator( ghost_comm_t* const );
     size_t ghost_sizeofDataType(int dt);
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);

@@ -147,7 +147,7 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
    
     int me = ghost_getRank(mat->context->mpicomm);
 
-    SELL(mat)->nrows = mat->context->communicator->lnrows[me];
+    SELL(mat)->nrows = mat->context->lnrows[me];
    // SELL(mat)->ncols = mat->context->gncols;
 
     if (mat->traits->aux == NULL) {
@@ -158,7 +158,7 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
     } else {
         SELL(mat)->scope = *(int *)(mat->traits->aux);
         if (SELL(mat)->scope == GHOST_SELL_SORT_GLOBALLY) {
-            SELL(mat)->scope = mat->context->communicator->lnrows[me];
+            SELL(mat)->scope = mat->context->lnrows[me];
         }
 
         if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
@@ -266,7 +266,7 @@ static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base,
     nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 #endif
     
-    ghost_midx_t i,j;
+    ghost_midx_t i;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
     char *tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
@@ -290,7 +290,7 @@ static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base,
     for( i = 0; i < SELL(mat)->nrowsPadded; i++ ) {
 
         if (i < SELL(mat)->nrows) {
-            func(mat->context->communicator->lfRow[me]+i,&SELL(mat)->rowLen[i],tmpcol,tmpval);
+            func(mat->context->lfRow[me]+i,&SELL(mat)->rowLen[i],tmpcol,tmpval);
         } else {
             SELL(mat)->rowLen[i] = 0;
         }
@@ -323,7 +323,7 @@ static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base,
     for( i = 0; i < SELL(mat)->nrowsPadded; i++ ) {
 
         if (i < SELL(mat)->nrows) {
-            func(mat->context->communicator->lfRow[me]+i,&SELL(mat)->rowLen[i],&tmpcol[maxrowlen*rowInChunk],&tmpval[maxrowlen*rowInChunk*sizeofdt]);
+            func(mat->context->lfRow[me]+i,&SELL(mat)->rowLen[i],&tmpcol[maxrowlen*rowInChunk],&tmpval[maxrowlen*rowInChunk*sizeofdt]);
         }
 
         if ((i+1)%SELL(mat)->chunkHeight == 0) {
@@ -347,23 +347,21 @@ static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base,
     
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
-        ghost_comm_t *comm = mat->context->communicator;
+        mat->context->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
+        mat->context->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
         
-        comm->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
-        comm->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
-        
-        comm->lnEnts[me] = SELL(mat)->nnz;
+        mat->context->lnEnts[me] = SELL(mat)->nnz;
 
         ghost_mnnz_t nents[nprocs];
-        nents[me] = comm->lnEnts[me];
+        nents[me] = mat->context->lnEnts[me];
         MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
         
         for (i=0; i<nprocs; i++) {
-           comm->lfEnt[i] = 0;
+           mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-           comm->lfEnt[i] = comm->lfEnt[i-1]+nents[i-1];
+           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
         } 
 
         mat->split(mat);

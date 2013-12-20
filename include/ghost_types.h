@@ -12,8 +12,8 @@
 #pragma warning (enable : 869)
 #endif
 #else
-typedef int MPI_Comm;
-#define MPI_COMM_WORLD 0 // TODO unschoen
+//typedef int MPI_Comm;
+//#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
 
 #include <inttypes.h>
@@ -71,7 +71,7 @@ typedef enum {GHOST_INVALID, GHOST_ONEPERNODE, GHOST_ONEPERNUMA, GHOST_ONEPERCOR
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_context_t ghost_context_t;
-typedef struct ghost_comm_t ghost_comm_t;
+//typedef struct ghost_comm_t ghost_comm_t;
 typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 typedef struct ghost_acc_info_t ghost_acc_info_t;
@@ -435,7 +435,7 @@ struct ghost_context_t
     // is being created, the row pointers are distributed
     ghost_midx_t *rpt;
 
-    ghost_comm_t *communicator;
+   // ghost_comm_t *communicator;
     ghost_midx_t gnrows;
     ghost_midx_t gncols;
     int flags;
@@ -444,11 +444,12 @@ struct ghost_context_t
     ghost_midx_t *rowPerm;    // may be NULL
     ghost_midx_t *invRowPerm; // may be NULL
 
+#if GHOST_HAVE_MPI
     MPI_Comm mpicomm;
-};
-
-struct ghost_comm_t
-{
+#else
+    int mpicomm;
+#endif
+    
     /**
      * @brief Number of remote elements with unique colidx
      */
@@ -490,6 +491,10 @@ struct ghost_comm_t
      */
     ghost_midx_t* hput_pos; // TODO rename 
 };
+
+/*struct ghost_comm_t
+{
+};*/
 
 struct ghost_acc_info_t
 {

@@ -1,4 +1,3 @@
-#include <ghost_config.h>
 #include <ghost_types.h>
 #include <ghost_affinity.h>
 #include <ghost_vec.h>
@@ -38,8 +37,8 @@ static void *prepare(void *vargs)
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
         for (c=0; c<args->rhs->traits->nvecs; c++) {
 #pragma omp for 
-            for (i=0; i<args->context->communicator->dues[to_PE]; i++){
-                memcpy(args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + (to_PE*args->max_dues+i)*args->sizeofRHS,VECVAL(args->rhs,args->rhs->val,c,args->context->communicator->duelist[to_PE][i]),args->sizeofRHS);
+            for (i=0; i<args->context->dues[to_PE]; i++){
+                memcpy(args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + (to_PE*args->max_dues+i)*args->sizeofRHS,VECVAL(args->rhs,args->rhs->val,c,args->context->duelist[to_PE][i]),args->sizeofRHS);
             }
         }
     }
@@ -63,18 +62,18 @@ static void *communicate(void *vargs)
     ghost_vidx_t c;
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
-        if (args->context->communicator->wishes[from_PE]>0){
+        if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_safecall(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->communicator->hput_pos[from_PE]), args->context->communicator->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount] ));
+                MPI_safecall(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount] ));
                 args->msgcount++;
             }
         }
     }
     
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-        if (args->context->communicator->dues[to_PE]>0){
+        if (args->context->dues[to_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_safecall(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->communicator->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount] ));
+                MPI_safecall(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount] ));
                 args->msgcount++;
             }
         }
@@ -168,8 +167,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 
         max_dues = 0;
         for (i=0;i<nprocs;i++)
-            if (context->communicator->dues[i]>max_dues) 
-                max_dues = context->communicator->dues[i];
+            if (context->dues[i]>max_dues) 
+                max_dues = context->dues[i];
 
         work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
         request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));

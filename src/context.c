@@ -66,15 +66,14 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 #endif
 
     int nprocs = ghost_getNumberOfRanks((*context)->mpicomm);
-    (*context)->communicator = (ghost_comm_t*) ghost_malloc( sizeof(ghost_comm_t));
-    (*context)->communicator->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    (*context)->communicator->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    (*context)->communicator->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-    (*context)->communicator->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t));
+    (*context)->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+    (*context)->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
+    (*context)->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
+    (*context)->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t));
 
 #ifdef GHOST_HAVE_MPI
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        (*context)->communicator->halo_elements = -1;
+        (*context)->halo_elements = -1;
 
 
 #if 0
@@ -132,33 +131,32 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,&target_rows[me],1,ghost_mpi_dt_midx,(*context)->mpicomm));
 
             (*context)->rpt = NULL;
-            (*context)->communicator->lfRow[0] = 0;
+            (*context)->lfRow[0] = 0;
 
             for (i=1; i<nprocs; i++){
-                (*context)->communicator->lfRow[i] = (*context)->communicator->lfRow[i-1]+target_rows[i-1];
+                (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows[i-1];
             }
             for (i=0; i<nprocs-1; i++){
-                (*context)->communicator->lnrows[i] = (*context)->communicator->lfRow[i+1] - (*context)->communicator->lfRow[i] ;
+                (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
             }
-            (*context)->communicator->lnrows[nprocs-1] = (*context)->gnrows - (*context)->communicator->lfRow[nprocs-1] ;
-            MPI_safecall(MPI_Bcast((*context)->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
-            MPI_safecall(MPI_Bcast((*context)->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            (*context)->lnrows[nprocs-1] = (*context)->gnrows - (*context)->lfRow[nprocs-1] ;
+            MPI_safecall(MPI_Bcast((*context)->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
         }
 
     } else {
-        (*context)->communicator->lnrows[0] = (*context)->gnrows;
-        (*context)->communicator->lfRow[0] = 0;
-        (*context)->communicator->lnEnts[0] = 0;
-        (*context)->communicator->lfEnt[0] = 0;
+        (*context)->lnrows[0] = (*context)->gnrows;
+        (*context)->lfRow[0] = 0;
+        (*context)->lnEnts[0] = 0;
+        (*context)->lfEnt[0] = 0;
     }
 
 #else
     UNUSED(weight);
-    (*context)->communicator->lnrows[0] = (*context)->gnrows;
-    (*context)->communicator->lfRow[0] = 0;
-    (*context)->communicator->lnEnts[0] = 0;
-    (*context)->communicator->lfEnt[0] = 0;
-    (*context)->communicator = NULL;
+    (*context)->lnrows[0] = (*context)->gnrows;
+    (*context)->lfRow[0] = 0;
+    (*context)->lnEnts[0] = 0;
+    (*context)->lfEnt[0] = 0;
 #endif
 
     DEBUG_LOG(1,"Context created successfully");
@@ -173,7 +171,6 @@ void ghost_freeContext(ghost_context_t *context)
         free(context->spmvsolvers);
         free(context->rowPerm);
         free(context->invRowPerm);
-        ghost_freeCommunicator(context->communicator);
 
         free(context);
     }
@@ -183,7 +180,6 @@ void ghost_freeContext(ghost_context_t *context)
 int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 {
 
-    ghost_comm_t *comm = ctx->communicator;
     int hlpi;
     int j;
     int i;
@@ -208,8 +204,6 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     int *globcol;
 
     int *comm_remotePE, *comm_remoteEl;
-    ghost_mnnz_t lnEnts_l, lnEnts_r;
-    int current_l, current_r;
     int acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_col;
@@ -226,11 +220,11 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     max_loc_elements = 0;
     for (i=0;i<nprocs;i++)
-        if (max_loc_elements<comm->lnEnts[i]) max_loc_elements = comm->lnEnts[i];
+        if (max_loc_elements<ctx->lnEnts[i]) max_loc_elements = ctx->lnEnts[i];
 
 
     size_pval = (size_t)( max_loc_elements * sizeof(int) );
-    size_col  = (size_t)( (size_t)(comm->lnEnts[me])   * sizeof( int ) );
+    size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( int ) );
 
     /*       / 1  2  .  3  4  . \
      *       | .  5  6  7  .  . |
@@ -261,12 +255,12 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
     
-    for (i=0;i<comm->lnEnts[me];i++){
+    for (i=0;i<ctx->lnEnts[me];i++){
         for (j=nprocs-1;j>=0; j--){
-            if (comm->lfRow[j]<col[i]+1) {
+            if (ctx->lfRow[j]<col[i]+1) {
                 comm_remotePE[i] = j;
                 wishlist_counts[j]++;
-                comm_remoteEl[i] = col[i] -comm->lfRow[j];
+                comm_remoteEl[i] = col[i] -ctx->lfRow[j];
                 break;
             }
         }
@@ -307,7 +301,7 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     for (i=0;i<nprocs;i++) item_from[i] = 0;
 
-    for (i=0;i<comm->lnEnts[me];i++){
+    for (i=0;i<ctx->lnEnts[me];i++){
         wishlist[comm_remotePE[i]][item_from[comm_remotePE[i]]] = comm_remoteEl[i];
         item_from[comm_remotePE[i]]++;
     }
@@ -331,16 +325,16 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
                     thisentry = thisentry + 1;
                 }
             }
-            comm->wishes[i] = thisentry;
+            ctx->wishes[i] = thisentry;
         } else {
-            comm->wishes[i] = 0; 
+            ctx->wishes[i] = 0; 
         }
 
     }
 
     /* 
      * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
-     * comm->wishes = <{0,2,1},{2,0,1},{1,0,0}>
+     * ctx->wishes = <{0,2,1},{2,0,1},{1,0,0}>
      */
 
     for (i=0; i<nprocs; i++){
@@ -348,24 +342,24 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     }
     free(wishlist);
 
-    MPI_safecall(MPI_Allgather ( comm->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
+    MPI_safecall(MPI_Allgather ( ctx->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
                 nprocs, MPI_INTEGER, ctx->mpicomm )) ;
 
     for (i=0; i<nprocs; i++) {
-        comm->dues[i] = tmp_transfers[i*nprocs+me];
+        ctx->dues[i] = tmp_transfers[i*nprocs+me];
     }
 
-    comm->dues[me] = 0; 
+    ctx->dues[me] = 0; 
     
     /* 
-     * comm->dues = <{0,2,1},{2,0,0},{1,1,0}>
+     * ctx->dues = <{0,2,1},{2,0,0},{1,1,0}>
      */
 
     acc_transfer_dues = 0;
     acc_transfer_wishes = 0;
     for (i=0; i<nprocs; i++){
-        acc_transfer_wishes += comm->wishes[i];
-        acc_transfer_dues   += comm->dues[i];
+        acc_transfer_wishes += ctx->wishes[i];
+        acc_transfer_dues   += ctx->dues[i];
     }
     
     /* 
@@ -381,8 +375,8 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
      * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
      */
 
-    this_pseudo_col = comm->lnrows[me];
-    comm->halo_elements = 0;
+    this_pseudo_col = ctx->lnrows[me];
+    ctx->halo_elements = 0;
     int tt = 0;
     i = me;
     int meHandled = 0;
@@ -396,10 +390,10 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
         if (meHandled && (i == me)) continue;
 
         if (i != me){ 
-            for (j=0;j<comm->wishes[i];j++){
-                pseudocol[comm->halo_elements] = this_pseudo_col; 
-                globcol[comm->halo_elements]   = comm->lfRow[i]+cwishlist[i][j]; 
-                comm->halo_elements++;
+            for (j=0;j<ctx->wishes[i];j++){
+                pseudocol[ctx->halo_elements] = this_pseudo_col; 
+                globcol[ctx->halo_elements]   = ctx->lfRow[i]+cwishlist[i][j]; 
+                ctx->halo_elements++;
                 this_pseudo_col++;
             }
             /*
@@ -409,9 +403,9 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
             // myrevcol maps the actual colidx to the new colidx
             DEBUG_LOG(2,"Allocating space for myrevcol");
-            int * myrevcol = (int *)ghost_malloc(comm->lnrows[i]*sizeof(int));
-            for (j=0;j<comm->wishes[i];j++){
-                myrevcol[globcol[tt]-comm->lfRow[i]] = tt;
+            int * myrevcol = (int *)ghost_malloc(ctx->lnrows[i]*sizeof(int));
+            for (j=0;j<ctx->wishes[i];j++){
+                myrevcol[globcol[tt]-ctx->lfRow[i]] = tt;
                 tt++;
             }
             /*
@@ -419,14 +413,14 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
              * 2nd iter: myrevcol = <{2,#},{#,2},{#,#}>
              */
 
-            for (;t<comm->lnEnts[me];t++) {
+            for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
-                    col[t] =  pseudocol[myrevcol[col[t]-comm->lfRow[i]]];
+                    col[t] =  pseudocol[myrevcol[col[t]-ctx->lfRow[i]]];
                 }
             }
             free(myrevcol);
         } else { // first i iteration goes here
-            for (;t<comm->lnEnts[me];t++) {
+            for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == me) { // local element for myself
                     col[t] =  comm_remoteEl[t];
                 }
@@ -459,11 +453,11 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     MPI_safecall(MPI_Barrier(ctx->mpicomm));
 
-    comm->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
-    comm->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
+    ctx->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
+    ctx->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
     int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
     int *duel_mem   = (int *)  ghost_malloc(size_dues); // we need a contiguous array in memory
-    comm->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
+    ctx->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
 
     acc_dues = 0;
     acc_wishes = 0;
@@ -471,13 +465,13 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     for (i=0; i<nprocs; i++){
 
-        comm->duelist[i]    = &(duel_mem[acc_dues]);
-        comm->wishlist[i]   = &(wishl_mem[acc_wishes]);
-        comm->hput_pos[i]   = comm->lnrows[me]+acc_wishes;
+        ctx->duelist[i]    = &(duel_mem[acc_dues]);
+        ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
+        ctx->hput_pos[i]   = ctx->lnrows[me]+acc_wishes;
 
         if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
-            acc_dues   += comm->dues[i];
-            acc_wishes += comm->wishes[i];
+            acc_dues   += ctx->dues[i];
+            acc_wishes += ctx->wishes[i];
         }
     }
 
@@ -487,19 +481,19 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
         req[i] = MPI_REQUEST_NULL;
 
     for (i=0; i<nprocs; i++) 
-        for (j=0;j<comm->wishes[i];j++)
-            comm->wishlist[i][j] = cwishlist[i][j]; 
+        for (j=0;j<ctx->wishes[i];j++)
+            ctx->wishlist[i][j] = cwishlist[i][j]; 
 
     int msgcount = 0;
     for(i=0; i<nprocs; i++) 
     { // receive _my_ dues from _other_ processes' wishes
-        MPI_safecall(MPI_Irecv(comm->duelist[i],comm->dues[i],MPI_INTEGER,i,i,ctx->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Irecv(ctx->duelist[i],ctx->dues[i],MPI_INTEGER,i,i,ctx->mpicomm,&req[msgcount]));
         msgcount++;
     }
 
 
     for(i=0; i<nprocs; i++) { 
-        MPI_safecall(MPI_Isend(comm->wishlist[i],comm->wishes[i],MPI_INTEGER,i,me,ctx->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Isend(ctx->wishlist[i],ctx->wishes[i],MPI_INTEGER,i,me,ctx->mpicomm,&req[msgcount]));
         msgcount++;
     }
 
