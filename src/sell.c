@@ -4,6 +4,7 @@
 #include <ghost_affinity.h>
 #include <ghost_mat.h>
 #include <ghost_constants.h>
+#include <ghost_context.h>
 
 #include <libgen.h>
 #include <string.h>

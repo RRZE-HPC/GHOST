@@ -409,7 +409,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     ghost_matfile_header_t fileheader;
     ghost_readMatFileHeader(matrixPath,&fileheader);
 
-    context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
+    ghost_createContext(&context,GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
     ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
     mat->fromFile(mat,matrixPath);
     ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;

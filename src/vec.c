@@ -5,6 +5,7 @@
 #include <ghost_util.h>
 #include <ghost_constants.h>
 #include <ghost_affinity.h>
+#include <ghost_context.h>
 
 #include <stdio.h>
 #include <string.h>

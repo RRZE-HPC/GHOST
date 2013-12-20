@@ -152,7 +152,7 @@ static uint32_t adler32(const void * buf, size_t buflength)
 	return (s2 << 16) | s1;
 }
 
-static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
+static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 {
 	// Trace();
 
@@ -172,7 +172,7 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 		if (hostname == NULL) {
 			WARNING_LOG("Allocating %lu bytes of memory for hostname failed: %s",
 				sizeof(char) * nHostname, strerror(errno));
-			return GHOST_FAILURE;
+			return GHOST_ERR_INTERNAL;
 		}
 
 		int error;
@@ -189,7 +189,7 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 				hostname = NULL;
 
 				WARNING_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
-				return GHOST_FAILURE;
+				return GHOST_ERR_INTERNAL;
 			}
 
 		}
@@ -208,7 +208,7 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 	return 0;
 }
 
-int ghost_setupNodeMPI(MPI_Comm comm)
+ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 {
     int mpiRank = ghost_getRank(comm);
 	int error;

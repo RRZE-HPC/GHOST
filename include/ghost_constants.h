@@ -11,8 +11,8 @@
 #define GHOST_REMOTE_MAT_IDX 2
 /******************************************************************************/
 
-#define GHOST_SUCCESS 0
-#define GHOST_FAILURE 1
+//#define GHOST_SUCCESS 0
+//#define GHOST_FAILURE 1
 
 #define GHOST_CORENUMBERING_PHYSICAL_FIRST 0
 #define GHOST_CORENUMBERING_SMT_FIRST 1
@@ -30,14 +30,14 @@
 #define GHOST_IO_MPI (0)
 #define GHOST_IO_STD (1)
 
-#define GHOST_CONTEXT_DEFAULT       (0)
-#define GHOST_CONTEXT_GLOBAL        (1)
-#define GHOST_CONTEXT_DISTRIBUTED   (2)
-#define GHOST_CONTEXT_WORKDIST_NZE  (4) /* distribute by # of nonzeros */
-#define GHOST_CONTEXT_WORKDIST_CUSTOM (8) /* custom distribution (e.g., for hybrid) */
+//#define GHOST_CONTEXT_DEFAULT       (0)
+///#define GHOST_CONTEXT_GLOBAL        (1)
+//#define GHOST_CONTEXT_DISTRIBUTED   (2)
+//#define GHOST_CONTEXT_WORKDIST_NZE  (4) /* distribute by # of nonzeros */
+//#define GHOST_CONTEXT_WORKDIST_CUSTOM (8) /* custom distribution (e.g., for hybrid) */
 //#define GHOST_CONTEXT_WORKDIST_LNZE (8) /* distribute by # of loc nonzeros */
-#define GHOST_CONTEXT_NO_COMBINED_SOLVERS (16) /* not configure comb. kernels */
-#define GHOST_CONTEXT_NO_SPLIT_SOLVERS    (32) /* not configure split kernels */
+//#define GHOST_CONTEXT_NO_COMBINED_SOLVERS (16) /* not configure comb. kernels */
+//#define GHOST_CONTEXT_NO_SPLIT_SOLVERS    (32) /* not configure split kernels */
 
 #define GHOST_GET_DIM_FROM_MATRIX -1
 

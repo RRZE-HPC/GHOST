@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <hwloc.h>
+#include <ghost_error.h>
 
 #define GHOST_TASK_LD_UNDEFINED -1 // initializer
 #define GHOST_TASK_LD_ANY 0 // execute task on any LD
@@ -16,10 +17,6 @@
 #define GHOST_TASK_ONLY_HYPERTHREADS 16
 #define GHOST_TASK_NO_HYPERTHREADS 32
 
-#define GHOST_TASK_INVALID 0 // task has not been enqueued
-#define GHOST_TASK_ENQUEUED 1 // task has been enqueued
-#define GHOST_TASK_RUNNING 2 // task is currently running
-#define GHOST_TASK_FINISHED 3 // task has finished
 
 #define GHOST_TASK_FILL_LD -1 // use all threads of the given LD
 #define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
@@ -28,6 +25,12 @@
 #define GHOST_THPOOL_FTHREAD_DEFAULT ((int *)(0xBEEF))
 #define GHOST_THPOOL_LEVELS_FULLSMT 0
 
+typedef enum ghost_task_state_t {
+    GHOST_TASK_INVALID, // task has not been enqueued
+    GHOST_TASK_ENQUEUED, // task has been enqueued
+    GHOST_TASK_RUNNING, // task is currently running
+    GHOST_TASK_FINISHED // task has finished
+} ghost_task_state_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -170,26 +173,26 @@ typedef struct ghost_thpool_t {
 } ghost_thpool_t;
 
 //int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
-int ghost_thpool_init(hwloc_cpuset_t cpuset);
-int ghost_taskq_init();
-int ghost_taskq_finish();
-int ghost_thpool_finish();
+ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset);
+ghost_error_t ghost_taskq_init();
+ghost_error_t ghost_taskq_finish();
+ghost_error_t ghost_thpool_finish();
 
-ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
-int ghost_task_add(ghost_task_t *);
-int ghost_task_wait(ghost_task_t *);
-int ghost_task_waitall();
-int ghost_task_waitsome(ghost_task_t **, int, int*);
-int ghost_task_test(ghost_task_t *);
-int ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
-int ghost_task_print(ghost_task_t *t);
-int ghost_taskq_print_all(); 
-void * thread_main(void *arg);
+ghost_error_t ghost_task_init(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
+ghost_error_t ghost_task_add(ghost_task_t *);
+ghost_error_t ghost_task_wait(ghost_task_t *);
+ghost_error_t ghost_task_waitall();
+ghost_error_t ghost_task_waitsome(ghost_task_t **, int, int*);
+ghost_task_state_t ghost_task_test(ghost_task_t *);
+ghost_error_t ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
+ghost_error_t ghost_task_print(ghost_task_t *t);
+ghost_error_t ghost_taskq_print_all(); 
 
-char *ghost_task_strstate(int state);
+char *ghost_task_strstate(ghost_task_state_t state);
 
 extern ghost_thpool_t *ghost_thpool; // the thread pool
-extern pthread_key_t ghost_thread_key; 
+extern pthread_key_t ghost_thread_key;
+
 
 #ifdef __cplusplus
 }// extern "C"

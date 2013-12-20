@@ -76,12 +76,12 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
             mat->traits->flags |= GHOST_SPM_DEVICE;
         }
     }
-    
+
     if (mat->traits->flags & GHOST_SPM_DEVICE)
     {
 #if GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
-     //   mat->spmv = &ghost_cu_crsspmv;
+        //   mat->spmv = &ghost_cu_crsspmv;
 #endif
     }
     else if (mat->traits->flags & GHOST_SPM_HOST)
@@ -408,7 +408,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
      * tmp_transfers   = <{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0}>
      */
 
-      
+
 
     item_from       = (int*) ghost_malloc( size_nint); 
     wishlist_counts = (ghost_mnnz_t *) ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
@@ -419,7 +419,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
-    
+
     for (i=0;i<lcrp->lnEnts[me];i++){
         for (j=nprocs-1;j>=0; j--){
             if (lcrp->lfRow[j]<fullCR->col[i]+1) {
@@ -516,7 +516,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
     }
 
     lcrp->dues[me] = 0; 
-    
+
     /* 
      * lcrp->dues = <{0,2,1},{2,0,0},{1,1,0}>
      */
@@ -527,7 +527,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
         acc_transfer_wishes += lcrp->wishes[i];
         acc_transfer_dues   += lcrp->dues[i];
     }
-    
+
     /* 
      * acc_transfer_wishes = <3,3,1>
      * acc_transfer_dues = <3,2,2>
@@ -535,7 +535,7 @@ static void CRS_createCommunication(ghost_mat_t *mat)
 
     pseudocol       = (int*) ghost_malloc(size_col);
     globcol         = (int*) ghost_malloc(size_col);
-    
+
     /*
      * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
      * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
@@ -780,195 +780,63 @@ static void CRS_createDistribution(ghost_mat_t *mat, int options, ghost_comm_t *
     int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 
     UNUSED(options);
-    /*    else if (options & GHOST_CONTEXT_WORKDIST_LNZE){
-        if (me==0){
-        WARNING_LOG("Distribution by LNZE is currently not supported");
-        options |= GHOST_CONTEXT_WORKDIST_NZE;
-        if (!(options & GHOST_OPTION_SERIAL_IO)) {
-    //      DEBUG_LOG(0,"Warning! GHOST_OPTION_WORKDIST_LNZE has not (yet) been "
-    //      "implemented for parallel IO! Switching to "
-    //      "GHOST_OPTION_WORKDIST_NZE");
-    //      options |= GHOST_CONTEXT_WORKDIST_NZE;
+
+    if (me==0) {
+        DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
+        //target_rows = (cr->nrows/nprocs);
+
+        //    lcrp->lfRow[0] = 0;
+        lcrp->lfEnt[0] = 0;
+
+        for (i=1; i<nprocs; i++){
+            //        lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
+            lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
+        }
+        for (i=0; i<nprocs-1; i++){
+            //    lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
+            lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
+        }
+
+        //    lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
+        lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+    }
+    MPI_Request req[nprocs];
+    MPI_Status stat[nprocs];
+    int msgcount = 0;
+
+    for (i=0;i<nprocs;i++) 
+        req[i] = MPI_REQUEST_NULL;
+
+    if (me != 0) {
+        MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
+        msgcount++;
     } else {
-    DEBUG_LOG(1,"Distribute Matrix with EQUAL_LNZE on each PE");
-    ghost_mnnz_t *loc_count;
-    int target_lnze;
-
-    int trial_count, prev_count, trial_rows;
-    int ideal, prev_rows;
-    int outer_iter, outer_convergence;
-
-    // A first attempt should be blocks of equal size 
-    target_rows = (cr->nrows/nprocs);
-
-    lcrp->lfRow[0] = 0;
-    lcrp->lfEnt[0] = 0;
-
-    for (i=1; i<nprocs; i++){
-    lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
-    lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
+        for (i=1;i<nprocs;i++) {
+            MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+            msgcount++;
+        }
     }
+    MPI_safecall(MPI_Waitall(msgcount,req,stat));
+    msgcount = 0;
 
-    for (i=0; i<nprocs-1; i++){
-    lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-    lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-    }
-    lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-    lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
+    for (i=0;i<nprocs;i++) 
+        req[i] = MPI_REQUEST_NULL;
 
-    // Count number of local elements in each block 
-    loc_count      = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    for (i=0; i<nprocs; i++) loc_count[i] = 0;     
-
-    for (i=0; i<nprocs; i++){
-    for (j=lcrp->lfEnt[i]; j<lcrp->lfEnt[i]+lcrp->lnEnts[i]; j++){
-    if (cr->col[j] >= lcrp->lfRow[i] && 
-    cr->col[j]<lcrp->lfRow[i]+lcrp->lnrows[i])
-    loc_count[i]++;
-    }
-    }
-    DEBUG_LOG(2,"First run: local elements:");
-    hlpi = 0;
-    for (i=0; i<nprocs; i++){
-    hlpi += loc_count[i];
-    DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatIDX, i, loc_count[i], lcrp->lnEnts[i]);
-    }
-    target_lnze = hlpi/nprocs;
-    DEBUG_LOG(2,"total local elements: %d | per PE: %d", hlpi, target_lnze);
-
-    outer_convergence = 0; 
-    outer_iter = 0;
-
-    while(outer_convergence==0){ 
-
-    DEBUG_LOG(2,"Convergence Iteration %d", outer_iter);
-
-    for (i=0; i<nprocs-1; i++){
-
-    ideal = 0;
-    prev_rows  = lcrp->lnrows[i];
-    prev_count = loc_count[i];
-
-    while (ideal==0) {
-
-    trial_rows = (int)( (double)(prev_rows) * sqrt((1.0*target_lnze)/(1.0*prev_count)) );
-
-    // Check ob die Anzahl der Elemente schon das beste ist das ich erwarten kann
-    if ( (trial_rows-prev_rows)*(trial_rows-prev_rows)<5.0 ) ideal=1;
-
-    trial_count = 0;
-    for (j=lcrp->lfEnt[i]; j<cr->rpt[lcrp->lfRow[i]+trial_rows]; j++){
-        if (cr->col[j] >= lcrp->lfRow[i] && cr->col[j]<lcrp->lfRow[i]+trial_rows)
-            trial_count++;
-    }
-    prev_rows  = trial_rows;
-    prev_count = trial_count;
-}
-
-lcrp->lnrows[i]  = trial_rows;
-loc_count[i]     = trial_count;
-lcrp->lfRow[i+1] = lcrp->lfRow[i]+lcrp->lnrows[i];
-if (lcrp->lfRow[i+1]>cr->nrows) DEBUG_LOG(0,"Exceeded matrix dimension");
-lcrp->lfEnt[i+1] = cr->rpt[lcrp->lfRow[i+1]];
-lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-
-}
-
-lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1];
-lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
-loc_count[nprocs-1] = 0;
-for (j=lcrp->lfEnt[nprocs-1]; j<cr->nEnts; j++)
-if (cr->col[j] >= lcrp->lfRow[nprocs-1]) loc_count[nprocs-1]++;
-
-DEBUG_LOG(2,"Next run: outer_iter=%d:", outer_iter);
-hlpi = 0;
-for (i=0; i<nprocs; i++){
-    hlpi += loc_count[i];
-    DEBUG_LOG(2,"Block %"PRmatIDX" %"PRmatNNZ" %"PRmatNNZ, i, loc_count[i], lcrp->lnEnts[i]);
-}
-target_lnze = hlpi/nprocs;
-DEBUG_LOG(2,"total local elements: %d | per PE: %d | total share: %6.3f%%",
-        hlpi, target_lnze, 100.0*hlpi/(1.0*cr->nEnts));
-
-hlpi = 0;
-for (i=0; i<nprocs; i++) if ( (1.0*(loc_count[i]-target_lnze))/(1.0*target_lnze)>0.001) hlpi++;
-if (hlpi == 0) outer_convergence = 1;
-
-outer_iter++;
-
-if (outer_iter>20){
-    DEBUG_LOG(0,"No convergence after 20 iterations, exiting iteration.");
-    outer_convergence = 1;
-}
-
-}
-
-int p;
-for (p=0; i<nprocs; i++)  
-DEBUG_LOG(1,"PE%d lfRow=%"PRmatIDX" lfEnt=%"PRmatNNZ" lnrows=%"PRmatIDX" lnEnts=%"PRmatNNZ, p, lcrp->lfRow[i], lcrp->lfEnt[i], lcrp->lnrows[i], lcrp->lnEnts[i]);
-
-free(loc_count);
-}
-}*/
-
-if (me==0){
-    //    lcrp->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); //TODO needed? 
-    //    lcrp->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
-    //target_rows = (cr->nrows/nprocs);
-
-    //    lcrp->lfRow[0] = 0;
-    lcrp->lfEnt[0] = 0;
-
-    for (i=1; i<nprocs; i++){
-        //        lcrp->lfRow[i] = lcrp->lfRow[i-1]+target_rows;
-        lcrp->lfEnt[i] = cr->rpt[lcrp->lfRow[i]];
-    }
-    for (i=0; i<nprocs-1; i++){
-        //    lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-        lcrp->lnEnts[i] = lcrp->lfEnt[i+1] - lcrp->lfEnt[i] ;
-    }
-
-    //    lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-    lcrp->lnEnts[nprocs-1] = cr->nEnts - lcrp->lfEnt[nprocs-1];
-}
-MPI_Request req[nprocs];
-MPI_Status stat[nprocs];
-int msgcount = 0;
-
-for (i=0;i<nprocs;i++) 
-req[i] = MPI_REQUEST_NULL;
-
-if (me != 0) {
-    MPI_safecall(MPI_Irecv(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-    msgcount++;
-} else {
-    for (i=1;i<nprocs;i++) {
-        MPI_safecall(MPI_Isend(lcrp->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+    if (me != 0) {
+        MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
         msgcount++;
+    } else {
+        for (i=1;i<nprocs;i++) {
+            MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
+            msgcount++;
+        }
     }
-}
-MPI_safecall(MPI_Waitall(msgcount,req,stat));
-msgcount = 0;
+    MPI_safecall(MPI_Waitall(msgcount,req,stat));
 
-for (i=0;i<nprocs;i++) 
-req[i] = MPI_REQUEST_NULL;
+    // TODO why Bcast fails?
 
-if (me != 0) {
-    MPI_safecall(MPI_Irecv(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-    msgcount++;
-} else {
-    for (i=1;i<nprocs;i++) {
-        MPI_safecall(MPI_Isend(lcrp->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
-        msgcount++;
-    }
-}
-MPI_safecall(MPI_Waitall(msgcount,req,stat));
-
-// TODO why Bcast fails?
-
-//    MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-//    MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+    //    MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+    //    MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
 
 
 }
@@ -1306,8 +1174,8 @@ static void CRS_upload(ghost_mat_t *mat)
         cl_int err;
         cl_uint numKernels;
         /*    char shift[32];
-            CRS_valToStr_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat->traits->shift,shift,32);
-            printf("SHIFT: %f   %s\n",*((double *)(mat->traits->shift)),shift);
+              CRS_valToStr_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat->traits->shift,shift,32);
+              printf("SHIFT: %f   %s\n",*((double *)(mat->traits->shift)),shift);
          */
         char options[128];
         if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
@@ -1439,10 +1307,10 @@ static void CRS_free(ghost_mat_t * mat)
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
 {
     /*    if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
-        ghost_midx_t i, j;
-        ghost_dt hlp1;
-        ghost_midx_t col;
-        ghost_dt val;
+          ghost_midx_t i, j;
+          ghost_dt hlp1;
+          ghost_midx_t col;
+          ghost_dt val;
 
 #pragma omp    parallel for schedule(runtime) private (hlp1, j, col, val)
 for (i=0; i<CR(mat)->nrows; i++){

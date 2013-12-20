@@ -57,22 +57,24 @@ void ghost_normalizeVec(ghost_vec_t *vec)
     }
 }
 
-int ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
+ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
         int *spmvmOptions)
 {
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
     solver = context->spmvsolvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
 
-    if (!solver)
-        return GHOST_FAILURE;
+    if (!solver) {
+        WARNING_LOG("The SpMV solver as specified in options cannot be found.");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
     solver(context,res,mat,invec,*spmvmOptions);
 
     return GHOST_SUCCESS;
 }
 
-int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
+ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
 {
     if (v->traits->flags & GHOST_VEC_SCATTERED)
     {
@@ -113,11 +115,11 @@ int ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, 
     nrX=x->traits->nrows; ncX=w->traits->nvecs;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         WARNING_LOG("GEMM with incompatible vectors!");
-        return GHOST_FAILURE;
+        return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits->datatype != w->traits->datatype) {
         WARNING_LOG("GEMM with vectors of different datatype does not work");
-        return GHOST_FAILURE;
+        return GHOST_ERR_INVALID_ARG;
     }
 
 #ifdef LONGIDX // TODO

@@ -4,6 +4,7 @@
 #include <ghost_sell.h>
 #include <ghost_mat.h>
 #include <ghost_constants.h>
+#include <ghost_context.h>
 #include <ghost_util.h>
 
 ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)

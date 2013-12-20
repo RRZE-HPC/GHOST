@@ -180,16 +180,16 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
             DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
             taskflags |= GHOST_TASK_USE_PARENTS;
             ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-            compTask = ghost_task_init(parent->nThreads, 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-            compRTask = ghost_task_init(parent->nThreads, 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-            commTask = ghost_task_init(1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
-            prepareTask = ghost_task_init(parent->nThreads, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&compTask, parent->nThreads, 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&compRTask, parent->nThreads, 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
+            ghost_task_init(&prepareTask, parent->nThreads, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
         } else {
             DEBUG_LOG(1,"No parent task in task mode spMVM solver");
-            compTask = ghost_task_init(ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
-            compRTask = ghost_task_init(ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
-            commTask = ghost_task_init(1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
-            prepareTask = ghost_task_init(ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
+            ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
+            ghost_task_init(&compRTask, ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
+            ghost_task_init(&commTask, 1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
+            ghost_task_init(&prepareTask, ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
         }
 
 
