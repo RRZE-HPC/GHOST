@@ -91,7 +91,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
 
     if (v->context == NULL && w->context == NULL && x->context == NULL && reduce != GHOST_GEMM_NO_REDUCE) {
         INFO_LOG("Reduction should be done but none of the vectors has a context. Ommitting the reduction...");
-        reduce == GHOST_GEMM_NO_REDUCE;
+        reduce = GHOST_GEMM_NO_REDUCE;
     }
 
     if (reduce != GHOST_GEMM_NO_REDUCE && reduce >= ghost_getNumberOfRanks(v->context->mpicomm)) {
