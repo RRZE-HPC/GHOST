@@ -267,33 +267,6 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
 
 }
 
-static int ghost_selectSellChunkHeight(int datatype) {
-    int ch = 1;
-
-    if (datatype & GHOST_BINCRS_DT_FLOAT)
-        ch *= 2;
-
-    if (datatype & GHOST_BINCRS_DT_REAL)
-        ch *= 2;
-
-#ifdef AVX
-    ch *= 2;
-#endif
-
-#ifdef MIC
-    ch *= 4;
-#ifndef LONGIDX
-    ch *= 2;
-#endif
-#endif
-
-#if defined (OPENCL) || defined (CUDA)
-    ch = 256;
-#endif
-
-    return ch;
-}
-
 static int compareNZEPerRow( const void* a, const void* b ) 
 {
     /* comparison function for ghost_sorting_t; 

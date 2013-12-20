@@ -170,7 +170,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
 		hostname = (char *)malloc(sizeof(char) * nHostname);
 
 		if (hostname == NULL) {
-			WARNING_LOG("Allocating %lu bytes of memory for hostname failed: %s",
+			WARNING_LOG("Allocating %zu bytes of memory for hostname failed: %s",
 				sizeof(char) * nHostname, strerror(errno));
 			return GHOST_ERR_INTERNAL;
 		}
@@ -227,7 +227,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 
 	MPI_Comm nodeComm = MPI_COMM_NULL;
 
-	DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %lu", checkSum, mpiRank, hostnameLength);
+	DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank, hostnameLength);
 
 	MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
 

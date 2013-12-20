@@ -111,7 +111,7 @@ static int intcomp(const void *x, const void *y)
 ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
 {
     static int initialized = 0;
-    int t,q,i,l,p;
+    int t,q,i;
     int totalThreads;
     hwloc_obj_t obj;
 
