@@ -51,7 +51,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef GHOST_HAVE_MPI
 static void CRS_createDistribution(ghost_mat_t *mat, int options);
-static void CRS_createCommunication(ghost_mat_t *mat);
+static void CRS_split(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
 #ifdef GHOST_HAVE_OPENCL
@@ -102,7 +102,7 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     mat->destroy  = &CRS_free;
     mat->CLupload = &CRS_upload;
 #ifdef GHOST_HAVE_MPI
-    mat->split = &CRS_createCommunication;
+    mat->split = &CRS_split;
 #endif
 #ifdef GHOST_HAVE_OPENCL
     if (traits->flags & GHOST_SPM_HOST)
@@ -330,7 +330,7 @@ static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
 }
 
 
-static void CRS_createCommunication(ghost_mat_t *mat)
+static void CRS_split(ghost_mat_t *mat)
     {
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
