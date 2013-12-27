@@ -11,6 +11,8 @@
 #include <ghost_math.h>
 #include <ghost_constants.h>
 #include <ghost_affinity.h>
+#include <ghost_blas_mangle.h>
+
 
 #include <cstdio>
 #include <iostream>
@@ -39,13 +41,39 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
     if (vec->traits->nvecs != vec2->traits->nvecs) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_vidx_t i,v;
-    ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_vidx_t v;
+    ghost_blas_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_blas_idx_t incx = 1;
+    ghost_blas_idx_t incy = 1;
 
-    int nthreads;
-#pragma omp parallel
-    nthreads = ghost_ompGetNumThreads();
+    for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+        v_t localres;
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+              zdotc((ghost_blas_idx_t*)&nr,(BLAS_Complex16*)VECVAL(vec,vec->val,v,0),&incx,(BLAS_Complex16*)VECVAL(vec2,vec2->val,v,0),&incy,(BLAS_Complex16*)&localres);
+            }
+            else 
+            {
+              cdotc((ghost_blas_idx_t*)&nr,(BLAS_Complex8*) VECVAL(vec,vec->val,v,0),&incx,(BLAS_Complex8*) VECVAL(vec2,vec2->val,v,0),&incy,(BLAS_Complex8*)&localres);
+            }
+        } 
+        else 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+              *(double*)&localres = ddot((ghost_blas_idx_t*)&nr,(double*)VECVAL(vec,vec->val,v,0),&incx,(double*)VECVAL(vec2,vec2->val,v,0),&incy);
+            }
+            else 
+            {
+              *(float*)&localres = sdot((ghost_blas_idx_t*)&nr,(float*) VECVAL(vec,vec->val,v,0),&incx,(float*) VECVAL(vec2,vec2->val,v,0),&incy);
+            }
+        }
+        ((v_t *)res)[v] = localres;
+    }
 
+/*
     v_t *partsums = (v_t *)ghost_malloc(nthreads*sizeof(v_t));
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
         v_t sum = 0;
@@ -63,7 +91,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
         ((v_t *)res)[v] = sum;
     }
     free(partsums);
-
+*/
 }
 
 template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)

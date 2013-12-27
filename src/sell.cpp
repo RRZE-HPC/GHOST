@@ -54,9 +54,9 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 {
     SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
     DEBUG_LOG(2,"In plain SELL kernel w/ %d chunks",sell->nrowsPadded/chunkHeight);
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_midx_t i,j,c;
     ghost_vidx_t v;
     int nthreads = 1;
@@ -166,9 +166,9 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     int nthreads = 1;
     ghost_midx_t i,j;
     ghost_vidx_t v;
