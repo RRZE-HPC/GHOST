@@ -109,8 +109,8 @@
 #define cdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(cdotc_sub,CDOTC_SUB)(*nr,x,*incx,y,*incy,dot)
 #define zdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(zdotc_sub,ZDOTC_SUB)(*nr,x,*incx,y,*incy,dot)
 #else
-#define sdot(nr,x,incx,y,incy) BLAS_MANGLE(sdot,SDOT)(nr,x,incx,y,incy,dot)
-#define ddot(nr,x,incx,y,incy) BLAS_MANGLE(ddot,DDOT)(nr,x,incx,y,incy,dot)
-#define cdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(cdotc,CDOTC)(nr,x,incx,y,incy,dot)
-#define zdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(zdotc,ZDOTC)(nr,x,incx,y,incy,dot)
+#define sdot(nr,x,incx,y,incy) cblas_sdot(*nr,x,*incx,y,*incy)
+#define ddot(nr,x,incx,y,incy) cblas_ddot(*nr,x,*incx,y,*incy)
+#define cdotc(nr,x,incx,y,incy,dot) cblas_cdotc_sub(*nr,x,*incx,y,*incy,dot)
+#define zdotc(nr,x,incx,y,incy,dot) cblas_zdotc_sub(*nr,x,*incx,y,*incy,dot)
 #endif
