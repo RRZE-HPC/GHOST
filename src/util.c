@@ -1095,6 +1095,16 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("There are unassigned cores");
     }*/
     ghost_thpool_init(mycpuset);
+
+/* initialize random number streams for vec->fromRand */
+#pragma omp parallel
+    {
+        /* process/thread dependent component */
+        int s1=ghost_hash(42,ghost_getRank(MPI_COMM_WORLD),ghost_ompGetThreadNum());
+        /* final time and thread dependent random seed */
+        int s2=ghost_hash((int)ghost_wctimemilli(),clock(),s1);
+        srand(s2);
+    }
      
     hwloc_bitmap_free(mycpuset);   
     hwloc_bitmap_free(globcpuset);   
