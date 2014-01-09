@@ -64,6 +64,15 @@ typedef cl_int ghost_cl_mnnz_t;
 
 #endif
 
+typedef enum ghost_error_t {
+    GHOST_SUCCESS,
+    GHOST_ERR_INVALID_ARG,
+    GHOST_ERR_MPI,
+    GHOST_ERR_CUDA,
+    GHOST_ERR_UNKNOWN,
+    GHOST_ERR_INTERNAL,
+    GHOST_ERR_IO
+} ghost_error_t;
 
 typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
 typedef enum {GHOST_INVALID, GHOST_ONEPERNODE, GHOST_ONEPERNUMA, GHOST_ONEPERCORE} ghost_hybridmode_t;
@@ -402,7 +411,7 @@ struct ghost_mat_t
     ghost_midx_t  (*ncols) (ghost_mat_t *);
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
-    void       (*fromFile)(ghost_mat_t *, char *);
+    ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
     void       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);

@@ -552,7 +552,6 @@ template <typename m_t> static void SELL_print(ghost_mat_t *mat)
     }
 
     cout << buffer.str();
-
 }
 
 

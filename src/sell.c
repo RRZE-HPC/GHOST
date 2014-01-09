@@ -88,7 +88,7 @@ static void SELL_print(ghost_mat_t *mat);
 static void SELL_split(ghost_mat_t *mat);
 static void SELL_upload(ghost_mat_t* mat); 
 static void SELL_CUupload(ghost_mat_t *mat);
-static void SELL_fromBin(ghost_mat_t *mat, char *);
+static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
 static void SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void SELL_free(ghost_mat_t *mat);
 static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
@@ -457,10 +457,8 @@ static void SELL_split(ghost_mat_t *mat)
                     if (i < fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             localSELL->rowLen[row]++;
-                            INFO_LOG("Increasing localSELL rowlen[%d] to %d due to entry %f w/ colidx %d",row,localSELL->rowLen[row],((double *)(fullSELL->val))[idx],fullSELL->col[idx]);
                         } else {
                             remoteSELL->rowLen[row]++;
-                            INFO_LOG("Increasing remoteSELL rowlen[%d] to %d due to entry %f w/ colidx %d",row,remoteSELL->rowLen[row],((double *)(fullSELL->val))[idx],fullSELL->col[idx]);
                         }
                         localSELL->rowLenPadded[row] = ghost_pad(localSELL->rowLen[row],localSELL->T);
                         remoteSELL->rowLenPadded[row] = ghost_pad(remoteSELL->rowLen[row],remoteSELL->T);
@@ -480,7 +478,6 @@ static void SELL_split(ghost_mat_t *mat)
 
             localSELL->chunkLenPadded[chunk] = ghost_pad(localSELL->chunkLen[chunk],localSELL->T);
             remoteSELL->chunkLenPadded[chunk] = ghost_pad(remoteSELL->chunkLen[chunk],remoteSELL->T);
-            WARNING_LOG("chunkStart[%d] l/r: %d/%d, chunkLen[%d] l/r: %d/%d",chunk+1,lnEnts_l,lnEnts_r,chunk,localSELL->chunkLen[chunk],remoteSELL->chunkLen[chunk]);
              
         }
             
@@ -533,8 +530,6 @@ static void SELL_split(ghost_mat_t *mat)
             }
         }
 
-        mat->remotePart->print(mat->remotePart);
-
         current_l = 0;
         current_r = 0;
         ghost_midx_t col_l[fullSELL->chunkHeight], col_r[fullSELL->chunkHeight];
@@ -555,7 +550,6 @@ static void SELL_split(ghost_mat_t *mat)
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             if (col_l[j] < localSELL->rowLen[row]) {
                                 ghost_midx_t lidx = localSELL->chunkStart[chunk]+col_l[j]*localSELL->chunkHeight+j;
-                                INFO_LOG("Putting %f to local part idx %d",((double *)(fullSELL->val))[idx],lidx); 
                                 localSELL->col[lidx] = fullSELL->col[idx];
                                 memcpy(&localSELL->val[lidx*sizeofdt],&fullSELL->val[idx*sizeofdt],sizeofdt);
                                 current_l++;
@@ -601,7 +595,7 @@ static void SELL_split(ghost_mat_t *mat)
 
 }
 
-static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
+static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Creating SELL matrix from binary file");
 
@@ -773,8 +767,8 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     FILE *filed;
     
     if ((filed = fopen64(matrixPath, "r")) == NULL){
-        //return GHOST_ERR_IO;
-        ABORT("Could not open binary CRS file %s",matrixPath);
+        ERROR_LOG("Could not open binary CRS file %s",matrixPath);
+        return GHOST_ERR_IO;
     }
 
 
@@ -790,7 +784,6 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         ghost_midx_t firstNzOfChunk = context->lfEnt[me]+rpt[chunk*SELL(mat)->chunkHeight];
         ghost_midx_t nnzInChunk = rpt[(chunk+1)*SELL(mat)->chunkHeight]-rpt[chunk*SELL(mat)->chunkHeight];
 
-       // INFO_LOG("Reading columns of chunk %d (%d cols starting from entry %d)",chunk,nnzInChunk,firstNzOfChunk);
         GHOST_SAFECALL(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
         GHOST_SAFECALL(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
 
@@ -798,7 +791,6 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         for (i=0; i<SELL(mat)->chunkHeight; i++) {
             ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
             for (j=0; j<SELL(mat)->rowLen[row]; j++) {
-                //INFO_LOG("Copy val/col %f/%d into %d",((double *)tmpval)[idx],tmpcol[idx],SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i);
                 SELL(mat)->col[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = tmpcol[idx];
                 memcpy(SELL(mat)->val+(SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i)*sizeofdt,&tmpval[idx*sizeofdt],sizeofdt);
                 idx++;
@@ -810,10 +802,7 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     fclose(filed);
 
- //   mat->print(mat);
     mat->split(mat);
-    //mat->localPart->print(mat->localPart);
-    //mat->remotePart->print(mat->remotePart);
     
 
 #ifdef GHOST_HAVE_OPENCL
@@ -826,6 +815,8 @@ static void SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 #endif
 
     DEBUG_LOG(1,"SELL matrix successfully created");
+
+    return GHOST_SUCCESS;
 }
 
 static void SELL_print(ghost_mat_t *mat)

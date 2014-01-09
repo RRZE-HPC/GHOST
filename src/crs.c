@@ -34,7 +34,7 @@ void (*CRS_valToStr_funcs[4]) (void *, char *, int) =
 static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
+static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
@@ -790,7 +790,7 @@ static void CRS_upload(ghost_mat_t *mat)
  * If the row pointers have already been read-in and stored in the context
  * they will not be read in again.
  */
-static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
+static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Reading CRS matrix from file");
     mat->name = basename(matrixPath);
@@ -885,6 +885,8 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     if (!(mat->traits->flags & GHOST_SPM_HOST))
         mat->CLupload(mat);
 #endif
+
+    return GHOST_SUCCESS;
 
 }
 
