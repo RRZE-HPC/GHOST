@@ -773,7 +773,7 @@ ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
     return lidx;    
 }
 
-void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
+ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 {
     FILE* file;
     long filesize;
@@ -831,6 +831,8 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
         ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
 
     fclose(file);
+
+    return GHOST_SUCCESS;
 }
 
 

@@ -1,8 +1,8 @@
 #ifndef GHOST_COMPLEX_H
 #define GHOST_COMPLEX_H
 
+#ifdef __cplusplus
 #include <cmath>
-#include <iostream>
 #include <complex>
 
 template <typename T> 
@@ -55,4 +55,5 @@ ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) const {
 }
 
 
+#endif
 #endif

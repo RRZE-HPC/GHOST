@@ -46,6 +46,7 @@ typedef struct
     ghost_midx_t *col;
     ghost_mnnz_t *chunkStart;
     ghost_midx_t nrows;
+    ghost_midx_t ncols;
     ghost_midx_t nrowsPadded;
     ghost_mnnz_t nnz;
     ghost_mnnz_t nEnts;
@@ -132,6 +133,11 @@ void d_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void s_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void c_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void z_SELL_fromCRS(ghost_mat_t *mat, void *crs);
+
+void d_SELL_print(ghost_mat_t *mat);
+void s_SELL_print(ghost_mat_t *mat);
+void c_SELL_print(ghost_mat_t *mat);
+void z_SELL_print(ghost_mat_t *mat);
 #ifdef __cplusplus
 }
 #endif

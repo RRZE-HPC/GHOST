@@ -7,7 +7,7 @@
 #include "ghost/crs.h"
 
 
-ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, char *matrixPath, MPI_Comm comm, double weight) 
+ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, MPI_Comm comm, double weight) 
 {
     int i;
 
@@ -16,10 +16,16 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->rowPerm = NULL;
     (*context)->invRowPerm = NULL;
     (*context)->mpicomm = comm;
+    (*context)->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(int)); 
+    (*context)->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(int));
+
+    if (!((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)) {
+        (*context)->flags |= GHOST_CONTEXT_WORKDIST_ROWS;
+    }
 
     if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
         ghost_matfile_header_t fileheader;
-        ghost_readMatFileHeader(matrixPath,&fileheader);
+        ghost_readMatFileHeader((char *)matrixSource,&fileheader);
 #ifndef LONGIDX
         if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
             ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
@@ -76,51 +82,68 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
         (*context)->halo_elements = -1;
 
 
-#if 0
-        if (context->flags & GHOST_CONTEXT_WORKDIST_NZE)
+        if ((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
             ghost_midx_t *rpt = NULL;
             ghost_mnnz_t gnnz;
 
-            if (ghost_getRank(context->mpicomm) == 0) {
-                rpt = CRS_readRpt(context->gnrows+1,matrixPath);
-                context->rpt = rpt;
+            if (ghost_getRank((*context)->mpicomm) == 0) {
+                if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
+                    rpt = CRS_readRpt((*context)->gnrows+1,(char *)matrixSource);
+                } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
+                    ghost_spmFromRowFunc_t func = (ghost_spmFromRowFunc_t)matrixSource;
+                    rpt = ghost_malloc(((*context)->gnrows+1)*sizeof(ghost_midx_t));
+                    char *tmpval = ghost_malloc((*context)->gncols*sizeof(complex double));
+                    ghost_midx_t *tmpcol = ghost_malloc((*context)->gncols*sizeof(ghost_midx_t));
+                    rpt[0] = 0;
+                    ghost_midx_t rowlen;
+                    ghost_midx_t i;
+                    for( i = 0; i < (*context)->gnrows; i++ ) {
+                        func(i,&rowlen,tmpcol,tmpval);
+                        rpt[i+1] = rpt[i]+rowlen;
+                    }
+                } else {
+                    WARNING_LOG("If distribution by nnz a matrix source has to be given!");
+                    return GHOST_ERR_INVALID_ARG;
+                }
+                    
+                    
+                (*context)->rpt = rpt;
 
-                gnnz = rpt[context->gnrows];
+                gnnz = rpt[(*context)->gnrows];
                 ghost_mnnz_t target_nnz;
                 target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
 
-                context->communicator->lfRow[0]  = 0;
-                context->communicator->lfEnt[0] = 0;
+                (*context)->lfRow[0]  = 0;
+                (*context)->lfEnt[0] = 0;
                 int j = 1;
 
-                for (i=0;i<context->gnrows;i++){
+                for (i=0;i<(*context)->gnrows;i++){
                     if (rpt[i] >= j*target_nnz){
-                        context->communicator->lfRow[j] = i;
-                        context->communicator->lfEnt[j] = rpt[i];
+                        (*context)->lfRow[j] = i;
+                        (*context)->lfEnt[j] = rpt[i];
                         j = j+1;
                     }
                 }
                 for (i=0; i<nprocs-1; i++){
-                    context->communicator->lnrows[i] = context->communicator->lfRow[i+1] - context->communicator->lfRow[i] ;
-                    context->communicator->lnEnts[i] = context->communicator->lfEnt[i+1] - context->communicator->lfEnt[i] ;
+                    (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
+                    (*context)->lnEnts[i] = (*context)->lfEnt[i+1] - (*context)->lfEnt[i] ;
                 }
 
-                context->communicator->lnrows[nprocs-1] = context->gnrows - context->communicator->lfRow[nprocs-1] ;
-                context->communicator->lnEnts[nprocs-1] = gnnz - context->communicator->lfEnt[nprocs-1];
+                (*context)->lnrows[nprocs-1] = (*context)->gnrows - (*context)->lfRow[nprocs-1] ;
+                (*context)->lnEnts[nprocs-1] = gnnz - (*context)->lfEnt[nprocs-1];
 
                 //fclose(filed);
             }
-            MPI_safecall(MPI_Bcast(context->communicator->lfRow,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-            MPI_safecall(MPI_Bcast(context->communicator->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-            MPI_safecall(MPI_Bcast(context->communicator->lnrows, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-            MPI_safecall(MPI_Bcast(context->communicator->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnEnts, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
 
 
         } else
-#endif
         { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
-            UNUSED(matrixPath);
+            UNUSED(matrixSource);
             int me = ghost_getRank((*context)->mpicomm);
             double allweights;
             MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm))
@@ -142,6 +165,8 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             (*context)->lnrows[nprocs-1] = (*context)->gnrows - (*context)->lfRow[nprocs-1] ;
             MPI_safecall(MPI_Bcast((*context)->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
             MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            (*context)->lnEnts[0] = -1;
+            (*context)->lfEnt[0] = -1;
         }
 
     } else {
@@ -176,8 +201,22 @@ void ghost_freeContext(ghost_context_t *context)
     }
     DEBUG_LOG(1,"Context freed successfully");
 }
+static int intcomp(const void *x, const void *y) 
+{
+    return (*(int *)x - *(int *)y);
+}
 
-int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
+/**
+ * @brief Assemble communication information in the given context.
+ * @param ctx The context.
+ * @param col The column indices of the sparse matrix which is bound to the context.
+ *
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure. 
+ * 
+ * The following fields of ghost_context_t are being filled in this function:
+ * wishes, wishlist, dues, duelist, hput_pos.
+ */
+ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 {
 
     int hlpi;
@@ -190,7 +229,6 @@ int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     int *tmp_transfers;
     int acc_wishes;
 
-    /* Counter how many entries are requested from each PE */
     int *item_from;
 
     ghost_mnnz_t *wishlist_counts;

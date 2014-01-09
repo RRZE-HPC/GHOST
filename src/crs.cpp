@@ -114,16 +114,6 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     }
 }
 
-template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts)
-{
-    ghost_mnnz_t i;
-    m_t *md = (m_t *)matrixData;
-    f_t *fd = (f_t *)fileData;
-
-    for (i = 0; i<nEnts; i++) {
-        md[i] = (m_t)(fd[i]);
-    }
-}
 
 template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
 {
@@ -186,54 +176,6 @@ extern "C" void zc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_ve
 
 extern "C" void zz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
-
-extern "C" void dd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,double >(matrixData, fileData, nEnts); }
-
-extern "C" void ds_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,float >(matrixData, fileData, nEnts); }
-
-extern "C" void dc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void dz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void sd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,double >(matrixData, fileData, nEnts); }
-
-extern "C" void ss_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,float >(matrixData, fileData, nEnts); }
-
-extern "C" void sc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void sz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void cd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,double >(matrixData, fileData, nEnts); }
-
-extern "C" void cs_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,float >(matrixData, fileData, nEnts); }
-
-extern "C" void cc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void cz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void zd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,double >(matrixData, fileData, nEnts); }
-
-extern "C" void zs_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,float >(matrixData, fileData, nEnts); }
-
-extern "C" void zc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void zz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,ghost_complex<double> >(matrixData, fileData, nEnts); }
 
 extern "C" void d_CRS_valToStr(void *val, char *str, int n)
 { return CRS_valToStr_tmpl< double >(val,str,n); }

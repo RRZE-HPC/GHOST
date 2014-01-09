@@ -396,6 +396,7 @@ struct ghost_mat_t
     // access functions
     void       (*destroy) (ghost_mat_t *);
     void       (*printInfo) (ghost_mat_t *);
+    void       (*print) (ghost_mat_t *);
     ghost_mnnz_t  (*nnz) (ghost_mat_t *);
     ghost_midx_t  (*nrows) (ghost_mat_t *);
     ghost_midx_t  (*ncols) (ghost_mat_t *);
@@ -489,7 +490,7 @@ struct ghost_context_t
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_midx_t* hput_pos; // TODO rename 
+    ghost_midx_t* hput_pos; // TODO rename
 };
 
 /*struct ghost_comm_t

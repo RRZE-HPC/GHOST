@@ -24,7 +24,9 @@ set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TI
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
-set (SOURCES 
+set (SOURCES
+        src/io.c
+        src/io.cpp 
 		src/ghost.c 
 		src/util.c 
 		src/spmvm_nompi.c 
@@ -32,6 +34,7 @@ set (SOURCES
 		src/tasking.c 
 		src/crs.c 
 		src/crs.cpp 
+        src/error.c
 		src/sell.c 
 		src/sell_kernel_intr.c 
 		src/vec.cpp 
@@ -50,6 +53,8 @@ set (HEADERS
 		include/ghost/constants.h
 		include/ghost/context.h
 		include/ghost/crs.h
+		include/ghost/error.h
+        include/ghost/io.h
 		include/ghost/mat.h
 		include/ghost/math.h
 		include/ghost/sell.h

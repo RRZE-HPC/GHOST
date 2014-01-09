@@ -19,8 +19,11 @@ typedef enum ghost_context_flags_t {
      * @brief Distribute work among the ranks by number of nonzeros instead of number of rows
      */
     GHOST_CONTEXT_WORKDIST_NZE = 4,
+    GHOST_CONTEXT_WORKDIST_ROWS = 128,
     GHOST_CONTEXT_NO_COMBINED_SOLVERS = 8,
-    GHOST_CONTEXT_NO_SPLIT_SOLVERS = 16
+    GHOST_CONTEXT_NO_SPLIT_SOLVERS = 16,
+    GHOST_CONTEXT_ROWS_FROM_FILE = 32,
+    GHOST_CONTEXT_ROWS_FROM_FUNC = 64
 } ghost_context_flags_t;
 
     
@@ -30,9 +33,9 @@ typedef enum ghost_context_flags_t {
 extern "C" {
 #endif
 
-ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, char *matrixPath, MPI_Comm comm, double weight); 
+ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, MPI_Comm comm, double weight); 
 void              ghost_freeContext(ghost_context_t *);
-int ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col);
+ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col);
 
 #ifdef __cplusplus
 } //extern "C"

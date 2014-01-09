@@ -6,6 +6,7 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/context.h"
+#include "ghost/io.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -26,11 +27,6 @@ void (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, in
     {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
     {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
-void (*CRS_castData_funcs[4][4]) (void *, void *, int) = 
-{{&ss_CRS_castData,&sd_CRS_castData,&sc_CRS_castData,&sz_CRS_castData},
-    {&ds_CRS_castData,&dd_CRS_castData,&dc_CRS_castData,&dz_CRS_castData},
-    {&cs_CRS_castData,&cd_CRS_castData,&cc_CRS_castData,&cz_CRS_castData},
-    {&zs_CRS_castData,&zd_CRS_castData,&zc_CRS_castData,&zz_CRS_castData}};
 
 void (*CRS_valToStr_funcs[4]) (void *, char *, int) = 
 {&s_CRS_valToStr,&d_CRS_valToStr,&c_CRS_valToStr,&z_CRS_valToStr};
@@ -50,7 +46,6 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_t offsetEnts, ghost_midx_t offsetRows, ghost_midx_t nRows, ghost_mnnz_t nEnts, int IOtype);
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath);
 #ifdef GHOST_HAVE_MPI
-static void CRS_createDistribution(ghost_mat_t *mat, int options);
 static void CRS_split(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
@@ -198,8 +193,6 @@ static void CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, 
 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
-        mat->context->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int)); 
-        mat->context->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks(mat->context->mpicomm)*sizeof(int));
         
         mat->context->lnEnts[me] = CR(mat)->nEnts;
 
@@ -259,76 +252,6 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 }
 
 #ifdef GHOST_HAVE_MPI
-static void CRS_createDistributedContext(ghost_mat_t **mat, char * matrixPath)
-{
-    DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
-
-    ghost_midx_t i;
-
-    ghost_context_t *context = (*mat)->context;
-    int me = ghost_getRank(context->mpicomm); 
-    int nprocs = ghost_getNumberOfRanks(context->mpicomm);
-
-    CRS_readHeader(*mat,matrixPath);  // read header
-
-    if (ghost_getRank(context->mpicomm) == 0) {
-        if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
-            ((CR_TYPE *)((*mat)->data))->rpt = context->rpt;
-        } else {
-            CR((*mat))->rpt = CRS_readRpt(CR((*mat))->nrows+1,matrixPath);  // read rpt
-        }
-    }
-
-    context->wishes   = (int *)ghost_malloc( nprocs*sizeof(int)); 
-    context->dues     = (int *)ghost_malloc( nprocs*sizeof(int)); 
-
-    CRS_createDistribution((*mat),context->flags);
-
-    DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
-
-    if (ghost_getRank(context->mpicomm) != 0) {
-        ((CR_TYPE *)((*mat)->data))->rpt = (ghost_midx_t *)ghost_malloc((context->lnrows[me]+1)*sizeof(ghost_midx_t));
-    }
-
-    MPI_Request req[nprocs];
-    MPI_Status stat[nprocs];
-    int msgcount = 0;
-
-    for (i=0;i<nprocs;i++) 
-        req[i] = MPI_REQUEST_NULL;
-
-    if (ghost_getRank(context->mpicomm) != 0) {
-        MPI_safecall(MPI_Irecv(((CR_TYPE *)((*mat)->data))->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]));
-        msgcount++;
-    } else {
-        for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(&((CR_TYPE *)((*mat)->data))->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]));
-            msgcount++;
-        }
-    }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
-
-    DEBUG_LOG(1,"Adjusting row pointers");
-
-    for (i=0;i<context->lnrows[me]+1;i++)
-        ((CR_TYPE *)((*mat)->data))->rpt[i] =  ((CR_TYPE *)((*mat)->data))->rpt[i] - context->lfEnt[me]; 
-
-    ((CR_TYPE *)((*mat)->data))->rpt[context->lnrows[me]] = context->lnEnts[me];
-
-    DEBUG_LOG(1,"local rows          = %"PRmatIDX,context->lnrows[me]);
-    DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,context->lfRow[me]);
-    DEBUG_LOG(1,"local entries          = %"PRmatNNZ,context->lnEnts[me]);
-    DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,context->lfEnt[me]);
-
-    CRS_readColValOffset((*mat),matrixPath, context->lfEnt[me], context->lfRow[me], context->lnrows[me], context->lnEnts[me], GHOST_IO_STD);
-
-    DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
-    ((CR_TYPE *)((*mat)->data))->nrows = context->lnrows[me];
-    ((CR_TYPE *)((*mat)->data))->nEnts = context->lnEnts[me];
-
-    // TODO clean up
-}
-
 
 static void CRS_split(ghost_mat_t *mat)
     {
@@ -339,8 +262,6 @@ static void CRS_split(ghost_mat_t *mat)
     int i;
     int me;
 
-    /* Counter how many entries are requested from each PE */
-
     ghost_mnnz_t lnEnts_l, lnEnts_r;
     int current_l, current_r;
 
@@ -349,300 +270,6 @@ static void CRS_split(ghost_mat_t *mat)
     me = ghost_getRank(mat->context->mpicomm);
 
     ghost_setupCommunication(mat->context,fullCR->col);
-#if 0
-    size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_midx_t)  );
-    size_nptr = (size_t)( nprocs             * sizeof(ghost_midx_t*) );
-    size_a2ai = (size_t)( nprocs*nprocs * sizeof(ghost_midx_t)  );
-
-    me = ghost_getRank(mat->context->mpicomm);
-
-    max_loc_elements = 0;
-    for (i=0;i<nprocs;i++)
-        if (max_loc_elements<lcrp->lnEnts[i]) max_loc_elements = lcrp->lnEnts[i];
-
-
-    size_pval = (size_t)( max_loc_elements * sizeof(int) );
-    size_col  = (size_t)( (size_t)(lcrp->lnEnts[me])   * sizeof( int ) );
-
-    /*       / 1  2  .  3  4  . \
-     *       | .  5  6  7  .  . |
-     * mat = | 8  9  .  .  . 10 |
-     *       | . 11 12 13  .  . |
-     *       | .  .  .  . 14 15 |
-     *       \16  .  .  . 17 18 /
-     *
-     * nprocs = 3
-     * max_loc_elements = 4
-     * item_from       = <{0,0,0},{0,0,0},{0,0,0}>
-     * wishlist_counts = <{0,0,0},{0,0,0},{0,0,0}>
-     * comm_remotePE   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
-     * comm_remoteEl   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
-     * present_values  = <{0,0,0,0,0,0,0},{0,0,0,0,0,0,0},{0,0,0,0,0,0,0}> 
-     * tmp_transfers   = <{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0}>
-     */
-
-
-
-    item_from       = (int*) ghost_malloc( size_nint); 
-    wishlist_counts = (ghost_mnnz_t *) ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    comm_remotePE   = (int*) ghost_malloc(size_col);
-    comm_remoteEl   = (int*) ghost_malloc(size_col);
-    present_values  = (int*) ghost_malloc(size_pval); 
-    tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
-
-    for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
-
-
-    for (i=0;i<lcrp->lnEnts[me];i++){
-        for (j=nprocs-1;j>=0; j--){
-            if (lcrp->lfRow[j]<fullCR->col[i]+1) {
-                comm_remotePE[i] = j;
-                wishlist_counts[j]++;
-                DEBUG_LOG(3,"wishlist_counts[%d]=%"PRmatNNZ" due to %f",j,wishlist_counts[j],((double *)fullCR->val)[i]);
-                comm_remoteEl[i] = fullCR->col[i] -lcrp->lfRow[j];
-                break;
-            }
-        }
-    }
-    /*
-     * wishlist_counts = <{3,3,1},{3,2,1},{1,0,4}>
-     * comm_remotePE   = <{0,0,1,2,0,1,1},{0,0,2,0,1,1},{2,2,0,2,2}>
-     * comm_remoteEl   = <{0,1,1,0,1,0,1},{0,1,1,1,0,1},{0,1,0,0,1}>
-     */
-
-    acc_wishes = 0;
-    for (i=0; i<nprocs; i++) {
-        acc_wishes += wishlist_counts[i];
-    }
-
-    /*
-     * acc_wishes = <7,6,5> equal to lnEnts
-     */
-
-    wishlist        = (int**) ghost_malloc(size_nptr); 
-    cwishlist       = (int**) ghost_malloc(size_nptr);
-
-    /*
-     * wishlist  = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
-     * cwishlist = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
-     */
-
-    hlpi = 0;
-    for (i=0; i<nprocs; i++){
-        cwishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
-        wishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
-        hlpi += wishlist_counts[i];
-    }
-    /*
-     * wishlist  = <{{0,0,0},{0,0,0},{0}},{{0,0,0},{0,0},{0}},{{0},NULL,{0,0,0,0}}>
-     * cwishlist = <{{0,0,0},{0,0,0},{0}},{{0,0,0},{0,0},{0}},{{0},NULL,{0,0,0,0}}>
-     */
-
-    for (i=0;i<nprocs;i++) item_from[i] = 0;
-
-    for (i=0;i<lcrp->lnEnts[me];i++){
-        wishlist[comm_remotePE[i]][item_from[comm_remotePE[i]]] = comm_remoteEl[i];
-        item_from[comm_remotePE[i]]++;
-    }
-    /*
-     * wishlist  = <{{0,1,1},{1,0,1},{0}},{{0,1,1},{0,1},{1}},{{0},NULL,{0,1,0,1}}> local column idx of wishes
-     * item_from = <{3,3,1},{3,2,1},{1,0,4}> equal to wishlist_counts
-     */
-
-
-
-    for (i=0; i<nprocs; i++) {
-        for (j=0; j<max_loc_elements; j++) 
-            present_values[j] = -1;
-
-        if ( (i!=me) && (wishlist_counts[i]>0) ){
-            thisentry = 0;
-            for (j=0; j<wishlist_counts[i]; j++){
-                if (present_values[wishlist[i][j]]<0){
-                    present_values[wishlist[i][j]] = thisentry;
-                    cwishlist[i][thisentry] = wishlist[i][j];
-                    thisentry = thisentry + 1;
-                }
-            }
-            lcrp->wishes[i] = thisentry;
-        } else {
-            lcrp->wishes[i] = 0; 
-        }
-
-    }
-
-    /* 
-     * cwishlist = <{{#,#,#},{1,0,#},{0}},{{0,1,#},{#,#},{1}},{{0},NULL,{#,#,#,#}}> compressed wish list
-     * lcrp->wishes = <{0,2,1},{2,0,1},{1,0,0}>
-     */
-
-    for (i=0; i<nprocs; i++){
-        free(wishlist[i]);
-    }
-    free(wishlist);
-
-    MPI_safecall(MPI_Allgather ( lcrp->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
-                nprocs, MPI_INTEGER, mat->context->mpicomm )) ;
-
-    for (i=0; i<nprocs; i++) {
-        lcrp->dues[i] = tmp_transfers[i*nprocs+me];
-    }
-
-    lcrp->dues[me] = 0; 
-
-    /* 
-     * lcrp->dues = <{0,2,1},{2,0,0},{1,1,0}>
-     */
-
-    acc_transfer_dues = 0;
-    acc_transfer_wishes = 0;
-    for (i=0; i<nprocs; i++){
-        acc_transfer_wishes += lcrp->wishes[i];
-        acc_transfer_dues   += lcrp->dues[i];
-    }
-
-    /* 
-     * acc_transfer_wishes = <3,3,1>
-     * acc_transfer_dues = <3,2,2>
-     */
-
-    pseudocol       = (int*) ghost_malloc(size_col);
-    globcol         = (int*) ghost_malloc(size_col);
-
-    /*
-     * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
-     * globcol   = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> local colidx of element
-     */
-
-    this_pseudo_col = lcrp->lnrows[me];
-    lcrp->halo_elements = 0;
-    int tt = 0;
-    i = me;
-    int meHandled = 0;
-
-    /*
-     * fullCR->col[i] = <{0,1,3,4,1,2,3},{0,1,5,1,2,3},{4,5,0,4,5}>
-     */
-
-    for (; i<nprocs; i++) { // iterate i=me,..,nprocs,0,..,me-1
-        int t = 0;
-        if (meHandled && (i == me)) continue;
-
-        if (i != me){ 
-            for (j=0;j<lcrp->wishes[i];j++){
-                pseudocol[lcrp->halo_elements] = this_pseudo_col; 
-                globcol[lcrp->halo_elements]   = lcrp->lfRow[i]+cwishlist[i][j]; 
-                lcrp->halo_elements++;
-                this_pseudo_col++;
-            }
-            /*
-             * pseudocol = <{0,1,2},{0,1,2},{0}> colidx of each halo element starting from 0
-             * globcol   = <{2,3,4},{2,3,4},{2}> colidx of each halo element starting from lnrows[me]
-             */
-
-            // myrevcol maps the actual colidx to the new colidx
-            DEBUG_LOG(2,"Allocating space for myrevcol");
-            int * myrevcol = (int *)ghost_malloc(lcrp->lnrows[i]*sizeof(int));
-            for (j=0;j<lcrp->wishes[i];j++){
-                myrevcol[globcol[tt]-lcrp->lfRow[i]] = tt;
-                tt++;
-            }
-            /*
-             * 1st iter: myrevcol = <{1,0},{0,1},{0,#}>
-             * 2nd iter: myrevcol = <{2,#},{#,2},{#,#}>
-             */
-
-            for (;t<lcrp->lnEnts[me];t++) {
-                if (comm_remotePE[t] == i) { // local element for rank i
-                    fullCR->col[t] =  pseudocol[myrevcol[fullCR->col[t]-lcrp->lfRow[i]]];
-                }
-            }
-            free(myrevcol);
-        } else { // first i iteration goes here
-            for (;t<lcrp->lnEnts[me];t++) {
-                if (comm_remotePE[t] == me) { // local element for myself
-                    fullCR->col[t] =  comm_remoteEl[t];
-                }
-            }
-            /*
-             * fullCR->col[i] = <{0,1,3,4,1,2,3},{0,1,5,1,0,1},{0,1,0,0,1}> local idx changed after first iteration
-             */
-
-        }
-
-        if (!meHandled) {
-            i = -1;
-            meHandled = 1;
-        }
-
-
-    }
-    /*
-     * fullCR->col[i] = <{0,1,2,4,1,3,2},{2,3,4,3,0,1},{0,1,2,0,1}>
-     */
-
-    free(comm_remoteEl);
-    free(comm_remotePE);
-    free(pseudocol);
-    free(globcol);
-    free(present_values); 
-
-    size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
-    size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
-
-    MPI_safecall(MPI_Barrier(mat->context->mpicomm));
-
-    lcrp->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
-    lcrp->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
-    int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
-    int *duel_mem   = (int *)  ghost_malloc(size_dues); // we need a contiguous array in memory
-    lcrp->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
-
-    acc_dues = 0;
-    acc_wishes = 0;
-
-
-    for (i=0; i<nprocs; i++){
-
-        lcrp->duelist[i]    = &(duel_mem[acc_dues]);
-        lcrp->wishlist[i]   = &(wishl_mem[acc_wishes]);
-        lcrp->hput_pos[i]   = lcrp->lnrows[me]+acc_wishes;
-
-        if  ( (me != i) && !( (i == nprocs-2) && (me == nprocs-1) ) ){
-            acc_dues   += lcrp->dues[i];
-            acc_wishes += lcrp->wishes[i];
-        }
-    }
-
-    MPI_Request req[2*nprocs];
-    MPI_Status stat[2*nprocs];
-    for (i=0;i<2*nprocs;i++) 
-        req[i] = MPI_REQUEST_NULL;
-
-    for (i=0; i<nprocs; i++) 
-        for (j=0;j<lcrp->wishes[i];j++)
-            lcrp->wishlist[i][j] = cwishlist[i][j]; 
-
-    int msgcount = 0;
-    for(i=0; i<nprocs; i++) 
-    { // receive _my_ dues from _other_ processes' wishes
-        MPI_safecall(MPI_Irecv(lcrp->duelist[i],lcrp->dues[i],MPI_INTEGER,i,i,mat->context->mpicomm,&req[msgcount]));
-        msgcount++;
-    }
-
-
-    for(i=0; i<nprocs; i++) { 
-        MPI_safecall(MPI_Isend(lcrp->wishlist[i],lcrp->wishes[i],MPI_INTEGER,i,me,mat->context->mpicomm,&req[msgcount]));
-        msgcount++;
-    }
-
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
-
-#endif
-    /**************
-     * SPLIT HERE *
-     **************/
-
 
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
@@ -745,75 +372,6 @@ static void CRS_split(ghost_mat_t *mat)
     mat->remotePart->data = remoteCR;
 }
 
-static void CRS_createDistribution(ghost_mat_t *mat, int options)
-{
-    CR_TYPE *cr = CR(mat);
-    ghost_context_t *context = mat->context;
-    int me = ghost_getRank(mat->context->mpicomm); 
-    ghost_midx_t i;
-    int nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
-
-    UNUSED(options);
-
-    if (me==0) {
-        DEBUG_LOG(1,"Distribute Matrix with EQUAL_ROWS on each PE");
-        //target_rows = (cr->nrows/nprocs);
-
-        //    lcrp->lfRow[0] = 0;
-        context->lfEnt[0] = 0;
-
-        for (i=1; i<nprocs; i++){
-            //        lcrp->lfRow[i] = context->lfRow[i-1]+target_rows;
-            context->lfEnt[i] = cr->rpt[context->lfRow[i]];
-        }
-        for (i=0; i<nprocs-1; i++){
-            //    lcrp->lnrows[i] = lcrp->lfRow[i+1] - lcrp->lfRow[i] ;
-            context->lnEnts[i] = context->lfEnt[i+1] - context->lfEnt[i] ;
-        }
-
-        //    lcrp->lnrows[nprocs-1] = cr->nrows - lcrp->lfRow[nprocs-1] ;
-        context->lnEnts[nprocs-1] = cr->nEnts - context->lfEnt[nprocs-1];
-    }
-    MPI_Request req[nprocs];
-    MPI_Status stat[nprocs];
-    int msgcount = 0;
-
-    for (i=0;i<nprocs;i++) 
-        req[i] = MPI_REQUEST_NULL;
-
-    if (me != 0) {
-        MPI_safecall(MPI_Irecv(context->lnEnts,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-        msgcount++;
-    } else {
-        for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(context->lnEnts,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
-            msgcount++;
-        }
-    }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
-    msgcount = 0;
-
-    for (i=0;i<nprocs;i++) 
-        req[i] = MPI_REQUEST_NULL;
-
-    if (me != 0) {
-        MPI_safecall(MPI_Irecv(context->lfEnt,nprocs,ghost_mpi_dt_midx,0,me,mat->context->mpicomm,&req[msgcount]));
-        msgcount++;
-    } else {
-        for (i=1;i<nprocs;i++) {
-            MPI_safecall(MPI_Isend(context->lfEnt,nprocs,ghost_mpi_dt_midx,i,i,mat->context->mpicomm,&req[msgcount]));
-            msgcount++;
-        }
-    }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
-
-    // TODO why Bcast fails?
-
-    //    MPI_safecall(MPI_Bcast(lcrp->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-    //    MPI_safecall(MPI_Bcast(lcrp->lnEnts, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-
-
-}
 #endif
 
 static void CRS_readHeader(ghost_mat_t *mat, char *matrixPath)
@@ -1121,7 +679,7 @@ static void CRS_readColValOffset(ghost_mat_t *mat, char *matrixPath, ghost_mnnz_
             }
 
         } else {
-            CRS_castData_funcs[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(datatype)](CR(mat)->val,tmpval,nEnts);
+            ghost_castArray_funcs[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(datatype)](CR(mat)->val,tmpval,nEnts);
         }
 
         free(tmpval);
@@ -1223,6 +781,15 @@ static void CRS_upload(ghost_mat_t *mat)
   else return aRow - bRow;
   }*/
 
+/**
+ * @brief Creates a CRS matrix from a binary file.
+ *
+ * @param mat The matrix.
+ * @param matrixPath Path to the file.
+ *
+ * If the row pointers have already been read-in and stored in the context
+ * they will not be read in again.
+ */
 static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Reading CRS matrix from file");
@@ -1236,7 +803,78 @@ static void CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     } else {
 #ifdef GHOST_HAVE_MPI
         DEBUG_LOG(1,"Reading in a distributed context");
-        CRS_createDistributedContext(&mat,matrixPath);
+        DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
+
+        ghost_midx_t i;
+
+        ghost_context_t *context = mat->context;
+        int me = ghost_getRank(context->mpicomm); 
+        int nprocs = ghost_getNumberOfRanks(context->mpicomm);
+
+        CRS_readHeader(mat,matrixPath);  // read header
+
+        if (ghost_getRank(context->mpicomm) == 0) {
+            if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
+                ((CR_TYPE *)(mat->data))->rpt = context->rpt;
+            } else {
+                CR(mat)->rpt = CRS_readRpt(CR(mat)->nrows+1,matrixPath);  // read rpt
+                context->lfEnt[0] = 0;
+
+                for (i=1; i<nprocs; i++){
+                    context->lfEnt[i] = CR(mat)->rpt[context->lfRow[i]];
+                }
+                for (i=0; i<nprocs-1; i++){
+                    context->lnEnts[i] = context->lfEnt[i+1] - context->lfEnt[i] ;
+                }
+
+                context->lnEnts[nprocs-1] = CR(mat)->nEnts - context->lfEnt[nprocs-1];
+            }
+        }
+        MPI_safecall(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+        MPI_safecall(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
+            
+
+        DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
+
+        if (ghost_getRank(context->mpicomm) != 0) {
+            CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((context->lnrows[me]+1)*sizeof(ghost_midx_t));
+        }
+
+        MPI_Request req[nprocs];
+        MPI_Status stat[nprocs];
+        int msgcount = 0;
+
+        for (i=0;i<nprocs;i++) 
+            req[i] = MPI_REQUEST_NULL;
+
+        if (ghost_getRank(context->mpicomm) != 0) {
+            MPI_safecall(MPI_Irecv(CR(mat)->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]));
+            msgcount++;
+        } else {
+            for (i=1;i<nprocs;i++) {
+                MPI_safecall(MPI_Isend(&CR(mat)->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]));
+                msgcount++;
+            }
+        }
+        MPI_safecall(MPI_Waitall(msgcount,req,stat));
+
+        DEBUG_LOG(1,"Adjusting row pointers");
+        for (i=0;i<context->lnrows[me]+1;i++) {
+            CR(mat)->rpt[i] -= context->lfEnt[me]; 
+        }
+
+        CR(mat)->rpt[context->lnrows[me]] = context->lnEnts[me];
+
+        DEBUG_LOG(1,"local rows          = %"PRmatIDX,context->lnrows[me]);
+        DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,context->lfRow[me]);
+        DEBUG_LOG(1,"local entries          = %"PRmatNNZ,context->lnEnts[me]);
+        DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,context->lfEnt[me]);
+
+        CRS_readColValOffset(mat,matrixPath, context->lfEnt[me], context->lfRow[me], context->lnrows[me], context->lnEnts[me], GHOST_IO_STD);
+
+        DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
+        CR(mat)->nrows = context->lnrows[me];
+        CR(mat)->nEnts = context->lnEnts[me];
         mat->split(mat);
 #else
         ABORT("Trying to create a distributed context without MPI!");

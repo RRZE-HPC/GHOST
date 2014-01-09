@@ -532,6 +532,30 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     DEBUG_LOG(1,"Successfully created SELL");
 }
 
+template <typename m_t> static void SELL_print(ghost_mat_t *mat)
+{
+    ghost_midx_t chunk,i,j;
+    m_t *val = (m_t *)SELL(mat)->val;
+
+    stringstream buffer;
+
+    for (chunk = 0; chunk < SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; chunk++) {
+        for (i=0; i<SELL(mat)->chunkHeight; i++) {
+            ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
+            for (j=0; j<SELL(mat)->chunkLen[chunk]; j++) {
+                ghost_mnnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
+                buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
+            }
+            buffer << endl;
+        }
+        buffer << "---" << endl;
+    }
+
+    cout << buffer.str();
+
+}
+
+
 extern "C" void dd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
@@ -591,3 +615,15 @@ extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
+
+extern "C" void d_SELL_print(ghost_mat_t *mat)
+{ return SELL_print< double >(mat); }
+
+extern "C" void s_SELL_print(ghost_mat_t *mat)
+{ return SELL_print< float >(mat); }
+
+extern "C" void z_SELL_print(ghost_mat_t *mat)
+{ return SELL_print< ghost_complex<double> >(mat); }
+
+extern "C" void c_SELL_print(ghost_mat_t *mat)
+{ return SELL_print< ghost_complex<float> >(mat); }

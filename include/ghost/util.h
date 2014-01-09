@@ -88,6 +88,7 @@
 #define DEBUG_LOG(level,...) {if(DEBUG >= level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
 #define INFO_LOG(...) LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__)
 #define WARNING_LOG(...) LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__)
+#define ERROR_LOG(...) LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__)
 
 #ifdef GHOST_HAVE_MPI
 #define ABORT(...) {\
@@ -101,6 +102,8 @@
     exit(EXIT_FAILURE);\
 }
 #endif
+
+
 
 #define MPI_safecall(call) {\
     int mpierr = call ;\
@@ -357,7 +360,7 @@ extern "C" {
     double ghost_wctimemilli();
 
     double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
-    void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
+    ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);
     int ghost_flopsPerSpmvm(int m_t, int v_t);
