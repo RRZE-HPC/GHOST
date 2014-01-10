@@ -782,7 +782,14 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         memset(tmpval,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
 
         ghost_midx_t firstNzOfChunk = context->lfEnt[me]+rpt[chunk*SELL(mat)->chunkHeight];
-        ghost_midx_t nnzInChunk = rpt[(chunk+1)*SELL(mat)->chunkHeight]-rpt[chunk*SELL(mat)->chunkHeight];
+        ghost_midx_t nnzInChunk;
+
+        if ((chunk+1)*SELL(mat)->chunkHeight <= SELL(mat)->nrows) {
+            nnzInChunk = rpt[(chunk+1)*SELL(mat)->chunkHeight] - rpt[chunk*SELL(mat)->chunkHeight];
+        } else {
+            nnzInChunk = SELL(mat)->nnz - rpt[chunk*SELL(mat)->chunkHeight];
+        }
+
 
         GHOST_SAFECALL(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
         GHOST_SAFECALL(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
