@@ -23,6 +23,9 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
             traits->format = GHOST_SPM_FORMAT_CRS;
             mat = ghost_CRS_init(context,traits);
     }
+    // this will have to be overwritten by fromFile/fromFunc/..., but we give
+    // it a reasonable default here to avoid problems if it isn't:
+    mat->symmetry=GHOST_BINCRS_SYMM_GENERAL;
     return mat;    
 }
 ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
