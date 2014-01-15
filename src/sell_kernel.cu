@@ -17,7 +17,19 @@
 extern __shared__ char shared[];
 extern int ghost_cu_device;
 
-#define CALL(func,dt1,dt2,b1,b2,b3,b4,b5,...) func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,*(dt2 *)mat->traits->shift,*(dt2 *)mat->traits->scale,*(dt2 *)mat->traits->beta,(dt2 *)cu_localdot);
+#define CALL(func,dt1,dt2,b1,b2,b3,b4,b5,...){\
+    dt2 shift, scale, beta;\
+    if (options&GHOST_SPMVM_APPLY_SHIFT) {\
+            shift = *(dt2 *)mat->traits->shift;\
+    }\
+    if (options&GHOST_SPMVM_APPLY_SCALE) {\
+            scale = *(dt2 *)mat->traits->scale;\
+    }\
+    if (options&GHOST_SPMVM_AXPBY) {\
+            beta = *(dt2 *)mat->traits->beta;\
+    }\
+    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
+   }\
 
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
             if (options & GHOST_SPMVM_AXPY) {\
@@ -209,19 +221,19 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, int options, int
         if (do_shift) {
             if (do_scale) {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                 } else {
-                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)));
+                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
                 }
             } else {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                 } else {
-                    lhs[i] = axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f));
+                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
                 }
             }
         } else {
@@ -273,19 +285,19 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, int nrows, 
         if (do_shift) {
             if (do_scale) {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                 } else {
-                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)));
+                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
                 }
             } else {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                 } else {
-                    lhs[i] = axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f));
+                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
                 }
             }
         } else {
@@ -386,19 +398,19 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
             if (do_shift) {
                 if (do_scale) {
                     if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                     } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f))),1.f);
+                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
                     } else {
-                        lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)));
+                        lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
                     }
                 } else {
                     if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                        lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                     } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f)),1.f);
+                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
                     } else {
-                        lhs[i] = axpy<v_t,v_t>(rhs[i],tmp,scale2<v_t,float>(shift,-1.f));
+                        lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
                     }
                 }
             } else {
@@ -429,9 +441,6 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, int options, ghost_midx
 extern "C" void dd_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     CHOOSE_KERNEL(double,double);
-/*
-    SELL_kernel_CU_tmpl<double,double,options&GHOST_SPMVM_AXPY,GHOST_SPMVM_AXPBY,GHOST_SPMVM_APPLY_SCALE,GHOST_SPMVM_APPLY_SHIFT,GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT> 
-        <<< SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK >>> ((double *)lhs->CU_val,(double *)rhs->CU_val,options,SELL(mat)->cumat->nrows,SELL(mat)->cumat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(double *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,*(double *)mat->traits->shift,*(double *)mat->traits->scale,*(double *)mat->traits->beta,(double *)lhs->traits->localdot);*/
 }
 
 extern "C" void ds_SELL_kernel_CU(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
