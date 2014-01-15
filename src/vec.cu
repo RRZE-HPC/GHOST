@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <cublas_v2.h>
 #include <curand.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 
 #include "ghost/cu_complex_helper.h"
 

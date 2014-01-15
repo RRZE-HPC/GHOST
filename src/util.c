@@ -604,7 +604,7 @@ void *ghost_malloc(const size_t size)
     mem = malloc(size);
 
     if( ! mem ) {
-        ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
+      //  ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
     }
     return mem;
 }
@@ -1022,6 +1022,15 @@ int ghost_init(int argc, char **argv)
 
     globcpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
 
+    /* No hyperthreads in thread pool */
+    /*int cpu;
+    hwloc_bitmap_foreach_begin(cpu,globcpuset);
+    if (hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,cpu)->sibling_rank != 0) {
+        hwloc_bitmap_clr(globcpuset,cpu);
+    }
+    hwloc_bitmap_foreach_end();*/
+
+
 #if GHOST_HAVE_CUDA
     int cudaDevice = 0;
 
@@ -1043,6 +1052,8 @@ int ghost_init(int argc, char **argv)
             hwloc_obj_t runner = mynode;
             while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
                 runner = runner->first_child;
+                char *foo;
+                hwloc_bitmap_list_asprintf(&foo,runner->cpuset);
             }
             if (i == ghost_getRank(ghost_node_comm)) {
                 hwloc_bitmap_copy(mycpuset,runner->cpuset);
@@ -1073,7 +1084,7 @@ int ghost_init(int argc, char **argv)
             }
         }
     } 
-   /* char *cpusetstr, *mycpusetstr;
+    /*char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset: %s",cpusetstr);
     if (hwloc_bitmap_weight(globcpuset) > 0) {

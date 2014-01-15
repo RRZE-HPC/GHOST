@@ -110,7 +110,7 @@ int ghost_getCore()
     return pu;
 }
 
-int ghost_getRank(MPI_Comm comm) 
+int ghost_getRank(ghost_mpi_comm_t comm) 
 {
 #ifdef GHOST_HAVE_MPI
     int rank;
@@ -193,7 +193,7 @@ int ghost_getNumberOfNodes()
 #endif
 }
 
-int ghost_getNumberOfRanks(MPI_Comm comm)
+int ghost_getNumberOfRanks(ghost_mpi_comm_t comm)
 {
 #ifdef GHOST_HAVE_MPI
     int nnodes;

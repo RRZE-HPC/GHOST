@@ -7,11 +7,14 @@
 #pragma warning (disable : 424)
 #endif
 #include <mpi.h>
+typedef MPI_Comm ghost_mpi_comm_t;
 #ifdef __INTEL_COMPILER
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
 #endif
 #else
+typedef int ghost_mpi_comm_t;
+#define MPI_COMM_WORLD 0
 //typedef int MPI_Comm;
 //#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
@@ -24,7 +27,7 @@
 #include <CL/cl.h>
 #endif
 
-#ifdef LONGIDX
+#if GHOST_HAVE_LONGIDX
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
 typedef int64_t ghost_vidx_t; // type for the index of the vector
@@ -42,7 +45,7 @@ typedef cl_long ghost_cl_mnnz_t;
 #define PRmatIDX PRId64
 #define PRvecIDX PRId64
 
-#else // ifdef LONGIDX
+#else
 
 typedef int32_t ghost_midx_t; // type for the index of the matrix
 typedef int32_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
@@ -71,6 +74,7 @@ typedef enum ghost_error_t {
     GHOST_ERR_CUDA,
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_INTERNAL,
+    GHOST_ERR_NOT_IMPLEMENTED,
     GHOST_ERR_IO
 } ghost_error_t;
 
@@ -405,6 +409,7 @@ struct ghost_mat_t
     // access functions
     void       (*destroy) (ghost_mat_t *);
     void       (*printInfo) (ghost_mat_t *);
+    const char * (*stringify) (ghost_mat_t *, int);
     void       (*print) (ghost_mat_t *);
     ghost_mnnz_t  (*nnz) (ghost_mat_t *);
     ghost_midx_t  (*nrows) (ghost_mat_t *);
@@ -412,7 +417,7 @@ struct ghost_mat_t
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
     ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
-    void       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
@@ -454,11 +459,7 @@ struct ghost_context_t
     ghost_midx_t *rowPerm;    // may be NULL
     ghost_midx_t *invRowPerm; // may be NULL
 
-#if GHOST_HAVE_MPI
-    MPI_Comm mpicomm;
-#else
-    int mpicomm;
-#endif
+    ghost_mpi_comm_t mpicomm;
     
     /**
      * @brief Number of remote elements with unique colidx

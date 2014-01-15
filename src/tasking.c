@@ -149,7 +149,8 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
 
     i=0;
     hwloc_bitmap_foreach_begin(cpu,ghost_thpool->cpuset);
-    ghost_thpool->PUs[i++] = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,cpu);
+    ghost_thpool->PUs[i] = hwloc_get_pu_obj_by_os_index(topology,cpu);
+    i++;
     hwloc_bitmap_foreach_end();
 
     int nodes[totalThreads];
@@ -157,12 +158,12 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
         nodes[i] = 0;
         obj = ghost_thpool->PUs[i];
         for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_NODE) {
+            if (!hwloc_compare_types(runner->type,HWLOC_OBJ_NODE)) {
                 nodes[i] = runner->logical_index;
                 break;
             }
         }
-        DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,runner->logical_index);
+        //INFO_LOG("Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,nodes[i]);
     }
 
     qsort(nodes,totalThreads,sizeof(int),intcomp);
@@ -468,6 +469,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                     reservedCores++;
                     t++;
                     break;
+                } else {
+                    WARNING_LOG("%d in use",core);
                 }
             }
         }

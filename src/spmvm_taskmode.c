@@ -62,6 +62,7 @@ static void *communicate(void *vargs)
     int to_PE,from_PE;
     ghost_vidx_t c;
 
+    args->rhs->download(args->rhs);
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
@@ -82,7 +83,7 @@ static void *communicate(void *vargs)
 
     MPI_safecall(MPI_Waitall(args->msgcount, args->request, args->status));
 
-    args->rhs->uploadHalo(args->rhs);
+    args->rhs->upload(args->rhs);
     return NULL;
 }
 
@@ -180,10 +181,10 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
             DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
             taskflags |= GHOST_TASK_USE_PARENTS;
             ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-            ghost_task_init(&compTask, parent->nThreads, 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-            ghost_task_init(&compRTask, parent->nThreads, 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&compTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&compRTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
             ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
-            ghost_task_init(&prepareTask, parent->nThreads, 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+            ghost_task_init(&prepareTask, parent->nThreads/ghost_getSMTlevel(), 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
         } else {
             DEBUG_LOG(1,"No parent task in task mode spMVM solver");
             ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);

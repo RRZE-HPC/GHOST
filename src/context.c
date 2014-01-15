@@ -5,9 +5,10 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/crs.h"
+#include "ghost/io.h"
 
 
-ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, MPI_Comm comm, double weight) 
+ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
     int i;
 
@@ -26,7 +27,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
         ghost_matfile_header_t fileheader;
         ghost_readMatFileHeader((char *)matrixSource,&fileheader);
-#ifndef LONGIDX
+#if !(GHOST_HAVE_LONGIDX)
         if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
             ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
         }
@@ -37,7 +38,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             (*context)->gncols = (ghost_midx_t)fileheader.ncols;
 
     } else {
-#ifndef LONGIDX
+#if !(GHOST_HAVE_LONGIDX)
         if ((gnrows >= (int64_t)INT_MAX) || (gncols >= (int64_t)INT_MAX)) {
             ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
         }
@@ -89,7 +90,8 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 
             if (ghost_getRank((*context)->mpicomm) == 0) {
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
-                    rpt = CRS_readRpt((*context)->gnrows+1,(char *)matrixSource);
+                    rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*((*context)->gnrows+1));
+                    ghost_readRpt(rpt,(char *)matrixSource,0,(*context)->gnrows+1);  // read rpt
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
                     ghost_spmFromRowFunc_t func = (ghost_spmFromRowFunc_t)matrixSource;
                     rpt = ghost_malloc(((*context)->gnrows+1)*sizeof(ghost_midx_t));
@@ -148,11 +150,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             double allweights;
             MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm))
 
-                ghost_midx_t my_target_rows = (ghost_midx_t)((*context)->gnrows*((double)weight/(double)allweights));
-            ghost_midx_t target_rows[nprocs];
+            ghost_midx_t my_target_rows = (ghost_midx_t)((*context)->gnrows*((double)weight/(double)allweights));
+            ghost_midx_t *target_rows = (ghost_midx_t *)ghost_malloc(nprocs*sizeof(ghost_midx_t));
 
-            MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,&target_rows[me],1,ghost_mpi_dt_midx,(*context)->mpicomm));
-
+            MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,target_rows,1,ghost_mpi_dt_midx,(*context)->mpicomm));
+                       
             (*context)->rpt = NULL;
             (*context)->lfRow[0] = 0;
 
@@ -167,6 +169,9 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
             (*context)->lnEnts[0] = -1;
             (*context)->lfEnt[0] = -1;
+
+            free(target_rows);
+            DEBUG_LOG("done");
         }
 
     } else {
@@ -380,8 +385,10 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     }
     free(wishlist);
 
+#if GHOST_HAVE_MPI
     MPI_safecall(MPI_Allgather ( ctx->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
                 nprocs, MPI_INTEGER, ctx->mpicomm )) ;
+#endif
 
     for (i=0; i<nprocs; i++) {
         ctx->dues[i] = tmp_transfers[i*nprocs+me];
@@ -489,8 +496,6 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
     size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
 
-    MPI_safecall(MPI_Barrier(ctx->mpicomm));
-
     ctx->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
     ctx->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
     int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
@@ -513,6 +518,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
         }
     }
 
+#if GHOST_HAVE_MPI
     MPI_Request req[2*nprocs];
     MPI_Status stat[2*nprocs];
     for (i=0;i<2*nprocs;i++) 
@@ -536,6 +542,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     }
 
     MPI_safecall(MPI_Waitall(msgcount,req,stat));
+#endif
 
     for (i=0; i<nprocs; i++)
         free(cwishlist[i]);

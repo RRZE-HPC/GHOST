@@ -1,4 +1,5 @@
 #include "ghost/config.h"
+#include "ghost/types.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
@@ -53,7 +54,6 @@ using namespace std;
 template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
-    DEBUG_LOG(2,"In plain SELL kernel w/ %d chunks",sell->nrowsPadded/chunkHeight);
     v_t *rhsv;
     v_t *lhsv;
     v_t *local_dot_product, *partsums;
@@ -532,17 +532,17 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     DEBUG_LOG(1,"Successfully created SELL");
 }
 
-template <typename m_t> static void SELL_print(ghost_mat_t *mat)
+template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int dense)
 {
-    ghost_midx_t chunk,i,j;
+    ghost_midx_t chunk,i,j,row=0;
     m_t *val = (m_t *)SELL(mat)->val;
 
     stringstream buffer;
 
+    buffer << "---" << endl;
     for (chunk = 0; chunk < SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; chunk++) {
-        for (i=0; i<SELL(mat)->chunkHeight; i++) {
-            ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
-            for (j=0; j<SELL(mat)->chunkLen[chunk]; j++) {
+        for (i=0; i<SELL(mat)->chunkHeight && row<SELL(mat)->nrows; i++, row++) {
+            for (j=0; j<(dense?SELL(mat)->ncols:SELL(mat)->chunkLen[chunk]); j++) {
                 ghost_mnnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
                 buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
             }
@@ -551,7 +551,7 @@ template <typename m_t> static void SELL_print(ghost_mat_t *mat)
         buffer << "---" << endl;
     }
 
-    cout << buffer.str();
+    return buffer.str().c_str();
 }
 
 
@@ -615,14 +615,14 @@ extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
 
-extern "C" void d_SELL_print(ghost_mat_t *mat)
-{ return SELL_print< double >(mat); }
+extern "C" const char * d_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< double >(mat, dense); }
 
-extern "C" void s_SELL_print(ghost_mat_t *mat)
-{ return SELL_print< float >(mat); }
+extern "C" const char * s_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< float >(mat, dense); }
 
-extern "C" void z_SELL_print(ghost_mat_t *mat)
-{ return SELL_print< ghost_complex<double> >(mat); }
+extern "C" const char * z_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< ghost_complex<double> >(mat, dense); }
 
-extern "C" void c_SELL_print(ghost_mat_t *mat)
-{ return SELL_print< ghost_complex<float> >(mat); }
+extern "C" const char * c_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< ghost_complex<float> >(mat, dense); }

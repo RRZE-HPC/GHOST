@@ -33,7 +33,7 @@ typedef enum ghost_context_flags_t {
 extern "C" {
 #endif
 
-ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, MPI_Comm comm, double weight); 
+ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight); 
 void              ghost_freeContext(ghost_context_t *);
 ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col);
 

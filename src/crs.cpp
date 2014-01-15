@@ -5,6 +5,7 @@
 #endif
 #include <stdio.h>
 
+#include "ghost/affinity.h"
 #include "ghost/complex.h"
 #include "ghost/math.h"
 #include "ghost/util.h"

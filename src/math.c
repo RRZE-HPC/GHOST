@@ -122,10 +122,13 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
 
-#ifdef LONGIDX // TODO
-    WARNING_LOG("GEMM with LONGIDX not implemented");
-    return GHOST_FAILURE;
-#endif
+#if GHOST_HAVE_LONGIDX // TODO
+    UNUSED(alpha);
+    UNUSED(beta);
+    ERROR_LOG("GEMM with LONGIDX not implemented");
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#else
+
 
     ghost_blas_idx_t *m, *n, *k;
     m = (ghost_blas_idx_t *)&nrV;
@@ -276,6 +279,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
 #endif
 
     return GHOST_SUCCESS;
+#endif
 
 }
 

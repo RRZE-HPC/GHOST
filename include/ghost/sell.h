@@ -134,10 +134,10 @@ void s_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void c_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void z_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 
-void d_SELL_print(ghost_mat_t *mat);
-void s_SELL_print(ghost_mat_t *mat);
-void c_SELL_print(ghost_mat_t *mat);
-void z_SELL_print(ghost_mat_t *mat);
+const char * d_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * s_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * c_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * z_SELL_stringify(ghost_mat_t *mat, int dense);
 #ifdef __cplusplus
 }
 #endif

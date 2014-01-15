@@ -26,7 +26,6 @@
 #define LOCAL_HOSTNAME_MAX 	256
 
 
-
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
     if (datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -57,83 +56,6 @@ MPI_Op ghost_mpi_op_sum(int datatype)
     }
 
 }
-
-void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Datatype sendtype, void *recvbuv, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm)
-{
-#ifdef LONGIDX
-
-    UNUSED(sendbuf);
-    UNUSED(sendcnts);
-    UNUSED(displs);
-    UNUSED(sendtype);
-    UNUSED(recvbuv);
-    UNUSED(recvcnt);
-    UNUSED(recvtype);
-    UNUSED(root);
-    UNUSED(comm);
-#else
-    MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvtype,root,comm));
-#endif
-
-}
-
-/*int ghost_setupLocalMPIcomm(MPI_Comm mpicomm) 
-{
-    int i, coreId, me, n_nodes, me_node;
-    char **all_hostnames;
-    char *all_hn_mem;
-    char hostname[MAXHOSTNAMELEN];
-    gethostname(hostname,MAXHOSTNAMELEN);
-
-    size_t size_ahnm, size_ahn, size_nint;
-    int *mymate, *acc_mates;
-
-    MPI_safecall(MPI_Comm_size ( mpicomm, &n_nodes ));
-    MPI_safecall(MPI_Comm_rank ( mpicomm, &me ));
-
-//    coreId = getProcessorId();
-
-    size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
-    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
-    size_nint = (size_t)( n_nodes    * sizeof(int) );
-
-    mymate        = (int*)      malloc( size_nint);
-    acc_mates     = (int*)      malloc( size_nint );
-    all_hn_mem    = (char*)     malloc( size_ahnm );
-    all_hostnames = (char**)    malloc( size_ahn );
-
-    for (i=0; i<n_nodes; i++){
-        all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
-        mymate[i] = 0;
-    }
-
-    MPI_safecall(MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-                &all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, mpicomm ));
-
-    coreId=ghost_getCore();
-    if (coreId==0){
-        for (i=0; i<n_nodes; i++){
-            if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
-        }
-    }
-    for (i=0; i<n_nodes; i++) {
-      INFO_LOG("mymate[%d] = %d",i,mymate[i]);
-    }  
-
-    MPI_safecall(MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, mpicomm)); 
-    MPI_safecall(MPI_Comm_split ( mpicomm, acc_mates[me], me, &ghost_node_mpicomm ));
-    MPI_safecall(MPI_Comm_rank ( ghost_node_mpicomm, &me_node));
-
-    INFO_LOG("local ranks: %d",ghost_getNumberOfRanks(ghost_node_mpicomm));
-    DEBUG_LOG(1,"Rank in single node comm: %d", me_node);
-
-    free( mymate );
-    free( acc_mates );
-    free( all_hn_mem );
-    free( all_hostnames );
-
-    return GHOST_SUCCESS;
-}*/
 
 static uint32_t adler32(const void * buf, size_t buflength)
 {

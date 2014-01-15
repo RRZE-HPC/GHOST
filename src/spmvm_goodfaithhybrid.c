@@ -74,6 +74,8 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     kmp_set_blocktime(1);
 #endif
 
+    invec->download(invec);
+    
     msgcount = 0;
     for (i=0;i<invec->traits->nvecs*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
@@ -114,7 +116,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     MPI_safecall(MPI_Waitall(msgcount, request, status));
     GHOST_INSTR_STOP(spmvm_gf_waitall);
 
-    invec->uploadHalo(invec);
+    invec->upload(invec);
 
     GHOST_INSTR_START(spmvm_gf_remote);
     mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);

@@ -204,7 +204,7 @@ static void vec_downloadHalo(ghost_vec_t *vec)
 static void vec_uploadNonHalo(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
@@ -242,7 +242,7 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
 static void vec_upload(ghost_vec_t *vec) 
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {

@@ -14,14 +14,14 @@ extern hwloc_topology_t topology;
 extern "C" {
 #endif
 
-int ghost_getRank(MPI_Comm);
+int ghost_getRank(ghost_mpi_comm_t);
 //int ghost_getLocalRank(MPI_Comm);
 //int ghost_getNumberOfLocalRanks(MPI_Comm);
 int ghost_getNumberOfHwThreads();
 int ghost_getNumberOfNumaNodes();
 int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
-int ghost_getNumberOfRanks(MPI_Comm);
+int ghost_getNumberOfRanks(ghost_mpi_comm_t);
 int ghost_getNumberOfPhysicalCores();
 int ghost_getCore();
 int ghost_getSMTlevel();
