@@ -152,7 +152,7 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 
     mat->localPart = NULL;
     mat->remotePart = NULL;
-   
+
     int me = ghost_getRank(mat->context->mpicomm);
 
     SELL(mat)->nrows = mat->context->lnrows[me];
@@ -266,20 +266,21 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     if (SELL(mat)->scope > 1) {
         WARNING_LOG("Sorted SELL from Func not implemented");
     }
- //   WARNING_LOG("SELL-%d-%d from row func",SELL(mat)->chunkHeight,SELL(mat)->scope);
+    //   WARNING_LOG("SELL-%d-%d from row func",SELL(mat)->chunkHeight,SELL(mat)->scope);
     UNUSED(base);
     UNUSED(flags);
     int nprocs = 1;
 #if GHOST_HAVE_MPI
     nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 #endif
-    
-    ghost_midx_t i;
+
+    //char *tmpval;
+    //ghost_midx_t *tmpcol;    
+    ghost_midx_t i,col,row;
+    ghost_midx_t chunk,j;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    char *tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
     int me = ghost_getRank(mat->context->mpicomm);
-    
+
     ghost_midx_t nChunks = SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight;
     SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
     SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
@@ -291,83 +292,111 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     SELL(mat)->maxRowLen = 0;
     SELL(mat)->nEnts = 0;
     SELL(mat)->nnz = 0;
-   
+
     ghost_midx_t maxRowLenInChunk = 0;
-    ghost_midx_t curChunk = 0;
+    ghost_mnnz_t nEnts = 0, nnz = 0;
     SELL(mat)->chunkStart[0] = 0;
-    for( i = 0; i < SELL(mat)->nrowsPadded; i++ ) {
 
-        if (i < SELL(mat)->nrows) {
-            func(mat->context->lfRow[me]+i,&SELL(mat)->rowLen[i],tmpcol,tmpval);
-        } else {
-            SELL(mat)->rowLen[i] = 0;
-        }
-        
-        SELL(mat)->rowLenPadded[i] = ghost_pad(SELL(mat)->rowLen[i],SELL(mat)->T);
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
+    { 
+        char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+        ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+#pragma omp for
+        for( chunk = 0; chunk < nChunks; chunk++ ) {
+            for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
 
-        SELL(mat)->nnz += SELL(mat)->rowLen[i];
-        maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[i]);
+                if (row < SELL(mat)->nrows) {
+                    func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                } else {
+                    SELL(mat)->rowLen[row] = 0;
+                }
 
-        if ((i+1)%SELL(mat)->chunkHeight == 0) {
+                SELL(mat)->rowLenPadded[row] = ghost_pad(SELL(mat)->rowLen[row],SELL(mat)->T);
 
+                nnz += SELL(mat)->rowLen[row];
+                maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
+            }
             SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,maxRowLenInChunk);
-            SELL(mat)->chunkLen[curChunk] = maxRowLenInChunk;
-            SELL(mat)->chunkLenPadded[curChunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
-            SELL(mat)->nEnts += SELL(mat)->chunkLenPadded[curChunk]*SELL(mat)->chunkHeight;
-            SELL(mat)->chunkStart[curChunk+1] = SELL(mat)->nEnts;
+            SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
+            SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
+            nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
             maxRowLenInChunk = 0;
-            curChunk++;
         }
+
+        free(tmpval);
+        free(tmpcol);
     }
-    
+
+    for( chunk = 0; chunk < nChunks; chunk++ ) {
+        SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
+    }
+                
+    SELL(mat)->nEnts = nEnts;
+    SELL(mat)->nnz = nnz;
+
     SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
- 
-    memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
-    memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen*SELL(mat)->chunkHeight);
-    curChunk = 0;
-    ghost_midx_t rowInChunk = 0; 
-    for( i = 0; i < SELL(mat)->nrowsPadded; i++ ) {
 
-        if (i < SELL(mat)->nrows) {
-            func(mat->context->lfRow[me]+i,&SELL(mat)->rowLen[i],&tmpcol[maxrowlen*rowInChunk],&tmpval[maxrowlen*rowInChunk*sizeofdt]);
+
+#pragma omp parallel for schedule(runtime) private (i,j)
+    for (chunk = 0; chunk < nChunks; chunk++) {
+        for (j=0; j<SELL(mat)->chunkLenPadded[chunk]; j++) {
+            for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = 0;
+                memset(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i)],0,sizeofdt);
+            }
         }
-        rowInChunk++;
+    }
 
-        if ((i+1)%SELL(mat)->chunkHeight == 0) {
-            ghost_midx_t row,col;
-            for (row = 0; row<SELL(mat)->chunkHeight; row++) {
-                for (col = 0; col<SELL(mat)->chunkLenPadded[curChunk]; col++) {
-                   memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[curChunk]+col*SELL(mat)->chunkHeight+row)],&tmpval[sizeofdt*(row*maxrowlen+col)],sizeofdt);
-                   memcpy(&SELL(mat)->col[SELL(mat)->chunkStart[curChunk]+col*SELL(mat)->chunkHeight+row],&tmpcol[row*maxrowlen+col],sizeof(ghost_midx_t));
+#pragma omp parallel private(i,col,chunk,row)
+    { 
+        char * tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
+        ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
+        memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
+        memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen*SELL(mat)->chunkHeight);
+#pragma omp for 
+        for( chunk = 0; chunk < nChunks; chunk++ ) {
+            for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                row = chunk*SELL(mat)->chunkHeight+i;
 
-                   //printf("%f ",((double *)(SELL(mat)->val))[(SELL(mat)->chunkStart[curChunk]+col*SELL(mat)->chunkHeight+row)]);
+                if (row < SELL(mat)->nrows) {
+                    func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*sizeofdt]);
+                }
+
+            }
+            for (i = 0; i<SELL(mat)->chunkHeight; i++) {
+                for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
+                    memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
+                    memcpy(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i],&tmpcol[i*maxrowlen+col],sizeof(ghost_midx_t));
+
+                    //printf("%f ",((double *)(SELL(mat)->val))[(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)]);
                 }
                 //printf("\n");
             }
 
             memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
             memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen*SELL(mat)->chunkHeight);
-            curChunk++;
-            rowInChunk = 0;
         }
+        free(tmpval);
+        free(tmpcol);
     }
-    
+
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
-        
+
         mat->context->lnEnts[me] = SELL(mat)->nEnts;
 
         ghost_mnnz_t nents[nprocs];
         nents[me] = mat->context->lnEnts[me];
         MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
-        
+
         for (i=0; i<nprocs; i++) {
-           mat->context->lfEnt[i] = 0;
+            mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
+            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
         } 
 
         mat->split(mat);
@@ -381,15 +410,12 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     if (!(mat->traits->flags & GHOST_SPM_HOST))
         mat->CUupload(mat);
 #endif
-    free(tmpval);
-    free(tmpcol);
-
     return GHOST_SUCCESS;
 
 }
 
 static void SELL_split(ghost_mat_t *mat)
-    {
+{
     SELL_TYPE *fullSELL = SELL(mat);
     SELL_TYPE *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
@@ -414,10 +440,10 @@ static void SELL_split(ghost_mat_t *mat)
 
     mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
     remoteSELL = mat->remotePart->data; 
-        
+
     localSELL->T = fullSELL->T;
     remoteSELL->T = fullSELL->T;
-    
+
     localSELL->chunkStart = (ghost_midx_t*) ghost_malloc((fullSELL->nrowsPadded/fullSELL->chunkHeight+1)*sizeof( ghost_midx_t )); 
     localSELL->chunkMin = (ghost_midx_t*) ghost_malloc(fullSELL->nrowsPadded/fullSELL->chunkHeight*sizeof( ghost_midx_t )); 
     localSELL->chunkLen = (ghost_midx_t*) ghost_malloc(fullSELL->nrowsPadded/fullSELL->chunkHeight*sizeof( ghost_midx_t )); 
@@ -448,19 +474,19 @@ static void SELL_split(ghost_mat_t *mat)
     }
     localSELL->chunkStart[0] = 0;
     remoteSELL->chunkStart[0] = 0;
-  
+
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
         lnEnts_l = 0;
         lnEnts_r = 0;
-        
+
         for(chunk = 0; chunk < fullSELL->nrowsPadded/fullSELL->chunkHeight; chunk++) {
 
             for (i=0; i<fullSELL->chunkLen[chunk]; i++) {
                 for (j=0; j<fullSELL->chunkHeight; j++) {
                     row = chunk*fullSELL->chunkHeight+j;
                     idx = fullSELL->chunkStart[chunk]+i*fullSELL->chunkHeight+j;
-                      
+
                     if (i < fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             localSELL->rowLen[row]++;
@@ -472,7 +498,7 @@ static void SELL_split(ghost_mat_t *mat)
                     }
                 }
             }
-           
+
             for (j=0; j<fullSELL->chunkHeight; j++) {
                 row = chunk*fullSELL->chunkHeight+j;
                 localSELL->chunkLen[chunk] = MAX(localSELL->chunkLen[chunk],localSELL->rowLen[row]);
@@ -485,17 +511,17 @@ static void SELL_split(ghost_mat_t *mat)
 
             localSELL->chunkLenPadded[chunk] = ghost_pad(localSELL->chunkLen[chunk],localSELL->T);
             remoteSELL->chunkLenPadded[chunk] = ghost_pad(remoteSELL->chunkLen[chunk],remoteSELL->T);
-             
+
         }
-            
+
 
 
         /*
-        for (i=0; i<fullSELL->nEnts;i++) {
-            if (fullSELL->col[i]<mat->context->lnrows[me]) lnEnts_l++;
-        }
-        lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;*/
-        
+           for (i=0; i<fullSELL->nEnts;i++) {
+           if (fullSELL->col[i]<mat->context->lnrows[me]) lnEnts_l++;
+           }
+           lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;*/
+
 
         localSELL->val = ghost_malloc(lnEnts_l*sizeofdt); 
         localSELL->col = (ghost_midx_t*) ghost_malloc(lnEnts_l*sizeof( ghost_midx_t )); 
@@ -540,9 +566,9 @@ static void SELL_split(ghost_mat_t *mat)
         current_l = 0;
         current_r = 0;
         ghost_midx_t col_l[fullSELL->chunkHeight], col_r[fullSELL->chunkHeight];
-           
+
         for(chunk = 0; chunk < fullSELL->nrowsPadded/fullSELL->chunkHeight; chunk++) {
-            
+
             for (j=0; j<fullSELL->chunkHeight; j++) {
                 col_l[j] = 0;
                 col_r[j] = 0;
@@ -552,7 +578,7 @@ static void SELL_split(ghost_mat_t *mat)
                 for (j=0; j<fullSELL->chunkHeight; j++) {
                     row = chunk*fullSELL->chunkHeight+j;
                     idx = fullSELL->chunkStart[chunk]+i*fullSELL->chunkHeight+j;
-                   
+
                     if (i<fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             if (col_l[j] < localSELL->rowLen[row]) {
@@ -585,27 +611,27 @@ static void SELL_split(ghost_mat_t *mat)
     }
 #endif
 
-/*    INFO_LOG("+ local +++++++");
-    for(chunk = 0; chunk < localSELL->nrowsPadded/localSELL->chunkHeight; chunk++) {
-        INFO_LOG("chunk %d, start %d, len %d",chunk,localSELL->chunkStart[chunk],localSELL->chunkLen[chunk]);
-        for (i=0; i<localSELL->chunkLen[chunk]; i++) {
-            for (j=0; j<localSELL->chunkHeight; j++) {
-                idx = localSELL->chunkStart[chunk]+i*localSELL->chunkHeight+j;
-                INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(localSELL->val))[idx],localSELL->col[idx]);
-            }
-        }
-    }
-    
-    INFO_LOG("+ remote +++++++");
-    for(chunk = 0; chunk < remoteSELL->nrowsPadded/remoteSELL->chunkHeight; chunk++) {
-        INFO_LOG("chunk %d, start %d, len %d",chunk,remoteSELL->chunkStart[chunk],remoteSELL->chunkLen[chunk]);
-        for (i=0; i<remoteSELL->chunkLen[chunk]; i++) {
-            for (j=0; j<remoteSELL->chunkHeight; j++) {
-                idx = remoteSELL->chunkStart[chunk]+i*remoteSELL->chunkHeight+j;
-                INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(remoteSELL->val))[idx],remoteSELL->col[idx]);
-            }
-        }
-    }*/
+    /*    INFO_LOG("+ local +++++++");
+          for(chunk = 0; chunk < localSELL->nrowsPadded/localSELL->chunkHeight; chunk++) {
+          INFO_LOG("chunk %d, start %d, len %d",chunk,localSELL->chunkStart[chunk],localSELL->chunkLen[chunk]);
+          for (i=0; i<localSELL->chunkLen[chunk]; i++) {
+          for (j=0; j<localSELL->chunkHeight; j++) {
+          idx = localSELL->chunkStart[chunk]+i*localSELL->chunkHeight+j;
+          INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(localSELL->val))[idx],localSELL->col[idx]);
+          }
+          }
+          }
+
+          INFO_LOG("+ remote +++++++");
+          for(chunk = 0; chunk < remoteSELL->nrowsPadded/remoteSELL->chunkHeight; chunk++) {
+          INFO_LOG("chunk %d, start %d, len %d",chunk,remoteSELL->chunkStart[chunk],remoteSELL->chunkLen[chunk]);
+          for (i=0; i<remoteSELL->chunkLen[chunk]; i++) {
+          for (j=0; j<remoteSELL->chunkHeight; j++) {
+          idx = remoteSELL->chunkStart[chunk]+i*remoteSELL->chunkHeight+j;
+          INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(remoteSELL->val))[idx],remoteSELL->col[idx]);
+          }
+          }
+          }*/
 
 }
 
@@ -655,25 +681,25 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         if (context->flags & GHOST_CONTEXT_WORKDIST_ROWS) { // lnents and lfent have to be filled!
             rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*(context->gnrows+1));
             ghost_readRpt(rpt,matrixPath,0,context->gnrows+1);  // read rpt
-            
-           /* DEBUG_LOG(1,"Adjust lfrow and lnrows for each process according to the SELL chunk height of %"PRmatIDX,SELL(mat)->chunkHeight);
-            for (proc=0; proc<nprocs; proc++) {
-                if (context->lfRow[proc] % SELL(mat)->chunkHeight > SELL(mat)->chunkHeight/2) {
-                    ghost_midx_t old = context->lfRow[proc];
-                    context->lfRow[proc] += SELL(mat)->chunkHeight - (context->lfRow[proc] % SELL(mat)->chunkHeight); 
-                    DEBUG_LOG(1,"PE%d: %"PRmatIDX"->%"PRmatIDX,proc,old,context->lfRow[proc]); 
-                } else if (context->lfRow[proc] % SELL(mat)->chunkHeight > 0) {
-                    ghost_midx_t old = context->lfRow[proc];
-                    context->lfRow[proc] -= context->lfRow[proc] % SELL(mat)->chunkHeight;
-                    if (proc>0 && (context->lfRow[proc] == context->lfRow[proc-1])) {
-                        context->lfRow[proc] += SELL(mat)->chunkHeight;
-                    }
-                    DEBUG_LOG(1,"PE%d: %"PRmatIDX"->%"PRmatIDX,proc,old,context->lfRow[proc]); 
-                } else {
-                    DEBUG_LOG(1,"PE%d: %"PRmatIDX,proc,context->lfRow[proc]);
-                }
-            }*/
-            
+
+            /* DEBUG_LOG(1,"Adjust lfrow and lnrows for each process according to the SELL chunk height of %"PRmatIDX,SELL(mat)->chunkHeight);
+               for (proc=0; proc<nprocs; proc++) {
+               if (context->lfRow[proc] % SELL(mat)->chunkHeight > SELL(mat)->chunkHeight/2) {
+               ghost_midx_t old = context->lfRow[proc];
+               context->lfRow[proc] += SELL(mat)->chunkHeight - (context->lfRow[proc] % SELL(mat)->chunkHeight); 
+               DEBUG_LOG(1,"PE%d: %"PRmatIDX"->%"PRmatIDX,proc,old,context->lfRow[proc]); 
+               } else if (context->lfRow[proc] % SELL(mat)->chunkHeight > 0) {
+               ghost_midx_t old = context->lfRow[proc];
+               context->lfRow[proc] -= context->lfRow[proc] % SELL(mat)->chunkHeight;
+               if (proc>0 && (context->lfRow[proc] == context->lfRow[proc-1])) {
+               context->lfRow[proc] += SELL(mat)->chunkHeight;
+               }
+               DEBUG_LOG(1,"PE%d: %"PRmatIDX"->%"PRmatIDX,proc,old,context->lfRow[proc]); 
+               } else {
+               DEBUG_LOG(1,"PE%d: %"PRmatIDX,proc,context->lfRow[proc]);
+               }
+               }*/
+
 
             mat->context->lfEnt[0] = 0;
 
@@ -687,11 +713,11 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     MPI_safecall(MPI_Bcast(mat->context->lnrows, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
     MPI_safecall(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
 #endif
-    
-       
+
+
     SELL(mat)->nrows = context->lnrows[me];
     SELL(mat)->nrowsPadded = ghost_pad(context->lnrows[me],SELL(mat)->chunkHeight);
-       
+
     ghost_midx_t nChunks =  SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight;
     SELL(mat)->chunkStart = (ghost_midx_t *)ghost_malloc((nChunks+1)*sizeof(ghost_midx_t));
     SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc(nChunks*sizeof(ghost_midx_t));
@@ -722,7 +748,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     }
     MPI_safecall(MPI_Waitall(msgcount,req,stat));
 #endif 
-    
+
     for (i=0;i<context->lnrows[me]+1;i++) {
         rpt[i] -= context->lfEnt[me]; 
     }
@@ -745,7 +771,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
             SELL(mat)->rowLen[i] = 0;
         }
         SELL(mat)->rowLenPadded[i] = ghost_pad(SELL(mat)->rowLen[i],SELL(mat)->T);
-        
+
         maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[i]);
         minRowLenInChunk = MIN(minRowLenInChunk,SELL(mat)->rowLen[i]);
 
@@ -762,20 +788,20 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
             curChunk++;
         }
     }
-    
+
     mat->context->lnEnts[me] = SELL(mat)->nEnts;
 
 #if GHOST_HAVE_MPI
     MPI_safecall(MPI_Bcast(&mat->context->lnEnts[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
 #endif
-    
+
     DEBUG_LOG(1,"SELL matrix has %"PRmatIDX" (padded to %"PRmatIDX") rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros and %"PRmatNNZ" entries",SELL(mat)->nrows,SELL(mat)->nrowsPadded,SELL(mat)->ncols,SELL(mat)->nnz,mat->context->lnEnts[me]);
-    
+
     SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
-    
+
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    
+
 #pragma omp parallel for schedule(runtime) private (i,j)
     for (chunk = 0; chunk < nChunks; chunk++) {
         for (j=0; j<SELL(mat)->chunkLenPadded[chunk]; j++) {
@@ -787,7 +813,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     }
 
     FILE *filed;
-    
+
     if ((filed = fopen64(matrixPath, "r")) == NULL){
         ERROR_LOG("Could not open binary CRS file %s",matrixPath);
         return GHOST_ERR_IO;
@@ -826,7 +852,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 
     mat->split(mat);
-    
+
 
 #ifdef GHOST_HAVE_OPENCL
     if (!(mat->traits->flags & GHOST_SPM_HOST))
@@ -842,7 +868,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     free(tmpval);
     free(rpt);
     fclose(filed);
-    
+
     DEBUG_LOG(1,"SELL matrix successfully created");
     return GHOST_SUCCESS;
 }
@@ -994,7 +1020,7 @@ static void SELL_free(ghost_mat_t *mat)
         free(SELL(mat)->rowLen);
         free(SELL(mat)->rowLenPadded);
     }
-    
+
     free(mat->data);
     free(mat);
 
@@ -1008,53 +1034,53 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
     void (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int) = NULL;
 
 #if GHOST_HAVE_OPENMP
-/*    static int first = 1;
-    if ((mat->byteSize(mat) < ghost_getSizeOfLLC()) || (SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)) < 0.4)) {
-        if (first) {
-            INFO_LOG("Setting OpenMP scheduling to STATIC for SELL SpMVM kernel");
-        }
-        omp_set_schedule(omp_sched_static,0);
-    } else {
-        if (first) {
-            INFO_LOG("Setting OpenMP scheduling to GUIDED,4 for SELL SpMVM kernel");
-        }
-        omp_set_schedule(omp_sched_guided,4);
-    }
-    first=0;*/
+    /*    static int first = 1;
+          if ((mat->byteSize(mat) < ghost_getSizeOfLLC()) || (SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)) < 0.4)) {
+          if (first) {
+          INFO_LOG("Setting OpenMP scheduling to STATIC for SELL SpMVM kernel");
+          }
+          omp_set_schedule(omp_sched_static,0);
+          } else {
+          if (first) {
+          INFO_LOG("Setting OpenMP scheduling to GUIDED,4 for SELL SpMVM kernel");
+          }
+          omp_set_schedule(omp_sched_guided,4);
+          }
+          first=0;*/
 #endif
 
 
 #if GHOST_HAVE_SSE
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMVM_AXPBY) ||
-            (options & GHOST_SPMVM_APPLY_SCALE) ||
-            (options & GHOST_SPMVM_APPLY_SHIFT))) {
-    kernel = SELL_kernels_SSE
-        [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)];
-}
+                (options & GHOST_SPMVM_APPLY_SCALE) ||
+                (options & GHOST_SPMVM_APPLY_SHIFT))) {
+        kernel = SELL_kernels_SSE
+            [ghost_dataTypeIdx(mat->traits->datatype)]
+            [ghost_dataTypeIdx(lhs->traits->datatype)];
+    }
 #endif
 #elif GHOST_HAVE_AVX
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMVM_AXPBY) ||
-            (options & GHOST_SPMVM_APPLY_SCALE) ||
-            (options & GHOST_SPMVM_APPLY_SHIFT))) {
-    if (SELL(mat)->chunkHeight == 4) {
-    kernel = SELL_kernels_AVX
-        [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)];
-    } else if (SELL(mat)->chunkHeight == 32) {
-    kernel = SELL_kernels_AVX_32
-        [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)];
-    }
+                (options & GHOST_SPMVM_APPLY_SCALE) ||
+                (options & GHOST_SPMVM_APPLY_SHIFT))) {
+        if (SELL(mat)->chunkHeight == 4) {
+            kernel = SELL_kernels_AVX
+                [ghost_dataTypeIdx(mat->traits->datatype)]
+                [ghost_dataTypeIdx(lhs->traits->datatype)];
+        } else if (SELL(mat)->chunkHeight == 32) {
+            kernel = SELL_kernels_AVX_32
+                [ghost_dataTypeIdx(mat->traits->datatype)]
+                [ghost_dataTypeIdx(lhs->traits->datatype)];
+        }
     }
 #endif
 #elif GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMVM_AXPBY) ||
-            (options & GHOST_SPMVM_APPLY_SCALE) ||
-            (options & GHOST_SPMVM_APPLY_SHIFT))) {
+                (options & GHOST_SPMVM_APPLY_SCALE) ||
+                (options & GHOST_SPMVM_APPLY_SHIFT))) {
         if (SELL(mat)->chunkHeight == 16) {
             kernel = SELL_kernels_MIC_16
                 [ghost_dataTypeIdx(mat->traits->datatype)]
@@ -1164,30 +1190,30 @@ static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * 
 #endif
 
 static int ghost_selectSellChunkHeight(int datatype) {
-   /* int ch = 1;
+    /* int ch = 1;
 
-    if (datatype & GHOST_BINCRS_DT_FLOAT)
-        ch *= 2;
+       if (datatype & GHOST_BINCRS_DT_FLOAT)
+       ch *= 2;
 
-    if (datatype & GHOST_BINCRS_DT_REAL)
-        ch *= 2;
+       if (datatype & GHOST_BINCRS_DT_REAL)
+       ch *= 2;
 
 #ifdef AVX
-    ch *= 2;
+ch *= 2;
 #endif
 
 #ifdef MIC
-    ch *= 4;
+ch *= 4;
 #if (!GHOST_HAVE_LONGIDX)
-    ch *= 2;
+ch *= 2;
 #endif
 #endif
 
 #if defined (OPENCL) || defined (CUDA)
-    ch = 256;
+ch = 256;
 #endif
 
-    return ch;*/
+return ch;*/
     UNUSED(datatype);
     return 32;
 }
