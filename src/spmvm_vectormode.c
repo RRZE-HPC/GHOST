@@ -49,12 +49,11 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
-    invec->download(invec);
+    invec->downloadNonHalo(invec);
     work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
     request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
     status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
-
 
 #ifdef __INTEL_COMPILER
     kmp_set_blocktime(1);
@@ -95,7 +94,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
     MPI_safecall(MPI_Waitall(msgcount, request, status));
 
-    invec->upload(invec);
+    invec->uploadHalo(invec);
     mat->spmv(mat,res,invec,spmvmOptions);    
 
     free(work);

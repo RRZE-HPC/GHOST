@@ -297,7 +297,8 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     ghost_mnnz_t nEnts = 0, nnz = 0;
     SELL(mat)->chunkStart[0] = 0;
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
+
+//#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
     { 
         char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
@@ -349,7 +350,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         }
     }
 
-#pragma omp parallel private(i,col,chunk,row)
+//#pragma omp parallel private(i,col,row)
     { 
         char * tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
@@ -387,16 +388,16 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
 
         mat->context->lnEnts[me] = SELL(mat)->nEnts;
 
-        ghost_mnnz_t nents[nprocs];
-        nents[me] = mat->context->lnEnts[me];
-        MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
+        ghost_mnnz_t nents;
+        nents = mat->context->lnEnts[me];
+        MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
 
         for (i=0; i<nprocs; i++) {
             mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
+            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
         } 
 
         mat->split(mat);
@@ -792,7 +793,9 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     mat->context->lnEnts[me] = SELL(mat)->nEnts;
 
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(&mat->context->lnEnts[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
+    ghost_mnnz_t nents;
+    nents = mat->context->lnEnts[me];
+    MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
 #endif
 
     DEBUG_LOG(1,"SELL matrix has %"PRmatIDX" (padded to %"PRmatIDX") rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros and %"PRmatNNZ" entries",SELL(mat)->nrows,SELL(mat)->nrowsPadded,SELL(mat)->ncols,SELL(mat)->nnz,mat->context->lnEnts[me]);

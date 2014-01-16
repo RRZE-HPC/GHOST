@@ -192,16 +192,16 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
         
         mat->context->lnEnts[me] = CR(mat)->nEnts;
 
-        ghost_mnnz_t nents[nprocs];
-        nents[me] = mat->context->lnEnts[me];
-        MPI_safecall(MPI_Bcast(&nents[me],1,ghost_mpi_dt_mnnz,me,mat->context->mpicomm));
+        ghost_mnnz_t nents;
+        nents = mat->context->lnEnts[me];
+        MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
         
         for (i=0; i<nprocs; i++) {
            mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+nents[i-1];
+           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
         } 
 
         mat->split(mat);

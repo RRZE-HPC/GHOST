@@ -179,7 +179,7 @@ static void vec_uploadHalo(ghost_vec_t *vec)
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
             CU_copyHostToDeviceOffset(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],
-                    VECVAL(vec,vec->val,v,vec->traits->nrows), 
+                    VECVAL(vec,vec->val,v,0), 
                     vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
                     vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }

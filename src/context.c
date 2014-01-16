@@ -17,8 +17,8 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->rowPerm = NULL;
     (*context)->invRowPerm = NULL;
     (*context)->mpicomm = comm;
-    (*context)->wishes   = (int *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(int)); 
-    (*context)->dues     = (int *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(int));
+    (*context)->wishes   = (ghost_mnnz_t *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(ghost_mnnz_t)); 
+    (*context)->dues     = (ghost_mnnz_t *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(ghost_mnnz_t));
 
     if (!((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)) {
         (*context)->flags |= GHOST_CONTEXT_WORKDIST_ROWS;
@@ -224,30 +224,30 @@ static int intcomp(const void *x, const void *y)
 ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 {
 
-    int hlpi;
-    int j;
-    int i;
+    ghost_mnnz_t j;
+    ghost_mnnz_t i;
     int me;
     ghost_mnnz_t max_loc_elements, thisentry;
-    int *present_values;
-    int acc_dues;
-    int *tmp_transfers;
-    int acc_wishes;
+    ghost_mnnz_t *present_values;
+    ghost_mnnz_t acc_dues;
+    ghost_mnnz_t *tmp_transfers;
+    ghost_mnnz_t acc_wishes;
 
-    int *item_from;
+    ghost_mnnz_t *item_from;
 
     ghost_mnnz_t *wishlist_counts;
 
-    int **wishlist;
-    int **cwishlist;
+    ghost_midx_t **wishlist;
+    ghost_midx_t **cwishlist;
 
 
-    int this_pseudo_col;
-    int *pseudocol;
-    int *globcol;
+    ghost_midx_t this_pseudo_col;
+    ghost_midx_t *pseudocol;
+    ghost_midx_t *globcol;
 
-    int *comm_remotePE, *comm_remoteEl;
-    int acc_transfer_wishes, acc_transfer_dues;
+    ghost_midx_t *comm_remotePE;
+    ghost_midx_t *comm_remoteEl;
+    ghost_mnnz_t acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_col;
     size_t size_a2ai, size_nptr, size_pval;  
@@ -262,12 +262,14 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     me = ghost_getRank(ctx->mpicomm);
 
     max_loc_elements = 0;
-    for (i=0;i<nprocs;i++)
-        if (max_loc_elements<ctx->lnEnts[i]) max_loc_elements = ctx->lnEnts[i];
+    for (i=0;i<nprocs;i++) {
+        if (max_loc_elements<ctx->lnEnts[i]) {
+            max_loc_elements = ctx->lnEnts[i];
+        }
+    }
 
-
-    size_pval = (size_t)( max_loc_elements * sizeof(int) );
-    size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( int ) );
+    size_pval = (size_t)( max_loc_elements * sizeof(ghost_mnnz_t) );
+    size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_midx_t ) );
 
     /*       / 1  2  .  3  4  . \
      *       | .  5  6  7  .  . |
@@ -288,12 +290,12 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
       
 
-    item_from       = (int*) ghost_malloc( size_nint); 
+    item_from       = (ghost_mnnz_t *) ghost_malloc( size_nint); 
     wishlist_counts = (ghost_mnnz_t *) ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    comm_remotePE   = (int*) ghost_malloc(size_col);
-    comm_remoteEl   = (int*) ghost_malloc(size_col);
-    present_values  = (int*) ghost_malloc(size_pval); 
-    tmp_transfers   = (int*) ghost_malloc(size_a2ai); 
+    comm_remotePE   = (ghost_midx_t *) ghost_malloc(size_col);
+    comm_remoteEl   = (ghost_midx_t *) ghost_malloc(size_col);
+    present_values  = (ghost_mnnz_t *) ghost_malloc(size_pval); 
+    tmp_transfers   = (ghost_mnnz_t *) ghost_malloc(size_a2ai); 
 
     for (i=0; i<nprocs; i++) wishlist_counts[i] = 0;
 
@@ -323,19 +325,17 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
      * acc_wishes = <7,6,5> equal to lnEnts
      */
 
-    wishlist        = (int**) ghost_malloc(size_nptr); 
-    cwishlist       = (int**) ghost_malloc(size_nptr);
+    wishlist        = (ghost_midx_t**) ghost_malloc(size_nptr); 
+    cwishlist       = (ghost_midx_t**) ghost_malloc(size_nptr);
 
     /*
      * wishlist  = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
      * cwishlist = <{NULL,NULL,NULL},{NULL,NULL,NULL},{NULL,NULL,NULL}>
      */
 
-    hlpi = 0;
     for (i=0; i<nprocs; i++){
-        cwishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
-        wishlist[i] = (int *)ghost_malloc(wishlist_counts[i]*sizeof(int));
-        hlpi += wishlist_counts[i];
+        cwishlist[i] = (ghost_midx_t *)ghost_malloc(wishlist_counts[i]*sizeof(ghost_midx_t));
+        wishlist[i] = (ghost_midx_t *)ghost_malloc(wishlist_counts[i]*sizeof(ghost_midx_t));
     }
     /*
      * wishlist  = <{{0,0,0},{0,0,0},{0}},{{0,0,0},{0,0},{0}},{{0},NULL,{0,0,0,0}}>
@@ -386,8 +386,8 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     free(wishlist);
 
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Allgather ( ctx->wishes, nprocs, MPI_INTEGER, tmp_transfers, 
-                nprocs, MPI_INTEGER, ctx->mpicomm )) ;
+    MPI_safecall(MPI_Allgather ( ctx->wishes, nprocs, ghost_mpi_dt_midx, tmp_transfers, 
+                nprocs, ghost_mpi_dt_midx, ctx->mpicomm )) ;
 #endif
 
     for (i=0; i<nprocs; i++) {
@@ -412,8 +412,8 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
      * acc_transfer_dues = <3,2,2>
      */
 
-    pseudocol       = (int*) ghost_malloc(size_col);
-    globcol         = (int*) ghost_malloc(size_col);
+    pseudocol       = (ghost_midx_t*) ghost_malloc(size_col);
+    globcol         = (ghost_midx_t*) ghost_malloc(size_col);
     
     /*
      * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
@@ -422,7 +422,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     this_pseudo_col = ctx->lnrows[me];
     ctx->halo_elements = 0;
-    int tt = 0;
+    ghost_midx_t tt = 0;
     i = me;
     int meHandled = 0;
 
@@ -448,7 +448,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
             // myrevcol maps the actual colidx to the new colidx
             DEBUG_LOG(2,"Allocating space for myrevcol");
-            int * myrevcol = (int *)ghost_malloc(ctx->lnrows[i]*sizeof(int));
+            ghost_midx_t * myrevcol = (ghost_midx_t *)ghost_malloc(ctx->lnrows[i]*sizeof(ghost_midx_t));
             for (j=0;j<ctx->wishes[i];j++){
                 myrevcol[globcol[tt]-ctx->lfRow[i]] = tt;
                 tt++;
@@ -493,13 +493,13 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     free(globcol);
     free(present_values); 
 
-    size_wish = (size_t)( acc_transfer_wishes * sizeof(int) );
-    size_dues = (size_t)( acc_transfer_dues   * sizeof(int) );
+    size_wish = (size_t)( acc_transfer_wishes * sizeof(ghost_midx_t) );
+    size_dues = (size_t)( acc_transfer_dues   * sizeof(ghost_midx_t) );
 
-    ctx->wishlist      = (int**) ghost_malloc(nprocs*sizeof(int *)); 
-    ctx->duelist       = (int**) ghost_malloc(nprocs*sizeof(int *)); 
-    int *wishl_mem  = (int *)  ghost_malloc(size_wish); // we need a contiguous array in memory
-    int *duel_mem   = (int *)  ghost_malloc(size_dues); // we need a contiguous array in memory
+    ctx->wishlist      = (ghost_midx_t**) ghost_malloc(nprocs*sizeof(ghost_midx_t *)); 
+    ctx->duelist       = (ghost_midx_t**) ghost_malloc(nprocs*sizeof(ghost_midx_t *)); 
+    ghost_midx_t *wishl_mem  = (ghost_midx_t *)  ghost_malloc(size_wish); // we need a contiguous array in memory
+    ghost_midx_t *duel_mem   = (ghost_midx_t *)  ghost_malloc(size_dues); // we need a contiguous array in memory
     ctx->hput_pos      = (ghost_midx_t*)  ghost_malloc(size_nptr); 
 
     acc_dues = 0;
@@ -531,13 +531,13 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     int msgcount = 0;
     for(i=0; i<nprocs; i++) 
     { // receive _my_ dues from _other_ processes' wishes
-        MPI_safecall(MPI_Irecv(ctx->duelist[i],ctx->dues[i],MPI_INTEGER,i,i,ctx->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Irecv(ctx->duelist[i],ctx->dues[i],ghost_mpi_dt_midx,i,i,ctx->mpicomm,&req[msgcount]));
         msgcount++;
     }
 
 
     for(i=0; i<nprocs; i++) { 
-        MPI_safecall(MPI_Isend(ctx->wishlist[i],ctx->wishes[i],MPI_INTEGER,i,me,ctx->mpicomm,&req[msgcount]));
+        MPI_safecall(MPI_Isend(ctx->wishlist[i],ctx->wishes[i],ghost_mpi_dt_midx,i,me,ctx->mpicomm,&req[msgcount]));
         msgcount++;
     }
 

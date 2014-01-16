@@ -484,19 +484,19 @@ struct ghost_context_t
     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    int* wishes; // TODO rename nWishes
+    ghost_mnnz_t * wishes; // TODO rename nWishes
     /**
      * @brief Column idx of wishes from each rank
      */
-    int** wishlist; // TODO rename wishes
+    ghost_midx_t ** wishlist; // TODO rename wishes
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    int* dues; // TODO rename nDues
+    ghost_mnnz_t * dues; // TODO rename nDues
     /**
      * @brief Column indices of dues to each rank
      */
-    int** duelist; // TODO rename dues
+    ghost_midx_t ** duelist; // TODO rename dues
     /**
      * @brief First index to get RHS elements coming from each rank
      */
