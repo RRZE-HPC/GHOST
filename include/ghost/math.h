@@ -23,10 +23,14 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
 
 #include "ghost/complex.h"
 
-ghost_complex<float> conjugate(ghost_complex<float> * c);
-ghost_complex<double> conjugate(ghost_complex<double> * c);
-double conjugate(double * c);
-float conjugate(float * c);
+inline ghost_complex<double> conjugate(ghost_complex<double> * c) {
+    return ghost_complex<double>(c->re,-c->im);
+}
+inline ghost_complex<float> conjugate(ghost_complex<float> * c) {
+    return ghost_complex<float>(c->re,-c->im);
+}
+inline double conjugate(double * c) {return *c;}
+inline float conjugate(float * c) {return *c;}
 #endif
 
 #endif

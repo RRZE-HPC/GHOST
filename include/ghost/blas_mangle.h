@@ -102,3 +102,27 @@
 #define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #endif
+
+#if defined(GHOST_HAVE_GSL)
+#define sdot(nr,x,incx,y,incy) BLAS_MANGLE(sdot,SDOT)(*nr,x,*incx,y,*incy)
+#define ddot(nr,x,incx,y,incy) BLAS_MANGLE(ddot,DDOT)(*nr,x,*incx,y,*incy)
+#define cdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(cdotc_sub,CDOTC_SUB)(*nr,x,*incx,y,*incy,dot)
+#define zdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(zdotc_sub,ZDOTC_SUB)(*nr,x,*incx,y,*incy,dot)
+#else
+#define sdot(nr,x,incx,y,incy) BLAS_MANGLE(sdot,SDOT)(nr,x,incx,y,incy,dot)
+#define ddot(nr,x,incx,y,incy) BLAS_MANGLE(ddot,DDOT)(nr,x,incx,y,incy,dot)
+#define cdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(cdotc,CDOTC)(nr,x,incx,y,incy,dot)
+#define zdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(zdotc,ZDOTC)(nr,x,incx,y,incy,dot)
+#endif
+
+#if defined(GHOST_HAVE_GSL)
+#define sscal(nr,alpha,x,incx) BLAS_MANGLE(sscal,SSCAL)(*nr,*alpha,x,*incx)
+#define dscal(nr,alpha,x,incx) BLAS_MANGLE(dscal,DSCAL)(*nr,*alpha,x,*incx)
+#define cscal(nr,alpha,x,incx) BLAS_MANGLE(cscal,CSCAL)(*nr,alpha,x,*incx)
+#define zscal(nr,alpha,x,incx) BLAS_MANGLE(zscal,ZSCAL)(*nr,alpha,x,*incx)
+#else
+#define sscal(nr,alpha,x,incx) BLAS_MANGLE(sscal,SSCAL)(nr,alpha,x,incx)
+#define dscal(nr,alpha,x,incx) BLAS_MANGLE(dscal,DSCAL)(nr,alpha,x,incx)
+#define cscal(nr,alpha,x,incx) BLAS_MANGLE(cscal,CSCAL)(nr,alpha,x,incx)
+#define zscal(nr,alpha,x,incx) BLAS_MANGLE(zscal,ZSCAL)(nr,alpha,x,incx)
+#endif
