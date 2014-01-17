@@ -29,9 +29,9 @@ typedef struct {
     ghost_midx_t max_dues;
 } commArgs;
 
-void *prepare(void *vargs)
+void *communicate(void *vargs)
 {
-    int to_PE, i;
+    int to_PE, from_PE, i;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
     args->rhs->downloadNonHalo(args->rhs);
@@ -44,16 +44,7 @@ void *prepare(void *vargs)
             }
         }
     }
-    return NULL;
-
-}
-
-void *communicate(void *vargs)
-{
-    commArgs *args = (commArgs *)vargs;
-    int to_PE,from_PE;
-    ghost_vidx_t c;
-
+    
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
@@ -130,7 +121,6 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     ghost_task_t *commTask;// = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
     ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
     ghost_task_t *compRTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
-    ghost_task_t *prepareTask;
 
     DEBUG_LOG(1,"In task mode spMVM solver");
     me = ghost_getRank(context->mpicomm);
@@ -151,16 +141,20 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
         DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
         taskflags |= GHOST_TASK_USE_PARENTS;
         ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-        ghost_task_init(&compTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+        /*ghost_task_init(&compTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
         ghost_task_init(&compRTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
         ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
-        ghost_task_init(&prepareTask, parent->nThreads/ghost_getSMTlevel(), 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
+        ghost_task_init(&prepareTask, parent->nThreads/ghost_getSMTlevel(), 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);*/
+        ghost_task_init(&compTask, parent->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_init(&compRTask, parent->nThreads-1, 0, &computeRemote, &cprargs, taskflags);
+        ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags);
+
+
     } else {
         DEBUG_LOG(1,"No parent task in task mode spMVM solver");
         ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
         ghost_task_init(&compRTask, ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
         ghost_task_init(&commTask, 1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
-        ghost_task_init(&prepareTask, ghost_thpool->nThreads, 0, &prepare, &cargs, taskflags);
     }
 
 
@@ -193,11 +187,16 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     kmp_set_blocktime(1);
 #endif
 
-    prepare(&cargs);
-    ghost_task_add(commTask);
+    //GHOST_INSTR_START(spMVM_taskmode_comm_comp);
+    //GHOST_INSTR_START(spMVM_taskmode_comm);
     ghost_task_add(compTask);
+    ghost_task_add(commTask);
+    //GHOST_INSTR_STOP(spMVM_taskmode_comm);
+    //GHOST_INSTR_START(spMVM_taskmode_comp);
     ghost_task_wait(commTask);
     ghost_task_wait(compTask);
+    //GHOST_INSTR_STOP(spMVM_taskmode_comp);
+    //GHOST_INSTR_STOP(spMVM_taskmode_comm_comp);
     ghost_task_add(compRTask);
     ghost_task_wait(compRTask);
 

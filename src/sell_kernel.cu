@@ -163,6 +163,7 @@ extern int ghost_cu_device;
     void *cu_localdot = NULL;\
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
+    GHOST_INSTR_START(CU_SELL_SpMVM)\
     if (SELL(mat)->chunkHeight == SELL(mat)->nrowsPadded) {\
         if (SELL(mat)->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
@@ -191,6 +192,9 @@ extern int ghost_cu_device;
             SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)\
         }\
     }\
+    cudaDeviceSynchronize();\
+    GHOST_INSTR_STOP(CU_SELL_SpMVM)\
+    GHOST_INSTR_START(CU_SpMVM_localdot)\
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {\
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
@@ -199,6 +203,7 @@ extern int ghost_cu_device;
         lhs->dotProduct(lhs,rhs,(char *)lhs->traits->localdot+sizeof(dt2));\
         lhs->dotProduct(rhs,rhs,(char *)lhs->traits->localdot+2*sizeof(dt2));\
     }\
+    GHOST_INSTR_STOP(CU_SpMVM_localdot)\
 }
 
     template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  

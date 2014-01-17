@@ -54,6 +54,7 @@ int ghost_node_rank = 0;
 hwloc_topology_t topology;
 
 ghost_type_t ghost_type = GHOST_TYPE_INVALID;
+ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 extern char ** environ;
 
 double ghost_wctime()
@@ -963,17 +964,6 @@ int ghost_init(int argc, char **argv)
 #endif
     ndomains += ncudadevs;
 
-    ghost_hybridmode_t hybridmode = GHOST_INVALID;
-    if (nnoderanks <=  ncudadevs+1) {
-        hybridmode = GHOST_ONEPERNODE;
-    } else if (nnoderanks == ncudadevs+nnumanodes) {
-        hybridmode = GHOST_ONEPERNUMA;
-    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
-        hybridmode = GHOST_ONEPERCORE;
-        WARNING_LOG("One MPI process per core not supported");
-    } else {
-        WARNING_LOG("Invalid number of ranks on node");
-    }
 
     if (ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
@@ -1016,6 +1006,21 @@ int ghost_init(int argc, char **argv)
 
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
+    
+    if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
+    if (nnoderanks <=  nLocalCuda+1) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
+        INFO_LOG("One CPU rank per node");
+    } else if (nnoderanks == nLocalCuda+nnumanodes) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
+        INFO_LOG("One CPU rank per NUMA domain");
+    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
+        WARNING_LOG("One MPI process per core not supported");
+    } else {
+        WARNING_LOG("Invalid number of ranks on node");
+    }
+    }
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
@@ -1067,12 +1072,12 @@ int ghost_init(int argc, char **argv)
     }
 #endif
     
-    if (hybridmode == GHOST_ONEPERNODE) {
+    if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
             hwloc_bitmap_copy(mycpuset,globcpuset);
         }
         hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
-    } else if (hybridmode == GHOST_ONEPERNUMA) {
+    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNUMA) {
         int numaNode = 0;
         for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
@@ -1084,12 +1089,12 @@ int ghost_init(int argc, char **argv)
             }
         }
     } 
-    /*char *cpusetstr, *mycpusetstr;
+    char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
-    INFO_LOG("Process cpuset: %s",cpusetstr);
+    INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
     if (hwloc_bitmap_weight(globcpuset) > 0) {
         WARNING_LOG("There are unassigned cores");
-    }*/
+    }
     ghost_thpool_init(mycpuset);
      
     hwloc_bitmap_free(mycpuset);   
@@ -1144,6 +1149,13 @@ size_t ghost_getSizeOfLLC()
 int ghost_setType(ghost_type_t t)
 {
     ghost_type = t;
+
+    return GHOST_SUCCESS;
+}
+
+int ghost_setHybridMode(ghost_hybridmode_t hm)
+{
+    ghost_hybridmode = hm;
 
     return GHOST_SUCCESS;
 }

@@ -35,6 +35,7 @@ static ghost_mnnz_t CRS_nnz(ghost_mat_t *mat);
 static ghost_midx_t CRS_nrows(ghost_mat_t *mat);
 static ghost_midx_t CRS_ncols(ghost_mat_t *mat);
 static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
+static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void CRS_printInfo(ghost_mat_t *mat);
 static char * CRS_formatName(ghost_mat_t *mat);
@@ -81,6 +82,7 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     }
 
     mat->fromFile = &CRS_fromBin;
+    mat->toFile = &CRS_toBin;
     mat->fromRowFunc = &CRS_fromRowFunc;
     mat->fromCRS = &CRS_fromCRS;
     mat->printInfo = &CRS_printInfo;
@@ -158,7 +160,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 #endif
     
     ghost_midx_t rowlen;
-    ghost_midx_t i;
+    ghost_midx_t i,j;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
     void *tmpval = ghost_malloc(maxrowlen*sizeofdt);
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
@@ -166,23 +168,35 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     CR(mat)->ncols = mat->context->gncols;
     CR(mat)->nrows = mat->context->lnrows[me];
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((CR(mat)->nrows+1)*sizeof(ghost_midx_t));
+    CR(mat)->rpt[0] = 0;
     CR(mat)->nEnts = 0;
-    
+
+#pragma omp parallel for schedule(runtime)
+    for (i = 0; i < CR(mat)->nrows+1; i++) {
+        CR(mat)->rpt[i] = 0;
+    }
+   
     for( i = 0; i < CR(mat)->nrows; i++ ) {
         func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
         CR(mat)->nEnts += rowlen;
+        CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
     }
 
     CR(mat)->col = (ghost_midx_t *)ghost_malloc(CR(mat)->nEnts*sizeof(ghost_midx_t));
     CR(mat)->val = ghost_malloc(CR(mat)->nEnts*sizeofdt);
 
+#pragma omp parallel for schedule(runtime) private (j)
+    for (i = 0; i < CR(mat)->nrows; i++) {
+        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                CR(mat)->col[j] = 0;
+                memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
+        }
+    }
 
     // TODO load balancing if distribution by nnz
 
-    CR(mat)->rpt[0] = 0;
     for( i = 0; i < CR(mat)->nrows; i++ ) {
         func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-        CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
         memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
         memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
     }
@@ -645,6 +659,65 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     if (!(mat->traits->flags & GHOST_SPM_HOST))
         mat->CLupload(mat);
 #endif
+
+    return GHOST_SUCCESS;
+
+}
+
+static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath)
+{
+    ghost_midx_t i;
+    ghost_mnnz_t j;
+    INFO_LOG("Writing sparse matrix to file %s",matrixPath);
+
+    ghost_midx_t mnrows,mncols,mnnz;
+    mnrows = ghost_getMatNrows(mat);
+    mncols = mnrows;
+    mnnz = ghost_getMatNnz(mat);
+    size_t ret;
+    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
+
+    int32_t endianess = ghost_archIsBigEndian();
+    int32_t version = 1;
+    int32_t base = 0;
+    int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;
+    int32_t datatype = mat->traits->datatype;
+    int64_t nrows = (int64_t)mnrows;
+    int64_t ncols = (int64_t)mncols;
+    int64_t nnz = (int64_t)mnnz;
+
+    FILE *filed;
+
+    if ((filed = fopen64(matrixPath, "w")) == NULL){
+        ABORT("Could not vector file %s",matrixPath);
+    }
+
+    if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&base,sizeof(base),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&symmetry,sizeof(symmetry),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&nnz,sizeof(nnz),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+
+    int64_t rpt,col;
+    
+    for (i = 0; i < CR(mat)->nrows+1; i++) {
+        rpt = (int64_t)CR(mat)->rpt[i];
+        if ((ret = fwrite(&rpt,sizeof(rpt),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    }
+
+
+    for (i = 0; i < CR(mat)->nrows; i++) {
+        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+            col = (int64_t)CR(mat)->col[j];
+            if ((ret = fwrite(&col,sizeof(col),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+        }
+    }
+    if ((ret = fwrite(CR(mat)->val,sizeofdt,nnz,filed)) != nnz) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+
+    fclose(filed);
 
     return GHOST_SUCCESS;
 

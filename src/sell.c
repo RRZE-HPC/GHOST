@@ -298,7 +298,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     SELL(mat)->chunkStart[0] = 0;
 
 
-//#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
     { 
         char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
@@ -350,7 +350,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         }
     }
 
-//#pragma omp parallel private(i,col,row)
+#pragma omp parallel private(i,col,row)
     { 
         char * tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));

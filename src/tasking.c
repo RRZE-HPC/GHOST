@@ -424,10 +424,10 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
         if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
-            //    char *a, *b;
-            //    hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
-            //    hwloc_bitmap_list_asprintf(&b,parentscores);
-            //    DEBUG_LOG(1,"Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);
+               /* char *a, *b;
+                hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
+                hwloc_bitmap_list_asprintf(&b,parentscores);
+                INFO_LOG("Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);*/
             hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,parentscores);
         } else {
             hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
@@ -469,8 +469,6 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                     reservedCores++;
                     t++;
                     break;
-                } else {
-                    WARNING_LOG("%d in use",core);
                 }
             }
         }

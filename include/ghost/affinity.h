@@ -28,7 +28,6 @@ int ghost_getSMTlevel();
 void ghost_setCore(int core);
 void ghost_unsetCore();
 void ghost_pinThreads(int options, char *procList);
-
 #ifdef __cplusplus
 }
 #endif

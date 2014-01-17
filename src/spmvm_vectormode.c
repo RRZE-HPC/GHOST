@@ -49,6 +49,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
+    GHOST_INSTR_START(spMVM_vectormode_comm);
     invec->downloadNonHalo(invec);
     work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
@@ -73,6 +74,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
         }
     }
 
+    GHOST_INSTR_START(spMVM_vectormode_copybuffers)
 #pragma omp parallel private(to_PE,i,c)
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         for (c=0; c<invec->traits->nvecs; c++) {
@@ -82,6 +84,8 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
             }
         }
     }
+    GHOST_INSTR_STOP(spMVM_vectormode_copybuffers)
+
 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (context->dues[to_PE]>0){
@@ -92,10 +96,16 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
         }
     }
 
+    GHOST_INSTR_START(spMVM_vectormode_waitall)
     MPI_safecall(MPI_Waitall(msgcount, request, status));
+    GHOST_INSTR_STOP(spMVM_vectormode_waitall)
 
     invec->uploadHalo(invec);
+    GHOST_INSTR_STOP(spMVM_vectormode_comm);
+    
+    GHOST_INSTR_START(spMVM_vectormode_comp);
     mat->spmv(mat,res,invec,spmvmOptions);    
+    GHOST_INSTR_STOP(spMVM_vectormode_comp);
 
     free(work);
     free(request);

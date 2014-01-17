@@ -78,8 +78,8 @@ typedef enum ghost_error_t {
     GHOST_ERR_IO
 } ghost_error_t;
 
+typedef enum {GHOST_HYBRIDMODE_INVALID, GHOST_HYBRIDMODE_ONEPERNODE, GHOST_HYBRIDMODE_ONEPERNUMA, GHOST_HYBRIDMODE_ONEPERCORE} ghost_hybridmode_t;
 typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
-typedef enum {GHOST_INVALID, GHOST_ONEPERNODE, GHOST_ONEPERNUMA, GHOST_ONEPERCORE} ghost_hybridmode_t;
 
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
@@ -418,6 +418,7 @@ struct ghost_mat_t
     char *     (*formatName) (ghost_mat_t *);
     ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
     ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
