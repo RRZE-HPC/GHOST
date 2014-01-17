@@ -114,3 +114,15 @@
 #define cdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(cdotc,CDOTC)(nr,x,incx,y,incy,dot)
 #define zdotc(nr,x,incx,y,incy,dot) BLAS_MANGLE(zdotc,ZDOTC)(nr,x,incx,y,incy,dot)
 #endif
+
+#if defined(GHOST_HAVE_GSL)
+#define sscal(nr,alpha,x,incx) BLAS_MANGLE(sscal,SSCAL)(*nr,*alpha,x,*incx)
+#define dscal(nr,alpha,x,incx) BLAS_MANGLE(dscal,DSCAL)(*nr,*alpha,x,*incx)
+#define cscal(nr,alpha,x,incx) BLAS_MANGLE(cscal,CSCAL)(*nr,alpha,x,*incx)
+#define zscal(nr,alpha,x,incx) BLAS_MANGLE(zscal,ZSCAL)(*nr,alpha,x,*incx)
+#else
+#define sscal(nr,alpha,x,incx) BLAS_MANGLE(sscal,SSCAL)(nr,alpha,x,incx)
+#define dscal(nr,alpha,x,incx) BLAS_MANGLE(dscal,DSCAL)(nr,alpha,x,incx)
+#define cscal(nr,alpha,x,incx) BLAS_MANGLE(cscal,CSCAL)(nr,alpha,x,incx)
+#define zscal(nr,alpha,x,incx) BLAS_MANGLE(zscal,ZSCAL)(nr,alpha,x,incx)
+#endif

@@ -128,13 +128,33 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 {
     ghost_vidx_t i,v;
     v_t *s = (v_t *)scale;
+    ghost_blas_idx_t incx = 1;
+    ghost_vidx_t nr = vec->traits->nrows;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for 
-        for (i=0; i<vec->traits->nrows; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+    for (v=0; v<vec->traits->nvecs; v++)
+    {
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+                zscal((ghost_blas_idx_t*)&nr,(BLAS_Complex16*)&s[v],(BLAS_Complex16*)VECVAL(vec,vec->val,v,0),&incx);
+            else
+                cscal((ghost_blas_idx_t*)&nr,(BLAS_Complex8*)&s[v],(BLAS_Complex8*)VECVAL(vec,vec->val,v,0),&incx);
+        }
+        else
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+                dscal((ghost_blas_idx_t*)&nr,(double*)&s[v],(double*)VECVAL(vec,vec->val,v,0),&incx);
+            else
+                sscal((ghost_blas_idx_t*)&nr,(float*)&s[v],(float*)VECVAL(vec,vec->val,v,0),&incx);
         }
     }
+
+    //for (v=0; v<vec->traits->nvecs; v++) {
+//#pragma omp parallel for 
+        //for (i=0; i<vec->traits->nrows; i++) {
+            //*(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+        //}
+    //}
 }
 
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
