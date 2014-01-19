@@ -19,11 +19,12 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     CR_TYPE *cr = CR(mat);
     v_t *rhsv;
     v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *local_dot_product, **partsums;
     m_t *mval = (m_t *)(cr->val);
     ghost_midx_t i, j;
     ghost_vidx_t v;
     int nthreads = 1;
+    int nvecs = MIN(lhs->traits->nvecs,rhs->traits->nvecs);
 
     v_t hlp1 = 0.;
     v_t shift, scale, beta;
@@ -34,21 +35,23 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     if (options & GHOST_SPMVM_AXPBY)
         beta = *((v_t *)(mat->traits->beta));
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        local_dot_product = ((v_t *)(lhs->traits->localdot));
-
+          local_dot_product = ((v_t *)(lhs->traits->localdot));
 #pragma omp parallel
-        nthreads = ghost_ompGetNumThreads();
-
-        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
-
-        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
-            partsums[i] = 0.;
+          nthreads = ghost_ompGetNumThreads();
+          partsums = (v_t **)ghost_malloc(nthreads*sizeof(v_t *));
+#pragma omp parallel
+       { int th_id = ghost_ompGetThreadNum();
+         partsums[th_id] = (v_t *)ghost_malloc(3*nvecs*sizeof(v_t));
+         for (i=0; i<3*nvecs; i++)  partsums[th_id][i] = 0.;
         }
-    }
+     }
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v) shared (partsums)
+
+
+#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
     for (i=0; i<cr->nrows; i++){
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+        int th_id = ghost_ompGetThreadNum();
+        for (v=0; v<nvecs; v++)
         {
             rhsv = (v_t *)rhs->val[v];
             lhsv = (v_t *)lhs->val[v];
@@ -97,20 +100,32 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
 
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*lhsv[i];
-                partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*rhsv[i];
-                partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[i])*rhsv[i];
+                partsums[th_id][          v] += conjugate(&lhsv[i])*lhsv[i];
+                partsums[th_id][  nvecs + v] += conjugate(&lhsv[i])*rhsv[i];
+                partsums[th_id][2*nvecs + v] += conjugate(&rhsv[i])*rhsv[i];
+                //partsums[th_id*3*nvecs +           v] += conjugate(&lhsv[i])*lhsv[i];
+                //partsums[th_id*3*nvecs +   nvecs + v] += conjugate(&lhsv[i])*rhsv[i];
+                //partsums[th_id*3*nvecs + 2*nvecs + v] += conjugate(&rhsv[i])*rhsv[i];
+                //partsums[(v+0*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*lhsv[i];
+                //partsums[(v+1*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*rhsv[i];
+                //partsums[(v+2*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&rhsv[i])*rhsv[i];
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+        for (v=0; v<nvecs; v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v          ] += partsums[i][          v];
+                local_dot_product[v +   nvecs] += partsums[i][   nvecs + v];
+                local_dot_product[v + 2*nvecs] += partsums[i][ 2*nvecs + v];
+                //local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
+                //local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
+                //local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
             }
         }
+
+        for (v=0; v<nthreads; v++)      free(partsums[v]);
+     free(partsums);
     }
 }
 
