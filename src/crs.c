@@ -158,12 +158,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 #if GHOST_HAVE_MPI
     nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
 #endif
-    
+
     ghost_midx_t rowlen;
     ghost_midx_t i,j;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    void *tmpval = ghost_malloc(maxrowlen*sizeofdt);
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
     int me = ghost_getRank(mat->context->mpicomm);
     CR(mat)->ncols = mat->context->gncols;
     CR(mat)->nrows = mat->context->lnrows[me];
@@ -175,12 +173,26 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     for (i = 0; i < CR(mat)->nrows+1; i++) {
         CR(mat)->rpt[i] = 0;
     }
-   
-    for( i = 0; i < CR(mat)->nrows; i++ ) {
-        func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-        CR(mat)->nEnts += rowlen;
-        CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+
+    ghost_mnnz_t nEnts = 0;
+
+#pragma omp parallel private(i,rowlen) reduction (+:nEnts)
+    { 
+        char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+        ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+#pragma omp for ordered
+        for( i = 0; i < CR(mat)->nrows; i++ ) {
+            func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+            nEnts += rowlen;
+#pragma omp ordered
+            CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+        }
+        free(tmpval);
+        free(tmpcol);
     }
+
+
+    CR(mat)->nEnts = nEnts;
 
     CR(mat)->col = (ghost_midx_t *)ghost_malloc(CR(mat)->nEnts*sizeof(ghost_midx_t));
     CR(mat)->val = ghost_malloc(CR(mat)->nEnts*sizeofdt);
@@ -188,41 +200,49 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < CR(mat)->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                CR(mat)->col[j] = 0;
-                memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
+            CR(mat)->col[j] = 0;
+            memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
         }
     }
 
     // TODO load balancing if distribution by nnz
 
-    for( i = 0; i < CR(mat)->nrows; i++ ) {
-        func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-        memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
-        memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
+#pragma omp parallel private(i,rowlen)
+    { 
+        char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+        ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+        memset(tmpval,0,sizeofdt*maxrowlen);
+        memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen);
+#pragma omp for 
+        for( i = 0; i < CR(mat)->nrows; i++ ) {
+            func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+            memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
+            memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*sizeofdt],tmpval,rowlen*sizeofdt);
+        }
+        free(tmpval);
+        free(tmpcol);
     }
 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
-        
+
         mat->context->lnEnts[me] = CR(mat)->nEnts;
 
         ghost_mnnz_t nents;
         nents = mat->context->lnEnts[me];
         MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
-        
+
         for (i=0; i<nprocs; i++) {
-           mat->context->lfEnt[i] = 0;
+            mat->context->lfEnt[i] = 0;
         } 
 
         for (i=1; i<nprocs; i++) {
-           mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
+            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
         } 
 
         mat->split(mat);
 #endif
     }
-    free(tmpval);
-    free(tmpcol);
 
     return GHOST_SUCCESS;
 }
@@ -266,7 +286,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 #ifdef GHOST_HAVE_MPI
 
 static void CRS_split(ghost_mat_t *mat)
-    {
+{
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
@@ -494,7 +514,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     DEBUG_LOG(1,"Reading CRS matrix from file");
     mat->name = basename(matrixPath);
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    
+
     ghost_midx_t i;
     ghost_mnnz_t j;
 
@@ -549,11 +569,11 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < CR(mat)->nrows; i++) {
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                    CR(mat)->col[j] = 0;
-                    memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
+                CR(mat)->col[j] = 0;
+                memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
             }
         }
-        
+
         GHOST_SAFECALL(ghost_readCol(CR(mat)->col, matrixPath, 0, CR(mat)->nEnts));
         GHOST_SAFECALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, CR(mat)->nEnts));
     } else {
@@ -589,7 +609,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         }
         MPI_safecall(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
         MPI_safecall(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
-            
+
 
         DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
 
@@ -630,7 +650,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         DEBUG_LOG(1,"local rows (offset) = %"PRmatIDX,context->lfRow[me]);
         DEBUG_LOG(1,"local entries          = %"PRmatNNZ,context->lnEnts[me]);
         DEBUG_LOG(1,"local entires (offset) = %"PRmatNNZ,context->lfEnt[me]);
-        
+
         CR(mat)->nrows = context->lnrows[me];
         CR(mat)->nEnts = context->lnEnts[me];
 
@@ -640,11 +660,11 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < CR(mat)->nrows; i++) {
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                    CR(mat)->col[j] = 0;
-                    memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
+                CR(mat)->col[j] = 0;
+                memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
             }
         }
-        
+
         GHOST_SAFECALL(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
         GHOST_SAFECALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
 
@@ -702,7 +722,7 @@ static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath)
     if ((ret = fwrite(&nnz,sizeof(nnz),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
 
     int64_t rpt,col;
-    
+
     for (i = 0; i < CR(mat)->nrows+1; i++) {
         rpt = (int64_t)CR(mat)->rpt[i];
         if ((ret = fwrite(&rpt,sizeof(rpt),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));

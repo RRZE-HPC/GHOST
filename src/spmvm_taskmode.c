@@ -34,16 +34,6 @@ void *communicate(void *vargs)
     int to_PE, from_PE, i;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
-    args->rhs->downloadNonHalo(args->rhs);
-#pragma omp parallel private(to_PE,i,c)
-    for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-        for (c=0; c<args->rhs->traits->nvecs; c++) {
-#pragma omp for 
-            for (i=0; i<args->context->dues[to_PE]; i++){
-                memcpy(args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + (to_PE*args->max_dues+i)*args->sizeofRHS,VECVAL(args->rhs,args->rhs->val,c,args->context->duelist[to_PE][i]),args->sizeofRHS);
-            }
-        }
-    }
     
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
         if (args->context->wishes[from_PE]>0){
@@ -186,6 +176,20 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
 #ifdef __INTEL_COMPILER
     kmp_set_blocktime(1);
 #endif
+    
+    int to_PE;
+    ghost_vidx_t c;
+    invec->downloadNonHalo(invec);
+
+#pragma omp parallel private(to_PE,i,c)
+    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+        for (c=0; c<invec->traits->nvecs; c++) {
+#pragma omp for 
+            for (i=0; i<context->dues[to_PE]; i++){
+                memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+            }
+        }
+    }
 
     //GHOST_INSTR_START(spMVM_taskmode_comm_comp);
     //GHOST_INSTR_START(spMVM_taskmode_comm);
@@ -197,9 +201,11 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     ghost_task_wait(compTask);
     //GHOST_INSTR_STOP(spMVM_taskmode_comp);
     //GHOST_INSTR_STOP(spMVM_taskmode_comm_comp);
-    ghost_task_add(compRTask);
-    ghost_task_wait(compRTask);
+    //ghost_task_add(compRTask);
+    //ghost_task_wait(compRTask);
 
+    mat->remotePart->spmv(mat->remotePart,res,invec,spmvmOptions);
+    
     free(work);
     free(request);
     free(status);
