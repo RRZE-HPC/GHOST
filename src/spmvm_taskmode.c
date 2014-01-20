@@ -201,8 +201,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     ghost_task_wait(compTask);
     //GHOST_INSTR_STOP(spMVM_taskmode_comp);
     //GHOST_INSTR_STOP(spMVM_taskmode_comm_comp);
-    ghost_task_add(compRTask);
-    ghost_task_wait(compRTask);
+    //ghost_task_add(compRTask);
+    //ghost_task_wait(compRTask);
 
     mat->remotePart->spmv(mat->remotePart,res,invec,spmvmOptions);
     
