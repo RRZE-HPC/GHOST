@@ -147,11 +147,11 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
     int cpu;
     hwloc_obj_t runner;
 
-    i=0;
-    hwloc_bitmap_foreach_begin(cpu,ghost_thpool->cpuset);
-    ghost_thpool->PUs[i] = hwloc_get_pu_obj_by_os_index(topology,cpu);
-    i++;
-    hwloc_bitmap_foreach_end();
+    int npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,ghost_thpool->cpuset,HWLOC_OBJ_PU);
+   
+    for (i=0; i<npus; i++) {
+        ghost_thpool->PUs[i] = hwloc_get_obj_inside_cpuset_by_type(topology,ghost_thpool->cpuset,HWLOC_OBJ_PU,i);
+    }
 
     int nodes[totalThreads];
     for (i=0; i<totalThreads; i++) {
