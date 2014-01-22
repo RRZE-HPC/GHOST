@@ -39,8 +39,11 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         local_dot_product = ((v_t *)(lhs->traits->localdot));
 
-#pragma omp parallel
+#pragma omp parallel 
+        {
+#pragma omp single
         nthreads = ghost_ompGetNumThreads();
+        }
 
         partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t)); // 3 -> 16: avoid false sharing
 
