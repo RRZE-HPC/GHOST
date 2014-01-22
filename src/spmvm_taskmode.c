@@ -31,6 +31,9 @@ typedef struct {
 
 void *communicate(void *vargs)
 {
+//#pragma omp parallel
+//    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+
     int to_PE, from_PE, i;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
@@ -68,9 +71,12 @@ typedef struct {
 
 void *computeLocal(void *vargs)
 {
+//#pragma omp parallel
+//    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+
     compArgs *args = (compArgs *)vargs;
 
-    args->mat->localPart->spmv(args->mat->localPart,args->res,args->invec,args->spmvmOptions);
+    args->mat->spmv(args->mat,args->res,args->invec,args->spmvmOptions);
 
     return NULL;
 }
@@ -85,6 +91,7 @@ void *computeRemote(void *vargs)
 
 void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
+    GHOST_INSTR_START(spMVM_taskmode_entiresolver)
     ghost_mnnz_t max_dues;
     char *work;
     int nprocs;
@@ -96,12 +103,17 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     MPI_Status  *status;
 
     int localopts = spmvmOptions;
-    localopts &= ~GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT;
-
     int remoteopts = spmvmOptions;
-    remoteopts &= ~GHOST_SPMVM_AXPBY;
-    remoteopts &= ~GHOST_SPMVM_APPLY_SHIFT;
-    remoteopts |= GHOST_SPMVM_AXPY;
+
+    int remoteExists = mat->remotePart->nnz(mat->remotePart) > 0;
+   
+    if (remoteExists) {
+        localopts &= ~GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT;
+
+        remoteopts &= ~GHOST_SPMVM_AXPBY;
+        remoteopts &= ~GHOST_SPMVM_APPLY_SHIFT;
+        remoteopts |= GHOST_SPMVM_AXPY;
+    }
 
     size_t sizeofRHS;
 
@@ -111,6 +123,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     ghost_task_t *commTask;// = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
     ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
     ghost_task_t *compRTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+    GHOST_INSTR_START(spMVM_taskmode_prepare);
 
     DEBUG_LOG(1,"In task mode spMVM solver");
     me = ghost_getRank(context->mpicomm);
@@ -131,19 +144,14 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
         DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
         taskflags |= GHOST_TASK_USE_PARENTS;
         ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-        /*ghost_task_init(&compTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeLocal, &cplargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-        ghost_task_init(&compRTask, parent->nThreads/ghost_getSMTlevel(), 0, &computeRemote, &cprargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);
-        ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags|GHOST_TASK_ONLY_HYPERTHREADS);
-        ghost_task_init(&prepareTask, parent->nThreads/ghost_getSMTlevel(), 0, &prepare, &cargs, taskflags|GHOST_TASK_NO_HYPERTHREADS);*/
-        ghost_task_init(&compTask, parent->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_init(&compRTask, parent->nThreads-1, 0, &computeRemote, &cprargs, taskflags);
-        ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags);
+        ghost_task_init(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_init(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
 
 
     } else {
         DEBUG_LOG(1,"No parent task in task mode spMVM solver");
         ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_init(&compRTask, ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
+        //ghost_task_init(&compRTask, ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
         ghost_task_init(&commTask, 1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
     }
 
@@ -159,15 +167,15 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     cargs.msgcount = 0;
     cargs.request = request;
     cargs.status = status;
-    cplargs.mat = mat;
+    cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
     cplargs.spmvmOptions = localopts;
-    cprargs.mat = mat;
+    /*cprargs.mat = mat;
     cprargs.invec = invec;
     cprargs.res = res;
     cprargs.spmvmOptions = remoteopts;
-
+*/
 
     for (i=0;i<invec->traits->nvecs*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
@@ -179,6 +187,9 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     
     int to_PE;
     ghost_vidx_t c;
+    
+    GHOST_INSTR_STOP(spMVM_taskmode_prepare);
+    GHOST_INSTR_START(spMVM_taskmode_assemblebuffer);
     invec->downloadNonHalo(invec);
 
 #pragma omp parallel private(to_PE,i,c)
@@ -190,23 +201,34 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
             }
         }
     }
+    GHOST_INSTR_STOP(spMVM_taskmode_assemblebuffer);
 
-    //GHOST_INSTR_START(spMVM_taskmode_comm_comp);
+    GHOST_INSTR_START(spMVM_taskmode_comm_comp);
     //GHOST_INSTR_START(spMVM_taskmode_comm);
-    ghost_task_add(compTask);
-    ghost_task_add(commTask);
+    if (remoteExists) {
+        ghost_task_add(commTask);
+    }
     //GHOST_INSTR_STOP(spMVM_taskmode_comm);
     //GHOST_INSTR_START(spMVM_taskmode_comp);
-    ghost_task_wait(commTask);
+    //mat->localPart->spmv(mat->localPart,res,invec,localopts);
+    ghost_task_add(compTask);
     ghost_task_wait(compTask);
+    if (remoteExists) {
+        ghost_task_wait(commTask);
+    }
     //GHOST_INSTR_STOP(spMVM_taskmode_comp);
-    //GHOST_INSTR_STOP(spMVM_taskmode_comm_comp);
+    GHOST_INSTR_STOP(spMVM_taskmode_comm_comp);
     //ghost_task_add(compRTask);
     //ghost_task_wait(compRTask);
 
-    mat->remotePart->spmv(mat->remotePart,res,invec,spmvmOptions);
+    GHOST_INSTR_START(spMVM_taskmode_remotecomp);
+    if (remoteExists) {
+        mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);
+    }
+    GHOST_INSTR_STOP(spMVM_taskmode_remotecomp);
     
     free(work);
     free(request);
     free(status);
+    GHOST_INSTR_STOP(spMVM_taskmode_entiresolver)
 }
