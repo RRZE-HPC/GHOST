@@ -3,7 +3,8 @@
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 
 #include "ghost/complex.h"
 #include "ghost/util.h"
@@ -12,7 +13,6 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 
-#include <cstdio>
 #include <iostream>
 
 
@@ -109,6 +109,34 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
     }
 }
 
+// thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
+template <typename v_t>
+void my_rand(unsigned int* state, v_t* result)
+{
+    // default implementation
+    static const v_t scal = (v_t)2.0/(v_t)RAND_MAX;
+    static const v_t shift=(v_t)(-1.0);
+    *result=(v_t)rand_r(state)*scal+shift;
+}
+
+template <typename float_type>
+void my_rand(unsigned int* state, std::complex<float_type>* result)
+{
+    float_type* ft_res = (float_type*)result;
+    my_rand(state,&ft_res[0]);
+    my_rand(state,&ft_res[1]);
+}
+
+template <typename float_type>
+void my_rand(unsigned int* state, ghost_complex<float_type>* result)
+{
+    float_type* ft_res = (float_type*)result;
+    my_rand(state,&ft_res[0]);
+    my_rand(state,&ft_res[1]);
+}
+
+
+
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 {
     ghost_vec_malloc(vec);
@@ -117,20 +145,13 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 #pragma omp parallel private (v,i)
     {
-        srand(ghost_hash(int(ghost_wctimemilli()),clock(),ghost_ompGetThreadNum()));
-        for (v=0; v<vec->traits->nvecs; v++) {
+    unsigned int* state = ghost_getRandState();
+        for (v=0; v<vec->traits->nvecs; v++) 
+        {
 #pragma omp for
-            for (i=0; i<vec->traits->nrows; i++) {
-                *(v_t *)VECVAL(vec,vec->val,v,i) = (v_t)(rand()*1./RAND_MAX);
-
-                if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
-                { // let's trust the branch prediction...
-                    if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) {
-                        *(double *)(VECVAL(vec,vec->val,v,i)+sizeof(double)) = (double)(rand()*1./RAND_MAX);
-                    } else {
-                        *(float *)(VECVAL(vec,vec->val,v,i)+sizeof(float)) = (float)(rand()*1./RAND_MAX);
-                    }
-                }
+            for (i=0; i<vec->traits->nrows; i++) 
+            {
+                my_rand(state,(v_t *)VECVAL(vec,vec->val,v,i));
             }
         }
     }

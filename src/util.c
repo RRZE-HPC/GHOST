@@ -889,6 +889,27 @@ int ghost_ompGetThreadNum()
 #endif
 }
 
+static unsigned int* ghost_rand_states=NULL;
+
+unsigned int* ghost_getRandState()
+{
+        return &ghost_rand_states[ghost_ompGetThreadNum()];
+}
+
+void ghost_rand_init()
+{
+    ghost_rand_states=(unsigned int*)malloc(ghost_ompGetNumThreads()*sizeof(unsigned int));
+#pragma omp parallel
+    {
+        unsigned int seed=(unsigned int)ghost_hash(
+                (int)ghost_wctimemilli(),
+                (int)ghost_getRank(MPI_COMM_WORLD),
+                (int)ghost_ompGetThreadNum());
+        *ghost_getRandState()=seed;
+    }
+}
+
+
 int ghost_init(int argc, char **argv)
 {
 #ifdef GHOST_HAVE_MPI
@@ -1125,6 +1146,8 @@ int ghost_init(int argc, char **argv)
     }
     ghost_thpool_init(mycpuset);
      
+    ghost_rand_init();
+     
     hwloc_bitmap_free(mycpuset);   
     hwloc_bitmap_free(globcpuset);   
     return GHOST_SUCCESS;
@@ -1136,6 +1159,9 @@ void ghost_finish()
     ghost_taskq_finish();
     ghost_thpool_finish();
     hwloc_topology_destroy(topology);
+    
+    free(ghost_rand_states);
+    ghost_rand_states=NULL;
 
 #if GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;

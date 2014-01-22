@@ -359,6 +359,10 @@ extern "C" {
     double ghost_wctime();
     double ghost_wctimemilli();
 
+    // this function is used for thread-safe random number generation.
+    // The state for each OpenMP thread is initialized in ghost_init/ghost_rand_init
+    unsigned int* ghost_getRandState();
+
     double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
     ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
     void *ghost_malloc(const size_t size);
