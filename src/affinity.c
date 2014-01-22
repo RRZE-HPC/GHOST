@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
+static ghost_hw_config_t ghost_hw_config = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
 
 static int stringcmp(const void *x, const void *y)
 {
@@ -204,4 +206,18 @@ int ghost_getNumberOfRanks(ghost_mpi_comm_t comm)
     return 1;
 #endif
 
+}
+
+ghost_error_t ghost_setHwConfig(ghost_hw_config_t a)
+{
+   ghost_hw_config = a;
+   return GHOST_SUCCESS; 
+}
+
+ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig)
+{
+    hwconfig->maxCores = ghost_hw_config.maxCores;
+    hwconfig->smtLevel = ghost_hw_config.smtLevel;
+    
+    return GHOST_SUCCESS;
 }

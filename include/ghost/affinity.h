@@ -9,11 +9,25 @@
 #include <mpi.h>
 #endif
 
+typedef struct {
+    int maxCores;
+    int smtLevel;
+} ghost_hw_config_t;
+
+#define GHOST_HW_CONFIG_INVALID -1
+
+extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
+
+
 extern hwloc_topology_t topology;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+ghost_error_t ghost_setHwConfig(ghost_hw_config_t);
+ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
 int ghost_getRank(ghost_mpi_comm_t);
 //int ghost_getLocalRank(MPI_Comm);
 //int ghost_getNumberOfLocalRanks(MPI_Comm);
