@@ -906,6 +906,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     }
 
     mat->context->lnEnts[me] = SELL(mat)->nEnts;
+    SELL(mat)->beta = SELL(mat)->nnz*1.0/(double)SELL(mat)->nEnts;
 
 #if GHOST_HAVE_MPI
     ghost_mnnz_t nents;
