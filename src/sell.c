@@ -938,10 +938,17 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         return GHOST_ERR_IO;
     }
 
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
-    char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
+
+    WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
+    /*ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
+    char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);*/
+    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->nnz*sizeof(ghost_midx_t));
+    char *tmpval = (char *)ghost_malloc(SELL(mat)->nnz*sizeofdt);
+    GHOST_SAFECALL(ghost_readCol(tmpcol, matrixPath, 0, SELL(mat)->nnz));
+    GHOST_SAFECALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath, 0, SELL(mat)->nnz));
+
     for (chunk = 0; chunk < nChunks; chunk++) {
-        memset(tmpcol,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
+    /*    memset(tmpcol,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
         memset(tmpval,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
 
         ghost_midx_t firstNzOfChunk = context->lfEnt[me]+rpt[chunk*SELL(mat)->chunkHeight];
@@ -956,7 +963,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
         GHOST_SAFECALL(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
         GHOST_SAFECALL(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
-
+*/
         ghost_midx_t idx = 0;
         for (i=0; i<SELL(mat)->chunkHeight; i++) {
             ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
