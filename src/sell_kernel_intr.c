@@ -1,8 +1,8 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_sell.h>
-#include <ghost_constants.h>
-#include <ghost_util.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/sell.h"
+#include "ghost/constants.h"
+#include "ghost/util.h"
 #include <immintrin.h>
 
 void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)

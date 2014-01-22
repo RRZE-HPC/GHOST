@@ -1,10 +1,11 @@
 #define _XOPEN_SOURCE 500 
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_vec.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/vec.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
+#include "ghost/context.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -178,15 +179,15 @@ static void vec_uploadHalo(ghost_vec_t *vec)
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
             CU_copyHostToDeviceOffset(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],
-                    VECVAL(vec,vec->val,v,vec->traits->nrows), 
-                    vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
+                    VECVAL(vec,vec->val,v,0), 
+                    vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
                     vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
 #ifdef GHOST_HAVE_OPENCL
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyHostToDeviceOffset(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->communicator->halo_elements*ghost_sizeofDataType(vec->traits->datatype),    vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            CL_copyHostToDeviceOffset(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype),    vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -203,7 +204,7 @@ static void vec_downloadHalo(ghost_vec_t *vec)
 static void vec_uploadNonHalo(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
@@ -241,7 +242,7 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
 static void vec_upload(ghost_vec_t *vec) 
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %d rows of vector",vec->traits->nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
@@ -395,7 +396,7 @@ void getNrowsFromContext(ghost_vec_t *vec)
             } 
             else 
             {
-                vec->traits->nrows = vec->context->communicator->lnrows[ghost_getRank(vec->context->mpicomm)];
+                vec->traits->nrows = vec->context->lnrows[ghost_getRank(vec->context->mpicomm)];
             }
         }
         if (vec->traits->nrowshalo == 0) {
@@ -409,10 +410,10 @@ void getNrowsFromContext(ghost_vec_t *vec)
             else 
             {
                 if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
-                    if (vec->context->communicator->halo_elements == -1) {
+                    if (vec->context->halo_elements == -1) {
                         ABORT("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                     }
-                    vec->traits->nrowshalo = vec->traits->nrows+vec->context->communicator->halo_elements;
+                    vec->traits->nrowshalo = vec->traits->nrows+vec->context->halo_elements;
                 } else {
                     vec->traits->nrowshalo = vec->traits->nrows;
                 }
@@ -604,7 +605,7 @@ static void vec_toFile(ghost_vec_t *vec, char *path)
     ghost_vidx_t v;
     MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
     MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
-    MPI_Offset fileoffset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+    MPI_Offset fileoffset = vec->context->lfRow[ghost_getRank(vec->context->mpicomm)];
     ghost_vidx_t vecoffset = 0;
     for (v=0; v<vec->traits->nvecs; v++) {
         char *val = NULL;
@@ -691,7 +692,7 @@ static void vec_fromFile(ghost_vec_t *vec, char *path)
     if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED))
         offset = 0;
     else
-        offset = vec->context->communicator->lfRow[ghost_getRank(vec->context->mpicomm)];
+        offset = vec->context->lfRow[ghost_getRank(vec->context->mpicomm)];
 
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Reading vector from file %s",path);
@@ -822,7 +823,6 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
     int me = ghost_getRank(nodeVec->context->mpicomm);
     DEBUG_LOG(2,"Scattering global vector to local vectors");
 
-    ghost_comm_t *comm = nodeVec->context->communicator;
     MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
 
     int nprocs = ghost_getNumberOfRanks(nodeVec->context->mpicomm);
@@ -837,14 +837,14 @@ static void ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
 
     if (ghost_getRank(nodeVec->context->mpicomm) != 0) {
         for (c=0; c<vec->traits->nvecs; c++) {
-            MPI_safecall(MPI_Irecv(nodeVec->val[c],comm->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
+            MPI_safecall(MPI_Irecv(nodeVec->val[c],nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
-            memcpy(nodeVec->val[c],vec->val[c],sizeofdt*comm->lnrows[0]);
+            memcpy(nodeVec->val[c],vec->val[c],sizeofdt*nodeVec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_safecall(MPI_Isend(VECVAL(vec,vec->val,c,comm->lfRow[i]),comm->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+                MPI_safecall(MPI_Isend(VECVAL(vec,vec->val,c,nodeVec->context->lfRow[i]),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
@@ -890,7 +890,6 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
     int i;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
-    ghost_comm_t *comm = vec->context->communicator;
     MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
     MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
     int msgcount = 0;
@@ -900,14 +899,14 @@ static void ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec)
 
     if (ghost_getRank(vec->context->mpicomm) != 0) {
         for (c=0; c<vec->traits->nvecs; c++) {
-            MPI_safecall(MPI_Isend(vec->val[c],comm->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
+            MPI_safecall(MPI_Isend(vec->val[c],vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
-            memcpy(totalVec->val[c],vec->val[c],sizeofdt*comm->lnrows[0]);
+            memcpy(totalVec->val[c],vec->val[c],sizeofdt*vec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_safecall(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,comm->lfRow[i]),comm->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+                MPI_safecall(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,vec->context->lfRow[i]),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }

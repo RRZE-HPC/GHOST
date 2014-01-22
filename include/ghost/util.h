@@ -1,10 +1,11 @@
 #ifndef __GHOST_UTIL_H__
 #define __GHOST_UTIL_H__
 
-#include <ghost_config.h>
+#include "config.h"
+#include "types.h"
 
 #ifdef GHOST_HAVE_MPI
-#include "ghost_mpi_util.h"
+#include "mpi_util.h"
 #endif
 
 #ifdef GHOST_HAVE_OPENCL
@@ -12,10 +13,9 @@
 #endif
 
 #ifdef GHOST_HAVE_CUDA
-#include "ghost_cu_util.h"
+#include "cu_util.h"
 #endif
 
-#include <ghost_types.h>
 #ifndef __cplusplus
 #include <stdio.h>
 #include <complex.h>
@@ -88,6 +88,7 @@
 #define DEBUG_LOG(level,...) {if(DEBUG >= level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
 #define INFO_LOG(...) LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__)
 #define WARNING_LOG(...) LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__)
+#define ERROR_LOG(...) LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__)
 
 #ifdef GHOST_HAVE_MPI
 #define ABORT(...) {\
@@ -101,6 +102,8 @@
     exit(EXIT_FAILURE);\
 }
 #endif
+
+
 
 #define MPI_safecall(call) {\
     int mpierr = call ;\
@@ -342,7 +345,7 @@ extern "C" {
 
     int ghost_pad(int nrows, int padding);
 
-    void ghost_freeCommunicator( ghost_comm_t* const );
+//    void ghost_freeCommunicator( ghost_comm_t* const );
     size_t ghost_sizeofDataType(int dt);
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);
@@ -357,7 +360,7 @@ extern "C" {
     double ghost_wctimemilli();
 
     double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
-    void ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
+    ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);
     int ghost_flopsPerSpmvm(int m_t, int v_t);
@@ -370,6 +373,7 @@ extern "C" {
     size_t ghost_getSizeOfLLC();
 
     int ghost_setType(ghost_type_t t);
+    int ghost_setHybridMode(ghost_hybridmode_t hm);
     int ghost_hash(int a, int b, int c);
 
 #ifdef __cplusplus

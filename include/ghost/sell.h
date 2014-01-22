@@ -2,8 +2,8 @@
 #ifndef __GHOST_SPMFORMAT_SELL__
 #define __GHOST_SPMFORMAT_SELL__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
+#include "config.h"
+#include "types.h"
 
 typedef struct 
 {
@@ -46,6 +46,7 @@ typedef struct
     ghost_midx_t *col;
     ghost_mnnz_t *chunkStart;
     ghost_midx_t nrows;
+    ghost_midx_t ncols;
     ghost_midx_t nrowsPadded;
     ghost_mnnz_t nnz;
     ghost_mnnz_t nEnts;
@@ -132,6 +133,11 @@ void d_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void s_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void c_SELL_fromCRS(ghost_mat_t *mat, void *crs);
 void z_SELL_fromCRS(ghost_mat_t *mat, void *crs);
+
+const char * d_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * s_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * c_SELL_stringify(ghost_mat_t *mat, int dense);
+const char * z_SELL_stringify(ghost_mat_t *mat, int dense);
 #ifdef __cplusplus
 }
 #endif

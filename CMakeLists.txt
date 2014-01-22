@@ -3,7 +3,7 @@ project (GHOST)
 
 set(GHOST_VERSION_MAJOR 0)
 set(GHOST_VERSION_MINOR 5)
-set(GHOST_VERSION_REVISION 0)
+set(GHOST_VERSION_REVISION 1)
 set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION_REVISION}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
@@ -15,7 +15,7 @@ option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_OPENCL "Build with OpenCL" 1)
-option(LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
+option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL or GSL)")
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (may be SHARED or STATIC)")
@@ -24,7 +24,9 @@ set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TI
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
-set (SOURCES 
+set (SOURCES
+        src/io.c
+        src/io.cpp 
 		src/ghost.c 
 		src/util.c 
 		src/spmvm_nompi.c 
@@ -32,6 +34,7 @@ set (SOURCES
 		src/tasking.c 
 		src/crs.c 
 		src/crs.cpp 
+        src/error.c
 		src/sell.c 
 		src/sell_kernel_intr.c 
 		src/vec.cpp 
@@ -44,20 +47,21 @@ set (SOURCES
 	)
 
 set (HEADERS
-		include/ghost.h
-		include/ghost_affinity.h	
-		include/ghost_blas_mangle.h
-		include/ghost_complex.h
-		include/ghost_constants.h
-		include/ghost_context.h
-		include/ghost_crs.h
-		include/ghost_mat.h
-		include/ghost_math.h
-		include/ghost_sell.h
-		include/ghost_taskq.h
-		include/ghost_types.h
-		include/ghost_util.h
-		include/ghost_vec.h
+		include/ghost/affinity.h	
+		include/ghost/blas_mangle.h
+		include/ghost/complex.h
+		include/ghost/constants.h
+		include/ghost/context.h
+		include/ghost/crs.h
+		include/ghost/error.h
+        include/ghost/io.h
+		include/ghost/mat.h
+		include/ghost/math.h
+		include/ghost/sell.h
+		include/ghost/taskq.h
+		include/ghost/types.h
+		include/ghost/util.h
+		include/ghost/vec.h
 	)
 
 if (USE_MPI)
@@ -68,7 +72,7 @@ if (USE_MPI)
 			src/spmvm_taskmode.c
 		)
 	set (HEADERS ${HEADERS}
-			include/ghost_mpi_util.h
+			include/ghost/mpi_util.h
 		)
 endif()
 
@@ -77,7 +81,7 @@ if (USE_CUDA)
 	if (CUDA_FOUND)
 		set(GHOST_HAVE_CUDA 1)
 		cuda_include_directories(${CMAKE_SOURCE_DIR}/include
-				${CMAKE_BINARY_DIR})
+				${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost)
 		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 		    list(APPEND CUDA_NVCC_FLAGS -G -g)
@@ -94,9 +98,9 @@ if (USE_CUDA)
 			)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
-				include/ghost_cu_util.h
-                include/ghost_cu_vec.h
-                include/ghost_cu_crs.h
+				include/ghost/cu_util.h
+                include/ghost/cu_vec.h
+                include/ghost/cu_crs.h
 			)
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)
@@ -110,11 +114,11 @@ if (USE_OPENCL)
 		set(GHOST_HAVE_OPENCL 1)
 		set (SOURCES 
 				${SOURCES} 
-				src/ghost_cl_util.c	
+				src/ghost/cl_util.c	
 			)
 		include_directories(${OPENCL_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
-				include/ghost_cl_util.h
+				include/ghost/cl_util.h
 			)
 	endif()
 endif()
@@ -130,8 +134,8 @@ else ()
 endif()
 
 
-if (LONGIDX)
-	add_definitions(-DLONGIDX)
+if (USE_LONGIDX)
+	set(GHOST_HAVE_LONGIDX 1)
     if (${BLAS} STREQUAL "MKL")
 		add_definitions(-DMKL_ILP64)
 	endif()
@@ -179,7 +183,7 @@ endif()
 #	message(FATAL_ERROR "Could not find hw#loc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 #endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${HWLOC_INCLUDE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -pedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wextra -pedantic")
@@ -212,8 +216,8 @@ elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 configure_file (
-	"${PROJECT_SOURCE_DIR}/include/ghost_config.h.in"
-	"${PROJECT_BINARY_DIR}/ghost_config.h"
+	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
+	"${PROJECT_BINARY_DIR}/ghost/config.h"
 )
 
 if (${LIBTYPE} STREQUAL "STATIC")
@@ -222,9 +226,10 @@ elseif (${LIBTYPE} STREQUAL "SHARED")
 install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
 endif()
 install(FILES GHOST-config.cmake DESTINATION lib/ghost)
+install(FILES include/ghost.h DESTINATION include)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
-install(FILES ${CMAKE_BINARY_DIR}/ghost_config.h DESTINATION include/ghost)
+install(FILES ${CMAKE_BINARY_DIR}/ghost/config.h DESTINATION include/ghost)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"

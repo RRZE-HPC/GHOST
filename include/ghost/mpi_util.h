@@ -1,8 +1,9 @@
 #ifndef __GHOST_HAVE_MPI_UTIL_H__
 #define __GHOST_HAVE_MPI_UTIL_H__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
+#include "config.h"
+#include "types.h"
+#include "error.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h>
@@ -17,7 +18,7 @@ void ghost_createDistributedContext(ghost_context_t *, char *, int, ghost_mtrait
 //void ghost_createDistribution(CR_TYPE *cr, int options, ghost_comm_t *lcrp);
 //void ghost_createCommunication(CR_TYPE *, CR_TYPE **, CR_TYPE **, int options, ghost_context_t *context);
 MPI_Comm getSingleNodeComm();
-int ghost_setupNodeMPI(MPI_Comm comm);
+ghost_error_t ghost_setupNodeMPI(MPI_Comm comm);
 int ghost_setupLocalMPIcomm(MPI_Comm mpicomm); 
 MPI_Datatype ghost_mpi_dataType(int datatype);
 MPI_Op ghost_mpi_op_sum(int datatype);

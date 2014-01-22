@@ -1,17 +1,18 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>
 
-#include <ghost_complex.h>
-#include <ghost_util.h>
-#include <ghost_crs.h>
-#include <ghost_sell.h>
-#include <ghost_vec.h>
-#include <ghost_math.h>
-#include <ghost_constants.h>
+#include "ghost/complex.h"
+#include "ghost/util.h"
+#include "ghost/crs.h"
+#include "ghost/sell.h"
+#include "ghost/vec.h"
+#include "ghost/math.h"
+#include "ghost/constants.h"
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -53,10 +54,9 @@ using namespace std;
 template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
-    DEBUG_LOG(2,"In plain SELL kernel w/ %d chunks",sell->nrowsPadded/chunkHeight);
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_midx_t i,j,c;
     ghost_vidx_t v;
     int nthreads = 1;
@@ -75,9 +75,9 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 #pragma omp parallel
         nthreads = ghost_ompGetNumThreads();
 
-        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+        partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t));
 
-        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
+        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -142,9 +142,11 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
                     }
                 }
                 if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                    partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
-                    partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                    partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                    }
                 }
             }
 
@@ -154,9 +156,9 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
             }
         }
     }
@@ -166,9 +168,9 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 {
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     int nthreads = 1;
     ghost_midx_t i,j;
     ghost_vidx_t v;
@@ -249,49 +251,22 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
 
             }
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                partsums[(v+0*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*lhsv[i];
-                partsums[(v+1*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&lhsv[i])*rhsv[i];
-                partsums[(v+2*lhs->traits->nvecs)*nthreads + ghost_ompGetThreadNum()] += conjugate(&rhsv[i])*rhsv[i];
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
             }
         }
     }
 
-}
-
-static int ghost_selectSellChunkHeight(int datatype) {
-    int ch = 1;
-
-    if (datatype & GHOST_BINCRS_DT_FLOAT)
-        ch *= 2;
-
-    if (datatype & GHOST_BINCRS_DT_REAL)
-        ch *= 2;
-
-#ifdef AVX
-    ch *= 2;
-#endif
-
-#ifdef MIC
-    ch *= 4;
-#ifndef LONGIDX
-    ch *= 2;
-#endif
-#endif
-
-#if defined (OPENCL) || defined (CUDA)
-    ch = 256;
-#endif
-
-    return ch;
 }
 
 static int compareNZEPerRow( const void* a, const void* b ) 
@@ -559,6 +534,29 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, void *crs)
     DEBUG_LOG(1,"Successfully created SELL");
 }
 
+template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int dense)
+{
+    ghost_midx_t chunk,i,j,row=0;
+    m_t *val = (m_t *)SELL(mat)->val;
+
+    stringstream buffer;
+
+    buffer << "---" << endl;
+    for (chunk = 0; chunk < SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight; chunk++) {
+        for (i=0; i<SELL(mat)->chunkHeight && row<SELL(mat)->nrows; i++, row++) {
+            for (j=0; j<(dense?SELL(mat)->ncols:SELL(mat)->chunkLen[chunk]); j++) {
+                ghost_mnnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
+                buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
+            }
+            buffer << endl;
+        }
+        buffer << "---" << endl;
+    }
+
+    return buffer.str().c_str();
+}
+
+
 extern "C" void dd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
@@ -618,3 +616,15 @@ extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 
 extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, void *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
+
+extern "C" const char * d_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< double >(mat, dense); }
+
+extern "C" const char * s_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< float >(mat, dense); }
+
+extern "C" const char * z_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< ghost_complex<double> >(mat, dense); }
+
+extern "C" const char * c_SELL_stringify(ghost_mat_t *mat, int dense)
+{ return SELL_stringify< ghost_complex<float> >(mat, dense); }

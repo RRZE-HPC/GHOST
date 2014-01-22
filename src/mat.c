@@ -1,10 +1,11 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_crs.h>
-#include <ghost_sell.h>
-#include <ghost_mat.h>
-#include <ghost_constants.h>
-#include <ghost_util.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/crs.h"
+#include "ghost/sell.h"
+#include "ghost/mat.h"
+#include "ghost/constants.h"
+#include "ghost/context.h"
+#include "ghost/util.h"
 
 ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
 {
@@ -63,3 +64,4 @@ ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 
     return nnz;
 }
+

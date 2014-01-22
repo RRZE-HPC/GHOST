@@ -1,14 +1,14 @@
 #define _GNU_SOURCE
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_util.h>
-#include <ghost_vec.h>
-#include <ghost_context.h>
-#include <ghost_mat.h>
-#include <ghost_math.h>
-#include <ghost_taskq.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/vec.h"
+#include "ghost/context.h"
+#include "ghost/mat.h"
+#include "ghost/math.h"
+#include "ghost/taskq.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
 #include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
@@ -54,6 +54,7 @@ int ghost_node_rank = 0;
 hwloc_topology_t topology;
 
 ghost_type_t ghost_type = GHOST_TYPE_INVALID;
+ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 extern char ** environ;
 
 double ghost_wctime()
@@ -159,13 +160,8 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
     ghost_midx_t nrows = ghost_getMatNrows(mat);
     ghost_midx_t nnz = ghost_getMatNnz(mat);
     
-    int myrank;
+    int myrank = ghost_getRank(mat->context->mpicomm);;
 
-       if (mat->context->communicator != NULL) {
-        myrank = ghost_getRank(mat->context->mpicomm); 
-    } else {
-        myrank = 0;
-    }
     if (myrank == 0) {
 
     char *matrixLocation;
@@ -210,18 +206,10 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
-    int nranks;
-    int myrank;
+    int nranks = ghost_getNumberOfPhysicalCores(context->mpicomm);
+    int myrank = ghost_getRank(context->mpicomm);
 
-       if (context->communicator != NULL) {
-        nranks = ghost_getNumberOfRanks(context->mpicomm);
-        myrank = ghost_getRank(context->mpicomm); 
-    } else {
-        nranks = 1;
-        myrank = 0;
-    }
-
-    if (myrank == 0) {
+        if (myrank == 0) {
         char *contextType = "";
         if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
             contextType = "Distributed";
@@ -394,12 +382,8 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 {
 
     DEBUG_LOG(1,"Computing reference solution");
-    int me;
-       if (nodeLHS->context->communicator != NULL) {
-        me = ghost_getRank(nodeLHS->context->mpicomm); 
-    } else {
-        me = 0;
-    }
+    int me = ghost_getRank(nodeLHS->context->mpicomm);
+    
     char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
     memset(zero,0,ghost_sizeofDataType(datatype));
     ghost_vec_t *globLHS; 
@@ -409,7 +393,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     ghost_matfile_header_t fileheader;
     ghost_readMatFileHeader(matrixPath,&fileheader);
 
-    context = ghost_createContext(fileheader.nrows,fileheader.ncols,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
+    ghost_createContext(&context,GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
     ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
     mat->fromFile(mat,matrixPath);
     ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
@@ -470,7 +454,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 }
 
-void ghost_freeCommunicator( ghost_comm_t* const comm ) 
+/*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
 {
     if(comm) {
         free(comm->lnEnts);
@@ -485,12 +469,12 @@ void ghost_freeCommunicator( ghost_comm_t* const comm )
             free(comm->duelist[0]);
         free(comm->wishlist);
         free(comm->duelist);
-        free(comm->due_displ);
-        free(comm->wish_displ);
+        //free(comm->due_displ);
+        //free(comm->wish_displ);
         free(comm->hput_pos);
         free(comm);
     }
-}
+}*/
 
 char * ghost_modeName(int spmvmOptions) 
 {
@@ -621,7 +605,7 @@ void *ghost_malloc(const size_t size)
     mem = malloc(size);
 
     if( ! mem ) {
-        ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
+      //  ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
     }
     return mem;
 }
@@ -785,12 +769,12 @@ char ghost_datatypePrefix(int dt)
 ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 {
     if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-        return ctx->communicator->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
+        return ctx->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
 
     return lidx;    
 }
 
-void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
+ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
 {
     FILE* file;
     long filesize;
@@ -848,6 +832,8 @@ void ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
         ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
 
     fclose(file);
+
+    return GHOST_SUCCESS;
 }
 
 
@@ -978,17 +964,6 @@ int ghost_init(int argc, char **argv)
 #endif
     ndomains += ncudadevs;
 
-    ghost_hybridmode_t hybridmode = GHOST_INVALID;
-    if (nnoderanks <=  ncudadevs+1) {
-        hybridmode = GHOST_ONEPERNODE;
-    } else if (nnoderanks == ncudadevs+nnumanodes) {
-        hybridmode = GHOST_ONEPERNUMA;
-    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
-        hybridmode = GHOST_ONEPERCORE;
-        WARNING_LOG("One MPI process per core not supported");
-    } else {
-        WARNING_LOG("Invalid number of ranks on node");
-    }
 
     if (ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
@@ -1031,11 +1006,35 @@ int ghost_init(int argc, char **argv)
 
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
+    
+    if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
+    if (nnoderanks <=  nLocalCuda+1) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
+        INFO_LOG("One CPU rank per node");
+    } else if (nnoderanks == nLocalCuda+nnumanodes) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
+        INFO_LOG("One CPU rank per NUMA domain");
+    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
+        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
+        WARNING_LOG("One MPI process per core not supported");
+    } else {
+        WARNING_LOG("Invalid number of ranks on node");
+    }
+    }
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
     globcpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
+
+    /* No hyperthreads in thread pool */
+    /*int cpu;
+    hwloc_bitmap_foreach_begin(cpu,globcpuset);
+    if (hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,cpu)->sibling_rank != 0) {
+        hwloc_bitmap_clr(globcpuset,cpu);
+    }
+    hwloc_bitmap_foreach_end();*/
+
 
 #if GHOST_HAVE_CUDA
     int cudaDevice = 0;
@@ -1058,6 +1057,8 @@ int ghost_init(int argc, char **argv)
             hwloc_obj_t runner = mynode;
             while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
                 runner = runner->first_child;
+                char *foo;
+                hwloc_bitmap_list_asprintf(&foo,runner->cpuset);
             }
             if (i == ghost_getRank(ghost_node_comm)) {
                 hwloc_bitmap_copy(mycpuset,runner->cpuset);
@@ -1071,12 +1072,12 @@ int ghost_init(int argc, char **argv)
     }
 #endif
     
-    if (hybridmode == GHOST_ONEPERNODE) {
+    if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
             hwloc_bitmap_copy(mycpuset,globcpuset);
         }
         hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
-    } else if (hybridmode == GHOST_ONEPERNUMA) {
+    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNUMA) {
         int numaNode = 0;
         for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
@@ -1088,12 +1089,12 @@ int ghost_init(int argc, char **argv)
             }
         }
     } 
-   /* char *cpusetstr, *mycpusetstr;
+    char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
-    INFO_LOG("Process cpuset: %s",cpusetstr);
+    INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
     if (hwloc_bitmap_weight(globcpuset) > 0) {
         WARNING_LOG("There are unassigned cores");
-    }*/
+    }
     ghost_thpool_init(mycpuset);
 
 /* initialize random number streams for vec->fromRand */
@@ -1142,7 +1143,7 @@ size_t ghost_getSizeOfLLC()
     int depth;
     size_t size = 0;
 
-    for (depth=0; depth<hwloc_topology_get_depth(topology); depth++) {
+    for (depth=0; depth<(int)hwloc_topology_get_depth(topology); depth++) {
         obj = hwloc_get_obj_by_depth(topology,depth,0);
         if (obj->type == HWLOC_OBJ_CACHE) {
             size = obj->attr->cache.size;
@@ -1158,6 +1159,13 @@ size_t ghost_getSizeOfLLC()
 int ghost_setType(ghost_type_t t)
 {
     ghost_type = t;
+
+    return GHOST_SUCCESS;
+}
+
+int ghost_setHybridMode(ghost_hybridmode_t hm)
+{
+    ghost_hybridmode = hm;
 
     return GHOST_SUCCESS;
 }

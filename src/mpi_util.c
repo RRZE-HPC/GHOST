@@ -1,11 +1,11 @@
 #define _GNU_SOURCE
 
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_mpi_util.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/mpi_util.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +24,6 @@
 #include <dlfcn.h>
 
 #define LOCAL_HOSTNAME_MAX 	256
-
 
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
@@ -58,83 +57,6 @@ MPI_Op ghost_mpi_op_sum(int datatype)
 
 }
 
-void ghost_scatterv(void *sendbuf, int *sendcnts, ghost_midx_t *displs, MPI_Datatype sendtype, void *recvbuv, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm)
-{
-#ifdef LONGIDX
-
-    UNUSED(sendbuf);
-    UNUSED(sendcnts);
-    UNUSED(displs);
-    UNUSED(sendtype);
-    UNUSED(recvbuv);
-    UNUSED(recvcnt);
-    UNUSED(recvtype);
-    UNUSED(root);
-    UNUSED(comm);
-#else
-    MPI_safecall(MPI_Scatterv(sendbuf,sendcnts,displs,sendtype,recvbuv,recvcnt,recvtype,root,comm));
-#endif
-
-}
-
-/*int ghost_setupLocalMPIcomm(MPI_Comm mpicomm) 
-{
-    int i, coreId, me, n_nodes, me_node;
-    char **all_hostnames;
-    char *all_hn_mem;
-    char hostname[MAXHOSTNAMELEN];
-    gethostname(hostname,MAXHOSTNAMELEN);
-
-    size_t size_ahnm, size_ahn, size_nint;
-    int *mymate, *acc_mates;
-
-    MPI_safecall(MPI_Comm_size ( mpicomm, &n_nodes ));
-    MPI_safecall(MPI_Comm_rank ( mpicomm, &me ));
-
-//    coreId = getProcessorId();
-
-    size_ahnm = (size_t)( MAXHOSTNAMELEN*n_nodes * sizeof(char) );
-    size_ahn  = (size_t)( n_nodes    * sizeof(char*) );
-    size_nint = (size_t)( n_nodes    * sizeof(int) );
-
-    mymate        = (int*)      malloc( size_nint);
-    acc_mates     = (int*)      malloc( size_nint );
-    all_hn_mem    = (char*)     malloc( size_ahnm );
-    all_hostnames = (char**)    malloc( size_ahn );
-
-    for (i=0; i<n_nodes; i++){
-        all_hostnames[i] = &all_hn_mem[i*MAXHOSTNAMELEN];
-        mymate[i] = 0;
-    }
-
-    MPI_safecall(MPI_Allgather ( hostname, MAXHOSTNAMELEN, MPI_CHAR, 
-                &all_hostnames[0][0], MAXHOSTNAMELEN, MPI_CHAR, mpicomm ));
-
-    coreId=ghost_getCore();
-    if (coreId==0){
-        for (i=0; i<n_nodes; i++){
-            if ( strcmp (hostname, all_hostnames[i]) == 0) mymate[i]=me;
-        }
-    }
-    for (i=0; i<n_nodes; i++) {
-      INFO_LOG("mymate[%d] = %d",i,mymate[i]);
-    }  
-
-    MPI_safecall(MPI_Allreduce( mymate, acc_mates, n_nodes, MPI_INT, MPI_SUM, mpicomm)); 
-    MPI_safecall(MPI_Comm_split ( mpicomm, acc_mates[me], me, &ghost_node_mpicomm ));
-    MPI_safecall(MPI_Comm_rank ( ghost_node_mpicomm, &me_node));
-
-    INFO_LOG("local ranks: %d",ghost_getNumberOfRanks(ghost_node_mpicomm));
-    DEBUG_LOG(1,"Rank in single node comm: %d", me_node);
-
-    free( mymate );
-    free( acc_mates );
-    free( all_hn_mem );
-    free( all_hostnames );
-
-    return GHOST_SUCCESS;
-}*/
-
 static uint32_t adler32(const void * buf, size_t buflength)
 {
 	// Trace();
@@ -152,7 +74,7 @@ static uint32_t adler32(const void * buf, size_t buflength)
 	return (s2 << 16) | s1;
 }
 
-static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
+static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 {
 	// Trace();
 
@@ -170,9 +92,9 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 		hostname = (char *)malloc(sizeof(char) * nHostname);
 
 		if (hostname == NULL) {
-			WARNING_LOG("Allocating %lu bytes of memory for hostname failed: %s",
+			WARNING_LOG("Allocating %zu bytes of memory for hostname failed: %s",
 				sizeof(char) * nHostname, strerror(errno));
-			return GHOST_FAILURE;
+			return GHOST_ERR_INTERNAL;
 		}
 
 		int error;
@@ -189,7 +111,7 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 				hostname = NULL;
 
 				WARNING_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
-				return GHOST_FAILURE;
+				return GHOST_ERR_INTERNAL;
 			}
 
 		}
@@ -208,7 +130,7 @@ static int ghost_hostname(char ** hostnamePtr, size_t * hostnameLength)
 	return 0;
 }
 
-int ghost_setupNodeMPI(MPI_Comm comm)
+ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 {
     int mpiRank = ghost_getRank(comm);
 	int error;
@@ -227,7 +149,7 @@ int ghost_setupNodeMPI(MPI_Comm comm)
 
 	MPI_Comm nodeComm = MPI_COMM_NULL;
 
-	DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %lu", checkSum, mpiRank, hostnameLength);
+	DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank, hostnameLength);
 
 	MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
 

@@ -1,16 +1,18 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>
 
-#include <ghost_complex.h>
-#include <ghost_util.h>
-#include <ghost_vec.h>
-#include <ghost_math.h>
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
+#include "ghost/complex.h"
+#include "ghost/util.h"
+#include "ghost/vec.h"
+#include "ghost/math.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
+#include "ghost/blas_mangle.h"
+
 
 #include <cstdio>
 #include <iostream>
@@ -39,13 +41,39 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
     if (vec->traits->nvecs != vec2->traits->nvecs) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_vidx_t i,v;
-    ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_vidx_t v;
+    ghost_blas_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_blas_idx_t incx = 1;
+    ghost_blas_idx_t incy = 1;
 
-    int nthreads;
-#pragma omp parallel
-    nthreads = ghost_ompGetNumThreads();
+    for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+        v_t localres;
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+              zdotc((ghost_blas_idx_t*)&nr,(BLAS_Complex16*)VECVAL(vec,vec->val,v,0),&incx,(BLAS_Complex16*)VECVAL(vec2,vec2->val,v,0),&incy,(BLAS_Complex16*)&localres);
+            }
+            else 
+            {
+              cdotc((ghost_blas_idx_t*)&nr,(BLAS_Complex8*) VECVAL(vec,vec->val,v,0),&incx,(BLAS_Complex8*) VECVAL(vec2,vec2->val,v,0),&incy,(BLAS_Complex8*)&localres);
+            }
+        } 
+        else 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            {
+              *(double*)&localres = ddot((ghost_blas_idx_t*)&nr,(double*)VECVAL(vec,vec->val,v,0),&incx,(double*)VECVAL(vec2,vec2->val,v,0),&incy);
+            }
+            else 
+            {
+              *(float*)&localres = sdot((ghost_blas_idx_t*)&nr,(float*) VECVAL(vec,vec->val,v,0),&incx,(float*) VECVAL(vec2,vec2->val,v,0),&incy);
+            }
+        }
+        ((v_t *)res)[v] = localres;
+    }
 
+/*
     v_t *partsums = (v_t *)ghost_malloc(nthreads*sizeof(v_t));
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
         v_t sum = 0;
@@ -63,7 +91,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
         ((v_t *)res)[v] = sum;
     }
     free(partsums);
-
+*/
 }
 
 template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
@@ -100,13 +128,33 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 {
     ghost_vidx_t i,v;
     v_t *s = (v_t *)scale;
+    ghost_blas_idx_t incx = 1;
+    ghost_vidx_t nr = vec->traits->nrows;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for 
-        for (i=0; i<vec->traits->nrows; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+    for (v=0; v<vec->traits->nvecs; v++)
+    {
+        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+                zscal((ghost_blas_idx_t*)&nr,(BLAS_Complex16*)&s[v],(BLAS_Complex16*)VECVAL(vec,vec->val,v,0),&incx);
+            else
+                cscal((ghost_blas_idx_t*)&nr,(BLAS_Complex8*)&s[v],(BLAS_Complex8*)VECVAL(vec,vec->val,v,0),&incx);
+        }
+        else
+        {
+            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+                dscal((ghost_blas_idx_t*)&nr,(double*)&s[v],(double*)VECVAL(vec,vec->val,v,0),&incx);
+            else
+                sscal((ghost_blas_idx_t*)&nr,(float*)&s[v],(float*)VECVAL(vec,vec->val,v,0),&incx);
         }
     }
+
+    //for (v=0; v<vec->traits->nvecs; v++) {
+//#pragma omp parallel for 
+        //for (i=0; i<vec->traits->nrows; i++) {
+            //*(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+        //}
+    //}
 }
 
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)

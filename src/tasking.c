@@ -17,14 +17,15 @@
 
 #define NIDLECORES (ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy))
 
-#include <ghost_constants.h>
-#include <ghost_affinity.h>
-#include "ghost_taskq.h"
-#include "ghost_util.h"
+#include "ghost/constants.h"
+#include "ghost/affinity.h"
+#include "ghost/taskq.h"
+#include "ghost/util.h"
 
 #if GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
+
 
 extern int ghost_cu_device;
 
@@ -78,6 +79,7 @@ pthread_key_t ghost_thread_key = 0;
 static int** coreidx;
 
 //static void * thread_main(void *arg);
+static void * thread_main(void *arg);
 static int ghost_task_unpin(ghost_task_t *task);
 static int nIdleCoresAtLD(hwloc_bitmap_t, int);
 static int nBusyCoresAtLD(hwloc_bitmap_t, int);
@@ -106,20 +108,20 @@ static int intcomp(const void *x, const void *y)
  * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
  * performed before this function returns.
  */
-int ghost_thpool_init(hwloc_cpuset_t cpuset)
+ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
 {
     static int initialized = 0;
-    int t,q,i,l,p;
+    int t,q,i;
     int totalThreads;
     hwloc_obj_t obj;
 
     if (initialized) {
         WARNING_LOG("The thread pool has already been initialized.");
-        return GHOST_FAILURE;
+        return GHOST_ERR_UNKNOWN;
     }
     if (!cpuset) {
         WARNING_LOG("The thread pool's cpuset is NULL.");
-        return GHOST_FAILURE;
+        return GHOST_ERR_INVALID_ARG;
     }
     initialized=1;
 
@@ -147,7 +149,8 @@ int ghost_thpool_init(hwloc_cpuset_t cpuset)
 
     i=0;
     hwloc_bitmap_foreach_begin(cpu,ghost_thpool->cpuset);
-    ghost_thpool->PUs[i++] = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,cpu);
+    ghost_thpool->PUs[i] = hwloc_get_pu_obj_by_os_index(topology,cpu);
+    i++;
     hwloc_bitmap_foreach_end();
 
     int nodes[totalThreads];
@@ -155,12 +158,12 @@ int ghost_thpool_init(hwloc_cpuset_t cpuset)
         nodes[i] = 0;
         obj = ghost_thpool->PUs[i];
         for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_NODE) {
+            if (!hwloc_compare_types(runner->type,HWLOC_OBJ_NODE)) {
                 nodes[i] = runner->logical_index;
                 break;
             }
         }
-        DEBUG_LOG(1,"Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,runner->logical_index);
+        //INFO_LOG("Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,nodes[i]);
     }
 
     qsort(nodes,totalThreads,sizeof(int),intcomp);
@@ -282,7 +285,7 @@ static int firstThreadOfLD(int ld)
  * @brief Initializes a task queues.
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_taskq_init()
+ghost_error_t ghost_taskq_init()
 {
     taskq=(ghost_taskq_t *)ghost_malloc(sizeof(ghost_taskq_t));
 
@@ -421,10 +424,10 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
         if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
-            //    char *a, *b;
-            //    hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
-            //    hwloc_bitmap_list_asprintf(&b,parentscores);
-            //    DEBUG_LOG(1,"Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);
+               /* char *a, *b;
+                hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
+                hwloc_bitmap_list_asprintf(&b,parentscores);
+                INFO_LOG("Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);*/
             hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,parentscores);
         } else {
             hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
@@ -620,7 +623,7 @@ static int ghost_task_unpin(ghost_task_t *task)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_print(ghost_task_t *t) 
+ghost_error_t ghost_task_print(ghost_task_t *t) 
 {
     ghost_printHeader("Task %p",t);
     ghost_printLine("No. of threads",NULL,"%d",t->nThreads);
@@ -635,7 +638,7 @@ int ghost_task_print(ghost_task_t *t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_taskq_print_all() 
+ghost_error_t ghost_taskq_print_all() 
 {
     ghost_task_t *t;
 
@@ -668,7 +671,7 @@ static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
 
     if (q==NULL) {
         WARNING_LOG("Tried to add a task to a queue which is NULL");
-        return GHOST_FAILURE;
+        return GHOST_ERR_INVALID_ARG;
     }
 
     pthread_mutex_lock(&q->mutex);
@@ -707,7 +710,7 @@ static int taskq_additem(ghost_taskq_t *q, ghost_task_t *t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_add(ghost_task_t *t)
+ghost_error_t ghost_task_add(ghost_task_t *t)
 {
     // if a task is initialized _once_ but added several times, this has to be done each time it is added
     pthread_cond_init(t->finishedCond,NULL);
@@ -740,7 +743,7 @@ int ghost_task_add(ghost_task_t *t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_taskq_finish()
+ghost_error_t ghost_taskq_finish()
 {
     DEBUG_LOG(1,"Finishing task queue");
     if (taskq == NULL)
@@ -754,7 +757,7 @@ int ghost_taskq_finish()
     DEBUG_LOG(1,"Wake up all threads");    
     if (sem_post(&taskSem)){
         WARNING_LOG("Error in sem_post: %s",strerror(errno));
-        return GHOST_FAILURE;
+        return GHOST_ERR_INTERNAL;
     }
     /*DEBUG_LOG(1,"Join all threads");
       int t; 
@@ -778,9 +781,10 @@ int ghost_taskq_finish()
  *
  * @return  The state of the task
  */
-int ghost_task_test(ghost_task_t * t)
+ghost_task_state_t ghost_task_test(ghost_task_t * t)
 {
-    if (t->state == NULL)
+    
+    if (t == NULL || t->state == NULL)
         return GHOST_TASK_INVALID;
     return *(t->state);
 }
@@ -792,7 +796,7 @@ int ghost_task_test(ghost_task_t * t)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_wait(ghost_task_t * task)
+ghost_error_t ghost_task_wait(ghost_task_t * task)
 {
     DEBUG_LOG(1,"Waiting @core %d for task %p whose state is %d",ghost_getCore(),task,*(task->state));
 
@@ -831,19 +835,19 @@ int ghost_task_wait(ghost_task_t * task)
  *
  * @return The state string
  */
-char *ghost_task_strstate(int state)
+char *ghost_task_strstate(ghost_task_state_t state)
 {
     switch (state) {
-        case 0: 
+        case GHOST_TASK_INVALID: 
             return "Invalid";
             break;
-        case 1: 
+        case GHOST_TASK_ENQUEUED: 
             return "Enqueued";
             break;
-        case 2: 
+        case GHOST_TASK_RUNNING: 
             return "Running";
             break;
-        case 3: 
+        case GHOST_TASK_FINISHED: 
             return "Finished";
             break;
         default:
@@ -857,7 +861,7 @@ char *ghost_task_strstate(int state)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_waitall()
+ghost_error_t ghost_task_waitall()
 {
     ghost_task_t *t;
 
@@ -883,7 +887,7 @@ int ghost_task_waitall()
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
+ghost_error_t ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
 {
     int t;
     int ret = 0;
@@ -940,7 +944,7 @@ int ghost_task_waitsome(ghost_task_t ** tasks, int nt, int *index)
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_task_destroy(ghost_task_t *t)
+ghost_error_t ghost_task_destroy(ghost_task_t *t)
 {
     pthread_mutex_destroy(t->mutex);
     pthread_cond_destroy(t->finishedCond);
@@ -968,9 +972,9 @@ int ghost_task_destroy(ghost_task_t *t)
  *
  * @return A pointer to an initialized task
  */
-ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
+ghost_error_t ghost_task_init(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
 {
-    ghost_task_t *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
+    *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
     if (ghost_thpool == NULL) {
         WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");
 /*        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
@@ -989,39 +993,39 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
             WARNING_LOG("FILL_LD does only work when the LD is given! Not adding task!");
-            return NULL;
+            return GHOST_ERR_INVALID_ARG;
         }
-        t->nThreads = nThreadsPerLD(LD);
+        (*t)->nThreads = nThreadsPerLD(LD);
     } 
     else if (nThreads == GHOST_TASK_FILL_ALL) {
 #ifdef GHOST_HAVE_OPENMP
-        t->nThreads = ghost_thpool->nThreads;
+        (*t)->nThreads = ghost_thpool->nThreads;
 #else
-        t->nThreads = 1; //TODO is this the correct behavior?
+        (*t)->nThreads = 1; //TODO is this the correct behavior?
 #endif
     } 
     else {
-        t->nThreads = nThreads;
+        (*t)->nThreads = nThreads;
     }
 
-    t->LD = LD;
-    t->func = func;
-    t->arg = arg;
-    t->flags = flags;
+    (*t)->LD = LD;
+    (*t)->func = func;
+    (*t)->arg = arg;
+    (*t)->flags = flags;
 
     //    t->freed = 0;
-    t->state = (int *)ghost_malloc(sizeof(int));
-    *(t->state) = GHOST_TASK_INVALID;
-    t->cores = (int *)ghost_malloc(sizeof(int)*t->nThreads);
-    t->coremap = hwloc_bitmap_alloc();
-    t->childusedmap = hwloc_bitmap_alloc();
-    t->next = NULL;
-    t->prev = NULL;
-    t->parent = NULL;
-    t->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
-    t->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
+    (*t)->state = (int *)ghost_malloc(sizeof(int));
+    *((*t)->state) = GHOST_TASK_INVALID;
+    (*t)->cores = (int *)ghost_malloc(sizeof(int)*(*t)->nThreads);
+    (*t)->coremap = hwloc_bitmap_alloc();
+    (*t)->childusedmap = hwloc_bitmap_alloc();
+    (*t)->next = NULL;
+    (*t)->prev = NULL;
+    (*t)->parent = NULL;
+    (*t)->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
+    (*t)->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
 
-    return t;
+    return GHOST_SUCCESS;
 }
 
 /**
@@ -1029,7 +1033,7 @@ ghost_task_t * ghost_task_init(int nThreads, int LD, void *(*func)(void *), void
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-int ghost_thpool_finish()
+ghost_error_t ghost_thpool_finish()
 {
     if (ghost_thpool == NULL)
         return GHOST_SUCCESS;

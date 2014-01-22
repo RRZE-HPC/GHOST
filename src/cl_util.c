@@ -1,6 +1,6 @@
-#include "ghost_util.h"
-#include "ghost_mat.h"
-//#include "mpihelper.h"
+#include "ghost/ghost_util.h"
+#include "ghost/ghost_mat.h"
+//#include "ghost/mpihelper.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>

@@ -1,5 +1,5 @@
-#include "ghost_util.h"
-#include "ghost_bench.h"
+#include "ghost/ghost_util.h"
+#include "ghost/ghost_bench.h"
 
 
 #define STREAM_BYTES 1e9

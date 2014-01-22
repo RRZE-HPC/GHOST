@@ -1,11 +1,11 @@
 #ifndef __GHOST_VEC_H__
 #define __GHOST_VEC_H__
 
-#include <ghost_config.h>
-#include <ghost_types.h>
+#include "config.h"
+#include "types.h"
 
 #if GHOST_HAVE_CUDA
-#include <ghost_cu_vec.h>
+#include "cu_vec.h"
 #endif
 
 #ifdef MIC

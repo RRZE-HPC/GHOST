@@ -1,16 +1,19 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 #undef GHOST_HAVE_MPI
-#include <ghost_types.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
-#include <ghost_vec.h>
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
+#include "ghost/vec.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <cublas_v2.h>
 #include <curand.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <ghost_cu_complex_helper.h>
+
+#include "ghost/cu_complex_helper.h"
 
 
 #define THREADSPERBLOCK 256

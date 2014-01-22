@@ -1,9 +1,9 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_affinity.h>
-#include <ghost_vec.h>
-#include <ghost_util.h>
-#include <ghost_constants.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/affinity.h"
+#include "ghost/vec.h"
+#include "ghost/util.h"
+#include "ghost/constants.h"
 
 #include <mpi.h>
 #include <stdio.h>
@@ -46,14 +46,15 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
     max_dues = 0;
     for (i=0;i<nprocs;i++)
-        if (context->communicator->dues[i]>max_dues) 
-            max_dues = context->communicator->dues[i];
+        if (context->dues[i]>max_dues) 
+            max_dues = context->dues[i];
 
+    GHOST_INSTR_START(spMVM_vectormode_comm);
+    invec->downloadNonHalo(invec);
     work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
     request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
     status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
-
 
 #ifdef __INTEL_COMPILER
     kmp_set_blocktime(1);
@@ -65,37 +66,46 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     }
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (context->communicator->wishes[from_PE]>0){
+        if (context->wishes[from_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Irecv(VECVAL(invec,invec->val,c,context->communicator->hput_pos[from_PE]), context->communicator->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount] ));
+                MPI_safecall(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount] ));
                 msgcount++;
             }
         }
     }
 
+    GHOST_INSTR_START(spMVM_vectormode_copybuffers)
 #pragma omp parallel private(to_PE,i,c)
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         for (c=0; c<invec->traits->nvecs; c++) {
 #pragma omp for 
-            for (i=0; i<context->communicator->dues[to_PE]; i++){
-                memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->communicator->duelist[to_PE][i]),sizeofRHS);
+            for (i=0; i<context->dues[to_PE]; i++){
+                memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
             }
         }
     }
+    GHOST_INSTR_STOP(spMVM_vectormode_copybuffers)
+
 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        if (context->communicator->dues[to_PE]>0){
+        if (context->dues[to_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->communicator->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount] ));
+                MPI_safecall(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount] ));
                 msgcount++;
             }
         }
     }
 
+    GHOST_INSTR_START(spMVM_vectormode_waitall)
     MPI_safecall(MPI_Waitall(msgcount, request, status));
+    GHOST_INSTR_STOP(spMVM_vectormode_waitall)
 
     invec->uploadHalo(invec);
+    GHOST_INSTR_STOP(spMVM_vectormode_comm);
+    
+    GHOST_INSTR_START(spMVM_vectormode_comp);
     mat->spmv(mat,res,invec,spmvmOptions);    
+    GHOST_INSTR_STOP(spMVM_vectormode_comp);
 
     free(work);
     free(request);

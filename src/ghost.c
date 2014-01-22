@@ -1,6 +1,6 @@
-#include <ghost_config.h>
-#include <ghost_types.h>
-#include <ghost_constants.h>
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/constants.h"
 
 #include <stddef.h>
 

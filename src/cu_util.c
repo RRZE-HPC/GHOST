@@ -1,9 +1,9 @@
-#include <ghost_context.h>
-#include <ghost_types.h>
-#include <ghost_util.h>
-#include <ghost_mat.h>
-#include <ghost_affinity.h>
-#include <ghost_constants.h>
+#include "ghost/context.h"
+#include "ghost/types.h"
+#include "ghost/util.h"
+#include "ghost/mat.h"
+#include "ghost/affinity.h"
+#include "ghost/constants.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -172,11 +172,11 @@ ghost_acc_info_t *CU_getDeviceInfo()
             }
         }
     }
-
-#ifdef GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(&devInfo->nDistinctDevices,1,MPI_INT,0,MPI_COMM_WORLD));
+/*
+#if GHOST_HAVE_MPI
+    MPI_safecall(MPI_Bcast(&(devInfo->nDistinctDevices),1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
-
+*/
     devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
     devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
     for (i=0; i<devInfo->nDistinctDevices; i++) {
@@ -199,14 +199,15 @@ ghost_acc_info_t *CU_getDeviceInfo()
         }
         free(names);
     }
-
-#ifdef GHOST_HAVE_MPI
+/*
+#if GHOST_HAVE_MPI
     MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
-    for (i=0; i<devInfo->nDistinctDevices; i++)
+    for (i=0; i<devInfo->nDistinctDevices; i++) {
         MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+    }
 #endif
-
+*/
     return devInfo;
 }
 

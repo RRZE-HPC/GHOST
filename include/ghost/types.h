@@ -7,13 +7,16 @@
 #pragma warning (disable : 424)
 #endif
 #include <mpi.h>
+typedef MPI_Comm ghost_mpi_comm_t;
 #ifdef __INTEL_COMPILER
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
 #endif
 #else
-typedef int MPI_Comm;
-#define MPI_COMM_WORLD 0 // TODO unschoen
+typedef int ghost_mpi_comm_t;
+#define MPI_COMM_WORLD 0
+//typedef int MPI_Comm;
+//#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
 
 #include <inttypes.h>
@@ -24,7 +27,7 @@ typedef int MPI_Comm;
 #include <CL/cl.h>
 #endif
 
-#ifdef LONGIDX
+#if GHOST_HAVE_LONGIDX
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
 typedef int64_t ghost_vidx_t; // type for the index of the vector
@@ -42,7 +45,7 @@ typedef cl_long ghost_cl_mnnz_t;
 #define PRmatIDX PRId64
 #define PRvecIDX PRId64
 
-#else // ifdef LONGIDX
+#else
 
 typedef int32_t ghost_midx_t; // type for the index of the matrix
 typedef int32_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
@@ -64,14 +67,24 @@ typedef cl_int ghost_cl_mnnz_t;
 
 #endif
 
+typedef enum ghost_error_t {
+    GHOST_SUCCESS,
+    GHOST_ERR_INVALID_ARG,
+    GHOST_ERR_MPI,
+    GHOST_ERR_CUDA,
+    GHOST_ERR_UNKNOWN,
+    GHOST_ERR_INTERNAL,
+    GHOST_ERR_NOT_IMPLEMENTED,
+    GHOST_ERR_IO
+} ghost_error_t;
 
+typedef enum {GHOST_HYBRIDMODE_INVALID, GHOST_HYBRIDMODE_ONEPERNODE, GHOST_HYBRIDMODE_ONEPERNUMA, GHOST_HYBRIDMODE_ONEPERCORE} ghost_hybridmode_t;
 typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
-typedef enum {GHOST_INVALID, GHOST_ONEPERNODE, GHOST_ONEPERNUMA, GHOST_ONEPERCORE} ghost_hybridmode_t;
 
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_context_t ghost_context_t;
-typedef struct ghost_comm_t ghost_comm_t;
+//typedef struct ghost_comm_t ghost_comm_t;
 typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 typedef struct ghost_acc_info_t ghost_acc_info_t;
@@ -396,13 +409,16 @@ struct ghost_mat_t
     // access functions
     void       (*destroy) (ghost_mat_t *);
     void       (*printInfo) (ghost_mat_t *);
+    const char * (*stringify) (ghost_mat_t *, int);
+    void       (*print) (ghost_mat_t *);
     ghost_mnnz_t  (*nnz) (ghost_mat_t *);
     ghost_midx_t  (*nrows) (ghost_mat_t *);
     ghost_midx_t  (*ncols) (ghost_mat_t *);
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
-    void       (*fromFile)(ghost_mat_t *, char *);
-    void       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
+    ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
@@ -435,7 +451,7 @@ struct ghost_context_t
     // is being created, the row pointers are distributed
     ghost_midx_t *rpt;
 
-    ghost_comm_t *communicator;
+   // ghost_comm_t *communicator;
     ghost_midx_t gnrows;
     ghost_midx_t gncols;
     int flags;
@@ -444,24 +460,53 @@ struct ghost_context_t
     ghost_midx_t *rowPerm;    // may be NULL
     ghost_midx_t *invRowPerm; // may be NULL
 
-    MPI_Comm mpicomm;
+    ghost_mpi_comm_t mpicomm;
+    
+    /**
+     * @brief Number of remote elements with unique colidx
+     */
+    ghost_midx_t halo_elements; // TODO rename nHaloElements
+    /**
+     * @brief Number of matrix elements for each rank
+     */
+    ghost_mnnz_t* lnEnts; // TODO rename nLclEnts
+    /**
+     * @brief Index of first element into the global matrix for each rank
+     */
+    ghost_mnnz_t* lfEnt; // TODO rename firstLclEnt
+    /**
+     * @brief Number of matrix rows for each rank
+     */
+    ghost_midx_t* lnrows; // TODO rename nLclRows
+    /**
+     * @brief Index of first matrix row for each rank
+     */
+    ghost_midx_t* lfRow; // TODO rename firstLclRow
+    /**
+     * @brief Number of wishes (= unique RHS elements to get) from each rank
+     */
+    ghost_mnnz_t * wishes; // TODO rename nWishes
+    /**
+     * @brief Column idx of wishes from each rank
+     */
+    ghost_midx_t ** wishlist; // TODO rename wishes
+    /**
+     * @brief Number of dues (= unique RHS elements from myself) to each rank
+     */
+    ghost_mnnz_t * dues; // TODO rename nDues
+    /**
+     * @brief Column indices of dues to each rank
+     */
+    ghost_midx_t ** duelist; // TODO rename dues
+    /**
+     * @brief First index to get RHS elements coming from each rank
+     */
+    ghost_midx_t* hput_pos; // TODO rename
 };
 
-struct ghost_comm_t
+/*struct ghost_comm_t
 {
-    ghost_midx_t halo_elements; // number of nonlocal RHS vector elements
-    ghost_mnnz_t* lnEnts;
-    ghost_mnnz_t* lfEnt;
-    ghost_midx_t* lnrows;
-    ghost_midx_t* lfRow;
-    int* wishes;
-    int** wishlist;
-    int* dues;
-    int** duelist;
-    ghost_midx_t* due_displ;
-    ghost_midx_t* wish_displ;
-    ghost_midx_t* hput_pos;
-};
+};*/
 
 struct ghost_acc_info_t
 {

@@ -1,15 +1,16 @@
-#include <ghost_config.h>
+#include "ghost/config.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>
 
-#include <ghost_complex.h>
-#include <ghost_math.h>
-#include <ghost_util.h>
-#include <ghost_crs.h>
-#include <ghost_constants.h>
+#include "ghost/affinity.h"
+#include "ghost/complex.h"
+#include "ghost/math.h"
+#include "ghost/util.h"
+#include "ghost/crs.h"
+#include "ghost/constants.h"
 #include <iostream>
 
 // TODO shift, scale als templateparameter
@@ -25,6 +26,8 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     ghost_vidx_t v;
     int nthreads = 1;
     int nvecs = MIN(lhs->traits->nvecs,rhs->traits->nvecs);
+
+// TODO false sharing avoidance w/ hwloc
 
     v_t hlp1 = 0.;
     v_t shift, scale, beta;
@@ -46,7 +49,16 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         }
      }
 
+<<<<<<< HEAD
 
+=======
+        partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t)); // 3 -> 16: avoid false sharing
+
+        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
+>>>>>>> refactor_please_review
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
     for (i=0; i<cr->nrows; i++){
@@ -100,6 +112,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
 
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+<<<<<<< HEAD
                 partsums[th_id][          v] += conjugate(&lhsv[i])*lhsv[i];
                 partsums[th_id][  nvecs + v] += conjugate(&lhsv[i])*rhsv[i];
                 partsums[th_id][2*nvecs + v] += conjugate(&rhsv[i])*rhsv[i];
@@ -109,18 +122,29 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
                 //partsums[(v+0*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*lhsv[i];
                 //partsums[(v+1*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*rhsv[i];
                 //partsums[(v+2*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&rhsv[i])*rhsv[i];
+=======
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+>>>>>>> refactor_please_review
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         for (v=0; v<nvecs; v++) {
             for (i=0; i<nthreads; i++) {
+<<<<<<< HEAD
                 local_dot_product[v          ] += partsums[i][          v];
                 local_dot_product[v +   nvecs] += partsums[i][   nvecs + v];
                 local_dot_product[v + 2*nvecs] += partsums[i][ 2*nvecs + v];
                 //local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
                 //local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
                 //local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
+=======
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
+                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
+>>>>>>> refactor_please_review
             }
         }
 
@@ -129,16 +153,6 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     }
 }
 
-template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts)
-{
-    ghost_mnnz_t i;
-    m_t *md = (m_t *)matrixData;
-    f_t *fd = (f_t *)fileData;
-
-    for (i = 0; i<nEnts; i++) {
-        md[i] = (m_t)(fd[i]);
-    }
-}
 
 template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
 {
@@ -201,54 +215,6 @@ extern "C" void zc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_ve
 
 extern "C" void zz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
-
-extern "C" void dd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,double >(matrixData, fileData, nEnts); }
-
-extern "C" void ds_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,float >(matrixData, fileData, nEnts); }
-
-extern "C" void dc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void dz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< double,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void sd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,double >(matrixData, fileData, nEnts); }
-
-extern "C" void ss_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,float >(matrixData, fileData, nEnts); }
-
-extern "C" void sc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void sz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< float,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void cd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,double >(matrixData, fileData, nEnts); }
-
-extern "C" void cs_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,float >(matrixData, fileData, nEnts); }
-
-extern "C" void cc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void cz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<float>,ghost_complex<double> >(matrixData, fileData, nEnts); }
-
-extern "C" void zd_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,double >(matrixData, fileData, nEnts); }
-
-extern "C" void zs_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,float >(matrixData, fileData, nEnts); }
-
-extern "C" void zc_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,ghost_complex<float> >(matrixData, fileData, nEnts); }
-
-extern "C" void zz_CRS_castData(void *matrixData, void *fileData, int nEnts)
-{ return CRS_castData_tmpl< ghost_complex<double>,ghost_complex<double> >(matrixData, fileData, nEnts); }
 
 extern "C" void d_CRS_valToStr(void *val, char *str, int n)
 { return CRS_valToStr_tmpl< double >(val,str,n); }
