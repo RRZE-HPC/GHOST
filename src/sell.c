@@ -586,6 +586,9 @@ static void SELL_split(ghost_mat_t *mat)
     localSELL->chunkStart[0] = 0;
     remoteSELL->chunkStart[0] = 0;
 
+    localSELL->nnz = 0;
+    remoteSELL->nnz = 0;
+
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
         lnEnts_l = 0;
@@ -601,8 +604,10 @@ static void SELL_split(ghost_mat_t *mat)
                     if (i < fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             localSELL->rowLen[row]++;
+                            localSELL->nnz++;
                         } else {
                             remoteSELL->rowLen[row]++;
+                            remoteSELL->nnz++;
                         }
                         localSELL->rowLenPadded[row] = ghost_pad(localSELL->rowLen[row],localSELL->T);
                         remoteSELL->rowLenPadded[row] = ghost_pad(remoteSELL->rowLen[row],remoteSELL->T);
