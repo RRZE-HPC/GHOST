@@ -889,6 +889,34 @@ int ghost_ompGetThreadNum()
 #endif
 }
 
+static unsigned int* ghost_rand_states=NULL;
+
+unsigned int* ghost_getRandState()
+{
+        return &ghost_rand_states[ghost_ompGetThreadNum()];
+}
+
+void ghost_rand_init()
+{
+   int N_Th = 1;
+#pragma omp parallel
+{
+  #pragma omp single
+    N_Th = ghost_ompGetNumThreads();
+}
+     
+    if( ghost_rand_states == NULL )    ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
+#pragma omp parallel
+    {
+        unsigned int seed=(unsigned int)ghost_hash(
+                (int)ghost_wctimemilli(),
+                (int)ghost_getRank(MPI_COMM_WORLD),
+                (int)ghost_ompGetThreadNum());
+        *ghost_getRandState()=seed;
+    }
+}
+
+
 int ghost_init(int argc, char **argv)
 {
 #ifdef GHOST_HAVE_MPI
@@ -1096,16 +1124,8 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("There are unassigned cores");
     }
     ghost_thpool_init(mycpuset);
-
-/* initialize random number streams for vec->fromRand */
-#pragma omp parallel
-    {
-        /* process/thread dependent component */
-        int s1=ghost_hash(42,ghost_getRank(MPI_COMM_WORLD),ghost_ompGetThreadNum());
-        /* final time and thread dependent random seed */
-        int s2=ghost_hash((int)ghost_wctimemilli(),clock(),s1);
-        srand(s2);
-    }
+     
+    ghost_rand_init();
      
     hwloc_bitmap_free(mycpuset);   
     hwloc_bitmap_free(globcpuset);   
@@ -1118,6 +1138,9 @@ void ghost_finish()
     ghost_taskq_finish();
     ghost_thpool_finish();
     hwloc_topology_destroy(topology);
+    
+    free(ghost_rand_states);
+    ghost_rand_states=NULL;
 
 #if GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
