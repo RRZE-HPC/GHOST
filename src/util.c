@@ -1071,7 +1071,8 @@ int ghost_init(int argc, char **argv)
         }
     }
 #endif
-    
+    int oversubscribed = 0;
+
     if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
             hwloc_bitmap_copy(mycpuset,globcpuset);
@@ -1081,14 +1082,26 @@ int ghost_init(int argc, char **argv)
         int numaNode = 0;
         for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
-                if (i == ghost_getRank(ghost_node_comm)) {
-                    hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > numaNode) {
+                    if (i == ghost_getRank(ghost_node_comm)) {
+                        hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                    }
+                    hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                    numaNode++;
+                } else {
+                    oversubscribed = 1;
+                    WARNING_LOG("More processes than NUMA nodes");
+                    break;
                 }
-                hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
-                numaNode++;
             }
         }
     } 
+
+    if (oversubscribed) {
+        mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
+    }
+
+
     char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
