@@ -49,16 +49,6 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         }
      }
 
-<<<<<<< HEAD
-
-=======
-        partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t)); // 3 -> 16: avoid false sharing
-
-        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
-            partsums[i] = 0.;
-        }
-    }
->>>>>>> refactor_please_review
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v)
     for (i=0; i<cr->nrows; i++){
@@ -112,39 +102,18 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
 
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-<<<<<<< HEAD
                 partsums[th_id][          v] += conjugate(&lhsv[i])*lhsv[i];
                 partsums[th_id][  nvecs + v] += conjugate(&lhsv[i])*rhsv[i];
                 partsums[th_id][2*nvecs + v] += conjugate(&rhsv[i])*rhsv[i];
-                //partsums[th_id*3*nvecs +           v] += conjugate(&lhsv[i])*lhsv[i];
-                //partsums[th_id*3*nvecs +   nvecs + v] += conjugate(&lhsv[i])*rhsv[i];
-                //partsums[th_id*3*nvecs + 2*nvecs + v] += conjugate(&rhsv[i])*rhsv[i];
-                //partsums[(v+0*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*lhsv[i];
-                //partsums[(v+1*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&lhsv[i])*rhsv[i];
-                //partsums[(v+2*lhs->traits->nvecs)*nthreads + th_id] += conjugate(&rhsv[i])*rhsv[i];
-=======
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
->>>>>>> refactor_please_review
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         for (v=0; v<nvecs; v++) {
             for (i=0; i<nthreads; i++) {
-<<<<<<< HEAD
                 local_dot_product[v          ] += partsums[i][          v];
                 local_dot_product[v +   nvecs] += partsums[i][   nvecs + v];
                 local_dot_product[v + 2*nvecs] += partsums[i][ 2*nvecs + v];
-                //local_dot_product[v                       ] += partsums[(v+0*lhs->traits->nvecs)*nthreads + i];
-                //local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+1*lhs->traits->nvecs)*nthreads + i];
-                //local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+2*lhs->traits->nvecs)*nthreads + i];
-=======
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
->>>>>>> refactor_please_review
             }
         }
 
