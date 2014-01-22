@@ -5,6 +5,10 @@
 #include "config.h"
 #include "types.h"
 
+#define SELL_AUX_S 0
+#define SELL_AUX_C 1
+#define SELL_AUX_T 2
+
 typedef struct 
 {
 #ifdef GHOST_HAVE_OPENCL

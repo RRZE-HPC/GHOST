@@ -261,11 +261,15 @@ static size_t SELL_byteSize (ghost_mat_t *mat)
             SELL(mat)->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
+static int compareNZEPerRow( const void* a, const void* b ) 
+{
+    /* comparison function for ghost_sorting_t; 
+     * sorts rows with higher number of non-zero elements first */
+
+    return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
+}
 static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags)
 {
-    if (SELL(mat)->scope > 1) {
-        WARNING_LOG("Sorted SELL from Func not implemented");
-    }
     //   WARNING_LOG("SELL-%d-%d from row func",SELL(mat)->chunkHeight,SELL(mat)->scope);
     UNUSED(base);
     UNUSED(flags);
@@ -281,6 +285,13 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
     int me = ghost_getRank(mat->context->mpicomm);
 
+    ghost_midx_t *rowPerm = NULL;
+    ghost_midx_t *invRowPerm = NULL;
+
+    ghost_sorting_t* rowSort = NULL;
+    mat->context->rowPerm = rowPerm;
+    mat->context->invRowPerm = invRowPerm;
+
     ghost_midx_t nChunks = SELL(mat)->nrowsPadded/SELL(mat)->chunkHeight;
     SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
     SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
@@ -292,49 +303,144 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     SELL(mat)->maxRowLen = 0;
     SELL(mat)->nEnts = 0;
     SELL(mat)->nnz = 0;
+    SELL(mat)->maxRowLen = 0;
+    SELL(mat)->nMaxRows = 0;
+    SELL(mat)->variance = 0.;
+    SELL(mat)->deviation = 0.;
+    SELL(mat)->cv = 0.;
 
     ghost_midx_t maxRowLenInChunk = 0;
+    ghost_midx_t maxRowLen = 0;
     ghost_mnnz_t nEnts = 0, nnz = 0;
     SELL(mat)->chunkStart[0] = 0;
 
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
-    { 
-        char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
-        ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+    if (mat->traits->flags & GHOST_SPM_SORTED) {
+#pragma omp parallel private(i)
+        { 
+            char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+            ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
 #pragma omp for
-        for( chunk = 0; chunk < nChunks; chunk++ ) {
-            for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
+            for( chunk = 0; chunk < nChunks; chunk++ ) {
+                for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                    ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
 
-                if (row < SELL(mat)->nrows) {
-                    func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                } else {
-                    SELL(mat)->rowLen[row] = 0;
+                    if (row < SELL(mat)->nrows) {
+                        func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                    } else {
+                        SELL(mat)->rowLen[row] = 0;
+                    }
                 }
-
-                SELL(mat)->rowLenPadded[row] = ghost_pad(SELL(mat)->rowLen[row],SELL(mat)->T);
-
-                nnz += SELL(mat)->rowLen[row];
-                maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
             }
-            SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,maxRowLenInChunk);
-            SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
-            SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
-            nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
-            maxRowLenInChunk = 0;
+
+            free(tmpval);
+            free(tmpcol);
+        }
+        rowPerm = (ghost_midx_t *)ghost_malloc(SELL(mat)->nrows*sizeof(ghost_midx_t));
+        invRowPerm = (ghost_midx_t *)ghost_malloc(SELL(mat)->nrows*sizeof(ghost_midx_t));
+
+        mat->context->rowPerm = rowPerm;
+        mat->context->invRowPerm = invRowPerm;
+
+        DEBUG_LOG(1,"Sorting matrix rows");
+
+        rowSort = (ghost_sorting_t*)ghost_malloc(SELL(mat)->nrows * sizeof(ghost_sorting_t));
+
+        ghost_midx_t c;
+        for (c=0; c<SELL(mat)->nrows/SELL(mat)->scope; c++)  
+        {
+            for( i = c*SELL(mat)->scope; i < (c+1)*SELL(mat)->scope; i++ ) 
+            {
+                rowSort[i].row = i;
+                rowSort[i].nEntsInRow = SELL(mat)->rowLen[i];
+            } 
+
+            qsort( rowSort+c*SELL(mat)->scope, SELL(mat)->scope, sizeof( ghost_sorting_t  ), compareNZEPerRow );
+        }
+        for( i = c*SELL(mat)->scope; i < SELL(mat)->nrows; i++ ) 
+        { // remainder
+            rowSort[i].row = i;
+            rowSort[i].nEntsInRow = SELL(mat)->rowLen[i];
+        }
+        qsort( rowSort+c*SELL(mat)->scope, SELL(mat)->nrows-c*SELL(mat)->scope, sizeof( ghost_sorting_t  ), compareNZEPerRow );
+
+        for(i=0; i < SELL(mat)->nrows; ++i) {
+            (invRowPerm)[i] = rowSort[i].row;
+            (rowPerm)[rowSort[i].row] = i;
         }
 
-        free(tmpval);
-        free(tmpcol);
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) reduction(max:maxRowLen)
+        { 
+            char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+            ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+#pragma omp for
+            for( chunk = 0; chunk < nChunks; chunk++ ) {
+                for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                    ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
+
+                    if (row < SELL(mat)->nrows) {
+                        func(mat->context->lfRow[me]+invRowPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                    } else {
+                        SELL(mat)->rowLen[row] = 0;
+                    }
+
+                    SELL(mat)->rowLenPadded[row] = ghost_pad(SELL(mat)->rowLen[row],SELL(mat)->T);
+
+                    nnz += SELL(mat)->rowLen[row];
+                    maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
+                }
+                maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
+                SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
+                SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
+                nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
+                maxRowLenInChunk = 0;
+            }
+
+            free(tmpval);
+            free(tmpcol);
+        }
+    } else {
+
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) reduction(max:maxRowLen)
+        { 
+            char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
+            ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
+#pragma omp for
+            for( chunk = 0; chunk < nChunks; chunk++ ) {
+                for (i=0; i<SELL(mat)->chunkHeight; i++) {
+                    ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
+
+                    if (row < SELL(mat)->nrows) {
+                        func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                    } else {
+                        SELL(mat)->rowLen[row] = 0;
+                    }
+
+                    SELL(mat)->rowLenPadded[row] = ghost_pad(SELL(mat)->rowLen[row],SELL(mat)->T);
+
+                    nnz += SELL(mat)->rowLen[row];
+                    maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
+                }
+                maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
+                SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
+                SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
+                nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
+                maxRowLenInChunk = 0;
+            }
+
+            free(tmpval);
+            free(tmpcol);
+        }
     }
 
     for( chunk = 0; chunk < nChunks; chunk++ ) {
         SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
     }
-                
+
+    SELL(mat)->maxRowLen = maxRowLen; 
     SELL(mat)->nEnts = nEnts;
     SELL(mat)->nnz = nnz;
+    SELL(mat)->beta = SELL(mat)->nnz*1.0/(double)SELL(mat)->nEnts;
 
     SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)SELL(mat)->nEnts,GHOST_DATA_ALIGNMENT);
@@ -369,7 +475,11 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
             for (i = 0; i<SELL(mat)->chunkHeight; i++) {
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
                     memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
-                    memcpy(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i],&tmpcol[i*maxrowlen+col],sizeof(ghost_midx_t));
+                    if (flags & GHOST_SPM_PERMUTECOLIDX) {
+                        SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = rowPerm[tmpcol[i*maxrowlen+col]];
+                    } else {
+                        SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
+                    }
 
                     //printf("%f ",((double *)(SELL(mat)->val))[(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)]);
                 }
@@ -476,6 +586,9 @@ static void SELL_split(ghost_mat_t *mat)
     localSELL->chunkStart[0] = 0;
     remoteSELL->chunkStart[0] = 0;
 
+    localSELL->nnz = 0;
+    remoteSELL->nnz = 0;
+
     if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
 
         lnEnts_l = 0;
@@ -491,8 +604,10 @@ static void SELL_split(ghost_mat_t *mat)
                     if (i < fullSELL->rowLen[row]) {
                         if (fullSELL->col[idx] < mat->context->lnrows[me]) {
                             localSELL->rowLen[row]++;
+                            localSELL->nnz++;
                         } else {
                             remoteSELL->rowLen[row]++;
+                            remoteSELL->nnz++;
                         }
                         localSELL->rowLenPadded[row] = ghost_pad(localSELL->rowLen[row],localSELL->T);
                         remoteSELL->rowLenPadded[row] = ghost_pad(remoteSELL->rowLen[row],remoteSELL->T);
@@ -791,6 +906,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     }
 
     mat->context->lnEnts[me] = SELL(mat)->nEnts;
+    SELL(mat)->beta = SELL(mat)->nnz*1.0/(double)SELL(mat)->nEnts;
 
 #if GHOST_HAVE_MPI
     ghost_mnnz_t nents;
@@ -822,10 +938,17 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         return GHOST_ERR_IO;
     }
 
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
-    char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
+
+    WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
+    /*ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
+    char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);*/
+    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->nnz*sizeof(ghost_midx_t));
+    char *tmpval = (char *)ghost_malloc(SELL(mat)->nnz*sizeofdt);
+    GHOST_SAFECALL(ghost_readCol(tmpcol, matrixPath, 0, SELL(mat)->nnz));
+    GHOST_SAFECALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath, 0, SELL(mat)->nnz));
+
     for (chunk = 0; chunk < nChunks; chunk++) {
-        memset(tmpcol,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
+    /*    memset(tmpcol,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
         memset(tmpval,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
 
         ghost_midx_t firstNzOfChunk = context->lfEnt[me]+rpt[chunk*SELL(mat)->chunkHeight];
@@ -840,7 +963,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
         GHOST_SAFECALL(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
         GHOST_SAFECALL(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
-
+*/
         ghost_midx_t idx = 0;
         for (i=0; i<SELL(mat)->chunkHeight; i++) {
             ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;

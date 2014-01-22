@@ -889,6 +889,27 @@ int ghost_ompGetThreadNum()
 #endif
 }
 
+static unsigned int* ghost_rand_states=NULL;
+
+unsigned int* ghost_getRandState()
+{
+        return &ghost_rand_states[ghost_ompGetThreadNum()];
+}
+
+void ghost_rand_init()
+{
+    ghost_rand_states=(unsigned int*)malloc(ghost_ompGetNumThreads()*sizeof(unsigned int));
+#pragma omp parallel
+    {
+        unsigned int seed=(unsigned int)ghost_hash(
+                (int)ghost_wctimemilli(),
+                (int)ghost_getRank(MPI_COMM_WORLD),
+                (int)ghost_ompGetThreadNum());
+        *ghost_getRandState()=seed;
+    }
+}
+
+
 int ghost_init(int argc, char **argv)
 {
 #ifdef GHOST_HAVE_MPI
@@ -1027,13 +1048,28 @@ int ghost_init(int argc, char **argv)
 
     globcpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
 
-    /* No hyperthreads in thread pool */
-    /*int cpu;
+    hwloc_obj_t obj;
+    ghost_hw_config_t hwconfig;
+    ghost_getHwConfig(&hwconfig);
+
+    if (hwconfig.maxCores == GHOST_HW_CONFIG_INVALID) {
+        hwconfig.maxCores = ghost_getNumberOfPhysicalCores();
+    }
+    if (hwconfig.smtLevel == GHOST_HW_CONFIG_INVALID) {
+        hwconfig.smtLevel = ghost_getSMTlevel();
+    }
+    ghost_setHwConfig(hwconfig);
+
+    int cpu;
     hwloc_bitmap_foreach_begin(cpu,globcpuset);
-    if (hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,cpu)->sibling_rank != 0) {
+    obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
+    if (obj->sibling_rank >= hwconfig.smtLevel) {
         hwloc_bitmap_clr(globcpuset,cpu);
     }
-    hwloc_bitmap_foreach_end();*/
+    if (obj->parent->logical_index >= hwconfig.maxCores) { 
+        hwloc_bitmap_clr(globcpuset,cpu);
+    }
+    hwloc_bitmap_foreach_end();
 
 
 #if GHOST_HAVE_CUDA
@@ -1071,7 +1107,8 @@ int ghost_init(int argc, char **argv)
         }
     }
 #endif
-    
+    int oversubscribed = 0;
+
     if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
             hwloc_bitmap_copy(mycpuset,globcpuset);
@@ -1081,14 +1118,26 @@ int ghost_init(int argc, char **argv)
         int numaNode = 0;
         for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
-                if (i == ghost_getRank(ghost_node_comm)) {
-                    hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > numaNode) {
+                    if (i == ghost_getRank(ghost_node_comm)) {
+                        hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                    }
+                    hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                    numaNode++;
+                } else {
+                    oversubscribed = 1;
+                    WARNING_LOG("More processes than NUMA nodes");
+                    break;
                 }
-                hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
-                numaNode++;
             }
         }
     } 
+
+    if (oversubscribed) {
+        mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
+    }
+
+
     char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
@@ -1096,6 +1145,8 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("There are unassigned cores");
     }
     ghost_thpool_init(mycpuset);
+     
+    ghost_rand_init();
      
     hwloc_bitmap_free(mycpuset);   
     hwloc_bitmap_free(globcpuset);   
@@ -1108,6 +1159,9 @@ void ghost_finish()
     ghost_taskq_finish();
     ghost_thpool_finish();
     hwloc_topology_destroy(topology);
+    
+    free(ghost_rand_states);
+    ghost_rand_states=NULL;
 
 #if GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
