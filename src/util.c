@@ -898,7 +898,14 @@ unsigned int* ghost_getRandState()
 
 void ghost_rand_init()
 {
-    ghost_rand_states=(unsigned int*)malloc(ghost_ompGetNumThreads()*sizeof(unsigned int));
+   int N_Th = 1;
+#pragma omp parallel
+{
+  #pragma omp single
+    N_Th = ghost_ompGetNumThreads();
+}
+     
+    if( ghost_rand_states == NULL )    ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
 #pragma omp parallel
     {
         unsigned int seed=(unsigned int)ghost_hash(
