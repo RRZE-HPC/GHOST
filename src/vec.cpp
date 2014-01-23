@@ -46,19 +46,19 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 #pragma omp parallel
     nthreads = ghost_ompGetNumThreads();
 
-    v_t *partsums = (v_t *)ghost_malloc(nthreads*sizeof(v_t));
+    v_t *partsums = (v_t *)ghost_malloc(16*nthreads*sizeof(v_t));
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
         v_t sum = 0;
-        for (i=0; i<nthreads; i++) partsums[i] = (v_t)0.;
+        for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
 #pragma omp parallel for 
         for (i=0; i<nr; i++) {
-            partsums[ghost_ompGetThreadNum()] += 
+            partsums[ghost_ompGetThreadNum()*16] += 
                 *(v_t *)VECVAL(vec2,vec2->val,v,i)*
                 conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
         }
 
-        for (i=0; i<nthreads; i++) sum += partsums[i];
+        for (i=0; i<nthreads; i++) sum += partsums[i*16];
 
         ((v_t *)res)[v] = sum;
     }
