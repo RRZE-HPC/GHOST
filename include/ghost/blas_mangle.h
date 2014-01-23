@@ -12,14 +12,22 @@
 #include <gsl_cblas.h>
 #endif
 
-#ifdef GHOST_HAVE_MKL
+#ifdef GHOST_HAVE_LIBSCI
+#include <cblas.h>
+#endif
+
+#if GHOST_HAVE_MKL
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
 #define BLAS_Complex16 MKL_Complex16 
-#elif defined(GHOST_HAVE_GSL)
+#elif GHOST_HAVE_GSL
 #define BLAS_MANGLE(name,NAME) cblas_##name
 #define BLAS_Complex8 gsl_complex_float
-#define BLAS_Complex16 gsl_complex 
+#define BLAS_Complex16 gsl_complex
+#elif GHOST_HAVE_LIBSCI
+#define BLAS_MANGLE(name,NAME) cblas_##name
+#define BLAS_Complex8 gsl_complex_float
+#define BLAS_Complex16 gsl_complex
 #else
 #define BLAS_MANGLE(name,NAME) name ## _
 #define BLAS_Complex8 void

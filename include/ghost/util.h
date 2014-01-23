@@ -16,14 +16,14 @@
 #include "cu_util.h"
 #endif
 
-#ifndef __cplusplus
 #include <stdio.h>
+
+#ifndef __cplusplus
 #include <complex.h>
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
 #else
-#include <cstdio>
 #include <complex>
 #include <cstdlib>
 #include <cstring>

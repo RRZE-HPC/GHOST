@@ -7,6 +7,7 @@
 #cmakedefine GHOST_HAVE_OPENCL 1
 #cmakedefine GHOST_HAVE_MKL 1
 #cmakedefine GHOST_HAVE_GSL 1
+#cmakedefine GHOST_HAVE_LIBSCI 1
 #cmakedefine GHOST_HAVE_MIC 1
 #cmakedefine GHOST_HAVE_AVX 1
 #cmakedefine GHOST_HAVE_SSE 1

@@ -4,8 +4,8 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include <stdio.h>
 
+#include <stdio.h>
 
 #ifdef __cplusplus
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);

@@ -1,9 +1,9 @@
 #include "ghost/config.h"
+#include "ghost/types.h"
 
 #if GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
-#include <stdio.h>
 
 #include "ghost/affinity.h"
 #include "ghost/complex.h"
@@ -11,7 +11,7 @@
 #include "ghost/util.h"
 #include "ghost/crs.h"
 #include "ghost/constants.h"
-#include <iostream>
+#include "ghost/io.h"
 
 // TODO shift, scale als templateparameter
 

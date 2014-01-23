@@ -4,6 +4,7 @@
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <cstdlib>
+#include <iostream>
 #include <cstdio>
 
 #include "ghost/complex.h"
@@ -13,7 +14,6 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 
-#include <iostream>
 
 
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
