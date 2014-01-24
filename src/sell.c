@@ -1017,6 +1017,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     GHOST_SAFECALL(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], SELL(mat)->nnz));
     GHOST_SAFECALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], SELL(mat)->nnz));
 
+    INFO_LOG("%"PRmatIDX" rows, %"PRmatIDX" chunks %"PRmatIDX" chunkheight",SELL(mat)->nrows,nChunks,SELL(mat)->chunkHeight);
+    ghost_midx_t row = 0;
     for (chunk = 0; chunk < nChunks; chunk++) {
         /*    memset(tmpcol,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
               memset(tmpval,0,SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);
@@ -1038,8 +1040,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         ghost_midx_t idx = 0, col;
         ghost_midx_t *curRowCols;
         char * curRowVals;
-        for (i=0; i<SELL(mat)->chunkHeight; i++) {
-            ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
+        for (i=0; (i<SELL(mat)->chunkHeight) && (row < SELL(mat)->nrows); i++, row++) {
             if (mat->traits->flags & GHOST_SPM_SORTED) {
                 if (!invRowPerm) {
                     WARNING_LOG("invRowPerm is NULL but matrix should be sorted");
