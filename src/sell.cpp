@@ -547,7 +547,17 @@ template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int
         for (i=0; i<SELL(mat)->chunkHeight && row<SELL(mat)->nrows; i++, row++) {
             for (j=0; j<(dense?SELL(mat)->ncols:SELL(mat)->chunkLen[chunk]); j++) {
                 ghost_mnnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
-                buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
+                if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX) {
+                    if (SELL(mat)->col[idx] < SELL(mat)->nrows) {
+                        buffer << val[idx] << " (o " << mat->context->invRowPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                    } else {
+                        buffer << val[idx] << " (p " << SELL(mat)->col[idx] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                    }
+
+                } else {
+                    buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
+                }
+
             }
             buffer << endl;
         }
