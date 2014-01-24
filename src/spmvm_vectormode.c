@@ -38,7 +38,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     size_t sizeofRHS;
 
     if (context == NULL)
-      return;
+        return;
 
     me = ghost_getRank(context->mpicomm);
     nprocs = ghost_getNumberOfRanks(context->mpicomm);
@@ -75,15 +75,28 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     }
 
     GHOST_INSTR_START(spMVM_vectormode_copybuffers)
+    if (mat->traits->flags & GHOST_SPM_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
-    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        for (c=0; c<invec->traits->nvecs; c++) {
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            for (c=0; c<invec->traits->nvecs; c++) {
 #pragma omp for 
-            for (i=0; i<context->dues[to_PE]; i++){
-                memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+                for (i=0; i<context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),sizeofRHS);
+                }
+            }
+        }
+    } else {
+#pragma omp parallel private(to_PE,i,c)
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            for (c=0; c<invec->traits->nvecs; c++) {
+#pragma omp for 
+                for (i=0; i<context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+                }
             }
         }
     }
+
     GHOST_INSTR_STOP(spMVM_vectormode_copybuffers)
 
 
@@ -97,12 +110,12 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     }
 
     GHOST_INSTR_START(spMVM_vectormode_waitall)
-    MPI_safecall(MPI_Waitall(msgcount, request, status));
+        MPI_safecall(MPI_Waitall(msgcount, request, status));
     GHOST_INSTR_STOP(spMVM_vectormode_waitall)
 
-    invec->uploadHalo(invec);
+        invec->uploadHalo(invec);
     GHOST_INSTR_STOP(spMVM_vectormode_comm);
-    
+
     GHOST_INSTR_START(spMVM_vectormode_comp);
     mat->spmv(mat,res,invec,spmvmOptions);    
     GHOST_INSTR_STOP(spMVM_vectormode_comp);
