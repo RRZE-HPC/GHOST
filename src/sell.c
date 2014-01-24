@@ -834,6 +834,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
             for (proc=1; proc<nprocs; proc++){
                 mat->context->lfEnt[proc] = rpt[mat->context->lfRow[proc]];
             }
+        } else {
+            rpt = context->rpt;
         }
     }
 #if GHOST_HAVE_MPI
