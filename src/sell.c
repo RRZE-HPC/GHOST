@@ -539,12 +539,12 @@ static void SELL_split(ghost_mat_t *mat)
     SELL_TYPE *fullSELL = SELL(mat);
     SELL_TYPE *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
-    int j;
-    int i;
+    ghost_midx_t j;
+    ghost_midx_t i;
     int me;
 
     ghost_mnnz_t lnEnts_l, lnEnts_r;
-    int current_l, current_r;
+    ghost_mnnz_t current_l, current_r;
 
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
