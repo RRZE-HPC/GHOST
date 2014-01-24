@@ -456,8 +456,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         }
     }
 
+
 #pragma omp parallel private(i,col,row)
-    { 
+    {
         char * tmpval = ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeofdt);
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
         memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
@@ -468,24 +469,32 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
                 row = chunk*SELL(mat)->chunkHeight+i;
 
                 if (row < SELL(mat)->nrows) {
-                    func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*sizeofdt]);
+                    if (mat->traits->flags & GHOST_SPM_SORTED) {
+                        func(mat->context->lfRow[me]+invRowPerm[row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*sizeofdt]);
+                    } else {
+                        func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*sizeofdt]);
+                    }
                 }
 
-            }
-            for (i = 0; i<SELL(mat)->chunkHeight; i++) {
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
-                    memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
-                    if (flags & GHOST_SPM_PERMUTECOLIDX) {
-                        SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = rowPerm[tmpcol[i*maxrowlen+col]];
+                    if (mat->traits->flags & GHOST_SPM_SORTED) {
+                        if ((tmpcol[i*maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*maxrowlen+col] < (mat->context->lfRow[me]+SELL(mat)->nrows))) { // local entry: copy with permutation
+                            memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
+                            if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX) {
+                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = rowPerm[tmpcol[i*maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                            } else {
+                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
+                            }
+                        } else { // remote entry: copy without permutation
+                            memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
+                            SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
+                        }
                     } else {
+                        memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[sizeofdt*(i*maxrowlen+col)],sizeofdt);
                         SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
                     }
-
-                    //printf("%f ",((double *)(SELL(mat)->val))[(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)]);
                 }
-                //printf("\n");
             }
-
             memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
             memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen*SELL(mat)->chunkHeight);
         }
