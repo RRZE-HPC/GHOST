@@ -70,15 +70,28 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
         }
     }
 
+    if (mat->traits->flags & GHOST_SPM_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
-    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        for (c=0; c<invec->traits->nvecs; c++) {
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            for (c=0; c<invec->traits->nvecs; c++) {
 #pragma omp for 
-            for (i=0; i<context->dues[to_PE]; i++){
-                memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+                for (i=0; i<context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),sizeofRHS);
+                }
+            }
+        }
+    } else {
+#pragma omp parallel private(to_PE,i,c)
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            for (c=0; c<invec->traits->nvecs; c++) {
+#pragma omp for 
+                for (i=0; i<context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+                }
             }
         }
     }
+    
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (context->dues[to_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
