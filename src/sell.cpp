@@ -97,6 +97,7 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
             for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
             { // loop inside chunk
                 for (i=0; i<chunkHeight; i++) {
+               // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
                     tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
                         rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
                 }
@@ -208,9 +209,9 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
             tmp = (v_t)0;
 
             for (j=0; j<sell->rowLen[i]; j++) 
-            { 
-                tmp += (v_t)sellv[sell->nrowsPadded*j+i] * 
-                    rhsv[sell->col[sell->nrowsPadded*j+i]];
+            {
+//                INFO_LOG("%d: %f * %f",i,(v_t)sellv[sell->nrowsPadded*j+i], rhsv[sell->col[sell->nrowsPadded*j+i]]);
+                tmp += (v_t)sellv[sell->nrowsPadded*j+i] * rhsv[sell->col[sell->nrowsPadded*j+i]];
             }
             if (options & GHOST_SPMVM_APPLY_SHIFT) {
                 if (options & GHOST_SPMVM_APPLY_SCALE) {
