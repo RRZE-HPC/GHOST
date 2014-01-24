@@ -501,6 +501,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         free(tmpval);
         free(tmpcol);
     }
+    if (mat->traits->flags & GHOST_SPM_ASC_COLIDX) {
+        WARNING_LOG("Ignoring ASC_COLIDX flag");
+    }
 
     if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
 #if GHOST_HAVE_MPI
@@ -1064,10 +1067,34 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
                 memcpy(&SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&curRowVals[col*sizeofdt],sizeofdt);
             }
+            // sort cols and vals ascending by local col idx
+            if (mat->traits->flags & GHOST_SPM_ASC_COLIDX) {
+                ghost_midx_t n;
+                curRowCols = &SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i];
+                curRowVals = &SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+i)];
+                ghost_midx_t tmpcol;
+                char *tmpval = ghost_malloc(sizeofdt);
+                for (n=SELL(mat)->rowLen[row]; n>1; n--) {
+                    for (col=0; col<n-1; col++) {
+                        if (curRowCols[col*SELL(mat)->chunkHeight] > curRowCols[(col+1)*SELL(mat)->chunkHeight]) {
+                            tmpcol = curRowCols[col*SELL(mat)->chunkHeight];
+                            curRowCols[col*SELL(mat)->chunkHeight] = curRowCols[(col+1)*SELL(mat)->chunkHeight];
+                            curRowCols[(col+1)*SELL(mat)->chunkHeight] = tmpcol; 
+
+                            memcpy(&tmpval,&curRowVals[sizeofdt*(col*SELL(mat)->chunkHeight)],sizeofdt);
+                            memcpy(&curRowVals[sizeofdt*(col*SELL(mat)->chunkHeight)],&curRowVals[sizeofdt*((col+1)*SELL(mat)->chunkHeight)],sizeofdt);
+                            memcpy(&curRowVals[sizeofdt*((col+1)*SELL(mat)->chunkHeight)],&tmpval,sizeofdt);
+                        }
+                    }
+                }
+            }
         }
 
     }
 
+    if (ghost_getRank(MPI_COMM_WORLD) == 0) {
+  //  printf("\n%s\n",mat->stringify(mat,0));
+    }
     mat->split(mat);
 
 
