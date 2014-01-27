@@ -39,7 +39,6 @@ set (SOURCES
 		src/crs.cpp 
         src/error.c
 		src/sell.c 
-		src/sell_kernel_intr.c 
 		src/vec.cpp 
 		src/sell.cpp
 		src/context.c
@@ -124,6 +123,14 @@ if (USE_OPENCL)
 				include/ghost/cl_util.h
 			)
 	endif()
+endif()
+
+if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
+    set (SOURCES ${SOURCES} src/sell_kernel_intr.c)
+else()
+    set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
+    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
+    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
 endif()
 
 if (${LIBTYPE} STREQUAL "STATIC")
