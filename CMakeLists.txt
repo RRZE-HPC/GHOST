@@ -144,12 +144,12 @@ else ()
 endif()
 
 
-#if (USE_LONGIDX)
-#	set(GHOST_HAVE_LONGIDX 1)
+if (USE_LONGIDX)
+	set(GHOST_HAVE_LONGIDX 1)
 #    if (${BLAS} STREQUAL "MKL")
 #		add_definitions(-DMKL_ILP64)
 #	endif()
-#endif()
+endif()
 
 if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
 	if (${INSTRUMENTATION} STREQUAL "TIMING")
