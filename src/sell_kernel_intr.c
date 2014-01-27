@@ -4,7 +4,7 @@
 #include "ghost/sell.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
-#include <mmintrin.h>
+#include <immintrin.h>
 
 void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
