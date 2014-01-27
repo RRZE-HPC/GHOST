@@ -31,7 +31,7 @@ typedef int ghost_mpi_comm_t;
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
 typedef int64_t ghost_vidx_t; // type for the index of the vector
-typedef long long int ghost_blas_idx_t;
+typedef int ghost_blas_idx_t;
 
 #define ghost_mpi_dt_midx MPI_LONG_LONG
 #define ghost_mpi_dt_mnnz MPI_LONG_LONG

@@ -129,20 +129,20 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
 
-#if GHOST_HAVE_LONGIDX // TODO
-    UNUSED(alpha);
-    UNUSED(beta);
-    ERROR_LOG("GEMM with LONGIDX not implemented");
+/*#if GHOST_HAVE_LONGIDX // TODO*/
+    /*UNUSED(alpha);*/
+    /*UNUSED(beta);*/
+    /*ERROR_LOG("GEMM with LONGIDX not implemented");*/
     
-    GHOST_INSTR_STOP(gemm)
-    return GHOST_ERR_NOT_IMPLEMENTED;
-#else
+    /*GHOST_INSTR_STOP(gemm)*/
+    /*return GHOST_ERR_NOT_IMPLEMENTED;*/
+/*#else*/
 
 
-    ghost_blas_idx_t *m, *n, *k;
-    m = (ghost_blas_idx_t *)&nrV;
-    k = (ghost_blas_idx_t *)&ncV;
-    n = (ghost_blas_idx_t *)&ncW;
+    ghost_blas_idx_t m, n, k;
+    m = (ghost_blas_idx_t )nrV;
+    k = (ghost_blas_idx_t )ncV;
+    n = (ghost_blas_idx_t )ncW;
     ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)&(v->traits->nrowspadded);
     ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits->nrowspadded);
     ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits->nrowspadded);
@@ -177,7 +177,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     {
         mybeta = &zero;
     }
-    DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",*m,*k,*k,*n,*m,*n);
+    DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",m,k,k,n,m,n);
     if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_HOST)
     {
 
@@ -185,22 +185,22 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         {
             if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
             {
-                zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
+                zgemm(transpose,"N", &m,&n, &k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
             } 
             else 
             {
-                cgemm(transpose,"N", m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
+                cgemm(transpose,"N", &m,&n, &k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
             }
         } 
         else 
         {
             if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
             {
-                dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
+                dgemm(transpose,"N", &m,&n, &k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
             } 
             else 
             {
-                sgemm(transpose,"N", m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
+                sgemm(transpose,"N", &m,&n, &k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
             }    
         }
     }
@@ -289,7 +289,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
 
     GHOST_INSTR_STOP(gemm)
     return GHOST_SUCCESS;
-#endif
+/*#endif*/
 
 }
 
