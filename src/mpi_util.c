@@ -197,7 +197,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 
     DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank, hostnameLength);
 
-    MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
+    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
 
     int nodeRank;
     MPI_safecall(MPI_Comm_rank(nodeComm, &nodeRank));
@@ -256,7 +256,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
         WARNING_LOG("The nodal rank is fixed now but the nodal communicator is not. This will lead to problems...");
         nodeRank = localNodeRank;
     }
-    MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
+    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
 
 
     // Clean up.
