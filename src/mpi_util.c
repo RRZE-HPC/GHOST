@@ -188,6 +188,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 
     uint32_t checkSum;
     MurmurHash3_x86_32(hostname, hostnameLength, 1234172, &checkSum);
+    int checkSumSigned = (int)(checkSum>>1);
 
     int commRank = -1;
     MPI_safecall(MPI_Comm_rank(comm, &commRank));
