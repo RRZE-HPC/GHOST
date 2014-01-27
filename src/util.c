@@ -9,7 +9,6 @@
 #include "ghost/taskq.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
-#include <sys/param.h>
 #include <libgen.h>
 #include <unistd.h>
 #include <byteswap.h>
