@@ -787,7 +787,7 @@ static void vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
     for (v=0; v<vec->traits->nvecs; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
         for (i=0; i<vec->traits->nrows; i++) {
-            fp(i,v,VECVAL(vec,vec->val,v,i));
+            fp(vec->context->lfRow[ghost_getRank(vec->context->mpicomm)]+i,v,VECVAL(vec,vec->val,v,i));
         }
     }
 

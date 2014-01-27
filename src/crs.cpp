@@ -64,42 +64,17 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
             }
 
             if (options & GHOST_SPMVM_APPLY_SHIFT) {
-                if (options & GHOST_SPMVM_APPLY_SCALE) {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(v_t)(hlp1-shift*rhsv[i]);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + scale*(v_t)(hlp1-shift*rhsv[i]);
-                    } else {
-                        lhsv[i] = scale*(v_t)(hlp1-shift*rhsv[i]);
-                    }
-                } else {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (hlp1-shift*rhsv[i]);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + hlp1-shift*rhsv[i];
-                    } else {
-                        lhsv[i] = (hlp1-shift*rhsv[i]);
-                    }
-                }
+                hlp1 = hlp1-shift*rhsv[i];
+            }
+            if (options & GHOST_SPMVM_APPLY_SCALE) {
+                hlp1 = hlp1*scale;
+            }
+            if (options & GHOST_SPMVM_AXPY) {
+                lhsv[i] += (hlp1);
+            } else if (options & GHOST_SPMVM_AXPBY) {
+                lhsv[i] = beta*lhsv[i] + hlp1;
             } else {
-                if (options & GHOST_SPMVM_APPLY_SCALE) {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(v_t)(hlp1);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + scale*(v_t)hlp1;
-                    } else {
-                        lhsv[i] = scale*(v_t)(hlp1);
-                    }
-                } else {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (hlp1);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + hlp1;
-                    } else {
-                        lhsv[i] = (hlp1);
-                    }
-                }
-
+                lhsv[i] = (hlp1);
             }
 
             if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {

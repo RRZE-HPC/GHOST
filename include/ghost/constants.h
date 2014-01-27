@@ -48,6 +48,7 @@
 #define GHOST_SPM_COLMAJOR      (8)
 #define GHOST_SPM_ROWMAJOR      (16)
 #define GHOST_SPM_SORTED        (32)
+#define GHOST_SPM_ASC_COLIDX    (64)
 
 /******************************************************************************/
 /*----  Vector type  --------------------------------------------------------**/
