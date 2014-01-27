@@ -1,9 +1,10 @@
 #include "ghost/config.h"
+#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/sell.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
-#include <immintrin.h>
+#include <mmintrin.h>
 
 void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
