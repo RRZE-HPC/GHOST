@@ -24,7 +24,7 @@
 #include <dlfcn.h>
 
 #define LOCAL_HOSTNAME_MAX 	256
-
+#define ROTL32(num,amount) (((num) << (amount)) | ((num) >> (32 - (amount))))
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
@@ -81,11 +81,11 @@ void MurmurHash3_x86_32 ( const void * key, int len,
         uint32_t k1 = blocks[i];
 
         k1 *= c1;
-        k1 = _rotl(k1,15);
+        k1 = ROTL32(k1,15);
         k1 *= c2;
 
         h1 ^= k1;
-        h1 = _rotl(h1,13);
+        h1 = ROTL32(h1,13);
         h1 = h1*5+0xe6546b64;
     }
 
@@ -101,7 +101,7 @@ void MurmurHash3_x86_32 ( const void * key, int len,
         case 3: k1 ^= tail[2] << 16;
         case 2: k1 ^= tail[1] << 8;
         case 1: k1 ^= tail[0];
-                k1 *= c1; k1 = _rotl(k1,15); k1 *= c2; h1 ^= k1;
+                k1 *= c1; k1 = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
     };
 
     //----------
