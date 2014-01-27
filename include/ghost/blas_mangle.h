@@ -26,8 +26,8 @@
 #define BLAS_Complex16 gsl_complex
 #elif GHOST_HAVE_LIBSCI
 #define BLAS_MANGLE(name,NAME) cblas_##name
-#define BLAS_Complex8 gsl_complex_float
-#define BLAS_Complex16 gsl_complex
+#define BLAS_Complex8 void
+#define BLAS_Complex16 void
 #else
 #define BLAS_MANGLE(name,NAME) name ## _
 #define BLAS_Complex8 void
@@ -35,7 +35,7 @@
 #endif
 
 // any routines used in ghost should be added here
-#if defined(GHOST_HAVE_GSL)
+#if defined(GHOST_HAVE_GSL) || defined(GHOST_HAVE_LIBSCI)
 #define sgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) \
     enum CBLAS_TRANSPOSE gsl_transa, gsl_transb;\
     if (!strncasecmp(transa,"N",1)) {\
