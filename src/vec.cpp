@@ -5,7 +5,7 @@
 #endif
 #include <cstdlib>
 #include <iostream>
-#include <cstdio>
+#include <stdio.h>
 
 #include "ghost/complex.h"
 #include "ghost/util.h"
