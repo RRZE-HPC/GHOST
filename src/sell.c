@@ -40,7 +40,7 @@ void (*SELL_kernels_AVX[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int
 
 void (*SELL_kernels_AVX_32[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
 {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX_32,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_rich,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
@@ -1307,10 +1307,6 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
     }
 #endif
 #elif GHOST_HAVE_AVX
-#if !(GHOST_HAVE_LONGIDX)
-    if (!((options & GHOST_SPMVM_AXPBY) ||
-                (options & GHOST_SPMVM_APPLY_SCALE) ||
-                (options & GHOST_SPMVM_APPLY_SHIFT))) {
         if (SELL(mat)->chunkHeight == 4) {
             kernel = SELL_kernels_AVX
                 [ghost_dataTypeIdx(mat->traits->datatype)]
@@ -1320,8 +1316,6 @@ static void SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t 
                 [ghost_dataTypeIdx(mat->traits->datatype)]
                 [ghost_dataTypeIdx(lhs->traits->datatype)];
         }
-    }
-#endif
 #elif GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMVM_AXPBY) ||

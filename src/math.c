@@ -16,6 +16,7 @@ extern cublasHandle_t ghost_cublas_handle;
 
 void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
+    GHOST_INSTR_START(dot_with_reduce)
     vec->dotProduct(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
     int v;
@@ -25,11 +26,13 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
         }
     }
 #endif
+    GHOST_INSTR_STOP(dot_with_reduce)
 
 }
 
 void ghost_normalizeVec(ghost_vec_t *vec)
 {
+    GHOST_INSTR_START(normalize)
     if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
         if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
             complex float res;
@@ -55,11 +58,13 @@ void ghost_normalizeVec(ghost_vec_t *vec)
             vec->scale(vec,&res);
         }
     }
+    GHOST_INSTR_STOP(normalize)
 }
 
 ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
         int *spmvmOptions)
 {
+    GHOST_INSTR_START(spmvm)
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
     solver = context->spmvsolvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
@@ -70,12 +75,14 @@ ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_
     }
 
     solver(context,res,mat,invec,*spmvmOptions);
+    GHOST_INSTR_STOP(spmvm)
 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
 {
+    GHOST_INSTR_START(gemm)
     if (v->traits->flags & GHOST_VEC_SCATTERED)
     {
         v->compress(v);
@@ -126,6 +133,8 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     UNUSED(alpha);
     UNUSED(beta);
     ERROR_LOG("GEMM with LONGIDX not implemented");
+    
+    GHOST_INSTR_STOP(gemm)
     return GHOST_ERR_NOT_IMPLEMENTED;
 #else
 
@@ -278,6 +287,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     UNUSED(reduce);
 #endif
 
+    GHOST_INSTR_STOP(gemm)
     return GHOST_SUCCESS;
 #endif
 

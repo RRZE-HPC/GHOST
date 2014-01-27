@@ -113,6 +113,7 @@ void zz_SELL_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int optio
 void dd_SELL_kernel_SSE(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dd_SELL_kernel_AVX(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dd_SELL_kernel_AVX_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
+void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions);
 void dd_SELL_kernel_MIC_16(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 void dd_SELL_kernel_MIC_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
 #ifdef GHOST_HAVE_CUDA

@@ -476,6 +476,7 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
 
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
+    GHOST_INSTR_START(axpy)
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
@@ -488,10 +489,12 @@ static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
     ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s);
 
     free(s);
+    GHOST_INSTR_STOP(axpy)
 }
 
 static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
 {
+    GHOST_INSTR_START(axpby)
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
@@ -506,20 +509,26 @@ static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b
 
     free(s);
     free(b);
+    GHOST_INSTR_STOP(axpby)
 }
 
 static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
+    GHOST_INSTR_START(vaxpy)
     ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+    GHOST_INSTR_STOP(vaxpy)
 }
 
 static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
 {
+    GHOST_INSTR_START(vaxpby)
     ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+    GHOST_INSTR_STOP(vaxpby)
 }
 
 static void vec_scale(ghost_vec_t *vec, void *scale)
 {
+    GHOST_INSTR_START(scale)
     ghost_vidx_t nc = vec->traits->nvecs;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
@@ -529,16 +538,21 @@ static void vec_scale(ghost_vec_t *vec, void *scale)
         memcpy(&s[i*sizeofdt],scale,sizeofdt);
     }
     ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s);
+    GHOST_INSTR_STOP(scale)
 }
 
 static void vec_vscale(ghost_vec_t *vec, void *scale)
 {
+    GHOST_INSTR_START(vscale)
     ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
+    GHOST_INSTR_STOP(vscale)
 }
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
+    GHOST_INSTR_START(dot)
     ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+    GHOST_INSTR_STOP(dot)
 }
 
 static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
