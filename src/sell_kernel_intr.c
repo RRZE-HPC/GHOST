@@ -93,7 +93,6 @@ void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, 
 void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
 {
 #if GHOST_HAVE_AVX
-    double *local_dot_product;
     ghost_midx_t j,c;
     int nthreads = 1;
     ghost_mnnz_t offs;
@@ -103,7 +102,6 @@ void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t*
     __m256d tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8;
     __m256d dot1,dot2,dot3;
     double dots1 = 0, dots2 = 0, dots3 = 0;
-    double *partsums;
     __m256d val;
     __m256d rhs;
     __m128d rhstmp;
@@ -116,19 +114,6 @@ void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t*
         scale = _mm256_broadcast_sd(mat->traits->scale);
     if (spmvmOptions & GHOST_SPMVM_AXPBY)
         beta = _mm256_broadcast_sd(mat->traits->beta);
-    if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        local_dot_product = (double *)(invec->traits->localdot);
-#pragma omp parallel
-#pragma omp single
-        nthreads = ghost_ompGetNumThreads();
-
-        partsums = (double *)ghost_malloc(4*16*nthreads*sizeof(double));
-
-        int i;
-        for (i=0; i<4*16*nthreads; i++) {
-            partsums[i] = 0.;
-        }
-    }
 
 
 #pragma omp parallel private(c,j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
@@ -304,21 +289,25 @@ void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t*
             }
         }
    
-        __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
-        __m128d sum12high = _mm256_extractf128_pd(sum12,1);
-        __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+        if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+            __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
+            __m128d sum12high = _mm256_extractf128_pd(sum12,1);
+            __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
 
-        dots1 = ((double *)&res12)[0];
-        dots2 = ((double *)&res12)[1];
-        
-        sum12 = _mm256_hadd_pd(dot3,dot3);
-        sum12high = _mm256_extractf128_pd(sum12,1);
-        res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
-        dots3 = ((double *)&res12)[0];
+            dots1 = ((double *)&res12)[0];
+            dots2 = ((double *)&res12)[1];
+            
+            sum12 = _mm256_hadd_pd(dot3,dot3);
+            sum12high = _mm256_extractf128_pd(sum12,1);
+            res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+            dots3 = ((double *)&res12)[0];
+        }
     }
-    local_dot_product[0] = dots1;
-    local_dot_product[1] = dots2;
-    local_dot_product[2] = dots3;
+    if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        ((double *)(invec->traits->localdot))[0] = dots1;
+        ((double *)(invec->traits->localdot))[1] = dots2;
+        ((double *)(invec->traits->localdot))[2] = dots3;
+    }
     
 #else
     UNUSED(mat);
