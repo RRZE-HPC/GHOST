@@ -130,9 +130,8 @@ void my_rand(unsigned int* state, std::complex<float_type>* result)
 template <typename float_type>
 void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 {
-    float_type* ft_res = (float_type*)result;
-    my_rand(state,&ft_res[0]);
-    my_rand(state,&ft_res[1]);
+    my_rand(state,result);
+    my_rand(state,((char *)result)+sizeof(float_type));
 }
 
 
