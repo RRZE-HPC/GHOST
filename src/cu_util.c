@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <unistd.h>
-#include <sys/param.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cublas_v2.h>

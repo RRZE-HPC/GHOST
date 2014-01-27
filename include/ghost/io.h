@@ -4,14 +4,15 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include <stdio.h>
 
+#include <stdio.h>
 
 #ifdef __cplusplus
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);
 extern "C" {
 #endif
 
+ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
 ghost_error_t ghost_readCol(ghost_midx_t *col, char *matrixPath, ghost_mnnz_t offs, ghost_mnnz_t nEnts);
 ghost_error_t ghost_readColOpen(ghost_midx_t *col, char *matrixPath, ghost_mnnz_t offsEnts, ghost_mnnz_t nEnts, FILE *filed);
 ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_mnnz_t offs, ghost_mnnz_t nEnts);

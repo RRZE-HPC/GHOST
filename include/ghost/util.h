@@ -16,14 +16,14 @@
 #include "cu_util.h"
 #endif
 
-#ifndef __cplusplus
 #include <stdio.h>
+
+#ifndef __cplusplus
 #include <complex.h>
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
 #else
-#include <cstdio>
 #include <complex>
 #include <cstdlib>
 #include <cstring>
@@ -364,7 +364,6 @@ extern "C" {
     unsigned int* ghost_getRandState();
 
     double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
-    ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);
     int ghost_flopsPerSpmvm(int m_t, int v_t);

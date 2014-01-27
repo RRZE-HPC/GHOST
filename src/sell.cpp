@@ -13,7 +13,7 @@
 #include "ghost/vec.h"
 #include "ghost/math.h"
 #include "ghost/constants.h"
-#include <cstdio>
+#include <iostream>
 #include <cstdlib>
 #include <map>
 #include <iostream>

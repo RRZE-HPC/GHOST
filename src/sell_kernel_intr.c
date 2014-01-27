@@ -1,4 +1,5 @@
 #include "ghost/config.h"
+#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/sell.h"
 #include "ghost/constants.h"

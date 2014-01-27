@@ -9,6 +9,7 @@ set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
+include(CheckFunctionExists)
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
@@ -17,10 +18,12 @@ option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_OPENCL "Build with OpenCL" 1)
 option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
-set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL or GSL)")
+set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL, GSL or LIBSCI)")
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (may be SHARED or STATIC)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TIMING, LIKWID)")
+
+check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
@@ -36,7 +39,6 @@ set (SOURCES
 		src/crs.cpp 
         src/error.c
 		src/sell.c 
-		src/sell_kernel_intr.c 
 		src/vec.cpp 
 		src/sell.cpp
 		src/context.c
@@ -123,6 +125,14 @@ if (USE_OPENCL)
 	endif()
 endif()
 
+if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
+    set (SOURCES ${SOURCES} src/sell_kernel_intr.c)
+else()
+    set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
+    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
+    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
+endif()
+
 if (${LIBTYPE} STREQUAL "STATIC")
     add_library(ghost STATIC ${SOURCES})
 elseif (${LIBTYPE} STREQUAL "SHARED")
@@ -169,6 +179,15 @@ elseif(${BLAS} STREQUAL "GSL")
 	set(GHOST_HAVE_GSL 1)
 	find_package(GSL REQUIRED)
 	include_directories(${GSL_INCLUDE_DIRS}/gsl)
+elseif(${BLAS} STREQUAL "LIBSCI")
+	set(GHOST_HAVE_LIBSCI 1)
+    find_package(PkgConfig)
+    if ( PKGCONFIG_FOUND )
+        find_package(LibSci REQUIRED)
+    else()
+        set(LIBSCI_INCLUDE_DIR "" CACHE PATH "Location of cblas.h")
+    endif()
+	include_directories(${LIBSCI_INCLUDE_DIR})
 endif()
 
 
@@ -184,9 +203,14 @@ endif()
 #endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -pedantic")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wextra -pedantic")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
+# msg 193 complains about commented out lines in config.h
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -h c99 -h msglevel_3 -h nomessage=193")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -h msglevel_3 -h nomessage=193")
+else ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -pedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -pedantic")
+endif ()
 
 if (USE_MPI)	
 	find_package(MPI REQUIRED)
@@ -201,7 +225,7 @@ if (BUILD_MIC)
 	set(GHOST_HAVE_MIC 1)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
-elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
 	AutodetectHostArchitecture()
 	OptimizeForArchitecture()
     if (AVX_FOUND)

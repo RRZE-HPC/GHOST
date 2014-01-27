@@ -9,7 +9,7 @@
 #include "ghost/taskq.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
-#include <sys/param.h>
+#include "ghost/io.h"
 #include <libgen.h>
 #include <unistd.h>
 #include <byteswap.h>
@@ -773,69 +773,6 @@ ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
 
     return lidx;    
 }
-
-ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
-{
-    FILE* file;
-    long filesize;
-    int swapReq = 0;
-
-    DEBUG_LOG(1,"Reading header from %s",matrixPath);
-
-    if ((file = fopen(matrixPath, "rb"))==NULL){
-        ABORT("Could not open binary CRS file %s",matrixPath);
-    }
-
-    fseek(file,0L,SEEK_END);
-    filesize = ftell(file);
-    fseek(file,0L,SEEK_SET);
-
-    fread(&header->endianess, 4, 1, file);
-    if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from little to big endian.");
-        swapReq = 1;
-    } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from big to little endian.");
-        swapReq = 1;
-    } else {
-        DEBUG_LOG(1,"OK, file and library have same endianess.");
-    }
-
-    fread(&header->version, 4, 1, file);
-    if (swapReq) header->version = bswap_32(header->version);
-
-    fread(&header->base, 4, 1, file);
-    if (swapReq) header->base = bswap_32(header->base);
-
-    fread(&header->symmetry, 4, 1, file);
-    if (swapReq) header->symmetry = bswap_32(header->symmetry);
-
-    fread(&header->datatype, 4, 1, file);
-    if (swapReq) header->datatype = bswap_32(header->datatype);
-
-    fread(&header->nrows, 8, 1, file);
-    if (swapReq) header->nrows  = bswap_64(header->nrows);
-
-    fread(&header->ncols, 8, 1, file);
-    if (swapReq)  header->ncols  = bswap_64(header->ncols);
-
-    fread(&header->nnz, 8, 1, file);
-    if (swapReq)  header->nnz  = bswap_64(header->nnz);
-
-
-    long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
-        (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
-        (long)header->nnz * GHOST_BINCRS_SIZE_COL_EL +
-        (long)header->nnz * ghost_sizeofDataType(header->datatype);
-
-    if (filesize != rightFilesize)
-        ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
-
-    fclose(file);
-
-    return GHOST_SUCCESS;
-}
-
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
 {

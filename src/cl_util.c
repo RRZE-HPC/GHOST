@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <unistd.h>
-#include <sys/param.h>
 #include <CL/cl_ext.h>
 
 #define CL_MY_DEVICE_TYPE CL_DEVICE_TYPE_GPU

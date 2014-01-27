@@ -4,7 +4,8 @@
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <cstdlib>
-#include <cstdio>
+#include <iostream>
+#include <stdio.h>
 
 #include "ghost/complex.h"
 #include "ghost/util.h"
@@ -15,7 +16,6 @@
 #include "ghost/blas_mangle.h"
 
 
-#include <iostream>
 
 
 template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
@@ -185,9 +185,8 @@ void my_rand(unsigned int* state, std::complex<float_type>* result)
 template <typename float_type>
 void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 {
-    float_type* ft_res = (float_type*)result;
-    my_rand(state,&ft_res[0]);
-    my_rand(state,&ft_res[1]);
+    my_rand(state,result);
+    my_rand(state,((char *)result)+sizeof(float_type));
 }
 
 

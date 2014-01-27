@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/param.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -24,7 +23,7 @@
 #include <dlfcn.h>
 
 #define LOCAL_HOSTNAME_MAX 	256
-
+#define ROTL32(num,amount) (((num) << (amount)) | ((num) >> (32 - (amount))))
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
@@ -81,11 +80,11 @@ void MurmurHash3_x86_32 ( const void * key, int len,
         uint32_t k1 = blocks[i];
 
         k1 *= c1;
-        k1 = _rotl(k1,15);
+        k1 = ROTL32(k1,15);
         k1 *= c2;
 
         h1 ^= k1;
-        h1 = _rotl(h1,13);
+        h1 = ROTL32(h1,13);
         h1 = h1*5+0xe6546b64;
     }
 
@@ -101,7 +100,7 @@ void MurmurHash3_x86_32 ( const void * key, int len,
         case 3: k1 ^= tail[2] << 16;
         case 2: k1 ^= tail[1] << 8;
         case 1: k1 ^= tail[0];
-                k1 *= c1; k1 = _rotl(k1,15); k1 *= c2; h1 ^= k1;
+                k1 *= c1; k1 = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
     };
 
     //----------
@@ -189,6 +188,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 
     uint32_t checkSum;
     MurmurHash3_x86_32(hostname, hostnameLength, 1234172, &checkSum);
+    int checkSumSigned = (int)(checkSum>>1);
 
     int commRank = -1;
     MPI_safecall(MPI_Comm_rank(comm, &commRank));
@@ -197,7 +197,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 
     DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank, hostnameLength);
 
-    MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
+    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
 
     int nodeRank;
     MPI_safecall(MPI_Comm_rank(nodeComm, &nodeRank));
@@ -256,7 +256,7 @@ ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
         WARNING_LOG("The nodal rank is fixed now but the nodal communicator is not. This will lead to problems...");
         nodeRank = localNodeRank;
     }
-    MPI_safecall(MPI_Comm_split(comm, checkSum, mpiRank, &nodeComm));
+    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
 
 
     // Clean up.
