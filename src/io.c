@@ -2,9 +2,31 @@
 #include "ghost/io.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
-#include <byteswap.h>
 #include <errno.h>
 #include <limits.h>
+
+#if GHOST_HAVE_BSWAP
+#include <byteswap.h>
+#else
+static inline uint32_t bswap_32(uint32_t val)
+{
+    return ((val & (uint32_t)0x000000ffUL) << 24)
+        | ((val & (uint32_t)0x0000ff00UL) <<  8)
+        | ((val & (uint32_t)0x00ff0000UL) >>  8)
+        | ((val & (uint32_t)0xff000000UL) >> 24);
+}
+static inline uint64_t bswap_64(uint64_t val)
+{
+    return ((val & (uint64_t)0x00000000000000ffULL) << 56)
+        | ((val & (uint64_t)0x000000000000ff00ULL) << 40)
+        | ((val & (uint64_t)0x0000000000ff0000ULL) << 24)
+        | ((val & (uint64_t)0x00000000ff000000ULL) <<  8)
+        | ((val & (uint64_t)0x000000ff00000000ULL) >>  8)
+        | ((val & (uint64_t)0x0000ff0000000000ULL) >> 24)
+        | ((val & (uint64_t)0x00ff000000000000ULL) >> 40)
+        | ((val & (uint64_t)0xff00000000000000ULL) >> 56);
+}
+#endif
 
 void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
 {{&ss_ghost_castArray,&sd_ghost_castArray,&sc_ghost_castArray,&sz_ghost_castArray},

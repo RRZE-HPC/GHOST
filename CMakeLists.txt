@@ -9,6 +9,7 @@ set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
+include(CheckFunctionExists)
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
@@ -21,6 +22,8 @@ set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL, GSL or LIBSCI)
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (may be SHARED or STATIC)")
 set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
 set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TIMING, LIKWID)")
+
+check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
