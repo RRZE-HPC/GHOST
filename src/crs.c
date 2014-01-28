@@ -33,7 +33,7 @@ void (*CRS_valToStr_funcs[4]) (void *, char *, int) =
 
 static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
-static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
+static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
 static void CRS_printInfo(ghost_mat_t *mat);
 static const char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -135,7 +135,7 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
             mat->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
 
-static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags)
+static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags)
 {
     UNUSED(base);
     UNUSED(flags);
