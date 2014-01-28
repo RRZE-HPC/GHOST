@@ -7,6 +7,14 @@
 #include "error.h"
 
 #ifdef __cplusplus
+static inline ghost_complex<double> conjugate(ghost_complex<double> * c) {
+    return ghost_complex<double>(c->re,-c->im);
+}
+static inline ghost_complex<float> conjugate(ghost_complex<float> * c) {
+    return ghost_complex<float>(c->re,-c->im);
+}
+static inline double conjugate(double * c) {return *c;}
+static inline float conjugate(float * c) {return *c;}
 extern "C" {
 #endif
 
