@@ -453,10 +453,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     if (!ghost_datatypeValid(header.datatype))
         ABORT("Datatype is invalid! (%d)",header.datatype);
 
-    mat->nrows = (ghost_midx_t)header.nrows;
     mat->ncols = (ghost_midx_t)header.ncols;
-    mat->nEnts = (ghost_midx_t)header.nnz;
-    mat->nnz = mat->nEnts;
 
     DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
@@ -479,6 +476,10 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
             }
         }
+        
+        mat->nrows = (ghost_midx_t)header.nrows;
+        mat->nEnts = (ghost_midx_t)header.nnz;
+        mat->nnz = mat->nEnts;
 
         GHOST_CALL_RETURN(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nEnts));
         GHOST_CALL_RETURN(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nEnts));
@@ -516,6 +517,9 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         MPI_safecall(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
         MPI_safecall(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
 
+        mat->nnz = context->lnEnts[me];
+        mat->nEnts = mat->nnz;
+        mat->nrows = context->lnrows[me];
 
         DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
 
