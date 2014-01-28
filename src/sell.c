@@ -1265,7 +1265,22 @@ static void SELL_CUupload(ghost_mat_t* mat)
 
 static void SELL_free(ghost_mat_t *mat)
 {
+    if (!mat) {
+        return;
+    }
+
     if (mat->data) {
+#ifdef GHOST_HAVE_CUDA
+        if (mat->traits->flags & GHOST_SPM_DEVICE) {
+            CU_freeDeviceMemory(SELL(mat)->cumat->rowLen);
+            CU_freeDeviceMemory(SELL(mat)->cumat->rowLenPadded);
+            CU_freeDeviceMemory(SELL(mat)->cumat->col);
+            CU_freeDeviceMemory(SELL(mat)->cumat->val);
+            CU_freeDeviceMemory(SELL(mat)->cumat->chunkStart);
+            CU_freeDeviceMemory(SELL(mat)->cumat->chunkLen);
+            free(SELL(mat)->cumat);
+        }
+#endif
         free(SELL(mat)->val);
         free(SELL(mat)->col);
         free(SELL(mat)->chunkStart);
@@ -1276,6 +1291,7 @@ static void SELL_free(ghost_mat_t *mat)
         free(SELL(mat)->rowLenPadded);
     }
 
+    
     free(mat->data);
     free(mat);
 
