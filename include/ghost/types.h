@@ -67,7 +67,7 @@ typedef cl_int ghost_cl_mnnz_t;
 
 #endif
 
-typedef enum ghost_error_t {
+typedef enum {
     GHOST_SUCCESS,
     GHOST_ERR_INVALID_ARG,
     GHOST_ERR_MPI,
