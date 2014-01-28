@@ -22,7 +22,7 @@
 
 #include <dlfcn.h>
 
-void (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options) = 
+ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t options) = 
 {{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
     {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
@@ -39,7 +39,7 @@ static const char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
-static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
+static ghost_error_t CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 static void CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat);
 #ifdef GHOST_HAVE_MPI
 static ghost_error_t CRS_split(ghost_mat_t *mat);
@@ -764,7 +764,7 @@ static void CRS_free(ghost_mat_t * mat)
     }
 }
 
-static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+static ghost_error_t CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, ghost_spmv_flags_t options)
 {
     /*    if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
           ghost_midx_t i, j;
@@ -868,7 +868,7 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
     //}
 
 
-    CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
+    return CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
     }
 
 #ifdef GHOST_HAVE_OPENCL

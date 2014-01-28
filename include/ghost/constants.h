@@ -69,6 +69,7 @@
 /******************************************************************************/
 /*----  Specific options for the SpMVM  --------------------------------------*/
 /******************************************************************************/
+#if 0
 #define GHOST_SPMVM_DEFAULT    (0)
 #define GHOST_SPMVM_AXPY       (1) /* perform y = y+A*x instead of y = A*x */
 #define GHOST_SPMVM_RHSPRESENT (2) /* assume that RHS vector is on device */
@@ -81,7 +82,7 @@
 #define GHOST_SPMVM_APPLY_SCALE     (256)
 #define GHOST_SPMVM_AXPBY           (512)
 #define GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT  (1024)
-
+#endif
 #define GHOST_SPMVM_MODE_NOMPI_IDX      0
 #define GHOST_SPMVM_MODE_VECTORMODE_IDX 1
 #define GHOST_SPMVM_MODE_GOODFAITH_IDX  2

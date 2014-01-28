@@ -78,8 +78,31 @@ typedef enum {
     GHOST_ERR_IO
 } ghost_error_t;
 
-typedef enum {GHOST_HYBRIDMODE_INVALID, GHOST_HYBRIDMODE_ONEPERNODE, GHOST_HYBRIDMODE_ONEPERNUMA, GHOST_HYBRIDMODE_ONEPERCORE} ghost_hybridmode_t;
-typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
+typedef enum {
+    GHOST_HYBRIDMODE_INVALID, 
+    GHOST_HYBRIDMODE_ONEPERNODE, 
+    GHOST_HYBRIDMODE_ONEPERNUMA, 
+    GHOST_HYBRIDMODE_ONEPERCORE
+} ghost_hybridmode_t;
+
+typedef enum {
+    GHOST_TYPE_INVALID, 
+    GHOST_TYPE_COMPUTE, 
+    GHOST_TYPE_CUDAMGMT
+} ghost_type_t;
+
+typedef enum {
+    GHOST_SPMVM_DEFAULT = 0,
+    GHOST_SPMVM_AXPY = 1,
+    GHOST_SPMVM_MODE_NOMPI = 2,
+    GHOST_SPMVM_MODE_VECTORMODE = 4,
+    GHOST_SPMVM_MODE_GOODFAITH = 8,
+    GHOST_SPMVM_MODE_TASKMODE = 16,
+    GHOST_SPMVM_APPLY_SHIFT = 32,
+    GHOST_SPMVM_APPLY_SCALE = 64,
+    GHOST_SPMVM_AXPBY = 128,
+    GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
+} ghost_spmv_flags_t;
 
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
@@ -91,7 +114,6 @@ typedef struct ghost_acc_info_t ghost_acc_info_t;
 typedef struct ghost_matfile_header_t ghost_matfile_header_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
-typedef void (*ghost_spmvkernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
 typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
 typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 
@@ -403,7 +425,7 @@ struct ghost_mat_t
     ghost_context_t *context;
     char *name;
     void *data;
-    ghost_spmvkernel_t spmv;
+    ghost_error_t (*spmv) (ghost_mat_t *mat, ghost_vec_t *res, ghost_vec_t *rhs, ghost_spmv_flags_t flags);
     
     ghost_midx_t nrows;
     ghost_midx_t ncols;
@@ -424,9 +446,9 @@ struct ghost_mat_t
      * @return The length of the row or zero if the row index is out of bounds. 
      */
     ghost_midx_t  (*rowLen) (ghost_mat_t *mat, ghost_midx_t row);
-    const char *     (*formatName) (ghost_mat_t *);
-    ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
-    ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    const char *  (*formatName) (ghost_mat_t *);
+    ghost_error_t (*fromFile)(ghost_mat_t *, char *);
+    ghost_error_t (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
     ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);

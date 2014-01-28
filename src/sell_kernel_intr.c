@@ -6,7 +6,7 @@
 #include "ghost/util.h"
 #include <immintrin.h>
 
-void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
+ghost_error_t dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, ghost_spmv_flags_t options)
 {
 #if GHOST_HAVE_SSE
     ghost_midx_t c,j;
@@ -43,9 +43,10 @@ void dd_SELL_kernel_SSE (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * inve
     UNUSED(invec);
     UNUSED(options);
 #endif
+    return GHOST_SUCCESS;
 }
 
-void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, ghost_spmv_flags_t spmvmOptions)
 {
 #if GHOST_HAVE_AVX
     ghost_midx_t c,j;
@@ -88,9 +89,10 @@ void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, 
     UNUSED(invec);
     UNUSED(spmvmOptions);
 #endif
+    return GHOST_SUCCESS;
 }
 
-void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, ghost_spmv_flags_t spmvmOptions)
 {
 #if GHOST_HAVE_AVX
     ghost_midx_t j,c;
@@ -315,9 +317,10 @@ void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t*
     UNUSED(invec);
     UNUSED(spmvmOptions);
 #endif
+    return GHOST_SUCCESS;
 }
 
-void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, ghost_spmv_flags_t spmvmOptions)
 {
 #if GHOST_HAVE_AVX
     ghost_midx_t c,j;
@@ -444,9 +447,10 @@ void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     UNUSED(invec);
     UNUSED(spmvmOptions);
 #endif
+    return GHOST_SUCCESS;
 }
 
-void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, ghost_spmv_flags_t spmvmOptions)
 {
 #if GHOST_HAVE_MIC
     ghost_midx_t c,j;
@@ -499,9 +503,10 @@ void dd_SELL_kernel_MIC_16(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     UNUSED(invec);
     UNUSED(spmvmOptions);
 #endif
+    return GHOST_SUCCESS;
 }
 
-void dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, ghost_spmv_flags_t spmvmOptions)
 {
 #if GHOST_HAVE_MIC
     ghost_midx_t c,j;
@@ -579,4 +584,5 @@ void dd_SELL_kernel_MIC_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     UNUSED(invec);
     UNUSED(spmvmOptions);
 #endif
+    return GHOST_SUCCESS;
 }
