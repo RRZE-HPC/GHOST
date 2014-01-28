@@ -182,7 +182,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     }
 
 #ifdef __INTEL_COMPILER
-    kmp_set_blocktime(1);
+  //  kmp_set_blocktime(1);
 #endif
     
     int to_PE;

@@ -51,7 +51,7 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
 #ifdef __INTEL_COMPILER
-    kmp_set_blocktime(1);
+ //   kmp_set_blocktime(1);
 #endif
 
     invec->downloadNonHalo(invec);
