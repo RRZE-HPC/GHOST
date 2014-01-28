@@ -84,7 +84,7 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
 
 #pragma omp parallel private(c,j,tmp,i,v)
     {
-        int tid = ghost_ompGetNumThreads();
+        int tid = ghost_ompGetThreadNum();
 
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
@@ -182,7 +182,7 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
 
 #pragma omp parallel private(i,j,tmp,v)
     {
-        int tid = ghost_ompGetNumThreads();
+        int tid = ghost_ompGetThreadNum();
 #pragma omp for schedule(runtime)
         for (i=0; i<mat->nrows; i++) 
         {

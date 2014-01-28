@@ -54,7 +54,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
 
 #pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
     {
-        int tid = ghost_ompGetNumThreads();
+        int tid = ghost_ompGetThreadNum();
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
             for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
