@@ -45,9 +45,6 @@ static void CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat);
 static ghost_error_t CRS_split(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
-#ifdef GHOST_HAVE_OPENCL
-static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
-#endif
 
 
 ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
@@ -87,15 +84,8 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     mat->rowLen   = &CRS_rowLen;
     mat->byteSize = &CRS_byteSize;
     mat->destroy  = &CRS_free;
-    mat->CLupload = &CRS_upload;
 #ifdef GHOST_HAVE_MPI
     mat->split = &CRS_split;
-#endif
-#ifdef GHOST_HAVE_OPENCL
-    if (traits->flags & GHOST_SPM_HOST)
-        mat->spmv   = &CRS_kernel_plain;
-    else 
-        mat->spmv   = &CRS_kernel_CL;
 #endif
     mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
@@ -268,8 +258,6 @@ static void CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
 
     DEBUG_LOG(1,"Successfully created CRS matrix from CRS data");
 
-    // TODO OpenCL upload
-
 }
 
 #ifdef GHOST_HAVE_MPI
@@ -402,86 +390,6 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 }
 
 #endif
-
-static void CRS_upload(ghost_mat_t *mat)
-{
-    DEBUG_LOG(1,"Uploading CRS matrix to device");
-#ifdef GHOST_HAVE_OPENCL
-    if (!(mat->traits->flags & GHOST_SPM_HOST)) {
-        DEBUG_LOG(1,"Creating matrix on OpenCL device");
-        CR(mat)->clmat = (CL_CR_TYPE *)ghost_malloc(sizeof(CL_CR_TYPE));
-        CR(mat)->clmat->rpt = CL_allocDeviceMemory((mat->nrows+1)*sizeof(ghost_cl_mnnz_t));
-        CR(mat)->clmat->col = CL_allocDeviceMemory((mat->nEnts)*sizeof(ghost_cl_midx_t));
-        CR(mat)->clmat->val = CL_allocDeviceMemory((mat->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
-
-        CR(mat)->clmat->nrows = mat->nrows;
-        CL_copyHostToDevice(CR(mat)->clmat->rpt, CR(mat)->rpt, (mat->nrows+1)*sizeof(ghost_cl_mnnz_t));
-        CL_copyHostToDevice(CR(mat)->clmat->col, CR(mat)->col, mat->nEnts*sizeof(ghost_cl_midx_t));
-        CL_copyHostToDevice(CR(mat)->clmat->val, CR(mat)->val, mat->nEnts*ghost_sizeofDataType(mat->traits->datatype));
-
-        cl_int err;
-        cl_uint numKernels;
-        /*    char shift[32];
-              CRS_valToStr_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat->traits->shift,shift,32);
-              printf("SHIFT: %f   %s\n",*((double *)(mat->traits->shift)),shift);
-         */
-        char options[128];
-        if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-            if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-                strncpy(options," -DGHOST_MAT_C ",15);
-            } else {
-                strncpy(options," -DGHOST_MAT_Z ",15);
-            }
-        } else {
-            if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-                strncpy(options," -DGHOST_MAT_S ",15);
-            } else {
-                strncpy(options," -DGHOST_MAT_D ",15);
-            }
-
-        }
-        strncpy(options+15," -DGHOST_VEC_S ",15);
-        cl_program program = CL_registerProgram("crs_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[0] = clCreateKernel(program,"CRS_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+15," -DGHOST_VEC_D ",15);
-        program = CL_registerProgram("crs_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[1] = clCreateKernel(program,"CRS_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+15," -DGHOST_VEC_C ",15);
-        program = CL_registerProgram("crs_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[2] = clCreateKernel(program,"CRS_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+15," -DGHOST_VEC_Z ",15);
-        program = CL_registerProgram("crs_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[3] = clCreateKernel(program,"CRS_kernel",&err);
-        CL_checkerror(err);
-
-        int i;
-        for (i=0; i<4; i++) {
-            CL_safecall(clSetKernelArg(mat->clkernel[i],3,sizeof(int), &(CR(mat)->clmat->nrows)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],4,sizeof(cl_mem), &(CR(mat)->clmat->rpt)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],5,sizeof(cl_mem), &(CR(mat)->clmat->col)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],6,sizeof(cl_mem), &(CR(mat)->clmat->val)));
-        }
-    }
-#else
-    if (mat->traits->flags & GHOST_SPM_DEVICE) {
-        ABORT("Device matrix cannot be created without OpenCL");
-    }
-#endif
-}
 
 /*int compareNZEPos( const void* a, const void* b ) 
   {
@@ -672,10 +580,6 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 #endif
     }
     DEBUG_LOG(1,"Matrix read in successfully");
-#ifdef GHOST_HAVE_OPENCL
-    if (!(mat->traits->flags & GHOST_SPM_HOST))
-        mat->CLupload(mat);
-#endif
 
     return GHOST_SUCCESS;
 
@@ -744,13 +648,6 @@ static void CRS_free(ghost_mat_t * mat)
 {
     if (mat) {
         DEBUG_LOG(1,"Freeing CRS matrix");
-#ifdef GHOST_HAVE_OPENCL
-        if (mat->traits->flags & GHOST_SPM_DEVICE) {
-            CL_freeDeviceMemory(CR(mat)->clmat->rpt);
-            CL_freeDeviceMemory(CR(mat)->clmat->col);
-            CL_freeDeviceMemory(CR(mat)->clmat->val);
-        }
-#endif
         free(CR(mat)->rpt);
         free(CR(mat)->col);
         free(CR(mat)->val);
@@ -875,25 +772,3 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
     return CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
     }
 
-#ifdef GHOST_HAVE_OPENCL
-static void CRS_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
-{
-    cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];
-    CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
-    CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
-    CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
-    if (mat->traits->shift != NULL) {
-        CL_safecall(clSetKernelArg(kernel,7,ghost_sizeofDataType(mat->traits->datatype), mat->traits->shift));
-    } else {
-        if (options & GHOST_SPMVM_APPLY_SHIFT)
-            ABORT("A shift should be applied but the pointer is NULL!");
-        complex double foo = 0.+I*0.; // should never be needed
-        CL_safecall(clSetKernelArg(kernel,7,ghost_sizeofDataType(mat->traits->datatype), &foo))
-    }
-
-
-    size_t gSize = (size_t)CR(mat)->clmat->nrows;
-
-    CL_enqueueKernel(kernel,1,&gSize,NULL);
-}
-#endif

@@ -98,7 +98,6 @@
 #define GHOST_IMPL_SSE    (2)
 #define GHOST_IMPL_AVX    (4)
 #define GHOST_IMPL_MIC    (8)
-#define GHOST_IMPL_OPENCL (16)
 
 
 /******************************************************************************/

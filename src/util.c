@@ -249,9 +249,6 @@ void ghost_printSysInfo()
 #ifdef GHOST_HAVE_CUDA
     ghost_acc_info_t * CUdevInfo = CU_getDeviceInfo();
 #endif
-#ifdef GHOST_HAVE_OPENCL
-    ghost_acc_info_t * CLdevInfo = CL_getDeviceInfo();
-#endif
     if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 
         int nthreads;
@@ -297,14 +294,6 @@ void ghost_printSysInfo()
         ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
         ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
         ghost_printLine("LLC size","MiB","%.2f",ghost_getSizeOfLLC()*1.0/(1024.*1024.));
-#ifdef GHOST_HAVE_OPENCL
-        ghost_printLine("OpenCL version",NULL,"%s",CL_getVersion());
-        ghost_printLine("OpenCL devices",NULL,"%dx %s",CLdevInfo->nDevices[0],CLdevInfo->names[0]);
-        int i;
-        for (i=1; i<CLdevInfo->nDistinctDevices; i++) {
-            ghost_printLine("",NULL,"%dx %s",CLdevInfo->nDevices[i],CLdevInfo->names[i]);
-        }
-#endif
 #ifdef GHOST_HAVE_CUDA
         ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
         ghost_printLine("CUDA devices",NULL,NULL);
@@ -317,9 +306,6 @@ void ghost_printSysInfo()
 #endif
         ghost_printFooter();
     }
-#ifdef GHOST_HAVE_OPENCL
-    destroyCLdeviceInfo(CLdevInfo);
-#endif
 
 }
 
@@ -357,11 +343,6 @@ void ghost_printGhostInfo()
         ghost_printLine("MPI support",NULL,"enabled");
 #else
         ghost_printLine("MPI support",NULL,"disabled");
-#endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_printLine("OpenCL support",NULL,"enabled");
-#else
-        ghost_printLine("OpenCL support",NULL,"disabled");
 #endif
 #ifdef GHOST_HAVE_CUDA
         ghost_printLine("CUDA support",NULL,"enabled");
@@ -645,9 +626,6 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
 #ifdef GHOST_HAVE_MPI
     MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
-#ifdef GHOST_HAVE_OPENCL
-    CL_barrier();
-#endif
 
 //    ttime = ghost_wctime();
     for( it = 0; it < nIter; it++ ) {
@@ -655,9 +633,6 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
         time = ghost_wctime();
         solver(context,res,mat,invec,*spmvmOptions);
 
-#ifdef GHOST_HAVE_OPENCL
-        CL_barrier();
-#endif
 #ifdef GHOST_HAVE_CUDA
         CU_barrier();
 #endif
@@ -900,9 +875,6 @@ int ghost_init(int argc, char **argv)
     LIKWID_MARKER_THREADINIT;
 #endif
 
-#ifdef GHOST_HAVE_OPENCL
-    CL_init();
-#endif
     
     hwloc_topology_init(&topology);
     hwloc_topology_load(topology);
@@ -1111,9 +1083,6 @@ void ghost_finish()
     LIKWID_MARKER_CLOSE;
 #endif
 
-#ifdef GHOST_HAVE_OPENCL
-    CL_finish();
-#endif
 
 #if GHOST_HAVE_MPI
     MPI_safecall(MPI_Type_free(&GHOST_MPI_DT_C));

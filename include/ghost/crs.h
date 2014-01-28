@@ -20,25 +20,10 @@ CONST_DIAG;
 
 typedef struct 
 {
-#ifdef GHOST_HAVE_OPENCL
-    ghost_cl_midx_t  nrows, ncols;
-    ghost_cl_mnnz_t  nEnts;
-    cl_mem rpt;
-    cl_mem col;
-    cl_mem val;
-#else
-    void *empty;
-#endif
-} 
-CL_CR_TYPE;
-
-typedef struct 
-{
     ghost_midx_t  *rpt;
     ghost_midx_t  *col;
     char *val;
 
-    CL_CR_TYPE *clmat;
     ghost_midx_t nConstDiags;
     CONST_DIAG *constDiags;
 } 

@@ -15,7 +15,6 @@ option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
-option(USE_OPENCL "Build with OpenCL" 1)
 option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL, GSL or LIBSCI)")
@@ -107,21 +106,6 @@ if (USE_CUDA)
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)
         endif()
-	endif()
-endif()
-
-if (USE_OPENCL)
-	find_package(OpenCL)
-	if (OPENCL_FOUND)
-		set(GHOST_HAVE_OPENCL 1)
-		set (SOURCES 
-				${SOURCES} 
-				src/ghost/cl_util.c	
-			)
-		include_directories(${OPENCL_INCLUDE_DIRS})
-		set (HEADERS ${HEADERS}
-				include/ghost/cl_util.h
-			)
 	endif()
 endif()
 

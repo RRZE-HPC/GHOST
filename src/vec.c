@@ -154,11 +154,6 @@ ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
     if (vec->traits->flags & GHOST_VEC_DEVICE) {
         vec->CU_val = NULL;
     }
-#elif defined(OPENCL)
-    vec->CL_val_gpu = NULL;
-    if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE))) { // no storage specified
-        vec->traits->flags |= (GHOST_VEC_HOST | GHOST_VEC_DEVICE);
-    }
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
@@ -186,12 +181,6 @@ static void vec_uploadHalo(ghost_vec_t *vec)
                     vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyHostToDeviceOffset(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,vec->traits->nrows), vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype),    vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-        }
-#endif
     }
 }
 
@@ -213,12 +202,6 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
             CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyHostToDevice(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-        }
-#endif
     }
 }
 
@@ -230,12 +213,6 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
             CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-        }
-#endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyDeviceToHost(VECVAL(vec,vec->val,v,0),VECVAL(vec,vec->CL_val_gpu,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -251,12 +228,6 @@ static void vec_upload(ghost_vec_t *vec)
             CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyHostToDevice(VECVAL(vec,vec->CL_val_gpu,v,0),VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-        }
-#endif
     }
 }
 
@@ -268,12 +239,6 @@ static void vec_download(ghost_vec_t *vec)
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
             CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
-        }
-#endif
-#ifdef GHOST_HAVE_OPENCL
-        ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
-            CL_copyDeviceToHost(VECVAL(vec,vec->val,v,0),VECVAL(vec,vec->CL_val_gpu,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -366,14 +331,6 @@ void ghost_vec_malloc(ghost_vec_t *vec)
             //CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
             vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #endif
-        }
-#endif
-#ifdef GHOST_HAVE_OPENCL
-        if (vec->CL_val_gpu[0] == NULL) {
-            vec->CL_val_gpu[0] = CL_allocDeviceMemoryMapped(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,vec->val,CL_MEM_READ_WRITE );
-            for (v=1; v<vec->traits->nvecs; v++) {
-                vec->CL_val_gpu[v] = vec->CL_val_gpu[0]+vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
-            }
         }
 #endif
     }    
@@ -948,12 +905,6 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
     dtmp = v1->val[0];
     v1->val[0] = v2->val[0];
     v2->val[0] = dtmp;
-#ifdef GHOST_HAVE_OPENCL
-    cl_mem tmp;
-    tmp = v1->CL_val_gpu[0];
-    v1->CL_val_gpu[0] = v2->CL_val_gpu[0];
-    v2->CL_val_gpu[0] = tmp;
-#endif
 #ifdef GHOST_HAVE_CUDA
     dtmp = v1->CU_val;
     v1->CU_val = v2->CU_val;
@@ -995,13 +946,6 @@ static void ghost_freeVector( ghost_vec_t* vec )
             }
             else {
                 free(vec->val[0]);
-            }
-#endif
-#ifdef GHOST_HAVE_OPENCL
-            if (vec->traits->flags & GHOST_VEC_DEVICE) {
-                for (v=0; v<vec->traits->nvecs; v++) { 
-                    CL_freeDeviceMemory( vec->CL_val_gpu[v] );
-                }
             }
 #endif
 #ifdef GHOST_HAVE_CUDA

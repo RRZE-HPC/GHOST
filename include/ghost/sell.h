@@ -11,22 +11,6 @@
 
 typedef struct 
 {
-#ifdef GHOST_HAVE_OPENCL
-    cl_mem val;
-    cl_mem col;
-    cl_mem rowLen;
-    cl_mem chunkStart;
-    cl_mem chunkLen;
-    ghost_cl_midx_t nrows;
-    ghost_cl_midx_t nrowsPadded;
-#else
-    void *empty;
-#endif
-} 
-CL_SELL_TYPE;
-
-typedef struct 
-{
 #ifdef GHOST_HAVE_CUDA
     char * val;
     ghost_midx_t * col;
@@ -64,7 +48,6 @@ typedef struct
     ghost_midx_t chunkHeight;
     ghost_midx_t scope;
     
-    CL_SELL_TYPE *clmat;
     CU_SELL_TYPE *cumat;
 } 
 SELL_TYPE;

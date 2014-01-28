@@ -23,10 +23,6 @@ typedef int ghost_mpi_comm_t;
 #include <stdint.h>
 #include <sys/types.h>
 
-#ifdef GHOST_HAVE_OPENCL
-#include <CL/cl.h>
-#endif
-
 #if GHOST_HAVE_LONGIDX
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
@@ -35,11 +31,6 @@ typedef long long int ghost_blas_idx_t;
 
 #define ghost_mpi_dt_midx MPI_LONG_LONG
 #define ghost_mpi_dt_mnnz MPI_LONG_LONG
-
-#ifdef GHOST_HAVE_OPENCL
-typedef cl_long ghost_cl_midx_t;
-typedef cl_long ghost_cl_mnnz_t;
-#endif
 
 #define PRmatNNZ PRId64
 #define PRmatIDX PRId64
@@ -55,11 +46,6 @@ typedef int ghost_blas_idx_t;
 
 #define ghost_mpi_dt_midx MPI_INT
 #define ghost_mpi_dt_mnnz MPI_INT
-
-#ifdef GHOST_HAVE_OPENCL
-typedef cl_int ghost_cl_midx_t;
-typedef cl_int ghost_cl_mnnz_t;
-#endif
 
 #define PRmatNNZ PRId32
 #define PRmatIDX PRId32
@@ -165,10 +151,6 @@ struct ghost_vec_t
      */
     void          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
     /**
-     * @brief \deprecated
-     */
-    void          (*CLdownload) (ghost_vec_t *);
-    /**
      * @brief Clones a given number of columns of a source vector at a given
      * column offset.
      *
@@ -187,10 +169,6 @@ struct ghost_vec_t
      * @param vec The vector.
      */
     void          (*compress) (ghost_vec_t *vec);
-    /**
-     * @brief \deprecated
-     */
-    void          (*CLupload) (ghost_vec_t *);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
@@ -400,9 +378,6 @@ struct ghost_vec_t
     void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
     void          (*zero) (ghost_vec_t *);
 
-#ifdef GHOST_HAVE_OPENCL
-    cl_mem * CL_val_gpu;
-#endif
 #ifdef GHOST_HAVE_CUDA
     char * CU_val;
 #endif
@@ -517,7 +492,6 @@ struct ghost_mat_t
      * @param path Path of the file.
      */
     ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
-    void       (*CLupload)(ghost_mat_t *);
     /**
      * @brief Upload the matrix to the CUDA device.
      *
@@ -546,9 +520,6 @@ struct ghost_mat_t
      * @param mat The matrix.
      */
     ghost_error_t       (*split)(ghost_mat_t *mat);
-#ifdef GHOST_HAVE_OPENCL
-    cl_kernel clkernel[4];
-#endif
 };
 
 struct ghost_mtraits_t

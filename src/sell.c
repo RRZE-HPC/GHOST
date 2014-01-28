@@ -90,9 +90,6 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
 static void SELL_free(ghost_mat_t *mat);
 static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 static int ghost_selectSellChunkHeight(int datatype);
-#ifdef GHOST_HAVE_OPENCL
-static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
-#endif
 #ifdef GHOST_HAVE_CUDA
 static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 #endif
@@ -118,7 +115,6 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
     }
     //TODO is it reasonable that a matrix has HOST&DEVICE?
 
-    mat->CLupload = &SELL_upload;
     mat->CUupload = &SELL_CUupload;
     mat->fromFile = &SELL_fromBin;
     mat->fromRowFunc = &SELL_fromRowFunc;
@@ -132,10 +128,6 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
     mat->split = &SELL_split;
 #ifdef VSX_INTR
     mat->kernel = &SELL_kernel_VSX;
-#endif
-#ifdef GHOST_HAVE_OPENCL
-    if (!(traits->flags & GHOST_SPM_HOST))
-        mat->kernel   = &SELL_kernel_CL;
 #endif
 #if GHOST_HAVE_CUDA
     if (ghost_type == GHOST_TYPE_CUDAMGMT) {
@@ -509,10 +501,6 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         mat->split(mat);
 #endif
     }
-#ifdef GHOST_HAVE_OPENCL
-    if (!(mat->traits->flags & GHOST_SPM_HOST))
-        mat->CLupload(mat);
-#endif
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST))
         mat->CUupload(mat);
@@ -1091,10 +1079,6 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     mat->split(mat);
 
 
-#ifdef GHOST_HAVE_OPENCL
-    if (!(mat->traits->flags & GHOST_SPM_HOST))
-        mat->CLupload(mat);
-#endif
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST))
         mat->CUupload(mat);
@@ -1118,101 +1102,6 @@ static const char * SELL_stringify(ghost_mat_t *mat, int dense)
 static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 {
     SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
-}
-
-static void SELL_upload(ghost_mat_t* mat) 
-{
-    DEBUG_LOG(1,"Uploading SELL matrix to device");
-#ifdef GHOST_HAVE_OPENCL
-    if (!(mat->traits->flags & GHOST_SPM_HOST)) {
-        DEBUG_LOG(1,"Creating matrix on OpenCL device");
-        SELL(mat)->clmat = (CL_SELL_TYPE *)ghost_malloc(sizeof(CL_SELL_TYPE));
-        SELL(mat)->clmat->rowLen = CL_allocDeviceMemory((mat->nrows)*sizeof(ghost_cl_midx_t));
-        SELL(mat)->clmat->col = CL_allocDeviceMemory((mat->nEnts)*sizeof(ghost_cl_midx_t));
-        SELL(mat)->clmat->val = CL_allocDeviceMemory((mat->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
-        SELL(mat)->clmat->chunkStart = CL_allocDeviceMemory((mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
-        SELL(mat)->clmat->chunkLen = CL_allocDeviceMemory((mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
-
-        SELL(mat)->clmat->nrows = mat->nrows;
-        SELL(mat)->clmat->nrowsPadded = mat->nrowsPadded;
-        CL_copyHostToDevice(SELL(mat)->clmat->rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_cl_midx_t));
-        CL_copyHostToDevice(SELL(mat)->clmat->col, SELL(mat)->col, mat->nEnts*sizeof(ghost_cl_midx_t));
-        CL_copyHostToDevice(SELL(mat)->clmat->val, SELL(mat)->val, mat->nEnts*ghost_sizeofDataType(mat->traits->datatype));
-        CL_copyHostToDevice(SELL(mat)->clmat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_mnnz_t));
-        CL_copyHostToDevice(SELL(mat)->clmat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_cl_midx_t));
-
-        int nDigits = (int)log10(SELL(mat)->chunkHeight)+1;
-        char options[128];
-        char sellLenStr[32];
-        snprintf(sellLenStr,32,"-DSELL_LEN=%d",SELL(mat)->chunkHeight);
-        int sellLenStrlen = 11+nDigits;
-        strncpy(options,sellLenStr,sellLenStrlen);
-
-
-        cl_int err;
-        cl_uint numKernels;
-
-        if (mat->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-            if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-                strncpy(options+sellLenStrlen," -DGHOST_MAT_C",14);
-            } else {
-                strncpy(options+sellLenStrlen," -DGHOST_MAT_Z",14);
-            }
-        } else {
-            if (mat->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-                strncpy(options+sellLenStrlen," -DGHOST_MAT_S",14);
-            } else {
-                strncpy(options+sellLenStrlen," -DGHOST_MAT_D",14);
-            }
-
-        }
-        strncpy(options+sellLenStrlen+14," -DGHOST_VEC_S\0",15);
-        cl_program program = CL_registerProgram("sell_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[0] = clCreateKernel(program,"SELL_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+sellLenStrlen+14," -DGHOST_VEC_D\0",15);
-        program = CL_registerProgram("sell_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[1] = clCreateKernel(program,"SELL_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+sellLenStrlen+14," -DGHOST_VEC_C\0",15);
-        program = CL_registerProgram("sell_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[2] = clCreateKernel(program,"SELL_kernel",&err);
-        CL_checkerror(err);
-
-        strncpy(options+sellLenStrlen+14," -DGHOST_VEC_Z\0",15);
-        program = CL_registerProgram("sell_clkernel.cl",options);
-        CL_safecall(clCreateKernelsInProgram(program,0,NULL,&numKernels));
-        DEBUG_LOG(1,"There are %u OpenCL kernels",numKernels);
-        mat->clkernel[3] = clCreateKernel(program,"SELL_kernel",&err);
-        CL_checkerror(err);
-
-        int i;
-        for (i=0; i<4; i++) {
-            CL_safecall(clSetKernelArg(mat->clkernel[i],3,sizeof(ghost_cl_midx_t), &(SELL(mat)->clmat->nrows)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],4,sizeof(ghost_cl_midx_t), &(SELL(mat)->clmat->nrowsPadded)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],5,sizeof(cl_mem), &(SELL(mat)->clmat->rowLen)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],6,sizeof(cl_mem), &(SELL(mat)->clmat->col)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],7,sizeof(cl_mem), &(SELL(mat)->clmat->val)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],8,sizeof(cl_mem), &(SELL(mat)->clmat->chunkStart)));
-            CL_safecall(clSetKernelArg(mat->clkernel[i],9,sizeof(cl_mem), &(SELL(mat)->clmat->chunkLen)));
-        }
-        //    printf("### %lu\n",CL_getLocalSize(mat->clkernel));
-        CL_checkerror(err);
-
-    }
-#else
-    if (mat->traits->flags & GHOST_SPM_DEVICE) {
-        ABORT("Device matrix cannot be created without OpenCL");
-    }
-#endif
 }
 
 static ghost_error_t SELL_CUupload(ghost_mat_t* mat) 
@@ -1385,29 +1274,6 @@ static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * r
 }
 #endif
 
-#ifdef GHOST_HAVE_OPENCL
-static void SELL_kernel_CL (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
-{
-    cl_kernel kernel = mat->clkernel[ghost_dataTypeIdx(rhs->traits->datatype)];
-    CL_safecall(clSetKernelArg(kernel,0,sizeof(cl_mem), &(lhs->CL_val_gpu)));
-    CL_safecall(clSetKernelArg(kernel,1,sizeof(cl_mem), &(rhs->CL_val_gpu)));
-    CL_safecall(clSetKernelArg(kernel,2,sizeof(int), &options));
-    if (mat->traits->shift != NULL) {
-        CL_safecall(clSetKernelArg(kernel,10,ghost_sizeofDataType(mat->traits->datatype), mat->traits->shift));
-    } else {
-        if (options & GHOST_SPMVM_APPLY_SHIFT)
-            ABORT("A shift should be applied but the pointer is NULL!");
-        complex double foo = 0.+I*0.; // should never be needed
-        CL_safecall(clSetKernelArg(kernel,10,ghost_sizeofDataType(mat->traits->datatype), &foo))
-    }
-
-    size_t gSize = (size_t)SELL(mat)->clmat->nrowsPadded;
-    size_t lSize = SELL(mat)->chunkHeight;
-
-    CL_enqueueKernel(kernel,1,&gSize,&lSize);
-}
-#endif
-
 #ifdef VSX_INTR
 static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * invec, int options)
 {
@@ -1460,7 +1326,7 @@ ch *= 2;
 #endif
 #endif
 
-#if defined (OPENCL) || defined (CUDA)
+#if defined (CUDA)
 ch = 256;
 #endif
 

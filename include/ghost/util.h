@@ -8,10 +8,6 @@
 #include "mpi_util.h"
 #endif
 
-#ifdef GHOST_HAVE_OPENCL
-#include "ghost_cl_util.h"
-#endif
-
 #ifdef GHOST_HAVE_CUDA
 #include "cu_util.h"
 #endif
@@ -113,46 +109,6 @@
         fflush(stderr);\
     }\
 }
-
-#ifdef GHOST_HAVE_MPI
-#define CL_safecall(call) {\
-    cl_int clerr = call ;\
-    if( CL_SUCCESS != clerr ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stderr, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, CL_errorString(clerr));\
-        fflush(stderr);\
-    }\
-}
-
-#define CL_checkerror(clerr) do{\
-    if( CL_SUCCESS != clerr ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stdout, ANSI_COLOR_RED "PE%d: OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, CL_errorString(clerr));\
-        fflush(stdout);\
-    }\
-} while(0)
-#else
-#define CL_safecall(call) {\
-    cl_int clerr = call ;\
-    if( CL_SUCCESS != clerr ){\
-        fprintf(stderr, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, CL_errorString(clerr));\
-        fflush(stderr);\
-    }\
-}
-
-#define CL_checkerror(clerr) do{\
-    if( CL_SUCCESS != clerr ){\
-        fprintf(stdout, ANSI_COLOR_RED "OpenCL error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, CL_errorString(clerr));\
-        fflush(stdout);\
-    }\
-} while(0)
-#endif
 
 #ifdef GHOST_HAVE_MPI
 #define CU_safecall(call) {\
@@ -323,7 +279,6 @@ extern "C" {
     extern int ghost_node_rank;
 #endif
     extern int hasCUDAdevice;
-    extern int hasOPENCLdevice;
     extern ghost_type_t ghost_type; 
 
     void ghost_printHeader(const char *fmt, ...);

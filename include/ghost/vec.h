@@ -15,7 +15,7 @@
 #define VEC_PAD 4 // TODO single/double precision
 #elif defined (SSE)
 #define VEC_PAD 2
-#elif defined (OPENCL) || defined (CUDA)
+#elif defined (CUDA)
 #define VEC_PAD 256
 #elif defined (VSX)
 #define VEC_PAD 2
