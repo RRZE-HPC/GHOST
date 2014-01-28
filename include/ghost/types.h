@@ -404,14 +404,20 @@ struct ghost_mat_t
     char *name;
     void *data;
     ghost_spmvkernel_t spmv;
+    
+    ghost_midx_t nrows;
+    ghost_midx_t ncols;
+    ghost_midx_t nrowsPadded;
+    ghost_mnnz_t nnz;
+    ghost_mnnz_t nEnts;
 
     // access functions
     void       (*destroy) (ghost_mat_t *);
     void       (*printInfo) (ghost_mat_t *);
     const char * (*stringify) (ghost_mat_t *, int);
-    ghost_mnnz_t  (*nnz) (ghost_mat_t *);
-    ghost_midx_t  (*nrows) (ghost_mat_t *);
-    ghost_midx_t  (*ncols) (ghost_mat_t *);
+    //ghost_mnnz_t  (*nnz) (ghost_mat_t *);
+    //ghost_midx_t  (*nrows) (ghost_mat_t *);
+    //ghost_midx_t  (*ncols) (ghost_mat_t *);
     ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
     char *     (*formatName) (ghost_mat_t *);
     ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
@@ -420,7 +426,7 @@ struct ghost_mat_t
     void       (*CLupload)(ghost_mat_t *);
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
-    void       (*fromCRS)(ghost_mat_t *, void *);
+    void       (*fromCRS)(ghost_mat_t *, ghost_mat_t *);
     ghost_error_t       (*split)(ghost_mat_t *);
 #ifdef GHOST_HAVE_OPENCL
     cl_kernel clkernel[4];

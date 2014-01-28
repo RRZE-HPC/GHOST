@@ -105,7 +105,7 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     int localopts = spmvmOptions;
     int remoteopts = spmvmOptions;
 
-    int remoteExists = mat->remotePart->nnz(mat->remotePart) > 0;
+    int remoteExists = mat->remotePart->nnz > 0;
    
     if (remoteExists) {
         localopts &= ~GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT;

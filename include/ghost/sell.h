@@ -49,11 +49,6 @@ typedef struct
     char *val;
     ghost_midx_t *col;
     ghost_mnnz_t *chunkStart;
-    ghost_midx_t nrows;
-    ghost_midx_t ncols;
-    ghost_midx_t nrowsPadded;
-    ghost_mnnz_t nnz;
-    ghost_mnnz_t nEnts;
     double beta; // chunk occupancy
     double variance; // row length variance
     double deviation; // row lenght standard deviation

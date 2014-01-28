@@ -29,7 +29,7 @@ ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trait
 ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 {
     ghost_mnnz_t nrows;
-    ghost_mnnz_t lnrows = mat->nrows(mat);
+    ghost_mnnz_t lnrows = mat->nrows;
 
     if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
         nrows = lnrows;
@@ -47,7 +47,7 @@ ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
 {
     ghost_mnnz_t nnz;
-    ghost_mnnz_t lnnz = mat->nnz(mat);
+    ghost_mnnz_t lnnz = mat->nnz;
 
     if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
         nnz = lnnz;

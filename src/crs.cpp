@@ -56,7 +56,7 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
     {
         int tid = ghost_ompGetNumThreads();
 #pragma omp for schedule(runtime) 
-        for (i=0; i<cr->nrows; i++){
+        for (i=0; i<mat->nrows; i++){
             for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
             {
                 rhsv = (v_t *)rhs->val[v];

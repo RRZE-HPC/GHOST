@@ -34,8 +34,6 @@ CL_CR_TYPE;
 
 typedef struct 
 {
-    ghost_midx_t  nrows, ncols;
-    ghost_mnnz_t  nEnts;
     ghost_midx_t  *rpt;
     ghost_midx_t  *col;
     char *val;

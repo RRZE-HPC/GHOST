@@ -59,7 +59,7 @@ void dd_SELL_kernel_AVX(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* invec, 
     __m128d rhstmp;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp,val,offs,rhs,rhstmp)
-    for (c=0; c<SELL(mat)->nrowsPadded>>2; c++) 
+    for (c=0; c<mat->nrowsPadded>>2; c++) 
     { // loop over chunks
         tmp = _mm256_setzero_pd(); // tmp = 0
         offs = SELL(mat)->chunkStart[c];
@@ -122,7 +122,7 @@ void dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t*
         dot2 = _mm256_setzero_pd();
         dot3 = _mm256_setzero_pd();
 #pragma omp for schedule(runtime)
-        for (c=0; c<SELL(mat)->nrowsPadded>>5; c++) 
+        for (c=0; c<mat->nrowsPadded>>5; c++) 
         { // loop over chunks
             tmp1 = _mm256_setzero_pd(); // tmp = 0
             tmp2 = _mm256_setzero_pd(); // tmp = 0
@@ -331,7 +331,7 @@ void dd_SELL_kernel_AVX_32(ghost_mat_t *mat, ghost_vec_t* res, ghost_vec_t* inve
     __m128d rhstmp;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp)
-    for (c=0; c<SELL(mat)->nrowsPadded>>5; c++) 
+    for (c=0; c<mat->nrowsPadded>>5; c++) 
     { // loop over chunks
         tmp1 = _mm256_setzero_pd(); // tmp = 0
         tmp2 = _mm256_setzero_pd(); // tmp = 0
