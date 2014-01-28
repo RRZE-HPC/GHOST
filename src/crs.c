@@ -133,6 +133,7 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
 {
     if (mat->data == NULL) {
         return 0;
+    }
     
     return (size_t)((mat->nrows+1)*sizeof(ghost_mnnz_t) + 
             mat->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
