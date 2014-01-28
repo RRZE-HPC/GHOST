@@ -456,6 +456,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     mat->nrows = (ghost_midx_t)header.nrows;
     mat->ncols = (ghost_midx_t)header.ncols;
     mat->nEnts = (ghost_midx_t)header.nnz;
+    mat->nnz = mat->nEnts;
 
     DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
