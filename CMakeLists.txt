@@ -43,7 +43,6 @@ set (SOURCES
 		src/context.c
 		src/mat.c
 		src/math.c
-		src/math.cpp
 		src/affinity.c
 	)
 
