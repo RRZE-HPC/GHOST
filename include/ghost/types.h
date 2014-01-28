@@ -424,7 +424,7 @@ struct ghost_mat_t
      * @return The length of the row or zero if the row index is out of bounds. 
      */
     ghost_midx_t  (*rowLen) (ghost_mat_t *mat, ghost_midx_t row);
-    char *     (*formatName) (ghost_mat_t *);
+    const char *     (*formatName) (ghost_mat_t *);
     ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
     ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
     ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);

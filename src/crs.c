@@ -35,7 +35,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int flags);
 static void CRS_printInfo(ghost_mat_t *mat);
-static char * CRS_formatName(ghost_mat_t *mat);
+static const char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t CRS_byteSize (ghost_mat_t *mat);
 static void CRS_free(ghost_mat_t * mat);
@@ -114,7 +114,7 @@ static void CRS_printInfo(ghost_mat_t *mat)
     return;
 }
 
-static char * CRS_formatName(ghost_mat_t *mat)
+static const char * CRS_formatName(ghost_mat_t *mat)
 {
     UNUSED(mat);
     return "CRS";

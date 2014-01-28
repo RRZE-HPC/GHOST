@@ -77,7 +77,7 @@ const char * (*SELL_stringify_funcs[4]) (ghost_mat_t *, int) =
 {&s_SELL_stringify, &d_SELL_stringify, &c_SELL_stringify, &z_SELL_stringify}; 
 
 static void SELL_printInfo(ghost_mat_t *mat);
-static char * SELL_formatName(ghost_mat_t *mat);
+static const char * SELL_formatName(ghost_mat_t *mat);
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t SELL_byteSize (ghost_mat_t *mat);
 static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
@@ -200,8 +200,9 @@ static void SELL_printInfo(ghost_mat_t *mat)
     }
 }
 
-static char * SELL_formatName(ghost_mat_t *mat)
+static const char * SELL_formatName(ghost_mat_t *mat)
 {
+    // TODO format SELL-C-sigma
     UNUSED(mat);
     return "SELL";
 }
