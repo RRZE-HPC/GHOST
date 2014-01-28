@@ -84,7 +84,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
 static void SELL_upload(ghost_mat_t* mat); 
-static void SELL_CUupload(ghost_mat_t *mat);
+static ghost_error_t SELL_CUupload(ghost_mat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
 static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
 static void SELL_free(ghost_mat_t *mat);
@@ -1212,7 +1212,7 @@ static void SELL_upload(ghost_mat_t* mat)
 #endif
 }
 
-static void SELL_CUupload(ghost_mat_t* mat) 
+static ghost_error_t SELL_CUupload(ghost_mat_t* mat) 
 {
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST)) {
@@ -1236,9 +1236,11 @@ static void SELL_CUupload(ghost_mat_t* mat)
     }
 #else
     if (mat->traits->flags & GHOST_SPM_DEVICE) {
-        ABORT("Device matrix cannot be created without CUDA");
+        ERROR_LOG("Device matrix cannot be created without CUDA");
+        return GHOST_ERR_CUDA;
     }
 #endif
+    return GHOST_SUCCESS;
 }
 
 
