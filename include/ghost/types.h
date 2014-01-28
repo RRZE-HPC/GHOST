@@ -415,10 +415,15 @@ struct ghost_mat_t
     void       (*destroy) (ghost_mat_t *);
     void       (*printInfo) (ghost_mat_t *);
     const char * (*stringify) (ghost_mat_t *, int);
-    //ghost_mnnz_t  (*nnz) (ghost_mat_t *);
-    //ghost_midx_t  (*nrows) (ghost_mat_t *);
-    //ghost_midx_t  (*ncols) (ghost_mat_t *);
-    ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
+    /**
+     * @brief Get the length of the given row.
+     *
+     * @param mat The matrix.
+     * @param row The row.
+     *
+     * @return The length of the row or zero if the row index is out of bounds. 
+     */
+    ghost_midx_t  (*rowLen) (ghost_mat_t *mat, ghost_midx_t row);
     char *     (*formatName) (ghost_mat_t *);
     ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
     ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);

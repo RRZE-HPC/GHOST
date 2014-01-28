@@ -122,7 +122,11 @@ static char * CRS_formatName(ghost_mat_t *mat)
 
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
-    return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
+    if (mat && i<mat->nrows) {
+        return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
+    }
+
+    return 0;
 }
 
 static size_t CRS_byteSize (ghost_mat_t *mat)

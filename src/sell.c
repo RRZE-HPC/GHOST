@@ -208,10 +208,11 @@ static char * SELL_formatName(ghost_mat_t *mat)
 
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i)
 {
-    if (mat->traits->flags & GHOST_SPM_SORTED)
-        i = mat->context->rowPerm[i];
+    if (mat && i<mat->nrows) {
+        return SELL(mat)->rowLen[i];
+    }
 
-    return SELL(mat)->rowLen[i];
+    return 0;
 }
 
 /*static ghost_dt SELL_entry (ghost_mat_t *mat, ghost_midx_t i, ghost_midx_t j)
