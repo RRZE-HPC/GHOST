@@ -104,6 +104,10 @@ typedef enum {
     GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
 } ghost_spmv_flags_t;
 
+typedef enum {
+    GHOST_SPMFROMROWFUNC_DEFAULT = 0
+} ghost_spmFromRowFunc_flags_t;
+
 typedef struct ghost_vec_t ghost_vec_t;
 typedef struct ghost_mat_t ghost_mat_t;
 typedef struct ghost_context_t ghost_context_t;
@@ -425,7 +429,6 @@ struct ghost_mat_t
     ghost_context_t *context;
     char *name;
     void *data;
-    ghost_error_t (*spmv) (ghost_mat_t *mat, ghost_vec_t *res, ghost_vec_t *rhs, ghost_spmv_flags_t flags);
     
     ghost_midx_t nrows;
     ghost_midx_t ncols;
@@ -433,10 +436,44 @@ struct ghost_mat_t
     ghost_mnnz_t nnz;
     ghost_mnnz_t nEnts;
 
-    // access functions
-    void       (*destroy) (ghost_mat_t *);
-    void       (*printInfo) (ghost_mat_t *);
-    const char * (*stringify) (ghost_mat_t *, int);
+    /**
+     * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
+     *
+     * @param mat The matrix A. 
+     * @param res The vector y.
+     * @param rhs The vector x.
+     * @param flags A number of flags to control the operation's behaviour.
+     *
+     * For detailed information on the flags check the documentation of ghost_spmv_flags_t.
+     */
+    ghost_error_t (*spmv) (ghost_mat_t *mat, ghost_vec_t *res, ghost_vec_t *rhs, ghost_spmv_flags_t flags);
+    /**
+     * @brief Destroy the matrix, i.e., free all of its data.
+     *
+     * @param mat The matrix.
+     *
+     * Returns if the matrix is NULL.
+     */
+    void       (*destroy) (ghost_mat_t *mat);
+    /**
+     * @brief Prints specific information on the matrix.
+     *
+     * @param mat The matrix.
+     *
+     * This function is called in ghost_printMatrixInfo() to print format-specific information alongside with
+     * general matrix information.
+     */
+    void       (*printInfo) (ghost_mat_t *mat);
+    /**
+     * @brief Turns the matrix into a string.
+     *
+     * @param mat The matrix.
+     * @param dense If 0, only the elements stored in the sparse matrix will be included.
+     * If 1, the matrix will be interpreted as a dense matrix.
+     *
+     * @return The stringified matrix.
+     */
+    const char * (*stringify) (ghost_mat_t *mat, int dense);
     /**
      * @brief Get the length of the given row.
      *
@@ -446,15 +483,69 @@ struct ghost_mat_t
      * @return The length of the row or zero if the row index is out of bounds. 
      */
     ghost_midx_t  (*rowLen) (ghost_mat_t *mat, ghost_midx_t row);
-    const char *  (*formatName) (ghost_mat_t *);
-    ghost_error_t (*fromFile)(ghost_mat_t *, char *);
-    ghost_error_t (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
+    /**
+     * @brief Return the name of the storage format.
+     *
+     * @param mat The matrix.
+     *
+     * @return A string containing the storage format name. 
+     */
+    const char *  (*formatName) (ghost_mat_t *mat);
+    /**
+     * @brief Create the matrix from a matrix file in GHOST's binary CRS format.
+     *
+     * @param mat The matrix. 
+     * @param path Path to the file.
+     */
+    ghost_error_t (*fromFile)(ghost_mat_t *mat, char *path);
+    /**
+     * @brief Create the matrix from a function which defined the matrix row by row.
+     *
+     * @param mat The matrix.
+     * @param maxrowlen The maximum row length of the matrix.
+     * @param base The base of indices (e.g., 0 for C, 1 for Fortran).
+     * @param func The function defining the matrix.
+     * @param flags Flags to control the behaviour of the function.
+     *
+     * The function func may be called several times for each row concurrently by multiple threads.
+     */
+    ghost_error_t (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+    /**
+     * @brief Write a matrix to a binary CRS file.
+     *
+     * @param mat The matrix. 
+     * @param path Path of the file.
+     */
     ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
     void       (*CLupload)(ghost_mat_t *);
-    void       (*CUupload)(ghost_mat_t *);
-    size_t     (*byteSize)(ghost_mat_t *);
-    void       (*fromCRS)(ghost_mat_t *, ghost_mat_t *);
-    ghost_error_t       (*split)(ghost_mat_t *);
+    /**
+     * @brief Upload the matrix to the CUDA device.
+     *
+     * @param mat The matrix.
+     */
+    ghost_error_t (*CUupload)(ghost_mat_t * mat);
+    /**
+     * @brief Get the entire memory footprint of the matrix.
+     *
+     * @param mat The matrix.
+     *
+     * @return The memory footprint of the matrix in bytes (zero if the matrix is NULL).
+     */
+    size_t     (*byteSize)(ghost_mat_t *mat);
+    /**
+     * @deprecated
+     * @brief Create a matrix from a CRS matrix.
+     *
+     * @param mat The matrix. 
+     * @param crsMat The CRS matrix.
+     */
+    void       (*fromCRS)(ghost_mat_t *mat, ghost_mat_t *crsMat);
+    /**
+     * @brief Split the matrix into a local and a remote part.
+     *
+     * @param mat The matrix.
+     */
+    ghost_error_t       (*split)(ghost_mat_t *mat);
 #ifdef GHOST_HAVE_OPENCL
     cl_kernel clkernel[4];
 #endif
