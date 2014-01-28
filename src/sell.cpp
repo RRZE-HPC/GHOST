@@ -578,16 +578,16 @@ extern "C" void zc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_v
 extern "C" void zz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" void d_SELL_fromCRS(ghost_mat_t *mat, void *crs)
+extern "C" void d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< double >(mat,crs); }
 
-extern "C" void s_SELL_fromCRS(ghost_mat_t *mat, void *crs)
+extern "C" void s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< float >(mat,crs); }
 
-extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, void *crs)
+extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< ghost_complex<double> >(mat,crs); }
 
-extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, void *crs)
+extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
 
 extern "C" const char * d_SELL_stringify(ghost_mat_t *mat, int dense)

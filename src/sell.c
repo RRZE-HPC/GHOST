@@ -70,7 +70,7 @@ void (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int 
     {&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
 #endif
 
-void (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, void *) = 
+void (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, ghost_mat_t *) = 
 {&s_SELL_fromCRS, &d_SELL_fromCRS, &c_SELL_fromCRS, &z_SELL_fromCRS}; 
 
 const char * (*SELL_stringify_funcs[4]) (ghost_mat_t *, int) = 
@@ -80,7 +80,7 @@ static void SELL_printInfo(ghost_mat_t *mat);
 static char * SELL_formatName(ghost_mat_t *mat);
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t SELL_byteSize (ghost_mat_t *mat);
-static void SELL_fromCRS(ghost_mat_t *mat, void *crs);
+static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
 static void SELL_upload(ghost_mat_t* mat); 
@@ -1110,7 +1110,7 @@ static const char * SELL_stringify(ghost_mat_t *mat, int dense)
     return SELL_stringify_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat, dense);
 }
 
-static void SELL_fromCRS(ghost_mat_t *mat, void *crs)
+static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 {
     SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
 }
