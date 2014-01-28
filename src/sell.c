@@ -369,7 +369,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
             (rowPerm)[rowSort[i].row] = i;
         }
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) reduction(max:maxRowLen)
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
         { 
             char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
             ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
@@ -389,6 +389,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
                     nnz += SELL(mat)->rowLen[row];
                     maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
                 }
+#pragma omp critical
                 maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
                 SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
                 SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
@@ -401,7 +402,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         }
     } else {
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) reduction(max:maxRowLen)
+#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) 
         { 
             char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
             ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
@@ -421,6 +422,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
                     nnz += SELL(mat)->rowLen[row];
                     maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
                 }
+#pragma omp critical
                 maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
                 SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
                 SELL(mat)->chunkLenPadded[chunk] = ghost_pad(maxRowLenInChunk,SELL(mat)->T);
