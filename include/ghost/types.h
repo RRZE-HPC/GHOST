@@ -398,7 +398,6 @@ extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 struct ghost_mat_t
 {
     ghost_mtraits_t *traits;
-    int symmetry;
     ghost_mat_t *localPart;
     ghost_mat_t *remotePart;
     ghost_context_t *context;
@@ -432,6 +431,7 @@ struct ghost_mtraits_t
 {
     int format;
     int flags;
+    int symmetry;
     void * aux;
     int nAux;
     int datatype;

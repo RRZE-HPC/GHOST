@@ -185,9 +185,9 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
     {
         ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
         ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-        ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->symmetry));
+        ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
     } else {
-        ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->symmetry));
+        ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
     }
 
     ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
@@ -422,11 +422,11 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 
         int iter;
 
-        if (mat->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
+        if (mat->traits->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
             for (iter=0; iter<nIter; iter++) {
                 mat->spmv(mat,globLHS,globRHS,spmvmOptions);
             }
-        } else if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
+        } else if (mat->traits->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
             WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
             for (iter=0; iter<nIter; iter++) {
             }

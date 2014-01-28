@@ -567,7 +567,7 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
 
     mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
     localSELL = mat->localPart->data;
-    mat->localPart->symmetry = mat->symmetry;
+    mat->localPart->traits->symmetry = mat->traits->symmetry;
 
     mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
     remoteSELL = mat->remotePart->data; 
@@ -809,7 +809,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         ABORT("Symmetry is invalid! (%d)",header.symmetry);
     if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL)
         ABORT("Can not handle symmetry different to general at the moment!");
-    mat->symmetry = header.symmetry;
+    mat->traits->symmetry = header.symmetry;
 
     if (!ghost_datatypeValid(header.datatype))
         ABORT("Datatype is invalid! (%d)",header.datatype);
