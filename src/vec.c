@@ -21,6 +21,8 @@
 extern cublasHandle_t ghost_cublas_handle;
 #endif
 
+const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1 };
+
 void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 

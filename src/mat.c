@@ -7,6 +7,8 @@
 #include "ghost/context.h"
 #include "ghost/util.h"
 
+const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL };
+
 ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
 {
     ghost_mat_t *mat;
