@@ -304,6 +304,15 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
         localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
         remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
+        mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
+        free(mat->localPart->data); // has been allocated in init()
+        mat->localPart->traits->symmetry = mat->traits->symmetry;
+        mat->localPart->data = localCR;
+        //CR(mat->localPart)->rpt = localCR->rpt;
+
+        mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
+        free(mat->remotePart->data); // has been allocated in init()
+        mat->remotePart->data = remoteCR;
 
         localCR->val = ghost_malloc(lnEnts_l*sizeofdt); 
         localCR->col = (ghost_midx_t*) ghost_malloc(lnEnts_l*sizeof( ghost_midx_t )); 
@@ -379,15 +388,6 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
     }
 
-    mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
-    free(mat->localPart->data); // has been allocated in init()
-    mat->localPart->traits->symmetry = mat->traits->symmetry;
-    mat->localPart->data = localCR;
-    //CR(mat->localPart)->rpt = localCR->rpt;
-
-    mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
-    free(mat->remotePart->data); // has been allocated in init()
-    mat->remotePart->data = remoteCR;
     
     return GHOST_SUCCESS;
 
