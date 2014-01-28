@@ -142,6 +142,7 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
                 local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
             }
         }
+        free(partsums);
     }
 }
 
@@ -226,6 +227,7 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
                 local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
             }
         }
+        free(partsums);
     }
 
 }
