@@ -172,6 +172,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 
 
     mat->nEnts = nEnts;
+    mat->nnz = mat->nEnts;
 
     CR(mat)->col = (ghost_midx_t *)ghost_malloc(mat->nEnts*sizeof(ghost_midx_t));
     CR(mat)->val = ghost_malloc(mat->nEnts*sizeofdt);
@@ -222,6 +223,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
         mat->split(mat);
 #endif
     }
+    mat->nrows = mat->context->lnrows[me];
 
     return GHOST_SUCCESS;
 }
