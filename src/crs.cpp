@@ -52,35 +52,39 @@ template<typename m_t, typename v_t> void CRS_kernel_plain_tmpl(ghost_mat_t *mat
         }
     }
 
-#pragma omp parallel for schedule(runtime) private (hlp1, j, rhsv, lhsv,v) shared (partsums)
-    for (i=0; i<cr->nrows; i++){
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
-        {
-            rhsv = (v_t *)rhs->val[v];
-            lhsv = (v_t *)lhs->val[v];
-            hlp1 = (v_t)0.0;
-            for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-                hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
-            }
+#pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
+    {
+        int tid = ghost_ompGetNumThreads();
+#pragma omp for schedule(runtime) 
+        for (i=0; i<cr->nrows; i++){
+            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+            {
+                rhsv = (v_t *)rhs->val[v];
+                lhsv = (v_t *)lhs->val[v];
+                hlp1 = (v_t)0.0;
+                for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+                    hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
+                }
 
-            if (options & GHOST_SPMVM_APPLY_SHIFT) {
-                hlp1 = hlp1-shift*rhsv[i];
-            }
-            if (options & GHOST_SPMVM_APPLY_SCALE) {
-                hlp1 = hlp1*scale;
-            }
-            if (options & GHOST_SPMVM_AXPY) {
-                lhsv[i] += (hlp1);
-            } else if (options & GHOST_SPMVM_AXPBY) {
-                lhsv[i] = beta*lhsv[i] + hlp1;
-            } else {
-                lhsv[i] = (hlp1);
-            }
+                if (options & GHOST_SPMVM_APPLY_SHIFT) {
+                    hlp1 = hlp1-shift*rhsv[i];
+                }
+                if (options & GHOST_SPMVM_APPLY_SCALE) {
+                    hlp1 = hlp1*scale;
+                }
+                if (options & GHOST_SPMVM_AXPY) {
+                    lhsv[i] += (hlp1);
+                } else if (options & GHOST_SPMVM_AXPBY) {
+                    lhsv[i] = beta*lhsv[i] + hlp1;
+                } else {
+                    lhsv[i] = (hlp1);
+                }
 
-            if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                }
             }
         }
     }

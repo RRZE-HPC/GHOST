@@ -82,77 +82,57 @@ template<typename m_t, typename v_t, int chunkHeight> void SELL_kernel_plain_tmp
         }
     }
 
-#pragma omp parallel for schedule(runtime) private(j,tmp,i,v)
-    for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
-    { // loop over chunks
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
-        {
-            rhsv = (v_t *)rhs->val[v];
-            lhsv = (v_t *)lhs->val[v];
+#pragma omp parallel private(c,j,tmp,i,v)
+    {
+        int tid = ghost_ompGetNumThreads();
 
-            for (i=0; i<chunkHeight; i++) {
-                tmp[i] = (v_t)0;
-            }
+#pragma omp for schedule(runtime) 
+        for (c=0; c<sell->nrowsPadded/chunkHeight; c++) 
+        { // loop over chunks
+            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+            {
+                rhsv = (v_t *)rhs->val[v];
+                lhsv = (v_t *)lhs->val[v];
 
-            for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-            { // loop inside chunk
                 for (i=0; i<chunkHeight; i++) {
-               // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
-                    tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
-                        rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+                    tmp[i] = (v_t)0;
                 }
-            }
-            for (i=0; i<chunkHeight; i++) {
-                if (c*chunkHeight+i < sell->nrows) {
-                    if (options & GHOST_SPMVM_APPLY_SHIFT) {
-                        if (options & GHOST_SPMVM_APPLY_SCALE) {
-                            if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
-                            } else if (options & GHOST_SPMVM_AXPBY) {
-                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
-                            } else {
-                                lhsv[c*chunkHeight+i] = scale*(v_t)(tmp[i]-shift*rhsv[c*chunkHeight+i]);
-                            }
-                        } else {
-                            if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += (tmp[i]-shift*rhsv[c*chunkHeight+i]);
-                            } else if (options & GHOST_SPMVM_AXPBY) {
-                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i]-shift*rhsv[c*chunkHeight+i];
-                            } else {
-                                lhsv[c*chunkHeight+i] = (tmp[i]-shift*rhsv[c*chunkHeight+i]);
-                            }
-                        }
-                    } else {
-                        if (options & GHOST_SPMVM_APPLY_SCALE) {
-                            if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += scale*(v_t)(tmp[i]);
-                            } else if (options & GHOST_SPMVM_AXPBY) {
-                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + scale*(v_t)tmp[i];
-                            } else {
-                                lhsv[c*chunkHeight+i] = scale*(v_t)(tmp[i]);
-                            }
-                        } else {
-                            if (options & GHOST_SPMVM_AXPY) {
-                                lhsv[c*chunkHeight+i] += tmp[i];
-                            } else if (options & GHOST_SPMVM_AXPBY) {
-                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i];
-                            } else {
-                                lhsv[c*chunkHeight+i] = tmp[i];
-                            }
-                        }
-                    }
-                }
-                if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                    if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
-                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                        partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                    }
-                }
-            }
 
+                for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+                { // loop inside chunk
+                    for (i=0; i<chunkHeight; i++) {
+                   // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
+                        tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
+                            rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+                    }
+                }
+                for (i=0; i<chunkHeight; i++) {
+                    if (c*chunkHeight+i < sell->nrows) {
+                        if (options & GHOST_SPMVM_APPLY_SHIFT) {
+                            tmp[i] = tmp[i]-shift*rhsv[c*chunkHeight+i];
+                        }
+                        if (options & GHOST_SPMVM_APPLY_SCALE) {
+                            tmp[i] = tmp[i]*scale;
+                        }
+                        if (options & GHOST_SPMVM_AXPY) {
+                            lhsv[c*chunkHeight+i] += tmp[i];
+                        } else if (options & GHOST_SPMVM_AXPBY) {
+                            lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i];
+                        } else {
+                            lhsv[c*chunkHeight+i] = tmp[i];
+                        }
+                    
+                        if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                            partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                        }
+                   }
+
+                }
+
+            }
         }
-
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
         for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
@@ -199,62 +179,42 @@ template<typename m_t, typename v_t> void SELL_kernel_plain_ELLPACK_tmpl(ghost_m
     }
 
 
-#pragma omp parallel for schedule(runtime) private(j,tmp,v)
-    for (i=0; i<sell->nrows; i++) 
+#pragma omp parallel private(i,j,tmp,v)
     {
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+        int tid = ghost_ompGetNumThreads();
+#pragma omp for schedule(runtime)
+        for (i=0; i<sell->nrows; i++) 
         {
-            rhsv = (v_t *)rhs->val[v];
-            lhsv = (v_t *)lhs->val[v];
-            tmp = (v_t)0;
-
-            for (j=0; j<sell->rowLen[i]; j++) 
+            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
             {
-//                INFO_LOG("%d: %f * %f",i,(v_t)sellv[sell->nrowsPadded*j+i], rhsv[sell->col[sell->nrowsPadded*j+i]]);
-                tmp += (v_t)sellv[sell->nrowsPadded*j+i] * rhsv[sell->col[sell->nrowsPadded*j+i]];
-            }
-            if (options & GHOST_SPMVM_APPLY_SHIFT) {
-                if (options & GHOST_SPMVM_APPLY_SCALE) {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(v_t)(tmp-shift*rhsv[i]);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + scale*(v_t)(tmp-shift*rhsv[i]);
-                    } else {
-                        lhsv[i] = scale*(v_t)(tmp-shift*rhsv[i]);
-                    }
-                } else {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (tmp-shift*rhsv[i]);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + tmp-shift*rhsv[i];
-                    } else {
-                        lhsv[i] = (tmp-shift*rhsv[i]);
-                    }
-                }
-            } else {
-                if (options & GHOST_SPMVM_APPLY_SCALE) {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += scale*(v_t)(tmp);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + scale*(v_t)tmp;
-                    } else {
-                        lhsv[i] = scale*(v_t)(tmp);
-                    }
-                } else {
-                    if (options & GHOST_SPMVM_AXPY) {
-                        lhsv[i] += (tmp);
-                    } else if (options & GHOST_SPMVM_AXPBY) {
-                        lhsv[i] = beta*lhsv[i] + tmp;
-                    } else {
-                        lhsv[i] = (tmp);
-                    }
-                }
+                rhsv = (v_t *)rhs->val[v];
+                lhsv = (v_t *)lhs->val[v];
+                tmp = (v_t)0;
 
-            }
-            if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                partsums[(v+ghost_ompGetThreadNum()*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                for (j=0; j<sell->rowLen[i]; j++) 
+                {
+    //                INFO_LOG("%d: %f * %f",i,(v_t)sellv[sell->nrowsPadded*j+i], rhsv[sell->col[sell->nrowsPadded*j+i]]);
+                    tmp += (v_t)sellv[sell->nrowsPadded*j+i] * rhsv[sell->col[sell->nrowsPadded*j+i]];
+                }
+                
+                if (options & GHOST_SPMVM_APPLY_SHIFT) {
+                    tmp = tmp-shift*rhsv[i];
+                }
+                if (options & GHOST_SPMVM_APPLY_SCALE) {
+                    tmp = tmp*scale;
+                }
+                if (options & GHOST_SPMVM_AXPY) {
+                    lhsv[i] += tmp;
+                } else if (options & GHOST_SPMVM_AXPBY) {
+                    lhsv[i] = beta*lhsv[i] + tmp;
+                } else {
+                    lhsv[i] = tmp;
+                }
+                if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                }
             }
         }
     }
