@@ -1021,8 +1021,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
       char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);*/
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->nnz*sizeof(ghost_midx_t));
     char *tmpval = (char *)ghost_malloc(SELL(mat)->nnz*sizeofdt);
-    GHOST_SAFECALL(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], SELL(mat)->nnz));
-    GHOST_SAFECALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], SELL(mat)->nnz));
+    GHOST_CALL_RETURN(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], SELL(mat)->nnz));
+    GHOST_CALL_RETURN(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], SELL(mat)->nnz));
 
     INFO_LOG("%"PRmatIDX" rows, %"PRmatIDX" chunks %"PRmatIDX" chunkheight",SELL(mat)->nrows,nChunks,SELL(mat)->chunkHeight);
     ghost_midx_t row = 0;
@@ -1040,8 +1040,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
               }
 
 
-              GHOST_SAFECALL(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
-              GHOST_SAFECALL(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
+              GHOST_CALL_RETURN(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
+              GHOST_CALL_RETURN(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
          */
        
         ghost_midx_t idx = 0, col;

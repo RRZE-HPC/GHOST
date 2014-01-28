@@ -564,7 +564,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             CR(mat)->rpt[i] = 0;
         }
 
-        GHOST_SAFECALL(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, CR(mat)->nrows+1));
+        GHOST_CALL_RETURN(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, CR(mat)->nrows+1));
 
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < CR(mat)->nrows; i++) {
@@ -574,8 +574,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             }
         }
 
-        GHOST_SAFECALL(ghost_readCol(CR(mat)->col, matrixPath, 0, CR(mat)->nEnts));
-        GHOST_SAFECALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, CR(mat)->nEnts));
+        GHOST_CALL_RETURN(ghost_readCol(CR(mat)->col, matrixPath, 0, CR(mat)->nEnts));
+        GHOST_CALL_RETURN(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, CR(mat)->nEnts));
     } else {
 #ifdef GHOST_HAVE_MPI
         DEBUG_LOG(1,"Reading in a distributed context");
@@ -594,7 +594,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 for (i = 0; i < CR(mat)->nrows+1; i++) {
                     CR(mat)->rpt[i] = 0;
                 }
-                GHOST_SAFECALL(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, CR(mat)->nrows+1));
+                GHOST_CALL_RETURN(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, CR(mat)->nrows+1));
                 context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -665,8 +665,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             }
         }
 
-        GHOST_SAFECALL(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
-        GHOST_SAFECALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
+        GHOST_CALL_RETURN(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
+        GHOST_CALL_RETURN(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], CR(mat)->nEnts));
 
         DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
         mat->split(mat);

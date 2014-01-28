@@ -43,8 +43,8 @@ ghost_error_t ghost_readColOpen(ghost_midx_t *col, char *matrixPath, ghost_mnnz_
     off64_t offs;
     ghost_mnnz_t i;
 
-    GHOST_SAFECALL(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_SAFECALL(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
+    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
     DEBUG_LOG(1,"Reading array with column indices");
     offs = GHOST_BINCRS_SIZE_HEADER+
@@ -105,7 +105,7 @@ ghost_error_t ghost_readCol(ghost_midx_t *col, char *matrixPath, ghost_mnnz_t of
         return GHOST_ERR_IO;
     }
 
-    GHOST_SAFECALL(ghost_readColOpen(col,matrixPath,offsEnts,nEnts,filed));
+    GHOST_CALL_RETURN(ghost_readColOpen(col,matrixPath,offsEnts,nEnts,filed));
 
     fclose(filed);
 
@@ -121,8 +121,8 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     ghost_mnnz_t i;
     size_t sizeofdt = ghost_sizeofDataType(datatype);
 
-    GHOST_SAFECALL(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_SAFECALL(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
+    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
     size_t valSize = sizeof(float);
     if (header.datatype & GHOST_BINCRS_DT_DOUBLE)
@@ -266,8 +266,8 @@ ghost_error_t ghost_readRptOpen(ghost_midx_t *rpt, char *matrixPath, ghost_mnnz_
     off64_t offs;
     ghost_mnnz_t i;
 
-    GHOST_SAFECALL(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_SAFECALL(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
+    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
     DEBUG_LOG(1,"Reading array with column indices");
     offs = GHOST_BINCRS_SIZE_HEADER+
@@ -326,7 +326,7 @@ ghost_error_t ghost_readRpt(ghost_mnnz_t *rpt, char *matrixPath, ghost_mnnz_t of
         return GHOST_ERR_IO;
     }
 
-    GHOST_SAFECALL(ghost_readRptOpen(rpt,matrixPath,offsRows,nRows,filed));
+    GHOST_CALL_RETURN(ghost_readRptOpen(rpt,matrixPath,offsRows,nRows,filed));
 
     fclose(filed);
 
@@ -338,7 +338,7 @@ ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
 {
     ghost_matfile_header_t header;
     ghost_error_t err;
-    GHOST_SAFECALL(ghost_readMatFileHeader(matrixPath,&header));
+    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
 
     if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
         *differs = 1;
