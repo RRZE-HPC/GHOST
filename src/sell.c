@@ -85,7 +85,7 @@ static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t SELL_byteSize (ghost_mat_t *mat);
 static void SELL_fromCRS(ghost_mat_t *mat, void *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
-static void SELL_split(ghost_mat_t *mat);
+static ghost_error_t SELL_split(ghost_mat_t *mat);
 static void SELL_upload(ghost_mat_t* mat); 
 static void SELL_CUupload(ghost_mat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
@@ -539,8 +539,14 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
 
 }
 
-static void SELL_split(ghost_mat_t *mat)
+static ghost_error_t SELL_split(ghost_mat_t *mat)
 {
+    if (!mat) {
+        ERROR_LOG("Matrix is NULL");
+        return GHOST_ERR_INVALID_ARG;
+    }
+        
+        
     SELL_TYPE *fullSELL = SELL(mat);
     SELL_TYPE *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
@@ -763,6 +769,7 @@ static void SELL_split(ghost_mat_t *mat)
           }
           }*/
 
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)

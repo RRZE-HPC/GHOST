@@ -423,7 +423,7 @@ struct ghost_mat_t
     void       (*CUupload)(ghost_mat_t *);
     size_t     (*byteSize)(ghost_mat_t *);
     void       (*fromCRS)(ghost_mat_t *, void *);
-    void       (*split)(ghost_mat_t *);
+    ghost_error_t       (*split)(ghost_mat_t *);
 #ifdef GHOST_HAVE_OPENCL
     cl_kernel clkernel[4];
 #endif

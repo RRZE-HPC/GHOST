@@ -45,7 +45,7 @@ static void CRS_free(ghost_mat_t * mat);
 static void CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, int);
 static void CRS_fromCRS(ghost_mat_t *mat, void *crs);
 #ifdef GHOST_HAVE_MPI
-static void CRS_split(ghost_mat_t *mat);
+static ghost_error_t CRS_split(ghost_mat_t *mat);
 #endif
 static void CRS_upload(ghost_mat_t *mat);
 #ifdef GHOST_HAVE_OPENCL
@@ -285,8 +285,13 @@ static void CRS_fromCRS(ghost_mat_t *mat, void *crs)
 
 #ifdef GHOST_HAVE_MPI
 
-static void CRS_split(ghost_mat_t *mat)
+static ghost_error_t CRS_split(ghost_mat_t *mat)
 {
+    if (!mat) {
+        ERROR_LOG("Matrix is NULL");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
@@ -402,6 +407,9 @@ static void CRS_split(ghost_mat_t *mat)
     mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
     free(mat->remotePart->data); // has been allocated in init()
     mat->remotePart->data = remoteCR;
+    
+    return GHOST_SUCCESS;
+
 }
 
 #endif
