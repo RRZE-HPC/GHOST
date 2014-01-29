@@ -145,7 +145,6 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((mat->nrows+1)*sizeof(ghost_midx_t));
-    CR(mat)->rpt[0] = 0;
     mat->nEnts = 0;
 
 #pragma omp parallel for schedule(runtime)
@@ -498,12 +497,12 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
                 ((CR_TYPE *)(mat->data))->rpt = context->rpt;
             } else {
-                CR(mat)->rpt = (ghost_mnnz_t *) ghost_malloc_align((mat->nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT);
+                CR(mat)->rpt = (ghost_mnnz_t *) ghost_malloc_align((header.nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT);
 #pragma omp parallel for schedule(runtime) 
-                for (i = 0; i < mat->nrows+1; i++) {
+                for (i = 0; i < header.nrows+1; i++) {
                     CR(mat)->rpt[i] = 0;
                 }
-                GHOST_CALL_RETURN(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1));
+                GHOST_CALL_RETURN(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1));
                 context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -513,7 +512,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                     context->lnEnts[i] = context->lfEnt[i+1] - context->lfEnt[i] ;
                 }
 
-                context->lnEnts[nprocs-1] = mat->nEnts - context->lfEnt[nprocs-1];
+                context->lnEnts[nprocs-1] = header.nnz - context->lfEnt[nprocs-1];
             }
         }
         MPI_safecall(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm));
