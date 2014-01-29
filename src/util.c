@@ -75,7 +75,7 @@ void ghost_printHeader(const char *fmt, ...)
 {
     char label[1024] = "";
 
-    if (fmt == NULL) {
+    if (fmt != NULL) {
         va_list args;
         va_start(args,fmt);
         vsnprintf(label,1024,fmt,args);
