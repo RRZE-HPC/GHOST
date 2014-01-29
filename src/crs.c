@@ -322,9 +322,11 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
         mat->localPart->nrows = mat->context->lnrows[me];
         mat->localPart->nEnts = lnEnts_l;
+        mat->localPart->nnz = lnEnts_l;
 
         mat->remotePart->nrows = mat->context->lnrows[me];
         mat->remotePart->nEnts = lnEnts_r;
+        mat->remotePart->nnz = lnEnts_r;
 
 #pragma omp parallel for schedule(runtime)
         for (i=0; i<lnEnts_l; i++) localCR->val[i*sizeofdt] = 0;
