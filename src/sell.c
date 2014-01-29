@@ -294,7 +294,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         { 
             char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
             ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
-#pragma omp for
+#pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 for (i=0; i<SELL(mat)->chunkHeight; i++) {
                     ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
@@ -347,7 +347,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         { 
             char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
             ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
-#pragma omp for
+#pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 for (i=0; i<SELL(mat)->chunkHeight; i++) {
                     ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
@@ -380,7 +380,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         { 
             char * tmpval = ghost_malloc(maxrowlen*sizeofdt);
             ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
-#pragma omp for
+#pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 for (i=0; i<SELL(mat)->chunkHeight; i++) {
                     ghost_midx_t row = chunk*SELL(mat)->chunkHeight+i;
@@ -439,7 +439,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t));
         memset(tmpval,0,sizeofdt*maxrowlen*SELL(mat)->chunkHeight);
         memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen*SELL(mat)->chunkHeight);
-#pragma omp for 
+#pragma omp for schedule(runtime)
         for( chunk = 0; chunk < nChunks; chunk++ ) {
             for (i=0; i<SELL(mat)->chunkHeight; i++) {
                 row = chunk*SELL(mat)->chunkHeight+i;

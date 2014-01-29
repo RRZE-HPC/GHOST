@@ -192,7 +192,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
         ghost_midx_t * tmpcol = (ghost_midx_t *)ghost_malloc(maxrowlen*sizeof(ghost_midx_t));
         memset(tmpval,0,sizeofdt*maxrowlen);
         memset(tmpcol,0,sizeof(ghost_midx_t)*maxrowlen);
-#pragma omp for 
+#pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
             func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
             memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));

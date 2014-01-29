@@ -91,10 +91,18 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             if (ghost_getRank((*context)->mpicomm) == 0) {
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
                     rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*((*context)->gnrows+1));
+#pragma omp parallel for schedule(runtime)
+                    for( i = 0; i < (*context)->gnrows+1; i++ ) {
+                        rpt[i] = 0;
+                    }
                     ghost_readRpt(rpt,(char *)matrixSource,0,(*context)->gnrows+1);  // read rpt
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
                     ghost_spmFromRowFunc_t func = (ghost_spmFromRowFunc_t)matrixSource;
                     rpt = ghost_malloc(((*context)->gnrows+1)*sizeof(ghost_midx_t));
+#pragma omp parallel for schedule(runtime)
+                    for( i = 0; i < (*context)->gnrows+1; i++ ) {
+                        rpt[i] = 0;
+                    }
                     char *tmpval = ghost_malloc((*context)->gncols*sizeof(complex double));
                     ghost_midx_t *tmpcol = ghost_malloc((*context)->gncols*sizeof(ghost_midx_t));
                     rpt[0] = 0;

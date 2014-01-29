@@ -44,6 +44,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
 
     int nthreads;
 #pragma omp parallel
+#pragma omp single
     nthreads = ghost_ompGetNumThreads();
 
     v_t *partsums = (v_t *)ghost_malloc(16*nthreads*sizeof(v_t));
@@ -51,7 +52,7 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
         v_t sum = 0;
         for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
-#pragma omp parallel for 
+#pragma omp parallel for schedule(runtime)
         for (i=0; i<nr; i++) {
             partsums[ghost_ompGetThreadNum()*16] += 
                 *(v_t *)VECVAL(vec2,vec2->val,v,i)*
@@ -73,7 +74,7 @@ template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t 
     ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-#pragma omp parallel for 
+#pragma omp parallel for schedule(runtime) 
         for (i=0; i<nr; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
         }
@@ -88,7 +89,7 @@ template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t
     ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-#pragma omp parallel for 
+#pragma omp parallel for schedule(runtime) 
         for (i=0; i<nr; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) = *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v] + 
                 *(v_t *)VECVAL(vec,vec->val,v,i) * b[v];
@@ -102,7 +103,7 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
     v_t *s = (v_t *)scale;
 
     for (v=0; v<vec->traits->nvecs; v++) {
-#pragma omp parallel for 
+#pragma omp parallel for schedule(runtime) 
         for (i=0; i<vec->traits->nrows; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
         }
@@ -147,7 +148,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
     unsigned int* state = ghost_getRandState();
         for (v=0; v<vec->traits->nvecs; v++) 
         {
-#pragma omp for
+#pragma omp for schedule(runtime)
             for (i=0; i<vec->traits->nrows; i++) 
             {
                 my_rand(state,(v_t *)VECVAL(vec,vec->val,v,i));
