@@ -138,6 +138,7 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 
     mat->localPart = NULL;
     mat->remotePart = NULL;
+    mat->name = NULL;
 
     int me = ghost_getRank(mat->context->mpicomm);
 

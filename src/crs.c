@@ -93,6 +93,7 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     //    mat->invRowPerm = NULL;
     mat->localPart = NULL;
     mat->remotePart = NULL;
+    mat->name = NULL;
 
     return mat;
 

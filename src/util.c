@@ -73,132 +73,135 @@ double ghost_wctimemilli()
 
 void ghost_printHeader(const char *fmt, ...)
 {
+    char label[1024] = "";
+
+    if (fmt == NULL) {
         va_list args;
         va_start(args,fmt);
-        char label[1024];
         vsnprintf(label,1024,fmt,args);
         va_end(args);
+    }
 
-        const int spacing = 4;
-        int len = strlen(label);
-        int nDash = (PRINTWIDTH-2*spacing-len)/2;
-        int rem = (PRINTWIDTH-2*spacing-len)%2;
-        int i;
+    const int spacing = 4;
+    int len = strlen(label);
+    int nDash = (PRINTWIDTH-2*spacing-len)/2;
+    int rem = (PRINTWIDTH-2*spacing-len)%2;
+    int i;
 #ifdef PRETTYPRINT
-        printf("┌");
-        for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-        printf("┐");
-        printf("\n");
-        printf("├");
-        for (i=0; i<nDash-1; i++) printf("─");
-        for (i=0; i<spacing; i++) printf(" ");
-        printf("%s",label);
-        for (i=0; i<spacing+rem; i++) printf(" ");
-        for (i=0; i<nDash-1; i++) printf("─");
-        printf("┤");
-        printf("\n");
-        printf("├");
-        for (i=0; i<LABELWIDTH; i++) printf("─");
-        printf("┬");
-        for (i=0; i<VALUEWIDTH; i++) printf("─");
-        printf("┤");
-        printf("\n");
+    printf("┌");
+    for (i=0; i<PRINTWIDTH-2; i++) printf("─");
+    printf("┐");
+    printf("\n");
+    printf("├");
+    for (i=0; i<nDash-1; i++) printf("─");
+    for (i=0; i<spacing; i++) printf(" ");
+    printf("%s",label);
+    for (i=0; i<spacing+rem; i++) printf(" ");
+    for (i=0; i<nDash-1; i++) printf("─");
+    printf("┤");
+    printf("\n");
+    printf("├");
+    for (i=0; i<LABELWIDTH; i++) printf("─");
+    printf("┬");
+    for (i=0; i<VALUEWIDTH; i++) printf("─");
+    printf("┤");
+    printf("\n");
 #else
-        for (i=0; i<PRINTWIDTH; i++) printf("-");
-        printf("\n");
-        for (i=0; i<nDash; i++) printf("-");
-        for (i=0; i<spacing; i++) printf(" ");
-        printf("%s",label);
-        for (i=0; i<spacing+rem; i++) printf(" ");
-        for (i=0; i<nDash; i++) printf("-");
-        printf("\n");
-        for (i=0; i<PRINTWIDTH; i++) printf("-");
-        printf("\n");
+    for (i=0; i<PRINTWIDTH; i++) printf("-");
+    printf("\n");
+    for (i=0; i<nDash; i++) printf("-");
+    for (i=0; i<spacing; i++) printf(" ");
+    printf("%s",label);
+    for (i=0; i<spacing+rem; i++) printf(" ");
+    for (i=0; i<nDash; i++) printf("-");
+    printf("\n");
+    for (i=0; i<PRINTWIDTH; i++) printf("-");
+    printf("\n");
 #endif
 }
 
 void ghost_printFooter() 
 {
-        int i;
+    int i;
 #ifdef PRETTYPRINT
-        printf("└");
-        for (i=0; i<LABELWIDTH; i++) printf("─");
-        printf("┴");
-        for (i=0; i<VALUEWIDTH; i++) printf("─");
-        printf("┘");
+    printf("└");
+    for (i=0; i<LABELWIDTH; i++) printf("─");
+    printf("┴");
+    for (i=0; i<VALUEWIDTH; i++) printf("─");
+    printf("┘");
 #else
-        for (i=0; i<PRINTWIDTH; i++) printf("-");
+    for (i=0; i<PRINTWIDTH; i++) printf("-");
 #endif
-        printf("\n\n");
+    printf("\n\n");
 }
 
 void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 {
-        va_list args;
-        va_start(args,fmt);
-        char dummy[1025];
-        vsnprintf(dummy,1024,fmt,args);
-        va_end(args);
+    va_list args;
+    va_start(args,fmt);
+    char dummy[1025];
+    vsnprintf(dummy,1024,fmt,args);
+    va_end(args);
 
 #ifdef PRETTYPRINT
-        printf("│");
+    printf("│");
 #endif
-        if (unit) {
-            int unitLen = strlen(unit);
-            printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
-        } else {
-            printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
-        }
+    if (unit) {
+        int unitLen = strlen(unit);
+        printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
+    } else {
+        printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
+    }
 #ifdef PRETTYPRINT
-        printf("│");
+    printf("│");
 #endif
-        printf("\n");
+    printf("\n");
 }
 
 void ghost_printMatrixInfo(ghost_mat_t *mat)
 {
     ghost_midx_t nrows = ghost_getMatNrows(mat);
     ghost_midx_t nnz = ghost_getMatNnz(mat);
-    
+
     int myrank = ghost_getRank(mat->context->mpicomm);;
 
     if (myrank == 0) {
 
-    char *matrixLocation;
-    if (mat->traits->flags & GHOST_SPM_DEVICE)
-        matrixLocation = "Device";
-    else if (mat->traits->flags & GHOST_SPM_HOST)
-        matrixLocation = "Host";
-    else
-        matrixLocation = "Default";
+        char *matrixLocation;
+        if (mat->traits->flags & GHOST_SPM_DEVICE)
+            matrixLocation = "Device";
+        else if (mat->traits->flags & GHOST_SPM_HOST)
+            matrixLocation = "Host";
+        else
+            matrixLocation = "Default";
 
 
-    ghost_printHeader(mat->name);
-    ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
-    ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-    ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
-    ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
-    ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
+        ghost_printHeader(mat->name);
+        ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
+        ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
+        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
+        ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
+        ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
 
-    ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-    {
-        ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-        ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-        ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
-    } else {
-        ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
-    }
+        ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
+        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+        {
+            ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+            ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+            ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
+        } else {
+            ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
+        }
 
-    ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-    {
-        ghost_printLine("Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
-        ghost_printLine("Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
-    }
+        ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
+        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+        {
+            ghost_printLine("Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+            ghost_printLine("Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+        }
 
-    mat->printInfo(mat);
-    ghost_printFooter();
+        mat->printInfo(mat);
+        ghost_printFooter();
 
     }
 
@@ -209,7 +212,7 @@ void ghost_printContextInfo(ghost_context_t *context)
     int nranks = ghost_getNumberOfPhysicalCores(context->mpicomm);
     int myrank = ghost_getRank(context->mpicomm);
 
-        if (myrank == 0) {
+    if (myrank == 0) {
         char *contextType = "";
         if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
             contextType = "Distributed";
@@ -364,7 +367,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 
     DEBUG_LOG(1,"Computing reference solution");
     int me = ghost_getRank(nodeLHS->context->mpicomm);
-    
+
     char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
     memset(zero,0,ghost_sizeofDataType(datatype));
     ghost_vec_t *globLHS; 
@@ -380,7 +383,7 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
     rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
     rtraits.datatype = rhs->traits->datatype;;
-       rtraits.nvecs=rhs->traits->nvecs;
+    rtraits.nvecs=rhs->traits->nvecs;
 
     ghost_vec_t *globRHS = ghost_createVector(context, &rtraits);
     globRHS->fromScalar(globRHS,zero);
@@ -429,32 +432,32 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 
     globLHS->destroy(globLHS);
     mat->destroy(mat);
-    
+
 
     free(zero);
     DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 }
 
 /*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
-{
-    if(comm) {
-        free(comm->lnEnts);
-        free(comm->lnrows);
-        free(comm->lfEnt);
-        free(comm->lfRow);
-        free(comm->wishes);
-        free(comm->dues);
-        if (comm->wishlist)
-            free(comm->wishlist[0]);
-        if (comm->duelist)
-            free(comm->duelist[0]);
-        free(comm->wishlist);
-        free(comm->duelist);
-        //free(comm->due_displ);
-        //free(comm->wish_displ);
-        free(comm->hput_pos);
-        free(comm);
-    }
+  {
+  if(comm) {
+  free(comm->lnEnts);
+  free(comm->lnrows);
+  free(comm->lfEnt);
+  free(comm->lfRow);
+  free(comm->wishes);
+  free(comm->dues);
+  if (comm->wishlist)
+  free(comm->wishlist[0]);
+  if (comm->duelist)
+  free(comm->duelist[0]);
+  free(comm->wishlist);
+  free(comm->duelist);
+//free(comm->due_displ);
+//free(comm->wish_displ);
+free(comm->hput_pos);
+free(comm);
+}
 }*/
 
 char * ghost_modeName(int spmvmOptions) 
@@ -586,7 +589,7 @@ void *ghost_malloc(const size_t size)
     mem = malloc(size);
 
     if( ! mem ) {
-      //  ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
+        //  ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
     }
     return mem;
 }
@@ -609,7 +612,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
     DEBUG_LOG(1,"Benchmarking the SpMVM");
     int it;
     double time = 0;
-//    double ttime = 0;
+    //    double ttime = 0;
     double oldtime=1e9;
     //struct timespec end,start;
 
@@ -627,7 +630,7 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
     MPI_safecall(MPI_Barrier(context->mpicomm));
 #endif
 
-//    ttime = ghost_wctime();
+    //    ttime = ghost_wctime();
     for( it = 0; it < nIter; it++ ) {
         //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&start);
         time = ghost_wctime();
@@ -642,9 +645,9 @@ double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t
         //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
         //time = ghost_timediff(start,end);
         time = ghost_wctime()-time;
-    //    printf("%f\n",time);
-//        if (time < 0)
-//            printf("dummy\n");
+        //    printf("%f\n",time);
+        //        if (time < 0)
+        //            printf("dummy\n");
         time = time<oldtime?time:oldtime;
         oldtime=time;
     }
@@ -782,7 +785,7 @@ void ghost_ompSetNumThreads(int nthreads)
     UNUSED(nthreads);
 #endif
 }
-    
+
 int ghost_ompGetNumThreads()
 {
 #ifdef GHOST_HAVE_OPENMP
@@ -805,18 +808,18 @@ static unsigned int* ghost_rand_states=NULL;
 
 unsigned int* ghost_getRandState()
 {
-        return &ghost_rand_states[ghost_ompGetThreadNum()];
+    return &ghost_rand_states[ghost_ompGetThreadNum()];
 }
 
 void ghost_rand_init()
 {
-   int N_Th = 1;
+    int N_Th = 1;
 #pragma omp parallel
-{
-  #pragma omp single
-    N_Th = ghost_ompGetNumThreads();
-}
-     
+    {
+#pragma omp single
+        N_Th = ghost_ompGetNumThreads();
+    }
+
     if( ghost_rand_states == NULL )    ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
 #pragma omp parallel
     {
@@ -859,7 +862,7 @@ int ghost_init(int argc, char **argv)
     MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
     MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
     MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
-    
+
     ghost_setupNodeMPI(MPI_COMM_WORLD);
 
 #else // ifdef GHOST_HAVE_MPI
@@ -875,7 +878,7 @@ int ghost_init(int argc, char **argv)
     LIKWID_MARKER_THREADINIT;
 #endif
 
-    
+
     hwloc_topology_init(&topology);
     hwloc_topology_load(topology);
 
@@ -886,12 +889,12 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
     }
     hwloc_bitmap_free(cpuset);
- 
+
 
     // auto-set rank types 
     int nnoderanks = ghost_getNumberOfRanks(ghost_node_comm);
     int noderank = ghost_getRank(ghost_node_comm);
-    
+
     int ncudadevs = 0;
     int ndomains = 0;
     int nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
@@ -943,20 +946,20 @@ int ghost_init(int argc, char **argv)
 
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
-    
+
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
-    if (nnoderanks <=  nLocalCuda+1) {
-        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
-        INFO_LOG("One CPU rank per node");
-    } else if (nnoderanks == nLocalCuda+nnumanodes) {
-        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
-        INFO_LOG("One CPU rank per NUMA domain");
-    } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
-        ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
-        WARNING_LOG("One MPI process per core not supported");
-    } else {
-        WARNING_LOG("Invalid number of ranks on node");
-    }
+        if (nnoderanks <=  nLocalCuda+1) {
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
+            INFO_LOG("One CPU rank per node");
+        } else if (nnoderanks == nLocalCuda+nnumanodes) {
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
+            INFO_LOG("One CPU rank per NUMA domain");
+        } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
+            WARNING_LOG("One MPI process per core not supported");
+        } else {
+            WARNING_LOG("Invalid number of ranks on node");
+        }
     }
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
@@ -1014,7 +1017,7 @@ int ghost_init(int argc, char **argv)
             }
             if (i == ghost_getRank(ghost_node_comm)) {
                 hwloc_bitmap_copy(mycpuset,runner->cpuset);
-            //    corestaken[runner->logical_index] = 1;
+                //    corestaken[runner->logical_index] = 1;
             }
             cudaDevice++;
 
@@ -1061,9 +1064,9 @@ int ghost_init(int argc, char **argv)
         WARNING_LOG("There are unassigned cores");
     }
     ghost_thpool_init(mycpuset);
-     
+
     ghost_rand_init();
-     
+
     hwloc_bitmap_free(mycpuset);   
     hwloc_bitmap_free(globcpuset);   
     return GHOST_SUCCESS;
@@ -1075,7 +1078,7 @@ void ghost_finish()
     ghost_taskq_finish();
     ghost_thpool_finish();
     hwloc_topology_destroy(topology);
-    
+
     free(ghost_rand_states);
     ghost_rand_states=NULL;
 
@@ -1112,7 +1115,7 @@ size_t ghost_getSizeOfLLC()
 #endif
     return size;
 }
-    
+
 int ghost_setType(ghost_type_t t)
 {
     ghost_type = t;
@@ -1130,15 +1133,15 @@ int ghost_setHybridMode(ghost_hybridmode_t hm)
 // http://burtleburtle.net/bob/hash/doobs.html
 int ghost_hash(int a, int b, int c)
 {
-      a -= b; a -= c; a ^= (c>>13);
-      b -= c; b -= a; b ^= (a<<8);
-      c -= a; c -= b; c ^= (b>>13);
-      a -= b; a -= c; a ^= (c>>12);
-      b -= c; b -= a; b ^= (a<<16);
-      c -= a; c -= b; c ^= (b>>5);
-      a -= b; a -= c; a ^= (c>>3);
-      b -= c; b -= a; b ^= (a<<10);
-      c -= a; c -= b; c ^= (b>>15);
+    a -= b; a -= c; a ^= (c>>13);
+    b -= c; b -= a; b ^= (a<<8);
+    c -= a; c -= b; c ^= (b>>13);
+    a -= b; a -= c; a ^= (c>>12);
+    b -= c; b -= a; b ^= (a<<16);
+    c -= a; c -= b; c ^= (b>>5);
+    a -= b; a -= c; a ^= (c>>3);
+    b -= c; b -= a; b ^= (a<<10);
+    c -= a; c -= b; c ^= (b>>15);
 
-      return c;
+    return c;
 }
