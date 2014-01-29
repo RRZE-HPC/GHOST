@@ -542,8 +542,8 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
 
     int i,v;
 #pragma omp parallel for schedule(runtime) private(v)
-        for (i=0; i<vec->traits->nrows; i++) {
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (i=0; i<vec->traits->nrows; i++) {
+        for (v=0; v<vec->traits->nvecs; v++) {
             memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
         }
     }
