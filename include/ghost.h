@@ -13,5 +13,6 @@
 #include "ghost/context.h"
 #include "ghost/affinity.h"
 #include "ghost/sell.h"
+#include "ghost/crs.h"
 
 #endif
