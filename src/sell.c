@@ -83,7 +83,8 @@ static size_t SELL_byteSize (ghost_mat_t *mat);
 static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
-static void SELL_upload(ghost_mat_t* mat); 
+static void SELL_upload(ghost_mat_t* mat);
+static ghost_error_t SELL_permute(ghost_mat_t *, ghost_midx_t *, ghost_midx_t *);
 static ghost_error_t SELL_CUupload(ghost_mat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
 static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
@@ -126,6 +127,7 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
     mat->fromCRS    = &SELL_fromCRS;
     mat->stringify    = &SELL_stringify;
     mat->split = &SELL_split;
+    mat->permute = &SELL_permute;
 #ifdef VSX_INTR
     mat->kernel = &SELL_kernel_VSX;
 #endif
@@ -175,6 +177,11 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
     return mat;
 }
 
+static ghost_error_t SELL_permute(ghost_mat_t *, ghost_midx_t *, ghost_midx_t *)
+{
+    return GHOST_ERR_NOT_IMPLEMENTED;
+
+}
 static void SELL_printInfo(ghost_mat_t *mat)
 {
     ghost_printLine("Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);

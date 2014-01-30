@@ -37,6 +37,7 @@ const char * (*CRS_stringify_funcs[4]) (ghost_mat_t *, int) =
 static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
 static void CRS_printInfo(ghost_mat_t *mat);
 static const char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
@@ -87,6 +88,7 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     mat->formatName = &CRS_formatName;
     mat->rowLen   = &CRS_rowLen;
     mat->byteSize = &CRS_byteSize;
+    mat->permute = &CRS_permute;
     mat->destroy  = &CRS_free;
     mat->stringify = &CRS_stringify;
 #ifdef GHOST_HAVE_MPI
@@ -104,6 +106,83 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
 
 }
 
+static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm)
+{
+    if (perm == NULL) {
+        return GHOST_SUCCESS;
+    }
+    if (mat->data == NULL) {
+        ERROR_LOG("The matrix data to be permuted is NULL");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    ghost_midx_t i,j,c;
+    ghost_midx_t rowLen;
+    CR_TYPE *cr = CR(mat);
+
+    size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
+
+    ghost_mnnz_t *rpt_perm = (ghost_midx_t *)ghost_malloc((mat->nrows+1)*sizeof(ghost_midx_t));
+    ghost_mnnz_t *col_perm = (ghost_midx_t *)ghost_malloc(mat->nnz*sizeof(ghost_midx_t));
+    char *val_perm = (char *)ghost_malloc(mat->nnz*sizeofdt);
+   
+    /*for (i=0; i<mat->nrows; i++) {
+        printf("perm/inv[%"PRmatIDX"] = %"PRmatIDX" %"PRmatIDX"\n",i,perm[i],invPerm[i]);
+    }*/
+
+
+    rpt_perm[0] = 0;
+    for (i=1; i<mat->nrows+1; i++) {
+        rowLen = cr->rpt[invPerm[i-1]+1]-cr->rpt[invPerm[i-1]];
+        rpt_perm[i] = rpt_perm[i-1]+rowLen;
+        //printf("rpt_perm[%"PRmatIDX"] = %"PRmatIDX", rowLen: %"PRmatIDX"\n",i,rpt_perm[i],rowLen);
+    }
+    if (rpt_perm[mat->nrows] != mat->nnz) {
+        free(rpt_perm);
+        free(col_perm);
+        free(val_perm);
+
+        ERROR_LOG("Error in row pointer permutation: %"PRmatIDX" != %"PRmatIDX,rpt_perm[mat->nrows],mat->nnz);
+        return GHOST_ERR_UNKNOWN;
+    }
+
+    for (i=0; i<mat->nrows; i++) {
+        rowLen = rpt_perm[i+1]-rpt_perm[i];
+        memcpy(&val_perm[rpt_perm[i]*sizeofdt],&cr->val[cr->rpt[invPerm[i]]*sizeofdt],rowLen*sizeofdt);
+        //memcpy(&col_perm[rpt_perm[i]],&cr->col[cr->rpt[invPerm[i]]],rowLen*sizeof(ghost_midx_t));
+        for (j=rpt_perm[i], c=0; j<rpt_perm[i+1]; j++, c++) {
+            col_perm[j] = perm[cr->col[cr->rpt[invPerm[i]]+c]];
+        } 
+        ghost_midx_t n;
+        ghost_midx_t tmpcol;
+        char *tmpval = ghost_malloc(sizeofdt);
+        for (n=rowLen; n>1; n--) {
+            for (j=rpt_perm[i]; j<rpt_perm[i]+n-1; j++) {
+                if (col_perm[j] > col_perm[j+1]) {
+                    tmpcol = col_perm[j];
+                    col_perm[j] = col_perm[j+1];
+                    col_perm[j+1] = tmpcol;
+
+                    memcpy(&tmpval,&val_perm[sizeofdt*j],sizeofdt);
+                    memcpy(&val_perm[sizeofdt*j],&val_perm[sizeofdt*(j+1)],sizeofdt);
+                    memcpy(&val_perm[sizeofdt*(j+1)],&tmpval,sizeofdt);
+                }
+            }
+        }
+    }
+
+    free(cr->rpt);
+    free(cr->col);
+    free(cr->val);
+
+    cr->rpt = rpt_perm;
+    cr->col = col_perm;
+    cr->val = val_perm;
+
+
+    return GHOST_SUCCESS;
+
+}
 
 static const char * CRS_stringify(ghost_mat_t *mat, int dense)
 {

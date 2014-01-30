@@ -412,6 +412,14 @@ struct ghost_mat_t
     ghost_mnnz_t nEnts;
 
     /**
+     * @brief Permute the matrix rows and column indices (if set in mat->traits->flags) with the given permutation.
+     *
+     * @param mat The matrix.
+     * @param perm The permutation vector.
+     * @param invPerm The inverse permutation vector.
+     */
+    ghost_error_t (*permute) (ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
+    /**
      * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
      *
      * @param mat The matrix A. 
