@@ -2,8 +2,6 @@
 #define GHOST_COMPLEX_H
 
 #ifdef __cplusplus
-#include <cmath>
-#include <complex>
 
 template <typename T> 
 struct ghost_complex
