@@ -7,6 +7,8 @@
 #include "error.h"
 
 #ifdef __cplusplus
+#include "complex.h"
+
 static inline ghost_complex<double> conjugate(ghost_complex<double> * c) {
     return ghost_complex<double>(c->re,-c->im);
 }
