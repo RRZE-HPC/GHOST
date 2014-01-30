@@ -31,6 +31,9 @@ ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_ve
 void (*CRS_valToStr_funcs[4]) (void *, char *, int) = 
 {&s_CRS_valToStr,&d_CRS_valToStr,&c_CRS_valToStr,&z_CRS_valToStr};
 
+const char * (*CRS_stringify_funcs[4]) (ghost_mat_t *, int) = 
+{&s_CRS_stringify, &d_CRS_stringify, &c_CRS_stringify, &z_CRS_stringify}; 
+
 static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
@@ -38,6 +41,7 @@ static void CRS_printInfo(ghost_mat_t *mat);
 static const char * CRS_formatName(ghost_mat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t CRS_byteSize (ghost_mat_t *mat);
+static const char * CRS_stringify(ghost_mat_t *mat, int dense);
 static void CRS_free(ghost_mat_t * mat);
 static ghost_error_t CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 static void CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat);
@@ -84,6 +88,7 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     mat->rowLen   = &CRS_rowLen;
     mat->byteSize = &CRS_byteSize;
     mat->destroy  = &CRS_free;
+    mat->stringify = &CRS_stringify;
 #ifdef GHOST_HAVE_MPI
     mat->split = &CRS_split;
 #endif
@@ -97,6 +102,12 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
 
     return mat;
 
+}
+
+
+static const char * CRS_stringify(ghost_mat_t *mat, int dense)
+{
+    return CRS_stringify_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat, dense);
 }
 
 static void CRS_printInfo(ghost_mat_t *mat)

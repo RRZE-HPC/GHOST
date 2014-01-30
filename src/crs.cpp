@@ -13,6 +13,9 @@
 #include "ghost/constants.h"
 #include "ghost/io.h"
 
+#include <iostream>
+
+using namespace std;
 // TODO shift, scale als templateparameter
 
 template<typename m_t, typename v_t> ghost_error_t CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
@@ -115,6 +118,46 @@ template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
     }
 }
 
+template <typename m_t> static const char * CRS_stringify(ghost_mat_t *mat, int dense)
+{
+    ghost_midx_t i,j,col;
+    m_t *val = (m_t *)CR(mat)->val;
+
+    stringstream buffer;
+
+    buffer << "---" << endl;
+    for (i=0; i<mat->nrows; i++) {
+        if (dense) {
+            for (col=0, j=CR(mat)->rpt[i]; col<mat->ncols; col++) {
+                if (j<CR(mat)->rpt[i+1] && CR(mat)->col[j] == col) { // there is an entry at col
+                    buffer << val[j] << "\t";
+                    j++;
+                } else {
+                    buffer << ".\t";
+                }
+
+            }
+        } else {
+            for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                if (mat->traits->flags & GHOST_SPM_PERMUTECOLIDX) {
+                    if (CR(mat)->col[j] < mat->nrows) {
+                        buffer << val[j] << " (o " << mat->context->invRowPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
+                    } else {
+                        buffer << val[j] << " (p " << CR(mat)->col[j] << "|p " << CR(mat)->col[j] << ")" << "\t";
+                    }
+
+                } else {
+                    buffer << val[j] << " (" << CR(mat)->col[j] << ")" << "\t";
+                }
+
+            }
+        }
+        buffer << endl;
+    }
+    buffer << "---" << endl;
+
+    return buffer.str().c_str();
+}
 
 extern "C" ghost_error_t dd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options); }
@@ -175,3 +218,15 @@ extern "C" void c_CRS_valToStr(void *val, char *str, int n)
 
 extern "C" void z_CRS_valToStr(void *val, char *str, int n)
 { return CRS_valToStr_tmpl< ghost_complex<double> >(val,str,n); }
+
+extern "C" const char * d_CRS_stringify(ghost_mat_t *mat, int dense)
+{ return CRS_stringify< double >(mat, dense); }
+
+extern "C" const char * s_CRS_stringify(ghost_mat_t *mat, int dense)
+{ return CRS_stringify< float >(mat, dense); }
+
+extern "C" const char * z_CRS_stringify(ghost_mat_t *mat, int dense)
+{ return CRS_stringify< ghost_complex<double> >(mat, dense); }
+
+extern "C" const char * c_CRS_stringify(ghost_mat_t *mat, int dense)
+{ return CRS_stringify< ghost_complex<float> >(mat, dense); }

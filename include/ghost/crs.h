@@ -84,6 +84,10 @@ void d_CRS_valToStr(void *, char *, int);
 void s_CRS_valToStr(void *, char *, int);
 void c_CRS_valToStr(void *, char *, int);
 void z_CRS_valToStr(void *, char *, int);
+const char * d_CRS_stringify(ghost_mat_t *mat, int dense);
+const char * s_CRS_stringify(ghost_mat_t *mat, int dense);
+const char * c_CRS_stringify(ghost_mat_t *mat, int dense);
+const char * z_CRS_stringify(ghost_mat_t *mat, int dense);
 #ifdef __cplusplus
 }
 #endif
