@@ -102,6 +102,11 @@ ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
     mat->remotePart = NULL;
     mat->name = NULL;
 
+    mat->bandwidth = 0;
+    mat->lowerBandwidth = 0;
+    mat->upperBandwidth = 0;
+    mat->nzDist = NULL;
+
     return mat;
 
 }
@@ -125,10 +130,10 @@ static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_mid
     ghost_mnnz_t *rpt_perm = (ghost_midx_t *)ghost_malloc((mat->nrows+1)*sizeof(ghost_midx_t));
     ghost_mnnz_t *col_perm = (ghost_midx_t *)ghost_malloc(mat->nnz*sizeof(ghost_midx_t));
     char *val_perm = (char *)ghost_malloc(mat->nnz*sizeofdt);
-   
+
     /*for (i=0; i<mat->nrows; i++) {
-        printf("perm/inv[%"PRmatIDX"] = %"PRmatIDX" %"PRmatIDX"\n",i,perm[i],invPerm[i]);
-    }*/
+      printf("perm/inv[%"PRmatIDX"] = %"PRmatIDX" %"PRmatIDX"\n",i,perm[i],invPerm[i]);
+      }*/
 
 
     rpt_perm[0] = 0;
@@ -146,12 +151,31 @@ static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_mid
         return GHOST_ERR_UNKNOWN;
     }
 
+    mat->bandwidth = 0;
+    for (i = 0; i < mat->nrows; i++) {
+        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+        }
+    }
+    mat->lowerBandwidth = 0;
+    mat->upperBandwidth = 0;
+    ghost_midx_t col;
+    memset(mat->nzDist,0,sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
     for (i=0; i<mat->nrows; i++) {
         rowLen = rpt_perm[i+1]-rpt_perm[i];
         memcpy(&val_perm[rpt_perm[i]*sizeofdt],&cr->val[cr->rpt[invPerm[i]]*sizeofdt],rowLen*sizeofdt);
         //memcpy(&col_perm[rpt_perm[i]],&cr->col[cr->rpt[invPerm[i]]],rowLen*sizeof(ghost_midx_t));
         for (j=rpt_perm[i], c=0; j<rpt_perm[i+1]; j++, c++) {
             col_perm[j] = perm[cr->col[cr->rpt[invPerm[i]]+c]];
+            col = col_perm[j];
+            if (col < i) {
+                mat->lowerBandwidth = MAX(mat->lowerBandwidth, i-col);
+                mat->nzDist[mat->nrows-1-(i-col)]++;
+            } else if (col > i) {
+                mat->upperBandwidth = MAX(mat->upperBandwidth, col-i);
+                mat->nzDist[mat->nrows-1+col-i]++;
+            } else {
+                mat->nzDist[mat->nrows-1]++;
+            }
         } 
         ghost_midx_t n;
         ghost_midx_t tmpcol;
@@ -170,6 +194,7 @@ static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_mid
             }
         }
     }
+    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
     free(cr->rpt);
     free(cr->col);
@@ -215,7 +240,7 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
     if (mat->data == NULL) {
         return 0;
     }
-    
+
     return (size_t)((mat->nrows+1)*sizeof(ghost_mnnz_t) + 
             mat->nEnts*(sizeof(ghost_midx_t)+ghost_sizeofDataType(mat->traits->datatype)));
 }
@@ -478,7 +503,7 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
     }
 
-    
+
     return GHOST_SUCCESS;
 
 }
@@ -570,13 +595,15 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 memset(&CR(mat)->val[j*sizeofdt],0,sizeofdt);
             }
         }
-        
+
         mat->nrows = (ghost_midx_t)header.nrows;
         mat->nEnts = (ghost_midx_t)header.nnz;
         mat->nnz = mat->nEnts;
 
         GHOST_CALL_RETURN(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nEnts));
         GHOST_CALL_RETURN(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nEnts));
+
+
     } else {
 #ifdef GHOST_HAVE_MPI
         DEBUG_LOG(1,"Reading in a distributed context");
@@ -671,6 +698,31 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
         GHOST_CALL_RETURN(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], mat->nEnts));
         GHOST_CALL_RETURN(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], mat->nEnts));
+
+        mat->nzDist = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
+        memset(mat->nzDist,0,sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
+
+        ghost_midx_t col;
+    
+        mat->lowerBandwidth = 0;
+        mat->upperBandwidth = 0;
+        for (i = 0; i < mat->nrows; i++) {
+            for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                col = CR(mat)->col[j];
+                if (col < i) { // lower
+                    mat->lowerBandwidth = MAX(mat->lowerBandwidth, i-col);
+                    mat->nzDist[mat->nrows-1-(i-col)]++;
+                } else if (col > i) { // upper
+                    mat->upperBandwidth = MAX(mat->upperBandwidth, col-i);
+                    mat->nzDist[mat->nrows-1+col-i]++;
+                } else { // diag
+                    mat->nzDist[mat->nrows-1]++;
+                }
+
+            }
+        }
+        mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+
 
         DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
         mat->split(mat);
