@@ -409,6 +409,13 @@ struct ghost_mat_t
     ghost_midx_t ncols;
     ghost_midx_t nrowsPadded;
     ghost_mnnz_t nnz;
+    ghost_midx_t lowerBandwidth;
+    ghost_midx_t upperBandwidth;
+    ghost_midx_t bandwidth;
+    /**
+     * @brief Array of length nrows with nzDist[i] = number nonzeros with distance i from diagonal
+     */
+    ghost_mnnz_t *nzDist;
     ghost_mnnz_t nEnts;
 
     /**
