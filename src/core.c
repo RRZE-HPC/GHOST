@@ -146,15 +146,12 @@ ghost_error_t ghost_init(int argc, char **argv)
     GHOST_CALL_RETURN(ghost_getRank(nodeComm,&noderank));
 
     int ncudadevs = 0;
-    int ndomains = 0;
     int nnumanodes;
     ghost_getNumberOfNumaNodes(&nnumanodes);
 
-    ndomains += nnumanodes;
 #if GHOST_HAVE_CUDA
     ghost_cu_getDeviceCount(&ncudadevs);
 #endif
-    ndomains += ncudadevs;
 
     ghost_type_t ghost_type;
     GHOST_CALL_RETURN(ghost_getType(&ghost_type));
@@ -225,9 +222,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     GHOST_CALL_RETURN(ghost_getHybridMode(&ghost_hybridmode));
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
-    hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
-
-    globcpuset = hwloc_bitmap_dup(hwloc_topology_get_allowed_cpuset(topology));
+    hwloc_cpuset_t globcpuset  = hwloc_bitmap_dup(hwloc_topology_get_allowed_cpuset(topology));
 
     hwloc_obj_t obj;
     ghost_hw_config_t hwconfig;
