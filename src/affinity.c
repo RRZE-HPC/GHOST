@@ -143,7 +143,7 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
                 distinctNames++;
             }
         }
-        free(names);
+        free(names); names = NULL;
     }
 
     MPI_CALL_GOTO(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm),err,ret);

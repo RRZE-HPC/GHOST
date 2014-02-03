@@ -261,16 +261,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     }
     GHOST_INSTR_STOP(spMVM_taskmode_computeRemote);
        
-    free(work);
     GHOST_INSTR_STOP(spMVM_taskmode_entiresolver)
 
     goto out;
 err:
 
 out:
-    free(work);
-    free(compTask->ret);
-    free(commTask->ret);
+    free(work); work = NULL;
+    free(compTask->ret); compTask->ret = NULL;
+    free(commTask->ret); commTask->ret = NULL;
 
     return ret;
 }
