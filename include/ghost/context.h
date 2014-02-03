@@ -11,7 +11,7 @@
 /**
  * @brief This struct holds all possible flags for a context.
  */
-typedef enum ghost_context_flags_t {
+typedef enum {
     GHOST_CONTEXT_DEFAULT = 0, 
     GHOST_CONTEXT_GLOBAL = 1, 
     GHOST_CONTEXT_DISTRIBUTED = 2,
