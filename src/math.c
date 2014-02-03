@@ -265,7 +265,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         for (i=0; i<x->traits->nvecs; ++i) 
         {
             int copied = 0;
-            void *val;
+            void *val = NULL;
             if (x->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA

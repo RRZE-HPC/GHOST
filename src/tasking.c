@@ -315,13 +315,13 @@ static int taskq_deleteTask(ghost_taskq_t *q, ghost_task_t *t)
 {
     pthread_mutex_lock(&q->mutex);
     if (t == q->head) {
-        DEBUG_LOG(1,"Removing head from queue %p",q);
+        DEBUG_LOG(1,"Removing head from queue %p",(void *)q);
         q->head = t->next;
         if (q->head != NULL)
             q->head->prev = NULL;
     }
     if (t == q->tail) {
-        DEBUG_LOG(1,"Removing tail from queue %p",q);
+        DEBUG_LOG(1,"Removing tail from queue %p",(void *)q);
         q->tail = t->prev;
         if (q->tail != NULL)
             q->tail->next = NULL;
@@ -396,7 +396,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         } else { 
         }
         if (availcores < curTask->nThreads) {
-            DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",curTask,curTask->nThreads,availcores);
+            DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",(void *)curTask,curTask->nThreads,availcores);
             curTask = curTask->next;
             continue;
         }
@@ -411,7 +411,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                   continue;
                   }*/
 
-        DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),NIDLECORES);
+        DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),(void *)curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),NIDLECORES);
 
         DEBUG_LOG(1,"Deleting task itself");
         taskq_deleteTask(q,curTask);    
@@ -569,7 +569,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             *(myTask->state) = GHOST_TASK_RUNNING;    
             pthread_mutex_unlock(myTask->mutex);
 
-            DEBUG_LOG(1,"Thread %d: Finally executing task %p",(int)pthread_self(),myTask);
+            DEBUG_LOG(1,"Thread %d: Finally executing task %p",(int)pthread_self(),(void *)myTask);
 
             pthread_setspecific(ghost_thread_key,myTask);
 
@@ -584,7 +584,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             pthread_setspecific(ghost_thread_key,NULL);
 
             DEBUG_LOG(1,"Thread %lu: Finished executing task: %p. Free'ing resources and waking up another thread"
-                    ,(unsigned long)pthread_self(),myTask);
+                    ,(unsigned long)pthread_self(),(void *)myTask);
 
             pthread_mutex_lock(&globalMutex);
             ghost_task_unpin(myTask);
@@ -596,11 +596,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             pthread_mutex_unlock(&newTaskMutex);
 
             pthread_mutex_lock(myTask->mutex); 
-            DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),myTask);
+            DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),(void *)myTask);
             *(myTask->state) = GHOST_TASK_FINISHED;
             pthread_cond_broadcast(myTask->finishedCond);
             pthread_mutex_unlock(myTask->mutex);
-            DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
+            DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),(void *)myTask,(void *)myTask->finishedCond);
             
             pthread_mutex_lock(&globalMutex);
             if (killed) // exit loop
@@ -644,7 +644,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
      */
     ghost_error_t ghost_task_print(ghost_task_t *t) 
     {
-        ghost_printHeader("Task %p",t);
+        ghost_printHeader("Task %p",(void *)t);
         ghost_printLine("No. of threads",NULL,"%d",t->nThreads);
         ghost_printLine("LD",NULL,"%d",t->LD);
         ghost_printFooter();
@@ -667,7 +667,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         t = taskq->head;
         while (t != NULL)
         {
-            printf("%p ",t);
+            printf("%p ",(void *)t);
             t=t->next;
         }
         printf("\n");
@@ -695,7 +695,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         pthread_mutex_lock(&q->mutex);
         if ((q->tail == NULL) || (q->head == NULL)) {
-            DEBUG_LOG(1,"Adding task %p to empty queue",t);
+            DEBUG_LOG(1,"Adding task %p to empty queue",(void *)t);
             q->head = t;
             q->tail = t;
             t->next = NULL;
@@ -703,7 +703,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         } else {
             if (t->flags & GHOST_TASK_PRIO_HIGH) 
             {
-                DEBUG_LOG(1,"Adding high-priority task %p to non-empty queue",t);
+                DEBUG_LOG(1,"Adding high-priority task %p to non-empty queue",(void *)t);
                 q->head->prev = t;
                 t->next = q->head;
                 t->prev = NULL;
@@ -711,7 +711,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
             } else
             {
-                DEBUG_LOG(1,"Adding normal-priority task %p to non-empty queue",t);
+                DEBUG_LOG(1,"Adding normal-priority task %p to non-empty queue",(void *)t);
                 q->tail->next = t;
                 t->prev = q->tail;
                 t->next = NULL;
@@ -742,7 +742,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
         //    t->freed = 0;
 
-        DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",t,t->nThreads,taskq,t->LD);
+        DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",(void *)t,t->nThreads,(void *)taskq,t->LD);
         taskq_additem(taskq,t);
         //ghost_task_destroy(&commTask);
         *(t->state) = GHOST_TASK_ENQUEUED;
@@ -818,7 +818,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
      */
     ghost_error_t ghost_task_wait(ghost_task_t * task)
     {
-        DEBUG_LOG(1,"Waiting for task %p whose state is %d",task,*(task->state));
+        DEBUG_LOG(1,"Waiting for task %p whose state is %d",(void *)task,*(task->state));
 
 
         //    ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
@@ -830,10 +830,10 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         pthread_mutex_lock(task->mutex);
         if (*(task->state) != GHOST_TASK_FINISHED) {
-            DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",task->finishedCond,task);
+            DEBUG_LOG(1,"Waiting for signal @ cond %p from task %p",(void *)task->finishedCond,(void *)task);
             pthread_cond_wait(task->finishedCond,task->mutex);
         } else {
-            DEBUG_LOG(1,"Task %p has already finished",task);
+            DEBUG_LOG(1,"Task %p has already finished",(void *)task);
         }
 
         // pin again if have been unpinned
@@ -842,7 +842,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         pthread_mutex_lock(&anyTaskFinishedMutex);
         pthread_cond_broadcast(&anyTaskFinishedCond);
         pthread_mutex_unlock(&anyTaskFinishedMutex);
-        DEBUG_LOG(1,"Finished waitung for task %p!",task);
+        DEBUG_LOG(1,"Finished waitung for task %p!",(void *)task);
 
         return GHOST_SUCCESS;
 
@@ -890,7 +890,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         pthread_mutex_unlock(&globalMutex);
         while (t != NULL)
         {
-            DEBUG_LOG(1,"Waitall: Waiting for task %p",t);
+            DEBUG_LOG(1,"Waitall: Waiting for task %p",(void *)t);
             ghost_task_wait(t);
             t = t->next;
         }

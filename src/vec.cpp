@@ -188,18 +188,14 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec)
 {
-    char prefix[16];
+    char prefix[16] = "";
 #if GHOST_HAVE_MPI
     if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
         int ndigits = (int)floor(log10(abs(rank))) + 1;
         snprintf(prefix,4+ndigits,"PE%d: ",rank);
-    } else {
-        snprintf(prefix,1,"");
     }
-#else
-    snprintf(prefix,1,"");
 #endif
 
     ghost_vidx_t i,v;
