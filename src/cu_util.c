@@ -123,7 +123,7 @@ ghost_error_t ghost_cu_getDeviceCount(int *devcount)
 ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    (*devInfo) = ghost_malloc(sizeof(ghost_gpu_info_t));
+    GHOST_CALL_GOTO(ghost_malloc((void **)devInfo,sizeof(ghost_gpu_info_t)),err,ret);
     (*devInfo)->nDistinctDevices = 1;
     (*devInfo)->names = NULL;
     (*devInfo)->nDevices = NULL;
@@ -182,10 +182,10 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
     MPI_safecall(MPI_Bcast(&((*devInfo)->nDistinctDevices),1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 */
-    (*devInfo)->nDevices = ghost_malloc(sizeof(int)*(*devInfo)->nDistinctDevices);
-    (*devInfo)->names = ghost_malloc(sizeof(char *)*(*devInfo)->nDistinctDevices);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->nDevices,sizeof(int)*(*devInfo)->nDistinctDevices),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->names,sizeof(char *)*(*devInfo)->nDistinctDevices),err,ret);
     for (i=0; i<(*devInfo)->nDistinctDevices; i++) {
-        (*devInfo)->names[i] = ghost_malloc(sizeof(char)*ghost_cu_MAX_DEVICE_NAME_LEN);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->names[i],sizeof(char)*ghost_cu_MAX_DEVICE_NAME_LEN),err,ret);
         (*devInfo)->nDevices[i] = 1;
     }
 

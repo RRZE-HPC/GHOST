@@ -269,7 +269,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
             if (x->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                val = ghost_malloc(x->traits->nrows*ghost_sizeofDatatype(x->traits->datatype));
+                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*ghost_sizeofDatatype(x->traits->datatype)));
                 ghost_cu_copyDeviceToHost(val,&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 copied = 1;

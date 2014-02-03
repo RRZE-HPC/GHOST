@@ -726,7 +726,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
+            GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             copied = 1;
             ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
 #endif
@@ -859,7 +859,7 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            char * val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
+            GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             if ((ret = fread(val, vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);

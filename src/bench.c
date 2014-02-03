@@ -14,13 +14,16 @@ static void dummy(double *a) {
 int ghost_stream(int test, double *bw)
 {
 
+    ghost_error_t ret = GHOST_SUCCESS;
     UNUSED(test);
 
     int i;
     double start;
 
-    double *a = (double *)ghost_malloc(N*sizeof(double));
-    double *b = (double *)ghost_malloc(N*sizeof(double));
+    double *a = NULL;
+    double *b = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&a,N*sizeof(double)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&b,N*sizeof(double)),err,ret);
 
 #pragma omp parallel for
     for (i=0; i<N; i++) {
@@ -37,7 +40,14 @@ int ghost_stream(int test, double *bw)
 
     dummy(a);
 
-    return GHOST_SUCCESS;
+    goto out;
+
+err:
+out:
+    free(a); a = NULL;
+    free(b); b = NULL;
+
+    return ret;
 }
 
 
