@@ -27,26 +27,26 @@ check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 set (SOURCES
-        src/timing.c
-        src/io.c
-        src/io.cpp 
-		src/util.c 
-		src/spmvm_nompi.c 
-		src/vec.c 
-		src/tasking.c 
+		src/affinity.c
+		src/context.c
+        src/core.c
 		src/crs.c 
 		src/crs.cpp 
         src/error.c
-		src/sell.c 
-		src/vec.cpp 
-		src/sell.cpp
-		src/context.c
+        src/io.c
+        src/io.cpp 
+        src/machine.c
 		src/mat.c
 		src/math.c
-        src/machine.c
-		src/affinity.c
-        src/core.c
+		src/sell.c 
+		src/sell.cpp
+		src/spmvm_nompi.c 
+		src/tasking.c 
+        src/timing.c
         src/types.c
+		src/util.c 
+		src/vec.c 
+		src/vec.cpp 
 	)
 
 set (HEADERS
