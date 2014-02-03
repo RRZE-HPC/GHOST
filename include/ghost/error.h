@@ -38,7 +38,7 @@ extern "C" {
  * @return A ghost_error_t in case the function return an error.
  */
 #define GHOST_CALL_RETURN(call) {\
-    ghost_error_t err;\
+    ghost_error_t err = GHOST_SUCCESS;\
     GHOST_CALL(call,err);\
     if (err != GHOST_SUCCESS) {\
         return err;\
@@ -78,7 +78,7 @@ extern "C" {
 }\
 
 #define MPI_CALL_RETURN(call) {\
-    ghost_error_t ret;\
+    ghost_error_t ret = GHOST_SUCCESS;\
     MPI_CALL(call,ret);\
     if (ret != GHOST_SUCCESS) {\
         return ret;\
@@ -104,7 +104,7 @@ extern "C" {
 }\
 
 #define CUDA_CALL_RETURN(call) {\
-    ghost_error_t ret;\
+    ghost_error_t ret = GHOST_SUCCESS;\
     CUDA_CALL(call,ret);\
     if (ret != GHOST_SUCCESS) {\
         return ret;\
@@ -127,7 +127,7 @@ extern "C" {
 }\
 
 #define CUBLAS_CALL_RETURN(call) {\
-    ghost_error_t ret;\
+    ghost_error_t ret = GHOST_SUCCESS;\
     CUBLAS_CALL(call,ret);\
     if (ret != GHOST_SUCCESS) {\
         return ret;\
@@ -150,7 +150,7 @@ extern "C" {
 }\
 
 #define CURAND_CALL_RETURN(call) {\
-    ghost_error_t ret;\
+    ghost_error_t ret = GHOST_SUCCESS;\
     CURAND_CALL(call,ret);\
     if (ret != GHOST_SUCCESS) {\
         return ret;\

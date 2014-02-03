@@ -282,15 +282,17 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     UNUSED(flags);
     int nprocs = 1;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-
+    
     char *tmpval = NULL;
     ghost_midx_t *tmpcol = NULL;    
     ghost_midx_t i,col,row;
     ghost_midx_t chunk,j;
 
     ghost_sorting_t* rowSort = NULL;
+    
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+
 
     ghost_midx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
     GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkStart, (nChunks+1)*sizeof(ghost_mnnz_t)),err,ret);
@@ -813,6 +815,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     ghost_midx_t *rpt = NULL;
     ghost_midx_t *tmpcol = NULL;
     char *tmpval = NULL;
+    ghost_sorting_t* rowSort = NULL;
+    FILE *filed = NULL;
 
 #if GHOST_HAVE_MPI
     MPI_Request req[nprocs];
@@ -932,7 +936,6 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     mat->nnz = rpt[context->lnrows[me]];
     mat->nEnts = 0;
 
-    ghost_sorting_t* rowSort = NULL;
 
     ghost_midx_t maxRowLenInChunk = 0;
     ghost_midx_t minRowLenInChunk = INT_MAX;
@@ -1038,7 +1041,6 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         }
     }
 
-    FILE *filed;
 
     if ((filed = fopen64(matrixPath, "r")) == NULL){
         ERROR_LOG("Could not open binary CRS file %s",matrixPath);

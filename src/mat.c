@@ -18,8 +18,8 @@ ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trai
 
     int me;
     GHOST_CALL_GOTO(ghost_getRank(context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat,sizeof(ghost_mat_t)),err,ret);
     
-    *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
     (*mat)->traits = traits;
     (*mat)->context = context;
     (*mat)->localPart = NULL;

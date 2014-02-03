@@ -21,9 +21,9 @@ using namespace std;
 template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 {
     ghost_crs_t *cr = CR(mat);
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
     ghost_midx_t i, j;
     ghost_vidx_t v;

@@ -244,10 +244,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     int cpu;
     hwloc_bitmap_foreach_begin(cpu,globcpuset);
     obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
-    if (obj->sibling_rank >= hwconfig.smtLevel) {
+    if ((int)obj->sibling_rank >= hwconfig.smtLevel) {
         hwloc_bitmap_clr(globcpuset,cpu);
     }
-    if (obj->parent->logical_index >= hwconfig.maxCores) { 
+    if ((int)obj->parent->logical_index >= hwconfig.maxCores) { 
         hwloc_bitmap_clr(globcpuset,cpu);
     }
     hwloc_bitmap_foreach_end();

@@ -46,7 +46,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
         }
     }
     
-    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize);
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize));
 
     GHOST_INSTR_START(spMVM_vectormode_comm);
     invec->downloadNonHalo(invec);

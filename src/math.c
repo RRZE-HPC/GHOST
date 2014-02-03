@@ -279,27 +279,31 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
             {
                 val = VECVAL(x,x->val,i,0);
             }
+            ghost_mpi_op_t sumOp;
+            ghost_mpi_datatype_t mpiDt;
+            GHOST_CALL_RETURN(ghost_mpi_op_sum(&sumOp,x->traits->datatype));
+            GHOST_CALL_RETURN(ghost_mpi_datatype(&mpiDt,x->traits->datatype));
 
             if (reduce == GHOST_GEMM_ALL_REDUCE) 
             {
-                MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),v->context->mpicomm));
+                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,x->traits->nrows,mpiDt,sumOp,v->context->mpicomm));
             } 
             else 
             {
                 if (myrank == reduce) 
                 {
-                    MPI_safecall(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
                 } 
                 else 
                 {
-                    MPI_safecall(MPI_Reduce(val,NULL,x->traits->nrows,ghost_mpi_dataType(x->traits->datatype),ghost_mpi_op_sum(x->traits->datatype),reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,x->traits->nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
                 }
             }
             if (copied)
             {
 #if GHOST_HAVE_CUDA
-                ghost_cu_copyHostToDevice(&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
-                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
+                GHOST_CALL_RETURN(ghost_cu_copyHostToDevice(&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
+                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype)));
                 free(val);
 #endif
             }
@@ -349,7 +353,9 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
     size_t sizeofdt;
     GHOST_CALL_RETURN(ghost_sizeofDatatype(&sizeofdt,datatype));
 
-    char *zero = (char *)ghost_malloc(sizeofdt);
+    char *zero;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&zero,sizeofdt));
+
     memset(zero,0,sizeofdt);
     ghost_vec_t *globLHS; 
     ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};

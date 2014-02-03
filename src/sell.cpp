@@ -55,9 +55,9 @@ using namespace std;
 template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 {
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_midx_t i,j,c;
     ghost_vidx_t v;
     int nthreads = 1;
@@ -153,9 +153,9 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
 template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 {
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
-    v_t *rhsv;
-    v_t *lhsv;
-    v_t *local_dot_product, *partsums;
+    v_t *rhsv = NULL;
+    v_t *lhsv = NULL;
+    v_t *local_dot_product = NULL, *partsums = NULL;
     int nthreads = 1;
     ghost_midx_t i,j;
     ghost_vidx_t v;

@@ -113,10 +113,10 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
     UNUSED(stringcmp);
     UNUSED(comm);
     UNUSED(nNodes);
-    return 1;
+    return GHOST_SUCCESS;
 #else
 
-    int mpiErr;
+    ghost_error_t ret = GHOST_SUCCESS;
     int nameLen,me,size,i,distinctNames = 1;
     char name[MPI_MAX_PROCESSOR_NAME] = "";
     char *names = NULL;
@@ -127,16 +127,12 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
 
 
     if (me==0) {
-        names = ghost_malloc(size*MPI_MAX_PROCESSOR_NAME*sizeof(char));
+        GHOST_CALL_GOTO(ghost_malloc((void **)&names,size*MPI_MAX_PROCESSOR_NAME*sizeof(char)),err,ret);
     }
 
 
-    MPI_CALL(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
-                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,comm),mpiErr);
-    if ((mpiErr != MPI_SUCCESS) && (me == 0)) {
-        free(names);
-        return GHOST_ERR_MPI;
-    }
+    MPI_CALL_GOTO(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
+                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,comm),err,ret);
 
 
     if (me==0) {
@@ -150,15 +146,18 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
         free(names);
     }
 
-    MPI_CALL(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm),mpiErr);
-    if ((mpiErr != MPI_SUCCESS) && (me == 0)) {
-        free(names);
-        return GHOST_ERR_MPI;
-    }
+    MPI_CALL_GOTO(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm),err,ret);
 
     *nNodes = distinctNames;
 #endif
-    return GHOST_SUCCESS;
+
+    goto out;
+
+err:
+    free(names); names = NULL;
+
+out:
+    return ret;;
 }
 
 ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
@@ -287,7 +286,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
     do {
         nHostname += MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
 
-        hostname = (char *)ghost_malloc(sizeof(char) * nHostname);
+        GHOST_CALL_RETURN(ghost_malloc((void **)&hostname,sizeof(char) * nHostname));
 
         int error;
 
@@ -374,7 +373,8 @@ ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
     // Determine if collisions of the hashed hostname occured.
 
     int nSend = MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
-    char * send = (char *)ghost_malloc(sizeof(char) * nSend);
+    char * send = NULL;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&send,sizeof(char) * nSend));
 
     strncpy(send, hostname, nSend);
 

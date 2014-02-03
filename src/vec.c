@@ -466,7 +466,7 @@ static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
     GHOST_INSTR_START(axpy);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    char *s;
+    char *s = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
 
     ghost_vidx_t i;
@@ -490,8 +490,8 @@ static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale,
     GHOST_INSTR_START(axpby);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    char *s;
-    char *b;
+    char *s = NULL;
+    char *b = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&b,nc*vec->traits->elSize),err,ret);
 
@@ -1042,7 +1042,7 @@ static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    char *dtmp;
+    char *dtmp = NULL;
 
     dtmp = v1->val[0];
     v1->val[0] = v2->val[0];
@@ -1162,7 +1162,7 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
 
     ghost_vidx_t v,i;
 
-    char *val;
+    char *val = NULL;
     GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
 
 #pragma omp parallel for schedule(runtime) private(v)

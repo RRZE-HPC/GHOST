@@ -36,7 +36,8 @@ static void *communicate(void *vargs)
 //    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
     GHOST_INSTR_START(spMVM_taskmode_communicate);
-    ghost_error_t *ret = (ghost_error_t *)ghost_malloc(sizeof(ghost_error_t));
+    ghost_error_t *ret = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
     int to_PE, from_PE;
@@ -92,6 +93,7 @@ static void *communicate(void *vargs)
 
     goto out;
 err:
+
 out:
     return ret;
 }
@@ -107,7 +109,8 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
-    ghost_error_t *ret = (ghost_error_t *)ghost_malloc(sizeof(ghost_error_t));
+    ghost_error_t *ret = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
     GHOST_INSTR_START(spMVM_taskmode_computeLocal);
@@ -164,7 +167,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
-    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize);
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize));
 
     int taskflags = GHOST_TASK_DEFAULT;
     if (pthread_getspecific(ghost_thread_key) != NULL) {

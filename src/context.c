@@ -18,6 +18,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
            
     int nranks, me, i;
     ghost_error_t ret = GHOST_SUCCESS;
+    
+    ghost_midx_t *target_rows = NULL;
+    char *tmpval = NULL;
+    ghost_midx_t *tmpcol = NULL;
+    
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context_t)),err,ret);
     (*context)->flags = context_flags;
     (*context)->rowPerm = NULL;
@@ -27,9 +32,6 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->dues     = NULL;
     (*context)->hput_pos = NULL;
 
-    ghost_midx_t *target_rows = NULL;
-    char *tmpval = NULL;
-    ghost_midx_t *tmpcol = NULL;
     
     GHOST_CALL_GOTO(ghost_getNumberOfRanks((*context)->mpicomm,&nranks),err,ret);
     GHOST_CALL_GOTO(ghost_getRank((*context)->mpicomm,&me),err,ret);
@@ -123,10 +125,9 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,(*context)->gncols*sizeof(ghost_midx_t)),err,ret);
                     (*context)->rpt[0] = 0;
                     ghost_midx_t rowlen;
-                    ghost_midx_t i;
                     for(row = 0; row < (*context)->gnrows; row++) {
                         func(row,&rowlen,tmpcol,tmpval);
-                        (*context)->rpt[row+1] = (*context)->rpt[i]+rowlen;
+                        (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
                     }
                     free(tmpval); tmpval = NULL;
                     free(tmpcol); tmpcol = NULL;

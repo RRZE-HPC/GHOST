@@ -46,7 +46,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, g
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
-    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize);
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize));
 
 #ifdef __INTEL_COMPILER
  //   kmp_set_blocktime(1);
