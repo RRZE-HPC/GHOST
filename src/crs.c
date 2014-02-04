@@ -709,6 +709,9 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         for (i = 0; i < mat->nrows; i++) {
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                 col = CR(mat)->col[j];
+                if (col >= mat->nrows) {
+                    continue;
+                }
                 if (col < i) { // lower
                     mat->lowerBandwidth = MAX(mat->lowerBandwidth, i-col);
                     mat->nzDist[mat->nrows-1-(i-col)]++;
