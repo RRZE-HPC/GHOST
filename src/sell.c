@@ -179,6 +179,9 @@ ghost_mat_t * ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits)
 
 static ghost_error_t SELL_permute(ghost_mat_t *mat , ghost_midx_t *perm, ghost_midx_t *invPerm)
 {
+    UNUSED(mat);
+    UNUSED(perm);
+    UNUSED(invPerm);
     return GHOST_ERR_NOT_IMPLEMENTED;
 
 }
