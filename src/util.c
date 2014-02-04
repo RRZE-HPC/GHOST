@@ -898,6 +898,10 @@ int ghost_init(int argc, char **argv)
     int ncudadevs = 0;
     int ndomains = 0;
     int nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
+    if (!nnumanodes) {
+        nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_SOCKET);
+    }
+
     ndomains += nnumanodes;
 #if GHOST_HAVE_CUDA
     CU_getDeviceCount(&ncudadevs);
@@ -947,6 +951,7 @@ int ghost_init(int argc, char **argv)
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
 
+    int oversubscribed = 0;
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
         if (nnoderanks <=  nLocalCuda+1) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
@@ -959,6 +964,7 @@ int ghost_init(int argc, char **argv)
             WARNING_LOG("One MPI process per core not supported");
         } else {
             WARNING_LOG("Invalid number of ranks on node");
+            oversubscribed = 1;
         }
     }
 
@@ -1026,7 +1032,6 @@ int ghost_init(int argc, char **argv)
         }
     }
 #endif
-    int oversubscribed = 0;
 
     if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
         if (ghost_type == GHOST_TYPE_COMPUTE) {
@@ -1037,20 +1042,27 @@ int ghost_init(int argc, char **argv)
         int numaNode = 0;
         for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
-                if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > numaNode) {
-                    if (i == ghost_getRank(ghost_node_comm)) {
-                        hwloc_bitmap_and(mycpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                if (nnumanodes > numaNode) {
+                    hwloc_cpuset_t nodeCpuset;
+                    if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > 0) {
+                        nodeCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset;
+                    } else {
+                        nodeCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_SOCKET,numaNode)->cpuset;
                     }
-                    hwloc_bitmap_andnot(globcpuset,globcpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,numaNode)->cpuset);
+                    if (i == ghost_getRank(ghost_node_comm)) {
+                        hwloc_bitmap_and(mycpuset,globcpuset,nodeCpuset);
+                    }
+                    hwloc_bitmap_andnot(globcpuset,globcpuset,nodeCpuset);
                     numaNode++;
                 } else {
                     oversubscribed = 1;
-                    WARNING_LOG("More processes than NUMA nodes");
+                    WARNING_LOG("More processes (%d) than NUMA nodes (%d)",numaNode,nnumanodes);
                     break;
                 }
             }
         }
-    } 
+    }
+
 
     if (oversubscribed) {
         mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
