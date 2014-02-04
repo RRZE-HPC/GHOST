@@ -41,7 +41,7 @@ set (SOURCES
 		src/sell.c 
 		src/sell.cpp
 		src/spmvm_nompi.c 
-		src/tasking.c 
+		src/task.c 
         src/timing.c
         src/types.c
 		src/util.c 
