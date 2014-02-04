@@ -1089,10 +1089,10 @@ void ghost_finish()
 
     ghost_taskq_finish();
     ghost_thpool_finish();
-    hwloc_topology_destroy(topology);
+    //hwloc_topology_destroy(topology);
 
-    free(ghost_rand_states);
-    ghost_rand_states=NULL;
+    //free(ghost_rand_states);
+    //ghost_rand_states=NULL;
 
 #if GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
