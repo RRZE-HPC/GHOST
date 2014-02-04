@@ -88,43 +88,72 @@ void ghost_pinThreads(int options, char *procList)
     }
 }
 
-void ghost_setCore(int coreNumber)
+ghost_error_t ghost_setCore(int coreNumber)
 {
-    DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
+    IF_DEBUG(2) {
+        int core;
+        GHOST_CALL_RETURN(ghost_getCore(&core));
+        DEBUG_LOG(2,"Pinning OpenMP thread %d to core %d",ghost_ompGetThreadNum(),core);
+    }
     hwloc_topology_t topology;
     ghost_getTopology(&topology);
     
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
+    if (!cpuset) {
+        ERROR_LOG("Could not allocate bitmap");
+        return GHOST_ERR_HWLOC;
+    }
+
     hwloc_bitmap_set(cpuset,coreNumber);
-    if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD)) {
-        WARNING_LOG("CPU binding failed: %s",strerror(errno));
+    if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD) == -1) {
+        ERROR_LOG("Pinning failed: %s",strerror(errno));
+        hwloc_bitmap_free(cpuset);
+        return GHOST_ERR_HWLOC;
     }
     hwloc_bitmap_free(cpuset);
 
+    return GHOST_SUCCESS;
 }
 
-void ghost_unsetCore()
+ghost_error_t ghost_unsetCore()
 {
-    DEBUG_LOG(2,"Unpinning thread %d from core %d",ghost_ompGetThreadNum(),ghost_getCore());
+    IF_DEBUG(2) {
+        int core;
+        GHOST_CALL_RETURN(ghost_getCore(&core));
+        DEBUG_LOG(2,"Unpinning OpenMP thread %d from core %d",ghost_ompGetThreadNum(),core);
+    }
     hwloc_topology_t topology;
     ghost_getTopology(&topology);
-    
-    hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
-    hwloc_bitmap_set_range(cpuset,0,hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU));
+   
+    hwloc_const_cpuset_t cpuset = hwloc_topology_get_allowed_cpuset(topology);
+    if (!cpuset) {
+        ERROR_LOG("Can not get allowed CPU set of entire topology");
+        return GHOST_ERR_HWLOC;
+    }
+
     hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
-    hwloc_bitmap_free(cpuset);
+
+    return GHOST_SUCCESS;
 }
 
-int ghost_getCore()
+ghost_error_t ghost_getCore(int *core)
 {
     hwloc_topology_t topology;
     ghost_getTopology(&topology);
     
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
-    int pu = hwloc_bitmap_first(cpuset);
+
+    if (hwloc_bitmap_weight(cpuset) == 0) {
+        ERROR_LOG("No CPU is set");
+        hwloc_bitmap_free(cpuset);
+        return GHOST_ERR_HWLOC;
+    }
+
+    *core = hwloc_bitmap_first(cpuset);
     hwloc_bitmap_free(cpuset);
-    return pu;
+    
+    return GHOST_SUCCESS;
 }
 
 int ghost_getRank(ghost_mpi_comm_t comm) 

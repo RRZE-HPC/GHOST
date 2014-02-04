@@ -31,9 +31,9 @@ ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
 int ghost_getRank(ghost_mpi_comm_t);
 int ghost_getNumberOfNodes();
 int ghost_getNumberOfRanks(ghost_mpi_comm_t);
-int ghost_getCore();
-void ghost_setCore(int core);
-void ghost_unsetCore();
+ghost_error_t ghost_getCore(int *core);
+ghost_error_t ghost_setCore(int core);
+ghost_error_t ghost_unsetCore();
 void ghost_pinThreads(int options, char *procList);
 #ifdef __cplusplus
 }

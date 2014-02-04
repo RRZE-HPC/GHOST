@@ -564,8 +564,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             *(myTask->state) = GHOST_TASK_RUNNING;    
             pthread_mutex_unlock(myTask->mutex);
 
-
-            DEBUG_LOG(1,"Thread %d: Finally executing task at core %d: %p",(int)pthread_self(),ghost_getCore(),myTask);
+            DEBUG_LOG(1,"Thread %d: Finally executing task %p",(int)pthread_self(),myTask);
 
             pthread_setspecific(ghost_thread_key,myTask);
 
@@ -805,7 +804,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
      */
     ghost_error_t ghost_task_wait(ghost_task_t * task)
     {
-        DEBUG_LOG(1,"Waiting @core %d for task %p whose state is %d",ghost_getCore(),task,*(task->state));
+        DEBUG_LOG(1,"Waiting for task %p whose state is %d",task,*(task->state));
 
 
         //    ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
