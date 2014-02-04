@@ -217,28 +217,6 @@ int name = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_COMPLEX; \
 
 #define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
-#if GHOST_HAVE_INSTR_TIMING
-
-#define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
-#define GHOST_INSTR_STOP(tag) LOG(TIMING,ANSI_COLOR_BLUE, "%s: %e secs" ANSI_COLOR_RESET,\
-#tag,ghost_wctime()-__start_##tag);
-
-#elif GHOST_HAVE_INSTR_LIKWID
-
-#include <likwid.h>
-#define GHOST_INSTR_START(tag) {\
-_Pragma("omp parallel")\
-    LIKWID_MARKER_START(#tag);}
-#define GHOST_INSTR_STOP(tag) {\
-_Pragma("omp parallel")\
-    LIKWID_MARKER_STOP(#tag);}
-
-#else
-
-#define GHOST_INSTR_START(tag)
-#define GHOST_INSTR_STOP(tag)
-
-#endif
 
 #define GHOST_TIME(_niter,_func,...)\
     double _func ## _start, _func ## _end, _func ## _tstart;\

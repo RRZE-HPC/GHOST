@@ -4,6 +4,7 @@
 #include "ghost/vec.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
+#include "ghost/instr.h"
 
 #include <mpi.h>
 #include <sys/types.h>

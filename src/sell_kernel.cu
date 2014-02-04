@@ -5,6 +5,7 @@
 #include "ghost/complex.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
+#include "ghost/instr.h"
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>

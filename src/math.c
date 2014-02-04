@@ -6,6 +6,7 @@
 #include "ghost/vec.h"
 #include "ghost/affinity.h"
 #include "ghost/blas_mangle.h"
+#include "ghost/instr.h"
 #include <strings.h>
 #include <math.h>
 #include <complex.h>

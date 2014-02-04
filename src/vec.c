@@ -6,6 +6,7 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/context.h"
+#include "ghost/instr.h"
 
 #include <stdio.h>
 #include <string.h>
