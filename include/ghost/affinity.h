@@ -29,9 +29,6 @@ extern "C" {
 ghost_error_t ghost_setHwConfig(ghost_hw_config_t);
 ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
 int ghost_getRank(ghost_mpi_comm_t);
-//int ghost_getLocalRank(MPI_Comm);
-//int ghost_getNumberOfLocalRanks(MPI_Comm);
-int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
 int ghost_getNumberOfRanks(ghost_mpi_comm_t);
 int ghost_getCore();

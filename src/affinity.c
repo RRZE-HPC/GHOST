@@ -139,17 +139,6 @@ int ghost_getRank(ghost_mpi_comm_t comm)
 #endif
 }
 
-
-int ghost_getNumberOfThreads() 
-{
-    int nthreads;
-#pragma omp parallel
-    nthreads = ghost_ompGetNumThreads();
-
-    return nthreads;
-}
-
-
 int ghost_getNumberOfNodes() 
 {
 #ifndef GHOST_HAVE_MPI
