@@ -2,7 +2,6 @@
 #define GHOST_TASK_H
 
 #include <pthread.h>
-#include <semaphore.h>
 #include <hwloc.h>
 #include "error.h"
 
@@ -136,47 +135,9 @@ typedef struct ghost_taskq_t {
     pthread_mutex_t mutex;
 } ghost_taskq_t;
 
-/**
- * @brief The thread pool consisting of all threads that will ever do some
- * tasking-related work.
- */
-typedef struct ghost_thpool_t {
-    /**
-     * @brief The pthread of each GHOST thread.
-     */
-    pthread_t *threads;
-    /**
-     * @brief The PU (Processing Unit) of each GHOST thread.
-     */
-    hwloc_obj_t *PUs;
-    /**
-     * @brief The cpuset this thread pool is covering. 
-     */
-    hwloc_bitmap_t cpuset;
-    /**
-     * @brief A bitmap with one bit per PU where 1 means that a PU is busy and 0 means that it is
-     * idle.
-     */
-       hwloc_bitmap_t busy;
-    /**
-     * @brief The total number of threads in the thread pool
-     */
-    int nThreads;
-    /**
-     * @brief The number of LDs covered by the pool's threads.
-     */
-    int nLDs;
-    /**
-     * @brief Counts the number of readily  
-     */
-    sem_t *sem; // counts the number of initialized threads
-} ghost_thpool_t;
 
-//int ghost_thpool_init(int *nThreads, int *firstThread, int levels);
-ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset);
 ghost_error_t ghost_taskq_init();
 ghost_error_t ghost_taskq_finish();
-ghost_error_t ghost_thpool_finish();
 
 ghost_error_t ghost_task_init(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
 ghost_error_t ghost_task_add(ghost_task_t *);
@@ -187,10 +148,11 @@ ghost_task_state_t ghost_task_test(ghost_task_t *);
 ghost_error_t ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
 ghost_error_t ghost_task_print(ghost_task_t *t);
 ghost_error_t ghost_taskq_print_all(); 
+ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *));
 
 char *ghost_task_strstate(ghost_task_state_t state);
 
-extern ghost_thpool_t *ghost_thpool; // the thread pool
+//extern ghost_thpool_t *ghost_thpool; // the thread pool
 extern pthread_key_t ghost_thread_key;
 
 

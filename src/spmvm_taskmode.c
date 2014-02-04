@@ -3,6 +3,7 @@
 #include "ghost/affinity.h"
 #include "ghost/vec.h"
 #include "ghost/task.h"
+#include "ghost/thpool.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/instr.h"
@@ -180,8 +181,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
 
     } else {
         DEBUG_LOG(1,"No parent task in task mode spMVM solver");
-        ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_init(&commTask, 1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
+        ghost_task_init(&compTask, nIdleCores()-1, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags);
     }
 
 

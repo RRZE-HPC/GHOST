@@ -1,9 +1,3 @@
-//#include "ghost/config.h"
-//#include "ghost/types.h"
-//#include "ghost/constants.h"
-
-//#include <stddef.h>
-
 #include <hwloc.h>
 
 #include "ghost/core.h"
@@ -13,6 +7,7 @@
 #include "ghost/machine.h"
 #include "ghost/affinity.h"
 #include "ghost/task.h"
+#include "ghost/thpool.h"
 #include "ghost/timing.h"
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
@@ -323,7 +318,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     char *cpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
-    ghost_thpool_init(mycpuset);
+    void *(*threadFunc)(void *);
+    ghost_getTaskqueueFunction(&threadFunc);
+    ghost_thpool_init(mycpuset,threadFunc);
 
     ghost_rand_init();
 

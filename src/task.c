@@ -1,5 +1,5 @@
 /**
- * @file ghost_taskq.c
+ * @file task.c
  * @author Moritz Kreutzer (moritz.kreutzer@fau.de)
  * @date August 2013
  *
@@ -15,11 +15,11 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define NIDLECORES (ghost_thpool->nThreads-hwloc_bitmap_weight(ghost_thpool->busy))
 
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/task.h"
+#include "ghost/thpool.h"
 #include "ghost/util.h"
 #include "ghost/machine.h"
 #include "ghost/log.h"
@@ -36,10 +36,6 @@ extern int ghost_cu_device;
  */
 static ghost_taskq_t *taskq = NULL;
 
-/**
- * @brief The thread pool created by ghost_thpool_init(). This variable is exported in ghost_taskq.h
- */
-ghost_thpool_t *ghost_thpool = NULL;
 
 /**
  * @brief Holds the total number of tasks in all queues. 
@@ -78,15 +74,9 @@ static pthread_mutex_t anyTaskFinishedMutex;
  */
 pthread_key_t ghost_thread_key = 0;
 
-static int** coreidx;
 
-//static void * thread_main(void *arg);
 static void * thread_main(void *arg);
 static int ghost_task_unpin(ghost_task_t *task);
-static int nIdleCoresAtLD(hwloc_bitmap_t, int);
-static int nBusyCoresAtLD(hwloc_bitmap_t, int);
-static int nThreadsPerLD(int ld);
-static int firstThreadOfLD(int ld);
 
 /**
  * @brief Compare two integers
@@ -96,194 +86,7 @@ static int firstThreadOfLD(int ld);
  *
  * @return 
  */
-static int intcomp(const void *x, const void *y) 
-{
-    return (*(int *)x - *(int *)y);
-}
 
-/**
- * @brief Initializes a thread pool with a given number of threads.
- * @param nThreads
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
- * 
- * A number of pthreads will be created and each one will have thread_main() as start routine.
- * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
- * performed before this function returns.
- */
-ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
-{
-    static int initialized = 0;
-    int t,q,i;
-    int totalThreads;
-    hwloc_obj_t obj;
-
-    if (initialized) {
-        WARNING_LOG("The thread pool has already been initialized.");
-        return GHOST_ERR_UNKNOWN;
-    }
-    if (!cpuset) {
-        WARNING_LOG("The thread pool's cpuset is NULL.");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    initialized=1;
-
-    totalThreads = hwloc_bitmap_weight(cpuset);
-
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->PUs,totalThreads*sizeof(hwloc_obj_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->sem,sizeof(sem_t)));
-    ghost_thpool->nThreads = totalThreads;
-    sem_init(ghost_thpool->sem, 0, 0);
-    sem_init(&taskSem, 0, 0);
-    pthread_cond_init(&newTaskCond,NULL);
-    pthread_mutex_init(&newTaskMutex,NULL);
-    pthread_mutex_init(&globalMutex,NULL);
-
-    pthread_key_create(&ghost_thread_key,NULL);
-
-    ghost_thpool->cpuset = hwloc_bitmap_alloc();
-    hwloc_bitmap_copy(ghost_thpool->cpuset,cpuset);
-    ghost_thpool->busy = hwloc_bitmap_alloc();
-
-    hwloc_obj_t runner;
-
-    hwloc_topology_t topology;
-    ghost_getTopology(&topology);
-
-    int npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,ghost_thpool->cpuset,HWLOC_OBJ_PU);
-
-    for (i=0; i<npus; i++) {
-        ghost_thpool->PUs[i] = hwloc_get_obj_inside_cpuset_by_type(topology,ghost_thpool->cpuset,HWLOC_OBJ_PU,i);
-    }
-
-    int nodes[totalThreads];
-    for (i=0; i<totalThreads; i++) {
-        nodes[i] = 0;
-        obj = ghost_thpool->PUs[i];
-        for (runner=obj; runner; runner=runner->parent) {
-            if (!hwloc_compare_types(runner->type,HWLOC_OBJ_NODE)) {
-                nodes[i] = runner->logical_index;
-                break;
-            }
-        }
-        //INFO_LOG("Thread # %3d running @ PU %3u (OS: %3u), SMT level %2d, NUMA node %u",i,obj->logical_index,obj->os_index,obj->sibling_rank,nodes[i]);
-    }
-
-    qsort(nodes,totalThreads,sizeof(int),intcomp);
-    ghost_thpool->nLDs = 1;
-
-    for (i=1; i<totalThreads; i++) {
-        if (nodes[i] != nodes[i-1]) {
-            ghost_thpool->nLDs++;
-        }
-    }
-
-    // holds core indices sorted for each locality domain
-    GHOST_CALL_RETURN(ghost_malloc((void **)&coreidx,sizeof(int *)*ghost_thpool->nLDs));
-
-    // TODO error goto
-    int li;
-    // sort the cores according to the locality domain
-    for (q=0; q<ghost_thpool->nLDs; q++) {
-        int localthreads = nThreadsPerLD(q);
-        GHOST_CALL_RETURN(ghost_malloc((void **)&coreidx[q],sizeof(int)*ghost_thpool->nThreads));
-
-        for (t=0; t<localthreads; t++) { // my own threads
-            coreidx[q][t] = firstThreadOfLD(q)+t;
-            //WARNING_LOG("1 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
-        }
-        for (li=0; t-localthreads<firstThreadOfLD(q); t++, li++) { // earlier LDs
-            coreidx[q][t] = li;
-            //WARNING_LOG("2 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
-        }    
-        for (; t<ghost_thpool->nThreads; t++) { // later LDs
-            coreidx[q][t] = t;
-            //WARNING_LOG("3 coreidx[%d][%d] = %d",q,t,coreidx[q][t]);
-        }    
-    }
-
-    //    WARNING_LOG("Creating %d threads for the thread pool",ghost_thpool->nThreads);
-    for (t=0; t<ghost_thpool->nThreads; t++){
-        pthread_create(&(ghost_thpool->threads[t]), NULL, thread_main, (void *)(intptr_t)t);
-    }
-    for (t=0; t<ghost_thpool->nThreads; t++){
-        sem_wait(ghost_thpool->sem);
-    }
-    DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
-
-    return GHOST_SUCCESS;
-}
-
-static int nThreadsPerLD(int ld)
-{
-    int i,n = 0;
-    hwloc_obj_t obj,runner;
-    for (i=0; i<ghost_thpool->nThreads; i++) {    
-        obj = ghost_thpool->PUs[i];
-        for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_NODE) {
-                if ((int)runner->logical_index == ld) {
-                    n++;
-                }
-                break;
-            }
-        }
-    }
-
-    return n;
-}
-
-static int nIdleCoresAtLD(hwloc_bitmap_t bm, int ld)
-{
-    int begin = firstThreadOfLD(ld), end = begin+nThreadsPerLD(ld);
-    hwloc_bitmap_t LDBM = hwloc_bitmap_alloc();
-
-    hwloc_bitmap_set_range(LDBM,begin,end-1);
-    hwloc_bitmap_t idle = hwloc_bitmap_alloc();
-    hwloc_bitmap_andnot(idle,LDBM,bm);
-
-    int w = hwloc_bitmap_weight(idle);
-
-    hwloc_bitmap_free(LDBM);
-    hwloc_bitmap_free(idle);
-    return w;
-}
-
-static int nBusyCoresAtLD(hwloc_bitmap_t bm, int ld)
-{
-    int begin = firstThreadOfLD(ld), end = begin+nThreadsPerLD(ld);
-    hwloc_bitmap_t LDBM = hwloc_bitmap_alloc();
-
-    hwloc_bitmap_set_range(LDBM,begin,end-1);
-    hwloc_bitmap_t busy = hwloc_bitmap_alloc();
-    hwloc_bitmap_and(busy,LDBM,bm);
-
-    int w = hwloc_bitmap_weight(busy);
-
-    hwloc_bitmap_free(LDBM);
-    hwloc_bitmap_free(busy);
-    return w;
-}
-
-static int firstThreadOfLD(int ld)
-{
-    int i;
-    hwloc_obj_t obj,runner;
-
-    for (i=0; i<ghost_thpool->nThreads; i++) {    
-        obj = ghost_thpool->PUs[i];
-        for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_NODE) {
-                if ((int)runner->logical_index == ld) {
-                    return i;
-                }
-            }
-        }
-    }
-
-    return -1;
-}
 
 
 /**
@@ -298,6 +101,11 @@ ghost_error_t ghost_taskq_init()
     taskq->head = NULL;
     pthread_mutex_init(&(taskq->mutex),NULL);
 
+    pthread_key_create(&ghost_thread_key,NULL);
+    pthread_cond_init(&newTaskCond,NULL);
+    pthread_mutex_init(&newTaskMutex,NULL);
+    pthread_mutex_init(&globalMutex,NULL);
+    sem_init(&taskSem, 0, 0);
     pthread_cond_init(&anyTaskFinishedCond,NULL);
     pthread_mutex_init(&anyTaskFinishedMutex,NULL);
     return GHOST_SUCCESS;
@@ -359,6 +167,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         return NULL;
     }
 
+    ghost_thpool_t *ghost_thpool = NULL;
+    ghost_getThreadpool(&ghost_thpool);
 
     ghost_task_t *curTask = q->head;
 
@@ -373,9 +183,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         int availcores = 0;
         if (curTask->flags & GHOST_TASK_LD_STRICT) {
-            availcores = nIdleCoresAtLD(ghost_thpool->busy,curTask->LD);
+            availcores = nIdleCoresAtLD(curTask->LD);
         } else {
-            availcores = NIDLECORES;
+            availcores = nIdleCores();
         }
         hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); // TODO free
         if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
@@ -411,7 +221,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                   continue;
                   }*/
 
-        DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),(void *)curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(ghost_thpool->busy,curTask->LD),NIDLECORES);
+        DEBUG_LOG(1,"Thread %d: Found a suiting task: %p! task->nThreads=%d, nIdleCores[LD%d]=%d, nIdleCores=%d",(int)pthread_self(),(void *)curTask,curTask->nThreads,curTask->LD,nIdleCoresAtLD(curTask->LD),nIdleCores());
 
         DEBUG_LOG(1,"Deleting task itself");
         taskq_deleteTask(q,curTask);    
@@ -445,7 +255,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             for (curThread=0; curThread<curTask->nThreads; curThread++) {
 #pragma omp ordered
                 for (; t<ghost_thpool->nThreads; t++) {
-                    int core = coreidx[curTask->LD][t];
+                    int core = coreIdx(curTask->LD,t);
                     if ((curTask->flags & GHOST_TASK_ONLY_HYPERTHREADS) && 
                             (ghost_thpool->PUs[core]->sibling_rank == 0)) {
                         //    WARNING_LOG("only HT");
@@ -504,6 +314,12 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
     }
 
+ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *))
+{
+    *func =  &thread_main;
+    return GHOST_SUCCESS;
+}
+
     /**
      * @brief The main routine of each thread in the thread pool.
      *
@@ -511,7 +327,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
      *
      * @return NULL 
      */
-    void * thread_main(void *arg)
+    static void * thread_main(void *arg)
     {
 #if GHOST_HAVE_CUDA
         ghost_cu_init(ghost_cu_device);
@@ -521,6 +337,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         //    UNUSED(arg);
         ghost_task_t *myTask;
 
+        ghost_thpool_t *ghost_thpool = NULL;
+        ghost_getThreadpool(&ghost_thpool);
         sem_post(ghost_thpool->sem);
 
         DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %"PRIdPTR,(unsigned long)pthread_self(), (intptr_t)arg);
@@ -616,6 +434,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
     static int ghost_task_unpin(ghost_task_t *task)
     {
+        ghost_thpool_t *ghost_thpool = NULL;
+        ghost_getThreadpool(&ghost_thpool);
         if (!(task->flags & GHOST_TASK_NO_PIN)) {
             for (int t=0; t<task->nThreads; t++) {
                 if ((task->flags & GHOST_TASK_USE_PARENTS) && 
@@ -778,15 +598,6 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             WARNING_LOG("Error in sem_post: %s",strerror(errno));
             return GHOST_ERR_UNKNOWN;
         }
-        DEBUG_LOG(1,"Join all threads");
-          int t; 
-          for (t=0; t<ghost_thpool->nThreads; t++)
-          {         
-          if (pthread_join(ghost_thpool->threads[t],NULL)){
-              ERROR_LOG("pthread_join failed: %s",strerror(errno));
-          return GHOST_ERR_UNKNOWN;
-          }
-          }
 
         DEBUG_LOG(1,"Free task queues");    
         free(taskq);
@@ -995,8 +806,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
     ghost_error_t ghost_task_init(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
     {
         GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
-        if (ghost_thpool == NULL) {
-            WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");
+      /*  if (ghost_thpool == NULL) {
+            WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");*/
             /*        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
                       int ft = ghost_getRank(ghost_node_comm)*nt;
                       int poolThreads[] = {nt,nt};
@@ -1004,7 +815,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                       int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
             //DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nt*levels);
             //ghost_thpool_init(poolThreads,firstThread,levels);*/
-        }
+//        }
         if (taskq == NULL) {
             DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now...");
             ghost_taskq_init();
@@ -1049,22 +860,3 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         return GHOST_SUCCESS;
     }
 
-    /**
-     * @brief Free all resources of the thread pool
-     *
-     * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
-     */
-    ghost_error_t ghost_thpool_finish()
-    {
-        if (ghost_thpool == NULL)
-            return GHOST_SUCCESS;
-
-        free(ghost_thpool->threads); ghost_thpool->threads = NULL;
-        free(ghost_thpool->sem); ghost_thpool->sem = NULL;
-        free(ghost_thpool->PUs); ghost_thpool->PUs = NULL;
-        hwloc_bitmap_free(ghost_thpool->cpuset); ghost_thpool->cpuset = NULL;
-        hwloc_bitmap_free(ghost_thpool->busy); ghost_thpool->busy = NULL;
-        free(ghost_thpool); ghost_thpool = NULL;
-
-        return GHOST_SUCCESS;
-    }

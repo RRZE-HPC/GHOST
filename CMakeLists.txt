@@ -41,7 +41,8 @@ set (SOURCES
 		src/sell.c 
 		src/sell.cpp
 		src/spmvm_nompi.c 
-		src/task.c 
+		src/task.c
+        src/thpool.c
         src/timing.c
         src/types.c
 		src/util.c 
@@ -64,6 +65,7 @@ set (HEADERS
 		include/ghost/math.h
 		include/ghost/sell.h
 		include/ghost/task.h
+        include/ghost/thpool.h
         include/ghost/timing.h
 		include/ghost/types.h
 		include/ghost/util.h
