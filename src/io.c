@@ -235,7 +235,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
             }
 
         } else {
-            ghost_castArray_funcs[ghost_dataTypeIdx(datatype)][ghost_dataTypeIdx(header.datatype)](val,tmpval,nEnts);
+            ghost_castArray_funcs[ghost_datatypeIdx(datatype)][ghost_datatypeIdx(header.datatype)](val,tmpval,nEnts);
         }
 
         free(tmpval);

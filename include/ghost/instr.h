@@ -1,3 +1,8 @@
+/**
+ * @file instr.h
+ * @brief Macros used for code instrumentation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_INSTR_H
 #define GHOST_INSTR_H
 

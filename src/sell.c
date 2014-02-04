@@ -1167,12 +1167,12 @@ out:
 
 static const char * SELL_stringify(ghost_mat_t *mat, int dense)
 {
-    return SELL_stringify_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat, dense);
+    return SELL_stringify_funcs[ghost_datatypeIdx(mat->traits->datatype)](mat, dense);
 }
 
 static ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 {
-    return SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
+    return SELL_fromCRS_funcs[ghost_datatypeIdx(mat->traits->datatype)](mat,crs);
 }
 
 static ghost_error_t SELL_upload(ghost_mat_t* mat) 
@@ -1269,19 +1269,19 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
                 (options & GHOST_SPMVM_APPLY_SCALE) ||
                 (options & GHOST_SPMVM_APPLY_SHIFT))) {
         kernel = SELL_kernels_SSE
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
+            [ghost_datatypeIdx(mat->traits->datatype)]
+            [ghost_datatypeIdx(lhs->traits->datatype)];
     }
 #endif
 #elif GHOST_HAVE_AVX
     if (SELL(mat)->chunkHeight == 4) {
         kernel = SELL_kernels_AVX
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
+            [ghost_datatypeIdx(mat->traits->datatype)]
+            [ghost_datatypeIdx(lhs->traits->datatype)];
     } else if (SELL(mat)->chunkHeight == 32) {
         kernel = SELL_kernels_AVX_32
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
+            [ghost_datatypeIdx(mat->traits->datatype)]
+            [ghost_datatypeIdx(lhs->traits->datatype)];
     }
 #elif GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
@@ -1290,26 +1290,26 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
                 (options & GHOST_SPMVM_APPLY_SHIFT))) {
         if (SELL(mat)->chunkHeight == 16) {
             kernel = SELL_kernels_MIC_16
-                [ghost_dataTypeIdx(mat->traits->datatype)]
-                [ghost_dataTypeIdx(lhs->traits->datatype)];
+                [ghost_datatypeIdx(mat->traits->datatype)]
+                [ghost_datatypeIdx(lhs->traits->datatype)];
         } else if (SELL(mat)->chunkHeight == 32) {
             kernel = SELL_kernels_MIC_32
-                [ghost_dataTypeIdx(mat->traits->datatype)]
-                [ghost_dataTypeIdx(lhs->traits->datatype)];
+                [ghost_datatypeIdx(mat->traits->datatype)]
+                [ghost_datatypeIdx(lhs->traits->datatype)];
         }
     }
 #endif
 #else
     kernel = SELL_kernels_plain
-        [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)];
+        [ghost_datatypeIdx(mat->traits->datatype)]
+        [ghost_datatypeIdx(lhs->traits->datatype)];
 #endif
 
     if (kernel == NULL) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
-            [ghost_dataTypeIdx(mat->traits->datatype)]
-            [ghost_dataTypeIdx(lhs->traits->datatype)];
+            [ghost_datatypeIdx(mat->traits->datatype)]
+            [ghost_datatypeIdx(lhs->traits->datatype)];
     }
 
     return kernel(mat,lhs,rhs,options);
@@ -1325,8 +1325,8 @@ static ghost_error_t SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_
     DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
     return SELL_kernels_CU
-        [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,flags);
+        [ghost_datatypeIdx(mat->traits->datatype)]
+        [ghost_datatypeIdx(lhs->traits->datatype)](mat,lhs,rhs,flags);
 
 
 }

@@ -119,3 +119,18 @@ char * ghost_datatypeString(int datatype)
 
     return "invalid";
 }
+
+int ghost_dataTypeIdx(int datatype)
+{
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX)
+            return GHOST_DT_C_IDX;
+        else
+            return GHOST_DT_S_IDX;
+    } else {
+        if (datatype & GHOST_DT_COMPLEX)
+            return GHOST_DT_Z_IDX;
+        else
+            return GHOST_DT_D_IDX;
+    }
+}

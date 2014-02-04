@@ -411,20 +411,6 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
 }
 
 
-int ghost_dataTypeIdx(int datatype)
-{
-    if (datatype & GHOST_BINCRS_DT_FLOAT) {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
-            return GHOST_DT_C_IDX;
-        else
-            return GHOST_DT_S_IDX;
-    } else {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
-            return GHOST_DT_Z_IDX;
-        else
-            return GHOST_DT_D_IDX;
-    }
-}
 
 
 

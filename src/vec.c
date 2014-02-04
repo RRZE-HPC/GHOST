@@ -317,13 +317,13 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
 
 static ghost_error_t ghost_normalizeVector( ghost_vec_t *vec)
 {
-    ghost_normalizeVector_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    ghost_normalizeVector_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_print(ghost_vec_t *vec)
 {
-    return ghost_vec_print_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    return ghost_vec_print_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
 
 }
 
@@ -474,7 +474,7 @@ static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
 
-    GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,s),err,ret);
 
     goto out;
 err:
@@ -500,7 +500,7 @@ static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale,
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
         memcpy(&b[i*vec->traits->elSize],_b,vec->traits->elSize);
     }
-    GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s,b),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,s,b),err,ret);
 
     goto out;
 err:
@@ -515,7 +515,7 @@ out:
 static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
     GHOST_INSTR_START(vaxpy);
-    ghost_error_t ret = ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+    ghost_error_t ret = ghost_vec_vaxpy_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale);
     GHOST_INSTR_STOP(vaxpy);
     return ret;
 }
@@ -523,7 +523,7 @@ static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
 {
     GHOST_INSTR_START(vaxpby);
-    ghost_error_t ret = ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+    ghost_error_t ret = ghost_vec_vaxpby_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
     GHOST_INSTR_STOP(vaxpby);
     return ret;
 }
@@ -540,7 +540,7 @@ static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale)
     for (i=0; i<nc; i++) {
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
-    GHOST_CALL_GOTO(ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vscale_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,s),err,ret);
 
     goto out;
 err:
@@ -554,7 +554,7 @@ out:
 static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale)
 {
     GHOST_INSTR_START(vscale);
-    ghost_error_t ret = ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
+    ghost_error_t ret = ghost_vec_vscale_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,scale);
     GHOST_INSTR_STOP(vscale);
 
     return ret;
@@ -563,7 +563,7 @@ static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale)
 static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot);
-    ghost_error_t ret = ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+    ghost_error_t ret = ghost_vec_dotprod_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,res);
     GHOST_INSTR_STOP(dot);
 
     return ret;
@@ -587,7 +587,7 @@ static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c
 
 static ghost_error_t vec_fromRand(ghost_vec_t *vec)
 {
-    return ghost_vec_fromRand_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    return ghost_vec_fromRand_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
 }
 
 static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)

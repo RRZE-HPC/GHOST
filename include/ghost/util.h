@@ -67,7 +67,6 @@ extern "C" {
     ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
 
     int ghost_symmetryValid(int symmetry);
-    int ghost_dataTypeIdx(int datatype);
 
 
     /**
@@ -79,6 +78,15 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_malloc(void **mem, const size_t size);
+    /**
+     * @brief Allocate aligned memory.
+     *
+     * @param mem Where to store the allocated memory.
+     * @param size The size (in bytes) to allocate.
+     * @param align The alignment size.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
     
     void ghost_ompSetNumThreads(int nthreads);

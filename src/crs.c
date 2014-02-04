@@ -225,7 +225,7 @@ out:
 
 static const char * CRS_stringify(ghost_mat_t *mat, int dense)
 {
-    return CRS_stringify_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat, dense);
+    return CRS_stringify_funcs[ghost_datatypeIdx(mat->traits->datatype)](mat, dense);
 }
 
 static void CRS_printInfo(ghost_mat_t *mat)
@@ -1015,6 +1015,6 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
     //}
 
 
-    return CRS_kernels_plain[ghost_dataTypeIdx(mat->traits->datatype)][ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
+    return CRS_kernels_plain[ghost_datatypeIdx(mat->traits->datatype)][ghost_datatypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
     }
 
