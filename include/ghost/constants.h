@@ -1,5 +1,5 @@
-#ifndef __GHOST_CONSTANTS_H__
-#define __GHOST_CONSTANTS_H__
+#ifndef GHOST_CONSTANTS_H
+#define GHOST_CONSTANTS_H
 
 /******************************************************************************/
 /*----  SpMVM modes  ---------------------------------------------------------*/

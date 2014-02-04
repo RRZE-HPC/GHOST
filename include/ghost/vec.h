@@ -1,5 +1,5 @@
-#ifndef __GHOST_VEC_H__
-#define __GHOST_VEC_H__
+#ifndef GHOST_VEC_H
+#define GHOST_VEC_H
 
 #include "config.h"
 #include "types.h"

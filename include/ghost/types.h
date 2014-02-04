@@ -1,5 +1,5 @@
-#ifndef __GHOST_TYPES_H__
-#define __GHOST_TYPES_H__
+#ifndef GHOST_TYPES_H
+#define GHOST_TYPES_H
 
 #ifdef GHOST_HAVE_MPI
 #ifdef __INTEL_COMPILER

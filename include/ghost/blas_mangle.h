@@ -1,3 +1,6 @@
+#ifndef GHOST_BLAS_MANGLE_H
+#define GHOST_BLAS_MANGLE_H
+
 // This file is used to define how blas routines
 // are "de-mangled", i.e. how they are called in C.
 // This is machine dependent and should be fixed in
@@ -109,4 +112,6 @@
 #define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(dgemm,DGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#endif
+
 #endif

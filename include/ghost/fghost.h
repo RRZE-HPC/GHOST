@@ -1,5 +1,5 @@
-#ifndef __FGHOST_H__
-#define __FGHOST_H__
+#ifndef FGHOST_H
+#define FGHOST_H
 
 /* file fghost.h. This file declares macros only, 
    it should be included at the top of a Fortran  

@@ -1,5 +1,5 @@
-#ifndef __GHOST_SPMFORMAT_CRS__
-#define __GHOST_SPMFORMAT_CRS__
+#ifndef GHOST_CRS_H
+#define GHOST_CRS_H
 
 #include "config.h"
 #include "types.h"

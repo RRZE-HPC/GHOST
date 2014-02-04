@@ -1,5 +1,5 @@
-#ifndef __GHOST_TASKQ_H__
-#define __GHOST_TASKQ_H__
+#ifndef GHOST_TASK_H
+#define GHOST_TASK_H
 
 #include <pthread.h>
 #include <semaphore.h>

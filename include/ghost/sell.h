@@ -1,6 +1,5 @@
-
-#ifndef __GHOST_SPMFORMAT_SELL__
-#define __GHOST_SPMFORMAT_SELL__
+#ifndef GHOST_SELL_H
+#define GHOST_SELL_H
 
 #include "config.h"
 #include "types.h"

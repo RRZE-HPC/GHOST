@@ -1,8 +1,8 @@
 /**
  * @file ghost_context.h
  */
-#ifndef __GHOST_CONTEXT_H__
-#define __GHOST_CONTEXT_H__
+#ifndef GHOST_CONTEXT_H
+#define GHOST_CONTEXT_H
 
 #include "config.h"
 #include "types.h"

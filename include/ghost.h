@@ -1,12 +1,12 @@
-#ifndef __GHOST_H__
-#define __GHOST_H__
+#ifndef GHOST_H
+#define GHOST_H
 
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/constants.h"
-#include "ghost/taskq.h"
+#include "ghost/task.h"
 #include "ghost/vec.h"
 #include "ghost/math.h"
 #include "ghost/mat.h"

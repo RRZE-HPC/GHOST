@@ -1,5 +1,5 @@
-#ifndef __GHOST_ERROR_H__
-#define __GHOST_ERROR_H__
+#ifndef GHOST_ERROR_H
+#define GHOST_ERROR_H
 
 #include "config.h"
 #include "types.h"

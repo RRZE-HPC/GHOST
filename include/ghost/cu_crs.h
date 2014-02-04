@@ -1,5 +1,5 @@
-#ifndef __GHOST_CU_CRS_H__
-#define __GHOST_CU_CRS_H__
+#ifndef GHOST_CU_CRS_H
+#define GHOST_CU_CRS_H
 
 #include "config.h"
 #include "types.h"

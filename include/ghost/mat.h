@@ -1,5 +1,5 @@
-#ifndef __GHOST_MAT_H__
-#define __GHOST_MAT_H__
+#ifndef GHOST_MAT_H
+#define GHOST_MAT_H
 
 #include "config.h"
 #include "types.h"

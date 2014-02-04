@@ -1,5 +1,5 @@
-#ifndef __GHOST_CONFIG_H__
-#define __GHOST_CONFIG_H__
+#ifndef GHOST_CONFIG_H
+#define GHOST_CONFIG_H
 #cmakedefine GHOST_HAVE_MPI 1
 #cmakedefine GHOST_HAVE_OPENMP 1
 #cmakedefine GHOST_HAVE_CUDA 1

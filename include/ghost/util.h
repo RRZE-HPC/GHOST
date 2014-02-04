@@ -1,5 +1,5 @@
-#ifndef __GHOST_UTIL_H__
-#define __GHOST_UTIL_H__
+#ifndef GHOST_UTIL_H
+#define GHOST_UTIL_H
 
 #include "config.h"
 #include "types.h"

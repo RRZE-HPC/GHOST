@@ -1,5 +1,5 @@
-#ifndef __GHOST_IO_H__
-#define __GHOST_IO_H__
+#ifndef GHOST_IO_H
+#define GHOST_IO_H
 
 #include "config.h"
 #include "types.h"

@@ -1,3 +1,5 @@
+#ifndef GHOST_CU_COMPLEX_H
+#define GHOST_CU_COMPLEX_H
 
 template<typename T>
 __device__ inline void zero(T &val)
@@ -197,3 +199,4 @@ __device__ inline cuDoubleComplex scale2<cuDoubleComplex,double>(cuDoubleComplex
 }
 
 
+#endif

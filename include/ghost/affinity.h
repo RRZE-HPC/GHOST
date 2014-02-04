@@ -1,5 +1,5 @@
-#ifndef __GHOST_AFFINITY_H__
-#define __GHOST_AFFINITY_H__
+#ifndef GHOST_AFFINITY_H
+#define GHOST_AFFINITY_H
 
 #include "config.h"
 #include "types.h"
