@@ -5,6 +5,8 @@
 
 #if GHOST_HAVE_INSTR_TIMING
 
+#include "log.h"
+
 #define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
 #define GHOST_INSTR_STOP(tag) LOG(TIMING,ANSI_COLOR_BLUE, "%s: %e secs" ANSI_COLOR_RESET,\
 #tag,ghost_wctime()-__start_##tag);

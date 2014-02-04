@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 500
 #include "ghost/io.h"
+#include "ghost/log.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include <errno.h>

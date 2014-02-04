@@ -7,6 +7,7 @@
 #include "ghost/affinity.h"
 #include "ghost/context.h"
 #include "ghost/instr.h"
+#include "ghost/log.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -21,6 +21,8 @@
 #include "ghost/affinity.h"
 #include "ghost/task.h"
 #include "ghost/util.h"
+#include "ghost/machine.h"
+#include "ghost/log.h"
 
 #if GHOST_HAVE_OPENMP
 #include <omp.h>
@@ -146,6 +148,9 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
 
     int cpu;
     hwloc_obj_t runner;
+
+    hwloc_topology_t topology;
+    ghost_getTopology(&topology);
 
     int npus = hwloc_get_nbobjs_inside_cpuset_by_type(topology,ghost_thpool->cpuset,HWLOC_OBJ_PU);
 

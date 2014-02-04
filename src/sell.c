@@ -6,6 +6,7 @@
 #include "ghost/constants.h"
 #include "ghost/context.h"
 #include "ghost/io.h"
+#include "ghost/log.h"
 
 #include <libgen.h>
 #include <string.h>

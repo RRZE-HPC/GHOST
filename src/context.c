@@ -6,6 +6,7 @@
 #include "ghost/affinity.h"
 #include "ghost/crs.h"
 #include "ghost/io.h"
+#include "ghost/log.h"
 
 
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 

@@ -4,6 +4,9 @@
 #include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/affinity.h"
+#include "ghost/log.h"
+#include "ghost/machine.h"
+#include "ghost/error.h"
 
 #include <string.h>
 #include <sys/mman.h>
@@ -52,6 +55,9 @@ void ghost_pinThreads(int options, char *procList)
     } else {
         DEBUG_LOG(1,"Trying to automatically pin threads");
 
+        hwloc_topology_t topology;
+        ghost_getTopology(&topology);
+
         int nranks = ghost_getNumberOfRanks(ghost_node_comm);
         int npus = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);
         int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
@@ -85,6 +91,9 @@ void ghost_pinThreads(int options, char *procList)
 void ghost_setCore(int coreNumber)
 {
     DEBUG_LOG(2,"Pinning thread %d to core %d",ghost_ompGetThreadNum(),coreNumber);
+    hwloc_topology_t topology;
+    ghost_getTopology(&topology);
+    
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_bitmap_set(cpuset,coreNumber);
     if (hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD)) {
@@ -97,6 +106,9 @@ void ghost_setCore(int coreNumber)
 void ghost_unsetCore()
 {
     DEBUG_LOG(2,"Unpinning thread %d from core %d",ghost_ompGetThreadNum(),ghost_getCore());
+    hwloc_topology_t topology;
+    ghost_getTopology(&topology);
+    
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_bitmap_set_range(cpuset,0,hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU));
     hwloc_set_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
@@ -105,6 +117,9 @@ void ghost_unsetCore()
 
 int ghost_getCore()
 {
+    hwloc_topology_t topology;
+    ghost_getTopology(&topology);
+    
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
     int pu = hwloc_bitmap_first(cpuset);
@@ -124,20 +139,6 @@ int ghost_getRank(ghost_mpi_comm_t comm)
 #endif
 }
 
-int ghost_getNumberOfPhysicalCores()
-{
-    return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);    
-}
-
-int ghost_getNumberOfHwThreads()
-{
-    return hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);    
-}
-
-int ghost_getSMTlevel()
-{
-    return ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-}
 
 int ghost_getNumberOfThreads() 
 {
@@ -148,11 +149,6 @@ int ghost_getNumberOfThreads()
     return nthreads;
 }
 
-int ghost_getNumberOfNumaNodes()
-{
-    int depth = hwloc_get_type_depth(topology,HWLOC_OBJ_NODE);
-    return hwloc_get_nbobjs_by_depth(topology,depth);
-}
 
 int ghost_getNumberOfNodes() 
 {

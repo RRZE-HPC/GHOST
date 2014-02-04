@@ -1,6 +1,8 @@
 #ifndef GHOST_TYPES_H
 #define GHOST_TYPES_H
 
+#include "error.h"
+
 #ifdef GHOST_HAVE_MPI
 #ifdef __INTEL_COMPILER
 #pragma warning (disable : 869)
@@ -53,16 +55,6 @@ typedef int ghost_blas_idx_t;
 
 #endif
 
-typedef enum {
-    GHOST_SUCCESS,
-    GHOST_ERR_INVALID_ARG,
-    GHOST_ERR_MPI,
-    GHOST_ERR_CUDA,
-    GHOST_ERR_UNKNOWN,
-    GHOST_ERR_INTERNAL,
-    GHOST_ERR_NOT_IMPLEMENTED,
-    GHOST_ERR_IO
-} ghost_error_t;
 
 typedef enum {
     GHOST_HYBRIDMODE_INVALID, 

@@ -1,8 +1,17 @@
 #ifndef GHOST_ERROR_H
 #define GHOST_ERROR_H
 
-#include "config.h"
-#include "types.h"
+typedef enum {
+    GHOST_SUCCESS,
+    GHOST_ERR_INVALID_ARG,
+    GHOST_ERR_MPI,
+    GHOST_ERR_CUDA,
+    GHOST_ERR_HWLOC,
+    GHOST_ERR_UNKNOWN,
+    GHOST_ERR_INTERNAL,
+    GHOST_ERR_NOT_IMPLEMENTED,
+    GHOST_ERR_IO
+} ghost_error_t;
 
 char * ghost_errorString(ghost_error_t e);
 

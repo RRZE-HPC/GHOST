@@ -13,6 +13,7 @@
 #include "ghost/math.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
+#include "ghost/log.h"
 
 
 

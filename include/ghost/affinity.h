@@ -19,7 +19,7 @@ typedef struct {
 extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
 
 
-extern hwloc_topology_t topology;
+//extern hwloc_topology_t topology;
 
 
 #ifdef __cplusplus
@@ -31,14 +31,10 @@ ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
 int ghost_getRank(ghost_mpi_comm_t);
 //int ghost_getLocalRank(MPI_Comm);
 //int ghost_getNumberOfLocalRanks(MPI_Comm);
-int ghost_getNumberOfHwThreads();
-int ghost_getNumberOfNumaNodes();
 int ghost_getNumberOfThreads();
 int ghost_getNumberOfNodes();
 int ghost_getNumberOfRanks(ghost_mpi_comm_t);
-int ghost_getNumberOfPhysicalCores();
 int ghost_getCore();
-int ghost_getSMTlevel();
 void ghost_setCore(int core);
 void ghost_unsetCore();
 void ghost_pinThreads(int options, char *procList);

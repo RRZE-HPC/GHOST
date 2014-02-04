@@ -6,6 +6,7 @@
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
+#include "ghost/log.h"
 
 #include <stdio.h>
 #include <string.h>

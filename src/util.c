@@ -9,7 +9,9 @@
 #include "ghost/task.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
+#include "ghost/machine.h"
 #include "ghost/io.h"
+#include "ghost/log.h"
 #include <libgen.h>
 #include <unistd.h>
 #include <byteswap.h>
@@ -51,7 +53,7 @@ int ghost_node_rank = -1;
 int ghost_node_comm = 0;
 int ghost_node_rank = 0;
 #endif
-hwloc_topology_t topology;
+//hwloc_topology_t topology;
 
 ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
@@ -209,7 +211,7 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
 void ghost_printContextInfo(ghost_context_t *context)
 {
-    int nranks = ghost_getNumberOfPhysicalCores(context->mpicomm);
+    int nranks = ghost_getNumberOfRanks(context->mpicomm);
     int myrank = ghost_getRank(context->mpicomm);
 
     if (myrank == 0) {
@@ -255,8 +257,10 @@ void ghost_printSysInfo()
     if (ghost_getRank(MPI_COMM_WORLD) == 0) {
 
         int nthreads;
-        int nphyscores = ghost_getNumberOfPhysicalCores();
-        int ncores = ghost_getNumberOfHwThreads();
+        int nphyscores;
+        int ncores;
+        ghost_getNumberOfPhysicalCores(&nphyscores);
+        ghost_getNumberOfHwThreads(&ncores);
 
 #ifdef GHOST_HAVE_OPENMP
         char omp_sched_str[32];
@@ -287,6 +291,11 @@ void ghost_printSysInfo()
 #pragma omp master
         nthreads = ghost_ompGetNumThreads();
 
+        uint64_t cacheSize;
+        unsigned int cacheLineSize;
+        ghost_getSizeOfLLC(&cacheSize);
+        ghost_getSizeOfCacheLine(&cacheLineSize);
+
         ghost_printHeader("System");
         ghost_printLine("Overall nodes",NULL,"%d",nnodes);
         ghost_printLine("Overall MPI processes",NULL,"%d",nproc);
@@ -296,7 +305,8 @@ void ghost_printSysInfo()
         ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
         ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
         ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
-        ghost_printLine("LLC size","MiB","%.2f",ghost_getSizeOfLLC()*1.0/(1024.*1024.));
+        ghost_printLine("LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+        ghost_printLine("Cache line size","B","%.2f",cacheLineSize);
 #ifdef GHOST_HAVE_CUDA
         ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
         ghost_printLine("CUDA devices",NULL,NULL);
@@ -878,9 +888,10 @@ int ghost_init(int argc, char **argv)
     LIKWID_MARKER_THREADINIT;
 #endif
 
+    hwloc_topology_t topology;
 
-    hwloc_topology_init(&topology);
-    hwloc_topology_load(topology);
+    ghost_initTopology();
+    ghost_getTopology(&topology);
 
 
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
@@ -897,10 +908,8 @@ int ghost_init(int argc, char **argv)
 
     int ncudadevs = 0;
     int ndomains = 0;
-    int nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
-    if (!nnumanodes) {
-        nnumanodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_SOCKET);
-    }
+    int nnumanodes;
+    ghost_getNumberOfNumaNodes(&nnumanodes);
 
     ndomains += nnumanodes;
 #if GHOST_HAVE_CUDA
@@ -978,10 +987,10 @@ int ghost_init(int argc, char **argv)
     ghost_getHwConfig(&hwconfig);
 
     if (hwconfig.maxCores == GHOST_HW_CONFIG_INVALID) {
-        hwconfig.maxCores = ghost_getNumberOfPhysicalCores();
+        ghost_getNumberOfPhysicalCores(&hwconfig.maxCores);
     }
     if (hwconfig.smtLevel == GHOST_HW_CONFIG_INVALID) {
-        hwconfig.smtLevel = ghost_getSMTlevel();
+        ghost_getSMTlevel(&hwconfig.smtLevel);
     }
     ghost_setHwConfig(hwconfig);
 
@@ -1106,24 +1115,6 @@ void ghost_finish()
 
 }
 
-size_t ghost_getSizeOfLLC()
-{
-    hwloc_obj_t obj;
-    int depth;
-    size_t size = 0;
-
-    for (depth=0; depth<(int)hwloc_topology_get_depth(topology); depth++) {
-        obj = hwloc_get_obj_by_depth(topology,depth,0);
-        if (obj->type == HWLOC_OBJ_CACHE) {
-            size = obj->attr->cache.size;
-            break;
-        }
-    }
-#if GHOST_HAVE_MIC
-    size = size*ghost_getNumberOfPhysicalCores(); // the cache is shared but not reported so
-#endif
-    return size;
-}
 
 int ghost_setType(ghost_type_t t)
 {
@@ -1154,3 +1145,5 @@ int ghost_hash(int a, int b, int c)
 
     return c;
 }
+    
+

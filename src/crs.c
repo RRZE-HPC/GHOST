@@ -7,6 +7,7 @@
 #include "ghost/affinity.h"
 #include "ghost/context.h"
 #include "ghost/io.h"
+#include "ghost/log.h"
 
 #include <unistd.h>
 #include <sys/types.h>
