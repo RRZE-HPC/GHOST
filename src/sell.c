@@ -8,6 +8,7 @@
 #include "ghost/context.h"
 #include "ghost/io.h"
 #include "ghost/log.h"
+#include "ghost/machine.h"
 
 #include <libgen.h>
 #include <string.h>
@@ -587,11 +588,11 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
 
     ghost_setupCommunication(mat->context,fullSELL->col);
 
-    ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->localPart));
+    ghost_createMatrix(&(mat->localPart),mat->context,&mat->traits[0],1);
     localSELL = mat->localPart->data;
     mat->localPart->traits->symmetry = mat->traits->symmetry;
 
-    ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->remotePart));
+    ghost_createMatrix(&(mat->remotePart),mat->context,&mat->traits[0],1);
     remoteSELL = mat->remotePart->data; 
 
     localSELL->T = fullSELL->T;

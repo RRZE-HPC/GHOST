@@ -13,6 +13,7 @@
 
 typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
 
+
 #ifdef __cplusplus
 #include "complex.h"
 
@@ -28,7 +29,20 @@ extern "C" {
 #endif
 
 void ghost_normalizeVec(ghost_vec_t *);
-ghost_error_t ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
+/**
+ * @ingroup globops
+ *
+ * @brief Compute the global dot product of two vectors.
+ *
+ * @param a The first vector.
+ * @param b The second vector.
+ * @param res Where to store the result.
+ *
+ * @return GHOST_SUCCESS on success or an error indicator.
+ *
+ * This function first computes the local dot product and then performs an allreduce on the result.
+ */
+ghost_error_t ghost_dotProduct(ghost_vec_t *a, ghost_vec_t *b, void *res);
 ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
         int *spmvmOptions);
 ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);

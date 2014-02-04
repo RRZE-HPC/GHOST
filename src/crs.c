@@ -460,11 +460,11 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
         DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
                 me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
-        ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->localPart));
+        ghost_createMatrix(&(mat->localPart),mat->context,&mat->traits[0],1);
         localCR = mat->localPart->data;
         mat->localPart->traits->symmetry = mat->traits->symmetry;
 
-        ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->remotePart));
+        ghost_createMatrix(&(mat->remotePart),mat->context,&mat->traits[0],1);
         remoteCR = mat->remotePart->data;
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&localCR->val,lnEnts_l*mat->traits->elSize),err,ret); 

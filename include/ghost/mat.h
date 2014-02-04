@@ -1,3 +1,8 @@
+/**
+ * @file mat.h
+ * @brief Types and functions related to GHOST sparse matrices.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_MAT_H
 #define GHOST_MAT_H
 
@@ -8,32 +13,6 @@
 
 #define GHOST_SPM_FORMAT_CRS 0
 #define GHOST_SPM_FORMAT_SELL 1
-
-#define GHOST_SPM_SYMM_GENERAL        (1)
-#define GHOST_SPM_SYMM_SYMMETRIC      (2)
-#define GHOST_SPM_SYMM_SKEW_SYMMETRIC (4)
-#define GHOST_SPM_SYMM_HERMITIAN      (8)
-
-typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
-typedef struct ghost_mtraits_t ghost_mtraits_t;
-typedef struct ghost_mat_t ghost_mat_t;
-
-typedef enum {
-    GHOST_SPMFROMROWFUNC_DEFAULT = 0
-} ghost_spmFromRowFunc_flags_t;
-
-typedef enum {
-    GHOST_SPM_DEFAULT       = 0,
-    GHOST_SPM_HOST          = 1,
-    GHOST_SPM_DEVICE        = 2,
-    GHOST_SPM_PERMUTECOLIDX = 4,
-    GHOST_SPM_COLMAJOR      = 8,
-    GHOST_SPM_ROWMAJOR      = 16,
-    GHOST_SPM_SORTED        = 32,
-    GHOST_SPM_ASC_COLIDX    = 64,
-    GHOST_SPM_STORE_SPLIT = 128,
-    GHOST_SPM_STORE_FULL = 256
-} ghost_spm_flags_t;
 
 typedef enum {
     GHOST_SPMVM_DEFAULT = 0,
@@ -48,6 +27,60 @@ typedef enum {
     GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
 } ghost_spmv_flags_t;
 
+typedef enum {
+    GHOST_SPM_SYMM_GENERAL = 1,
+    GHOST_SPM_SYMM_SYMMETRIC = 2,
+    GHOST_SPM_SYMM_SKEW_SYMMETRIC = 4,
+    GHOST_SPM_SYMM_HERMITIAN = 8
+} ghost_spm_symmetry_t;
+
+
+typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
+typedef struct ghost_mtraits_t ghost_mtraits_t;
+typedef struct ghost_mat_t ghost_mat_t;
+
+typedef enum {
+    GHOST_SPMFROMROWFUNC_DEFAULT = 0
+} ghost_spmFromRowFunc_flags_t;
+
+/**
+ * @brief Flags to a sparse matrix.
+ */
+typedef enum {
+    /**
+     * @brief A default sparse matrix.
+     */
+    GHOST_SPM_DEFAULT       = 0,
+    /**
+     * @brief Matrix is stored on host.
+     */
+    GHOST_SPM_HOST          = 1,
+    /**
+     * @brief Matrix is store on device.
+     */
+    GHOST_SPM_DEVICE        = 2,
+    /**
+     * @brief If the matrix rows have been re-ordered, also permute the column indices accordingly.
+     */
+    GHOST_SPM_PERMUTECOLIDX = 4,
+    /**
+     * @brief The matrix rows should be re-ordered in a certain way (defined in the traits). 
+     */
+    GHOST_SPM_SORTED        = 32,
+    /**
+     * @brief If the matrix columns have been re-ordered, care for ascending column indices in wrt. memory location. 
+     */
+    GHOST_SPM_ASC_COLIDX    = 64,
+    /**
+     * @brief Store the local and remote part of the matrix.
+     */
+    GHOST_SPM_STORE_SPLIT = 128,
+    /**
+     * @brief Store the full matrix (local and remote combined).
+     */
+    GHOST_SPM_STORE_FULL = 256
+} ghost_spm_flags_t;
+
 #define GHOST_SPMVM_MODES_FULL     (GHOST_SPMVM_MODE_NOMPI | GHOST_SPMVM_MODE_VECTORMODE)
 #define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
 #define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_FULL | GHOST_SPMVM_MODES_SPLIT)
@@ -56,7 +89,7 @@ struct ghost_mtraits_t
 {
     int format;
     ghost_spm_flags_t flags;
-    int symmetry;
+    ghost_spm_symmetry_t symmetry;
     void * aux;
     int nAux;
     int datatype;
@@ -65,9 +98,20 @@ struct ghost_mtraits_t
     void * scale;
     void * beta; // scale factor for AXPBY
 };
+/**
+ * @brief Initialize sparse matrix traits with default values as specified in mat.c
+ */
 extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 #define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
+/**
+ * @ingroup types
+ *
+ * @brief A sparse matrix.
+ * 
+ * The according functions act locally and are accessed via function pointers. The first argument of
+ * each member function always has to be a pointer to the vector itself.
+ */
 struct ghost_mat_t
 {
     ghost_mtraits_t *traits;
@@ -194,7 +238,6 @@ struct ghost_mat_t
      */
     size_t     (*byteSize)(ghost_mat_t *mat);
     /**
-     * @deprecated
      * @brief Create a matrix from a CRS matrix.
      *
      * @param mat The matrix. 
@@ -214,7 +257,19 @@ struct ghost_mat_t
 extern "C" {
 #endif
 
-    ghost_error_t ghost_createMatrix(ghost_context_t *, ghost_mtraits_t *, int, ghost_mat_t **);
+    /**
+     * @ingroup types
+     *
+     * @brief Create a sparse matrix. 
+     *
+     * @param mat Where to store the matrix
+     * @param ctx The context the matrix lives in.
+     * @param traits The matrix traits. They can be specified for the full matrix, the local and the remote part.
+     * @param nTraits The number of traits. 
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_createMatrix(ghost_mat_t **mat, ghost_context_t *ctx, ghost_mtraits_t *traits, int nTraits);
     ghost_error_t ghost_printMatrixInfo(ghost_mat_t *matrix);
     ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat);
     ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat);

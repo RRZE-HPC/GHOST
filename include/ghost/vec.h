@@ -1,3 +1,8 @@
+/**
+ * @file vec.h
+ * @brief Types and functions related to GHOST vectors.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_VEC_H
 #define GHOST_VEC_H
 
@@ -21,9 +26,11 @@ typedef enum {
 } ghost_vec_flags_t;
 
 /**
- * @brief This struct represents a vector (dense matrix) datatype.  
+ * @ingroup types
+ *
+ * @brief A dense vector/matrix.  
  * 
- * The according functions are accessed via function pointers. The first argument of
+ * The according functions act locally and are accessed via function pointers. The first argument of
  * each member function always has to be a pointer to the vector itself.
  */
 struct ghost_vec_t
@@ -41,7 +48,9 @@ struct ghost_vec_t
      */
     char** val;
 
-    /**
+    /** 
+     * @ingroup globops
+     *
      * @brief Performs <em>y := a*x + y</em> with scalar a
      *
      * @param y The in-/output vector
@@ -50,6 +59,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
     /**
+     * @ingroup globops
+     *
      * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
      *
      * @param y The in-/output vector.
@@ -86,14 +97,6 @@ struct ghost_vec_t
      */
     ghost_error_t (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
     /**
-     * @brief \deprecated
-     */
-    ghost_error_t          (*CUdownload) (ghost_vec_t *);
-    /**
-     * @brief \deprecated
-     */
-    ghost_error_t          (*CUupload) (ghost_vec_t *);
-    /**
      * @brief Destroys a vector, i.e., frees all its data structures.
      *
      * @param vec The vector
@@ -107,12 +110,19 @@ struct ghost_vec_t
      */
     ghost_error_t (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
     /**
-     * @brief Computes the dot product of two vectors and stores the result in
-     * res.
+     * @ingroup locops
+     * 
+     * @brief Compute the local dot product of two vectors.
      *
      * @param a The first vector.
      * @param b The second vector.
-     * @param res A pointer to where the result should be stored.
+     * @param res Where to store the result.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     *
+     * For the global operation see ghost_dotProduct().
+     *
+     * @see ghost_dotProduct()
      */
     ghost_error_t          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
     /**
@@ -120,6 +130,8 @@ struct ghost_vec_t
      * the vector is not present on the device.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*download) (ghost_vec_t *vec);
     /**
@@ -127,6 +139,8 @@ struct ghost_vec_t
      * Does nothing if the vector is not present on the device.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*downloadHalo) (ghost_vec_t *vec);
     /**
@@ -135,6 +149,8 @@ struct ghost_vec_t
      * present on the device.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*downloadNonHalo) (ghost_vec_t *vec);
     /**
@@ -145,6 +161,8 @@ struct ghost_vec_t
      * @param ghost_vidx_t i The row.
      * @param ghost_vidx_t j The column.
      * @param entry Where to store the entry.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
             void *entry);
@@ -154,6 +172,8 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
     /**
@@ -163,6 +183,8 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param src The source vector.
      * @param ghost_vidx_t The column offset in the source vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
     /**
@@ -171,12 +193,16 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param filename Path to the file.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*fromFile) (ghost_vec_t *vec, char *filename);
     /**
      * @brief Initiliazes a vector from random values.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*fromRand) (ghost_vec_t *vec);
     /**
@@ -184,12 +210,16 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param val A pointer to the value.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*fromScalar) (ghost_vec_t *vec, void *val);
     /**
      * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*normalize) (ghost_vec_t *vec);
     /**
@@ -197,12 +227,16 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param perm The permutation.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t  (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
     /**
      * @brief Print a vector.
      *
      * @param vec The vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*print) (ghost_vec_t *vec);
     /**
@@ -210,13 +244,18 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param scale The scale factor.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*scale) (ghost_vec_t *vec, void *scale);
     /**
+     * @deprecated because not needed
      * @brief Swap two vectors.
      *
      * @param vec1 The first vector.
      * @param vec2 The second vector.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
     /**
@@ -224,6 +263,8 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      * @param filename The path to the file.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*toFile) (ghost_vec_t *vec, char *filename);
     /**
@@ -336,7 +377,18 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec);
 extern "C" {
 #endif
 
-    ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec);
+    /**
+     * @ingroup types
+     *
+     * @brief Create a dense matrix/vector. 
+     *
+     * @param vec Where to store the matrix.
+     * @param ctx The context the matrix lives in or NULL.
+     * @param traits The matrix traits.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_createVector(ghost_vec_t **vec, ghost_context_t *ctx, ghost_vtraits_t *traits);
     ghost_error_t ghost_cloneVtraits(ghost_vtraits_t *t1, ghost_vtraits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);

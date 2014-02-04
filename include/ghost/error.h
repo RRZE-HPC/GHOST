@@ -1,10 +1,21 @@
+/**
+ * @file error.h
+ * @brief Types, functions and macros for error handling.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_ERROR_H
 #define GHOST_ERROR_H
 
 #include <string.h>
 #include "log.h"
 
+/**
+ * @brief Error return type.
+ */
 typedef enum {
+   /**
+    * @brief No error occured.
+    */
     GHOST_SUCCESS,
     GHOST_ERR_INVALID_ARG,
     GHOST_ERR_MPI,
@@ -17,16 +28,6 @@ typedef enum {
     GHOST_ERR_IO
 } ghost_error_t;
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-    char * ghost_errorString(ghost_error_t e);
-
-#ifdef __cplusplus
-}
-#endif
 /**
  * @brief This macro should be used for calling a GHOST function inside
  * a function which itself returns a ghost_error_t.
@@ -172,4 +173,14 @@ extern "C" {
     }\
 }\
 
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    char * ghost_errorString(ghost_error_t e);
+
+#ifdef __cplusplus
+}
 #endif

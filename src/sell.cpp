@@ -14,6 +14,7 @@
 #include "ghost/math.h"
 #include "ghost/constants.h"
 #include "ghost/log.h"
+#include "ghost/machine.h"
 #include <iostream>
 #include <cstdlib>
 #include <map>

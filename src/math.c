@@ -363,7 +363,7 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
 
     ghost_createContext(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
     ghost_mat_t *mat;
-    ghost_createMatrix(context, &trait, 1, &mat);
+    ghost_createMatrix(&mat, context, &trait, 1);
     mat->fromFile(mat,matrixPath);
     ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
     rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
@@ -371,7 +371,7 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
     rtraits.nvecs=rhs->traits->nvecs;
 
     ghost_vec_t *globRHS;
-    GHOST_CALL_RETURN(ghost_createVector(context, &rtraits,&globRHS));
+    GHOST_CALL_RETURN(ghost_createVector(&globRHS, context, &rtraits));
     globRHS->fromScalar(globRHS,zero);
 
 
@@ -387,7 +387,7 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
         ltraits.datatype = rhs->traits->datatype;
         ltraits.nvecs = rhs->traits->nvecs;
 
-        GHOST_CALL_RETURN(ghost_createVector(context, &ltraits,&globLHS)); 
+        GHOST_CALL_RETURN(ghost_createVector(&globLHS, context, &ltraits)); 
         globLHS->fromScalar(globLHS,&zero);
 
         int iter;
@@ -409,7 +409,7 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
         ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.nvecs = rhs->traits->nvecs;
-        ghost_createVector(context, &ltraits, &globLHS);
+        ghost_createVector(&globLHS, context, &ltraits);
     }
     DEBUG_LOG(1,"Scattering result of reference solution");
 

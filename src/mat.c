@@ -11,7 +11,7 @@
 
 const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPM_SYMM_GENERAL};
 
-ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits, ghost_mat_t ** mat)
+ghost_error_t ghost_createMatrix(ghost_mat_t ** mat, ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
 {
     UNUSED(nTraits);
     ghost_error_t ret = GHOST_SUCCESS;

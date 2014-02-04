@@ -85,7 +85,7 @@ static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec);
 static ghost_error_t getNrowsFromContext(ghost_vec_t *vec);
 ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
 
-ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec)
+ghost_error_t ghost_createVector(ghost_vec_t **vec, ghost_context_t *ctx, ghost_vtraits_t *traits)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t v;
@@ -270,7 +270,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
     ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->nvecs = nc;
 
-    ghost_createVector(src->context,newTraits,&new);
+    ghost_createVector(&new,src->context,newTraits);
     ghost_vidx_t v;
 
     for (v=0; v<new->traits->nvecs; v++) {
@@ -304,7 +304,7 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
     ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->nvecs = nc;
 
-    ghost_createVector(src->context,newTraits,&new);
+    ghost_createVector(&new,src->context,newTraits);
 
     for (v=0; v<nc; v++) {
         new->val[v] = VECVAL(src,src->val,coffs[v],0);
@@ -1143,7 +1143,7 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_
     ghost_vec_t *new;
     ghost_vtraits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
-    ghost_createVector(src->context,newTraits,&new);
+    ghost_createVector(&new,src->context,newTraits);
     new->traits->nvecs = nc;
 
     // copy the data even if the input vector is itself a view

@@ -1,3 +1,8 @@
+/**
+ * @file util.h
+ * @brief General utility functions.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_UTIL_H
 #define GHOST_UTIL_H
 
@@ -65,6 +70,14 @@ extern "C" {
     int ghost_dataTypeIdx(int datatype);
 
 
+    /**
+     * @brief Allocate memory.
+     *
+     * @param mem Where to store the allocated memory.
+     * @param size The size (in bytes) to allocate.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_malloc(void **mem, const size_t size);
     ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
     

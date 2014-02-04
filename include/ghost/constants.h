@@ -2,7 +2,6 @@
 #define GHOST_CONSTANTS_H
 
 #define GHOST_PAD_MAX 1024
-#define GHOST_DATA_ALIGNMENT 1024
 
 
 #endif

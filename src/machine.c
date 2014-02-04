@@ -1,11 +1,14 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
 
-
 static hwloc_topology_t ghost_topology = NULL;
 
 ghost_error_t ghost_createTopology()
 {
+    if (ghost_topology) {
+        return GHOST_SUCCESS;
+    }
+
     if (hwloc_topology_init(&ghost_topology)) {
         ERROR_LOG("Could not init topology");
         return GHOST_ERR_HWLOC;
@@ -19,14 +22,12 @@ ghost_error_t ghost_createTopology()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_destroyTopology()
+void ghost_destroyTopology()
 {
     hwloc_topology_destroy(ghost_topology);
 
-    return GHOST_SUCCESS;
+    return;
 }
-    
-
 
 ghost_error_t ghost_getSizeOfLLC(uint64_t *size)
 {
@@ -69,11 +70,18 @@ ghost_error_t ghost_getSizeOfCacheLine(unsigned *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getTopology(hwloc_topology_t *topo){
+ghost_error_t ghost_getTopology(hwloc_topology_t *topo)
+{
+    if (!topo) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if (!ghost_topology) {
         ERROR_LOG("Topology does not exist!");
         return GHOST_ERR_UNKNOWN;
     }
+    
     *topo = ghost_topology;
 
     return GHOST_SUCCESS;
@@ -143,7 +151,7 @@ ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes)
 
 }
 
-int ghost_machineIsBigEndian()
+char ghost_machineIsBigEndian()
 {
     int test = 1;
     unsigned char *endiantest = (unsigned char *)&test;

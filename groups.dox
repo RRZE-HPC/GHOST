@@ -1,0 +1,23 @@
+/** 
+ * @defgroup types Types
+ * @brief Basic types.
+ *
+ */
+
+/** 
+ * @defgroup locops Local operations
+ * @brief Mathematical operations which act locally.
+ *
+ */
+
+/** 
+ * @defgroup globops Global operations
+ * @brief Mathematical operations which act globally (and hence, also locally).
+ *
+ */
+
+/** 
+ * @defgroup machine Machine
+ * @brief Query machine information.
+ *
+ */

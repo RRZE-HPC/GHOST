@@ -1,6 +1,7 @@
 /**
  * @file types.h
  * @brief Header file for type definitions. 
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
 #ifndef GHOST_TYPES_H
 #define GHOST_TYPES_H

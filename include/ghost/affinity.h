@@ -1,3 +1,8 @@
+/**
+ * @file affinity.h
+ * @brief Types and functions for controlling or gathering information about affinity.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_AFFINITY_H
 #define GHOST_AFFINITY_H
 

@@ -3,7 +3,6 @@
 
 #include "config.h"
 #include "types.h"
-#include "vec.h"
 #include "error.h"
 
 typedef struct

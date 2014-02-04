@@ -1,10 +1,10 @@
+/**
+ * @file blas_mangle.h
+ * @brief Macros to "de-mangle" BLAS routines and includes and allow generic calls to them in the code.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_BLAS_MANGLE_H
 #define GHOST_BLAS_MANGLE_H
-
-// This file is used to define how blas routines
-// are "de-mangled", i.e. how they are called in C.
-// This is machine dependent and should be fixed in
-// a general way in the ESSR (for instance by CMake).
 
 #ifdef GHOST_HAVE_MKL
 #include <mkl.h>

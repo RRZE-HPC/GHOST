@@ -1,6 +1,6 @@
 /**
  * @file context.h
- * @brief Header file of GHOSTS's context module.
+ * @brief Types and functions related to GHOST contexts.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
 #ifndef GHOST_CONTEXT_H
