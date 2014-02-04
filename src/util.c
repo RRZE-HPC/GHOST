@@ -6,7 +6,7 @@
 #include "ghost/context.h"
 #include "ghost/mat.h"
 #include "ghost/math.h"
-#include "ghost/taskq.h"
+#include "ghost/task.h"
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/io.h"
@@ -971,7 +971,7 @@ int ghost_init(int argc, char **argv)
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
-    globcpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
+    globcpuset = hwloc_bitmap_dup(hwloc_topology_get_allowed_cpuset(topology));
 
     hwloc_obj_t obj;
     ghost_hw_config_t hwconfig;
@@ -1072,9 +1072,6 @@ int ghost_init(int argc, char **argv)
     char *cpusetstr, *mycpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
-    if (hwloc_bitmap_weight(globcpuset) > 0) {
-        WARNING_LOG("There are unassigned cores");
-    }
     ghost_thpool_init(mycpuset);
 
     ghost_rand_init();

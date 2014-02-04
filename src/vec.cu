@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 
-#include "ghost/cu_complex_helper.h"
+#include "ghost/cu_complex.h"
 
 
 #define THREADSPERBLOCK 256

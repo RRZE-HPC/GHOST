@@ -58,7 +58,7 @@ set (HEADERS
 		include/ghost/mat.h
 		include/ghost/math.h
 		include/ghost/sell.h
-		include/ghost/taskq.h
+		include/ghost/task.h
 		include/ghost/types.h
 		include/ghost/util.h
 		include/ghost/vec.h

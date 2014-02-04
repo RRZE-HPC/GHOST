@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 
-#include "ghost/cu_complex_helper.h"
+#include "ghost/cu_complex.h"
 
 #define SELL_CUDA_NBLOCKS (int)ceil(SELL(mat)->cumat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
 //#define SELLT_STRIDE_ONE

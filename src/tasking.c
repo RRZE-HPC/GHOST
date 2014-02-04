@@ -19,7 +19,7 @@
 
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
-#include "ghost/taskq.h"
+#include "ghost/task.h"
 #include "ghost/util.h"
 
 #if GHOST_HAVE_OPENMP

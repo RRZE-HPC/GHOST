@@ -2,7 +2,7 @@
 #include "ghost/types.h"
 #include "ghost/affinity.h"
 #include "ghost/vec.h"
-#include "ghost/taskq.h"
+#include "ghost/task.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
 
@@ -44,7 +44,9 @@ void *communicate(void *vargs)
 #endif
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
-            printf("%d->%d: %zu bytes\n",from_PE,ghost_getRank(MPI_COMM_WORLD),args->context->wishes[from_PE]*ghost_sizeofDataType(args->rhs->traits->datatype));
+#if GHOST_HAVE_INSTR_TIMING
+            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*ghost_sizeofDataType(args->rhs->traits->datatype));
+#endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
                 MPI_safecall(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount] ));
