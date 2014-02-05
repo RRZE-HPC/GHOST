@@ -13,8 +13,16 @@ typedef enum {
     GHOST_ERR_IO
 } ghost_error_t;
 
-char * ghost_errorString(ghost_error_t e);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    char * ghost_errorString(ghost_error_t e);
+
+#ifdef __cplusplus
+}
+#endif
 /**
  * @brief This macro should be used for calling a GHOST function inside
  * a function which itself returns a ghost_error_t.
