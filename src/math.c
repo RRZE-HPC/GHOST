@@ -35,8 +35,8 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 void ghost_normalizeVec(ghost_vec_t *vec)
 {
     GHOST_INSTR_START(normalize)
-    if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+    if (vec->traits->datatype & GHOST_DT_FLOAT) {
+        if (vec->traits->datatype & GHOST_DT_COMPLEX) {
             complex float res;
             ghost_dotProduct(vec,vec,&res);
             res = 1.f/csqrtf(res);
@@ -48,7 +48,7 @@ void ghost_normalizeVec(ghost_vec_t *vec)
             vec->scale(vec,&res);
         }
     } else {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
+        if (vec->traits->datatype & GHOST_DT_COMPLEX) {
             complex double res;
             ghost_dotProduct(vec,vec,&res);
             res = 1./csqrt(res);
@@ -326,4 +326,100 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
         c.y = invec->y + inoutvec->y;
         *inoutvec = c;
     }
+}
+
+ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+{
+
+    DEBUG_LOG(1,"Computing reference solution");
+    int me;
+    GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
+
+    char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
+    memset(zero,0,ghost_sizeofDataType(datatype));
+    ghost_vec_t *globLHS; 
+    ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
+    ghost_context_t *context;
+
+    ghost_createContext(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
+    ghost_mat_t *mat;
+    ghost_createMatrix(context, &trait, 1, &mat);
+    mat->fromFile(mat,matrixPath);
+    ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
+    rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
+    rtraits.datatype = rhs->traits->datatype;;
+    rtraits.nvecs=rhs->traits->nvecs;
+
+    ghost_vec_t *globRHS;
+    GHOST_CALL_RETURN(ghost_createVector(context, &rtraits,&globRHS));
+    globRHS->fromScalar(globRHS,zero);
+
+
+    DEBUG_LOG(2,"Collection RHS vector for reference solver");
+    rhs->collect(rhs,globRHS);
+
+    if (me==0) {
+        DEBUG_LOG(1,"Computing actual reference solution with one process");
+
+
+        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
+        ltraits.datatype = rhs->traits->datatype;
+        ltraits.nvecs = rhs->traits->nvecs;
+
+        GHOST_CALL_RETURN(ghost_createVector(context, &ltraits,&globLHS)); 
+        globLHS->fromScalar(globLHS,&zero);
+
+        int iter;
+
+        if (mat->traits->symmetry == GHOST_SPM_SYMM_GENERAL) {
+            for (iter=0; iter<nIter; iter++) {
+                mat->spmv(mat,globLHS,globRHS,spmvmOptions);
+            }
+        } else if (mat->traits->symmetry == GHOST_SPM_SYMM_SYMMETRIC) {
+            WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
+            for (iter=0; iter<nIter; iter++) {
+            }
+        }
+
+        globRHS->destroy(globRHS);
+        ghost_destroyContext(context);
+    } else {
+        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
+        ltraits.datatype = rhs->traits->datatype;
+        ltraits.nvecs = rhs->traits->nvecs;
+        ghost_createVector(context, &ltraits, &globLHS);
+    }
+    DEBUG_LOG(1,"Scattering result of reference solution");
+
+    nodeLHS->fromScalar(nodeLHS,&zero);
+    globLHS->distribute(globLHS, nodeLHS);
+
+    globLHS->destroy(globLHS);
+    mat->destroy(mat);
+
+
+    free(zero);
+    DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
+
+    return GHOST_SUCCESS;
+}
+
+void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
+{
+    if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
+#ifdef GHOST_HAVE_MPI
+        if (context->flags & GHOST_CONTEXT_REDUNDANT)
+            *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+        else
+            *spmvmOptions |= GHOST_SPMVM_MODE_GOODFAITH;
+#else
+        UNUSED(context);
+        *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+#endif
+        DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default, namely %s",ghost_modeName(*spmvmOptions));
+
+    }
+
 }

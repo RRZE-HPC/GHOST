@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "ghost/complex.h"
+#include "ghost/core.h"
 #include "ghost/util.h"
 #include "ghost/vec.h"
 #include "ghost/math.h"
@@ -146,13 +147,14 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 
 #pragma omp parallel private (v,i)
     {
-    unsigned int* state = ghost_getRandState();
+    unsigned int state;
+    ghost_getRandState(&state);
         for (v=0; v<vec->traits->nvecs; v++) 
         {
 #pragma omp for schedule(runtime)
             for (i=0; i<vec->traits->nrows; i++) 
             {
-                my_rand(state,(v_t *)VECVAL(vec,vec->val,v,i));
+                my_rand(&state,(v_t *)VECVAL(vec,vec->val,v,i));
             }
         }
     }

@@ -3,7 +3,11 @@
 
 #include "config.h"
 #include "types.h"
+#include "mat.h"
 
+#define GHOST_SELL_CHUNKHEIGHT_ELLPACK 0
+#define GHOST_SELL_CHUNKHEIGHT_AUTO -1
+#define GHOST_SELL_SORT_GLOBALLY -1
 #define SELL_AUX_S 0
 #define SELL_AUX_C 1
 #define SELL_AUX_T 2

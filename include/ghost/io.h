@@ -7,6 +7,26 @@
 
 #include <stdio.h>
 
+#define GHOST_BINCRS_SIZE_HEADER 44 /* header consumes 44 bytes */
+#define GHOST_BINCRS_SIZE_RPT_EL 8 /* one rpt element is 8 bytes */
+#define GHOST_BINCRS_SIZE_COL_EL 8 /* one col element is 8 bytes */
+
+#define GHOST_BINVEC_SIZE_HEADER 32
+#define GHOST_BINCRS_LITTLE_ENDIAN (0)
+
+#define GHOST_BINCRS_SYMM_GENERAL GHOST_SPM_SYMM_GENERAL
+#define GHOST_BINCRS_SYMM_SYMMETRIC GHOST_SPM_SYMM_SYMMETRIC
+#define GHOST_BINCRS_SYMM_SKEW_SYMMETRIC GHOST_SPM_SYMM_SKEW_SYMMETRIC
+#define GHOST_BINCRS_SYMM_HERMITIAN  GHOST_SPM_SYMM_HERMITIAN
+
+#define GHOST_BINCRS_DT_FLOAT   GHOST_DT_FLOAT
+#define GHOST_BINCRS_DT_DOUBLE  GHOST_DT_DOUBLE
+#define GHOST_BINCRS_DT_REAL    GHOST_DT_REAL
+#define GHOST_BINCRS_DT_COMPLEX GHOST_DT_COMPLEX
+
+#define GHOST_BINVEC_ORDER_COL_FIRST 0
+#define GHOST_BINVEC_ORDER_ROW_FIRST 1
+
 #ifdef __cplusplus
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);
 extern "C" {

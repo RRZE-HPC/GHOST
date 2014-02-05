@@ -31,14 +31,17 @@ static ghost_error_t ghost_rand_init()
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&rank));
 
-    if( ghost_rand_states == NULL )    ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
+    if(ghost_rand_states == NULL) {
+        ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
+    }
+
 #pragma omp parallel
     {
         unsigned int seed=(unsigned int)ghost_hash(
                 (int)ghost_wctimemilli(),
                 rank,
                 (int)ghost_ompGetThreadNum());
-        *ghost_getRandState()=seed;
+        ghost_rand_states[ghost_ompGetThreadNum()] = seed;
     }
 
     return GHOST_SUCCESS;
@@ -319,9 +322,15 @@ ghost_error_t ghost_init(int argc, char **argv)
     return GHOST_SUCCESS;
 }
 
-unsigned int* ghost_getRandState()
+ghost_error_t ghost_getRandState(unsigned int *s)
 {
-    return &ghost_rand_states[ghost_ompGetThreadNum()];
+    if (!s) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    *s = ghost_rand_states[ghost_ompGetThreadNum()];
+
+    return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_finalize()

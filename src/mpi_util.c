@@ -28,13 +28,13 @@
 
 MPI_Datatype ghost_mpi_dataType(int datatype)
 {
-    if (datatype & GHOST_BINCRS_DT_FLOAT) {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX)
             return GHOST_MPI_DT_C;
         else
             return MPI_FLOAT;
     } else {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+        if (datatype & GHOST_DT_COMPLEX)
             return GHOST_MPI_DT_Z;
         else
             return MPI_DOUBLE;
@@ -43,16 +43,18 @@ MPI_Datatype ghost_mpi_dataType(int datatype)
 
 MPI_Op ghost_mpi_op_sum(int datatype)
 {
-    if (datatype & GHOST_BINCRS_DT_FLOAT) {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX) {
             return GHOST_MPI_OP_SUM_C;
-        else
+        } else {
             return MPI_SUM;
+        }
     } else {
-        if (datatype & GHOST_BINCRS_DT_COMPLEX)
+        if (datatype & GHOST_DT_COMPLEX) {
             return GHOST_MPI_OP_SUM_Z;
-        else
+        } else {
             return MPI_SUM;
+        }
     }
 
 }

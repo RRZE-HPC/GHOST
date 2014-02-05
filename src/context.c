@@ -25,11 +25,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->wishes   = (ghost_mnnz_t *)ghost_malloc(nranks*sizeof(ghost_mnnz_t)); 
     (*context)->dues     = (ghost_mnnz_t *)ghost_malloc(nranks*sizeof(ghost_mnnz_t));
 
-    if (!((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)) {
-        (*context)->flags |= GHOST_CONTEXT_WORKDIST_ROWS;
+    if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
+        (*context)->flags |= GHOST_CONTEXT_DIST_ROWS;
     }
 
-    if ((gnrows == GHOST_GET_DIM_FROM_MATRIX) || (gncols == GHOST_GET_DIM_FROM_MATRIX)) {
+    if ((gnrows < 1) || (gncols < 1)) {
         ghost_matfile_header_t fileheader;
         ghost_readMatFileHeader((char *)matrixSource,&fileheader);
 #if !(GHOST_HAVE_LONGIDX)
@@ -37,9 +37,9 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
         }
 #endif
-        if (gnrows == GHOST_GET_DIM_FROM_MATRIX)
+        if (gnrows < 1)
             (*context)->gnrows = (ghost_midx_t)fileheader.nrows;
-        if (gncols == GHOST_GET_DIM_FROM_MATRIX)
+        if (gncols < 1)
             (*context)->gncols = (ghost_midx_t)fileheader.ncols;
 
     } else {
@@ -54,16 +54,18 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     DEBUG_LOG(1,"Creating context with dimension %"PRmatIDX"x%"PRmatIDX,(*context)->gnrows,(*context)->gncols);
 
 #ifdef GHOST_HAVE_MPI
-    if (!((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) && !((*context)->flags & GHOST_CONTEXT_GLOBAL)) {
+    if (!((*context)->flags & (GHOST_CONTEXT_DISTRIBUTED|GHOST_CONTEXT_REDUNDANT))) { // neither flag is set
         DEBUG_LOG(1,"Context is set to be distributed");
         (*context)->flags |= GHOST_CONTEXT_DISTRIBUTED;
     }
 #else
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        ABORT("Creating a distributed matrix without MPI is not possible");
-    } else if (!((*context)->flags & GHOST_CONTEXT_GLOBAL)) {
-        DEBUG_LOG(1,"Context is set to be global");
-        (*context)->flags |= GHOST_CONTEXT_GLOBAL;
+        WARNING_LOG("Creating a distributed matrix without MPI is not possible. Forcing redundant.");
+        (*context)->flags &= ~GHOST_CONTEXT_DISTRIBUTED;
+        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
+    } else if (!((*context)->flags & GHOST_CONTEXT_REDUNDANT)) {
+        DEBUG_LOG(1,"Context is set to be redundant");
+        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
     }
 #endif
 
@@ -87,7 +89,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
         (*context)->halo_elements = -1;
 
 
-        if ((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)
+        if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
             ghost_midx_t *rpt = NULL;
             ghost_mnnz_t gnnz;
@@ -204,8 +206,33 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_printContextInfo(ghost_context_t *context)
+{
+    int nranks;
+    int myrank;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&myrank));
 
-void ghost_freeContext(ghost_context_t *context)
+    if (myrank == 0) {
+        char *contextType = "";
+        if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
+            contextType = "Distributed";
+        else if (context->flags & GHOST_CONTEXT_REDUNDANT)
+            contextType = "Redundant";
+
+
+        ghost_printHeader("Context");
+        ghost_printLine("MPI processes",NULL,"%d",nranks);
+        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
+        ghost_printLine("Type",NULL,"%s",contextType);
+        ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
+        ghost_printFooter();
+    }
+    return GHOST_SUCCESS;
+
+}
+
+void ghost_destroyContext(ghost_context_t *context)
 {
     DEBUG_LOG(1,"Freeing context");
     if (context != NULL) {
@@ -221,16 +248,19 @@ static int intcomp(const void *x, const void *y)
     return (*(int *)x - *(int *)y);
 }
 
-/**
- * @brief Assemble communication information in the given context.
- * @param ctx The context.
- * @param col The column indices of the sparse matrix which is bound to the context.
- *
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure. 
- * 
- * The following fields of ghost_context_t are being filled in this function:
- * wishes, wishlist, dues, duelist, hput_pos.
- */
+ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx)
+{
+    int rank;
+    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&rank));
+
+    if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED) {
+        *gidx = ctx->lfRow[rank] + lidx;
+    } else {
+        *gidx = lidx;
+    }
+
+    return GHOST_SUCCESS;    
+}
 ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 {
 

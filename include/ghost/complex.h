@@ -1,3 +1,8 @@
+/**
+ * @file complex.h
+ * @brief Header file of GHOSTS's complex number implementation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_COMPLEX_H
 #define GHOST_COMPLEX_H
 

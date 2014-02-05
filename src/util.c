@@ -157,83 +157,7 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
     printf("\n");
 }
 
-ghost_error_t ghost_printMatrixInfo(ghost_mat_t *mat)
-{
-    ghost_midx_t nrows = ghost_getMatNrows(mat);
-    ghost_midx_t nnz = ghost_getMatNnz(mat);
 
-    int myrank;
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
-
-    if (myrank == 0) {
-
-        char *matrixLocation;
-        if (mat->traits->flags & GHOST_SPM_DEVICE)
-            matrixLocation = "Device";
-        else if (mat->traits->flags & GHOST_SPM_HOST)
-            matrixLocation = "Host";
-        else
-            matrixLocation = "Default";
-
-
-        ghost_printHeader(mat->name);
-        ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
-        ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
-        ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
-        ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
-
-        ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
-        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-        {
-            ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-            ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-            ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
-        } else {
-            ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
-        }
-
-        ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
-        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-        {
-            ghost_printLine("Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
-            ghost_printLine("Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
-        }
-
-        mat->printInfo(mat);
-        ghost_printFooter();
-
-    }
-
-    return GHOST_SUCCESS;
-
-}
-
-ghost_error_t ghost_printContextInfo(ghost_context_t *context)
-{
-    int nranks;
-    int myrank;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nranks));
-    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&myrank));
-
-    if (myrank == 0) {
-        char *contextType = "";
-        if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-            contextType = "Distributed";
-        else if (context->flags & GHOST_CONTEXT_GLOBAL)
-            contextType = "Global";
-
-
-        ghost_printHeader("Context");
-        ghost_printLine("MPI processes",NULL,"%d",nranks);
-        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
-        ghost_printLine("Type",NULL,"%s",contextType);
-        ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
-        ghost_printFooter();
-    }
-    return GHOST_SUCCESS;
-
-}
 
 static char *env(char *key)
 {
@@ -384,86 +308,6 @@ ghost_error_t ghost_printGhostInfo()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
-{
-
-    DEBUG_LOG(1,"Computing reference solution");
-    int me;
-    GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
-
-    char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
-    memset(zero,0,ghost_sizeofDataType(datatype));
-    ghost_vec_t *globLHS; 
-    ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
-    ghost_context_t *context;
-
-    ghost_matfile_header_t fileheader;
-    ghost_readMatFileHeader(matrixPath,&fileheader);
-
-    ghost_createContext(&context,GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
-    ghost_mat_t *mat;
-    ghost_createMatrix(context, &trait, 1, &mat);
-    mat->fromFile(mat,matrixPath);
-    ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
-    rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
-    rtraits.datatype = rhs->traits->datatype;;
-    rtraits.nvecs=rhs->traits->nvecs;
-
-    ghost_vec_t *globRHS;
-    GHOST_CALL_RETURN(ghost_createVector(context, &rtraits,&globRHS));
-    globRHS->fromScalar(globRHS,zero);
-
-
-    DEBUG_LOG(2,"Collection RHS vector for reference solver");
-    rhs->collect(rhs,globRHS);
-
-    if (me==0) {
-        DEBUG_LOG(1,"Computing actual reference solution with one process");
-
-
-        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
-        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
-        ltraits.datatype = rhs->traits->datatype;
-        ltraits.nvecs = rhs->traits->nvecs;
-
-        GHOST_CALL_RETURN(ghost_createVector(context, &ltraits,&globLHS)); 
-        globLHS->fromScalar(globLHS,&zero);
-
-        int iter;
-
-        if (mat->traits->symmetry == GHOST_BINCRS_SYMM_GENERAL) {
-            for (iter=0; iter<nIter; iter++) {
-                mat->spmv(mat,globLHS,globRHS,spmvmOptions);
-            }
-        } else if (mat->traits->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
-            WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
-            for (iter=0; iter<nIter; iter++) {
-            }
-        }
-
-        globRHS->destroy(globRHS);
-        ghost_freeContext(context);
-    } else {
-        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
-        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
-        ltraits.datatype = rhs->traits->datatype;
-        ltraits.nvecs = rhs->traits->nvecs;
-        ghost_createVector(context, &ltraits, &globLHS);
-    }
-    DEBUG_LOG(1,"Scattering result of reference solution");
-
-    nodeLHS->fromScalar(nodeLHS,&zero);
-    globLHS->distribute(globLHS, nodeLHS);
-
-    globLHS->destroy(globLHS);
-    mat->destroy(mat);
-
-
-    free(zero);
-    DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
-
-    return GHOST_SUCCESS;
-}
 
 /*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
   {
@@ -573,7 +417,7 @@ char * ghost_datatypeName(int datatype)
 
 char * ghost_workdistName(int options)
 {
-    if (options & GHOST_CONTEXT_WORKDIST_NZE)
+    if (options & GHOST_CONTEXT_DIST_NZ)
         return "Equal no. of nonzeros";
     else
         return "Equal no. of rows";
@@ -633,37 +477,7 @@ void *ghost_malloc_align(const size_t size, const size_t align)
     return mem;
 }
 
-void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
-{
-    if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
-#ifdef GHOST_HAVE_MPI
-        if (context->flags & GHOST_CONTEXT_GLOBAL)
-            *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
-        else
-            *spmvmOptions |= GHOST_SPMVM_MODE_GOODFAITH;
-#else
-        UNUSED(context);
-        *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
-#endif
-        DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default, namely %s",ghost_modeName(*spmvmOptions));
 
-    }
-
-}
-
-int ghost_getSpmvmModeIdx(int spmvmOptions)
-{
-    if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
-        return GHOST_SPMVM_MODE_NOMPI_IDX;
-    if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
-        return GHOST_SPMVM_MODE_VECTORMODE_IDX;
-    if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
-        return GHOST_SPMVM_MODE_GOODFAITH_IDX;
-    if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
-        return GHOST_SPMVM_MODE_TASKMODE_IDX;
-
-    return 0;
-}
 int ghost_dataTypeIdx(int datatype)
 {
     if (datatype & GHOST_BINCRS_DT_FLOAT) {
@@ -678,7 +492,6 @@ int ghost_dataTypeIdx(int datatype)
             return GHOST_DT_D_IDX;
     }
 }
-
 
 int ghost_archIsBigEndian()
 {
@@ -709,19 +522,6 @@ char ghost_datatypePrefix(int dt)
 }
 
 
-ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx)
-{
-    int rank;
-    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&rank));
-
-    if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        *gidx = ctx->lfRow[rank] + lidx;
-    } else {
-        *gidx = lidx;
-    }
-
-    return GHOST_SUCCESS;    
-}
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
 {
@@ -740,13 +540,6 @@ int ghost_flopsPerSpmvm(int m_t, int v_t)
     return flops;
 }
 
-ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
-{
-    ghost_vtraits_t *t2 = (ghost_vtraits_t *)ghost_malloc(sizeof(ghost_vtraits_t));
-    memcpy(t2,t1,sizeof(ghost_vtraits_t));
-
-    return t2;
-}
 
 void ghost_ompSetNumThreads(int nthreads)
 {

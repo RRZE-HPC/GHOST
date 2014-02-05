@@ -321,7 +321,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
         free(tmpcol);
     }
 
-    if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
+    if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
 #if GHOST_HAVE_MPI
 
         mat->context->lnEnts[me] = mat->nEnts;
@@ -405,7 +405,7 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
     ghost_setupCommunication(mat->context,fullCR->col);
 
-    if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
+    if (mat->traits->flags & GHOST_SPM_STORE_SPLIT) { // split computation
 
         lnEnts_l=0;
         for (i=0; i<mat->context->lnEnts[me];i++) {
@@ -579,7 +579,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
-    if (mat->context->flags & GHOST_CONTEXT_GLOBAL) {
+    if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
         CR(mat)->rpt = (ghost_mnnz_t *) ghost_malloc_align((mat->nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT);
         CR(mat)->col = (ghost_midx_t *) ghost_malloc_align(mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT);
         CR(mat)->val = ghost_malloc_align(mat->nEnts * sizeofdt,GHOST_DATA_ALIGNMENT);
@@ -619,7 +619,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
 
         if (me == 0) {
-            if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
+            if (context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
                 ((CR_TYPE *)(mat->data))->rpt = context->rpt;
             } else {
                 CR(mat)->rpt = (ghost_mnnz_t *) ghost_malloc_align((header.nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT);

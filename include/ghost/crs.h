@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "types.h"
+#include "mat.h"
 
 #if GHOST_HAVE_CUDA
 #include "cu_crs.h"

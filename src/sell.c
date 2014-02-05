@@ -496,7 +496,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         WARNING_LOG("Ignoring ASC_COLIDX flag");
     }
 
-    if (!(mat->context->flags & GHOST_CONTEXT_GLOBAL)) {
+    if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
 #if GHOST_HAVE_MPI
 
         mat->context->lnEnts[me] = mat->nEnts;
@@ -594,7 +594,7 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
     mat->localPart->nnz = 0;
     mat->remotePart->nnz = 0;
 
-    if (!(mat->context->flags & GHOST_CONTEXT_NO_SPLIT_SOLVERS)) { // split computation
+    if (mat->traits->flags & GHOST_SPM_STORE_SPLIT) { // split computation
 
         lnEnts_l = 0;
         lnEnts_r = 0;
@@ -802,7 +802,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         ABORT("Datatype is invalid! (%d)",header.datatype);
 
     if (me == 0) {
-        if (context->flags & GHOST_CONTEXT_WORKDIST_ROWS) { // lnents and lfent have to be filled!
+        if (context->flags & GHOST_CONTEXT_DIST_ROWS) { // lnents and lfent have to be filled!
             rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*(context->gnrows+1));
             ghost_readRpt(rpt,matrixPath,0,context->gnrows+1);  // read rpt
 

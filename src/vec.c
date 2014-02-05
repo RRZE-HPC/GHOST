@@ -9,6 +9,7 @@
 #include "ghost/context.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
+#include "ghost/io.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +25,7 @@
 extern cublasHandle_t ghost_cublas_handle;
 #endif
 
-const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1 };
+const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1 };
 
 void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
@@ -354,7 +355,7 @@ static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
             DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
             if (vec->traits->flags & GHOST_VEC_DUMMY) {
                 vec->traits->nrows = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_VEC_GLOBAL))
             {
                 if (vec->traits->flags & GHOST_VEC_LHS) {
                     vec->traits->nrows = vec->context->gnrows;
@@ -373,7 +374,7 @@ static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
             DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
             if (vec->traits->flags & GHOST_VEC_DUMMY) {
                 vec->traits->nrowshalo = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_GLOBAL) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_VEC_GLOBAL))
             {
                 vec->traits->nrowshalo = vec->traits->nrows;
             } 
@@ -1073,4 +1074,12 @@ static void vec_compress(ghost_vec_t *vec)
 
     vec->traits->flags &= ~GHOST_VEC_VIEW;
     vec->traits->flags &= ~GHOST_VEC_SCATTERED;
+}
+
+ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
+{
+    ghost_vtraits_t *t2 = (ghost_vtraits_t *)ghost_malloc(sizeof(ghost_vtraits_t));
+    memcpy(t2,t1,sizeof(ghost_vtraits_t));
+
+    return t2;
 }

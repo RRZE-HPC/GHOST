@@ -44,7 +44,6 @@ ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks);
 ghost_error_t ghost_getCore(int *core);
 ghost_error_t ghost_setCore(int core);
 ghost_error_t ghost_unsetCore();
-void ghost_pinThreads(int options, char *procList);
 #ifdef __cplusplus
 }
 #endif

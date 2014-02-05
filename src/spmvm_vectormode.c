@@ -5,6 +5,7 @@
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/instr.h"
+#include "ghost/mat.h"
 
 #include <mpi.h>
 #include <stdio.h>
