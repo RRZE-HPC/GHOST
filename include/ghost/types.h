@@ -34,6 +34,22 @@ typedef int ghost_mpi_comm_t;
 #define GHOST_DT_C_IDX 2
 #define GHOST_DT_Z_IDX 3
 
+#define GHOST_REGISTER_DT_D(name) \
+    typedef double name ## _t; \
+int name = GHOST_DT_DOUBLE|GHOST_DT_REAL; \
+
+#define GHOST_REGISTER_DT_S(name) \
+    typedef float name ## _t; \
+int name = GHOST_DT_FLOAT|GHOST_DT_REAL; \
+
+#define GHOST_REGISTER_DT_C(name) \
+    typedef complex float name ## _t; \
+int name = GHOST_DT_FLOAT|GHOST_DT_COMPLEX; \
+
+#define GHOST_REGISTER_DT_Z(name) \
+    typedef complex double name ## _t; \
+int name = GHOST_DT_DOUBLE|GHOST_DT_COMPLEX; \
+
 #if GHOST_HAVE_LONGIDX
 typedef int64_t ghost_midx_t; // type for the index of the matrix
 typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
