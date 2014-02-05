@@ -14,7 +14,7 @@
 #include <omp.h>
 #endif
 
-void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
     ghost_mnnz_t max_dues;
     char *work;
@@ -38,8 +38,8 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
 
     size_t sizeofRHS;
 
-    me = ghost_getRank(context->mpicomm);
-    nprocs = ghost_getNumberOfRanks(context->mpicomm);
+    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
     max_dues = 0;
@@ -119,4 +119,6 @@ void hybrid_kernel_II(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* m
     free(work);
     free(request);
     free(status);
+
+    return GHOST_SUCCESS;
 }

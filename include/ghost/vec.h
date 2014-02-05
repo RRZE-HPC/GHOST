@@ -33,19 +33,18 @@ template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t 
 template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *, void *);
 template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *vscale);
 template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
-template <typename v_t> void ghost_vec_print_tmpl(ghost_vec_t *vec);
+template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec);
 
 extern "C" {
 #endif
 
 ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
 
-void getNrowsFromContext(ghost_vec_t *vec);
-void ghost_vec_malloc(ghost_vec_t *vec);
-void d_ghost_printVector(ghost_vec_t *vec); 
-void s_ghost_printVector(ghost_vec_t *vec); 
-void z_ghost_printVector(ghost_vec_t *vec);
-void c_ghost_printVector(ghost_vec_t *vec);
+ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
+ghost_error_t d_ghost_printVector(ghost_vec_t *vec); 
+ghost_error_t s_ghost_printVector(ghost_vec_t *vec); 
+ghost_error_t z_ghost_printVector(ghost_vec_t *vec);
+ghost_error_t c_ghost_printVector(ghost_vec_t *vec);
 void d_ghost_normalizeVector(ghost_vec_t *vec); 
 void s_ghost_normalizeVector(ghost_vec_t *vec); 
 void z_ghost_normalizeVector(ghost_vec_t *vec);

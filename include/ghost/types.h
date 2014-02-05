@@ -96,7 +96,7 @@ typedef struct ghost_acc_info_t ghost_acc_info_t;
 typedef struct ghost_matfile_header_t ghost_matfile_header_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
-typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
+typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
 typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 
 /**
@@ -168,7 +168,7 @@ struct ghost_vec_t
      * @param vec The distributed vector.
      * @param globalVec The global vector.
      */
-    void          (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
+    ghost_error_t (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
     /**
      * @brief \deprecated
      */
@@ -189,7 +189,7 @@ struct ghost_vec_t
      * @param vec The global vector.
      * @param localVec The local vector.
      */
-    void          (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
+    ghost_error_t (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
     /**
      * @brief Computes the dot product of two vectors and stores the result in
      * res.
@@ -239,7 +239,7 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
      */
-    void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
+    ghost_error_t (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
     /**
      * @brief Initializes a vector from another vector at a given column offset.
      * Malloc's memory for the vector's values if this hasn't happened before.
@@ -256,7 +256,7 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param filename Path to the file.
      */
-    void          (*fromFile) (ghost_vec_t *vec, char *filename);
+    ghost_error_t (*fromFile) (ghost_vec_t *vec, char *filename);
     /**
      * @brief Initiliazes a vector from random values.
      *
@@ -288,7 +288,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*print) (ghost_vec_t *vec);
+    ghost_error_t (*print) (ghost_vec_t *vec);
     /**
      * @brief Scale a vector with a given scalar.
      *
@@ -309,7 +309,7 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param filename The path to the file.
      */
-    void          (*toFile) (ghost_vec_t *vec, char *filename);
+    ghost_error_t          (*toFile) (ghost_vec_t *vec, char *filename);
     /**
      * @brief Uploads an entire vector to a compute device. Does nothing if
      * the vector is not present on the device.
@@ -545,7 +545,7 @@ extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
 
 struct ghost_context_t
 {
-    ghost_spmvsolver_t *spmvsolvers;
+    //ghost_spmvsolver_t *spmvsolvers;
 
     // if the context is distributed by nnz, the row pointers are being read
     // at context creation in order to create the distribution. once the matrix

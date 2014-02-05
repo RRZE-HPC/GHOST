@@ -69,10 +69,16 @@ ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_
     GHOST_INSTR_START(spmvm)
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
-    solver = context->spmvsolvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
+    if (*spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE) {
+        solver = &ghost_spmv_vectormode;
+    } else if (*spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH) {
+        solver = &ghost_spmv_goodfaith;
+    } else if (*spmvmOptions & GHOST_SPMVM_MODE_TASKMODE) {
+        solver = &ghost_spmv_taskmode; 
+    }
 
     if (!solver) {
-        WARNING_LOG("The SpMV solver as specified in options cannot be found.");
+        ERROR_LOG("The SpMV solver as specified in options cannot be found.");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -103,9 +109,12 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         reduce = GHOST_GEMM_NO_REDUCE;
     }
 
-    if (reduce != GHOST_GEMM_NO_REDUCE && reduce >= ghost_getNumberOfRanks(v->context->mpicomm)) {
+    int nranks;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(v->context->mpicomm,&nranks));
+
+    if ((reduce != GHOST_GEMM_NO_REDUCE) && (reduce >= nranks)) {
         WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
-                reduce,ghost_getNumberOfRanks(x->context->mpicomm));
+                reduce,nranks);
         reduce = 0;
     }
 

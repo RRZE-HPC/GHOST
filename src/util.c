@@ -160,12 +160,13 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
     printf("\n");
 }
 
-void ghost_printMatrixInfo(ghost_mat_t *mat)
+ghost_error_t ghost_printMatrixInfo(ghost_mat_t *mat)
 {
     ghost_midx_t nrows = ghost_getMatNrows(mat);
     ghost_midx_t nnz = ghost_getMatNnz(mat);
 
-    int myrank = ghost_getRank(mat->context->mpicomm);;
+    int myrank;
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
 
     if (myrank == 0) {
 
@@ -207,12 +208,16 @@ void ghost_printMatrixInfo(ghost_mat_t *mat)
 
     }
 
+    return GHOST_SUCCESS;
+
 }
 
-void ghost_printContextInfo(ghost_context_t *context)
+ghost_error_t ghost_printContextInfo(ghost_context_t *context)
 {
-    int nranks = ghost_getNumberOfRanks(context->mpicomm);
-    int myrank = ghost_getRank(context->mpicomm);
+    int nranks;
+    int myrank;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&myrank));
 
     if (myrank == 0) {
         char *contextType = "";
@@ -229,6 +234,7 @@ void ghost_printContextInfo(ghost_context_t *context)
         ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
         ghost_printFooter();
     }
+    return GHOST_SUCCESS;
 
 }
 
@@ -246,15 +252,19 @@ static char *env(char *key)
 
 }
 
-void ghost_printSysInfo()
+ghost_error_t ghost_printSysInfo()
 {
-    int nproc = ghost_getNumberOfRanks(MPI_COMM_WORLD);
-    int nnodes = ghost_getNumberOfNodes();
+    int nranks;
+    int nnodes;
+    int myrank;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&nranks));
+    GHOST_CALL_RETURN(ghost_getNumberOfNodes(MPI_COMM_WORLD,&nnodes));
+    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
 
 #ifdef GHOST_HAVE_CUDA
     ghost_acc_info_t * CUdevInfo = CU_getDeviceInfo();
 #endif
-    if (ghost_getRank(MPI_COMM_WORLD) == 0) {
+    if (myrank == 0) {
 
         int nthreads;
         int nphyscores;
@@ -298,10 +308,10 @@ void ghost_printSysInfo()
 
         ghost_printHeader("System");
         ghost_printLine("Overall nodes",NULL,"%d",nnodes);
-        ghost_printLine("Overall MPI processes",NULL,"%d",nproc);
-        ghost_printLine("MPI processes per node",NULL,"%d",nproc/nnodes);
+        ghost_printLine("Overall MPI processes",NULL,"%d",nranks);
+        ghost_printLine("MPI processes per node",NULL,"%d",nranks/nnodes);
         ghost_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
-        ghost_printLine("OpenMP threads per node",NULL,"%d",nproc/nnodes*nthreads);
+        ghost_printLine("OpenMP threads per node",NULL,"%d",nranks/nnodes*nthreads);
         ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
         ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
         ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
@@ -320,14 +330,17 @@ void ghost_printSysInfo()
         ghost_printFooter();
     }
 
+    return GHOST_SUCCESS;
+
 }
 
-void ghost_printGhostInfo() 
+ghost_error_t ghost_printGhostInfo() 
 {
+    int myrank;
+    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
 
-    if (ghost_getRank(MPI_COMM_WORLD)==0) {
-
-
+    if (myrank == 0) {
+        
         ghost_printHeader("%s", GHOST_NAME);
         ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
         ghost_printLine("Build date",NULL,"%s",__DATE__);
@@ -370,13 +383,16 @@ void ghost_printGhostInfo()
 #endif
         ghost_printFooter();
     }
+
+    return GHOST_SUCCESS;
 }
 
-void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
 {
 
     DEBUG_LOG(1,"Computing reference solution");
-    int me = ghost_getRank(nodeLHS->context->mpicomm);
+    int me;
+    GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
 
     char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
     memset(zero,0,ghost_sizeofDataType(datatype));
@@ -388,7 +404,8 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
     ghost_readMatFileHeader(matrixPath,&fileheader);
 
     ghost_createContext(&context,GHOST_GET_DIM_FROM_MATRIX,GHOST_GET_DIM_FROM_MATRIX,GHOST_CONTEXT_GLOBAL,matrixPath,MPI_COMM_WORLD,1.0);
-    ghost_mat_t *mat = ghost_createMatrix(context, &trait, 1);
+    ghost_mat_t *mat;
+    ghost_createMatrix(context, &trait, 1, &mat);
     mat->fromFile(mat,matrixPath);
     ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
     rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
@@ -446,6 +463,8 @@ void ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype,
 
     free(zero);
     DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
+
+    return GHOST_SUCCESS;
 }
 
 /*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
@@ -616,68 +635,6 @@ void *ghost_malloc_align(const size_t size, const size_t align)
     return mem;
 }
 
-double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
-        int *spmvmOptions, int nIter)
-{
-    DEBUG_LOG(1,"Benchmarking the SpMVM");
-    int it;
-    double time = 0;
-    //    double ttime = 0;
-    double oldtime=1e9;
-    //struct timespec end,start;
-
-    ghost_spmvsolver_t solver = NULL;
-
-    ghost_pickSpMVMMode(context,spmvmOptions);
-    solver = context->spmvsolvers[ghost_getSpmvmModeIdx(*spmvmOptions)];
-
-    if (!solver) {
-        DEBUG_LOG(1,"The solver for the specified is not available, skipping");
-        return -1.0;
-    }
-
-#ifdef GHOST_HAVE_MPI
-    MPI_safecall(MPI_Barrier(context->mpicomm));
-#endif
-
-    //    ttime = ghost_wctime();
-    for( it = 0; it < nIter; it++ ) {
-        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&start);
-        time = ghost_wctime();
-        solver(context,res,mat,invec,*spmvmOptions);
-
-#ifdef GHOST_HAVE_CUDA
-        CU_barrier();
-#endif
-#ifdef GHOST_HAVE_MPI
-        MPI_safecall(MPI_Barrier(context->mpicomm));
-#endif
-        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
-        //time = ghost_timediff(start,end);
-        time = ghost_wctime()-time;
-        //    printf("%f\n",time);
-        //        if (time < 0)
-        //            printf("dummy\n");
-        time = time<oldtime?time:oldtime;
-        oldtime=time;
-    }
-    //DEBUG_LOG(0,"Total time: %f sec",ghost_wctime()-ttime);
-    solver(NULL,NULL,NULL,NULL,0); // clean up
-
-    DEBUG_LOG(1,"Downloading result from device");
-    res->download(res);
-
-    if ( *spmvmOptions & GHOST_SPMVM_MODES_COMBINED)  {
-        res->permute(res,res->context->invRowPerm);
-    } else if ( *spmvmOptions & GHOST_SPMVM_MODES_SPLIT ) {
-        // one of those must return immediately
-        res->permute(res,res->context->invRowPerm);
-        res->permute(res,res->context->invRowPerm);
-    }
-
-    return time;
-}
-
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 {
     if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
@@ -754,12 +711,18 @@ char ghost_datatypePrefix(int dt)
 }
 
 
-ghost_midx_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx)
+ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx)
 {
-    if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED)
-        return ctx->lfRow[ghost_getRank(ctx->mpicomm)] + lidx;
+    int rank;
+    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&rank));
 
-    return lidx;    
+    if (ctx->flags & GHOST_CONTEXT_DISTRIBUTED) {
+        *gidx = ctx->lfRow[rank] + lidx;
+    } else {
+        *gidx = lidx;
+    }
+
+    return GHOST_SUCCESS;    
 }
 
 int ghost_flopsPerSpmvm(int m_t, int v_t)
@@ -821,7 +784,7 @@ unsigned int* ghost_getRandState()
     return &ghost_rand_states[ghost_ompGetThreadNum()];
 }
 
-void ghost_rand_init()
+static ghost_error_t ghost_rand_init()
 {
     int N_Th = 1;
 #pragma omp parallel
@@ -830,19 +793,24 @@ void ghost_rand_init()
         N_Th = ghost_ompGetNumThreads();
     }
 
+    int rank;
+    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&rank));
+
     if( ghost_rand_states == NULL )    ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
 #pragma omp parallel
     {
         unsigned int seed=(unsigned int)ghost_hash(
                 (int)ghost_wctimemilli(),
-                (int)ghost_getRank(MPI_COMM_WORLD),
+                rank,
                 (int)ghost_ompGetThreadNum());
         *ghost_getRandState()=seed;
     }
+
+    return GHOST_SUCCESS;
 }
 
 
-int ghost_init(int argc, char **argv)
+ghost_error_t ghost_init(int argc, char **argv)
 {
 #ifdef GHOST_HAVE_MPI
     int req, prov;
@@ -903,8 +871,10 @@ int ghost_init(int argc, char **argv)
 
 
     // auto-set rank types 
-    int nnoderanks = ghost_getNumberOfRanks(ghost_node_comm);
-    int noderank = ghost_getRank(ghost_node_comm);
+    int nnoderanks;
+    int noderank;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ghost_node_comm,&nnoderanks));
+    GHOST_CALL_RETURN(ghost_getRank(ghost_node_comm,&noderank));
 
     int ncudadevs = 0;
     int ndomains = 0;
@@ -942,7 +912,7 @@ int ghost_init(int argc, char **argv)
     int i;
     int localTypes[nnoderanks];
 
-    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+    for (i=0; i<nnoderanks; i++) {
         localTypes[i] = GHOST_TYPE_INVALID;
     }
     localTypes[noderank] = ghost_type;
@@ -957,7 +927,7 @@ int ghost_init(int argc, char **argv)
 #endif
 
 
-    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,ghost_getNumberOfRanks(ghost_node_comm),MPI_INT,MPI_MAX,ghost_node_comm));
+    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,nnoderanks,MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
 
     int oversubscribed = 0;
@@ -1021,7 +991,7 @@ int ghost_init(int argc, char **argv)
 
     // CUDA ranks have a physical core
     cudaDevice = 0;
-    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+    for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
             hwloc_obj_t mynode = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,cudaDevice%nnumanodes);
             hwloc_obj_t runner = mynode;
@@ -1030,7 +1000,7 @@ int ghost_init(int argc, char **argv)
                 char *foo;
                 hwloc_bitmap_list_asprintf(&foo,runner->cpuset);
             }
-            if (i == ghost_getRank(ghost_node_comm)) {
+            if (i == noderank) {
                 hwloc_bitmap_copy(mycpuset,runner->cpuset);
                 //    corestaken[runner->logical_index] = 1;
             }
@@ -1049,7 +1019,7 @@ int ghost_init(int argc, char **argv)
         hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
     } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNUMA) {
         int numaNode = 0;
-        for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+        for (i=0; i<nnoderanks; i++) {
             if (localTypes[i] == GHOST_TYPE_COMPUTE) {
                 if (nnumanodes > numaNode) {
                     hwloc_cpuset_t nodeCpuset;
@@ -1058,7 +1028,7 @@ int ghost_init(int argc, char **argv)
                     } else {
                         nodeCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_SOCKET,numaNode)->cpuset;
                     }
-                    if (i == ghost_getRank(ghost_node_comm)) {
+                    if (i == noderank) {
                         hwloc_bitmap_and(mycpuset,globcpuset,nodeCpuset);
                     }
                     hwloc_bitmap_andnot(globcpuset,globcpuset,nodeCpuset);

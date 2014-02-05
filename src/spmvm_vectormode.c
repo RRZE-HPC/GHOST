@@ -15,7 +15,7 @@
 #endif
 
 // if called with context==NULL: clean up variables
-void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
 
     /*****************************************************************************
@@ -38,11 +38,14 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
 
     size_t sizeofRHS;
 
-    if (context == NULL)
-        return;
+    if (context == NULL) {
+        ERROR_LOG("The context is NULL");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
-    me = ghost_getRank(context->mpicomm);
-    nprocs = ghost_getNumberOfRanks(context->mpicomm);
+    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
+
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
     max_dues = 0;
@@ -124,5 +127,7 @@ void hybrid_kernel_I(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* ma
     free(work);
     free(request);
     free(status);
+
+    return GHOST_SUCCESS;
 }
 

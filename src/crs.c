@@ -53,62 +53,62 @@ static ghost_error_t CRS_split(ghost_mat_t *mat);
 static void CRS_upload(ghost_mat_t *mat);
 
 
-ghost_mat_t *ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits)
+ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghost_mat_t **mat)
 {
-    ghost_mat_t *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
-    mat->context = ctx;
-    mat->traits = traits;
+    *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    (*mat)->context = ctx;
+    (*mat)->traits = traits;
 
     DEBUG_LOG(1,"Initializing CRS functions");
-    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    if (!((*mat)->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
-        mat->traits->flags |= GHOST_SPM_HOST;
+        (*mat)->traits->flags |= GHOST_SPM_HOST;
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            mat->traits->flags |= GHOST_SPM_DEVICE;
+            (*mat)->traits->flags |= GHOST_SPM_DEVICE;
         }
     }
 
-    if (mat->traits->flags & GHOST_SPM_DEVICE)
+    if ((*mat)->traits->flags & GHOST_SPM_DEVICE)
     {
 #if GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
         //   mat->spmv = &ghost_cu_crsspmv;
 #endif
     }
-    else if (mat->traits->flags & GHOST_SPM_HOST)
+    else if ((*mat)->traits->flags & GHOST_SPM_HOST)
     {
-        mat->spmv   = &CRS_kernel_plain;
+        (*mat)->spmv   = &CRS_kernel_plain;
     }
 
-    mat->fromFile = &CRS_fromBin;
-    mat->toFile = &CRS_toBin;
-    mat->fromRowFunc = &CRS_fromRowFunc;
-    mat->fromCRS = &CRS_fromCRS;
-    mat->printInfo = &CRS_printInfo;
-    mat->formatName = &CRS_formatName;
-    mat->rowLen   = &CRS_rowLen;
-    mat->byteSize = &CRS_byteSize;
-    mat->permute = &CRS_permute;
-    mat->destroy  = &CRS_free;
-    mat->stringify = &CRS_stringify;
+    (*mat)->fromFile = &CRS_fromBin;
+    (*mat)->toFile = &CRS_toBin;
+    (*mat)->fromRowFunc = &CRS_fromRowFunc;
+    (*mat)->fromCRS = &CRS_fromCRS;
+    (*mat)->printInfo = &CRS_printInfo;
+    (*mat)->formatName = &CRS_formatName;
+    (*mat)->rowLen   = &CRS_rowLen;
+    (*mat)->byteSize = &CRS_byteSize;
+    (*mat)->permute = &CRS_permute;
+    (*mat)->destroy  = &CRS_free;
+    (*mat)->stringify = &CRS_stringify;
 #ifdef GHOST_HAVE_MPI
-    mat->split = &CRS_split;
+    (*mat)->split = &CRS_split;
 #endif
-    mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
+    (*mat)->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
     //    mat->rowPerm = NULL;
     //    mat->invRowPerm = NULL;
-    mat->localPart = NULL;
-    mat->remotePart = NULL;
-    mat->name = NULL;
+    (*mat)->localPart = NULL;
+    (*mat)->remotePart = NULL;
+    (*mat)->name = NULL;
 
-    mat->bandwidth = 0;
-    mat->lowerBandwidth = 0;
-    mat->upperBandwidth = 0;
-    mat->nzDist = NULL;
+    (*mat)->bandwidth = 0;
+    (*mat)->lowerBandwidth = 0;
+    (*mat)->upperBandwidth = 0;
+    (*mat)->nzDist = NULL;
 
-    return mat;
+    return GHOST_SUCCESS;
 
 }
 
@@ -251,14 +251,13 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     UNUSED(base);
     UNUSED(flags);
     int nprocs = 1;
-#if GHOST_HAVE_MPI
-    nprocs = ghost_getNumberOfRanks(mat->context->mpicomm);
-#endif
+    int me;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
 
     ghost_midx_t rowlen;
     ghost_midx_t i,j;
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    int me = ghost_getRank(mat->context->mpicomm);
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
     CR(mat)->rpt = (ghost_midx_t *)ghost_malloc((mat->nrows+1)*sizeof(ghost_midx_t));
@@ -399,7 +398,7 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
-    me = ghost_getRank(mat->context->mpicomm);
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
 
     ghost_setupCommunication(mat->context,fullCR->col);
 
@@ -418,13 +417,13 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
         localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
         remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
-        mat->localPart = ghost_createMatrix(mat->context,&mat->traits[0],1);
+        ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->localPart));
         free(mat->localPart->data); // has been allocated in init()
         mat->localPart->traits->symmetry = mat->traits->symmetry;
         mat->localPart->data = localCR;
         //CR(mat->localPart)->rpt = localCR->rpt;
 
-        mat->remotePart = ghost_createMatrix(mat->context,&mat->traits[0],1);
+        ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->remotePart));
         free(mat->remotePart->data); // has been allocated in init()
         mat->remotePart->data = remoteCR;
 
@@ -611,10 +610,12 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
 
         ghost_context_t *context = mat->context;
-        int me = ghost_getRank(context->mpicomm); 
-        int nprocs = ghost_getNumberOfRanks(context->mpicomm);
+        int nprocs = 1;
+        int me;
+        GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
+        GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
 
-        if (ghost_getRank(context->mpicomm) == 0) {
+        if (me == 0) {
             if (context->flags & GHOST_CONTEXT_WORKDIST_NZE) { // rpt has already been read
                 ((CR_TYPE *)(mat->data))->rpt = context->rpt;
             } else {
@@ -645,7 +646,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
         DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
 
-        if (ghost_getRank(context->mpicomm) != 0) {
+        if (me != 0) {
             CR(mat)->rpt = (ghost_midx_t *)ghost_malloc_align((context->lnrows[me]+1)*sizeof(ghost_midx_t),GHOST_DATA_ALIGNMENT);
 #pragma omp parallel for schedule(runtime)
             for (i = 0; i < context->lnrows[me]+1; i++) {
@@ -660,7 +661,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         for (i=0;i<nprocs;i++) 
             req[i] = MPI_REQUEST_NULL;
 
-        if (ghost_getRank(context->mpicomm) != 0) {
+        if (me != 0) {
             MPI_safecall(MPI_Irecv(CR(mat)->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]));
             msgcount++;
         } else {

@@ -12,14 +12,18 @@
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
     int i;
+    int nranks;
+    int me;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks((*context)->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_getRank((*context)->mpicomm,&me));
 
     (*context) = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
     (*context)->flags = context_flags;
     (*context)->rowPerm = NULL;
     (*context)->invRowPerm = NULL;
     (*context)->mpicomm = comm;
-    (*context)->wishes   = (ghost_mnnz_t *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(ghost_mnnz_t)); 
-    (*context)->dues     = (ghost_mnnz_t *)ghost_malloc( ghost_getNumberOfRanks((*context)->mpicomm)*sizeof(ghost_mnnz_t));
+    (*context)->wishes   = (ghost_mnnz_t *)ghost_malloc(nranks*sizeof(ghost_mnnz_t)); 
+    (*context)->dues     = (ghost_mnnz_t *)ghost_malloc(nranks*sizeof(ghost_mnnz_t));
 
     if (!((*context)->flags & GHOST_CONTEXT_WORKDIST_NZE)) {
         (*context)->flags |= GHOST_CONTEXT_WORKDIST_ROWS;
@@ -63,7 +67,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     }
 #endif
 
-    (*context)->spmvsolvers = (ghost_spmvsolver_t *)ghost_malloc(sizeof(ghost_spmvsolver_t)*GHOST_NUM_MODES);
+ /*   (*context)->spmvsolvers = (ghost_spmvsolver_t *)ghost_malloc(sizeof(ghost_spmvsolver_t)*GHOST_NUM_MODES);
     for (i=0; i<GHOST_NUM_MODES; i++) (*context)->spmvsolvers[i] = NULL;
 #ifdef GHOST_HAVE_MPI
     (*context)->spmvsolvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
@@ -72,12 +76,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 #else
     (*context)->spmvsolvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
 #endif
-
-    int nprocs = ghost_getNumberOfRanks((*context)->mpicomm);
-    (*context)->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    (*context)->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nprocs*sizeof(ghost_mnnz_t)); 
-    (*context)->lnrows   = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t)); 
-    (*context)->lfRow    = (ghost_midx_t*)       ghost_malloc( nprocs*sizeof(ghost_midx_t));
+*/
+    (*context)->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
+    (*context)->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
+    (*context)->lnrows   = (ghost_midx_t*)       ghost_malloc( nranks*sizeof(ghost_midx_t)); 
+    (*context)->lfRow    = (ghost_midx_t*)       ghost_malloc( nranks*sizeof(ghost_midx_t));
 
 #ifdef GHOST_HAVE_MPI
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
@@ -89,7 +92,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             ghost_midx_t *rpt = NULL;
             ghost_mnnz_t gnnz;
 
-            if (ghost_getRank((*context)->mpicomm) == 0) {
+            if (me == 0) {
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
                     rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*((*context)->gnrows+1));
 #pragma omp parallel for schedule(runtime)
@@ -123,7 +126,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 
                 gnnz = rpt[(*context)->gnrows];
                 ghost_mnnz_t target_nnz;
-                target_nnz = (gnnz/nprocs)+1; /* sonst bleiben welche uebrig! */
+                target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
 
                 (*context)->lfRow[0]  = 0;
                 (*context)->lfEnt[0] = 0;
@@ -136,46 +139,45 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
                         j = j+1;
                     }
                 }
-                for (i=0; i<nprocs-1; i++){
+                for (i=0; i<nranks-1; i++){
                     (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
                     (*context)->lnEnts[i] = (*context)->lfEnt[i+1] - (*context)->lfEnt[i] ;
                 }
 
-                (*context)->lnrows[nprocs-1] = (*context)->gnrows - (*context)->lfRow[nprocs-1] ;
-                (*context)->lnEnts[nprocs-1] = gnnz - (*context)->lfEnt[nprocs-1];
+                (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
+                (*context)->lnEnts[nranks-1] = gnnz - (*context)->lfEnt[nranks-1];
 
                 //fclose(filed);
             }
-            MPI_safecall(MPI_Bcast((*context)->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
-            MPI_safecall(MPI_Bcast((*context)->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
-            MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
-            MPI_safecall(MPI_Bcast((*context)->lnEnts, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
 
 
         } else
         { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
             UNUSED(matrixSource);
-            int me = ghost_getRank((*context)->mpicomm);
             double allweights;
             MPI_safecall(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm))
 
             ghost_midx_t my_target_rows = (ghost_midx_t)((*context)->gnrows*((double)weight/(double)allweights));
-            ghost_midx_t *target_rows = (ghost_midx_t *)ghost_malloc(nprocs*sizeof(ghost_midx_t));
+            ghost_midx_t *target_rows = (ghost_midx_t *)ghost_malloc(nranks*sizeof(ghost_midx_t));
 
             MPI_safecall(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,target_rows,1,ghost_mpi_dt_midx,(*context)->mpicomm));
                        
             (*context)->rpt = NULL;
             (*context)->lfRow[0] = 0;
 
-            for (i=1; i<nprocs; i++){
+            for (i=1; i<nranks; i++){
                 (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows[i-1];
             }
-            for (i=0; i<nprocs-1; i++){
+            for (i=0; i<nranks-1; i++){
                 (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
             }
-            (*context)->lnrows[nprocs-1] = (*context)->gnrows - (*context)->lfRow[nprocs-1] ;
-            MPI_safecall(MPI_Bcast((*context)->lfRow,  nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
-            MPI_safecall(MPI_Bcast((*context)->lnrows, nprocs, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
+            MPI_safecall(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
+            MPI_safecall(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm));
             (*context)->lnEnts[0] = -1;
             (*context)->lfEnt[0] = -1;
 
@@ -207,7 +209,6 @@ void ghost_freeContext(ghost_context_t *context)
 {
     DEBUG_LOG(1,"Freeing context");
     if (context != NULL) {
-        free(context->spmvsolvers);
         free(context->rowPerm);
         free(context->invRowPerm);
 
@@ -235,7 +236,6 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     ghost_mnnz_t j;
     ghost_mnnz_t i;
-    int me;
     ghost_mnnz_t max_loc_elements, thisentry;
     ghost_mnnz_t *present_values;
     ghost_mnnz_t acc_dues;
@@ -262,13 +262,15 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     size_t size_a2ai, size_nptr, size_pval;  
     size_t size_wish, size_dues;
 
-    int nprocs = ghost_getNumberOfRanks(ctx->mpicomm);
+    int nprocs;
+    int me;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&me));
 
     size_nint = (size_t)( (size_t)(nprocs)   * sizeof(ghost_midx_t)  );
     size_nptr = (size_t)( nprocs             * sizeof(ghost_midx_t*) );
     size_a2ai = (size_t)( nprocs*nprocs * sizeof(ghost_midx_t)  );
 
-    me = ghost_getRank(ctx->mpicomm);
 
     max_loc_elements = 0;
     for (i=0;i<nprocs;i++) {

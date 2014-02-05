@@ -25,13 +25,23 @@ char * ghost_errorString(ghost_error_t e);
  *
  * @return A ghost_error_t in case the function return an error.
  */
-#define GHOST_CALL_RETURN(__call) {\
-    ghost_error_t __ret = __call;\
-    if (__ret != GHOST_SUCCESS) {\
-        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_errorString(__ret));\
-        return __ret;\
+#define GHOST_CALL_RETURN(call) {\
+    ghost_error_t err = call;\
+    if (err != GHOST_SUCCESS) {\
+        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_errorString(err));\
+        return err;\
     }\
 }\
 
+#define MPI_CALL_RETURN(call) {\
+    int err = call;\
+    if (err != MPI_SUCCESS) {\
+        char errstr[MPI_MAX_ERROR_STRING];\
+        int strlen;\
+        MPI_Error_string(err,errstr,&strlen);\
+        ERROR_LOG("MPI Error in : %s",errstr);\
+        return GHOST_ERR_MPI;\
+    }\
+}\
 
 #endif

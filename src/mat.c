@@ -10,25 +10,23 @@
 
 const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_BINCRS_DT_DOUBLE|GHOST_BINCRS_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL };
 
-ghost_mat_t *ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
+ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits, ghost_mat_t ** mat)
 {
-    ghost_mat_t *mat;
     UNUSED(nTraits);
 
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
-            mat = ghost_CRS_init(context,traits);
-            break;
+            return ghost_CRS_init(context,traits,mat);
         case GHOST_SPM_FORMAT_SELL:
-            mat = ghost_SELL_init(context,traits);
-            break;
+            return ghost_SELL_init(context,traits,mat);
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
             traits->format = GHOST_SPM_FORMAT_CRS;
-            mat = ghost_CRS_init(context,traits);
+            return ghost_CRS_init(context,traits,mat);
     }
-    return mat;    
+    return GHOST_SUCCESS;    
 }
+
 ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
 {
     ghost_mnnz_t nrows;

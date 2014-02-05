@@ -30,7 +30,7 @@ typedef struct {
     ghost_midx_t max_dues;
 } commArgs;
 
-void *communicate(void *vargs)
+static void *communicate(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
@@ -96,7 +96,7 @@ typedef struct {
     int spmvmOptions;
 } compArgs;
 
-void *computeLocal(void *vargs)
+static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
@@ -109,15 +109,7 @@ void *computeLocal(void *vargs)
     return NULL;
 }
 
-void *computeRemote(void *vargs)
-{
-    compArgs *args = (compArgs *)vargs;
-    args->mat->remotePart->spmv(args->mat->remotePart,args->res,args->invec,args->spmvmOptions);
-
-    return NULL;
-}
-
-void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
     GHOST_INSTR_START(spMVM_taskmode_entiresolver)
     ghost_mnnz_t max_dues;
@@ -154,8 +146,8 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     GHOST_INSTR_START(spMVM_taskmode_prepare);
 
     DEBUG_LOG(1,"In task mode spMVM solver");
-    me = ghost_getRank(context->mpicomm);
-    nprocs = ghost_getNumberOfRanks(context->mpicomm);
+    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
     max_dues = 0;
@@ -264,4 +256,6 @@ void hybrid_kernel_III(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* 
     free(request);
     free(status);
     GHOST_INSTR_STOP(spMVM_taskmode_entiresolver)
+
+    return GHOST_SUCCESS;
 }

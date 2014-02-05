@@ -214,14 +214,14 @@ extern "C" {
     void ghost_printHeader(const char *fmt, ...);
     void ghost_printFooter(); 
     void ghost_printLine(const char *label, const char *unit, const char *format, ...);
-    void ghost_printContextInfo(ghost_context_t *context);
-    void ghost_printMatrixInfo(ghost_mat_t *matrix);
-    void ghost_printSysInfo();
-    void ghost_printGhostInfo();
+    ghost_error_t ghost_printContextInfo(ghost_context_t *context);
+    ghost_error_t ghost_printMatrixInfo(ghost_mat_t *matrix);
+    ghost_error_t ghost_printSysInfo();
+    ghost_error_t ghost_printGhostInfo();
 
 
     void ghost_solver_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-    void ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+    ghost_error_t ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
 
     char * ghost_workdistName(int ghostOptions);
     char * ghost_modeName(int spmvmOptions);
@@ -240,7 +240,7 @@ extern "C" {
     char ghost_datatypePrefix(int dt);
     int ghost_dataTypeIdx(int datatype);
     int ghost_getSpmvmModeIdx(int spmvmOptions);
-    ghost_midx_t ghost_globalIndex(ghost_context_t *, ghost_midx_t);
+    ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx);
 
     double ghost_wctime();
     double ghost_wctimemilli();
@@ -249,7 +249,6 @@ extern "C" {
     // The state for each OpenMP thread is initialized in ghost_init/ghost_rand_init
     unsigned int* ghost_getRandState();
 
-    double ghost_bench_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, int *spmvmOptions, int nIter);
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);
     int ghost_flopsPerSpmvm(int m_t, int v_t);
@@ -257,7 +256,7 @@ extern "C" {
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();
     int ghost_ompGetNumThreads();
-    int ghost_init(int argc, char **argv);
+    ghost_error_t ghost_init(int argc, char **argv);
     void ghost_finish();
 
     int ghost_setType(ghost_type_t t);

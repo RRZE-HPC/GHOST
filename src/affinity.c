@@ -24,6 +24,10 @@ static int stringcmp(const void *x, const void *y)
 
 void ghost_pinThreads(int options, char *procList)
 {
+    ERROR_LOG("Deprecated!");
+    UNUSED(options);
+    UNUSED(procList);
+#if 0
     if (procList != NULL) {
         char *list = strdup(procList);
         DEBUG_LOG(1,"Setting number of threads and pinning them to cores %s",list);
@@ -86,6 +90,7 @@ void ghost_pinThreads(int options, char *procList)
             }
         }
     }
+#endif
 }
 
 ghost_error_t ghost_setCore(int coreNumber)
@@ -156,22 +161,24 @@ ghost_error_t ghost_getCore(int *core)
     return GHOST_SUCCESS;
 }
 
-int ghost_getRank(ghost_mpi_comm_t comm) 
+ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank) 
 {
 #ifdef GHOST_HAVE_MPI
-    int rank;
-    MPI_safecall(MPI_Comm_rank ( comm, &rank ));
-    return rank;
+    MPI_CALL_RETURN(MPI_Comm_rank(comm,rank));
 #else
     UNUSED(comm);
-    return 0;
+    UNUSED(rank);
+    *rank = 0;
 #endif
+    return GHOST_SUCCESS;
 }
 
-int ghost_getNumberOfNodes() 
+ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(stringcmp);
+    UNUSED(comm);
+    UNUSED(nNodes);
     return 1;
 #else
 
@@ -179,9 +186,9 @@ int ghost_getNumberOfNodes()
     char name[MPI_MAX_PROCESSOR_NAME] = "";
     char *names = NULL;
 
-    MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&me));
-    MPI_safecall(MPI_Comm_size(MPI_COMM_WORLD,&size));
-    MPI_safecall(MPI_Get_processor_name(name,&nameLen));
+    GHOST_CALL_RETURN(ghost_getRank(comm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(comm,&size));
+    MPI_Get_processor_name(name,&nameLen);
 
 
     if (me==0) {
@@ -190,7 +197,7 @@ int ghost_getNumberOfNodes()
 
 
     MPI_safecall(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
-                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,MPI_COMM_WORLD));
+                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,comm));
 
     if (me==0) {
         qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
@@ -203,23 +210,23 @@ int ghost_getNumberOfNodes()
         free(names);
     }
 
-    MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm));
 
-    return distinctNames;
+    *nNodes = distinctNames;
 #endif
+    return GHOST_SUCCESS;
 }
 
-int ghost_getNumberOfRanks(ghost_mpi_comm_t comm)
+ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
 {
 #ifdef GHOST_HAVE_MPI
-    int nnodes;
-    MPI_safecall(MPI_Comm_size(comm, &nnodes));
-    return nnodes;
+    MPI_CALL_RETURN(MPI_Comm_size(comm,nRanks));
 #else
     UNUSED(comm);
+    UNUSED(nRanks);
     return 1;
 #endif
-
+    return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_setHwConfig(ghost_hw_config_t a)

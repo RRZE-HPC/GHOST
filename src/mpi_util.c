@@ -177,7 +177,8 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
 
 ghost_error_t ghost_setupNodeMPI(MPI_Comm comm)
 {
-    int mpiRank = ghost_getRank(comm);
+    int mpiRank;
+    GHOST_CALL_RETURN(ghost_getRank(comm,&mpiRank));
     int error;
     char * hostname = NULL;
     size_t hostnameLength = 0;
