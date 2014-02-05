@@ -4,7 +4,7 @@
 
 static hwloc_topology_t ghost_topology = NULL;
 
-ghost_error_t ghost_initTopology()
+ghost_error_t ghost_createTopology()
 {
     if (hwloc_topology_init(&ghost_topology)) {
         ERROR_LOG("Could not init topology");
@@ -18,6 +18,14 @@ ghost_error_t ghost_initTopology()
 
     return GHOST_SUCCESS;
 }
+
+ghost_error_t ghost_destroyTopology()
+{
+    hwloc_topology_destroy(ghost_topology);
+
+    return GHOST_SUCCESS;
+}
+    
 
 
 ghost_error_t ghost_getSizeOfLLC(uint64_t *size)

@@ -1,4 +1,5 @@
 #include "ghost/sell.h"
+#include "ghost/core.h"
 #include "ghost/crs.h"
 #include "ghost/util.h"
 #include "ghost/affinity.h"
@@ -109,6 +110,8 @@ ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, gh
     if (!((*mat)->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
+        ghost_type_t ghost_type;
+        GHOST_CALL_RETURN(ghost_getType(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
             (*mat)->traits->flags |= GHOST_SPM_DEVICE;
         } else {

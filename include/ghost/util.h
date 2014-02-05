@@ -209,7 +209,7 @@ extern "C" {
     extern int ghost_node_rank;
 #endif
     extern int hasCUDAdevice;
-    extern ghost_type_t ghost_type; 
+//    extern ghost_type_t ghost_type; 
 
     void ghost_printHeader(const char *fmt, ...);
     void ghost_printFooter(); 
@@ -256,11 +256,18 @@ extern "C" {
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();
     int ghost_ompGetNumThreads();
-    ghost_error_t ghost_init(int argc, char **argv);
-    void ghost_finish();
 
-    int ghost_setType(ghost_type_t t);
-    int ghost_setHybridMode(ghost_hybridmode_t hm);
+    /**
+     * @brief Computes a hash from three integral input values.
+     *
+     * @param a First parameter.
+     * @param b Second parameter.
+     * @param c Third parameter.
+     *
+     * @return Hash value.
+     *
+     * The function has been taken from http://burtleburtle.net/bob/hash/doobs.html
+     */
     int ghost_hash(int a, int b, int c);
 
 #ifdef __cplusplus

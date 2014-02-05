@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE 500 
 #include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/core.h"
 #include "ghost/vec.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
@@ -82,94 +83,96 @@ static void vec_downloadNonHalo(ghost_vec_t *vec);
 static ghost_error_t getNrowsFromContext(ghost_vec_t *vec);
 ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
 
-ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits)
+ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec)
 {
     ghost_vidx_t v;
-    ghost_vec_t *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
-    vec->context = ctx;
-    vec->traits = traits;
-    getNrowsFromContext(vec);
+    *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
+    (*vec)->context = ctx;
+    (*vec)->traits = traits;
+    getNrowsFromContext((*vec));
 
-    DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %zu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType(vec->traits->datatype));
+    DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %zu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType((*vec)->traits->datatype));
     DEBUG_LOG(1,"Initializing vector");
 
-    if (!(vec->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE)))
+    if (!((*vec)->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting vector placement");
-        vec->traits->flags |= GHOST_VEC_HOST;
+        (*vec)->traits->flags |= GHOST_VEC_HOST;
+        ghost_type_t ghost_type;
+        GHOST_CALL_RETURN(ghost_getType(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            vec->traits->flags |= GHOST_VEC_DEVICE;
+            (*vec)->traits->flags |= GHOST_VEC_DEVICE;
         }
     }
 
-    if (vec->traits->flags & GHOST_VEC_DEVICE)
+    if ((*vec)->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        vec->dotProduct = &ghost_vec_cu_dotprod;
-        vec->vaxpy = &ghost_vec_cu_vaxpy;
-        vec->vaxpby = &ghost_vec_cu_vaxpby;
-        vec->axpy = &ghost_vec_cu_axpy;
-        vec->axpby = &ghost_vec_cu_axpby;
-        vec->scale = &ghost_vec_cu_scale;
-        vec->vscale = &ghost_vec_cu_vscale;
-        vec->fromScalar = &ghost_vec_cu_fromScalar;
-        vec->fromRand = &ghost_vec_cu_fromRand;
+        (*vec)->dotProduct = &ghost_vec_cu_dotprod;
+        (*vec)->vaxpy = &ghost_vec_cu_vaxpy;
+        (*vec)->vaxpby = &ghost_vec_cu_vaxpby;
+        (*vec)->axpy = &ghost_vec_cu_axpy;
+        (*vec)->axpby = &ghost_vec_cu_axpby;
+        (*vec)->scale = &ghost_vec_cu_scale;
+        (*vec)->vscale = &ghost_vec_cu_vscale;
+        (*vec)->fromScalar = &ghost_vec_cu_fromScalar;
+        (*vec)->fromRand = &ghost_vec_cu_fromRand;
 #endif
     }
-    else if (vec->traits->flags & GHOST_VEC_HOST)
+    else if ((*vec)->traits->flags & GHOST_VEC_HOST)
     {
-        vec->dotProduct = &vec_dotprod;
-        vec->vaxpy = &vec_vaxpy;
-        vec->vaxpby = &vec_vaxpby;
-        vec->axpy = &vec_axpy;
-        vec->axpby = &vec_axpby;
-        vec->scale = &vec_scale;
-        vec->vscale = &vec_vscale;
-        vec->fromScalar = &vec_fromScalar;
-        vec->fromRand = &vec_fromRand;
+        (*vec)->dotProduct = &vec_dotprod;
+        (*vec)->vaxpy = &vec_vaxpy;
+        (*vec)->vaxpby = &vec_vaxpby;
+        (*vec)->axpy = &vec_axpy;
+        (*vec)->axpby = &vec_axpby;
+        (*vec)->scale = &vec_scale;
+        (*vec)->vscale = &vec_vscale;
+        (*vec)->fromScalar = &vec_fromScalar;
+        (*vec)->fromRand = &vec_fromRand;
     }
 
-    vec->compress = &vec_compress;
-    vec->print = &vec_print;
-    vec->fromFunc = &vec_fromFunc;
-    vec->fromVec = &vec_fromVec;
-    vec->fromFile = &vec_fromFile;
-    vec->toFile = &vec_toFile;
-    vec->zero = &ghost_zeroVector;
-    vec->distribute = &ghost_distributeVector;
-    vec->collect = &ghost_collectVectors;
-    vec->swap = &ghost_swapVectors;
-    vec->normalize = &ghost_normalizeVector;
-    vec->destroy = &ghost_freeVector;
-    vec->permute = &ghost_permuteVector;
-    vec->clone = &ghost_cloneVector;
-    vec->entry = &vec_entry;
-    vec->viewVec = &vec_view;
-    vec->viewPlain = &vec_viewPlain;
-    vec->viewScatteredVec = &vec_viewScatteredVec;
+    (*vec)->compress = &vec_compress;
+    (*vec)->print = &vec_print;
+    (*vec)->fromFunc = &vec_fromFunc;
+    (*vec)->fromVec = &vec_fromVec;
+    (*vec)->fromFile = &vec_fromFile;
+    (*vec)->toFile = &vec_toFile;
+    (*vec)->zero = &ghost_zeroVector;
+    (*vec)->distribute = &ghost_distributeVector;
+    (*vec)->collect = &ghost_collectVectors;
+    (*vec)->swap = &ghost_swapVectors;
+    (*vec)->normalize = &ghost_normalizeVector;
+    (*vec)->destroy = &ghost_freeVector;
+    (*vec)->permute = &ghost_permuteVector;
+    (*vec)->clone = &ghost_cloneVector;
+    (*vec)->entry = &vec_entry;
+    (*vec)->viewVec = &vec_view;
+    (*vec)->viewPlain = &vec_viewPlain;
+    (*vec)->viewScatteredVec = &vec_viewScatteredVec;
 
-    vec->upload = &vec_upload;
-    vec->download = &vec_download;
-    vec->uploadHalo = &vec_uploadHalo;
-    vec->downloadHalo = &vec_downloadHalo;
-    vec->uploadNonHalo = &vec_uploadNonHalo;
-    vec->downloadNonHalo = &vec_downloadNonHalo;
+    (*vec)->upload = &vec_upload;
+    (*vec)->download = &vec_download;
+    (*vec)->uploadHalo = &vec_uploadHalo;
+    (*vec)->downloadHalo = &vec_downloadHalo;
+    (*vec)->uploadNonHalo = &vec_uploadNonHalo;
+    (*vec)->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
-    if (vec->traits->flags & GHOST_VEC_DEVICE) {
-        vec->CU_val = NULL;
+    if ((*vec)->traits->flags & GHOST_VEC_DEVICE) {
+        (*vec)->CU_val = NULL;
     }
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
-    vec->val = (char **)ghost_malloc(vec->traits->nvecs*sizeof(char *));
+    (*vec)->val = (char **)ghost_malloc((*vec)->traits->nvecs*sizeof(char *));
 
-    for (v=0; v<vec->traits->nvecs; v++) {
-        vec->val[v] = NULL;
+    for (v=0; v<(*vec)->traits->nvecs; v++) {
+        (*vec)->val[v] = NULL;
     }
 
 
 
-    return vec;
+    return GHOST_SUCCESS;
 }
 
 static void vec_uploadHalo(ghost_vec_t *vec)
@@ -255,7 +258,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
     ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
     newTraits->nvecs = nc;
 
-    new = ghost_createVector(src->context,newTraits);
+    ghost_createVector(src->context,newTraits,&new);
     ghost_vidx_t v;
 
     for (v=0; v<new->traits->nvecs; v++) {
@@ -286,7 +289,7 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
     ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
     newTraits->nvecs = nc;
 
-    new = ghost_createVector(src->context,newTraits);
+    ghost_createVector(src->context,newTraits,&new);
 
     for (v=0; v<nc; v++) {
         new->val[v] = VECVAL(src,src->val,coffs[v],0);
@@ -1026,7 +1029,8 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
-    ghost_vec_t *new = ghost_createVector(src->context,ghost_cloneVtraits(src->traits));
+    ghost_vec_t *new;
+    ghost_createVector(src->context,ghost_cloneVtraits(src->traits),&new);
     new->traits->nvecs = nc;
 
     // copy the data even if the input vector is itself a view

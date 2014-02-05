@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-ghost_error_t ghost_initTopology();
+ghost_error_t ghost_createTopology();
+ghost_error_t ghost_destroyTopology();
 ghost_error_t ghost_getTopology(hwloc_topology_t *topo);
 ghost_error_t ghost_getSizeOfLLC(uint64_t *size);
 ghost_error_t ghost_getSizeOfCacheLine(unsigned *size);

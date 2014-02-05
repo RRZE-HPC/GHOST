@@ -16,6 +16,7 @@
 
 const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
 static ghost_hw_config_t ghost_hw_config = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
+static ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 
 static int stringcmp(const void *x, const void *y)
 {
@@ -237,8 +238,31 @@ ghost_error_t ghost_setHwConfig(ghost_hw_config_t a)
 
 ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig)
 {
+    if (!hwconfig) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
     hwconfig->maxCores = ghost_hw_config.maxCores;
     hwconfig->smtLevel = ghost_hw_config.smtLevel;
     
     return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_setHybridMode(ghost_hybridmode_t hm)
+{
+    ghost_hybridmode = hm;
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_getHybridMode(ghost_hybridmode_t *hm)
+{
+    if (!hm) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    *hm = ghost_hybridmode;
+
+    return GHOST_SUCCESS;
+
 }

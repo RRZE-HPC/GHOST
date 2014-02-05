@@ -38,7 +38,7 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec);
 extern "C" {
 #endif
 
-ghost_vec_t *ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits);
+ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec);
 
 ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
 ghost_error_t d_ghost_printVector(ghost_vec_t *vec); 

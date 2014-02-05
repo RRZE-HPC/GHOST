@@ -3,6 +3,7 @@
 
 #include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/core.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/constants.h"

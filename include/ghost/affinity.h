@@ -14,6 +14,14 @@ typedef struct {
     int smtLevel;
 } ghost_hw_config_t;
 
+typedef enum {
+    GHOST_HYBRIDMODE_INVALID, 
+    GHOST_HYBRIDMODE_ONEPERNODE, 
+    GHOST_HYBRIDMODE_ONEPERNUMA, 
+    GHOST_HYBRIDMODE_ONEPERCORE,
+    GHOST_HYBRIDMODE_CUSTOM
+} ghost_hybridmode_t;
+
 #define GHOST_HW_CONFIG_INVALID -1
 
 extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
@@ -26,6 +34,8 @@ extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
 extern "C" {
 #endif
 
+ghost_error_t ghost_setHybridMode(ghost_hybridmode_t hm);
+ghost_error_t ghost_getHybridMode(ghost_hybridmode_t *hm);
 ghost_error_t ghost_setHwConfig(ghost_hw_config_t);
 ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
 ghost_error_t ghost_getRank(ghost_mpi_comm_t, int *rank);

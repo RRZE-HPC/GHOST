@@ -29,7 +29,6 @@ add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY
 set (SOURCES
         src/io.c
         src/io.cpp 
-		src/ghost.c 
 		src/util.c 
 		src/spmvm_nompi.c 
 		src/vec.c 
@@ -45,6 +44,7 @@ set (SOURCES
 		src/math.c
         src/machine.c
 		src/affinity.c
+        src/core.c
 	)
 
 set (HEADERS
@@ -53,6 +53,7 @@ set (HEADERS
 		include/ghost/complex.h
 		include/ghost/constants.h
 		include/ghost/context.h
+        include/ghost/core.h
 		include/ghost/crs.h
 		include/ghost/error.h
         include/ghost/io.h

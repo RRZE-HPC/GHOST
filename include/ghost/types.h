@@ -56,18 +56,7 @@ typedef int ghost_blas_idx_t;
 #endif
 
 
-typedef enum {
-    GHOST_HYBRIDMODE_INVALID, 
-    GHOST_HYBRIDMODE_ONEPERNODE, 
-    GHOST_HYBRIDMODE_ONEPERNUMA, 
-    GHOST_HYBRIDMODE_ONEPERCORE
-} ghost_hybridmode_t;
 
-typedef enum {
-    GHOST_TYPE_INVALID, 
-    GHOST_TYPE_COMPUTE, 
-    GHOST_TYPE_CUDAMGMT
-} ghost_type_t;
 
 typedef enum {
     GHOST_SPMVM_DEFAULT = 0,
