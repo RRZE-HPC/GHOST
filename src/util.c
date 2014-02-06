@@ -578,6 +578,11 @@ int ghost_hash(int a, int b, int c)
 
 ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype)
 {
+    if (!dt) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+#if GHOST_HAVE_MPI
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX)
             *dt = GHOST_MPI_DT_C;
@@ -589,12 +594,21 @@ ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype)
         else
             *dt = MPI_DOUBLE;
     }
+#else
+    UNUSED(datatype);
+    *dt = MPI_DATATYPE_NULL;
+#endif
 
     return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
 {
+    if (!op) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+#if GHOST_HAVE_MPI
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX) {
             *op = GHOST_MPI_OP_SUM_C;
@@ -608,6 +622,10 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
             *op = MPI_SUM;
         }
     }
+#else
+    UNUSED(datatype);
+    *op = MPI_OP_NULL;
+#endif
 
     return GHOST_SUCCESS;
 
