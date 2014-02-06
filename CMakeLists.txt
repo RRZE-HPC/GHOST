@@ -45,6 +45,7 @@ set (SOURCES
         src/machine.c
 		src/affinity.c
         src/core.c
+        src/types.c
 	)
 
 set (HEADERS
@@ -64,6 +65,7 @@ set (HEADERS
 		include/ghost/types.h
 		include/ghost/util.h
 		include/ghost/vec.h
+        include/ghost/log.h
 	)
 
 if (USE_MPI)
