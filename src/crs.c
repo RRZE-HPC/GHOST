@@ -95,7 +95,7 @@ ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghos
     (*mat)->permute = &CRS_permute;
     (*mat)->destroy  = &CRS_free;
     (*mat)->stringify = &CRS_stringify;
-    (*mat)->CUupload = &CRS_upload;
+    (*mat)->upload = &CRS_upload;
 #ifdef GHOST_HAVE_MPI
     (*mat)->split = &CRS_split;
 #endif

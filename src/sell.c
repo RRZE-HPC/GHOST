@@ -86,7 +86,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
 static ghost_error_t SELL_permute(ghost_mat_t *, ghost_midx_t *, ghost_midx_t *);
-static ghost_error_t SELL_CUupload(ghost_mat_t *mat);
+static ghost_error_t SELL_upload(ghost_mat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
 static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
 static void SELL_free(ghost_mat_t *mat);
@@ -119,7 +119,7 @@ ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, gh
     }
     //TODO is it reasonable that a matrix has HOST&DEVICE?
 
-    (*mat)->CUupload = &SELL_CUupload;
+    (*mat)->upload = &SELL_upload;
     (*mat)->fromFile = &SELL_fromBin;
     (*mat)->fromRowFunc = &SELL_fromRowFunc;
     (*mat)->printInfo = &SELL_printInfo;
@@ -517,7 +517,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     }
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST))
-        mat->CUupload(mat);
+        mat->upload(mat);
 #endif
     return GHOST_SUCCESS;
 
@@ -726,8 +726,8 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
 
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST)) {
-        mat->localPart->CUupload(mat->localPart);
-        mat->remotePart->CUupload(mat->remotePart);
+        mat->localPart->upload(mat->localPart);
+        mat->remotePart->upload(mat->remotePart);
     }
 #endif
 
@@ -1082,7 +1082,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST))
-        mat->CUupload(mat);
+        mat->upload(mat);
 #endif
 
 
@@ -1105,7 +1105,7 @@ static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
     SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
 }
 
-static ghost_error_t SELL_CUupload(ghost_mat_t* mat) 
+static ghost_error_t SELL_upload(ghost_mat_t* mat) 
 {
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPM_HOST)) {

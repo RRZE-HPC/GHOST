@@ -160,13 +160,13 @@ struct ghost_mat_t
      *
      * @param mat The matrix.
      */
-    ghost_error_t (*CUupload)(ghost_mat_t * mat);
+    ghost_error_t (*upload)(ghost_mat_t * mat);
     /**
      * @brief Get the entire memory footprint of the matrix.
      *
      * @param mat The matrix.
      *
-     * @return The memory footprint of the matrix in bytes (zero if the matrix is NULL).
+     * @return The memory footprint of the matrix in bytes or zero if the matrix is not valid.
      */
     size_t     (*byteSize)(ghost_mat_t *mat);
     /**
