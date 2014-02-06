@@ -85,7 +85,6 @@ static size_t SELL_byteSize (ghost_mat_t *mat);
 static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
-static void SELL_upload(ghost_mat_t* mat);
 static ghost_error_t SELL_permute(ghost_mat_t *, ghost_midx_t *, ghost_midx_t *);
 static ghost_error_t SELL_CUupload(ghost_mat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *);
@@ -546,7 +545,7 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
     ghost_midx_t chunk;
-    ghost_midx_t idx, row,tmp;
+    ghost_midx_t idx, row;
 
     ghost_setupCommunication(mat->context,fullSELL->col);
 
@@ -771,20 +770,9 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     ghost_midx_t i;
     int proc;
     ghost_midx_t chunk,j;
-    int swapReq = 0;
     ghost_matfile_header_t header;
 
     ghost_readMatFileHeader(matrixPath,&header);
-
-    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from little to big endian.");
-        swapReq = 1;
-    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from big to little endian.");
-        swapReq = 1;
-    } else {
-        DEBUG_LOG(1,"OK, file and library have same endianess.");
-    }
 
     if (header.version != 1)
         ABORT("Can not read version %d of binary CRS format!",header.version);
@@ -892,7 +880,6 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     ghost_midx_t maxRowLenInChunk = 0;
     ghost_midx_t minRowLenInChunk = INT_MAX;
-    ghost_midx_t curChunk = 0;
 
     SELL(mat)->maxRowLen = 0;
     SELL(mat)->chunkStart[0] = 0;    
@@ -1038,7 +1025,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
               GHOST_CALL_RETURN(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
          */
        
-        ghost_midx_t idx = 0, col;
+        ghost_midx_t col;
         ghost_midx_t *curRowCols;
         char * curRowVals;
         for (i=0; (i<SELL(mat)->chunkHeight) && (row < mat->nrows); i++, row++) {

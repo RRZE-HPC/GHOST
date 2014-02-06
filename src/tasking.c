@@ -146,7 +146,6 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
     hwloc_bitmap_copy(ghost_thpool->cpuset,cpuset);
     ghost_thpool->busy = hwloc_bitmap_alloc();
 
-    int cpu;
     hwloc_obj_t runner;
 
     hwloc_topology_t topology;

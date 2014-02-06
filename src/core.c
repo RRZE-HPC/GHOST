@@ -310,7 +310,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
 
 
-    char *cpusetstr, *mycpusetstr;
+    char *cpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
     ghost_thpool_init(mycpuset);

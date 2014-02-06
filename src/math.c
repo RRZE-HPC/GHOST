@@ -120,7 +120,6 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
 
     ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
     // TODO if rhs vector data will not be continous
-    complex double zero = 0.+I*0.;
     if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
     {
         nrV=v->traits->nrows; ncV=v->traits->nvecs;
@@ -149,6 +148,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     return GHOST_ERR_NOT_IMPLEMENTED;
 #else
 
+    complex double zero = 0.+I*0.;
 
     ghost_blas_idx_t *m, *n, *k;
     m = (ghost_blas_idx_t *)&nrV;

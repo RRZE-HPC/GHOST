@@ -51,7 +51,7 @@ static void CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat);
 #ifdef GHOST_HAVE_MPI
 static ghost_error_t CRS_split(ghost_mat_t *mat);
 #endif
-static void CRS_upload(ghost_mat_t *mat);
+static ghost_error_t CRS_upload(ghost_mat_t *mat);
 
 
 ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghost_mat_t **mat)
@@ -95,6 +95,7 @@ ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghos
     (*mat)->permute = &CRS_permute;
     (*mat)->destroy  = &CRS_free;
     (*mat)->stringify = &CRS_stringify;
+    (*mat)->CUupload = &CRS_upload;
 #ifdef GHOST_HAVE_MPI
     (*mat)->split = &CRS_split;
 #endif
@@ -113,6 +114,12 @@ ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghos
 
     return GHOST_SUCCESS;
 
+}
+
+static ghost_error_t CRS_upload(ghost_mat_t *mat)
+{
+    UNUSED(mat);
+    return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
 static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm)
@@ -545,20 +552,9 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     ghost_midx_t i;
     ghost_mnnz_t j;
 
-    int swapReq = 0;
     ghost_matfile_header_t header;
 
     ghost_readMatFileHeader(matrixPath,&header);
-
-    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from little to big endian.");
-        swapReq = 1;
-    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
-        DEBUG_LOG(1,"Need to convert from big to little endian.");
-        swapReq = 1;
-    } else {
-        DEBUG_LOG(1,"OK, file and library have same endianess.");
-    }
 
     if (header.version != 1)
         ABORT("Can not read version %d of binary CRS format!",header.version);

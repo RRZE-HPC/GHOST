@@ -37,7 +37,7 @@ static void *communicate(void *vargs)
 //    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
     GHOST_INSTR_START(spMVM_taskmode_communicate);
-    int to_PE, from_PE, i;
+    int to_PE, from_PE;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
 #if GHOST_HAVE_INSTR_TIMING
@@ -140,10 +140,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
 
     commArgs cargs;
     compArgs cplargs;
-    compArgs cprargs;
-    ghost_task_t *commTask;// = ghost_task_init(1, GHOST_TASK_LD_ANY, &communicate, &cargs, GHOST_TASK_DEFAULT);
-    ghost_task_t *compTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
-    ghost_task_t *compRTask;// = ghost_task_init(ghost_thpool->nThreads-1, GHOST_TASK_LD_ANY, &computeLocal, &cpargs, GHOST_TASK_DEFAULT);
+    ghost_task_t *commTask;
+    ghost_task_t *compTask;
     GHOST_INSTR_START(spMVM_taskmode_prepare);
 
     DEBUG_LOG(1,"In task mode spMVM solver");
@@ -172,7 +170,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     } else {
         DEBUG_LOG(1,"No parent task in task mode spMVM solver");
         ghost_task_init(&compTask, ghost_thpool->nThreads-1, 0, &computeLocal, &cplargs, taskflags);
-        //ghost_task_init(&compRTask, ghost_thpool->nThreads, 0, &computeRemote, &cprargs, taskflags);
         ghost_task_init(&commTask, 1, ghost_thpool->nLDs-1, &communicate, &cargs, taskflags);
     }
 
@@ -192,11 +189,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     cplargs.invec = invec;
     cplargs.res = res;
     cplargs.spmvmOptions = localopts;
-    /*cprargs.mat = mat;
-    cprargs.invec = invec;
-    cprargs.res = res;
-    cprargs.spmvmOptions = remoteopts;
-*/
 
     for (i=0;i<invec->traits->nvecs*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;

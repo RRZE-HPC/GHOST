@@ -243,10 +243,6 @@ void ghost_destroyContext(ghost_context_t *context)
     }
     DEBUG_LOG(1,"Context freed successfully");
 }
-static int intcomp(const void *x, const void *y) 
-{
-    return (*(int *)x - *(int *)y);
-}
 
 ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx)
 {

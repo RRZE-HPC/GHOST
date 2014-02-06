@@ -338,7 +338,6 @@ ghost_error_t ghost_readRpt(ghost_mnnz_t *rpt, char *matrixPath, ghost_mnnz_t of
 ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
 {
     ghost_matfile_header_t header;
-    ghost_error_t err;
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
 
     if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {

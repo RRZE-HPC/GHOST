@@ -96,7 +96,6 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_mat_t *mat, ghost_vec_t* res, gho
 {
 #if GHOST_HAVE_AVX
     ghost_midx_t j,c;
-    int nthreads = 1;
     ghost_mnnz_t offs;
     double *mval = (double *)SELL(mat)->val;
     double *lval = (double *)res->val[0];
