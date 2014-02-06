@@ -153,6 +153,7 @@ ghost_error_t ghost_init(int argc, char **argv)
             ghost_setType(GHOST_TYPE_COMPUTE);
         }
     } 
+    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
 #ifndef GHOST_HAVE_CUDA
     if (ghost_type == GHOST_TYPE_CUDAMGMT) {
@@ -206,6 +207,7 @@ ghost_error_t ghost_init(int argc, char **argv)
             oversubscribed = 1;
         }
     }
+    GHOST_CALL_RETURN(ghost_getHybridMode(&ghost_hybridmode));
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
