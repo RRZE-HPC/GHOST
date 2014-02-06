@@ -56,6 +56,7 @@ static ghost_error_t CRS_upload(ghost_mat_t *mat);
 
 ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghost_mat_t **mat)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
     (*mat)->context = ctx;
     (*mat)->traits = traits;
@@ -66,7 +67,7 @@ ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghos
         DEBUG_LOG(2,"Setting matrix placement");
         (*mat)->traits->flags |= GHOST_SPM_HOST;
         ghost_type_t ghost_type;
-        GHOST_CALL_RETURN(ghost_getType(&ghost_type));
+        GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
             (*mat)->traits->flags |= GHOST_SPM_DEVICE;
         }
@@ -101,18 +102,23 @@ ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghos
 #endif
     (*mat)->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
-    //    mat->rowPerm = NULL;
-    //    mat->invRowPerm = NULL;
     (*mat)->localPart = NULL;
     (*mat)->remotePart = NULL;
     (*mat)->name = NULL;
-
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
     (*mat)->nzDist = NULL;
+    CR(*mat)->rpt = NULL;
+    CR(*mat)->col = NULL;
+    CR(*mat)->val = NULL;
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    free(*mat); *mat = NULL;
+
+out:
+    return ret;
 
 }
 
@@ -258,12 +264,13 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
 
 static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     UNUSED(base);
     UNUSED(flags);
     int nprocs = 1;
     int me;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
 
     ghost_midx_t rowlen;
     ghost_midx_t i,j;
@@ -334,15 +341,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
         mat->context->lnEnts[me] = mat->nEnts;
 
         ghost_mnnz_t nents;
-        int err;
         nents = mat->context->lnEnts[me];
-        MPI_CALL(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err);
-        if (err != MPI_SUCCESS) {
-            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            free(CR(mat)->col); CR(mat)->col = NULL;
-            free(CR(mat)->val); CR(mat)->val = NULL;
-            return GHOST_ERR_MPI;
-        }
+        MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err,ret);
 
         for (i=0; i<nprocs; i++) {
             mat->context->lfEnt[i] = 0;
@@ -352,20 +352,21 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
             mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
         } 
 
-        ghost_error_t gerr;
-        GHOST_CALL(mat->split(mat),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            free(CR(mat)->col); CR(mat)->col = NULL;
-            free(CR(mat)->val); CR(mat)->val = NULL;
-            return gerr;
-        }
+        GHOST_CALL_GOTO(mat->split(mat),err,ret);
 
 #endif
     }
     mat->nrows = mat->context->lnrows[me];
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    free(CR(mat)->rpt); CR(mat)->rpt = NULL;
+    free(CR(mat)->col); CR(mat)->col = NULL;
+    free(CR(mat)->val); CR(mat)->val = NULL;
+
+out:
+
+    return ret;
 }
 
 static ghost_error_t CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
@@ -412,6 +413,7 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
         return GHOST_ERR_INVALID_ARG;
     }
 
+    ghost_error_t ret = GHOST_SUCCESS;
     CR_TYPE *fullCR = CR(mat);
     CR_TYPE *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
@@ -424,9 +426,8 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
-
-    ghost_setupCommunication(mat->context,fullCR->col);
+    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_setupCommunication(mat->context,fullCR->col),err,ret);
 
     if (mat->traits->flags & GHOST_SPM_STORE_SPLIT) { // split computation
 
@@ -520,7 +521,13 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
         }
     }
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    mat->localPart->destroy(mat->localPart); mat->localPart = NULL;
+    mat->remotePart->destroy(mat->remotePart); mat->remotePart = NULL;
+
+out:
+    return ret;
 
 }
 
@@ -552,10 +559,10 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
 static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Reading CRS matrix from file");
+    ghost_error_t ret = GHOST_SUCCESS;
     mat->name = basename(matrixPath);
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
-    ghost_error_t gerr;
     ghost_midx_t i;
     ghost_mnnz_t j;
 
@@ -603,14 +610,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             CR(mat)->rpt[i] = 0;
         }
 
-        GHOST_CALL(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            free(CR(mat)->col); CR(mat)->col = NULL;
-            free(CR(mat)->val); CR(mat)->val = NULL;
-
-            return gerr;
-        }
+        GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < mat->nrows; i++) {
@@ -624,22 +624,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         mat->nEnts = (ghost_midx_t)header.nnz;
         mat->nnz = mat->nEnts;
 
-        GHOST_CALL(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nEnts),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            free(CR(mat)->col); CR(mat)->col = NULL;
-            free(CR(mat)->val); CR(mat)->val = NULL;
-
-            return gerr;
-        }
-        GHOST_CALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nEnts),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            free(CR(mat)->col); CR(mat)->col = NULL;
-            free(CR(mat)->val); CR(mat)->val = NULL;
-
-            return gerr;
-        }
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nEnts),err,ret);
+        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nEnts),err,ret);
 
 
     } else {
@@ -650,8 +636,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         ghost_context_t *context = mat->context;
         int nprocs = 1;
         int me;
-        GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
-        GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+        GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+        GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
 
         if (me == 0) {
             if (context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
@@ -662,7 +648,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 for (i = 0; i < header.nrows+1; i++) {
                     CR(mat)->rpt[i] = 0;
                 }
-                GHOST_CALL_RETURN(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1));
+                GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1),err,ret);
                 context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -675,23 +661,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 context->lnEnts[nprocs-1] = header.nnz - context->lfEnt[nprocs-1];
             }
         }
-        int err;
-        MPI_CALL(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
-        if (err != MPI_SUCCESS) {
-            if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            return GHOST_ERR_MPI;
-        }
-            
-        MPI_CALL(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
-        if (err != MPI_SUCCESS) {
-            if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            return GHOST_ERR_MPI;
-        }
-
+        MPI_CALL_GOTO(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
 
         mat->nnz = context->lnEnts[me];
         mat->nEnts = mat->nnz;
@@ -715,33 +686,15 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             req[i] = MPI_REQUEST_NULL;
 
         if (me != 0) {
-            MPI_CALL(MPI_Irecv(CR(mat)->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]),err);
-            if (err != MPI_SUCCESS) {
-                if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                    free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-                }
-                return GHOST_ERR_MPI;
-            }
+            MPI_CALL_GOTO(MPI_Irecv(CR(mat)->rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]),err,ret);
             msgcount++;
         } else {
             for (i=1;i<nprocs;i++) {
-                MPI_CALL(MPI_Isend(&CR(mat)->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]),err);
-                if (err != MPI_SUCCESS) {
-                    if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                        free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-                    }
-                    return GHOST_ERR_MPI;
-                }
+                MPI_CALL_GOTO(MPI_Isend(&CR(mat)->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]),err,ret);
                 msgcount++;
             }
         }
-        MPI_CALL(MPI_Waitall(msgcount,req,stat),err);
-        if (err != MPI_SUCCESS) {
-            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            return GHOST_ERR_MPI;
-        }
+        MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
 
         DEBUG_LOG(1,"Adjusting row pointers");
         for (i=0;i<context->lnrows[me]+1;i++) {
@@ -769,21 +722,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             }
         }
 
-        ghost_error_t gerr;
-        GHOST_CALL(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], mat->nEnts),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            return gerr;
-        }
-        GHOST_CALL(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], mat->nEnts),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            return gerr;
-        }
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], mat->nEnts),err,ret);
+        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], mat->nEnts),err,ret);
 
         mat->nzDist = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
         memset(mat->nzDist,0,sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
@@ -814,14 +754,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
 
         DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
-        GHOST_CALL(mat->split(mat),gerr);
-        if (gerr != GHOST_SUCCESS) {
-            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-            }
-            free(mat->nzDist); mat->nzDist = NULL;
-            return gerr;
-        }
+        GHOST_CALL_GOTO(mat->split(mat),err,ret);
 #else
         ERROR_LOG("Trying to create a distributed context without MPI!");
         return GHOST_ERR_INVALID_ARG;
@@ -829,7 +762,16 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     }
     DEBUG_LOG(1,"Matrix read in successfully");
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    free(CR(mat)->rpt); CR(mat)->rpt = NULL;
+    free(CR(mat)->col); CR(mat)->col = NULL;
+    free(CR(mat)->val); CR(mat)->val = NULL;
+    free(mat->nzDist); mat->nzDist = NULL;
+
+out:
+
+    return ret;
 
 }
 

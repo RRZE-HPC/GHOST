@@ -38,7 +38,7 @@ CR_TYPE;
 NZE_TYPE;*/
 
 
-#define CR(mat) ((CR_TYPE *)(mat->data))
+#define CR(mat) ((CR_TYPE *)((mat)->data))
 
 ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t * traits, ghost_mat_t **mat);
 #ifdef __cplusplus
