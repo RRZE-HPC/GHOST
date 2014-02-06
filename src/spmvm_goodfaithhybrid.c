@@ -18,7 +18,8 @@
 ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
     ghost_mnnz_t max_dues;
-    char *work;
+    char *work = NULL;
+    ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
 
     int localopts = spmvmOptions;
@@ -34,13 +35,13 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, g
     int msgcount;
     ghost_vidx_t c;
 
-    MPI_Request *request;
-    MPI_Status  *status;
 
     size_t sizeofRHS;
 
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
+    MPI_Request request[invec->traits->nvecs*2*nprocs];
+    MPI_Status  status[invec->traits->nvecs*2*nprocs];
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
     max_dues = 0;
@@ -49,8 +50,6 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, g
             max_dues = context->dues[i];
 
     work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
-    request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
-    status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
 #ifdef __INTEL_COMPILER
  //   kmp_set_blocktime(1);
@@ -66,7 +65,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, g
     for (from_PE=0; from_PE<nprocs; from_PE++){
         if (context->wishes[from_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount] ));
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
             }
         }
@@ -97,29 +96,31 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, g
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (context->dues[to_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount] ));
+                MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount]),err,ret);
                 msgcount++;
             }
         }
     }
 
     GHOST_INSTR_START(spmvm_gf_local);
-    mat->localPart->spmv(mat->localPart,res,invec,localopts);
+    GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts),err,ret);
     GHOST_INSTR_STOP(spmvm_gf_local);
 
     GHOST_INSTR_START(spmvm_gf_waitall);
-    MPI_safecall(MPI_Waitall(msgcount, request, status));
+    MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
     GHOST_INSTR_STOP(spmvm_gf_waitall);
 
-    invec->uploadHalo(invec);
+    GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
 
     GHOST_INSTR_START(spmvm_gf_remote);
-    mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);
+    GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts),err,ret);
     GHOST_INSTR_STOP(spmvm_gf_remote);
 
-    free(work);
-    free(request);
-    free(status);
+    goto out;
+err:
 
-    return GHOST_SUCCESS;
+out:
+    free(work);
+
+    return ret;
 }

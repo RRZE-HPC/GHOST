@@ -28,48 +28,58 @@ ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trai
     return GHOST_SUCCESS;    
 }
 
-ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat)
+ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat)
 {
-    ghost_mnnz_t nrows;
+    if (!nrows) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
     ghost_mnnz_t lnrows = mat->nrows;
 
     if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
-        nrows = lnrows;
+        *nrows = lnrows;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_safecall(MPI_Allreduce(&lnrows,&nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnrows,nrows,1,ghost_mpi_dt_midx,MPI_SUM,mat->context->mpicomm));
 #else
-        ABORT("Trying to get the number of matrix rows in a distributed context without MPI");
+        ERROR_LOG("Trying to get the number of matrix rows in a distributed context without MPI");
+        return GHOST_ERR_UNKNOWN;
 #endif
     }
 
-    return nrows;
+    return GHOST_SUCCESS;
 }
 
-ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat)
+ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat)
 {
-    ghost_mnnz_t nnz;
+    if (!nnz) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
     ghost_mnnz_t lnnz = mat->nnz;
 
     if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
-        nnz = lnnz;
+        *nnz = lnnz;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_safecall(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
 #else
-        ABORT("Trying to get the number of matrix nonzeros in a distributed context without MPI");
+        ERROR_LOG("Trying to get the number of matrix nonzeros in a distributed context without MPI");
+        return GHOST_ERR_UNKNOWN;
 #endif
     }
 
-    return nnz;
+    return GHOST_SUCCESS;
 }
 
 ghost_error_t ghost_printMatrixInfo(ghost_mat_t *mat)
 {
-    ghost_midx_t nrows = ghost_getMatNrows(mat);
-    ghost_midx_t nnz = ghost_getMatNnz(mat);
-
+    ghost_midx_t nrows;
+    ghost_midx_t nnz;
     int myrank;
+    
+    GHOST_CALL_RETURN(ghost_getMatNrows(&nrows,mat));
+    GHOST_CALL_RETURN(ghost_getMatNnz(&nnz,mat));
     GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
 
     if (myrank == 0) {

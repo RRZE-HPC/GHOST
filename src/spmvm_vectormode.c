@@ -18,48 +18,42 @@
 // if called with context==NULL: clean up variables
 ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
-
-    /*****************************************************************************
-     ********                  Kernel ir -- cs -- wa -- ca                ********   
-     ********          Kommunikation mittels MPI_ISend, MPI_IRecv         ********
-     ********                serielles Umkopieren und Senden              ********
-     ****************************************************************************/
-
-    ghost_mnnz_t max_dues;
-    int nprocs;
-
-    int me; 
-    int i, from_PE, to_PE;
-    int msgcount;
-    ghost_vidx_t c;
-
-    char *work = NULL;
-    MPI_Request *request = NULL;
-    MPI_Status  *status = NULL;
-
-    size_t sizeofRHS;
-
     if (context == NULL) {
         ERROR_LOG("The context is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
 
+    int i, from_PE, to_PE;
+    int msgcount;
+    ghost_vidx_t c;
+    char *work = NULL;
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_mnnz_t max_dues;
+    int nprocs;
+    int me; 
+    
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
+    
+    MPI_Request request[invec->traits->nvecs*2*nprocs];
+    MPI_Status  status[invec->traits->nvecs*2*nprocs];
+    
 
+    size_t sizeofRHS;
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
 
     max_dues = 0;
-    for (i=0;i<nprocs;i++)
-        if (context->dues[i]>max_dues) 
+    for (i=0;i<nprocs;i++) {
+        if (context->dues[i]>max_dues) {
             max_dues = context->dues[i];
+        }
+    }
+    
+    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
     GHOST_INSTR_START(spMVM_vectormode_comm);
     invec->downloadNonHalo(invec);
-    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
 
-    request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
-    status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
 #ifdef __INTEL_COMPILER
     //kmp_set_blocktime(1);
@@ -73,7 +67,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
     for (from_PE=0; from_PE<nprocs; from_PE++){
         if (context->wishes[from_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount] ));
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*sizeofRHS,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
             }
         }
@@ -108,27 +102,29 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (context->dues[to_PE]>0){
             for (c=0; c<invec->traits->nvecs; c++) {
-                MPI_safecall(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount] ));
+                MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*sizeofRHS + to_PE*max_dues*sizeofRHS, context->dues[to_PE]*sizeofRHS, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount]),err,ret);
                 msgcount++;
             }
         }
     }
 
     GHOST_INSTR_START(spMVM_vectormode_waitall)
-        MPI_safecall(MPI_Waitall(msgcount, request, status));
+    MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
     GHOST_INSTR_STOP(spMVM_vectormode_waitall)
 
-        invec->uploadHalo(invec);
+    GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
     GHOST_INSTR_STOP(spMVM_vectormode_comm);
 
     GHOST_INSTR_START(spMVM_vectormode_comp);
-    mat->spmv(mat,res,invec,spmvmOptions);    
+    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,spmvmOptions),err,ret);    
     GHOST_INSTR_STOP(spMVM_vectormode_comp);
 
-    free(work);
-    free(request);
-    free(status);
+    goto out;
+err:
 
-    return GHOST_SUCCESS;
+out:
+    free(work);
+
+    return ret;
 }
 

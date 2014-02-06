@@ -19,7 +19,7 @@ extern cublasHandle_t ghost_cublas_handle;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
-void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+ghost_error_t ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot_with_reduce)
     ghost_mpi_op_t sumOp;
@@ -31,11 +31,13 @@ void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
     int v;
     if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
         for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-            MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, mpiDt, sumOp, vec->context->mpicomm));
+            MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
 #endif
     GHOST_INSTR_STOP(dot_with_reduce)
+
+    return GHOST_SUCCESS;
 
 }
 

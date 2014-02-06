@@ -121,14 +121,14 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*download) (ghost_vec_t *vec);
+    ghost_error_t          (*download) (ghost_vec_t *vec);
     /**
      * @brief Downloads only a vector's halo elements from a compute device.
      * Does nothing if the vector is not present on the device.
      *
      * @param vec The vector.
      */
-    void          (*downloadHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*downloadHalo) (ghost_vec_t *vec);
     /**
      * @brief Downloads only a vector's local elements (i.e., without halo
      * elements) from a compute device. Does nothing if the vector is not
@@ -136,7 +136,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*downloadNonHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*downloadNonHalo) (ghost_vec_t *vec);
     /**
      * @brief Stores the entry of the vector at a given index (row i, column j)
      * into entry.
@@ -198,7 +198,7 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param perm The permutation.
      */
-    void          (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
+    ghost_error_t  (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
     /**
      * @brief Print a vector.
      *
@@ -232,14 +232,14 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*upload) (ghost_vec_t *vec);
+    ghost_error_t          (*upload) (ghost_vec_t *vec);
     /**
      * @brief Uploads only a vector's halo elements to a compute device.
      * Does nothing if the vector is not present on the device.
      *
      * @param vec The vector.
      */
-    void          (*uploadHalo) (ghost_vec_t *vec);
+    ghost_error_t (*uploadHalo) (ghost_vec_t *vec);
     /**
      * @brief Uploads only a vector's local elements (i.e., without halo
      * elements) to a compute device. Does nothing if the vector is not
@@ -247,7 +247,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*uploadNonHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*uploadNonHalo) (ghost_vec_t *vec);
     /**
      * @brief View plain data in the vector.
      * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided.

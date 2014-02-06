@@ -77,16 +77,16 @@ ghost_error_t ghost_init(int argc, char **argv)
     req = MPI_THREAD_SINGLE;
 #endif
 
-    MPI_safecall(MPI_Initialized(&MPIwasInitialized));
+    MPI_CALL_RETURN(MPI_Initialized(&MPIwasInitialized));
     if (!MPIwasInitialized) {
-        MPI_safecall(MPI_Init_thread(&argc, &argv, req, &prov ));
+        MPI_CALL_RETURN(MPI_Init_thread(&argc, &argv, req, &prov));
 
         if (req != prov) {
             WARNING_LOG("Required MPI threading level (%d) is not "
                     "provided (%d)!",req,prov);
         }
     } else {
-        WARNING_LOG("MPI was already initialized, not doing it!");
+        INFO_LOG("MPI was already initialized, not doing it!");
     }
 
 
@@ -174,7 +174,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 #if GHOST_HAVE_MPI
     ghost_mpi_comm_t ghost_node_comm;
     GHOST_CALL_RETURN(ghost_getNodeComm(&ghost_node_comm));
-    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
 #ifdef GHOST_HAVE_CUDA
     if (ncudadevs < nLocalCuda) {
@@ -183,7 +183,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
 
-    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&localTypes,nnoderanks,MPI_INT,MPI_MAX,ghost_node_comm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&localTypes,nnoderanks,MPI_INT,MPI_MAX,ghost_node_comm));
 #endif   
 
     ghost_hybridmode_t ghost_hybridmode;

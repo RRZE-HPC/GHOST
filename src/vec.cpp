@@ -165,7 +165,7 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec)
 {
     char prefix[16];
-#ifdef GHOST_HAVE_MPI
+#if GHOST_HAVE_MPI
     if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));

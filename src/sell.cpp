@@ -244,7 +244,7 @@ static int compareNZEPerRow( const void* a, const void* b )
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
 
-template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
+template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating SELL matrix");
     CR_TYPE *cr = (CR_TYPE*)(crsmat->data);
@@ -479,7 +479,8 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
                 if (j<SELL(mat)->rowLen[row]) {
                     if (flags & GHOST_SPM_SORTED) {
                         if (invRowPerm == NULL) {
-                            ABORT("The matris is sorted but the permutation vector is NULL");
+                            ERROR_LOG("The matris is sorted but the permutation vector is NULL");
+                            return GHOST_ERR_INVALID_ARG;
                         }
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(invRowPerm)[row]]+j];
                         if (flags & GHOST_SPM_PERMUTECOLIDX)
@@ -499,6 +500,7 @@ template <typename m_t> void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
         }
     }
     DEBUG_LOG(1,"Successfully created SELL");
+    return GHOST_SUCCESS;
 }
 
 template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int dense)
@@ -582,16 +584,16 @@ extern "C" ghost_error_t zc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs
 extern "C" ghost_error_t zz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" void d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< double >(mat,crs); }
 
-extern "C" void s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< float >(mat,crs); }
 
-extern "C" void z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< ghost_complex<double> >(mat,crs); }
 
-extern "C" void c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
 
 extern "C" const char * d_SELL_stringify(ghost_mat_t *mat, int dense)

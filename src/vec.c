@@ -68,19 +68,19 @@ static void ghost_normalizeVector( ghost_vec_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec); 
 static void ghost_freeVector( ghost_vec_t* const vec );
-static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
+static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
 static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
 static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 static void vec_compress(ghost_vec_t *vec);
-static void vec_upload(ghost_vec_t *vec);
-static void vec_download(ghost_vec_t *vec);
-static void vec_uploadHalo(ghost_vec_t *vec);
-static void vec_downloadHalo(ghost_vec_t *vec);
-static void vec_uploadNonHalo(ghost_vec_t *vec);
-static void vec_downloadNonHalo(ghost_vec_t *vec);
+static ghost_error_t vec_upload(ghost_vec_t *vec);
+static ghost_error_t vec_download(ghost_vec_t *vec);
+static ghost_error_t vec_uploadHalo(ghost_vec_t *vec);
+static ghost_error_t vec_downloadHalo(ghost_vec_t *vec);
+static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec);
+static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec);
 static ghost_error_t getNrowsFromContext(ghost_vec_t *vec);
 ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
 
@@ -176,7 +176,7 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
     return GHOST_SUCCESS;
 }
 
-static void vec_uploadHalo(ghost_vec_t *vec)
+static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading halo elements of vector");
@@ -190,17 +190,19 @@ static void vec_uploadHalo(ghost_vec_t *vec)
         }
 #endif
     }
+    return GHOST_SUCCESS;
 }
 
-static void vec_downloadHalo(ghost_vec_t *vec)
+static ghost_error_t vec_downloadHalo(ghost_vec_t *vec)
 {
 
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Downloading halo elements of vector");
         WARNING_LOG("Not yet implemented!");
     }
+    return GHOST_SUCCESS;
 }
-static void vec_uploadNonHalo(ghost_vec_t *vec)
+static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
@@ -211,9 +213,10 @@ static void vec_uploadNonHalo(ghost_vec_t *vec)
         }
 #endif
     }
+    return GHOST_SUCCESS;
 }
 
-static void vec_downloadNonHalo(ghost_vec_t *vec)
+static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
@@ -224,9 +227,10 @@ static void vec_downloadNonHalo(ghost_vec_t *vec)
         }
 #endif
     }
+    return GHOST_SUCCESS;
 }
 
-static void vec_upload(ghost_vec_t *vec) 
+static ghost_error_t vec_upload(ghost_vec_t *vec) 
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
@@ -237,9 +241,10 @@ static void vec_upload(ghost_vec_t *vec)
         }
 #endif
     }
+    return GHOST_SUCCESS;
 }
 
-static void vec_download(ghost_vec_t *vec)
+static ghost_error_t vec_download(ghost_vec_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
@@ -250,6 +255,7 @@ static void vec_download(ghost_vec_t *vec)
         }
 #endif
     }
+    return GHOST_SUCCESS;
 }
 
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
@@ -309,7 +315,7 @@ static void ghost_normalizeVector( ghost_vec_t *vec)
 static ghost_error_t vec_print(ghost_vec_t *vec)
 {
     return ghost_vec_print_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
-    
+
 }
 
 ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
@@ -382,7 +388,8 @@ static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
             {
                 if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
                     if (vec->context->halo_elements == -1) {
-                        ABORT("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+                        ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
+                        return GHOST_ERR_UNKNOWN;
                     }
                     vec->traits->nrowshalo = vec->traits->nrows+vec->context->halo_elements;
                 } else {
@@ -442,14 +449,14 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
                 memcpy(VECVAL(vec,vec->val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
             }
         }
-                
+
     }
 }
 
 static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
     GHOST_INSTR_START(axpy)
-    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+        ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
 
@@ -467,7 +474,7 @@ static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
 {
     GHOST_INSTR_START(axpby)
-    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+        ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
     char *b = (char *)ghost_malloc(nc*sizeofdt);
@@ -487,21 +494,21 @@ static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b
 static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
     GHOST_INSTR_START(vaxpy)
-    ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+        ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
     GHOST_INSTR_STOP(vaxpy)
 }
 
 static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
 {
     GHOST_INSTR_START(vaxpby)
-    ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+        ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
     GHOST_INSTR_STOP(vaxpby)
 }
 
 static void vec_scale(ghost_vec_t *vec, void *scale)
 {
     GHOST_INSTR_START(scale)
-    ghost_vidx_t nc = vec->traits->nvecs;
+        ghost_vidx_t nc = vec->traits->nvecs;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
 
@@ -516,14 +523,14 @@ static void vec_scale(ghost_vec_t *vec, void *scale)
 static void vec_vscale(ghost_vec_t *vec, void *scale)
 {
     GHOST_INSTR_START(vscale)
-    ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
+        ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
     GHOST_INSTR_STOP(vscale)
 }
 
 static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot)
-    ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+        ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
     GHOST_INSTR_STOP(dot)
 }
 
@@ -578,22 +585,22 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     int64_t ncols = (int64_t)vec->traits->nvecs;
     MPI_File fileh;
     MPI_Status status;
-    MPI_safecall(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
+    MPI_CALL_RETURN(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
 
     if (rank == 0) 
     { // write header AND portion
-        MPI_safecall(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
-        MPI_safecall(MPI_File_write(fileh,&version,1,MPI_INT,&status));
-        MPI_safecall(MPI_File_write(fileh,&order,1,MPI_INT,&status));
-        MPI_safecall(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
-        MPI_safecall(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
-        MPI_safecall(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&endianess,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&version,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&order,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&datatype,1,MPI_INT,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&nrows,1,MPI_LONG_LONG,&status));
+        MPI_CALL_RETURN(MPI_File_write(fileh,&ncols,1,MPI_LONG_LONG,&status));
 
     }    
     ghost_vidx_t v;
     ghost_mpi_datatype_t mpidt;
     GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits->datatype));
-    MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
+    MPI_CALL_RETURN(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
     MPI_Offset fileoffset = vec->context->lfRow[rank];
     ghost_vidx_t vecoffset = 0;
     for (v=0; v<vec->traits->nvecs; v++) {
@@ -612,13 +619,13 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
             CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
 #endif
         }
-        MPI_safecall(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
+        MPI_CALL_RETURN(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
         fileoffset += nrows;
         vecoffset += vec->traits->nrowspadded*sizeofdt;
         if (copied)
             free(val);
     }
-    MPI_safecall(MPI_File_close(&fileh));
+    MPI_CALL_RETURN(MPI_File_close(&fileh));
 
 
 #else
@@ -636,15 +643,40 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     FILE *filed;
 
     if ((filed = fopen64(path, "w")) == NULL){
-        ABORT("Could not vector file %s",path);
+        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        return GHOST_ERR_IO;
     }
 
-    if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
-    if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
-    if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
-    if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
-    if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
-    if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+    if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&order,sizeof(order),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
 
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++) {
@@ -664,11 +696,18 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 #endif
         }
 
-        if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
-            ABORT("fwrite failed (%zu): %s",ret,strerror(errno));
+        if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+            ERROR_LOG("fwrite failed: %zu",ret);
+            fclose(filed);
+            if (copied) {
+                free(val); val = NULL;
+            }
+            return GHOST_ERR_IO;
+        }
 
-        if (copied)
+        if (copied) {
             free(val);
+        }
     }
     fclose(filed);
 #endif
@@ -697,7 +736,9 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
     size_t ret;
 
     if ((filed = fopen64(path, "r")) == NULL){
-        ABORT("Could not vector file %s",path);
+        ERROR_LOG("Could not open vector file %s: %s",path,strerror(errno));
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
     }
 
     int32_t endianess;
@@ -709,52 +750,86 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
     int64_t ncols;
 
 
-    if ((ret = fread(&endianess, sizeof(endianess), 1,filed)) != 1)
-        ABORT("fread failed: %zu",ret);
+    if ((ret = fread(&endianess, sizeof(endianess), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
-    if (endianess != GHOST_BINCRS_LITTLE_ENDIAN)
-        ABORT("Cannot read big endian vectors");
+    if (endianess != GHOST_BINCRS_LITTLE_ENDIAN) {
+        ERROR_LOG("Cannot read big endian vectors");
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
-    if ((ret = fread(&version, sizeof(version), 1,filed)) != 1)
-        ABORT("fread failed");
+    if ((ret = fread(&version, sizeof(version), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
-    if (version != 1)
-        ABORT("Cannot read vector files with format != 1 (is %d)",version);
+    if (version != 1) {
+        ERROR_LOG("Cannot read vector files with format != 1 (is %d)",version);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
-    if ((ret = fread(&order, sizeof(order), 1,filed)) != 1)
-        ABORT("fread failed");
+    if ((ret = fread(&order, sizeof(order), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
     // Order does not matter for vectors
 
-    if ((ret = fread(&datatype, sizeof(datatype), 1,filed)) != 1)
-        ABORT("fread failed");
-    if (datatype != vec->traits->datatype)
-        ABORT("The data types don't match! Cast-while-read is not yet implemented for vectors.");
+    if ((ret = fread(&datatype, sizeof(datatype), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
-    if ((ret = fread(&nrows, sizeof(nrows), 1,filed)) != 1)
-        ABORT("fread failed");
+    if (datatype != vec->traits->datatype) {
+        ERROR_LOG("The data types don't match! Cast-while-read is not yet implemented for vectors.");
+        return GHOST_ERR_IO;
+    }
+
+    if ((ret = fread(&nrows, sizeof(nrows), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
     // I will read as many rows as the vector has
 
-    if ((ret = fread(&ncols, sizeof(ncols), 1,filed)) != 1)
-        ABORT("fread failed");
-    //if (ncols != 1)
-    //    ABORT("The number of columns has to be 1!");
+    if ((ret = fread(&ncols, sizeof(ncols), 1,filed)) != 1) {
+        ERROR_LOG("fread failed: %zu",ret);
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
     int v;
     for (v=0; v<vec->traits->nvecs; v++) {
-        if (fseeko(filed,offset*sizeofdt,SEEK_CUR))
-            ABORT("Seek failed");
+        if (fseeko(filed,offset*sizeofdt,SEEK_CUR)) {
+            ERROR_LOG("seek failed");
+            vec->destroy(vec);
+            return GHOST_ERR_IO;
+        }
         if (vec->traits->flags & GHOST_VEC_HOST)
         {
-            if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
-                ABORT("fread failed");
+            if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+                ERROR_LOG("fread failed: %zu",ret);
+                vec->destroy(vec);
+                return GHOST_ERR_IO;
+            }
             vec->upload(vec);
         }
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
             char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
-            if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows)
-                ABORT("fread failed");
+            if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+                ERROR_LOG("fread failed: %zu",ret);
+                vec->destroy(vec);
+                return GHOST_ERR_IO;
+            }
             CU_copyHostToDevice(&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],val,vec->traits->nrows*sizeofdt);
             free(val);
 #endif
@@ -798,7 +873,7 @@ static void ghost_zeroVector(ghost_vec_t *vec)
 {
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
-    
+
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
@@ -841,19 +916,19 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
 
     if (me != 0) {
         for (c=0; c<vec->traits->nvecs; c++) {
-            MPI_safecall(MPI_Irecv(nodeVec->val[c],nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Irecv(nodeVec->val[c],nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
             memcpy(nodeVec->val[c],vec->val[c],sizeofdt*nodeVec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_safecall(MPI_Isend(VECVAL(vec,vec->val,c,nodeVec->context->lfRow[i]),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Isend(VECVAL(vec,vec->val,c,nodeVec->context->lfRow[i]),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
     }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
+    MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
 
     for (c=0; c<vec->traits->nvecs; c++) {
@@ -895,19 +970,19 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 
     if (me != 0) {
         for (c=0; c<vec->traits->nvecs; c++) {
-            MPI_safecall(MPI_Isend(vec->val[c],vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
+            MPI_CALL_RETURN(MPI_Isend(vec->val[c],vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
             memcpy(totalVec->val[c],vec->val[c],sizeofdt*vec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
-                MPI_safecall(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,vec->context->lfRow[i]),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
+                MPI_CALL_RETURN(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,vec->context->lfRow[i]),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
                 msgcount++;
             }
         }
     }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
+    MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
     if (vec->context != NULL) {
         vec->permute(vec,vec->context->invRowPerm);
@@ -948,10 +1023,10 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             /*if (vec->traits->flags & GHOST_VEC_DEVICE) {
-                for (v=0; v<vec->traits->nvecs; v++) { 
-                    CU_safecall(cudaFreeHost(vec->val[v]));
-                }
-            }*/
+              for (v=0; v<vec->traits->nvecs; v++) { 
+              CU_safecall(cudaFreeHost(vec->val[v]));
+              }
+              }*/
             if (vec->traits->flags & GHOST_VEC_SCATTERED) {
                 for (v=0; v<vec->traits->nvecs; v++) {
                     free(vec->val[v]);
@@ -985,7 +1060,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
         // TODO free traits ???
     }
 }
-static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
+static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
 {
     // TODO enhance performance
     /* permutes values in vector so that i-th entry is mapped to position perm[i] */
@@ -996,7 +1071,7 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 
     if (perm == NULL) {
         DEBUG_LOG(1,"Permutation vector is NULL, returning.");
-        return;
+        return GHOST_SUCCESS;
     } else {
         DEBUG_LOG(1,"Permuting vector");
     }
@@ -1006,7 +1081,9 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
         tmp = ghost_malloc(sizeofdt*len);
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
-                ABORT("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
+                ERROR_LOG("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
+                free(tmp);
+                return GHOST_ERR_UNKNOWN;
             }
 
             memcpy(&tmp[sizeofdt*perm[i]],VECVAL(vec,vec->val,c,i),sizeofdt);
@@ -1016,6 +1093,8 @@ static void ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
         }
         free(tmp);
     }
+
+    return GHOST_SUCCESS;
 }
 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
@@ -1038,9 +1117,9 @@ static void vec_compress(ghost_vec_t *vec)
         return;
 
     ghost_vidx_t v,i;
-    
+
     char *val = (char *)ghost_malloc(vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
-   
+
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrowspadded; i++)
     {
@@ -1049,12 +1128,12 @@ static void vec_compress(ghost_vec_t *vec)
             val[(v*vec->traits->nrowspadded+i)*ghost_sizeofDataType(vec->traits->datatype)] = 0;
         }
     }
-        
+
     for (v=0; v<vec->traits->nvecs; v++)
     {
         memcpy(&val[(v*vec->traits->nrowspadded)*ghost_sizeofDataType(vec->traits->datatype)],
                 VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
-        
+
         if (!(vec->traits->flags & GHOST_VEC_VIEW))
         {
             free(vec->val[v]);

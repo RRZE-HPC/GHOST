@@ -71,7 +71,7 @@ ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, gh
 #ifdef __cplusplus
 template<typename, typename, int> void SELL_kernel_plain_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
 template<typename, typename> void SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
-template <typename> void SELL_fromCRS(ghost_mat_t *, ghost_mat_t *);
+template <typename> ghost_error_t SELL_fromCRS(ghost_mat_t *, ghost_mat_t *);
 extern "C" {
 #endif
 ghost_error_t dd_SELL_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
@@ -115,10 +115,10 @@ ghost_error_t zs_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, gho
 ghost_error_t zc_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 ghost_error_t zz_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 #endif
-void d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
-void s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
-void c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
-void z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
+ghost_error_t d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
+ghost_error_t s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
+ghost_error_t c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
+ghost_error_t z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 
 const char * d_SELL_stringify(ghost_mat_t *mat, int dense);
 const char * s_SELL_stringify(ghost_mat_t *mat, int dense);

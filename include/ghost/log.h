@@ -1,6 +1,10 @@
 #ifndef GHOST_LOG_H
 #define GHOST_LOG_H
 
+#if GHOST_HAVE_MPI
+#include <mpi.h>
+#endif
+
 #include <stdio.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -35,17 +39,24 @@
             TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, ONE, throwaway)
 #define SELECT_10TH(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...) a10
 
-#ifdef GHOST_HAVE_MPI
+#if GHOST_HAVE_MPI
+
 #define LOG(type,color,...) {\
-    int __me;\
-    MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
+    int me;\
+    int err = MPI_Comm_rank(MPI_COMM_WORLD,&me);\
+    if (err != MPI_SUCCESS) {\
+        me=-1;\
+    }\
+    fprintf(stderr, color "PE%d " #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", me, __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__)); \
     fflush(stderr);\
-    }
+}\
+
 #else
+
 #define LOG(type,color,...) {\
     fprintf(stderr, color #type " at %s() <%s:%d>: " FIRST(__VA_ARGS__) ANSI_COLOR_RESET "\n", __func__, FILE_BASENAME, __LINE__ REST(__VA_ARGS__));\
-    }
+}\
+
 #endif
 
 

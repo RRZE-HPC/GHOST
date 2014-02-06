@@ -528,9 +528,11 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             // TODO wait for condition when unpinned or new task
             if (sem_wait(&taskSem)) // TODO wait for a signal in order to avoid entering the loop when nothing has changed
             {
-                if (errno == EINTR)
+                if (errno == EINTR) {
                     continue;
-                ABORT("Waiting for tasks failed: %s",strerror(errno));
+                }
+                ERROR_LOG("Waiting for tasks failed: %s. Will try again.",strerror(errno));
+                continue;
             }
 
             if (killed) // thread has been woken by the finish() function
@@ -762,7 +764,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         DEBUG_LOG(1,"Wake up all threads");    
         if (sem_post(&taskSem)){
             WARNING_LOG("Error in sem_post: %s",strerror(errno));
-            return GHOST_ERR_INTERNAL;
+            return GHOST_ERR_UNKNOWN;
         }
         /*DEBUG_LOG(1,"Join all threads");
           int t; 
@@ -1027,6 +1029,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         (*t)->next = NULL;
         (*t)->prev = NULL;
         (*t)->parent = NULL;
+        (*t)->ret = NULL;
         (*t)->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
         (*t)->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
 

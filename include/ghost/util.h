@@ -33,7 +33,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 
-
+#if 0
 #ifdef GHOST_HAVE_MPI
 #define ABORT(...) {\
     LOG(ABORT,ANSI_COLOR_MAGENTA,__VA_ARGS__)\
@@ -48,7 +48,6 @@
 #endif
 
 
-
 #define MPI_safecall(call) {\
     int mpierr = call ;\
     if( MPI_SUCCESS != mpierr ){\
@@ -57,7 +56,6 @@
         fflush(stderr);\
     }\
 }
-
 #ifdef GHOST_HAVE_MPI
 #define CU_safecall(call) {\
     cudaError_t __cuerr = call ;\
@@ -136,6 +134,7 @@
         fflush(stdout);\
     }\
 }
+#endif
 #endif
 
 #ifndef MIN

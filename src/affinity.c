@@ -116,6 +116,7 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
     return 1;
 #else
 
+    int mpiErr;
     int nameLen,me,size,i,distinctNames = 1;
     char name[MPI_MAX_PROCESSOR_NAME] = "";
     char *names = NULL;
@@ -130,8 +131,13 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
     }
 
 
-    MPI_safecall(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
-                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,comm));
+    MPI_CALL(MPI_Gather(name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,names,
+                MPI_MAX_PROCESSOR_NAME,MPI_CHAR,0,comm),mpiErr);
+    if ((mpiErr != MPI_SUCCESS) && (me == 0)) {
+        free(names);
+        return GHOST_ERR_MPI;
+    }
+
 
     if (me==0) {
         qsort(names,size,MPI_MAX_PROCESSOR_NAME*sizeof(char),stringcmp);
@@ -144,7 +150,11 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
         free(names);
     }
 
-    MPI_safecall(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm));
+    MPI_CALL(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm),mpiErr);
+    if ((mpiErr != MPI_SUCCESS) && (me == 0)) {
+        free(names);
+        return GHOST_ERR_MPI;
+    }
 
     *nNodes = distinctNames;
 #endif
@@ -277,13 +287,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
     do {
         nHostname += MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
 
-        hostname = (char *)malloc(sizeof(char) * nHostname);
-
-        if (hostname == NULL) {
-            WARNING_LOG("Allocating %zu bytes of memory for hostname failed: %s",
-                    sizeof(char) * nHostname, strerror(errno));
-            return GHOST_ERR_INTERNAL;
-        }
+        hostname = (char *)ghost_malloc(sizeof(char) * nHostname);
 
         int error;
 
@@ -298,8 +302,8 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
                 free(hostname);
                 hostname = NULL;
 
-                WARNING_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
-                return GHOST_ERR_INTERNAL;
+                ERROR_LOG("gethostname failed with error %d: %s", errno, strerror(errno));
+                return GHOST_ERR_UNKNOWN;
             }
 
         }
@@ -353,19 +357,19 @@ ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
     int checkSumSigned = (int)(checkSum>>1);
 
     int commRank = -1;
-    MPI_safecall(MPI_Comm_rank(comm, &commRank));
+    MPI_CALL_RETURN(MPI_Comm_rank(comm, &commRank));
 
     MPI_Comm nodeComm = MPI_COMM_NULL;
 
     DEBUG_LOG(2," comm_split:  color:  %u  rank:  %d   hostnameLength: %zu", checkSum, mpiRank, hostnameLength);
 
-    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
+    MPI_CALL_RETURN(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
 
     int nodeRank;
-    MPI_safecall(MPI_Comm_rank(nodeComm, &nodeRank));
+    MPI_CALL_RETURN(MPI_Comm_rank(nodeComm, &nodeRank));
 
     int nodeSize;
-    MPI_safecall(MPI_Comm_size(nodeComm, &nodeSize));
+    MPI_CALL_RETURN(MPI_Comm_size(nodeComm, &nodeSize));
 
     // Determine if collisions of the hashed hostname occured.
 
@@ -379,7 +383,13 @@ ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
     send[nSend - 1] = 0x00;
 
     char * recv = (char *)malloc(sizeof(char) * nSend * nodeSize);
-    MPI_safecall(MPI_Allgather(send, nSend, MPI_CHAR, recv, nSend, MPI_CHAR, nodeComm));
+    MPI_CALL(MPI_Allgather(send, nSend, MPI_CHAR, recv, nSend, MPI_CHAR, nodeComm),error);
+    if (error != MPI_SUCCESS) {
+        free(send); send = NULL;
+        free(recv); recv = NULL;
+        free(hostname); hostname = NULL;
+        return GHOST_ERR_MPI;
+    }
 
     char * neighbor = recv;
     int localNodeRank = 0;
@@ -418,7 +428,14 @@ ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
         WARNING_LOG("The nodal rank is fixed now but the nodal communicator is not. This will lead to problems...");
         nodeRank = localNodeRank;
     }
-    MPI_safecall(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm));
+    MPI_CALL(MPI_Comm_split(comm, checkSumSigned, mpiRank, &nodeComm),error);
+    if (error != MPI_SUCCESS) {
+        free(send); send = NULL;
+        free(recv); recv = NULL;
+        free(hostname); hostname = NULL;
+
+        return GHOST_ERR_MPI;
+    }
 
 
     // Clean up.

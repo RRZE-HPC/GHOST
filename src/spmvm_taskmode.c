@@ -37,6 +37,9 @@ static void *communicate(void *vargs)
 //    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
     GHOST_INSTR_START(spMVM_taskmode_communicate);
+    ghost_error_t *ret = (ghost_error_t *)ghost_malloc(sizeof(ghost_error_t));
+    *ret = GHOST_SUCCESS;
+
     int to_PE, from_PE;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
@@ -51,7 +54,7 @@ static void *communicate(void *vargs)
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_safecall(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount] ));
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
                 recvBytes += args->context->wishes[from_PE]*ghost_sizeofDataType(args->rhs->traits->datatype);
@@ -64,7 +67,7 @@ static void *communicate(void *vargs)
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
         if (args->context->dues[to_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_safecall(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount] ));
+                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
                 sendBytes += args->context->dues[to_PE]*ghost_sizeofDataType(args->rhs->traits->datatype);
@@ -76,9 +79,9 @@ static void *communicate(void *vargs)
     
 
 
-    MPI_safecall(MPI_Waitall(args->msgcount, args->request, args->status));
-
-    args->rhs->uploadHalo(args->rhs);
+    MPI_CALL_GOTO(MPI_Waitall(args->msgcount, args->request, args->status),err,*ret);
+    GHOST_CALL_GOTO(args->rhs->uploadHalo(args->rhs),err,*ret);
+    
     GHOST_INSTR_STOP(spMVM_taskmode_communicate);
 
 #if GHOST_HAVE_INSTR_TIMING
@@ -87,7 +90,11 @@ static void *communicate(void *vargs)
     INFO_LOG("sendmsgs : %zu",sendMsgs);
     INFO_LOG("recvmsgs : %zu",recvMsgs);
 #endif
-    return NULL;
+
+    goto out;
+err:
+out:
+    return ret;
 }
 
 typedef struct {
@@ -101,27 +108,31 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+    ghost_error_t *ret = (ghost_error_t *)ghost_malloc(sizeof(ghost_error_t));
+    *ret = GHOST_SUCCESS;
 
     GHOST_INSTR_START(spMVM_taskmode_computeLocal);
     compArgs *args = (compArgs *)vargs;
-    args->mat->spmv(args->mat,args->res,args->invec,args->spmvmOptions);
+    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvmOptions),err,*ret);
     GHOST_INSTR_STOP(spMVM_taskmode_computeLocal);
 
-    return NULL;
+    goto out;
+err:
+out:
+    return ret;
 }
 
 ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
     GHOST_INSTR_START(spMVM_taskmode_entiresolver)
     ghost_mnnz_t max_dues;
-    char *work;
+    char *work = NULL;
+    ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
 
     int me; 
     int i;
 
-    MPI_Request *request;
-    MPI_Status  *status;
 
     int localopts = spmvmOptions;
     int remoteopts = spmvmOptions;
@@ -148,6 +159,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
     sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
+    MPI_Request request[invec->traits->nvecs*2*nprocs];
+    MPI_Status  status[invec->traits->nvecs*2*nprocs];
 
     max_dues = 0;
     for (i=0;i<nprocs;i++)
@@ -155,8 +168,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
             max_dues = context->dues[i];
 
     work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
-    request = (MPI_Request*) ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Request));
-    status  = (MPI_Status*)  ghost_malloc(invec->traits->nvecs*2*nprocs*sizeof(MPI_Status));
 
     int taskflags = GHOST_TASK_DEFAULT;
     if (pthread_getspecific(ghost_thread_key) != NULL) {
@@ -234,8 +245,14 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     }
     ghost_task_add(compTask);
     ghost_task_wait(compTask);
+    if ((ret = *((ghost_error_t *)(compTask->ret))) != GHOST_SUCCESS) {
+        goto err;
+    }
     if (remoteExists) {
         ghost_task_wait(commTask);
+        if ((ret = *((ghost_error_t *)(commTask->ret))) != GHOST_SUCCESS) {
+            goto err;
+        }
     }
     GHOST_INSTR_STOP(spMVM_taskmode_both_tasks);
 
@@ -246,9 +263,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     GHOST_INSTR_STOP(spMVM_taskmode_computeRemote);
        
     free(work);
-    free(request);
-    free(status);
     GHOST_INSTR_STOP(spMVM_taskmode_entiresolver)
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+
+out:
+    free(work);
+    free(compTask->ret);
+    free(commTask->ret);
+
+    return ret;
 }

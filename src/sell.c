@@ -72,7 +72,7 @@ ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_
     {&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
 #endif
 
-void (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, ghost_mat_t *) = 
+ghost_error_t (*SELL_fromCRS_funcs[4]) (ghost_mat_t *, ghost_mat_t *) = 
 {&s_SELL_fromCRS, &d_SELL_fromCRS, &c_SELL_fromCRS, &z_SELL_fromCRS}; 
 
 const char * (*SELL_stringify_funcs[4]) (ghost_mat_t *, int) = 
@@ -82,7 +82,7 @@ static void SELL_printInfo(ghost_mat_t *mat);
 static const char * SELL_formatName(ghost_mat_t *mat);
 static ghost_midx_t SELL_rowLen (ghost_mat_t *mat, ghost_midx_t i);
 static size_t SELL_byteSize (ghost_mat_t *mat);
-static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
+static ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs);
 static const char * SELL_stringify(ghost_mat_t *mat, int dense);
 static ghost_error_t SELL_split(ghost_mat_t *mat);
 static ghost_error_t SELL_permute(ghost_mat_t *, ghost_midx_t *, ghost_midx_t *);
@@ -504,8 +504,20 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         mat->context->lnEnts[me] = mat->nEnts;
 
         ghost_mnnz_t nents;
+        int err;
         nents = mat->context->lnEnts[me];
-        MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
+        MPI_CALL(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err);
+        if (err != MPI_SUCCESS) {
+            free(SELL(mat)->val); SELL(mat)->val = NULL;
+            free(SELL(mat)->col); SELL(mat)->col = NULL;
+            free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+            free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+            free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+            free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+            free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+            free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+            return GHOST_ERR_MPI;
+        }
 
         for (i=0; i<nprocs; i++) {
             mat->context->lfEnt[i] = 0;
@@ -515,7 +527,19 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
             mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
         } 
 
-        mat->split(mat);
+        ghost_error_t gerr;
+        GHOST_CALL(mat->split(mat),gerr);
+        if (gerr != GHOST_SUCCESS) {
+            free(SELL(mat)->val); SELL(mat)->val = NULL;
+            free(SELL(mat)->col); SELL(mat)->col = NULL;
+            free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+            free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+            free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+            free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+            free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+            free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+            return gerr;
+        }
 #endif
     }
 #ifdef GHOST_HAVE_CUDA
@@ -532,8 +556,8 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
         ERROR_LOG("Matrix is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
-        
-        
+
+
     SELL_TYPE *fullSELL = SELL(mat);
     SELL_TYPE *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
@@ -777,20 +801,33 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     ghost_readMatFileHeader(matrixPath,&header);
 
-    if (header.version != 1)
-        ABORT("Can not read version %d of binary CRS format!",header.version);
+    if (header.version != 1) {
+        ERROR_LOG("Can not read version %d of binary CRS format!",header.version);
+        return GHOST_ERR_IO;
+    }
 
-    if (header.base != 0)
-        ABORT("Can not read matrix with %d-based indices!",header.base);
+    if (header.base != 0) {
+        ERROR_LOG("Can not read matrix with %d-based indices!",header.base);
+        return GHOST_ERR_IO;
+    }
 
-    if (!ghost_symmetryValid(header.symmetry))
-        ABORT("Symmetry is invalid! (%d)",header.symmetry);
-    if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL)
-        ABORT("Can not handle symmetry different to general at the moment!");
+    if (!ghost_symmetryValid(header.symmetry)) {
+        ERROR_LOG("Symmetry is invalid! (%d)",header.symmetry);
+        return GHOST_ERR_IO;
+    }
+
+    if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
+        ERROR_LOG("Can not handle symmetry different to general at the moment!");
+        return GHOST_ERR_IO;
+    }
+
+    if (!ghost_datatypeValid(header.datatype)) {
+        ERROR_LOG("Datatype is invalid! (%d)",header.datatype);
+        return GHOST_ERR_IO;
+    }
+
     mat->traits->symmetry = header.symmetry;
-
-    if (!ghost_datatypeValid(header.datatype))
-        ABORT("Datatype is invalid! (%d)",header.datatype);
+    mat->ncols = (ghost_midx_t)header.ncols;
 
     if (me == 0) {
         if (context->flags & GHOST_CONTEXT_DIST_ROWS) { // lnents and lfent have to be filled!
@@ -826,9 +863,22 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         }
     }
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(mat->context->lfRow,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-    MPI_safecall(MPI_Bcast(mat->context->lnrows, nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
-    MPI_safecall(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, mat->context->mpicomm));
+    int err;
+    MPI_CALL(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
+    if (err != MPI_SUCCESS) {
+        if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
+            free(rpt); rpt = NULL;
+        }
+        return GHOST_ERR_MPI;
+    }
+
+    MPI_CALL(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
+    if (err != MPI_SUCCESS) {
+        if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
+            free(rpt); rpt = NULL;
+        }
+        return GHOST_ERR_MPI;
+    }
 #endif
 
 
@@ -855,15 +905,33 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         req[proc] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        MPI_safecall(MPI_Irecv(rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]));
+        MPI_CALL(MPI_Irecv(rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]),err);
+        if (err != MPI_SUCCESS) {
+            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
+                free(rpt); rpt = NULL;
+            }
+            return GHOST_ERR_MPI;
+        }
         msgcount++;
     } else {
-        for (proc=1;proc<nprocs;proc++) {
-            MPI_safecall(MPI_Isend(&rpt[context->lfRow[proc]],context->lnrows[proc]+1,ghost_mpi_dt_midx,proc,proc,context->mpicomm,&req[msgcount]));
+        for (i=1;i<nprocs;i++) {
+            MPI_CALL(MPI_Isend(&rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]),err);
+            if (err != MPI_SUCCESS) {
+                if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
+                    free(rpt); rpt = NULL;
+                }
+                return GHOST_ERR_MPI;
+            }
             msgcount++;
         }
     }
-    MPI_safecall(MPI_Waitall(msgcount,req,stat));
+    MPI_CALL(MPI_Waitall(msgcount,req,stat),err);
+    if (err != MPI_SUCCESS) {
+        if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
+            free(rpt); rpt = NULL;
+        }
+        return GHOST_ERR_MPI;
+    }
 #endif 
 
     for (i=0;i<context->lnrows[me]+1;i++) {
@@ -972,7 +1040,18 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 #if GHOST_HAVE_MPI
     ghost_mnnz_t nents;
     nents = mat->context->lnEnts[me];
-    MPI_safecall(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm));
+    MPI_CALL(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err);
+    if (err != MPI_SUCCESS) {
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+        return GHOST_ERR_MPI;
+    }
 #endif
 
     DEBUG_LOG(1,"SELL matrix has %"PRmatIDX" (padded to %"PRmatIDX") rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros and %"PRmatNNZ" entries",mat->nrows,mat->nrowsPadded,mat->ncols,mat->nnz,mat->context->lnEnts[me]);
@@ -996,6 +1075,14 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     if ((filed = fopen64(matrixPath, "r")) == NULL){
         ERROR_LOG("Could not open binary CRS file %s",matrixPath);
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
         return GHOST_ERR_IO;
     }
 
@@ -1005,8 +1092,31 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
       char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);*/
     ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(mat->nnz*sizeof(ghost_midx_t));
     char *tmpval = (char *)ghost_malloc(mat->nnz*sizeofdt);
-    GHOST_CALL_RETURN(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], mat->nnz));
-    GHOST_CALL_RETURN(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], mat->nnz));
+    ghost_error_t gerr;
+    GHOST_CALL(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], mat->nnz),gerr);
+    if (gerr != GHOST_SUCCESS) {
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+        return gerr;
+    }
+    GHOST_CALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], mat->nnz),gerr);
+    if (gerr != GHOST_SUCCESS) {
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+        return gerr;
+    }
 
     INFO_LOG("%"PRmatIDX" rows, %"PRmatIDX" chunks %"PRmatIDX" chunkheight",mat->nrows,nChunks,SELL(mat)->chunkHeight);
     ghost_midx_t row = 0;
@@ -1027,7 +1137,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
               GHOST_CALL_RETURN(ghost_readColOpen(tmpcol,matrixPath,firstNzOfChunk,nnzInChunk,filed));
               GHOST_CALL_RETURN(ghost_readValOpen(tmpval,mat->traits->datatype,matrixPath,firstNzOfChunk,nnzInChunk,filed));
          */
-       
+
         ghost_midx_t col;
         ghost_midx_t *curRowCols;
         char * curRowVals;
@@ -1103,9 +1213,9 @@ static const char * SELL_stringify(ghost_mat_t *mat, int dense)
     return SELL_stringify_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat, dense);
 }
 
-static void SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+static ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
 {
-    SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
+    return SELL_fromCRS_funcs[ghost_dataTypeIdx(mat->traits->datatype)](mat,crs);
 }
 
 static ghost_error_t SELL_upload(ghost_mat_t* mat) 
@@ -1168,7 +1278,7 @@ static void SELL_free(ghost_mat_t *mat)
         free(SELL(mat)->rowLenPadded);
     }
 
-    
+
     free(mat->data);
     free(mat);
 
@@ -1209,15 +1319,15 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
     }
 #endif
 #elif GHOST_HAVE_AVX
-        if (SELL(mat)->chunkHeight == 4) {
-            kernel = SELL_kernels_AVX
-                [ghost_dataTypeIdx(mat->traits->datatype)]
-                [ghost_dataTypeIdx(lhs->traits->datatype)];
-        } else if (SELL(mat)->chunkHeight == 32) {
-            kernel = SELL_kernels_AVX_32
-                [ghost_dataTypeIdx(mat->traits->datatype)]
-                [ghost_dataTypeIdx(lhs->traits->datatype)];
-        }
+    if (SELL(mat)->chunkHeight == 4) {
+        kernel = SELL_kernels_AVX
+            [ghost_dataTypeIdx(mat->traits->datatype)]
+            [ghost_dataTypeIdx(lhs->traits->datatype)];
+    } else if (SELL(mat)->chunkHeight == 32) {
+        kernel = SELL_kernels_AVX_32
+            [ghost_dataTypeIdx(mat->traits->datatype)]
+            [ghost_dataTypeIdx(lhs->traits->datatype)];
+    }
 #elif GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMVM_AXPBY) ||
@@ -1249,7 +1359,7 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
 
     return kernel(mat,lhs,rhs,options);
 
-    
+
 }
 
 

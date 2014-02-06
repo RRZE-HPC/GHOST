@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 void ghost_normalizeVec(ghost_vec_t *);
-void ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
+ghost_error_t ghost_dotProduct(ghost_vec_t *, ghost_vec_t *, void *);
 ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
         int *spmvmOptions);
 ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);

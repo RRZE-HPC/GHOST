@@ -361,7 +361,8 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     DEBUG_LOG(1,"Reading header from %s",matrixPath);
 
     if ((file = fopen(matrixPath, "rb"))==NULL){
-        ABORT("Could not open binary CRS file %s",matrixPath);
+        ERROR_LOG("Could not open binary CRS file %s: %s",matrixPath,strerror(errno));
+        return GHOST_ERR_IO;
     }
 
     fseek(file,0L,SEEK_END);
@@ -406,8 +407,10 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
         (long)header->nnz * GHOST_BINCRS_SIZE_COL_EL +
         (long)header->nnz * ghost_sizeofDataType(header->datatype);
 
-    if (filesize != rightFilesize)
-        ABORT("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
+    if (filesize != rightFilesize) {
+        ERROR_LOG("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);
+        return GHOST_ERR_IO;
+    }
 
     fclose(file);
 

@@ -198,7 +198,7 @@ struct ghost_mat_t
      * @param mat The matrix. 
      * @param crsMat The CRS matrix.
      */
-    void       (*fromCRS)(ghost_mat_t *mat, ghost_mat_t *crsMat);
+    ghost_error_t     (*fromCRS)(ghost_mat_t *mat, ghost_mat_t *crsMat);
     /**
      * @brief Split the matrix into a local and a remote part.
      *
@@ -214,8 +214,8 @@ extern "C" {
 
     ghost_error_t ghost_createMatrix(ghost_context_t *, ghost_mtraits_t *, int, ghost_mat_t **);
     ghost_error_t ghost_printMatrixInfo(ghost_mat_t *matrix);
-    ghost_mnnz_t ghost_getMatNnz(ghost_mat_t *mat);
-    ghost_mnnz_t ghost_getMatNrows(ghost_mat_t *mat);
+    ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat);
+    ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat);
 
 #ifdef __cplusplus
 } extern "C"
