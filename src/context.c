@@ -11,12 +11,6 @@
 
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
-    int nranks;
-    int me;
-    int i;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks((*context)->mpicomm,&nranks));
-    GHOST_CALL_RETURN(ghost_getRank((*context)->mpicomm,&me));
-
     (*context) = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
     (*context)->flags = context_flags;
     (*context)->rowPerm = NULL;
@@ -25,6 +19,13 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->wishes   = NULL;
     (*context)->dues     = NULL;
     (*context)->hput_pos = NULL;
+    
+    int nranks;
+    int me;
+    int i;
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks((*context)->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_getRank((*context)->mpicomm,&me));
+
     
     (*context)->wishlist = (ghost_midx_t**) ghost_malloc(nranks*sizeof(ghost_midx_t *)); 
     (*context)->duelist  = (ghost_midx_t**) ghost_malloc(nranks*sizeof(ghost_midx_t *));
