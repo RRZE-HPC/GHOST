@@ -777,14 +777,15 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             WARNING_LOG("Error in sem_post: %s",strerror(errno));
             return GHOST_ERR_UNKNOWN;
         }
-        /*DEBUG_LOG(1,"Join all threads");
+        DEBUG_LOG(1,"Join all threads");
           int t; 
           for (t=0; t<ghost_thpool->nThreads; t++)
           {         
           if (pthread_join(ghost_thpool->threads[t],NULL)){
-          return GHOST_FAILURE;
+              ERROR_LOG("pthread_join failed: %s",streror(errno));
+          return GHOST_ERR_UNKNOWN;
           }
-          }*/
+          }
 
         DEBUG_LOG(1,"Free task queues");    
         free(taskq);
