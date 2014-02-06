@@ -89,15 +89,9 @@ ghost_error_t ghost_init(int argc, char **argv)
         WARNING_LOG("MPI was already initialized, not doing it!");
     }
 
-    MPI_safecall(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
-    MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_C));
-    MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
-
-    MPI_safecall(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
-    MPI_safecall(MPI_Type_commit(&GHOST_MPI_DT_Z));
-    MPI_safecall(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
 
     ghost_setupNodeMPI(MPI_COMM_WORLD);
+    ghost_mpi_createDatatypes();
 
 #else // ifdef GHOST_HAVE_MPI
     UNUSED(MPIwasInitialized);
@@ -350,10 +344,9 @@ ghost_error_t ghost_finalize()
     LIKWID_MARKER_CLOSE;
 #endif
 
+    ghost_mpi_destroyDatatypes;
 
 #if GHOST_HAVE_MPI
-    MPI_CALL_RETURN(MPI_Type_free(&GHOST_MPI_DT_C));
-    MPI_CALL_RETURN(MPI_Type_free(&GHOST_MPI_DT_Z));
     if (!MPIwasInitialized) {
         MPI_Finalize();
     }
@@ -361,3 +354,4 @@ ghost_error_t ghost_finalize()
 
     return GHOST_SUCCESS;
 }
+

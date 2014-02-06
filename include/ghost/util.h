@@ -179,10 +179,6 @@ extern "C" {
 #endif
 
 #ifdef GHOST_HAVE_MPI
-    extern MPI_Datatype GHOST_MPI_DT_C;
-    extern MPI_Op GHOST_MPI_OP_SUM_C;
-    extern MPI_Datatype GHOST_MPI_DT_Z;
-    extern MPI_Op GHOST_MPI_OP_SUM_Z;
 #else
 #endif
     extern int hasCUDAdevice;
@@ -201,10 +197,16 @@ extern "C" {
     char * ghost_datatypeName(int datatype);
     char * ghost_symmetryName(int symmetry);
 
-    int ghost_pad(int nrows, int padding);
-    //ghost_error_t ghost_getTopology(hwloc_topology_t);
+    /**
+     * @brief Pad a number to a multiple of a second number.
+     *
+     * @param nrows The number to be padded.
+     * @param padding The desired padding.
+     *
+     * @return nrows padded to a multiple of padding or nrows if padding is 0.
+     */
+    ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
 
-//    void ghost_freeCommunicator( ghost_comm_t* const );
     size_t ghost_sizeofDataType(int dt);
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);

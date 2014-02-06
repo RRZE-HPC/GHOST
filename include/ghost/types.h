@@ -168,5 +168,17 @@ struct ghost_mpi_z
     double y;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype);
+ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
+ghost_error_t ghost_mpi_createDatatypes();
+ghost_error_t ghost_mpi_destroyDatatypes();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

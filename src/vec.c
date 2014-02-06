@@ -875,23 +875,11 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 #ifdef GHOST_HAVE_MPI
     int me;
     int nprocs;
+    ghost_mpi_datatype_t mpidt;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(vec->context->mpicomm,&nprocs));
-    MPI_Datatype mpidt;
+    GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits->datatype));
 
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX) {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-            mpidt = GHOST_MPI_DT_C;
-        } else {
-            mpidt = GHOST_MPI_DT_Z;
-        }
-    } else {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-            mpidt = MPI_FLOAT;
-        } else {
-            mpidt = MPI_DOUBLE;
-        }
-    }
     if (vec->context != NULL)
         vec->permute(vec,vec->context->invRowPerm); 
 
