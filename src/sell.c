@@ -64,7 +64,7 @@ ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_v
     {&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
     {&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
 
-#ifdef GHOST_HAVE_CUDA
+#if GHOST_HAVE_CUDA
 ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t) = 
 {{&ss_SELL_kernel_CU,&sd_SELL_kernel_CU,&sc_SELL_kernel_CU,&sz_SELL_kernel_CU},
     {&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
@@ -93,7 +93,7 @@ static void SELL_free(ghost_mat_t *mat);
 static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 static int ghost_selectSellChunkHeight(int datatype);
 #ifdef GHOST_HAVE_CUDA
-static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+static ghost_error_t SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, ghost_spmv_flags_t flags);
 #endif
 #ifdef VSX_INTR
 static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
@@ -118,6 +118,9 @@ ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, gh
         }
     }
     //TODO is it reasonable that a matrix has HOST&DEVICE?
+
+    ghost_type_t ghost_type;
+    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
     (*mat)->upload = &SELL_upload;
     (*mat)->fromFile = &SELL_fromBin;
@@ -1250,26 +1253,15 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
 }
 
 
-#ifdef GHOST_HAVE_CUDA
-static void SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+#if GHOST_HAVE_CUDA
+static ghost_error_t SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, ghost_spmv_flags_t flags)
 {
     DEBUG_LOG(1,"Calling SELL CUDA kernel");
     DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
 
-    /*if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      c_SELL_kernel_wrap(mat, lhs, rhs, options);
-      else
-      s_SELL_kernel_wrap(mat, lhs, rhs, options);
-      } else {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      z_SELL_kernel_wrap(mat, lhs, rhs, options);
-      else
-      d_SELL_kernel_wrap(mat, lhs, rhs, options);
-      }*/
-    SELL_kernels_CU
+    return SELL_kernels_CU
         [ghost_dataTypeIdx(mat->traits->datatype)]
-        [ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
+        [ghost_dataTypeIdx(lhs->traits->datatype)](mat,lhs,rhs,flags);
 
 
 }

@@ -3,6 +3,15 @@
 
 #include "config.h"
 #include "types.h"
+#include "vec.h"
+#include "error.h"
+
+typedef struct
+{
+    int nDistinctDevices;
+    int *nDevices;
+    char **names;
+}ghost_gpu_info_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +31,7 @@ void CU_uploadVector( ghost_vec_t *vec );
 void CU_downloadVector( ghost_vec_t *vec );
 int CU_getDeviceCount(int *devcount);
 const char * CU_getVersion();
-ghost_acc_info_t *CU_getDeviceInfo();
+ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **);
 void *ghost_cu_malloc_mapped(const size_t size);
 
 #ifdef __cplusplus

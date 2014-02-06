@@ -3,12 +3,15 @@
 
 #include "config.h"
 #include "types.h"
+#include "error.h"
+#include "vec.h"
+#include "mat.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void ghost_cu_crsspmv(ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+ghost_error_t ghost_cu_crsspmv(ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
 
 #ifdef __cplusplus
 }

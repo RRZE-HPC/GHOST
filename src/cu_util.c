@@ -1,9 +1,11 @@
-#include "ghost/context.h"
+#include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/core.h"
 #include "ghost/util.h"
 #include "ghost/mat.h"
 #include "ghost/affinity.h"
 #include "ghost/constants.h"
+#include "ghost/log.h"
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -119,17 +121,19 @@ int CU_getDeviceCount(int *devcount)
 }
 
 
-ghost_acc_info_t *CU_getDeviceInfo() 
+ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **devInfo)
 {
-    ghost_acc_info_t *devInfo = ghost_malloc(sizeof(ghost_acc_info_t));
-    devInfo->nDistinctDevices = 1;
+    (*devInfo) = ghost_malloc(sizeof(ghost_gpu_info_t));
+    (*devInfo)->nDistinctDevices = 1;
 
     int me,size,i;
+    ghost_type_t ghost_type;
     char name[CU_MAX_DEVICE_NAME_LEN];
     char *names = NULL;
 
-    me = ghost_getRank(MPI_COMM_WORLD);
-    size = ghost_getNumberOfRanks(MPI_COMM_WORLD);
+    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&size));
+    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
     if (ghost_type == GHOST_TYPE_CUDAMGMT) {
         struct cudaDeviceProp devProp;
@@ -144,10 +148,10 @@ ghost_acc_info_t *CU_getDeviceInfo()
 
     if (me==0) {
         names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
-        recvcounts = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
-        displs = (int *)ghost_malloc(sizeof(int)*ghost_getNumberOfRanks(MPI_COMM_WORLD));
+        recvcounts = (int *)ghost_malloc(sizeof(int)*size);
+        displs = (int *)ghost_malloc(sizeof(int)*size);
         
-        for (i=0; i<ghost_getNumberOfRanks(MPI_COMM_WORLD); i++) {
+        for (i=0; i<size; i++) {
             recvcounts[i] = CU_MAX_DEVICE_NAME_LEN;
             displs[i] = i*CU_MAX_DEVICE_NAME_LEN;
 
@@ -167,47 +171,47 @@ ghost_acc_info_t *CU_getDeviceInfo()
         for (i=1; i<size; i++) {
             if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
                         names+i*CU_MAX_DEVICE_NAME_LEN)) {
-                devInfo->nDistinctDevices++;
+                (*devInfo)->nDistinctDevices++;
             }
         }
     }
 /*
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(&(devInfo->nDistinctDevices),1,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Bcast(&((*devInfo)->nDistinctDevices),1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 */
-    devInfo->nDevices = ghost_malloc(sizeof(int)*devInfo->nDistinctDevices);
-    devInfo->names = ghost_malloc(sizeof(char *)*devInfo->nDistinctDevices);
-    for (i=0; i<devInfo->nDistinctDevices; i++) {
-        devInfo->names[i] = ghost_malloc(sizeof(char)*CU_MAX_DEVICE_NAME_LEN);
-        devInfo->nDevices[i] = 1;
+    (*devInfo)->nDevices = ghost_malloc(sizeof(int)*(*devInfo)->nDistinctDevices);
+    (*devInfo)->names = ghost_malloc(sizeof(char *)*(*devInfo)->nDistinctDevices);
+    for (i=0; i<(*devInfo)->nDistinctDevices; i++) {
+        (*devInfo)->names[i] = ghost_malloc(sizeof(char)*CU_MAX_DEVICE_NAME_LEN);
+        (*devInfo)->nDevices[i] = 1;
     }
 
     if (me==0) {
-        strncpy(devInfo->names[0],names,CU_MAX_DEVICE_NAME_LEN);
+        strncpy((*devInfo)->names[0],names,CU_MAX_DEVICE_NAME_LEN);
 
         int distIdx = 1;
         for (i=1; i<size; i++) {
             if (strcmp(names+(i-1)*CU_MAX_DEVICE_NAME_LEN,
                         names+i*CU_MAX_DEVICE_NAME_LEN)) {
-                strncpy(devInfo->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
+                strncpy((*devInfo)->names[distIdx],names+i*CU_MAX_DEVICE_NAME_LEN,CU_MAX_DEVICE_NAME_LEN);
                 distIdx++;
             } else {
-                devInfo->nDevices[distIdx-1]++;
+                (*devInfo)->nDevices[distIdx-1]++;
             }
         }
         free(names);
     }
 /*
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(devInfo->nDevices,devInfo->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_safecall(MPI_Bcast((*devInfo)->nDevices,(*devInfo)->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
-    for (i=0; i<devInfo->nDistinctDevices; i++) {
-        MPI_safecall(MPI_Bcast(devInfo->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+    for (i=0; i<(*devInfo)->nDistinctDevices; i++) {
+        MPI_safecall(MPI_Bcast((*devInfo)->names[i],CU_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
     }
 #endif
 */
-    return devInfo;
+    return GHOST_SUCCESS;
 }
 
 const char * CU_getVersion()

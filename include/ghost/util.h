@@ -4,11 +4,11 @@
 #include "config.h"
 #include "types.h"
 
-#ifdef GHOST_HAVE_MPI
+#if GHOST_HAVE_MPI
 #include "mpi_util.h"
 #endif
 
-#ifdef GHOST_HAVE_CUDA
+#if GHOST_HAVE_CUDA
 #include "cu_util.h"
 #endif
 
@@ -187,11 +187,7 @@ extern "C" {
     extern MPI_Op GHOST_MPI_OP_SUM_C;
     extern MPI_Datatype GHOST_MPI_DT_Z;
     extern MPI_Op GHOST_MPI_OP_SUM_Z;
-    extern MPI_Comm ghost_node_comm;
-    extern int ghost_node_rank;
 #else
-    extern int ghost_node_comm;
-    extern int ghost_node_rank;
 #endif
     extern int hasCUDAdevice;
 //    extern ghost_type_t ghost_type; 

@@ -30,6 +30,19 @@ typedef enum {
     GHOST_SPM_STORE_FULL = 256
 } ghost_spm_flags_t;
 
+typedef enum {
+    GHOST_SPMVM_DEFAULT = 0,
+    GHOST_SPMVM_AXPY = 1,
+    GHOST_SPMVM_MODE_NOMPI = 2,
+    GHOST_SPMVM_MODE_VECTORMODE = 4,
+    GHOST_SPMVM_MODE_GOODFAITH = 8,
+    GHOST_SPMVM_MODE_TASKMODE = 16,
+    GHOST_SPMVM_APPLY_SHIFT = 32,
+    GHOST_SPMVM_APPLY_SCALE = 64,
+    GHOST_SPMVM_AXPBY = 128,
+    GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
+} ghost_spmv_flags_t;
+
 struct ghost_mtraits_t
 {
     int format;

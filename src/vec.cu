@@ -4,6 +4,7 @@
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/vec.h"
+#include "ghost/log.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -100,9 +101,9 @@ extern "C" void ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
         return;
     }
 
-    if (v1->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (v1->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vaxpy_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>((cuDoubleComplex *)v1->CU_val, (cuDoubleComplex *)v2->CU_val,(cuDoubleComplex *)d_a,v1->traits->nrows,v1->traits->nvecs,v1->traits->nrowspadded);
         } 
@@ -113,7 +114,7 @@ extern "C" void ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
     }
     else
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vaxpy_kernel<double><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>((double *)v1->CU_val, (double *)v2->CU_val,(double *)d_a,v1->traits->nrows,v1->traits->nvecs,v1->traits->nrowspadded);
         } 
@@ -135,9 +136,9 @@ extern "C" void ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, v
         WARNING_LOG("Cannot VAXPBY vectors with different data types");
         return;
     }
-    if (v1->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (v1->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vaxpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (cuDoubleComplex *)v1->CU_val, (cuDoubleComplex *)v2->CU_val,(cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
@@ -152,7 +153,7 @@ extern "C" void ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, v
     }
     else
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vaxpby_kernel<double><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)v1->CU_val, (double *)v2->CU_val,(double *)d_a,(double *)d_b,
@@ -180,9 +181,9 @@ extern "C" void ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *
     {
         char *v1 = &vec->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
         char *v2 = &vec2->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
-        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+        if (vec->traits->datatype & GHOST_DT_COMPLEX)
         {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
                             (const cuDoubleComplex *)v1,1,(const cuDoubleComplex *)v2,1,&((cuDoubleComplex *)res)[v]));
@@ -195,7 +196,7 @@ extern "C" void ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *
         }
         else
         {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
                             (const double *)v1,1,(const double *)v2,1,&((double *)res)[v]));
@@ -216,9 +217,9 @@ extern "C" void ghost_vec_cu_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *a)
         WARNING_LOG("Cannot AXPY vectors with different data types");
         return;
     }
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             CUBLAS_safecall(cublasZaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const cuDoubleComplex *)a,
@@ -235,7 +236,7 @@ extern "C" void ghost_vec_cu_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *a)
     }
     else
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             CUBLAS_safecall(cublasDaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const double *)a,
@@ -259,9 +260,9 @@ extern "C" void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, vo
         WARNING_LOG("Cannot AXPY vectors with different data types");
         return;
     }
-    if (v1->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (v1->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_axpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((cuDoubleComplex *)v1->CU_val, (cuDoubleComplex *)v2->CU_val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),
@@ -276,7 +277,7 @@ extern "C" void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, vo
     }
     else
     {
-        if (v1->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (v1->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_axpby_kernel<double><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((double *)v1->CU_val, (double *)v2->CU_val,*((double *)a),*((double *)b),
@@ -293,9 +294,9 @@ extern "C" void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, vo
 
 extern "C" void ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
 {
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             CUBLAS_safecall(cublasZscal(ghost_cublas_handle,vec->traits->nrows,
                         (const cuDoubleComplex *)a,
@@ -310,7 +311,7 @@ extern "C" void ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
     }
     else
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             CUBLAS_safecall(cublasDscal(ghost_cublas_handle,vec->traits->nrows,
                         (const double *)a,
@@ -329,9 +330,9 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
 {
     void *d_a = CU_allocDeviceMemory(vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
     CU_copyHostToDevice(d_a,a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vscale_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuDoubleComplex *)vec->CU_val, (cuDoubleComplex *)d_a,
@@ -346,7 +347,7 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
     }
     else
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_vscale_kernel<double><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)vec->CU_val, (double *)d_a,
@@ -364,9 +365,9 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
 extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
 {
     ghost_vec_malloc(vec);
-    if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+    if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_fromscalar_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuDoubleComplex *)vec->CU_val, *(cuDoubleComplex *)a,
@@ -381,7 +382,7 @@ extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
     }
     else
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+        if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
             cu_fromscalar_kernel<double><<< (int)ceil((double)vec->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)vec->CU_val, *(double *)a,
@@ -407,9 +408,9 @@ void ghost_vec_cu_fromRand(ghost_vec_t *vec)
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++)
     {
-        if (vec->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
+        if (vec->traits->datatype & GHOST_DT_COMPLEX)
         {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
                 CURAND_safecall(curandGenerateUniformDouble(gen,
                             &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],
@@ -424,7 +425,7 @@ void ghost_vec_cu_fromRand(ghost_vec_t *vec)
         }
         else
         {
-            if (vec->traits->datatype & GHOST_BINCRS_DT_DOUBLE)
+            if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
                 CURAND_safecall(curandGenerateUniformDouble(gen,
                             &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],

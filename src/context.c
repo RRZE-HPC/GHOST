@@ -11,7 +11,6 @@
 
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
-    int i;
     int nranks;
     int me;
     GHOST_CALL_RETURN(ghost_getNumberOfRanks((*context)->mpicomm,&nranks));
@@ -85,6 +84,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->lfRow    = (ghost_midx_t*)       ghost_malloc( nranks*sizeof(ghost_midx_t));
 
 #ifdef GHOST_HAVE_MPI
+    int i;
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
         (*context)->halo_elements = -1;
 

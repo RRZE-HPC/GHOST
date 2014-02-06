@@ -44,6 +44,8 @@ ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks);
 ghost_error_t ghost_getCore(int *core);
 ghost_error_t ghost_setCore(int core);
 ghost_error_t ghost_unsetCore();
+ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm);
+ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm);
 #ifdef __cplusplus
 }
 #endif

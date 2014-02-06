@@ -5,9 +5,6 @@
 #include "types.h"
 #include "context.h"
 
-#if GHOST_HAVE_CUDA
-#include "cu_vec.h"
-#endif
 
 typedef struct ghost_vtraits_t ghost_vtraits_t;
 typedef struct ghost_vec_t ghost_vec_t;
@@ -24,8 +21,9 @@ typedef enum {
 } ghost_vec_flags_t;
 
 /**
- * @brief This struct represents a vector (dense matrix) datatype.  The
- * according functions are accessed via function pointers. The first argument of
+ * @brief This struct represents a vector (dense matrix) datatype.  
+ * 
+ * The according functions are accessed via function pointers. The first argument of
  * each member function always has to be a pointer to the vector itself.
  */
 struct ghost_vec_t
@@ -370,6 +368,10 @@ extern "C" {
     void c_ghost_vec_fromRand(ghost_vec_t *vec); 
 #ifdef __cplusplus
 }
+#endif
+
+#if GHOST_HAVE_CUDA
+#include "cu_vec.h"
 #endif
 
 #endif

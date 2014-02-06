@@ -3,6 +3,8 @@
 
 #include "config.h"
 #include "types.h"
+#include "vec.h"
+#include "error.h"
 
 #ifdef __cplusplus
 extern "C" {

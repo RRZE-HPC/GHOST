@@ -97,7 +97,7 @@ ghost_error_t dd_SELL_kernel_AVX_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *,
 ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 ghost_error_t dd_SELL_kernel_MIC_16(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 ghost_error_t dd_SELL_kernel_MIC_32(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
-#ifdef GHOST_HAVE_CUDA
+#if GHOST_HAVE_CUDA
 ghost_error_t dd_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 ghost_error_t ds_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
 ghost_error_t dc_SELL_kernel_CU(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);

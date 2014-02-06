@@ -15,7 +15,7 @@
 #include "ghost/task.h"
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
-static int MPIwasInitialized;
+static int MPIwasInitialized = 0;
 static unsigned int* ghost_rand_states=NULL;
 
 
@@ -100,6 +100,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_setupNodeMPI(MPI_COMM_WORLD);
 
 #else // ifdef GHOST_HAVE_MPI
+    UNUSED(MPIwasInitialized);
     UNUSED(argc);
     UNUSED(argv);
 
@@ -127,10 +128,12 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 
     // auto-set rank types 
+    ghost_mpi_comm_t nodeComm;
     int nnoderanks;
     int noderank;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ghost_node_comm,&nnoderanks));
-    GHOST_CALL_RETURN(ghost_getRank(ghost_node_comm,&noderank));
+    GHOST_CALL_RETURN(ghost_getNodeComm(&nodeComm));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(nodeComm,&nnoderanks));
+    GHOST_CALL_RETURN(ghost_getRank(nodeComm,&noderank));
 
     int ncudadevs = 0;
     int ndomains = 0;
@@ -164,7 +167,6 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
 
-    int nLocalCompute = ghost_type==GHOST_TYPE_COMPUTE;
     int nLocalCuda = ghost_type==GHOST_TYPE_CUDAMGMT;
 
     int i;
@@ -175,7 +177,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     localTypes[noderank] = ghost_type;
 #if GHOST_HAVE_MPI
-    MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCompute,1,MPI_INT,MPI_SUM,ghost_node_comm));
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
 #ifdef GHOST_HAVE_CUDA
@@ -241,9 +242,9 @@ ghost_error_t ghost_init(int argc, char **argv)
 #if GHOST_HAVE_CUDA
     int cudaDevice = 0;
 
-    for (i=0; i<ghost_getNumberOfRanks(ghost_node_comm); i++) {
+    for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
-            if (i == ghost_getRank(ghost_node_comm)) {
+            if (i == noderank) {
                 ghost_CUDA_init(cudaDevice);
             }
             cudaDevice++;

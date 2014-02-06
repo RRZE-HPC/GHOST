@@ -167,10 +167,10 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     // needs context and comm, the others may be replicated. So we must
     // take the comm from v if and only if a reduction is requested.
     int myrank=0;
-    if (reduce!=GHOST_GEMM_NO_REDUCE)
-      {
-      myrank=ghost_getRank(v->context->mpicomm);
-      }
+
+    if (reduce!=GHOST_GEMM_NO_REDUCE) {
+        GHOST_CALL_RETURN(ghost_getRank(v->context->mpicomm,&myrank));
+    }
 
     void *mybeta;
 
@@ -192,9 +192,9 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_HOST)
     {
 
-        if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        if (v->traits->datatype & GHOST_DT_COMPLEX) 
         {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
                 zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
             } 
@@ -205,7 +205,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         } 
         else 
         {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
                 dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
             } 
@@ -219,9 +219,9 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     {
 #if GHOST_HAVE_CUDA
         cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
-        if (v->traits->datatype & GHOST_BINCRS_DT_COMPLEX) 
+        if (v->traits->datatype & GHOST_DT_COMPLEX) 
         {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
                 CUBLAS_safecall(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->CU_val,*ldv,(cuDoubleComplex *)w->CU_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->CU_val,*ldx));
             } 
@@ -232,7 +232,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         } 
         else 
         {
-            if (v->traits->datatype & GHOST_BINCRS_DT_DOUBLE) 
+            if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
                 CUBLAS_safecall(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->CU_val,*ldv,(double *)w->CU_val,*ldw,(double *)mybeta,(double *)x->CU_val,*ldx));
             } 

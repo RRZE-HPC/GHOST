@@ -46,8 +46,6 @@ MPI_Datatype GHOST_MPI_DT_C;
 MPI_Op GHOST_MPI_OP_SUM_C;
 MPI_Datatype GHOST_MPI_DT_Z;
 MPI_Op GHOST_MPI_OP_SUM_Z;
-MPI_Comm ghost_node_comm = MPI_COMM_NULL;
-int ghost_node_rank = -1;
 #else
 int ghost_node_comm = 0;
 int ghost_node_rank = 0;
@@ -183,7 +181,8 @@ ghost_error_t ghost_printSysInfo()
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_acc_info_t * CUdevInfo = CU_getDeviceInfo();
+    ghost_gpu_info_t * CUdevInfo;
+    GHOST_CALL_RETURN(CU_getDeviceInfo(&CUdevInfo));
 #endif
     if (myrank == 0) {
 
