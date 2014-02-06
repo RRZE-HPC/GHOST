@@ -92,6 +92,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     ghost_setupNodeMPI(MPI_COMM_WORLD);
     ghost_mpi_createDatatypes();
+    ghost_mpi_createOperations();
 
 #else // ifdef GHOST_HAVE_MPI
     UNUSED(MPIwasInitialized);
@@ -344,7 +345,8 @@ ghost_error_t ghost_finalize()
     LIKWID_MARKER_CLOSE;
 #endif
 
-    ghost_mpi_destroyDatatypes;
+    ghost_mpi_destroyDatatypes();
+    ghost_mpi_destroyOperations();
 
 #if GHOST_HAVE_MPI
     if (!MPIwasInitialized) {

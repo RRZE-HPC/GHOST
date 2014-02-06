@@ -105,15 +105,15 @@ typedef long long int ghost_blas_idx_t;
 #define ghost_mpi_dt_mnnz MPI_LONG_LONG
 
 /**
- * @brief Matro to print matrix nonzero indices depending on index size
+ * @brief Macro to print matrix nonzero indices depending on index size
  */
 #define PRmatNNZ PRId64
 /**
- * @brief Matro to print matrix row/column indices depending on index size
+ * @brief Macro to print matrix row/column indices depending on index size
  */
 #define PRmatIDX PRId64
 /**
- * @brief Matro to print vector indices depending on index size
+ * @brief Macro to print vector indices depending on index size
  */
 #define PRvecIDX PRId64
 
@@ -134,26 +134,8 @@ typedef int ghost_blas_idx_t;
 
 #endif
 
-
-
-
-
-#define GHOST_SPMVM_MODES_FULL     (GHOST_SPMVM_MODE_NOMPI | GHOST_SPMVM_MODE_VECTORMODE)
-#define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
-#define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_FULL | GHOST_SPMVM_MODES_SPLIT)
-
-
-typedef enum {
-    GHOST_SPMFROMROWFUNC_DEFAULT = 0
-} ghost_spmFromRowFunc_flags_t;
-
-//typedef struct ghost_comm_t ghost_comm_t;
-typedef struct ghost_acc_info_t ghost_acc_info_t;
-typedef struct ghost_matfile_header_t ghost_matfile_header_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
-typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
-
 
 
 struct ghost_mpi_c

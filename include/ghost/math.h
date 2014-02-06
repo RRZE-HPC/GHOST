@@ -40,6 +40,8 @@ void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
 ghost_error_t ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
 void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len);
 void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
+ghost_error_t ghost_mpi_createOperations();
+ghost_error_t ghost_mpi_destroyOperations();
 
 #ifdef __cplusplus
 } //extern "C"

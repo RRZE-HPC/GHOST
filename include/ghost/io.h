@@ -27,8 +27,7 @@
 #define GHOST_BINVEC_ORDER_COL_FIRST 0
 #define GHOST_BINVEC_ORDER_ROW_FIRST 1
 
-struct ghost_matfile_header_t
-{
+typedef struct {
     int32_t endianess;
     int32_t version;
     int32_t base;
@@ -37,7 +36,7 @@ struct ghost_matfile_header_t
     int64_t nrows;
     int64_t ncols;
     int64_t nnz;
-};
+} ghost_matfile_header_t;
 
 #ifdef __cplusplus
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);

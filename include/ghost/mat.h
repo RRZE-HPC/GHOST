@@ -14,8 +14,13 @@
 #define GHOST_SPM_SYMM_SKEW_SYMMETRIC (4)
 #define GHOST_SPM_SYMM_HERMITIAN      (8)
 
+typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 typedef struct ghost_mtraits_t ghost_mtraits_t;
 typedef struct ghost_mat_t ghost_mat_t;
+
+typedef enum {
+    GHOST_SPMFROMROWFUNC_DEFAULT = 0
+} ghost_spmFromRowFunc_flags_t;
 
 typedef enum {
     GHOST_SPM_DEFAULT       = 0,
@@ -42,6 +47,10 @@ typedef enum {
     GHOST_SPMVM_AXPBY = 128,
     GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
 } ghost_spmv_flags_t;
+
+#define GHOST_SPMVM_MODES_FULL     (GHOST_SPMVM_MODE_NOMPI | GHOST_SPMVM_MODE_VECTORMODE)
+#define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
+#define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_FULL | GHOST_SPMVM_MODES_SPLIT)
 
 struct ghost_mtraits_t
 {
