@@ -1046,12 +1046,12 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         if (ghost_thpool == NULL)
             return GHOST_SUCCESS;
 
-        free(ghost_thpool->threads);
-        free(ghost_thpool->sem);
-        free(ghost_thpool->PUs);
-        free(ghost_thpool);
-        hwloc_bitmap_free(ghost_thpool->cpuset);
-        hwloc_bitmap_free(ghost_thpool->busy);
+        free(ghost_thpool->threads); ghost_thpool->threads = NULL;
+        free(ghost_thpool->sem); ghost_thpool->sem = NULL;
+        free(ghost_thpool->PUs); ghost_thpool->PUs = NULL;
+        hwloc_bitmap_free(ghost_thpool->cpuset); ghost_thpool->cpuset = NULL;
+        hwloc_bitmap_free(ghost_thpool->busy); ghost_thpool->busy = NULL;
+        free(ghost_thpool); ghost_thpool = NULL;
 
         return GHOST_SUCCESS;
     }
