@@ -523,7 +523,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         sem_post(ghost_thpool->sem);
 
         DEBUG_LOG(1,"Shepherd thread %lu in thread_main() called with %"PRIdPTR,(unsigned long)pthread_self(), (intptr_t)arg);
-        while (!killed) // as long as there are jobs stay alive
+        while (1) // as long as there are jobs stay alive
         {
             // TODO wait for condition when unpinned or new task
             if (sem_wait(&taskSem)) // TODO wait for a signal in order to avoid entering the loop when nothing has changed
@@ -535,12 +535,15 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                 continue;
             }
 
+            pthread_mutex_lock(&globalMutex);
             if (killed) // thread has been woken by the finish() function
             {
+                pthread_mutex_unlock(&globalMutex);
                 DEBUG_LOG(2,"Thread %d: Not executing any further tasks",(int)pthread_self());
                 sem_post(&taskSem); // wake up another thread
                 break;
             }
+            pthread_mutex_unlock(&globalMutex);
 
             //    WARNING_LOG("1 %d : %d",(intptr_t)arg,kmp_get_blocktime());
             //    kmp_set_blocktime((intptr_t)arg);
@@ -597,6 +600,14 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             pthread_cond_broadcast(myTask->finishedCond);
             pthread_mutex_unlock(myTask->mutex);
             DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),myTask,myTask->finishedCond);
+            
+            pthread_mutex_lock(&globalMutex);
+            if (killed) // exit loop
+            {
+                pthread_mutex_unlock(&globalMutex);
+                break;
+            }
+            pthread_mutex_unlock(&globalMutex);
         }
         return NULL;
     }
