@@ -19,12 +19,16 @@ extern cublasHandle_t ghost_cublas_handle;
 void ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot_with_reduce)
+    ghost_mpi_op_t sumOp;
+    ghost_mpi_datatype_t mpiDt;
+    ghost_mpi_op_sum(&sumOp,vec->traits->datatype);
+    ghost_mpi_datatype(&mpiDt,vec->traits->datatype);
     vec->dotProduct(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
     int v;
     if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
         for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-            MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, ghost_mpi_dataType(vec->traits->datatype), ghost_mpi_op_sum(vec->traits->datatype), vec->context->mpicomm));
+            MPI_safecall(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
 #endif

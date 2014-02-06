@@ -177,6 +177,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     localTypes[noderank] = ghost_type;
 #if GHOST_HAVE_MPI
+    ghost_mpi_comm_t ghost_node_comm;
+    GHOST_CALL_RETURN(ghost_getNodeComm(&ghost_node_comm));
     MPI_safecall(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
 #ifdef GHOST_HAVE_CUDA

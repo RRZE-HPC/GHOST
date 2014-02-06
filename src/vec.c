@@ -591,7 +591,8 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 
     }    
     ghost_vidx_t v;
-    MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
+    ghost_mpi_datatype_t mpidt;
+    GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits->datatype));
     MPI_safecall(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
     MPI_Offset fileoffset = vec->context->lfRow[rank];
     ghost_vidx_t vecoffset = 0;
@@ -826,7 +827,8 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
 #ifdef GHOST_HAVE_MPI
     DEBUG_LOG(2,"Scattering global vector to local vectors");
 
-    MPI_Datatype mpidt = ghost_mpi_dataType(vec->traits->datatype);
+    ghost_mpi_datatype_t mpidt;
+    GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits->datatype));
 
     int i;
 

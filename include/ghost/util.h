@@ -4,10 +4,6 @@
 #include "config.h"
 #include "types.h"
 
-#if GHOST_HAVE_MPI
-#include "mpi_util.h"
-#endif
-
 #if GHOST_HAVE_CUDA
 #include "cu_util.h"
 #endif
@@ -227,6 +223,8 @@ extern "C" {
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();
     int ghost_ompGetNumThreads();
+    ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype);
+    ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
 
     /**
      * @brief Computes a hash from three integral input values.

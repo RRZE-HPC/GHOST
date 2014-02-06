@@ -14,15 +14,20 @@
 #endif
 #include <mpi.h>
 typedef MPI_Comm ghost_mpi_comm_t;
+typedef MPI_Op ghost_mpi_op_t;
+typedef MPI_Datatype ghost_mpi_datatype_t;
 #ifdef __INTEL_COMPILER
 #pragma warning (enable : 424)
 #pragma warning (enable : 869)
 #endif
 #else
 typedef int ghost_mpi_comm_t;
+typedef int ghost_mpi_op_t;
+typedef int ghost_mpi_datatype_t;
+#define MPI_COMM_NULL 0
+#define MPI_OP_NULL 0
+#define MPI_DATATYPE_NULL 0
 #define MPI_COMM_WORLD 0
-//typedef int MPI_Comm;
-//#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
 
 #include <inttypes.h>

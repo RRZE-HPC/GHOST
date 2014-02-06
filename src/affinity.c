@@ -20,6 +20,7 @@
 const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
 static ghost_hw_config_t ghost_hw_config = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
 static ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
+static ghost_mpi_comm_t ghost_node_comm = MPI_COMM_NULL;
 
 static int stringcmp(const void *x, const void *y)
 {
@@ -326,6 +327,7 @@ ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm)
 #if GHOST_HAVE_MPI
     *comm = ghost_node_comm;
 #else
+    UNUSED(ghost_node_comm);
     *comm = 0;
 #endif
 
@@ -425,7 +427,6 @@ ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
     free(recv); recv = NULL;
 
     ghost_node_comm = nodeComm;
-    ghost_node_rank = nodeRank;
 
     free(hostname); hostname = NULL;
 #else

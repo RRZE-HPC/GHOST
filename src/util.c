@@ -41,16 +41,10 @@
 
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
 
-#ifdef GHOST_HAVE_MPI
-MPI_Datatype GHOST_MPI_DT_C;
-MPI_Op GHOST_MPI_OP_SUM_C;
-MPI_Datatype GHOST_MPI_DT_Z;
-MPI_Op GHOST_MPI_OP_SUM_Z;
-#else
-int ghost_node_comm = 0;
-int ghost_node_rank = 0;
-#endif
-//hwloc_topology_t topology;
+ghost_mpi_datatype_t GHOST_MPI_DT_C = MPI_DATATYPE_NULL;
+ghost_mpi_datatype_t GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
+ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
+ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
 extern char ** environ;
 
@@ -567,15 +561,6 @@ int ghost_ompGetThreadNum()
 #endif
 }
 
-
-
-
-
-
-
-
-
-
 int ghost_hash(int a, int b, int c)
 {
     a -= b; a -= c; a ^= (c>>13);
@@ -590,5 +575,40 @@ int ghost_hash(int a, int b, int c)
 
     return c;
 }
-    
 
+ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype)
+{
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX)
+            *dt = GHOST_MPI_DT_C;
+        else
+            *dt = MPI_FLOAT;
+    } else {
+        if (datatype & GHOST_DT_COMPLEX)
+            *dt = GHOST_MPI_DT_Z;
+        else
+            *dt = MPI_DOUBLE;
+    }
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
+{
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *op = GHOST_MPI_OP_SUM_C;
+        } else {
+            *op = MPI_SUM;
+        }
+    } else {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *op = GHOST_MPI_OP_SUM_Z;
+        } else {
+            *op = MPI_SUM;
+        }
+    }
+
+    return GHOST_SUCCESS;
+
+}
