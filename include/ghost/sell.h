@@ -67,7 +67,7 @@ ghost_sorting_t;
 enum GHOST_SELL_C {GHOST_SELL_C_1 = 1, GHOST_SELL_C_2 = 2, GHOST_SELL_C_4 = 4, GHOST_SELL_C_256 = 256};
 enum GHOST_SELL_T {GHOST_SELL_T_1 = 1, GHOST_SELL_T_2 = 2, GHOST_SELL_T_4 = 4, GHOST_SELL_T_256 = 256};
 
-ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, ghost_mat_t **mat);
+ghost_error_t ghost_SELL_init(ghost_mat_t *mat);
 #ifdef __cplusplus
 template<typename, typename, int> void SELL_kernel_plain_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
 template<typename, typename> void SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);

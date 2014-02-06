@@ -14,18 +14,61 @@ const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .
 ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *traits, int nTraits, ghost_mat_t ** mat)
 {
     UNUSED(nTraits);
+    ghost_error_t ret = GHOST_SUCCESS;
 
+    int me;
+    GHOST_CALL_GOTO(ghost_getRank(context->mpicomm,&me),err,ret);
+    
+    *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
+    (*mat)->traits = traits;
+    (*mat)->context = context;
+    (*mat)->localPart = NULL;
+    (*mat)->remotePart = NULL;
+    (*mat)->name = NULL;
+    (*mat)->data = NULL;
+    (*mat)->nzDist = NULL;
+    (*mat)->fromFile = NULL;
+    (*mat)->toFile = NULL;
+    (*mat)->fromRowFunc = NULL;
+    (*mat)->fromCRS = NULL;
+    (*mat)->printInfo = NULL;
+    (*mat)->formatName = NULL;
+    (*mat)->rowLen = NULL;
+    (*mat)->byteSize = NULL;
+    (*mat)->permute = NULL;
+    (*mat)->destroy = NULL;
+    (*mat)->stringify = NULL;
+    (*mat)->upload = NULL;
+    (*mat)->permute = NULL;
+    (*mat)->spmv = NULL;
+    (*mat)->destroy = NULL;
+    (*mat)->split = NULL;
+    (*mat)->bandwidth = 0;
+    (*mat)->lowerBandwidth = 0;
+    (*mat)->upperBandwidth = 0;
+    (*mat)->nrows = context->lnrows[me];
+    (*mat)->ncols = context->gncols;
+    (*mat)->nrowsPadded = 0;
+    (*mat)->nEnts = 0;
+    (*mat)->nnz = 0;
+   
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
-            return ghost_CRS_init(context,traits,mat);
+            GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
         case GHOST_SPM_FORMAT_SELL:
-            return ghost_SELL_init(context,traits,mat);
+            GHOST_CALL_GOTO(ghost_SELL_init(*mat),err,ret);
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
             traits->format = GHOST_SPM_FORMAT_CRS;
-            return ghost_CRS_init(context,traits,mat);
+            GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
     }
-    return GHOST_SUCCESS;    
+
+    goto out;
+err:
+    free(*mat); *mat = NULL;
+
+out:
+    return ret;    
 }
 
 ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat)

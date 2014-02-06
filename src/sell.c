@@ -99,22 +99,20 @@ static ghost_error_t SELL_kernel_CU (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_
 static void SELL_kernel_VSX (ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, int options);
 #endif
 
-ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, ghost_mat_t **mat)
+ghost_error_t ghost_SELL_init(ghost_mat_t *mat)
 {
-    *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
-    (*mat)->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
-    (*mat)->context = ctx;
-    (*mat)->traits = traits;
+    ghost_error_t ret = GHOST_SUCCESS;
+    mat->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
     DEBUG_LOG(1,"Setting functions for SELL matrix");
-    if (!((*mat)->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
         ghost_type_t ghost_type;
-        GHOST_CALL_RETURN(ghost_getType(&ghost_type));
+        GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            (*mat)->traits->flags |= GHOST_SPM_DEVICE;
+            mat->traits->flags |= GHOST_SPM_DEVICE;
         } else {
-            (*mat)->traits->flags |= GHOST_SPM_HOST;
+            mat->traits->flags |= GHOST_SPM_HOST;
         }
     }
     //TODO is it reasonable that a matrix has HOST&DEVICE?
@@ -122,66 +120,70 @@ ghost_error_t ghost_SELL_init(ghost_context_t *ctx, ghost_mtraits_t * traits, gh
     ghost_type_t ghost_type;
     GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
-    (*mat)->upload = &SELL_upload;
-    (*mat)->fromFile = &SELL_fromBin;
-    (*mat)->fromRowFunc = &SELL_fromRowFunc;
-    (*mat)->printInfo = &SELL_printInfo;
-    (*mat)->formatName = &SELL_formatName;
-    (*mat)->rowLen     = &SELL_rowLen;
-    (*mat)->byteSize   = &SELL_byteSize;
-    (*mat)->spmv     = &SELL_kernel_plain;
-    (*mat)->fromCRS    = &SELL_fromCRS;
-    (*mat)->stringify    = &SELL_stringify;
-    (*mat)->split = &SELL_split;
-    (*mat)->permute = &SELL_permute;
+    mat->upload = &SELL_upload;
+    mat->fromFile = &SELL_fromBin;
+    mat->fromRowFunc = &SELL_fromRowFunc;
+    mat->printInfo = &SELL_printInfo;
+    mat->formatName = &SELL_formatName;
+    mat->rowLen     = &SELL_rowLen;
+    mat->byteSize   = &SELL_byteSize;
+    mat->spmv     = &SELL_kernel_plain;
+    mat->fromCRS    = &SELL_fromCRS;
+    mat->stringify    = &SELL_stringify;
+    mat->split = &SELL_split;
+    mat->permute = &SELL_permute;
 #ifdef VSX_INTR
-    (*mat)->kernel = &SELL_kernel_VSX;
+    mat->kernel = &SELL_kernel_VSX;
 #endif
 #if GHOST_HAVE_CUDA
     if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-        (*mat)->spmv   = &SELL_kernel_CU;
+        mat->spmv   = &SELL_kernel_CU;
     }
 #endif
-    (*mat)->destroy  = &SELL_free;
+    mat->destroy  = &SELL_free;
 
-    (*mat)->localPart = NULL;
-    (*mat)->remotePart = NULL;
-    (*mat)->name = NULL;
 
-    int me;
-    GHOST_CALL_RETURN(ghost_getRank((*mat)->context->mpicomm,&me));
-
-    (*mat)->nrows = (*mat)->context->lnrows[me];
-    (*mat)->ncols = (*mat)->context->gncols;
-
-    if ((*mat)->traits->aux == NULL) {
-        SELL((*mat))->scope = 1;
-        SELL((*mat))->T = 1;
-        SELL((*mat))->chunkHeight = ghost_selectSellChunkHeight((*mat)->traits->datatype);
-        (*mat)->nrowsPadded = ghost_pad((*mat)->nrows,SELL((*mat))->chunkHeight);
+    if (mat->traits->aux == NULL) {
+        SELL(mat)->scope = 1;
+        SELL(mat)->T = 1;
+        SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+        mat->nrowsPadded = ghost_pad(mat->nrows,SELL(mat)->chunkHeight);
     } else {
-        SELL((*mat))->scope = *(int *)((*mat)->traits->aux);
-        if (SELL((*mat))->scope == GHOST_SELL_SORT_GLOBALLY) {
-            SELL((*mat))->scope = (*mat)->context->lnrows[me];
+        SELL(mat)->scope = *(int *)(mat->traits->aux);
+        if (SELL(mat)->scope == GHOST_SELL_SORT_GLOBALLY) {
+            SELL(mat)->scope = mat->nrows;
         }
 
-        if ((*mat)->traits->nAux == 1 || ((int *)((*mat)->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
-            SELL((*mat))->chunkHeight = ghost_selectSellChunkHeight((*mat)->traits->datatype);
-            (*mat)->nrowsPadded = ghost_pad((*mat)->nrows,SELL((*mat))->chunkHeight);
+        if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
+            SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+            mat->nrowsPadded = ghost_pad(mat->nrows,SELL(mat)->chunkHeight);
         } else {
-            if (((int *)((*mat)->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
-                (*mat)->nrowsPadded = ghost_pad((*mat)->nrows,GHOST_PAD_MAX); // TODO padding anpassen an architektur
-                SELL((*mat))->chunkHeight = (*mat)->nrowsPadded;
+            if (((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
+                mat->nrowsPadded = ghost_pad(mat->nrows,GHOST_PAD_MAX); // TODO padding anpassen an architektur
+                SELL(mat)->chunkHeight = mat->nrowsPadded;
             } else {
-                SELL((*mat))->chunkHeight = ((int *)((*mat)->traits->aux))[1];
-                (*mat)->nrowsPadded = ghost_pad((*mat)->nrows,SELL((*mat))->chunkHeight);
+                SELL(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
+                mat->nrowsPadded = ghost_pad(mat->nrows,SELL(mat)->chunkHeight);
             }
         }
-        SELL((*mat))->T = ((int *)((*mat)->traits->aux))[2];
+        SELL(mat)->T = ((int *)(mat->traits->aux))[2];
     }
-    (*mat)->nrowsPadded = ghost_pad((*mat)->nrows,SELL((*mat))->chunkHeight);;
+    mat->nrowsPadded = ghost_pad(mat->nrows,SELL(mat)->chunkHeight);;
+    SELL(mat)->val = NULL;
+    SELL(mat)->col = NULL;
+    SELL(mat)->chunkMin = NULL;
+    SELL(mat)->chunkLen = NULL;
+    SELL(mat)->chunkLenPadded = NULL;
+    SELL(mat)->rowLen = NULL;
+    SELL(mat)->rowLenPadded = NULL;
+    SELL(mat)->chunkStart = NULL;
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    free(mat->data); mat->data = NULL;
+
+out:
+    return ret;
 }
 
 static ghost_error_t SELL_permute(ghost_mat_t *mat , ghost_midx_t *perm, ghost_midx_t *invPerm)

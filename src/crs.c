@@ -54,68 +54,58 @@ static ghost_error_t CRS_split(ghost_mat_t *mat);
 static ghost_error_t CRS_upload(ghost_mat_t *mat);
 
 
-ghost_error_t ghost_CRS_init(ghost_context_t *ctx, ghost_mtraits_t *traits, ghost_mat_t **mat)
+ghost_error_t ghost_CRS_init(ghost_mat_t *mat)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    *mat = (ghost_mat_t *)ghost_malloc(sizeof(ghost_mat_t));
-    (*mat)->context = ctx;
-    (*mat)->traits = traits;
 
     DEBUG_LOG(1,"Initializing CRS functions");
-    if (!((*mat)->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
-        (*mat)->traits->flags |= GHOST_SPM_HOST;
+        mat->traits->flags |= GHOST_SPM_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            (*mat)->traits->flags |= GHOST_SPM_DEVICE;
+            mat->traits->flags |= GHOST_SPM_DEVICE;
         }
     }
 
-    if ((*mat)->traits->flags & GHOST_SPM_DEVICE)
+    if (mat->traits->flags & GHOST_SPM_DEVICE)
     {
 #if GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
         //   mat->spmv = &ghost_cu_crsspmv;
 #endif
     }
-    else if ((*mat)->traits->flags & GHOST_SPM_HOST)
+    else if (mat->traits->flags & GHOST_SPM_HOST)
     {
-        (*mat)->spmv   = &CRS_kernel_plain;
+        mat->spmv   = &CRS_kernel_plain;
     }
 
-    (*mat)->fromFile = &CRS_fromBin;
-    (*mat)->toFile = &CRS_toBin;
-    (*mat)->fromRowFunc = &CRS_fromRowFunc;
-    (*mat)->fromCRS = &CRS_fromCRS;
-    (*mat)->printInfo = &CRS_printInfo;
-    (*mat)->formatName = &CRS_formatName;
-    (*mat)->rowLen   = &CRS_rowLen;
-    (*mat)->byteSize = &CRS_byteSize;
-    (*mat)->permute = &CRS_permute;
-    (*mat)->destroy  = &CRS_free;
-    (*mat)->stringify = &CRS_stringify;
-    (*mat)->upload = &CRS_upload;
+    mat->fromFile = &CRS_fromBin;
+    mat->toFile = &CRS_toBin;
+    mat->fromRowFunc = &CRS_fromRowFunc;
+    mat->fromCRS = &CRS_fromCRS;
+    mat->printInfo = &CRS_printInfo;
+    mat->formatName = &CRS_formatName;
+    mat->rowLen   = &CRS_rowLen;
+    mat->byteSize = &CRS_byteSize;
+    mat->permute = &CRS_permute;
+    mat->destroy  = &CRS_free;
+    mat->stringify = &CRS_stringify;
+    mat->upload = &CRS_upload;
 #ifdef GHOST_HAVE_MPI
-    (*mat)->split = &CRS_split;
+    mat->split = &CRS_split;
 #endif
-    (*mat)->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
+    mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
 
-    (*mat)->localPart = NULL;
-    (*mat)->remotePart = NULL;
-    (*mat)->name = NULL;
-    (*mat)->bandwidth = 0;
-    (*mat)->lowerBandwidth = 0;
-    (*mat)->upperBandwidth = 0;
-    (*mat)->nzDist = NULL;
-    CR(*mat)->rpt = NULL;
-    CR(*mat)->col = NULL;
-    CR(*mat)->val = NULL;
+    CR(mat)->rpt = NULL;
+    CR(mat)->col = NULL;
+    CR(mat)->val = NULL;
 
     goto out;
 err:
-    free(*mat); *mat = NULL;
+    free(mat->data); mat->data = NULL;
 
 out:
     return ret;
