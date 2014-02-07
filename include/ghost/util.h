@@ -79,7 +79,6 @@ extern "C" {
 
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);
-    int ghost_archIsBigEndian();
     int ghost_dataTypeIdx(int datatype);
 
     double ghost_wctime();

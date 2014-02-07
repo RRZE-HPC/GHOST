@@ -8,6 +8,7 @@
 #include "ghost/affinity.h"
 #include "ghost/context.h"
 #include "ghost/instr.h"
+#include "ghost/machine.h"
 #include "ghost/log.h"
 #include "ghost/io.h"
 
@@ -606,7 +607,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
 
-    int32_t endianess = ghost_archIsBigEndian();
+    int32_t endianess = ghost_machineIsBigEndian();
     int32_t version = 1;
     int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
     int32_t datatype = vec->traits->datatype;
@@ -661,7 +662,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     DEBUG_LOG(1,"Writing (local) vector to file %s",path);
     size_t ret;
 
-    int32_t endianess = ghost_archIsBigEndian();
+    int32_t endianess = ghost_machineIsBigEndian();
     int32_t version = 1;
     int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
     int32_t datatype = vec->traits->datatype;

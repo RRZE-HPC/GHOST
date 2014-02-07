@@ -7,6 +7,7 @@
 #include "ghost/constants.h"
 #include "ghost/affinity.h"
 #include "ghost/context.h"
+#include "ghost/machine.h"
 #include "ghost/io.h"
 #include "ghost/log.h"
 
@@ -769,7 +770,7 @@ static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath)
     GHOST_CALL_RETURN(ghost_getMatNnz(&mnnz,mat));
     size_t ret;
 
-    int32_t endianess = ghost_archIsBigEndian();
+    int32_t endianess = ghost_machineIsBigEndian();
     int32_t version = 1;
     int32_t base = 0;
     int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;

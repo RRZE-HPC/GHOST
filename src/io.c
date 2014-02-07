@@ -3,6 +3,7 @@
 #include "ghost/log.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
+#include "ghost/machine.h"
 #include <errno.h>
 #include <limits.h>
 
@@ -336,9 +337,9 @@ ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
     ghost_matfile_header_t header;
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
 
-    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machineIsBigEndian()) {
         *differs = 1;
-    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machineIsBigEndian()) {
         *differs = 1;
     } else {
         *differs = 0;
@@ -366,10 +367,10 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     fseek(file,0L,SEEK_SET);
 
     fread(&header->endianess, 4, 1, file);
-    if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_archIsBigEndian()) {
+    if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machineIsBigEndian()) {
         DEBUG_LOG(1,"Need to convert from little to big endian.");
         swapReq = 1;
-    } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_archIsBigEndian()) {
+    } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machineIsBigEndian()) {
         DEBUG_LOG(1,"Need to convert from big to little endian.");
         swapReq = 1;
     } else {

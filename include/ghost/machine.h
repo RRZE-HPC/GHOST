@@ -18,6 +18,7 @@ ghost_error_t ghost_getNumberOfPhysicalCores(int *nCores);
 ghost_error_t ghost_getSMTlevel(int *nLevels);
 ghost_error_t ghost_getNumberOfHwThreads(int *nThreads);
 ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes);
+int ghost_machineIsBigEndian();
 
 #ifdef __cplusplus
 }

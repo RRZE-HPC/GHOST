@@ -142,3 +142,11 @@ ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes)
     return GHOST_SUCCESS;
 
 }
+
+int ghost_machineIsBigEndian()
+{
+    int test = 1;
+    unsigned char *endiantest = (unsigned char *)&test;
+
+    return (endiantest[0] == 0);
+}

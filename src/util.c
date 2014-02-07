@@ -474,13 +474,6 @@ int ghost_dataTypeIdx(int datatype)
     }
 }
 
-int ghost_archIsBigEndian()
-{
-    int test = 1;
-    unsigned char *endiantest = (unsigned char *)&test;
-
-    return (endiantest[0] == 0);
-}
 
 
 
