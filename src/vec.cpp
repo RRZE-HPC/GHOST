@@ -18,7 +18,7 @@
 
 
 
-template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
+template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
     ghost_vidx_t v;
     v_t *s = (v_t *)ghost_malloc(vec->traits->nvecs*sizeof(v_t));
@@ -31,9 +31,11 @@ template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec)
     }
     vec->vscale(vec,s);
 
+    return GHOST_SUCCESS;
+
 }
 
-template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
     if (vec->traits->nrows != vec2->traits->nrows) {
         WARNING_LOG("The input vectors of the dot product have different numbers of rows");
@@ -66,10 +68,11 @@ template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_
         ((v_t *)res)[v] = sum;
     }
     free(partsums);
+    return GHOST_SUCCESS;
 
 }
 
-template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
     ghost_vidx_t i,v;
     v_t *s = (v_t *)scale;
@@ -81,9 +84,10 @@ template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t 
             *(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
         }
     }
+    return GHOST_SUCCESS;
 }
 
-template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
+template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b_)
 {
     ghost_vidx_t i,v;
     v_t *s = (v_t *)scale;
@@ -97,9 +101,10 @@ template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t
                 *(v_t *)VECVAL(vec,vec->val,v,i) * b[v];
         }
     }
+    return GHOST_SUCCESS;
 }
 
-template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
+template<typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
 {
     ghost_vidx_t i,v;
     v_t *s = (v_t *)scale;
@@ -110,6 +115,7 @@ template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *scale)
             *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
         }
     }
+    return GHOST_SUCCESS;
 }
 
 // thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
@@ -139,7 +145,7 @@ void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 
 
 
-template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
+template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
@@ -159,6 +165,8 @@ template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec)
         }
     }
     vec->upload(vec);
+
+    return GHOST_SUCCESS;
 }
 
 
@@ -215,75 +223,75 @@ extern "C" ghost_error_t z_ghost_printVector(ghost_vec_t *vec)
 extern "C" ghost_error_t c_ghost_printVector(ghost_vec_t *vec) 
 { return ghost_vec_print_tmpl< ghost_complex<float> >(vec); }
 
-extern "C" void d_ghost_normalizeVector(ghost_vec_t *vec) 
+extern "C" ghost_error_t d_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< double >(vec); }
 
-extern "C" void s_ghost_normalizeVector(ghost_vec_t *vec) 
+extern "C" ghost_error_t s_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< float >(vec); }
 
-extern "C" void z_ghost_normalizeVector(ghost_vec_t *vec) 
+extern "C" ghost_error_t z_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< ghost_complex<double> >(vec); }
 
-extern "C" void c_ghost_normalizeVector(ghost_vec_t *vec) 
+extern "C" ghost_error_t c_ghost_normalizeVector(ghost_vec_t *vec) 
 { return ghost_normalizeVector_tmpl< ghost_complex<float> >(vec); }
 
-extern "C" void d_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
+extern "C" ghost_error_t d_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
 { return ghost_vec_dotprod_tmpl< double >(vec,vec2,res); }
 
-extern "C" void s_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
+extern "C" ghost_error_t s_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
 { return ghost_vec_dotprod_tmpl< float >(vec,vec2,res); }
 
-extern "C" void z_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
+extern "C" ghost_error_t z_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
 { return ghost_vec_dotprod_tmpl< ghost_complex<double> >(vec,vec2,res); }
 
-extern "C" void c_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
+extern "C" ghost_error_t c_ghost_vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res) 
 { return ghost_vec_dotprod_tmpl< ghost_complex<float> >(vec,vec2,res); }
 
-extern "C" void d_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+extern "C" ghost_error_t d_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
 { return ghost_vec_vscale_tmpl< double >(vec, scale); }
 
-extern "C" void s_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+extern "C" ghost_error_t s_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
 { return ghost_vec_vscale_tmpl< float  >(vec, scale); }
 
-extern "C" void z_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+extern "C" ghost_error_t z_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
 { return ghost_vec_vscale_tmpl< ghost_complex<double> >(vec, scale); }
 
-extern "C" void c_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
+extern "C" ghost_error_t c_ghost_vec_vscale(ghost_vec_t *vec, void *scale) 
 { return ghost_vec_vscale_tmpl< ghost_complex<float> >(vec, scale); }
 
-extern "C" void d_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+extern "C" ghost_error_t d_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_vaxpy_tmpl< double >(vec, vec2, scale); }
 
-extern "C" void s_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+extern "C" ghost_error_t s_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_vaxpy_tmpl< float >(vec, vec2, scale); }
 
-extern "C" void z_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+extern "C" ghost_error_t z_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_vaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale); }
 
-extern "C" void c_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
+extern "C" ghost_error_t c_ghost_vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale) 
 { return ghost_vec_vaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
 
-extern "C" void d_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+extern "C" ghost_error_t d_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
 { return ghost_vec_vaxpby_tmpl< double >(vec, vec2, scale, b); }
 
-extern "C" void s_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+extern "C" ghost_error_t s_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
 { return ghost_vec_vaxpby_tmpl< float >(vec, vec2, scale, b); }
 
-extern "C" void z_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+extern "C" ghost_error_t z_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
 { return ghost_vec_vaxpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
 
-extern "C" void c_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
+extern "C" ghost_error_t c_ghost_vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b) 
 { return ghost_vec_vaxpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
 
-extern "C" void d_ghost_vec_fromRand(ghost_vec_t *vec) 
+extern "C" ghost_error_t d_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< double >(vec); }
 
-extern "C" void s_ghost_vec_fromRand(ghost_vec_t *vec) 
+extern "C" ghost_error_t s_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< float >(vec); }
 
-extern "C" void z_ghost_vec_fromRand(ghost_vec_t *vec) 
+extern "C" ghost_error_t z_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< ghost_complex<double> >(vec); }
 
-extern "C" void c_ghost_vec_fromRand(ghost_vec_t *vec) 
+extern "C" ghost_error_t c_ghost_vec_fromRand(ghost_vec_t *vec) 
 { return ghost_vec_fromRand_tmpl< ghost_complex<float> >(vec); }
 

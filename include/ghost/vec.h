@@ -48,7 +48,7 @@ struct ghost_vec_t
      * @param x The input vector
      * @param a Points to the scale factor.
      */
-    void          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
+    ghost_error_t          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
     /**
      * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
      *
@@ -57,7 +57,7 @@ struct ghost_vec_t
      * @param a Points to the scale factor a.
      * @param b Points to the scale factor b.
      */
-    void          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
+    ghost_error_t          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
     /**
      * @brief Clones a given number of columns of a source vector at a given
      * column offset.
@@ -76,7 +76,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*compress) (ghost_vec_t *vec);
+    ghost_error_t          (*compress) (ghost_vec_t *vec);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
@@ -88,11 +88,11 @@ struct ghost_vec_t
     /**
      * @brief \deprecated
      */
-    void          (*CUdownload) (ghost_vec_t *);
+    ghost_error_t          (*CUdownload) (ghost_vec_t *);
     /**
      * @brief \deprecated
      */
-    void          (*CUupload) (ghost_vec_t *);
+    ghost_error_t          (*CUupload) (ghost_vec_t *);
     /**
      * @brief Destroys a vector, i.e., frees all its data structures.
      *
@@ -114,7 +114,7 @@ struct ghost_vec_t
      * @param b The second vector.
      * @param res A pointer to where the result should be stored.
      */
-    void          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
+    ghost_error_t          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
     /**
      * @brief Downloads an entire vector from a compute device. Does nothing if
      * the vector is not present on the device.
@@ -146,7 +146,7 @@ struct ghost_vec_t
      * @param ghost_vidx_t j The column.
      * @param entry Where to store the entry.
      */
-    void          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
+    ghost_error_t          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
             void *entry);
     /**
      * @brief Initializes a vector from a given function.
@@ -164,7 +164,7 @@ struct ghost_vec_t
      * @param src The source vector.
      * @param ghost_vidx_t The column offset in the source vector.
      */
-    void          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
+    ghost_error_t          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
     /**
      * @brief Initializes a vector from a file.
      * Malloc's memory for the vector's values if this hasn't happened before.
@@ -178,20 +178,20 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    void          (*fromRand) (ghost_vec_t *vec);
+    ghost_error_t          (*fromRand) (ghost_vec_t *vec);
     /**
      * @brief Initializes a vector from a given scalar value.
      *
      * @param vec The vector.
      * @param val A pointer to the value.
      */
-    void          (*fromScalar) (ghost_vec_t *vec, void *val);
+    ghost_error_t          (*fromScalar) (ghost_vec_t *vec, void *val);
     /**
      * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
      *
      * @param vec The vector.
      */
-    void          (*normalize) (ghost_vec_t *vec);
+    ghost_error_t          (*normalize) (ghost_vec_t *vec);
     /**
      * @brief Permute a vector with a given permutation.
      *
@@ -211,14 +211,14 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param scale The scale factor.
      */
-    void          (*scale) (ghost_vec_t *vec, void *scale);
+    ghost_error_t          (*scale) (ghost_vec_t *vec, void *scale);
     /**
      * @brief Swap two vectors.
      *
      * @param vec1 The first vector.
      * @param vec2 The second vector.
      */
-    void          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
+    ghost_error_t          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
     /**
      * @brief Write a vector to a file.
      *
@@ -260,7 +260,7 @@ struct ghost_vec_t
      * @param ghost_vidx_t coffs The column offset.
      * @param ghost_vidx_t lda The number of rows per column.
      */
-    void          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+    ghost_error_t          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 
     ghost_vec_t * (*viewScatteredVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 
@@ -281,13 +281,13 @@ struct ghost_vec_t
      * @param vec The vector.
      * @param scale The scale factors.
      */
-    void          (*vscale) (ghost_vec_t *, void *);
-    void          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
-    void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
-    void          (*zero) (ghost_vec_t *);
+    ghost_error_t          (*vscale) (ghost_vec_t *, void *);
+    ghost_error_t          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
+    ghost_error_t          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
+    ghost_error_t          (*zero) (ghost_vec_t *);
 
 #ifdef GHOST_HAVE_CUDA
-    char * CU_val;
+    void * CU_val;
 #endif
 };
 
@@ -319,16 +319,16 @@ extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 #define VEC_PAD 16
 #endif
 
-#define VECVAL(vec,val,__x,__y) &(val[__x][__y*ghost_sizeofDataType(vec->traits->datatype)])
-#define CUVECVAL(vec,val,__x,__y) &(val[(__x*vec->traits->nrowspadded+__y)*ghost_sizeofDataType(vec->traits->datatype)])
+#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*ghost_sizeofDataType(vec->traits->datatype)])
+#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*ghost_sizeofDataType(vec->traits->datatype)])
 
 #ifdef __cplusplus
-template <typename v_t> void ghost_normalizeVector_tmpl(ghost_vec_t *vec);
-template <typename v_t> void ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
-template <typename v_t> void ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *);
-template <typename v_t> void ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *, void *);
-template<typename v_t> void ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *vscale);
-template <typename v_t> void ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
+template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_vec_t *vec);
+template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
+template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *);
+template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *, void *);
+template <typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *vscale);
+template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
 template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec);
 
 extern "C" {
@@ -342,30 +342,30 @@ extern "C" {
     ghost_error_t s_ghost_printVector(ghost_vec_t *vec); 
     ghost_error_t z_ghost_printVector(ghost_vec_t *vec);
     ghost_error_t c_ghost_printVector(ghost_vec_t *vec);
-    void d_ghost_normalizeVector(ghost_vec_t *vec); 
-    void s_ghost_normalizeVector(ghost_vec_t *vec); 
-    void z_ghost_normalizeVector(ghost_vec_t *vec);
-    void c_ghost_normalizeVector(ghost_vec_t *vec);
-    void d_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
-    void s_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
-    void z_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
-    void c_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
-    void d_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
-    void s_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
-    void z_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
-    void c_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
-    void d_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
-    void s_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
-    void z_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
-    void c_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
-    void d_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
-    void s_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
-    void z_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
-    void c_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
-    void d_ghost_vec_fromRand(ghost_vec_t *vec); 
-    void s_ghost_vec_fromRand(ghost_vec_t *vec); 
-    void z_ghost_vec_fromRand(ghost_vec_t *vec); 
-    void c_ghost_vec_fromRand(ghost_vec_t *vec); 
+    ghost_error_t d_ghost_normalizeVector(ghost_vec_t *vec); 
+    ghost_error_t s_ghost_normalizeVector(ghost_vec_t *vec); 
+    ghost_error_t z_ghost_normalizeVector(ghost_vec_t *vec);
+    ghost_error_t c_ghost_normalizeVector(ghost_vec_t *vec);
+    ghost_error_t d_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
+    ghost_error_t s_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
+    ghost_error_t z_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
+    ghost_error_t c_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
+    ghost_error_t d_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
+    ghost_error_t s_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
+    ghost_error_t z_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
+    ghost_error_t c_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
+    ghost_error_t d_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
+    ghost_error_t s_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
+    ghost_error_t z_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
+    ghost_error_t c_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
+    ghost_error_t d_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
+    ghost_error_t s_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
+    ghost_error_t z_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
+    ghost_error_t c_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
+    ghost_error_t d_ghost_vec_fromRand(ghost_vec_t *vec); 
+    ghost_error_t s_ghost_vec_fromRand(ghost_vec_t *vec); 
+    ghost_error_t z_ghost_vec_fromRand(ghost_vec_t *vec); 
+    ghost_error_t c_ghost_vec_fromRand(ghost_vec_t *vec); 
 #ifdef __cplusplus
 }
 #endif

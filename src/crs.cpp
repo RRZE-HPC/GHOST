@@ -18,9 +18,9 @@
 using namespace std;
 // TODO shift, scale als templateparameter
 
-template<typename m_t, typename v_t> ghost_error_t CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 {
-    CR_TYPE *cr = CR(mat);
+    ghost_crs_t *cr = CR(mat);
     v_t *rhsv;
     v_t *lhsv;
     v_t *local_dot_product, *partsums;
@@ -102,20 +102,6 @@ template<typename m_t, typename v_t> ghost_error_t CRS_kernel_plain_tmpl(ghost_m
         free(partsums);
     }
     return GHOST_SUCCESS;
-}
-
-
-template<typename m_t> void CRS_valToStr_tmpl(void *val, char *str, int n)
-{
-    if (val == NULL) {
-        UNUSED(str);
-        //str = "0.";
-    } else {
-        UNUSED(str);
-        UNUSED(n);
-        // TODO
-        //snprintf(str,n,"%g",*((m_t *)(val)));
-    }
 }
 
 template <typename m_t> static const char * CRS_stringify(ghost_mat_t *mat, int dense)
@@ -206,18 +192,6 @@ extern "C" ghost_error_t zc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs,
 
 extern "C" ghost_error_t zz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
-
-extern "C" void d_CRS_valToStr(void *val, char *str, int n)
-{ return CRS_valToStr_tmpl< double >(val,str,n); }
-
-extern "C" void s_CRS_valToStr(void *val, char *str, int n)
-{ return CRS_valToStr_tmpl< float >(val,str,n); }
-
-extern "C" void c_CRS_valToStr(void *val, char *str, int n)
-{ return CRS_valToStr_tmpl< ghost_complex<float> >(val,str,n); }
-
-extern "C" void z_CRS_valToStr(void *val, char *str, int n)
-{ return CRS_valToStr_tmpl< ghost_complex<double> >(val,str,n); }
 
 extern "C" const char * d_CRS_stringify(ghost_mat_t *mat, int dense)
 { return CRS_stringify< double >(mat, dense); }

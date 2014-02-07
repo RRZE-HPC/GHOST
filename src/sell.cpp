@@ -54,7 +54,7 @@ using namespace std;
 
 template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
 {
-    SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
+    ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *rhsv;
     v_t *lhsv;
     v_t *local_dot_product, *partsums;
@@ -160,7 +160,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     ghost_midx_t i,j;
     ghost_vidx_t v;
     v_t tmp;
-    SELL_TYPE *sell = (SELL_TYPE *)(mat->data);
+    ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
     v_t shift, scale, beta;
     if (options & GHOST_SPMVM_APPLY_SHIFT)
@@ -247,7 +247,7 @@ static int compareNZEPerRow( const void* a, const void* b )
 template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating SELL matrix");
-    CR_TYPE *cr = (CR_TYPE*)(crsmat->data);
+    ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
     ghost_midx_t i,j,c;
     unsigned int flags = mat->traits->flags;
 
@@ -255,7 +255,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
     ghost_midx_t *invRowPerm = NULL;
 
     ghost_sorting_t* rowSort = NULL;
-    //mat->data = (SELL_TYPE *)ghost_malloc(sizeof(SELL_TYPE));
+    //mat->data = (ghost_sell_t *)ghost_malloc(sizeof(ghost_sell_t));
     mat->nnz = crsmat->nnz;
 
    /* mat->nrows = cr->nrows;

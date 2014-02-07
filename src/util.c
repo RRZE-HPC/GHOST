@@ -171,6 +171,9 @@ ghost_error_t ghost_printSysInfo()
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
 
 #ifdef GHOST_HAVE_CUDA
+    int cuVersion;
+    GHOST_CALL_RETURN(CU_getVersion(&cuVersion));
+
     ghost_gpu_info_t * CUdevInfo;
     GHOST_CALL_RETURN(CU_getDeviceInfo(&CUdevInfo));
 #endif
@@ -228,7 +231,7 @@ ghost_error_t ghost_printSysInfo()
         ghost_printLine("LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
         ghost_printLine("Cache line size","B","%.2f",cacheLineSize);
 #ifdef GHOST_HAVE_CUDA
-        ghost_printLine("CUDA version",NULL,"%s",CU_getVersion());
+        ghost_printLine("CUDA version",NULL,"%d",cuVersion);
         ghost_printLine("CUDA devices",NULL,NULL);
         int j;
         for (j=0; j<CUdevInfo->nDistinctDevices; j++) {

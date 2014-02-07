@@ -17,22 +17,22 @@ typedef struct
 extern "C" {
 #endif
 
-void ghost_CUDA_init(int dev);
-void * CU_allocDeviceMemory( size_t bytesize );
-void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);
-void CU_copyHostToDeviceOffset(void * devmem, void *hostmem, size_t bytesize, size_t offset);
-void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize);
-void CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize);
-void CU_freeDeviceMemory(void * mem);
-void CU_memset(void *s, int c, size_t n);
-void CU_barrier();
-void CU_finish();
-void CU_uploadVector( ghost_vec_t *vec );
-void CU_downloadVector( ghost_vec_t *vec );
-int CU_getDeviceCount(int *devcount);
-const char * CU_getVersion();
+ghost_error_t ghost_CUDA_init(int dev);
+ghost_error_t CU_allocDeviceMemory(void **mem, size_t bytesize);
+ghost_error_t CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize);
+ghost_error_t CU_copyHostToDeviceOffset(void * devmem, void *hostmem, size_t bytesize, size_t offset);
+ghost_error_t CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize);
+ghost_error_t CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize);
+ghost_error_t CU_freeDeviceMemory(void * mem);
+ghost_error_t CU_memset(void *s, int c, size_t n);
+ghost_error_t CU_barrier();
+ghost_error_t CU_finish();
+ghost_error_t CU_uploadVector( ghost_vec_t *vec );
+ghost_error_t CU_downloadVector( ghost_vec_t *vec );
+ghost_error_t CU_getDeviceCount(int *devcount);
+ghost_error_t CU_getVersion(int *ver);
 ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **);
-void *ghost_cu_malloc_mapped(const size_t size);
+ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size);
 
 #ifdef __cplusplus
 }

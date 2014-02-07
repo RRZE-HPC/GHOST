@@ -112,6 +112,11 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     {
         x->compress(x);
     }
+    
+    if (v->traits->datatype != w->traits->datatype) {
+        ERROR_LOG("GEMM with mixed datatypes does not work!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
 
     if (v->context == NULL && w->context == NULL && x->context == NULL && reduce != GHOST_GEMM_NO_REDUCE) {
         INFO_LOG("Reduction should be done but none of the vectors has a context. Ommitting the reduction...");
@@ -167,9 +172,6 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits->nrowspadded);
     ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits->nrowspadded);
 
-    if (v->traits->datatype != w->traits->datatype) {
-        ABORT("Dgemm with mixed datatypes does not work!");
-    }
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v
@@ -232,22 +234,22 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         {
             if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_safecall(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->CU_val,*ldv,(cuDoubleComplex *)w->CU_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->CU_val,*ldv,(cuDoubleComplex *)w->CU_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->CU_val,*ldx));
             } 
             else 
             {
-                CUBLAS_safecall(cublasCgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->CU_val,*ldv,(cuFloatComplex *)w->CU_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->CU_val,*ldv,(cuFloatComplex *)w->CU_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->CU_val,*ldx));
             }
         } 
         else 
         {
             if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_safecall(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->CU_val,*ldv,(double *)w->CU_val,*ldw,(double *)mybeta,(double *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->CU_val,*ldv,(double *)w->CU_val,*ldw,(double *)mybeta,(double *)x->CU_val,*ldx));
             } 
             else 
             {
-                CUBLAS_safecall(cublasSgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(float *)alpha,(float *)v->CU_val,*ldv,(float *)w->CU_val,*ldw,(float *)mybeta,(float *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(float *)alpha,(float *)v->CU_val,*ldv,(float *)w->CU_val,*ldw,(float *)mybeta,(float *)x->CU_val,*ldx));
             }    
         }
 #endif
@@ -467,6 +469,9 @@ ghost_error_t ghost_mpi_createOperations()
 #if GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
+#else
+    UNUSED(GHOST_MPI_OP_SUM_C);
+    UNUSED(GHOST_MPI_OP_SUM_Z);
 #endif
 
     return GHOST_SUCCESS;

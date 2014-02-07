@@ -1,5 +1,6 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/util.h"
 
 static ghost_mpi_datatype_t GHOST_MPI_DT_C = MPI_DATATYPE_NULL;
 static ghost_mpi_datatype_t GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
@@ -39,6 +40,9 @@ ghost_error_t ghost_mpi_createDatatypes()
 
     MPI_CALL_RETURN(MPI_Type_contiguous(2,MPI_DOUBLE,&GHOST_MPI_DT_Z));
     MPI_CALL_RETURN(MPI_Type_commit(&GHOST_MPI_DT_Z));
+#else
+    UNUSED(GHOST_MPI_DT_C);
+    UNUSED(GHOST_MPI_DT_Z);
 #endif
 
     return GHOST_SUCCESS;

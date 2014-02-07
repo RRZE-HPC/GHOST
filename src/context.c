@@ -11,6 +11,13 @@
 
 ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
+    if (weight < 0) {
+        ERROR_LOG("Negative weight");
+        return GHOST_ERR_INVALID_ARG;
+    }
+           
+    int nranks, me, i;
+    ghost_error_t ret = GHOST_SUCCESS;
     (*context) = (ghost_context_t *)ghost_malloc(sizeof(ghost_context_t));
     (*context)->flags = context_flags;
     (*context)->rowPerm = NULL;
@@ -19,12 +26,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     (*context)->wishes   = NULL;
     (*context)->dues     = NULL;
     (*context)->hput_pos = NULL;
+
+    ghost_midx_t *target_rows = NULL;
     
-    int nranks;
-    int me;
-    int i;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks((*context)->mpicomm,&nranks));
-    GHOST_CALL_RETURN(ghost_getRank((*context)->mpicomm,&me));
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks((*context)->mpicomm,&nranks),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank((*context)->mpicomm,&me),err,ret);
 
     
     (*context)->wishlist = (ghost_midx_t**) ghost_malloc(nranks*sizeof(ghost_midx_t *)); 
@@ -40,10 +46,11 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 
     if ((gnrows < 1) || (gncols < 1)) {
         ghost_matfile_header_t fileheader;
-        ghost_readMatFileHeader((char *)matrixSource,&fileheader);
+        GHOST_CALL_GOTO(ghost_readMatFileHeader((char *)matrixSource,&fileheader),err,ret);
 #if !(GHOST_HAVE_LONGIDX)
         if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
-            ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+            return GHOST_ERR_IO;
         }
 #endif
         if (gnrows < 1)
@@ -54,7 +61,8 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     } else {
 #if !(GHOST_HAVE_LONGIDX)
         if ((gnrows >= (int64_t)INT_MAX) || (gncols >= (int64_t)INT_MAX)) {
-            ABORT("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+            return GHOST_ERR_IO;
         }
 #endif
         (*context)->gnrows = (ghost_midx_t)gnrows;
@@ -78,20 +86,10 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     }
 #endif
 
- /*   (*context)->spmvsolvers = (ghost_spmvsolver_t *)ghost_malloc(sizeof(ghost_spmvsolver_t)*GHOST_NUM_MODES);
-    for (i=0; i<GHOST_NUM_MODES; i++) (*context)->spmvsolvers[i] = NULL;
-#ifdef GHOST_HAVE_MPI
-    (*context)->spmvsolvers[GHOST_SPMVM_MODE_VECTORMODE_IDX] = &hybrid_kernel_I;
-    (*context)->spmvsolvers[GHOST_SPMVM_MODE_GOODFAITH_IDX] = &hybrid_kernel_II;
-    (*context)->spmvsolvers[GHOST_SPMVM_MODE_TASKMODE_IDX] = &hybrid_kernel_III;
-#else
-    (*context)->spmvsolvers[GHOST_SPMVM_MODE_NOMPI_IDX] = &ghost_solver_nompi;
-#endif
-*/
-    (*context)->lnEnts   = (ghost_mnnz_t*)       ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
-    (*context)->lfEnt    = (ghost_mnnz_t*)       ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
-    (*context)->lnrows   = (ghost_midx_t*)       ghost_malloc( nranks*sizeof(ghost_midx_t)); 
-    (*context)->lfRow    = (ghost_midx_t*)       ghost_malloc( nranks*sizeof(ghost_midx_t));
+    (*context)->lnEnts   = (ghost_mnnz_t*) ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
+    (*context)->lfEnt    = (ghost_mnnz_t*) ghost_malloc( nranks*sizeof(ghost_mnnz_t)); 
+    (*context)->lnrows   = (ghost_midx_t*) ghost_malloc( nranks*sizeof(ghost_midx_t)); 
+    (*context)->lfRow    = (ghost_midx_t*) ghost_malloc( nranks*sizeof(ghost_midx_t));
 
 #ifdef GHOST_HAVE_MPI
     ghost_midx_t row;
@@ -101,39 +99,42 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 
         if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
-            ghost_midx_t *rpt = NULL;
             ghost_mnnz_t gnnz;
+            if (!matrixSource) {
+                ERROR_LOG("If distribution by nnz a matrix source has to be given!");
+                ret = GHOST_ERR_INVALID_ARG;
+                goto err;
+            }
+
 
             if (me == 0) {
-                rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*((*context)->gnrows+1));
+                (*context)->rpt = (ghost_mnnz_t *)ghost_malloc(sizeof(ghost_mnnz_t)*((*context)->gnrows+1));
 #pragma omp parallel for schedule(runtime)
                 for( row = 0; row < (*context)->gnrows+1; row++ ) {
-                    rpt[row] = 0;
+                    (*context)->rpt[row] = 0;
                 }
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
-                    ghost_readRpt(rpt,(char *)matrixSource,0,(*context)->gnrows+1);  // read rpt
+                    ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1);  // read rpt
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
                     ghost_spmFromRowFunc_t func = (ghost_spmFromRowFunc_t)matrixSource;
                     char *tmpval = ghost_malloc((*context)->gncols*sizeof(complex double));
                     ghost_midx_t *tmpcol = ghost_malloc((*context)->gncols*sizeof(ghost_midx_t));
-                    rpt[0] = 0;
+                    (*context)->rpt[0] = 0;
                     ghost_midx_t rowlen;
                     ghost_midx_t i;
                     for(row = 0; row < (*context)->gnrows; row++) {
                         func(row,&rowlen,tmpcol,tmpval);
-                        rpt[row+1] = rpt[i]+rowlen;
+                        (*context)->rpt[row+1] = (*context)->rpt[i]+rowlen;
                     }
                     free(tmpval);
                     free(tmpcol);
                 } else {
-                    ERROR_LOG("If distribution by nnz a matrix source has to be given!");
-                    return GHOST_ERR_INVALID_ARG;
+                    ERROR_LOG("If distribution by nnz the type of the matrix source has to be specified in the flags!");
+                    ret = GHOST_ERR_INVALID_ARG;
+                    goto err;
                 }
-                    
-                    
-                (*context)->rpt = rpt;
 
-                gnnz = rpt[(*context)->gnrows];
+                gnnz = (*context)->rpt[(*context)->gnrows];
                 ghost_mnnz_t target_nnz;
                 target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
 
@@ -142,9 +143,9 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
                 int j = 1;
 
                 for (row=0;row<(*context)->gnrows;row++){
-                    if (rpt[row] >= j*target_nnz){
+                    if ((*context)->rpt[row] >= j*target_nnz){
                         (*context)->lfRow[j] = row;
-                        (*context)->lfEnt[j] = rpt[row];
+                        (*context)->lfEnt[j] = (*context)->rpt[row];
                         j = j+1;
                     }
                 }
@@ -158,77 +159,21 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 
                 //fclose(filed);
             }
-            int err;
-            MPI_CALL(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free(rpt); rpt = NULL;
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                return GHOST_ERR_MPI;
-            }
-            MPI_CALL(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free(rpt); rpt = NULL;
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                return GHOST_ERR_MPI;
-            }
-            MPI_CALL(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free(rpt); rpt = NULL;
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                return GHOST_ERR_MPI;
-            }
-            MPI_CALL(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free(rpt); rpt = NULL;
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                return GHOST_ERR_MPI;
-            }
-
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lfEnt,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lnEnts, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
 
         } else
         { // don't read rpt, only fill lfrow, lnrows, rest will be done after some matrix from*() function
             UNUSED(matrixSource);
-            int err;
             double allweights;
-            MPI_CALL(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm),err)
-            if (err != MPI_SUCCESS) {
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                return GHOST_ERR_MPI;
-            }
+            MPI_CALL_GOTO(MPI_Allreduce(&weight,&allweights,1,MPI_DOUBLE,MPI_SUM,(*context)->mpicomm),err,ret)
 
             ghost_midx_t my_target_rows = (ghost_midx_t)((*context)->gnrows*((double)weight/(double)allweights));
-            ghost_midx_t *target_rows = (ghost_midx_t *)ghost_malloc(nranks*sizeof(ghost_midx_t));
+            target_rows = (ghost_midx_t *)ghost_malloc(nranks*sizeof(ghost_midx_t));
 
-            MPI_CALL(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,target_rows,1,ghost_mpi_dt_midx,(*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                free(target_rows); target_rows = NULL;
-                return GHOST_ERR_MPI;
-            }
+            MPI_CALL_GOTO(MPI_Allgather(&my_target_rows,1,ghost_mpi_dt_midx,target_rows,1,ghost_mpi_dt_midx,(*context)->mpicomm),err,ret);
                        
             (*context)->rpt = NULL;
             (*context)->lfRow[0] = 0;
@@ -240,31 +185,12 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
                 (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
             }
             (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
-            MPI_CALL(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                free(target_rows); target_rows = NULL;
-                return GHOST_ERR_MPI;
-            }
-            MPI_CALL(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err);
-            if (err != MPI_SUCCESS) {
-                free((*context)->lnEnts); (*context)->lnEnts = NULL;
-                free((*context)->lfEnt); (*context)->lfEnt = NULL;
-                free((*context)->lnrows); (*context)->lnrows = NULL;
-                free((*context)->lfRow); (*context)->lfRow = NULL;
-                free(*context); *context = NULL;
-                free(target_rows); target_rows = NULL;
-                return GHOST_ERR_MPI;
-            }
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
+            MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_midx, 0, (*context)->mpicomm),err,ret);
             (*context)->lnEnts[0] = -1;
             (*context)->lfEnt[0] = -1;
 
-            free(target_rows);
-            DEBUG_LOG("done");
+            free(target_rows); target_rows = NULL;
         }
 
     } else {
@@ -283,7 +209,23 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
 #endif
 
     DEBUG_LOG(1,"Context created successfully");
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    if (*context) {
+        free((*context)->lnEnts); (*context)->lnEnts = NULL;
+        free((*context)->lfEnt); (*context)->lfEnt = NULL;
+        free((*context)->lnrows); (*context)->lnrows = NULL;
+        free((*context)->lfRow); (*context)->lfRow = NULL;
+        free((*context)->wishlist); (*context)->wishlist = NULL;
+        free((*context)->duelist); (*context)->duelist = NULL;
+        free((*context)->rpt); (*context)->rpt = NULL;
+    }
+    free(*context); *context = NULL;
+    free(target_rows); target_rows = NULL;
+
+
+out:
+    return ret;
 }
 
 ghost_error_t ghost_printContextInfo(ghost_context_t *context)
@@ -373,8 +315,8 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     int nprocs;
     int me;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs));
-    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&me));
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(ctx->mpicomm,&me),err,ret);
 
 #if GHOST_HAVE_MPI
     MPI_Request req[2*nprocs];

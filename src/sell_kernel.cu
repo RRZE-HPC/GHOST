@@ -7,9 +7,11 @@
 #include "ghost/constants.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
+#include "ghost/error.h"
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>
+#include <cuda.h>
 
 #include "ghost/cu_complex.h"
 
@@ -30,7 +32,7 @@ extern int ghost_cu_device;
     if (flags&GHOST_SPMVM_AXPBY) {\
             beta = *(dt2 *)mat->traits->beta;\
     }\
-    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,flags,SELL(mat)->cumat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
+    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
    }\
 
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
@@ -161,6 +163,7 @@ extern int ghost_cu_device;
             }\
 
 #define CHOOSE_KERNEL(dt1,dt2) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
     static int infoprinted=0;\
     void *cu_localdot = NULL;\
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
@@ -171,7 +174,7 @@ extern int ghost_cu_device;
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
             size_t reqSmem = ghost_sizeofDataType(lhs->traits->datatype)*SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
-            CU_safecall(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,ghost_cu_device));\
             if (prop.sharedMemPerBlock < reqSmem) {\
                 WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
             }\
@@ -184,7 +187,7 @@ extern int ghost_cu_device;
         if (SELL(mat)->T > 1) {\
             size_t reqSmem = ghost_sizeofDataType(lhs->traits->datatype)*SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
-            CU_safecall(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,ghost_cu_device));\
             if (prop.sharedMemPerBlock < reqSmem) {\
                 WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
             }\
@@ -206,7 +209,7 @@ extern int ghost_cu_device;
         lhs->dotProduct(rhs,rhs,(char *)lhs->traits->localdot+2*sizeof(dt2));\
     }\
     GHOST_INSTR_STOP(CU_SpMVM_localdot)\
-    return GHOST_SUCCESS;\
+    return ret;\
 }
 
     template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  

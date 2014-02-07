@@ -30,9 +30,6 @@ ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_ve
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
     {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
 
-void (*CRS_valToStr_funcs[4]) (void *, char *, int) = 
-{&s_CRS_valToStr,&d_CRS_valToStr,&c_CRS_valToStr,&z_CRS_valToStr};
-
 const char * (*CRS_stringify_funcs[4]) (ghost_mat_t *, int) = 
 {&s_CRS_stringify, &d_CRS_stringify, &c_CRS_stringify, &z_CRS_stringify}; 
 
@@ -97,7 +94,7 @@ ghost_error_t ghost_CRS_init(ghost_mat_t *mat)
 #ifdef GHOST_HAVE_MPI
     mat->split = &CRS_split;
 #endif
-    mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
+    mat->data = (ghost_crs_t *)ghost_malloc(sizeof(ghost_crs_t));
 
     CR(mat)->rpt = NULL;
     CR(mat)->col = NULL;
@@ -130,7 +127,7 @@ static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_mid
 
     ghost_midx_t i,j,c;
     ghost_midx_t rowLen;
-    CR_TYPE *cr = CR(mat);
+    ghost_crs_t *cr = CR(mat);
 
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
 
@@ -363,11 +360,11 @@ static ghost_error_t CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating CRS matrix from CRS matrix");
     size_t sizeofdt = ghost_sizeofDataType(mat->traits->datatype);
-    CR_TYPE *cr = (CR_TYPE*)(crsmat->data);
+    ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
     ghost_midx_t i,j;
 
 
-    //    mat->data = (CR_TYPE *)ghost_malloc(sizeof(CR_TYPE));
+    //    mat->data = (ghost_crs_t *)ghost_malloc(sizeof(ghost_crs_t));
     mat->nrows = crsmat->nrows;
     mat->ncols = crsmat->ncols;
     mat->nEnts = crsmat->nEnts;
@@ -404,8 +401,8 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
     }
 
     ghost_error_t ret = GHOST_SUCCESS;
-    CR_TYPE *fullCR = CR(mat);
-    CR_TYPE *localCR = NULL, *remoteCR = NULL;
+    ghost_crs_t *fullCR = CR(mat);
+    ghost_crs_t *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
     int j;
     int i;
@@ -432,8 +429,8 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
         DEBUG_LOG(1,"PE%d: Rows=%"PRmatIDX"\t Ents=%"PRmatNNZ"(l),%"PRmatNNZ"(r),%"PRmatNNZ"(g)\t pdim=%"PRmatIDX, 
                 me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
-        localCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
-        remoteCR = (CR_TYPE *) ghost_malloc(sizeof(CR_TYPE));
+        localCR = (ghost_crs_t *) ghost_malloc(sizeof(ghost_crs_t));
+        remoteCR = (ghost_crs_t *) ghost_malloc(sizeof(ghost_crs_t));
         ghost_createMatrix(mat->context,&mat->traits[0],1,&(mat->localPart));
         free(mat->localPart->data); // has been allocated in init()
         mat->localPart->traits->symmetry = mat->traits->symmetry;
@@ -631,7 +628,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
 
         if (me == 0) {
             if (context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
-                ((CR_TYPE *)(mat->data))->rpt = context->rpt;
+                ((ghost_crs_t *)(mat->data))->rpt = context->rpt;
             } else {
                 CR(mat)->rpt = (ghost_mnnz_t *) ghost_malloc_align((header.nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT);
 #pragma omp parallel for schedule(runtime) 
@@ -944,7 +941,7 @@ double *rhsv = (double *)rhs->val;
 double *lhsv = (double *)lhs->val;    
 ghost_midx_t i, j;
 double hlp1;
-CR_TYPE *cr = CR(mat);
+ghost_crs_t *cr = CR(mat);
 
 #pragma omp parallel for schedule(runtime) private (hlp1, j)
 for (i=0; i<cr->nrows; i++){

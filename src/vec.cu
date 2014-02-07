@@ -91,14 +91,15 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_vidx_t nrows, gho
     }
 }
 
-extern "C" void ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
+extern "C" ghost_error_t ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
 {
-    void *d_a = CU_allocDeviceMemory(v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
+    void *d_a;
+    GHOST_CALL_RETURN(CU_allocDeviceMemory(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
     CU_copyHostToDevice(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
     if (v1->traits->datatype != v2->traits->datatype)
     {
-        WARNING_LOG("Cannot VAXPY vectors with different data types");
-        return;
+        ERROR_LOG("Cannot VAXPY vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
     if (v1->traits->datatype & GHOST_DT_COMPLEX)
@@ -123,18 +124,22 @@ extern "C" void ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
             cu_vaxpy_kernel<float><<< (int)ceil((double)v1->traits->nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>((float *)v1->CU_val, (float *)v2->CU_val,(float *)d_a,v1->traits->nrows,v1->traits->nvecs,v1->traits->nrowspadded);
         }
     }
+    return GHOST_SUCCESS;
 }
     
-extern "C" void ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, void *b)
+extern "C" ghost_error_t ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, void *b)
 {
-    void *d_a = CU_allocDeviceMemory(v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
-    void *d_b = CU_allocDeviceMemory(v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
+    void *d_a;
+    void *d_b;
+    GHOST_CALL_RETURN(CU_allocDeviceMemory(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype))); //TODO goto and free
+    GHOST_CALL_RETURN(CU_allocDeviceMemory(&d_b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
+
     CU_copyHostToDevice(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
     CU_copyHostToDevice(d_b,b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
     if (v1->traits->datatype != v2->traits->datatype)
     {
-        WARNING_LOG("Cannot VAXPBY vectors with different data types");
-        return;
+        ERROR_LOG("Cannot VAXPBY vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     if (v1->traits->datatype & GHOST_DT_COMPLEX)
     {
@@ -166,31 +171,33 @@ extern "C" void ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, v
                  v1->traits->nrows,v1->traits->nvecs,v1->traits->nrowspadded);
         }
     }
+
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+extern "C" ghost_error_t ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
     if (vec->traits->datatype != vec2->traits->datatype)
     {
-        WARNING_LOG("Cannot DOT vectors with different data types");
-        return;
+        ERROR_LOG("Cannot DOT vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++)
     {
-        char *v1 = &vec->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
-        char *v2 = &vec2->CU_val[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
+        char *v1 = &((char *)(vec->CU_val))[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
+        char *v2 = &((char *)(vec2->CU_val))[v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype)];
         if (vec->traits->datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
-                CUBLAS_safecall(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
+                CUBLAS_CALL_RETURN(cublasZdotc(ghost_cublas_handle,vec->traits->nrows,
                             (const cuDoubleComplex *)v1,1,(const cuDoubleComplex *)v2,1,&((cuDoubleComplex *)res)[v]));
             } 
             else 
             {
-                CUBLAS_safecall(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
+                CUBLAS_CALL_RETURN(cublasCdotc(ghost_cublas_handle,vec->traits->nrows,
                             (const cuFloatComplex *)v1,1,(const cuFloatComplex *)v2,1,&((cuFloatComplex *)res)[v]));
             }
         }
@@ -198,37 +205,38 @@ extern "C" void ghost_vec_cu_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *
         {
             if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
-                CUBLAS_safecall(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
+                CUBLAS_CALL_RETURN(cublasDdot(ghost_cublas_handle,vec->traits->nrows,
                             (const double *)v1,1,(const double *)v2,1,&((double *)res)[v]));
             } 
             else 
             {
-                CUBLAS_safecall(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
+                CUBLAS_CALL_RETURN(cublasSdot(ghost_cublas_handle,vec->traits->nrows,
                             (const float *)v1,1,(const float *)v2,1,&((float *)res)[v]));
             }
         }
     }
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *a)
+extern "C" ghost_error_t ghost_vec_cu_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *a)
 {
     if (vec->traits->datatype != vec2->traits->datatype)
     {
-        WARNING_LOG("Cannot AXPY vectors with different data types");
-        return;
+        ERROR_LOG("Cannot AXPY vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
-            CUBLAS_safecall(cublasZaxpy(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasZaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const cuDoubleComplex *)a,
                         (const cuDoubleComplex *)vec2->CU_val,1,
                         (cuDoubleComplex *)vec->CU_val,1));
         } 
         else 
         {
-            CUBLAS_safecall(cublasCaxpy(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasCaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const cuFloatComplex *)a,
                         (const cuFloatComplex *)vec2->CU_val,1,
                         (cuFloatComplex *)vec->CU_val,1));
@@ -238,27 +246,28 @@ extern "C" void ghost_vec_cu_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *a)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
-            CUBLAS_safecall(cublasDaxpy(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasDaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const double *)a,
                         (const double *)vec2->CU_val,1,
                         (double *)vec->CU_val,1));
         } 
         else 
         {
-            CUBLAS_safecall(cublasSaxpy(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasSaxpy(ghost_cublas_handle,vec->traits->nrows,
                         (const float *)a,
                         (const float *)vec2->CU_val,1,
                         (float *)vec->CU_val,1));
         }
     }
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, void *b)
+extern "C" ghost_error_t ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, void *b)
 {
     if (v1->traits->datatype != v2->traits->datatype)
     {
-        WARNING_LOG("Cannot AXPY vectors with different data types");
-        return;
+        ERROR_LOG("Cannot AXPY vectors with different data types");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     if (v1->traits->datatype & GHOST_DT_COMPLEX)
     {
@@ -290,21 +299,23 @@ extern "C" void ghost_vec_cu_axpby(ghost_vec_t *v1, ghost_vec_t *v2, void *a, vo
                  v1->traits->nrows,v1->traits->nvecs,v1->traits->nrowspadded);
         }
     }
+
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
+extern "C" ghost_error_t ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
 {
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
-            CUBLAS_safecall(cublasZscal(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasZscal(ghost_cublas_handle,vec->traits->nrows,
                         (const cuDoubleComplex *)a,
                         (cuDoubleComplex *)vec->CU_val,1));
         } 
         else 
         {
-            CUBLAS_safecall(cublasCscal(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasCscal(ghost_cublas_handle,vec->traits->nrows,
                         (const cuFloatComplex *)a,
                         (cuFloatComplex *)vec->CU_val,1));
         }
@@ -313,22 +324,25 @@ extern "C" void ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
         {
-            CUBLAS_safecall(cublasDscal(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasDscal(ghost_cublas_handle,vec->traits->nrows,
                         (const double *)a,
                         (double *)vec->CU_val,1));
         } 
         else 
         {
-            CUBLAS_safecall(cublasSscal(ghost_cublas_handle,vec->traits->nrows,
+            CUBLAS_CALL_RETURN(cublasSscal(ghost_cublas_handle,vec->traits->nrows,
                         (const float *)a,
                         (float *)vec->CU_val,1));
         }
     }
+
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
+extern "C" ghost_error_t ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
 {
-    void *d_a = CU_allocDeviceMemory(vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+    void *d_a;
+    GHOST_CALL_RETURN(CU_allocDeviceMemory(&d_a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype)));
     CU_copyHostToDevice(d_a,a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
@@ -360,9 +374,11 @@ extern "C" void ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         }
     }
+
+    return GHOST_SUCCESS;
 }
 
-extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
+extern "C" ghost_error_t ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
 {
     ghost_vec_malloc(vec);
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
@@ -395,15 +411,17 @@ extern "C" void ghost_vec_cu_fromScalar(ghost_vec_t *vec, void *a)
                     vec->traits->nrows,vec->traits->nvecs,vec->traits->nrowspadded);
         }
     }
+
+    return GHOST_SUCCESS;
 }
 
-void ghost_vec_cu_fromRand(ghost_vec_t *vec)
+extern "C" ghost_error_t ghost_vec_cu_fromRand(ghost_vec_t *vec)
 {
     long pid = getpid();
     ghost_vec_malloc(vec);
     curandGenerator_t gen;
-    CURAND_safecall(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
-    CURAND_safecall(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(ghost_wctimemilli()),clock(),ghost_ompGetThreadNum())));
+    CURAND_CALL_RETURN(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
+    CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(ghost_wctimemilli()),clock(),ghost_ompGetThreadNum())));
 
     ghost_vidx_t v;
     for (v=0; v<vec->traits->nvecs; v++)
@@ -412,13 +430,13 @@ void ghost_vec_cu_fromRand(ghost_vec_t *vec)
         {
             if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
-                CURAND_safecall(curandGenerateUniformDouble(gen,
+                CURAND_CALL_RETURN(curandGenerateUniformDouble(gen,
                             &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],
                             vec->traits->nrows*2));
             } 
             else 
             {
-                CURAND_safecall(curandGenerateUniform(gen,
+                CURAND_CALL_RETURN(curandGenerateUniform(gen,
                             &((float *)(vec->CU_val))[v*vec->traits->nrowspadded],
                             vec->traits->nrows*2));
             }
@@ -427,16 +445,18 @@ void ghost_vec_cu_fromRand(ghost_vec_t *vec)
         {
             if (vec->traits->datatype & GHOST_DT_DOUBLE)
             {
-                CURAND_safecall(curandGenerateUniformDouble(gen,
+                CURAND_CALL_RETURN(curandGenerateUniformDouble(gen,
                             &((double *)(vec->CU_val))[v*vec->traits->nrowspadded],
                             vec->traits->nrows));
             } 
             else 
             {
-                CURAND_safecall(curandGenerateUniform(gen,
+                CURAND_CALL_RETURN(curandGenerateUniform(gen,
                             &((float *)(vec->CU_val))[v*vec->traits->nrowspadded],
                             vec->traits->nrows));
             }
         }
     }
+
+    return GHOST_SUCCESS;
 }

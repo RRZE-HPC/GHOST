@@ -782,7 +782,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
           for (t=0; t<ghost_thpool->nThreads; t++)
           {         
           if (pthread_join(ghost_thpool->threads[t],NULL)){
-              ERROR_LOG("pthread_join failed: %s",streror(errno));
+              ERROR_LOG("pthread_join failed: %s",strerror(errno));
           return GHOST_ERR_UNKNOWN;
           }
           }

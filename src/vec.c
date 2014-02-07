@@ -27,54 +27,54 @@ extern cublasHandle_t ghost_cublas_handle;
 
 const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1 };
 
-void (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
+ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
-void (*ghost_vec_dotprod_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
 {&s_ghost_vec_dotprod, &d_ghost_vec_dotprod, &c_ghost_vec_dotprod, &z_ghost_vec_dotprod};
 
-void (*ghost_vec_vscale_funcs[4]) (ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_vec_t *, void*) = 
 {&s_ghost_vec_vscale, &d_ghost_vec_vscale, &c_ghost_vec_vscale, &z_ghost_vec_vscale};
 
-void (*ghost_vec_vaxpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_vaxpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
 {&s_ghost_vec_vaxpy, &d_ghost_vec_vaxpy, &c_ghost_vec_vaxpy, &z_ghost_vec_vaxpy};
 
-void (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
+ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
 {&s_ghost_vec_vaxpby, &d_ghost_vec_vaxpby, &c_ghost_vec_vaxpby, &z_ghost_vec_vaxpby};
 
-void (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
+ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
 ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_vec_t *) = 
 {&s_ghost_printVector, &d_ghost_printVector, &c_ghost_printVector, &z_ghost_printVector};
 
 static ghost_error_t vec_print(ghost_vec_t *vec);
-static void vec_scale(ghost_vec_t *vec, void *scale);
-static void vec_vscale(ghost_vec_t *vec, void *scale);
-static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
-static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
-static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
-static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
-static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
+static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale);
+static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale);
+static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
+static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
+static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
+static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
+static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
 static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs);
-static void vec_fromRand(ghost_vec_t *vec);
-static void vec_fromScalar(ghost_vec_t *vec, void *val);
+static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs);
+static ghost_error_t vec_fromRand(ghost_vec_t *vec);
+static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val);
 static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path);
 static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path);
-static void ghost_zeroVector(ghost_vec_t *vec);
-static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
-static void ghost_normalizeVector( ghost_vec_t *vec);
+static ghost_error_t ghost_zeroVector(ghost_vec_t *vec);
+static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
+static ghost_error_t ghost_normalizeVector( ghost_vec_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec); 
 static void ghost_freeVector( ghost_vec_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
-static void vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
+static ghost_error_t vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
 static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
 static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
-static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
-static void vec_compress(ghost_vec_t *vec);
+static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+static ghost_error_t vec_compress(ghost_vec_t *vec);
 static ghost_error_t vec_upload(ghost_vec_t *vec);
 static ghost_error_t vec_download(ghost_vec_t *vec);
 static ghost_error_t vec_uploadHalo(ghost_vec_t *vec);
@@ -276,7 +276,7 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
     return new;
 }
 
-static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda)
+static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda)
 {
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix from plain data with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 
@@ -286,6 +286,8 @@ static void vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
     }
     vec->traits->flags |= GHOST_VEC_VIEW;
+
+    return GHOST_SUCCESS;
 }
 
 static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs)
@@ -307,9 +309,10 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
     return new;
 }
 
-static void ghost_normalizeVector( ghost_vec_t *vec)
+static ghost_error_t ghost_normalizeVector( ghost_vec_t *vec)
 {
     ghost_normalizeVector_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_print(ghost_vec_t *vec)
@@ -340,10 +343,10 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             //CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            CU_allocDeviceMemory(&vec->CU_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #else
             //CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
-            vec->CU_val = CU_allocDeviceMemory(vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            CU_allocDeviceMemory(&vec->CU_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #endif
         }
 #endif
@@ -413,7 +416,7 @@ static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
 }
 
 
-static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
+static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
@@ -451,12 +454,14 @@ static void vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
         }
 
     }
+    return GHOST_SUCCESS;
 }
 
-static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
-    GHOST_INSTR_START(axpy)
-        ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+    GHOST_INSTR_START(axpy);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
 
@@ -465,16 +470,22 @@ static void vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
         memcpy(&s[i*sizeofdt],scale,sizeofdt);
     }
 
-    ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s);
+    GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s),err,ret);
 
+    goto out;
+err:
+
+out:
     free(s);
-    GHOST_INSTR_STOP(axpy)
+    GHOST_INSTR_STOP(axpy);
+    return ret;
 }
 
-static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
+static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
 {
-    GHOST_INSTR_START(axpby)
-        ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+    GHOST_INSTR_START(axpby);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
     char *b = (char *)ghost_malloc(nc*sizeofdt);
@@ -484,30 +495,38 @@ static void vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b
         memcpy(&s[i*sizeofdt],scale,sizeofdt);
         memcpy(&b[i*sizeofdt],_b,sizeofdt);
     }
-    ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s,b);
+    GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s,b),err,ret);
 
+    goto out;
+err:
+
+out:
     free(s);
     free(b);
-    GHOST_INSTR_STOP(axpby)
+    GHOST_INSTR_STOP(axpby);
+    return ret;
 }
 
-static void vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
 {
-    GHOST_INSTR_START(vaxpy)
-        ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
-    GHOST_INSTR_STOP(vaxpy)
+    GHOST_INSTR_START(vaxpy);
+    ghost_error_t ret = ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale);
+    GHOST_INSTR_STOP(vaxpy);
+    return ret;
 }
 
-static void vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
+static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
 {
-    GHOST_INSTR_START(vaxpby)
-        ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
-    GHOST_INSTR_STOP(vaxpby)
+    GHOST_INSTR_START(vaxpby);
+    ghost_error_t ret = ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+    GHOST_INSTR_STOP(vaxpby);
+    return ret;
 }
 
-static void vec_scale(ghost_vec_t *vec, void *scale)
+static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale)
 {
-    GHOST_INSTR_START(scale)
+    GHOST_INSTR_START(scale);
+    ghost_error_t ret = GHOST_SUCCESS;
         ghost_vidx_t nc = vec->traits->nvecs;
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     char *s = (char *)ghost_malloc(nc*sizeofdt);
@@ -516,25 +535,36 @@ static void vec_scale(ghost_vec_t *vec, void *scale)
     for (i=0; i<nc; i++) {
         memcpy(&s[i*sizeofdt],scale,sizeofdt);
     }
-    ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s);
-    GHOST_INSTR_STOP(scale)
+    GHOST_CALL_GOTO(ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s),err,ret);
+
+    goto out;
+err:
+
+out:
+    free(s);
+    GHOST_INSTR_STOP(scale);
+    return GHOST_SUCCESS;
 }
 
-static void vec_vscale(ghost_vec_t *vec, void *scale)
+static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale)
 {
-    GHOST_INSTR_START(vscale)
-        ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
-    GHOST_INSTR_STOP(vscale)
+    GHOST_INSTR_START(vscale);
+    ghost_error_t ret = ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,scale);
+    GHOST_INSTR_STOP(vscale);
+
+    return ret;
 }
 
-static void vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 {
-    GHOST_INSTR_START(dot)
-        ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
-    GHOST_INSTR_STOP(dot)
+    GHOST_INSTR_START(dot);
+    ghost_error_t ret = ghost_vec_dotprod_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,res);
+    GHOST_INSTR_STOP(dot);
+
+    return ret;
 }
 
-static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
+static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
     size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     if (vec->traits->flags & GHOST_VEC_DEVICE)
@@ -547,14 +577,16 @@ static void vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *v
     {
         memcpy(val,VECVAL(vec,vec->val,c,r),sizeofdt);
     }
+
+    return GHOST_SUCCESS;
 }
 
-static void vec_fromRand(ghost_vec_t *vec)
+static ghost_error_t vec_fromRand(ghost_vec_t *vec)
 {
-    ghost_vec_fromRand_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
+    return ghost_vec_fromRand_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec);
 }
 
-static void vec_fromScalar(ghost_vec_t *vec, void *val)
+static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
@@ -568,6 +600,8 @@ static void vec_fromScalar(ghost_vec_t *vec, void *val)
         }
     }
     vec->upload(vec);
+
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
@@ -869,7 +903,7 @@ static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
     return GHOST_SUCCESS;
 }
 
-static void ghost_zeroVector(ghost_vec_t *vec) 
+static ghost_error_t ghost_zeroVector(ghost_vec_t *vec) 
 {
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
@@ -887,6 +921,8 @@ static void ghost_zeroVector(ghost_vec_t *vec)
             memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
         }
     } 
+
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
@@ -996,11 +1032,17 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 
 }
 
-static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
+static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
 {
     if ((v1->traits->nvecs > 1) || (v2->traits->nvecs > 1)) {
-        WARNING_LOG("Multi-column vector swapping not yet implemented");
+        ERROR_LOG("Multi-column vector swapping not yet implemented");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
+    if (!v1 || !v2) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     char *dtmp;
 
     dtmp = v1->val[0];
@@ -1012,6 +1054,7 @@ static void ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
     v2->CU_val = dtmp;
 #endif
 
+    return GHOST_SUCCESS;
 }
 
 
@@ -1111,10 +1154,11 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_
     return new;
 }
 
-static void vec_compress(ghost_vec_t *vec)
+static ghost_error_t vec_compress(ghost_vec_t *vec)
 {
-    if (!(vec->traits->flags & GHOST_VEC_SCATTERED))
-        return;
+    if (!(vec->traits->flags & GHOST_VEC_SCATTERED)) {
+        return GHOST_SUCCESS;
+    }
 
     ghost_vidx_t v,i;
 
@@ -1143,6 +1187,8 @@ static void vec_compress(ghost_vec_t *vec)
 
     vec->traits->flags &= ~GHOST_VEC_VIEW;
     vec->traits->flags &= ~GHOST_VEC_SCATTERED;
+
+    return GHOST_SUCCESS;
 }
 
 ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)

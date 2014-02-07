@@ -16,14 +16,14 @@
 
 #define CU_MAX_DEVICE_NAME_LEN 500
 
-
+// TODO private variables
 cublasHandle_t ghost_cublas_handle;
 int ghost_cu_device;
 
-void ghost_CUDA_init(int dev)
+ghost_error_t ghost_CUDA_init(int dev)
 {
     int nDevs = 0;
-    CU_safecall(cudaGetDeviceCount(&nDevs));
+    CUDA_CALL_RETURN(cudaGetDeviceCount(&nDevs));
 
     DEBUG_LOG(2,"There are %d CUDA devices attached to the node",nDevs);
 
@@ -31,81 +31,100 @@ void ghost_CUDA_init(int dev)
         ghost_cu_device = dev;
 
         DEBUG_LOG(1,"Selecting CUDA device %d",ghost_cu_device);
-        CU_safecall(cudaSetDevice(ghost_cu_device));
+        CUDA_CALL_RETURN(cudaSetDevice(ghost_cu_device));
     }
-    CUBLAS_safecall(cublasCreate(&ghost_cublas_handle));
+    CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
 #if GHOST_HAVE_CUDA_PINNEDMEM
-    CU_safecall(cudaSetDeviceFlags(cudaDeviceMapHost));
+    CUDA_CALL_RETURN(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
+
+    return GHOST_SUCCESS;
 }
 
-void * CU_allocDeviceMemory( size_t bytesize )
+ghost_error_t CU_allocDeviceMemory(void **mem, size_t bytesize)
 {
-    if (bytesize == 0)
-        return NULL;
+    if (bytesize == 0) {
+        return GHOST_SUCCESS;
+    }
 
-    void *ret;
-    CU_safecall(cudaMalloc(&ret,bytesize));
+    CUDA_CALL_RETURN(cudaMalloc(mem,bytesize));
 
-    return ret;
+    return GHOST_SUCCESS;
 }
 
-void CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
+ghost_error_t CU_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
 {
-    if (bytesize > 0)
-        CU_safecall(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
+    if (bytesize > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
+    }
+
+    return GHOST_SUCCESS;
 }
 
-void CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize)
+ghost_error_t CU_copyDeviceToDevice(void *dest, void *src, size_t bytesize)
 {
-    if (bytesize > 0)
-        CU_safecall(cudaMemcpy(dest,src,bytesize,cudaMemcpyDeviceToDevice));
+    if (bytesize > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy(dest,src,bytesize,cudaMemcpyDeviceToDevice));
+    }
+
+    return GHOST_SUCCESS;
 
 } 
 
-void CU_memset(void *s, int c, size_t n)
+ghost_error_t CU_memset(void *s, int c, size_t n)
 {
-    CU_safecall(cudaMemset(s,c,n));
+    CUDA_CALL_RETURN(cudaMemset(s,c,n));
+
+    return GHOST_SUCCESS;
 } 
 
-void CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
+ghost_error_t CU_copyHostToDeviceOffset(void * devmem, void *hostmem,
         size_t bytesize, size_t offset)
 {
-    if (bytesize > 0)
-        CU_safecall(cudaMemcpy(((char *)devmem)+offset,((char *)hostmem)+offset,bytesize,cudaMemcpyHostToDevice));
+    if (bytesize > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy(((char *)devmem)+offset,((char *)hostmem)+offset,bytesize,cudaMemcpyHostToDevice));
+    }
+    return GHOST_SUCCESS;
 }
 
-void CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
+ghost_error_t CU_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
 {
-    //WARNING_LOG("%p %p %lu %d",devmem,hostmem,bytesize,device);
-    if (bytesize > 0)
-        CU_safecall(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
+    if (bytesize > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
+    }
+
+    return GHOST_SUCCESS;
 }
 
-void CU_freeDeviceMemory(void * mem)
+ghost_error_t CU_freeDeviceMemory(void * mem)
 {
-    CU_safecall(cudaFree(mem));
+    CUDA_CALL_RETURN(cudaFree(mem));
+
+    return GHOST_SUCCESS;
 }
 
-void CU_barrier()
+ghost_error_t CU_barrier()
 {
-    CU_safecall(cudaDeviceSynchronize());
+    CUDA_CALL_RETURN(cudaDeviceSynchronize());
+
+    return GHOST_SUCCESS;
 }
 
-void CU_finish() 
+ghost_error_t CU_finish() 
 {
 
+    return GHOST_SUCCESS;
 }
 
 
-void CU_uploadVector( ghost_vec_t *vec )
+ghost_error_t CU_uploadVector( ghost_vec_t *vec )
 {
-    CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+    return CU_copyHostToDevice(vec->CU_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
-void CU_downloadVector( ghost_vec_t *vec )
+ghost_error_t CU_downloadVector( ghost_vec_t *vec )
 {
-    CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+    return CU_copyDeviceToHost(vec->val,vec->CU_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static int stringcmp(const void *x, const void *y)
@@ -113,9 +132,9 @@ static int stringcmp(const void *x, const void *y)
     return (strcmp((char *)x, (char *)y));
 }
 
-int CU_getDeviceCount(int *devcount)
+ghost_error_t CU_getDeviceCount(int *devcount)
 {
-    CU_safecall(cudaGetDeviceCount(devcount));
+    CUDA_CALL_RETURN(cudaGetDeviceCount(devcount));
 
     return GHOST_SUCCESS;
 }
@@ -123,13 +142,18 @@ int CU_getDeviceCount(int *devcount)
 
 ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **devInfo)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     (*devInfo) = ghost_malloc(sizeof(ghost_gpu_info_t));
     (*devInfo)->nDistinctDevices = 1;
+    (*devInfo)->names = NULL;
+    (*devInfo)->nDevices = NULL;
 
     int me,size,i;
     ghost_type_t ghost_type;
     char name[CU_MAX_DEVICE_NAME_LEN];
     char *names = NULL;
+    int *displs = NULL;
+    int *recvcounts = NULL;
 
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&size));
@@ -137,14 +161,12 @@ ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **devInfo)
 
     if (ghost_type == GHOST_TYPE_CUDAMGMT) {
         struct cudaDeviceProp devProp;
-        CU_safecall(cudaGetDeviceProperties(&devProp,ghost_cu_device));
+        CUDA_CALL_GOTO(cudaGetDeviceProperties(&devProp,ghost_cu_device),err,ret);
         strncpy(name,devProp.name,CU_MAX_DEVICE_NAME_LEN);
     } else {
         strncpy(name,"None",5);
     }
 
-    int *displs;
-    int *recvcounts;
 
     if (me==0) {
         names = (char *)ghost_malloc(size*CU_MAX_DEVICE_NAME_LEN*sizeof(char));
@@ -211,31 +233,37 @@ ghost_error_t CU_getDeviceInfo(ghost_gpu_info_t **devInfo)
     }
 #endif
 */
-    return GHOST_SUCCESS;
+
+    goto out;
+err:
+    if (*devInfo) {
+        free((*devInfo)->names); ((*devInfo)->names) = NULL;
+    }
+    free(*devInfo); *devInfo = NULL;
+    free(recvcounts); recvcounts = NULL;
+    free(displs); displs = NULL;
+    free(names); names = NULL;
+
+out:
+    return ret;
 }
 
-const char * CU_getVersion()
+ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
 {
-    int rtVersion, drVersion;
-    CU_safecall(cudaRuntimeGetVersion(&rtVersion));
-    CU_safecall(cudaDriverGetVersion(&drVersion));
-    char *version = (char *)malloc(1024); // TODO as parameter, else: leak
-    snprintf(version,1024,"Runtime: %d, Driver: %d",rtVersion,drVersion);
-    return version;
-}
-
-void *ghost_cu_malloc_mapped(const size_t size)
-{
-    void *mem = NULL;
 
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
-    cudaHostAlloc(&mem,size,cudaHostAllocMapped);
+    CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocMapped));
 
-    if( ! mem ) {
-        ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
-    }
-    return mem;
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t CU_getVersion(int *ver)
+{
+
+    CUDA_CALL_RETURN(cudaRuntimeGetVersion(ver));
+    
+    return GHOST_SUCCESS;
 }

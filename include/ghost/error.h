@@ -1,6 +1,7 @@
 #ifndef GHOST_ERROR_H
 #define GHOST_ERROR_H
 
+#include <string.h>
 #include "log.h"
 
 typedef enum {
@@ -8,6 +9,8 @@ typedef enum {
     GHOST_ERR_INVALID_ARG,
     GHOST_ERR_MPI,
     GHOST_ERR_CUDA,
+    GHOST_ERR_CUBLAS,
+    GHOST_ERR_CURAND,
     GHOST_ERR_HWLOC,
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_NOT_IMPLEMENTED,
@@ -27,7 +30,7 @@ extern "C" {
 /**
  * @brief This macro should be used for calling a GHOST function inside
  * a function which itself returns a ghost_error_t.
- * It calls the function and in case of an error LOGS the error message
+ * It calls the function and in case of an error logs the error message
  * and returns the according ghost_error_t which was return by the called function.
  *
  * @param call The complete function call.
@@ -42,6 +45,16 @@ extern "C" {
     }\
 }\
 
+/**
+ * @brief This macro should be used for calling a GHOST function inside
+ * a function which itself returns a ghost_error_t but needs to do some clean up before returning..
+ * It calls the function. In case of an error it logs the error message, sets the parameter __err
+ * to the occured ghost_error_t and jumps (goto) to the defined parameter label.
+ *
+ * @param call The function call.
+ * @param label The jump label where clean up is performed.
+ * @param __err A defined ghost_error_t variable which will be set to the error returned by the calling function.
+ */
 #define GHOST_CALL_GOTO(call,label,__err) {\
     GHOST_CALL(call,__err);\
     if (__err != GHOST_SUCCESS) {\
@@ -49,6 +62,14 @@ extern "C" {
     }\
 }\
 
+/**
+ * @brief This macro should be used for calling a GHOST function inside
+ * another function. The parameter __err will be set to the error which occured in the call.
+ * This macro is probably not very useful by itself, cf. @GHOST_CALL_GOTO and @GHOST_CALL_RETURN instead.
+ *
+ * @param call The function call.
+ * @param __err A defined ghost_error_t variable which will be set to the error returned by the calling function.
+ */
 #define GHOST_CALL(call,__err) {\
     __err = call;\
     if (__err != GHOST_SUCCESS) {\
@@ -57,35 +78,97 @@ extern "C" {
 }\
 
 #define MPI_CALL_RETURN(call) {\
-    int err = call;\
-    if (err != MPI_SUCCESS) {\
-        char errstr[MPI_MAX_ERROR_STRING];\
-        int strlen;\
-        MPI_Error_string(err,errstr,&strlen);\
-        ERROR_LOG("MPI Error in : %s",errstr);\
-        return GHOST_ERR_MPI;\
+    ghost_error_t ret;\
+    MPI_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
     }\
 }\
 
 #define MPI_CALL_GOTO(call,label,__err) {\
-    int err = call;\
-    if (err != MPI_SUCCESS) {\
-        char errstr[MPI_MAX_ERROR_STRING];\
-        int strlen;\
-        MPI_Error_string(__err,errstr,&strlen);\
-        ERROR_LOG("MPI Error in : %s",errstr);\
-        __err = GHOST_ERR_MPI;\
+    MPI_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
         goto label;\
     }\
 }\
 
 #define MPI_CALL(call,__err) {\
-    __err = call;\
-    if (__err != MPI_SUCCESS) {\
+    int err = call;\
+    if (err != MPI_SUCCESS) {\
         char errstr[MPI_MAX_ERROR_STRING];\
         int strlen;\
-        MPI_Error_string(__err,errstr,&strlen);\
-        ERROR_LOG("MPI Error in : %s",errstr);\
+        MPI_Error_string(err,errstr,&strlen);\
+        ERROR_LOG("MPI Error: %s",errstr);\
+        __err = GHOST_ERR_MPI;\
+    }\
+}\
+
+#define CUDA_CALL_RETURN(call) {\
+    ghost_error_t ret;\
+    CUDA_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define CUDA_CALL_GOTO(call,label,__err) {\
+    CUDA_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define CUDA_CALL(call,__err) {\
+    cudaError_t err = call;\
+    if (err != cudaSuccess) {\
+        ERROR_LOG("CUDA Error: %s",cudaGetErrorString(err));\
+        __err = GHOST_ERR_CUDA;\
+    }\
+}\
+
+#define CUBLAS_CALL_RETURN(call) {\
+    ghost_error_t ret;\
+    CUBLAS_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define CUBLAS_CALL_GOTO(call,label,__err) {\
+    CUBLAS_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define CUBLAS_CALL(call,__err) {\
+    cublasStatus_t err = call;\
+    if (err != CUBLAS_STATUS_SUCCESS) {\
+        ERROR_LOG("CUBLAS Error: %d",err);\
+        __err = GHOST_ERR_CUBLAS;\
+    }\
+}\
+
+#define CURAND_CALL_RETURN(call) {\
+    ghost_error_t ret;\
+    CURAND_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define CURAND_CALL_GOTO(call,label,__err) {\
+    CURAND_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define CURAND_CALL(call,__err) {\
+    curandStatus_t err = call;\
+    if (err != CURAND_STATUS_SUCCESS) {\
+        ERROR_LOG("CURAND Error: %d",err);\
+        __err = GHOST_ERR_CURAND;\
     }\
 }\
 

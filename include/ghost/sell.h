@@ -14,23 +14,22 @@
 
 typedef struct 
 {
-#ifdef GHOST_HAVE_CUDA
     char * val;
     ghost_midx_t * col;
     ghost_midx_t * rowLen;
     ghost_midx_t * rowLenPadded;
     ghost_mnnz_t * chunkStart;
     ghost_midx_t * chunkLen;
-    ghost_midx_t nrows;
+/*    ghost_midx_t nrows;
     ghost_midx_t nrowsPadded;
     int T; // number of threads per row (if applicable)
-    ghost_midx_t chunkHeight;
-#else
-    void *empty;
-#endif
-} 
-CU_SELL_TYPE;
+    ghost_midx_t chunkHeight;*/
+}
+ghost_cu_sell_t;
 
+/**
+ * @brief Struct defining a SELL-C-sigma-T matrix.
+ */
 typedef struct 
 {
     char *val;
@@ -51,16 +50,16 @@ typedef struct
     ghost_midx_t chunkHeight;
     ghost_midx_t scope;
     
-    CU_SELL_TYPE *cumat;
-} 
-SELL_TYPE;
+    ghost_cu_sell_t *cumat;
+}
+ghost_sell_t;
 
 typedef struct 
 {
     ghost_midx_t row, nEntsInRow;
 } 
 ghost_sorting_t;
-#define SELL(mat) ((SELL_TYPE *)(mat->data))
+#define SELL(mat) ((ghost_sell_t *)(mat->data))
 
 #define SELL_CUDA_THREADSPERBLOCK 256
 
