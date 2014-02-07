@@ -172,10 +172,10 @@ ghost_error_t ghost_printSysInfo()
 
 #ifdef GHOST_HAVE_CUDA
     int cuVersion;
-    GHOST_CALL_RETURN(CU_getVersion(&cuVersion));
+    GHOST_CALL_RETURN(ghost_cu_getVersion(&cuVersion));
 
     ghost_gpu_info_t * CUdevInfo;
-    GHOST_CALL_RETURN(CU_getDeviceInfo(&CUdevInfo));
+    GHOST_CALL_RETURN(ghost_cu_getDeviceInfo(&CUdevInfo));
 #endif
     if (myrank == 0) {
 

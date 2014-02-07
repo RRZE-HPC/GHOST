@@ -160,7 +160,7 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
     (*vec)->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
     if ((*vec)->traits->flags & GHOST_VEC_DEVICE) {
-        (*vec)->CU_val = NULL;
+        (*vec)->cu_val = NULL;
     }
 #endif
 
@@ -183,7 +183,7 @@ static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDeviceOffset(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],
+            ghost_cu_copyHostToDeviceOffset(&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],
                     VECVAL(vec,vec->val,v,0), 
                     vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype),
                     vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
@@ -209,7 +209,7 @@ static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_copyHostToDevice(&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -223,7 +223,7 @@ static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -237,7 +237,7 @@ static ghost_error_t vec_upload(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyHostToDevice(&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_copyHostToDevice(&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -251,7 +251,7 @@ static ghost_error_t vec_download(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->CU_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_copyDeviceToHost(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
         }
 #endif
     }
@@ -339,14 +339,14 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_DEVICE) {
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
-        if (vec->CU_val == NULL) {
+        if (vec->cu_val == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
-            //CU_safecall(cudaHostGetDevicePointer((void **)&vec->CU_val,vec->val,0));
-            CU_allocDeviceMemory(&vec->CU_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
+            ghost_cu_allocDeviceMemory(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #else
-            //CU_safecall(cudaMallocPitch(&(void *)vec->CU_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
-            CU_allocDeviceMemory(&vec->CU_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
+            ghost_cu_allocDeviceMemory(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
 #endif
         }
 #endif
@@ -429,13 +429,13 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                CU_copyDeviceToDevice(CUVECVAL(vec,vec->CU_val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_copyDeviceToDevice(CUVECVAL(vec,vec->cu_val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*sizeofdt);
 #endif
             }
             else
             {
 #if GHOST_HAVE_CUDA
-                CU_copyHostToDevice(CUVECVAL(vec,vec->CU_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_copyHostToDevice(CUVECVAL(vec,vec->cu_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
 #endif
             }
         }
@@ -444,7 +444,7 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                CU_copyDeviceToHost(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->CU_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_copyDeviceToHost(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*sizeofdt);
 #endif
             }
             else
@@ -570,7 +570,7 @@ static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        CU_copyDeviceToHost(val,&vec->CU_val[(c*vec->traits->nrowspadded+r)*sizeofdt],sizeofdt);
+        ghost_cu_copyDeviceToHost(val,&vec->cu_val[(c*vec->traits->nrowspadded+r)*sizeofdt],sizeofdt);
 #endif
     }
     else if (vec->traits->flags & GHOST_VEC_HOST)
@@ -650,7 +650,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 #if GHOST_HAVE_CUDA
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
-            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+            ghost_cu_copyDeviceToHost(val,&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
 #endif
         }
         MPI_CALL_RETURN(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
@@ -726,7 +726,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 #if GHOST_HAVE_CUDA
             val = ghost_malloc(vec->traits->nrows*sizeofdt);
             copied = 1;
-            CU_copyDeviceToHost(val,&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+            ghost_cu_copyDeviceToHost(val,&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
 #endif
         }
 
@@ -864,7 +864,7 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
             }
-            CU_copyHostToDevice(&vec->CU_val[v*vec->traits->nrowspadded*sizeofdt],val,vec->traits->nrows*sizeofdt);
+            ghost_cu_copyHostToDevice(&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],val,vec->traits->nrows*sizeofdt);
             free(val);
 #endif
         }
@@ -911,7 +911,7 @@ static ghost_error_t ghost_zeroVector(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        CU_memset(vec->CU_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+        ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
 #endif
     }
     if (vec->traits->flags & GHOST_VEC_HOST)
@@ -1049,9 +1049,9 @@ static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
     v1->val[0] = v2->val[0];
     v2->val[0] = dtmp;
 #ifdef GHOST_HAVE_CUDA
-    dtmp = v1->CU_val;
-    v1->CU_val = v2->CU_val;
-    v2->CU_val = dtmp;
+    dtmp = v1->cu_val;
+    v1->cu_val = v2->cu_val;
+    v2->cu_val = dtmp;
 #endif
 
     return GHOST_SUCCESS;
@@ -1067,7 +1067,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
             WARNING_LOG("CUDA pinned memory is disabled");
             /*if (vec->traits->flags & GHOST_VEC_DEVICE) {
               for (v=0; v<vec->traits->nvecs; v++) { 
-              CU_safecall(cudaFreeHost(vec->val[v]));
+              ghost_cu_safecall(cudaFreeHost(vec->val[v]));
               }
               }*/
             if (vec->traits->flags & GHOST_VEC_SCATTERED) {
@@ -1094,7 +1094,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #endif
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits->flags & GHOST_VEC_DEVICE) {
-                CU_freeDeviceMemory( vec->CU_val );
+                ghost_cu_freeDeviceMemory(vec->cu_val);
             }
 #endif
         }

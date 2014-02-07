@@ -195,7 +195,7 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec)
             if (vec->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                CU_copyDeviceToHost(&val,&(((v_t *)vec->CU_val)[v*vec->traits->nrowspadded+i]),sizeof(v_t));
+                ghost_cu_copyDeviceToHost(&val,&(((v_t *)vec->cu_val)[v*vec->traits->nrowspadded+i]),sizeof(v_t));
 #endif
             }
             else if (vec->traits->flags & GHOST_VEC_HOST)

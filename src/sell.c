@@ -1220,19 +1220,19 @@ static ghost_error_t SELL_upload(ghost_mat_t* mat)
     if (!(mat->traits->flags & GHOST_SPM_HOST)) {
         DEBUG_LOG(1,"Creating matrix on CUDA device");
         SELL(mat)->cumat = (ghost_cu_sell_t *)ghost_malloc(sizeof(ghost_cu_sell_t));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->rowLen,(mat->nrows)*sizeof(ghost_midx_t));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->rowLenPadded,(mat->nrows)*sizeof(ghost_midx_t));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->col,(mat->nEnts)*sizeof(ghost_midx_t));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->val,(mat->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->chunkStart,(mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_mnnz_t));
-        CU_allocDeviceMemory((void **)&SELL(mat)->cumat->chunkLen,(mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_midx_t));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->rowLen,(mat->nrows)*sizeof(ghost_midx_t));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->rowLenPadded,(mat->nrows)*sizeof(ghost_midx_t));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->col,(mat->nEnts)*sizeof(ghost_midx_t));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->val,(mat->nEnts)*ghost_sizeofDataType(mat->traits->datatype));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->chunkStart,(mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_mnnz_t));
+        ghost_cu_allocDeviceMemory((void **)&SELL(mat)->cumat->chunkLen,(mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_midx_t));
 
-        CU_copyHostToDevice(SELL(mat)->cumat->rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_midx_t));
-        CU_copyHostToDevice(SELL(mat)->cumat->rowLenPadded, SELL(mat)->rowLenPadded, mat->nrows*sizeof(ghost_midx_t));
-        CU_copyHostToDevice(SELL(mat)->cumat->col, SELL(mat)->col, mat->nEnts*sizeof(ghost_midx_t));
-        CU_copyHostToDevice(SELL(mat)->cumat->val, SELL(mat)->val, mat->nEnts*ghost_sizeofDataType(mat->traits->datatype));
-        CU_copyHostToDevice(SELL(mat)->cumat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_mnnz_t));
-        CU_copyHostToDevice(SELL(mat)->cumat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_midx_t));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->rowLen, SELL(mat)->rowLen, mat->nrows*sizeof(ghost_midx_t));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->rowLenPadded, SELL(mat)->rowLenPadded, mat->nrows*sizeof(ghost_midx_t));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->col, SELL(mat)->col, mat->nEnts*sizeof(ghost_midx_t));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->val, SELL(mat)->val, mat->nEnts*ghost_sizeofDataType(mat->traits->datatype));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->chunkStart, SELL(mat)->chunkStart, (mat->nrowsPadded/SELL(mat)->chunkHeight+1)*sizeof(ghost_mnnz_t));
+        ghost_cu_copyHostToDevice(SELL(mat)->cumat->chunkLen, SELL(mat)->chunkLen, (mat->nrowsPadded/SELL(mat)->chunkHeight)*sizeof(ghost_midx_t));
     }
 #else
     if (mat->traits->flags & GHOST_SPM_DEVICE) {
@@ -1253,12 +1253,12 @@ static void SELL_free(ghost_mat_t *mat)
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
         if (mat->traits->flags & GHOST_SPM_DEVICE) {
-            CU_freeDeviceMemory(SELL(mat)->cumat->rowLen);
-            CU_freeDeviceMemory(SELL(mat)->cumat->rowLenPadded);
-            CU_freeDeviceMemory(SELL(mat)->cumat->col);
-            CU_freeDeviceMemory(SELL(mat)->cumat->val);
-            CU_freeDeviceMemory(SELL(mat)->cumat->chunkStart);
-            CU_freeDeviceMemory(SELL(mat)->cumat->chunkLen);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->rowLen);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->rowLenPadded);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->col);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->val);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->chunkStart);
+            ghost_cu_freeDeviceMemory(SELL(mat)->cumat->chunkLen);
             free(SELL(mat)->cumat);
         }
 #endif

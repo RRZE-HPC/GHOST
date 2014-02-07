@@ -137,7 +137,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     ndomains += nnumanodes;
 #if GHOST_HAVE_CUDA
-    CU_getDeviceCount(&ncudadevs);
+    ghost_cu_getDeviceCount(&ncudadevs);
 #endif
     ndomains += ncudadevs;
 
@@ -244,7 +244,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
             if (i == noderank) {
-                ghost_CUDA_init(cudaDevice);
+                ghost_cu_init(cudaDevice);
             }
             cudaDevice++;
         }

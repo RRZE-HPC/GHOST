@@ -234,22 +234,22 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
         {
             if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->CU_val,*ldv,(cuDoubleComplex *)w->CU_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->cu_val,*ldv,(cuDoubleComplex *)w->cu_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->cu_val,*ldx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->CU_val,*ldv,(cuFloatComplex *)w->CU_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->cu_val,*ldv,(cuFloatComplex *)w->cu_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->cu_val,*ldx));
             }
         } 
         else 
         {
             if (v->traits->datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->CU_val,*ldv,(double *)w->CU_val,*ldw,(double *)mybeta,(double *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->cu_val,*ldv,(double *)w->cu_val,*ldw,(double *)mybeta,(double *)x->cu_val,*ldx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(float *)alpha,(float *)v->CU_val,*ldv,(float *)w->CU_val,*ldw,(float *)mybeta,(float *)x->CU_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(float *)alpha,(float *)v->cu_val,*ldv,(float *)w->cu_val,*ldw,(float *)mybeta,(float *)x->cu_val,*ldx));
             }    
         }
 #endif
@@ -270,7 +270,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
             {
 #if GHOST_HAVE_CUDA
                 val = ghost_malloc(x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
-                CU_copyDeviceToHost(val,&x->CU_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
+                ghost_cu_copyDeviceToHost(val,&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 copied = 1;
 #endif
@@ -298,7 +298,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
             if (copied)
             {
 #if GHOST_HAVE_CUDA
-                CU_copyHostToDevice(&x->CU_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
+                ghost_cu_copyHostToDevice(&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 free(val);
 #endif

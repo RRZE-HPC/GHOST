@@ -287,7 +287,7 @@ struct ghost_vec_t
     ghost_error_t          (*zero) (ghost_vec_t *);
 
 #ifdef GHOST_HAVE_CUDA
-    void * CU_val;
+    void * cu_val;
 #endif
 };
 

@@ -3,7 +3,7 @@
 #include "ghost/types.h"
 #include "ghost/sell.h"
 #include "ghost/complex.h"
-#include "ghost/util.h"
+//#include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
@@ -32,7 +32,7 @@ extern int ghost_cu_device;
     if (flags&GHOST_SPMVM_AXPBY) {\
             beta = *(dt2 *)mat->traits->beta;\
     }\
-    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->CU_val,(dt2 *)rhs->CU_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
+    func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
    }\
 
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
