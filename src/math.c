@@ -487,3 +487,28 @@ ghost_error_t ghost_mpi_destroyOperations()
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t)
+{
+    if (!ghost_datatypeValid(m_t) || !ghost_datatypeValid(v_t)) {
+        ERROR_LOG("Invalid data type");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!nFlops) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    *nFlops = 2;
+
+    if (m_t & GHOST_DT_COMPLEX) {
+        if (v_t & GHOST_DT_COMPLEX) {
+            *nFlops = 8;
+        }
+    } else {
+        if (v_t & GHOST_DT_COMPLEX) {
+            *nFlops = 4;
+        }
+    }
+
+    return GHOST_SUCCESS;
+}

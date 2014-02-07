@@ -21,121 +21,6 @@
 #include <cstring>
 #include <cfloat>
 #endif
-/******************************************************************************/
-/****** Makros ****************************************************************/
-/******************************************************************************/
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-
-
-#if 0
-#ifdef GHOST_HAVE_MPI
-#define ABORT(...) {\
-    LOG(ABORT,ANSI_COLOR_MAGENTA,__VA_ARGS__)\
-    MPI_safecall(MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE));\
-    exit(EXIT_FAILURE);\
-}
-#else
-#define ABORT(...) {\
-    LOG(ABORT,ANSI_COLOR_MAGENTA,__VA_ARGS__)\
-    exit(EXIT_FAILURE);\
-}
-#endif
-
-
-#define MPI_safecall(call) {\
-    int mpierr = call ;\
-    if( MPI_SUCCESS != mpierr ){\
-        fprintf(stderr, ANSI_COLOR_RED "MPI error at %s:%d, %d\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, mpierr);\
-        fflush(stderr);\
-    }\
-}
-#ifdef GHOST_HAVE_MPI
-#define CU_safecall(call) {\
-    cudaError_t __cuerr = call ;\
-    if( cudaSuccess != __cuerr ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-        fflush(stdout);\
-    }\
-}
-#define CUBLAS_safecall(call) {\
-    cublasStatus_t __stat = call ;\
-    if( CUBLAS_STATUS_SUCCESS != __stat ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUBLAS error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, __stat);\
-        fflush(stdout);\
-    }\
-}
-#define CURAND_safecall(call) {\
-    curandStatus_t __stat = call ;\
-    if( CURAND_STATUS_SUCCESS != __stat ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stdout, ANSI_COLOR_RED "PE%d: CURAND error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, __stat);\
-        fflush(stdout);\
-    }\
-}
-
-#define CU_checkerror() {\
-    cudaError_t __cuerr = cudaGetLastError();\
-    if( cudaSuccess != __cuerr ){\
-        int __me;\
-        MPI_safecall(MPI_Comm_rank(MPI_COMM_WORLD,&__me));\
-        fprintf(stdout, ANSI_COLOR_RED "PE%d: CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __me, __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-        fflush(stdout);\
-    }\
-}
-
-#else
-
-#define CU_safecall(call) {\
-    cudaError_t __cuerr = call ;\
-    if( cudaSuccess != __cuerr ){\
-        fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-        fflush(stdout);\
-    }\
-}
-#define CUBLAS_safecall(call) {\
-    cublasStatus_t __stat = call ;\
-    if( CUBLAS_STATUS_SUCCESS != __stat ){\
-        fprintf(stdout, ANSI_COLOR_RED "CUBLAS error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, __stat);\
-        fflush(stdout);\
-    }\
-}
-#define CURAND_safecall(call) {\
-    curandStatus_t __stat = call ;\
-    if( CURAND_STATUS_SUCCESS != __stat ){\
-        fprintf(stdout, ANSI_COLOR_RED "CURAND error at %s:%d: %d\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, __stat);\
-        fflush(stdout);\
-    }\
-}
-
-#define CU_checkerror() {\
-    cudaError_t __cuerr = cudaGetLastError();\
-    if( cudaSuccess != __cuerr ){\
-        fprintf(stdout, ANSI_COLOR_RED "CUDA error at %s:%d, %s\n" ANSI_COLOR_RESET,\
-                __FILE__, __LINE__, cudaGetErrorString(__cuerr));\
-        fflush(stdout);\
-    }\
-}
-#endif
-#endif
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -143,12 +28,6 @@
 #ifndef MAX
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
-
-
-#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, .localdot = NULL, ## __VA_ARGS__ }
-
-#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
-
 
 #define GHOST_TIME(_niter,_func,...)\
     double _func ## _start, _func ## _end, _func ## _tstart;\
@@ -177,19 +56,11 @@
 extern "C" {
 #endif
 
-#ifdef GHOST_HAVE_MPI
-#else
-#endif
-    extern int hasCUDAdevice;
-//    extern ghost_type_t ghost_type; 
-
     void ghost_printHeader(const char *fmt, ...);
     void ghost_printFooter(); 
     void ghost_printLine(const char *label, const char *unit, const char *format, ...);
     ghost_error_t ghost_printSysInfo();
     ghost_error_t ghost_printGhostInfo();
-
-
 
     char * ghost_workdistName(int ghostOptions);
     char * ghost_modeName(int spmvmOptions);
@@ -202,7 +73,7 @@ extern "C" {
      * @param nrows The number to be padded.
      * @param padding The desired padding.
      *
-     * @return nrows padded to a multiple of padding or nrows if padding is 0.
+     * @return nrows padded to a multiple of padding or nrows if padding or nrows are smaller than 1.
      */
     ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
 
@@ -210,16 +81,13 @@ extern "C" {
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);
     int ghost_archIsBigEndian();
-    char ghost_datatypePrefix(int dt);
     int ghost_dataTypeIdx(int datatype);
-    int ghost_getSpmvmModeIdx(int spmvmOptions);
 
     double ghost_wctime();
     double ghost_wctimemilli();
 
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);
-    int ghost_flopsPerSpmvm(int m_t, int v_t);
     
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();

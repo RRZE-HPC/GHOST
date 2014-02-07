@@ -42,6 +42,7 @@ void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len);
 void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
 ghost_error_t ghost_mpi_createOperations();
 ghost_error_t ghost_mpi_destroyOperations();
+ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t);
 
 #ifdef __cplusplus
 } //extern "C"

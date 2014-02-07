@@ -432,7 +432,7 @@ size_t ghost_sizeofDataType(int dt)
 
 ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding) 
 {
-    if (padding == 0) {
+    if (padding < 1 || nrows < 1) {
         return nrows;
     }
     
@@ -498,43 +498,6 @@ int ghost_archIsBigEndian()
 }
 
 
-char ghost_datatypePrefix(int dt)
-{
-    char p;
-
-    if (dt & GHOST_BINCRS_DT_FLOAT) {
-        if (dt & GHOST_BINCRS_DT_COMPLEX)
-            p = 'c';
-        else
-            p = 's';
-    } else {
-        if (dt & GHOST_BINCRS_DT_COMPLEX)
-            p = 'z';
-        else
-            p = 'd';
-    }
-
-    return p;
-}
-
-
-
-int ghost_flopsPerSpmvm(int m_t, int v_t)
-{
-    int flops = 2;
-
-    if (m_t & GHOST_BINCRS_DT_COMPLEX) {
-        if (v_t & GHOST_BINCRS_DT_COMPLEX) {
-            flops = 8;
-        }
-    } else {
-        if (v_t & GHOST_BINCRS_DT_COMPLEX) {
-            flops = 4;
-        }
-    }
-
-    return flops;
-}
 
 
 void ghost_ompSetNumThreads(int nthreads)

@@ -65,6 +65,7 @@ struct ghost_mtraits_t
     void * beta; // scale factor for AXPBY
 };
 extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
+#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
 struct ghost_mat_t
 {

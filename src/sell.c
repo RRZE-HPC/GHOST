@@ -782,6 +782,7 @@ static ghost_error_t SELL_split(ghost_mat_t *mat)
 static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Creating SELL matrix from binary file");
+    ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_context_t *context = mat->context;
     int nprocs = 1;
@@ -789,7 +790,15 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
     GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
 
-    ghost_midx_t *rpt;
+    ghost_midx_t *rpt = NULL;
+    ghost_midx_t *tmpcol = NULL;
+    char *tmpval = NULL;
+
+#if GHOST_HAVE_MPI
+    MPI_Request req[nprocs];
+    MPI_Status stat[nprocs];
+#endif
+
     ghost_midx_t i;
     int proc;
     ghost_midx_t chunk,j;
@@ -859,22 +868,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         }
     }
 #if GHOST_HAVE_MPI
-    int err;
-    MPI_CALL(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
-    if (err != MPI_SUCCESS) {
-        if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
-            free(rpt); rpt = NULL;
-        }
-        return GHOST_ERR_MPI;
-    }
-
-    MPI_CALL(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err);
-    if (err != MPI_SUCCESS) {
-        if ((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) {
-            free(rpt); rpt = NULL;
-        }
-        return GHOST_ERR_MPI;
-    }
+    MPI_CALL_GOTO(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
 #endif
 
 
@@ -893,41 +888,21 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         rpt = (ghost_midx_t *)ghost_malloc((context->lnrows[me]+1)*sizeof(ghost_midx_t));
     }
 #if GHOST_HAVE_MPI
-    MPI_Request req[nprocs];
-    MPI_Status stat[nprocs];
     int msgcount = 0;
 
     for (proc=0;proc<nprocs;proc++) 
         req[proc] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        MPI_CALL(MPI_Irecv(rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]),err);
-        if (err != MPI_SUCCESS) {
-            if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                free(rpt); rpt = NULL;
-            }
-            return GHOST_ERR_MPI;
-        }
+        MPI_CALL_GOTO(MPI_Irecv(rpt,context->lnrows[me]+1,ghost_mpi_dt_midx,0,me,context->mpicomm,&req[msgcount]),err,ret);
         msgcount++;
     } else {
         for (i=1;i<nprocs;i++) {
-            MPI_CALL(MPI_Isend(&rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]),err);
-            if (err != MPI_SUCCESS) {
-                if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-                    free(rpt); rpt = NULL;
-                }
-                return GHOST_ERR_MPI;
-            }
+            MPI_CALL_GOTO(MPI_Isend(&rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_midx,i,i,context->mpicomm,&req[msgcount]),err,ret);
             msgcount++;
         }
     }
-    MPI_CALL(MPI_Waitall(msgcount,req,stat),err);
-    if (err != MPI_SUCCESS) {
-        if (((me == 0) && (context->flags & GHOST_CONTEXT_DIST_ROWS)) || (me != 0)) {
-            free(rpt); rpt = NULL;
-        }
-        return GHOST_ERR_MPI;
-    }
+    MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
 #endif 
 
     for (i=0;i<context->lnrows[me]+1;i++) {
@@ -937,13 +912,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
     mat->nnz = rpt[context->lnrows[me]];
     mat->nEnts = 0;
 
-    ghost_midx_t *rowPerm = NULL;
-    ghost_midx_t *invRowPerm = NULL;
-
     ghost_sorting_t* rowSort = NULL;
-
-    mat->context->rowPerm = rowPerm;
-    mat->context->invRowPerm = invRowPerm;
 
     ghost_midx_t maxRowLenInChunk = 0;
     ghost_midx_t minRowLenInChunk = INT_MAX;
@@ -953,11 +922,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     if (mat->traits->flags & GHOST_SPM_SORTED) {
         DEBUG_LOG(1,"Extracting row lenghts");
-        rowPerm = (ghost_midx_t *)ghost_malloc(mat->nrows*sizeof(ghost_midx_t));
-        invRowPerm = (ghost_midx_t *)ghost_malloc(mat->nrows*sizeof(ghost_midx_t));
-
-        mat->context->rowPerm = rowPerm;
-        mat->context->invRowPerm = invRowPerm;
+        mat->context->rowPerm = (ghost_midx_t *)ghost_malloc(mat->nrows*sizeof(ghost_midx_t));
+        mat->context->invRowPerm = (ghost_midx_t *)ghost_malloc(mat->nrows*sizeof(ghost_midx_t));
 
         DEBUG_LOG(1,"Sorting matrix rows");
 
@@ -993,8 +959,8 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
             /* invRowPerm maps an index in the permuted system to the original index,
              * rowPerm gets the original index and returns the corresponding permuted position.
              */
-            (invRowPerm)[i] = rowSort[i].row;
-            (rowPerm)[rowSort[i].row] = i;
+            (mat->context->invRowPerm)[i] = rowSort[i].row;
+            (mat->context->rowPerm)[rowSort[i].row] = i;
         }
 
     } 
@@ -1036,18 +1002,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 #if GHOST_HAVE_MPI
     ghost_mnnz_t nents;
     nents = mat->context->lnEnts[me];
-    MPI_CALL(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err);
-    if (err != MPI_SUCCESS) {
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        return GHOST_ERR_MPI;
-    }
+    MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err,ret);
 #endif
 
     DEBUG_LOG(1,"SELL matrix has %"PRmatIDX" (padded to %"PRmatIDX") rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros and %"PRmatNNZ" entries",mat->nrows,mat->nrowsPadded,mat->ncols,mat->nnz,mat->context->lnEnts[me]);
@@ -1071,48 +1026,18 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 
     if ((filed = fopen64(matrixPath, "r")) == NULL){
         ERROR_LOG("Could not open binary CRS file %s",matrixPath);
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        return GHOST_ERR_IO;
+        ret = GHOST_ERR_IO;
+        goto err;
     }
 
 
     WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     /*ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeof(ghost_midx_t));
       char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*sizeofdt);*/
-    ghost_midx_t *tmpcol = (ghost_midx_t *)ghost_malloc(mat->nnz*sizeof(ghost_midx_t));
-    char *tmpval = (char *)ghost_malloc(mat->nnz*sizeofdt);
-    ghost_error_t gerr;
-    GHOST_CALL(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], mat->nnz),gerr);
-    if (gerr != GHOST_SUCCESS) {
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        return gerr;
-    }
-    GHOST_CALL(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], mat->nnz),gerr);
-    if (gerr != GHOST_SUCCESS) {
-        free(SELL(mat)->val); SELL(mat)->val = NULL;
-        free(SELL(mat)->col); SELL(mat)->col = NULL;
-        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
-        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
-        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
-        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
-        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
-        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-        return gerr;
-    }
+    tmpcol = (ghost_midx_t *)ghost_malloc(mat->nnz*sizeof(ghost_midx_t));
+    tmpval = (char *)ghost_malloc(mat->nnz*sizeofdt);
+    GHOST_CALL_GOTO(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], mat->nnz),err,ret);
+    GHOST_CALL_GOTO(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], mat->nnz),err,ret);
 
     INFO_LOG("%"PRmatIDX" rows, %"PRmatIDX" chunks %"PRmatIDX" chunkheight",mat->nrows,nChunks,SELL(mat)->chunkHeight);
     ghost_midx_t row = 0;
@@ -1139,11 +1064,11 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
         char * curRowVals;
         for (i=0; (i<SELL(mat)->chunkHeight) && (row < mat->nrows); i++, row++) {
             if (mat->traits->flags & GHOST_SPM_SORTED) {
-                if (!invRowPerm) {
+                if (!mat->context->invRowPerm) {
                     WARNING_LOG("invRowPerm is NULL but matrix should be sorted");
                 }
-                curRowCols = &tmpcol[rpt[invRowPerm[row]]];
-                curRowVals = &tmpval[rpt[invRowPerm[row]]*sizeofdt];
+                curRowCols = &tmpcol[rpt[mat->context->invRowPerm[row]]];
+                curRowVals = &tmpval[rpt[mat->context->invRowPerm[row]]*sizeofdt];
             } else {
                 curRowCols = &tmpcol[rpt[row]];
                 curRowVals = &tmpval[rpt[row]*sizeofdt];
@@ -1154,7 +1079,7 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
                 if ((mat->traits->flags & (GHOST_SPM_SORTED | GHOST_SPM_PERMUTECOLIDX)) &&
                         (curRowCols[col] >= mat->context->lfRow[me]) && 
                         (curRowCols[col] < (mat->context->lfRow[me]+mat->nrows))) {
-                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = rowPerm[curRowCols[col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->rowPerm[curRowCols[col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                 } else {
                     SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = curRowCols[col];
                 }
@@ -1166,21 +1091,22 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
                 ghost_midx_t n;
                 curRowCols = &SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i];
                 curRowVals = &SELL(mat)->val[sizeofdt*(SELL(mat)->chunkStart[chunk]+i)];
-                ghost_midx_t tmpcol;
-                char *tmpval = ghost_malloc(sizeofdt);
+                ghost_midx_t swpcol;
+                char *swpval = ghost_malloc(sizeofdt);
                 for (n=SELL(mat)->rowLen[row]; n>1; n--) {
                     for (col=0; col<n-1; col++) {
                         if (curRowCols[col*SELL(mat)->chunkHeight] > curRowCols[(col+1)*SELL(mat)->chunkHeight]) {
-                            tmpcol = curRowCols[col*SELL(mat)->chunkHeight];
+                            swpcol = curRowCols[col*SELL(mat)->chunkHeight];
                             curRowCols[col*SELL(mat)->chunkHeight] = curRowCols[(col+1)*SELL(mat)->chunkHeight];
-                            curRowCols[(col+1)*SELL(mat)->chunkHeight] = tmpcol; 
+                            curRowCols[(col+1)*SELL(mat)->chunkHeight] = swpcol; 
 
-                            memcpy(&tmpval,&curRowVals[sizeofdt*(col*SELL(mat)->chunkHeight)],sizeofdt);
+                            memcpy(&swpval,&curRowVals[sizeofdt*(col*SELL(mat)->chunkHeight)],sizeofdt);
                             memcpy(&curRowVals[sizeofdt*(col*SELL(mat)->chunkHeight)],&curRowVals[sizeofdt*((col+1)*SELL(mat)->chunkHeight)],sizeofdt);
-                            memcpy(&curRowVals[sizeofdt*((col+1)*SELL(mat)->chunkHeight)],&tmpval,sizeofdt);
+                            memcpy(&curRowVals[sizeofdt*((col+1)*SELL(mat)->chunkHeight)],&swpval,sizeofdt);
                         }
                     }
                 }
+                free(swpval); swpval = NULL;
             }
         }
 
@@ -1195,13 +1121,27 @@ static ghost_error_t SELL_fromBin(ghost_mat_t *mat, char *matrixPath)
 #endif
 
 
+
+    DEBUG_LOG(1,"SELL matrix successfully created");
+    goto out;
+
+err:
+    free(SELL(mat)->val); SELL(mat)->val = NULL;
+    free(SELL(mat)->col); SELL(mat)->col = NULL;
+    free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+    free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+    free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+    free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+    free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+    free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+
+out:
     free(tmpcol);
     free(tmpval);
     free(rpt);
     fclose(filed);
 
-    DEBUG_LOG(1,"SELL matrix successfully created");
-    return GHOST_SUCCESS;
+    return ret;
 }
 
 static const char * SELL_stringify(ghost_mat_t *mat, int dense)

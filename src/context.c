@@ -315,8 +315,8 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
 
     int nprocs;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(ctx->mpicomm,&me),err,ret);
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&me));
 
 #if GHOST_HAVE_MPI
     MPI_Request req[2*nprocs];
@@ -450,13 +450,8 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
      */
 
 #if GHOST_HAVE_MPI
-    int err;
-    MPI_CALL(MPI_Allgather(ctx->wishes, nprocs, ghost_mpi_dt_midx, tmp_transfers, 
-                nprocs, ghost_mpi_dt_midx, ctx->mpicomm),err);
-    if (err != MPI_SUCCESS) {
-        ret = GHOST_ERR_MPI;
-        goto err;
-    }
+    MPI_CALL_GOTO(MPI_Allgather(ctx->wishes, nprocs, ghost_mpi_dt_midx, tmp_transfers, 
+                nprocs, ghost_mpi_dt_midx, ctx->mpicomm),err,ret);
 #endif
 
     for (i=0; i<nprocs; i++) {
@@ -591,11 +586,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     int msgcount = 0;
     for(i=0; i<nprocs; i++) 
     { // receive _my_ dues from _other_ processes' wishes
-        MPI_CALL(MPI_Irecv(ctx->duelist[i],ctx->dues[i],ghost_mpi_dt_midx,i,i,ctx->mpicomm,&req[msgcount]),err);
-        if (err != MPI_SUCCESS) {
-            ret = GHOST_ERR_MPI;
-            goto err;
-        }
+        MPI_CALL_GOTO(MPI_Irecv(ctx->duelist[i],ctx->dues[i],ghost_mpi_dt_midx,i,i,ctx->mpicomm,&req[msgcount]),err,ret);
         msgcount++;
     }
 
