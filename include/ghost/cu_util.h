@@ -1,5 +1,5 @@
-#ifndef GHOST_ghost_cu_UTIL_H
-#define GHOST_ghost_cu_UTIL_H
+#ifndef GHOST_CU_UTIL_H
+#define GHOST_CU_UTIL_H
 
 #include "config.h"
 #include "types.h"
