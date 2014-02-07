@@ -87,7 +87,7 @@ ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_freeDeviceMemory(void * mem)
+ghost_error_t ghost_cu_free(void * mem)
 {
     CUDA_CALL_RETURN(cudaFree(mem));
 
