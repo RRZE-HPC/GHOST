@@ -122,12 +122,12 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     off64_t offs;
     ghost_mnnz_t i;
     size_t sizeofdt;
-    GHOST_CALL_RETURN(ghost_sizeofDataType(&sizeofdt,datatype));
+    GHOST_CALL_RETURN(ghost_sizeofDatatype(&sizeofdt,datatype));
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
     GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_sizeofDataType(&valSize,header.datatype));
+    GHOST_CALL_RETURN(ghost_sizeofDatatype(&valSize,header.datatype));
 
     DEBUG_LOG(1,"Reading array with values");
     offs = GHOST_BINCRS_SIZE_HEADER+
@@ -188,7 +188,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
         }
     } else {
         INFO_LOG("This matrix is supposed to be of %s data but"
-                " the file contains %s data. Casting...",ghost_datatypeName(datatype),ghost_datatypeName(header.datatype));
+                " the file contains %s data. Casting...",ghost_datatypeString(datatype),ghost_datatypeString(header.datatype));
 
 
         uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
@@ -399,7 +399,7 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_sizeofDataType(&valSize,header->datatype));
+    GHOST_CALL_RETURN(ghost_sizeofDatatype(&valSize,header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +

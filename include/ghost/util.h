@@ -49,7 +49,6 @@ extern "C" {
 
     char * ghost_workdistName(int ghostOptions);
     char * ghost_modeName(int spmvmOptions);
-    char * ghost_datatypeName(int datatype);
     char * ghost_symmetryName(int symmetry);
 
     /**
@@ -62,7 +61,6 @@ extern "C" {
      */
     ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
 
-    int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);
     int ghost_dataTypeIdx(int datatype);
 
@@ -73,8 +71,6 @@ extern "C" {
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();
     int ghost_ompGetNumThreads();
-    ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype);
-    ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
 
     /**
      * @brief Computes a hash from three integral input values.

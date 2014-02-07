@@ -951,7 +951,7 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
     lhsv[i] = hlp1;
     }
      */
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
+    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->nvecs);
     //    lhs->print(lhs);
     //    rhs->print(rhs);
 

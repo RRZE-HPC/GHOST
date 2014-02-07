@@ -269,7 +269,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
             if (x->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                val = ghost_malloc(x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
+                val = ghost_malloc(x->traits->nrows*ghost_sizeofDatatype(x->traits->datatype));
                 ghost_cu_copyDeviceToHost(val,&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 copied = 1;
@@ -347,7 +347,7 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
     GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
 
     size_t sizeofdt;
-    GHOST_CALL_RETURN(ghost_sizeofDataType(&sizeofdt,datatype));
+    GHOST_CALL_RETURN(ghost_sizeofDatatype(&sizeofdt,datatype));
 
     char *zero = (char *)ghost_malloc(sizeofdt);
     memset(zero,0,sizeofdt);

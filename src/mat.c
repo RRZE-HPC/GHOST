@@ -52,7 +52,7 @@ ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trai
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
    
-    GHOST_CALL_GOTO(ghost_sizeofDataType(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
     
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
@@ -139,7 +139,7 @@ ghost_error_t ghost_printMatrixInfo(ghost_mat_t *mat)
 
 
         ghost_printHeader(mat->name);
-        ghost_printLine("Data type",NULL,"%s",ghost_datatypeName(mat->traits->datatype));
+        ghost_printLine("Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
         ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
         ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
         ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);

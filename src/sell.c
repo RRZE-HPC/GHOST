@@ -1218,7 +1218,7 @@ static void SELL_free(ghost_mat_t *mat)
 static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, ghost_spmv_flags_t options)
 {
     DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeName(lhs->traits->datatype),lhs->traits->nvecs);
+    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->nvecs);
 
     ghost_error_t (*kernel) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t) = NULL;
 

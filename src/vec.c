@@ -93,7 +93,7 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
     (*vec)->context = ctx;
     (*vec)->traits = traits;
     getNrowsFromContext((*vec));
-    GHOST_CALL_GOTO(ghost_sizeofDataType(&(*vec)->traits->elSize,(*vec)->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*vec)->traits->elSize,(*vec)->traits->datatype),err,ret);
 
     DEBUG_LOG(1,"Initializing vector");
 

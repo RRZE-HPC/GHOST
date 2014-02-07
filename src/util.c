@@ -356,41 +356,7 @@ char * ghost_symmetryName(int symmetry)
     return "Invalid";
 }
 
-int ghost_datatypeValid(int datatype)
-{
-    if ((datatype & GHOST_BINCRS_DT_FLOAT) &&
-            (datatype & GHOST_BINCRS_DT_DOUBLE))
-        return 0;
 
-    if (!(datatype & GHOST_BINCRS_DT_FLOAT) &&
-            !(datatype & GHOST_BINCRS_DT_DOUBLE))
-        return 0;
-
-    if ((datatype & GHOST_BINCRS_DT_REAL) &&
-            (datatype & GHOST_BINCRS_DT_COMPLEX))
-        return 0;
-
-    if (!(datatype & GHOST_BINCRS_DT_REAL) &&
-            !(datatype & GHOST_BINCRS_DT_COMPLEX))
-        return 0;
-
-    return 1;
-}
-
-char * ghost_datatypeName(int datatype)
-{
-    if (datatype & GHOST_BINCRS_DT_FLOAT) {
-        if (datatype & GHOST_BINCRS_DT_REAL)
-            return "float";
-        else
-            return "complex float";
-    } else {
-        if (datatype & GHOST_BINCRS_DT_REAL)
-            return "double";
-        else
-            return "complex double";
-    }
-}
 
 char * ghost_workdistName(int options)
 {

@@ -58,7 +58,7 @@ ghost_error_t ghost_mpi_destroyDatatypes()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sizeofDataType(size_t *size, int dt)
+ghost_error_t ghost_sizeofDatatype(size_t *size, int dt)
 {
     if (!ghost_datatypeValid(dt)) {
         ERROR_LOG("Invalid data type");
@@ -78,3 +78,44 @@ ghost_error_t ghost_sizeofDataType(size_t *size, int dt)
     return GHOST_SUCCESS;
 }
 
+char ghost_datatypeValid(int datatype)
+{
+    if ((datatype & GHOST_DT_FLOAT) &&
+            (datatype & GHOST_DT_DOUBLE))
+        return 0;
+
+    if (!(datatype & GHOST_DT_FLOAT) &&
+            !(datatype & GHOST_DT_DOUBLE))
+        return 0;
+
+    if ((datatype & GHOST_DT_REAL) &&
+            (datatype & GHOST_DT_COMPLEX))
+        return 0;
+
+    if (!(datatype & GHOST_DT_REAL) &&
+            !(datatype & GHOST_DT_COMPLEX))
+        return 0;
+
+    return 1;
+}
+
+char * ghost_datatypeString(int datatype)
+{
+    if (!ghost_datatypeValid(datatype)) {
+        return "invalid";
+    }
+
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_REAL)
+            return "float";
+        else
+            return "complex float";
+    } else {
+        if (datatype & GHOST_DT_REAL)
+            return "double";
+        else
+            return "complex double";
+    }
+
+    return "invalid";
+}

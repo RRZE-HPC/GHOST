@@ -154,9 +154,10 @@ struct ghost_mpi_z
 extern "C" {
 #endif
 
-ghost_error_t ghost_sizeofDataType(size_t *size, int dt);
+char ghost_datatypeValid(int datatype);
+char * ghost_datatypeString(int datatype);
+ghost_error_t ghost_sizeofDatatype(size_t *size, int dt);
 ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype);
-ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
 ghost_error_t ghost_mpi_createDatatypes();
 ghost_error_t ghost_mpi_destroyDatatypes();
 
