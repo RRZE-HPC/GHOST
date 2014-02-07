@@ -31,7 +31,7 @@ ghost_error_t ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
     int v;
     if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
         for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
-            MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+ghost_sizeofDataType(vec->traits->datatype)*v, 1, mpiDt, sumOp, vec->context->mpicomm));
+            MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->traits->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
 #endif
@@ -346,8 +346,11 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
     int me;
     GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
 
-    char *zero = (char *)ghost_malloc(ghost_sizeofDataType(datatype));
-    memset(zero,0,ghost_sizeofDataType(datatype));
+    size_t sizeofdt;
+    GHOST_CALL_RETURN(ghost_sizeofDataType(&sizeofdt,datatype));
+
+    char *zero = (char *)ghost_malloc(sizeofdt);
+    memset(zero,0,sizeofdt);
     ghost_vec_t *globLHS; 
     ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
     ghost_context_t *context;

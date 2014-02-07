@@ -415,21 +415,6 @@ char * ghost_workdistName(int options)
         return "Equal no. of rows";
 }
 
-size_t ghost_sizeofDataType(int dt)
-{
-    size_t size = 0;
-
-    if (dt & GHOST_BINCRS_DT_FLOAT)
-        size = sizeof(float);
-    else
-        size = sizeof(double);
-
-    if (dt & GHOST_BINCRS_DT_COMPLEX)
-        size *= 2;
-
-    return size;
-}
-
 ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding) 
 {
     if (padding < 1 || nrows < 1) {

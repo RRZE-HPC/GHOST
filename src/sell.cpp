@@ -434,7 +434,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
         SELL(mat)->nMaxRows = rowlengths.rbegin()->second;
     }
 
-    SELL(mat)->val = (char *)ghost_malloc_align(ghost_sizeofDataType(mat->traits->datatype)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
+    SELL(mat)->val = (char *)ghost_malloc_align(sizeof(m_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
     SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
 
     DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");

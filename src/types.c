@@ -57,3 +57,24 @@ ghost_error_t ghost_mpi_destroyDatatypes()
 
     return GHOST_SUCCESS;
 }
+
+ghost_error_t ghost_sizeofDataType(size_t *size, int dt)
+{
+    if (!ghost_datatypeValid(dt)) {
+        ERROR_LOG("Invalid data type");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    *size = 0;
+
+    if (dt & GHOST_DT_FLOAT)
+        *size = sizeof(float);
+    else
+        *size = sizeof(double);
+
+    if (dt & GHOST_DT_COMPLEX)
+        *size *= 2;
+
+    return GHOST_SUCCESS;
+}
+

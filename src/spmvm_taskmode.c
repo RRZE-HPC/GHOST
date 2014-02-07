@@ -25,7 +25,6 @@ typedef struct {
     ghost_context_t *context;
     int nprocs,me,msgcount;
     char *work;
-    size_t sizeofRHS;
     MPI_Request *request;
     MPI_Status *status;
     ghost_midx_t max_dues;
@@ -50,14 +49,14 @@ static void *communicate(void *vargs)
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
 #if GHOST_HAVE_INSTR_TIMING
-            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*ghost_sizeofDataType(args->rhs->traits->datatype));
+            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->sizeofRHS,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->traits->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
-                recvBytes += args->context->wishes[from_PE]*ghost_sizeofDataType(args->rhs->traits->datatype);
+                recvBytes += args->context->wishes[from_PE]*args->rhs->traits->elSize;
                 recvMsgs++;
 #endif
             }
@@ -67,10 +66,10 @@ static void *communicate(void *vargs)
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
         if (args->context->dues[to_PE]>0){
             for (c=0; c<args->rhs->traits->nvecs; c++) {
-                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->sizeofRHS + to_PE*args->max_dues*args->sizeofRHS, args->context->dues[to_PE]*args->sizeofRHS, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
+                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->traits->elSize + to_PE*args->max_dues*args->rhs->traits->elSize, args->context->dues[to_PE]*args->rhs->traits->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
-                sendBytes += args->context->dues[to_PE]*ghost_sizeofDataType(args->rhs->traits->datatype);
+                sendBytes += args->context->dues[to_PE]*args->rhs->traits->elSize;
                 sendMsgs++;
 #endif
             }
@@ -147,7 +146,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
         remoteopts |= GHOST_SPMVM_AXPY;
     }
 
-    size_t sizeofRHS;
 
     commArgs cargs;
     compArgs cplargs;
@@ -158,7 +156,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     DEBUG_LOG(1,"In task mode spMVM solver");
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
-    sizeofRHS = ghost_sizeofDataType(invec->traits->datatype);
     MPI_Request request[invec->traits->nvecs*2*nprocs];
     MPI_Status  status[invec->traits->nvecs*2*nprocs];
 
@@ -167,7 +164,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
-    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * ghost_sizeofDataType(invec->traits->datatype));
+    work = (char *)ghost_malloc(invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize);
 
     int taskflags = GHOST_TASK_DEFAULT;
     if (pthread_getspecific(ghost_thread_key) != NULL) {
@@ -191,7 +188,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     cargs.me = me;
     cargs.work = work;
     cargs.rhs = invec;
-    cargs.sizeofRHS = sizeofRHS;
     cargs.max_dues = max_dues;
     cargs.msgcount = 0;
     cargs.request = request;
@@ -222,7 +218,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
             for (c=0; c<invec->traits->nvecs; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),sizeofRHS);
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
                 }
             }
         }
@@ -232,7 +228,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
             for (c=0; c<invec->traits->nvecs; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*sizeofRHS + (to_PE*max_dues+i)*sizeofRHS,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),sizeofRHS);
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),invec->traits->elSize);
                 }
             }
         }

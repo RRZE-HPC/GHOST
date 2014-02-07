@@ -299,6 +299,7 @@ struct ghost_vtraits_t
     ghost_midx_t nvecs;
     ghost_vec_flags_t flags;
     int datatype;
+    size_t elSize;
     void * aux;
     void * localdot;
 };
@@ -320,8 +321,8 @@ extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 #define VEC_PAD 16
 #endif
 
-#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*ghost_sizeofDataType(vec->traits->datatype)])
-#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*ghost_sizeofDataType(vec->traits->datatype)])
+#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->traits->elSize])
+#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->traits->elSize])
 
 #ifdef __cplusplus
 template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_vec_t *vec);

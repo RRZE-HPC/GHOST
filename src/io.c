@@ -120,23 +120,19 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     int swapReq;
     off64_t offs;
     ghost_mnnz_t i;
-    size_t sizeofdt = ghost_sizeofDataType(datatype);
-
+    size_t sizeofdt;
+    GHOST_CALL_RETURN(ghost_sizeofDataType(&sizeofdt,datatype));
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
     GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
-    size_t valSize = sizeof(float);
-    if (header.datatype & GHOST_BINCRS_DT_DOUBLE)
-        valSize *= 2;
-
-    if (header.datatype & GHOST_BINCRS_DT_COMPLEX)
-        valSize *= 2;
+    size_t valSize;
+    GHOST_CALL_RETURN(ghost_sizeofDataType(&valSize,header.datatype));
 
     DEBUG_LOG(1,"Reading array with values");
     offs = GHOST_BINCRS_SIZE_HEADER+
         GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
         GHOST_BINCRS_SIZE_COL_EL*header.nnz+
-        ghost_sizeofDataType(header.datatype)*offsEnts;
+        valSize*offsEnts;
     if (fseeko(filed,offs,SEEK_SET)) {
         ERROR_LOG("Seek failed");
         return GHOST_ERR_IO;
@@ -184,7 +180,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
 
             }
         } else {
-            if ((ghost_midx_t)(ret = fread(val, ghost_sizeofDataType(datatype), nEnts,filed)) != (nEnts)){
+            if ((ghost_midx_t)(ret = fread(val, valSize, nEnts,filed)) != (nEnts)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -401,11 +397,13 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     fread(&header->nnz, 8, 1, file);
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
+    size_t valSize;
+    GHOST_CALL_RETURN(ghost_sizeofDataType(&valSize,header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +
         (long)header->nnz * GHOST_BINCRS_SIZE_COL_EL +
-        (long)header->nnz * ghost_sizeofDataType(header->datatype);
+        (long)header->nnz * valSize;
 
     if (filesize != rightFilesize) {
         ERROR_LOG("File has invalid size! (is: %ld, should be: %ld)",filesize, rightFilesize);

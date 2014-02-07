@@ -77,7 +77,6 @@ extern "C" {
      */
     ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
 
-    size_t ghost_sizeofDataType(int dt);
     int ghost_datatypeValid(int datatype);
     int ghost_symmetryValid(int symmetry);
     int ghost_archIsBigEndian();

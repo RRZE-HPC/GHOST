@@ -86,13 +86,14 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
 
 ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t v;
     *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
     (*vec)->context = ctx;
     (*vec)->traits = traits;
     getNrowsFromContext((*vec));
+    GHOST_CALL_GOTO(ghost_sizeofDataType(&(*vec)->traits->elSize,(*vec)->traits->datatype),err,ret);
 
-    DEBUG_LOG(1,"The vector has %"PRvecIDX" sub-vectors with %"PRvecIDX" rows and %zu bytes per entry",traits->nvecs,traits->nrows,ghost_sizeofDataType((*vec)->traits->datatype));
     DEBUG_LOG(1,"Initializing vector");
 
     if (!((*vec)->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE)))
@@ -171,9 +172,12 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
         (*vec)->val[v] = NULL;
     }
 
+    goto out;
+err:
+    free(*vec); *vec = NULL;
 
-
-    return GHOST_SUCCESS;
+out:
+    return ret;
 }
 
 static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
@@ -185,7 +189,7 @@ static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
         for (v=0; v<vec->traits->nvecs; v++) {
             ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,vec->traits->nrows),
                     VECVAL(vec,vec->val,v,vec->traits->nrows), 
-                    vec->context->halo_elements*ghost_sizeofDataType(vec->traits->datatype));
+                    vec->context->halo_elements*vec->traits->elSize);
         }
 #endif
     }
@@ -208,7 +212,7 @@ static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],VECVAL(vec,vec->val,v,0), vec->traits->nrows*vec->traits->elSize);
         }
 #endif
     }
@@ -222,7 +226,7 @@ static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
         }
 #endif
     }
@@ -236,7 +240,7 @@ static ghost_error_t vec_upload(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*vec->traits->elSize);
         }
 #endif
     }
@@ -250,7 +254,7 @@ static ghost_error_t vec_download(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
         for (v=0; v<vec->traits->nvecs; v++) {
-            ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*ghost_sizeofDataType(vec->traits->datatype)],vec->traits->nrowshalo*ghost_sizeofDataType(vec->traits->datatype));
+            ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize)],vec->traits->nrowshalo*vec->traits->elSize);
         }
 #endif
     }
@@ -282,7 +286,7 @@ static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t n
     ghost_vidx_t v;
 
     for (v=0; v<vec->traits->nvecs; v++) {
-        vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*ghost_sizeofDataType(vec->traits->datatype)];
+        vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->traits->elSize];
     }
     vec->traits->flags |= GHOST_VEC_VIEW;
 
@@ -324,13 +328,12 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
 {
 
     ghost_vidx_t v;
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     if (vec->traits->flags & GHOST_VEC_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
-            vec->val[0] = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*sizeofdt,GHOST_DATA_ALIGNMENT);
+            vec->val[0] = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT);
             for (v=1; v<vec->traits->nvecs; v++) {
-                vec->val[v] = vec->val[0]+v*vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype);
+                vec->val[v] = vec->val[0]+v*vec->traits->nrowspadded*vec->traits->elSize;
             }
         }
     }
@@ -342,10 +345,10 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
-            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
 #else
             //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
-            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*sizeofdt);
+            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
 #endif
         }
 #endif
@@ -419,7 +422,6 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     ghost_vidx_t v;
 
     for (v=0; v<vec->traits->nvecs; v++) {
@@ -428,13 +430,13 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
             else
             {
 #if GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
         }
@@ -443,12 +445,12 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
             {
 #if GHOST_HAVE_CUDA
-                ghost_cu_download(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                ghost_cu_download(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
             else
             {
-                memcpy(VECVAL(vec,vec->val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*sizeofdt);
+                memcpy(VECVAL(vec,vec->val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
             }
         }
 
@@ -461,12 +463,11 @@ static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
     GHOST_INSTR_START(axpy);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-    char *s = (char *)ghost_malloc(nc*sizeofdt);
+    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
-        memcpy(&s[i*sizeofdt],scale,sizeofdt);
+        memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
 
     GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s),err,ret);
@@ -485,14 +486,13 @@ static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale,
     GHOST_INSTR_START(axpby);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-    char *s = (char *)ghost_malloc(nc*sizeofdt);
-    char *b = (char *)ghost_malloc(nc*sizeofdt);
+    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
+    char *b = (char *)ghost_malloc(nc*vec->traits->elSize);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
-        memcpy(&s[i*sizeofdt],scale,sizeofdt);
-        memcpy(&b[i*sizeofdt],_b,sizeofdt);
+        memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
+        memcpy(&b[i*vec->traits->elSize],_b,vec->traits->elSize);
     }
     GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,vec2,s,b),err,ret);
 
@@ -527,12 +527,11 @@ static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale)
     GHOST_INSTR_START(scale);
     ghost_error_t ret = GHOST_SUCCESS;
         ghost_vidx_t nc = vec->traits->nvecs;
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
-    char *s = (char *)ghost_malloc(nc*sizeofdt);
+    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
-        memcpy(&s[i*sizeofdt],scale,sizeofdt);
+        memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
     GHOST_CALL_GOTO(ghost_vec_vscale_funcs[ghost_dataTypeIdx(vec->traits->datatype)](vec,s),err,ret);
 
@@ -565,16 +564,15 @@ static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 
 static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        ghost_cu_download(val,&vec->cu_val[(c*vec->traits->nrowspadded+r)*sizeofdt],sizeofdt);
+        ghost_cu_download(val,&vec->cu_val[(c*vec->traits->nrowspadded+r)*vec->traits->elSize],vec->traits->elSize);
 #endif
     }
     else if (vec->traits->flags & GHOST_VEC_HOST)
     {
-        memcpy(val,VECVAL(vec,vec->val,c,r),sizeofdt);
+        memcpy(val,VECVAL(vec,vec->val,c,r),vec->traits->elSize);
     }
 
     return GHOST_SUCCESS;
@@ -589,13 +587,12 @@ static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     int i,v;
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrows; i++) {
         for (v=0; v<vec->traits->nvecs; v++) {
-            memcpy(VECVAL(vec,vec->val,v,i),val,sizeofdt);
+            memcpy(VECVAL(vec,vec->val,v,i),val,vec->traits->elSize);
         }
     }
     vec->upload(vec);
@@ -608,7 +605,6 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 #ifdef GHOST_HAVE_MPI
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     int32_t endianess = ghost_archIsBigEndian();
     int32_t version = 1;
@@ -647,14 +643,14 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            val = ghost_malloc(vec->traits->nrows*sizeofdt);
+            val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
             copied = 1;
-            ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+            ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
 #endif
         }
         MPI_CALL_RETURN(MPI_File_write_at(fileh,fileoffset,val,vec->traits->nrows,mpidt,&status));
         fileoffset += nrows;
-        vecoffset += vec->traits->nrowspadded*sizeofdt;
+        vecoffset += vec->traits->nrowspadded*vec->traits->elSize;
         if (copied)
             free(val);
     }
@@ -664,7 +660,6 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 #else
     DEBUG_LOG(1,"Writing (local) vector to file %s",path);
     size_t ret;
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     int32_t endianess = ghost_archIsBigEndian();
     int32_t version = 1;
@@ -723,13 +718,13 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            val = ghost_malloc(vec->traits->nrows*sizeofdt);
+            val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
             copied = 1;
-            ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],vec->traits->nrows*sizeofdt);
+            ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
 #endif
         }
 
-        if ((ret = fwrite(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+        if ((ret = fwrite(val, vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
             ERROR_LOG("fwrite failed: %zu",ret);
             fclose(filed);
             if (copied) {
@@ -763,7 +758,6 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
 
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Reading vector from file %s",path);
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     FILE *filed;
     size_t ret;
@@ -840,14 +834,14 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
 
     int v;
     for (v=0; v<vec->traits->nvecs; v++) {
-        if (fseeko(filed,offset*sizeofdt,SEEK_CUR)) {
+        if (fseeko(filed,offset*vec->traits->elSize,SEEK_CUR)) {
             ERROR_LOG("seek failed");
             vec->destroy(vec);
             return GHOST_ERR_IO;
         }
         if (vec->traits->flags & GHOST_VEC_HOST)
         {
-            if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+            if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
@@ -857,13 +851,13 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            char * val = ghost_malloc(vec->traits->nrows*sizeofdt);
-            if ((ret = fread(val, sizeofdt, vec->traits->nrows,filed)) != vec->traits->nrows) {
+            char * val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
+            if ((ret = fread(val, vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
             }
-            ghost_cu_upload(&vec->cu_val[v*vec->traits->nrowspadded*sizeofdt],val,vec->traits->nrows*sizeofdt);
+            ghost_cu_upload(&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],val,vec->traits->nrows*vec->traits->elSize);
             free(val);
 #endif
         }
@@ -910,14 +904,14 @@ static ghost_error_t ghost_zeroVector(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+        ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
 #endif
     }
     if (vec->traits->flags & GHOST_VEC_HOST)
     {
         for (v=0; v<vec->traits->nvecs; v++) 
         {
-            memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+            memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*vec->traits->elSize);
         }
     } 
 
@@ -932,7 +926,6 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
     GHOST_CALL_RETURN(ghost_getRank(nodeVec->context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(nodeVec->context->mpicomm,&nprocs));
 
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     ghost_vidx_t c;
 #ifdef GHOST_HAVE_MPI
     DEBUG_LOG(2,"Scattering global vector to local vectors");
@@ -956,7 +949,7 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
-            memcpy(nodeVec->val[c],vec->val[c],sizeofdt*nodeVec->context->lnrows[0]);
+            memcpy(nodeVec->val[c],vec->val[c],vec->traits->elSize*nodeVec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
                 MPI_CALL_RETURN(MPI_Isend(VECVAL(vec,vec->val,c,nodeVec->context->lfRow[i]),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
                 msgcount++;
@@ -967,7 +960,7 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
 #else
 
     for (c=0; c<vec->traits->nvecs; c++) {
-        memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrows*sizeofdt);
+        memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrows*vec->traits->elSize);
     }
     //    *nodeVec = vec->clone(vec);
 #endif
@@ -994,7 +987,6 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
         vec->permute(vec,vec->context->invRowPerm); 
 
     int i;
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
 
     MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
     MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
@@ -1010,7 +1002,7 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
         }
     } else {
         for (c=0; c<vec->traits->nvecs; c++) {
-            memcpy(totalVec->val[c],vec->val[c],sizeofdt*vec->context->lnrows[0]);
+            memcpy(totalVec->val[c],vec->val[c],vec->traits->elSize*vec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
                 MPI_CALL_RETURN(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,vec->context->lfRow[i]),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
                 msgcount++;
@@ -1022,7 +1014,7 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
     if (vec->context != NULL) {
         vec->permute(vec,vec->context->invRowPerm);
         for (c=0; c<vec->traits->nvecs; c++) {
-            memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
+            memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*vec->traits->elSize);
         }
     }
 #endif
@@ -1106,7 +1098,6 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 {
     // TODO enhance performance
     /* permutes values in vector so that i-th entry is mapped to position perm[i] */
-    size_t sizeofdt = ghost_sizeofDataType(vec->traits->datatype);
     ghost_midx_t i;
     ghost_vidx_t len = vec->traits->nrows, c;
     char* tmp;
@@ -1120,7 +1111,7 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 
 
     for (c=0; c<vec->traits->nvecs; c++) {
-        tmp = ghost_malloc(sizeofdt*len);
+        tmp = ghost_malloc(vec->traits->elSize*len);
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
                 ERROR_LOG("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
@@ -1128,10 +1119,10 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
                 return GHOST_ERR_UNKNOWN;
             }
 
-            memcpy(&tmp[sizeofdt*perm[i]],VECVAL(vec,vec->val,c,i),sizeofdt);
+            memcpy(&tmp[vec->traits->elSize*perm[i]],VECVAL(vec,vec->val,c,i),vec->traits->elSize);
         }
         for(i=0; i < len; ++i) {
-            memcpy(VECVAL(vec,vec->val,c,i),&tmp[sizeofdt*i],sizeofdt);
+            memcpy(VECVAL(vec,vec->val,c,i),&tmp[vec->traits->elSize*i],vec->traits->elSize);
         }
         free(tmp);
     }
@@ -1161,27 +1152,27 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
 
     ghost_vidx_t v,i;
 
-    char *val = (char *)ghost_malloc(vec->traits->nrowspadded*vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+    char *val = (char *)ghost_malloc(vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
 
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrowspadded; i++)
     {
         for (v=0; v<vec->traits->nvecs; v++)
         {
-            val[(v*vec->traits->nrowspadded+i)*ghost_sizeofDataType(vec->traits->datatype)] = 0;
+            val[(v*vec->traits->nrowspadded+i)*vec->traits->elSize] = 0;
         }
     }
 
     for (v=0; v<vec->traits->nvecs; v++)
     {
-        memcpy(&val[(v*vec->traits->nrowspadded)*ghost_sizeofDataType(vec->traits->datatype)],
-                VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*ghost_sizeofDataType(vec->traits->datatype));
+        memcpy(&val[(v*vec->traits->nrowspadded)*vec->traits->elSize],
+                VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*vec->traits->elSize);
 
         if (!(vec->traits->flags & GHOST_VEC_VIEW))
         {
             free(vec->val[v]);
         }
-        vec->val[v] = &val[(v*vec->traits->nrowspadded)*ghost_sizeofDataType(vec->traits->datatype)];
+        vec->val[v] = &val[(v*vec->traits->nrowspadded)*vec->traits->elSize];
     }
 
     vec->traits->flags &= ~GHOST_VEC_VIEW;

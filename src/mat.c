@@ -52,6 +52,8 @@ ghost_error_t ghost_createMatrix(ghost_context_t *context, ghost_mtraits_t *trai
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
    
+    GHOST_CALL_GOTO(ghost_sizeofDataType(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
+    
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
             GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);

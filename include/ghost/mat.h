@@ -60,6 +60,7 @@ struct ghost_mtraits_t
     void * aux;
     int nAux;
     int datatype;
+    size_t elSize;
     void * shift;
     void * scale;
     void * beta; // scale factor for AXPBY
