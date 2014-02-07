@@ -13,6 +13,7 @@
 #include "ghost/machine.h"
 #include "ghost/affinity.h"
 #include "ghost/task.h"
+#include "ghost/timing.h"
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
@@ -35,16 +36,30 @@ static ghost_error_t ghost_rand_init()
         ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
     }
 
+    ghost_error_t ret = GHOST_SUCCESS;
 #pragma omp parallel
     {
+        double time;
+        GHOST_CALL(ghost_wctimeMilli(&time),ret);
+
         unsigned int seed=(unsigned int)ghost_hash(
-                (int)ghost_wctimemilli(),
+                (int)time,
                 rank,
                 (int)ghost_ompGetThreadNum());
         ghost_rand_states[ghost_ompGetThreadNum()] = seed;
     }
 
-    return GHOST_SUCCESS;
+    if (ret != GHOST_SUCCESS) {
+        goto err;
+    }
+
+    goto out;
+err:
+    free(ghost_rand_states);
+
+out:
+
+    return ret;
 }
 
 ghost_error_t ghost_setType(ghost_type_t t)

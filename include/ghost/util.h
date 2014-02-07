@@ -29,21 +29,6 @@
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
 
-#define GHOST_TIME(_niter,_func,...)\
-    double _func ## _start, _func ## _end, _func ## _tstart;\
-    double _func ## _tmin = DBL_MAX;\
-    double _func ## _tmax = 0.;\
-    double _func ## _tavg = 0.;\
-    int _func ## _it;\
-    _func ## _tstart=ghost_wctime();\
-    for (_func ## _it=0; _func ## _it<_niter; _func ## _it++) {\
-       _func ## _start = ghost_wctime();\
-       _func(__VA_ARGS__);\
-       _func ## _end = ghost_wctime();\
-       _func ## _tmin = MIN(_func ## _end-_func ## _start,_func ## _tmin);\
-       _func ## _tmin = MAX(_func ## _end-_func ## _start,_func ## _tmin);\
-    }\
-    _func ## _tavg = (ghost_wctime()-_func ## _tstart)/((double)_niter);
 
 
 
@@ -81,8 +66,6 @@ extern "C" {
     int ghost_symmetryValid(int symmetry);
     int ghost_dataTypeIdx(int datatype);
 
-    double ghost_wctime();
-    double ghost_wctimemilli();
 
     void *ghost_malloc(const size_t size);
     void *ghost_malloc_align(const size_t size, const size_t align);

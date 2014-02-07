@@ -27,6 +27,7 @@ check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 set (SOURCES
+        src/timing.c
         src/io.c
         src/io.cpp 
 		src/util.c 
@@ -58,14 +59,15 @@ set (HEADERS
 		include/ghost/crs.h
 		include/ghost/error.h
         include/ghost/io.h
+        include/ghost/log.h
 		include/ghost/mat.h
 		include/ghost/math.h
 		include/ghost/sell.h
 		include/ghost/task.h
+        include/ghost/timing.h
 		include/ghost/types.h
 		include/ghost/util.h
 		include/ghost/vec.h
-        include/ghost/log.h
 	)
 
 if (USE_MPI)

@@ -1,15 +1,20 @@
 #ifndef GHOST_INSTR_H
 #define GHOST_INSTR_H
 
-#include "util.h"
-
 #if GHOST_HAVE_INSTR_TIMING
 
 #include "log.h"
+#include "timing.h"
 
-#define GHOST_INSTR_START(tag) double __start_##tag = ghost_wctime();
-#define GHOST_INSTR_STOP(tag) LOG(TIMING,ANSI_COLOR_BLUE, "%s: %e secs" ANSI_COLOR_RESET,\
-#tag,ghost_wctime()-__start_##tag);
+#define GHOST_INSTR_START(tag)\
+    double __start_##tag;\
+    ghost_error_t __err_##tag;\
+    GHOST_CALL(ghost_wctime(&__start_##tag),__err_##tag);\
+
+#define GHOST_INSTR_STOP(tag)\
+    double __end_##tag;\
+    GHOST_CALL(ghost_wctime(&__end_##tag),__err_##tag);\
+    LOG(TIMING,ANSI_COLOR_BLUE, "%s: %e secs" ANSI_COLOR_RESET,#tag,__end_##tag-__start_##tag);
 
 #elif GHOST_HAVE_INSTR_LIKWID
 

@@ -44,20 +44,6 @@
 
 extern char ** environ;
 
-double ghost_wctime()
-{
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    return (double) (tp.tv_sec + tp.tv_usec/1000000.0);
-}
-
-double ghost_wctimemilli()
-{
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    return (double) (tp.tv_sec * 1000. + tp.tv_usec/1000.0);
-}
-
 void ghost_printHeader(const char *fmt, ...)
 {
     char label[1024] = "";
@@ -144,7 +130,6 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
 #endif
     printf("\n");
 }
-
 
 
 static char *env(char *key)
