@@ -129,11 +129,11 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
 
     totalThreads = hwloc_bitmap_weight(cpuset);
 
-    ghost_thpool = (ghost_thpool_t*)ghost_malloc(sizeof(ghost_thpool_t));
-    ghost_thpool->PUs = (hwloc_obj_t *)ghost_malloc(totalThreads*sizeof(hwloc_obj_t));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->PUs,totalThreads*sizeof(hwloc_obj_t)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->sem,sizeof(sem_t)));
     ghost_thpool->nThreads = totalThreads;
-    ghost_thpool->threads = (pthread_t *)ghost_malloc(ghost_thpool->nThreads*sizeof(pthread_t));
-    ghost_thpool->sem = (sem_t*)ghost_malloc(sizeof(sem_t));
     sem_init(ghost_thpool->sem, 0, 0);
     sem_init(&taskSem, 0, 0);
     pthread_cond_init(&newTaskCond,NULL);
@@ -180,13 +180,14 @@ ghost_error_t ghost_thpool_init(hwloc_cpuset_t cpuset)
     }
 
     // holds core indices sorted for each locality domain
-    coreidx = (int **)ghost_malloc(sizeof(int *)*ghost_thpool->nLDs);
+    GHOST_CALL_RETURN(ghost_malloc((void **)&coreidx,sizeof(int *)*ghost_thpool->nLDs));
 
+    // TODO error goto
     int li;
     // sort the cores according to the locality domain
     for (q=0; q<ghost_thpool->nLDs; q++) {
         int localthreads = nThreadsPerLD(q);
-        coreidx[q] = (int *)ghost_malloc(sizeof(int)*ghost_thpool->nThreads);
+        GHOST_CALL_RETURN(ghost_malloc((void **)&coreidx[q],sizeof(int)*ghost_thpool->nThreads));
 
         for (t=0; t<localthreads; t++) { // my own threads
             coreidx[q][t] = firstThreadOfLD(q)+t;
@@ -291,7 +292,7 @@ static int firstThreadOfLD(int ld)
  */
 ghost_error_t ghost_taskq_init()
 {
-    taskq=(ghost_taskq_t *)ghost_malloc(sizeof(ghost_taskq_t));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&taskq,sizeof(ghost_taskq_t)));
 
     taskq->tail = NULL;
     taskq->head = NULL;
@@ -993,7 +994,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
      */
     ghost_error_t ghost_task_init(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
     {
-        *t = (ghost_task_t *)ghost_malloc(sizeof(ghost_task_t));
+        GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
         if (ghost_thpool == NULL) {
             WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");
             /*        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
@@ -1033,17 +1034,17 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         (*t)->flags = flags;
 
         //    t->freed = 0;
-        (*t)->state = (int *)ghost_malloc(sizeof(int));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->state,sizeof(int)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)));
         *((*t)->state) = GHOST_TASK_INVALID;
-        (*t)->cores = (int *)ghost_malloc(sizeof(int)*(*t)->nThreads);
         (*t)->coremap = hwloc_bitmap_alloc();
         (*t)->childusedmap = hwloc_bitmap_alloc();
         (*t)->next = NULL;
         (*t)->prev = NULL;
         (*t)->parent = NULL;
         (*t)->ret = NULL;
-        (*t)->finishedCond = (pthread_cond_t *)ghost_malloc(sizeof(pthread_cond_t));
-        (*t)->mutex = (pthread_mutex_t *)ghost_malloc(sizeof(pthread_mutex_t));
 
         return GHOST_SUCCESS;
     }

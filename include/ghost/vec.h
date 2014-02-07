@@ -337,7 +337,7 @@ extern "C" {
 #endif
 
     ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, ghost_vec_t **vec);
-    ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1);
+    ghost_error_t ghost_cloneVtraits(ghost_vtraits_t *t1, ghost_vtraits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
     ghost_error_t d_ghost_printVector(ghost_vec_t *vec); 

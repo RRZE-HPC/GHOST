@@ -65,8 +65,8 @@ extern "C" {
     int ghost_dataTypeIdx(int datatype);
 
 
-    void *ghost_malloc(const size_t size);
-    void *ghost_malloc_align(const size_t size, const size_t align);
+    ghost_error_t ghost_malloc(void **mem, const size_t size);
+    ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
     
     void ghost_ompSetNumThreads(int nthreads);
     int ghost_ompGetThreadNum();

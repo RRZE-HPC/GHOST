@@ -59,7 +59,8 @@ ghost_error_t ghost_readColOpen(ghost_midx_t *col, char *matrixPath, ghost_mnnz_
 
 #if GHOST_HAVE_LONGIDX
     if (swapReq) {
-        int64_t *tmp = (int64_t *)ghost_malloc(nEnts*8);
+        int64_t *tmp;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
         if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
@@ -141,7 +142,8 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
 
     if (datatype == header.datatype) {
         if (swapReq) {
-            uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
+            uint8_t *tmpval;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmpval,nEnts*valSize));
             if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
@@ -191,7 +193,8 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
                 " the file contains %s data. Casting...",ghost_datatypeString(datatype),ghost_datatypeString(header.datatype));
 
 
-        uint8_t *tmpval = (uint8_t *)ghost_malloc(nEnts*valSize);
+        uint8_t *tmpval;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmpval,nEnts*valSize));
         if ((ghost_midx_t)(ret = fread(tmpval, valSize, nEnts,filed)) != (nEnts)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
@@ -277,7 +280,8 @@ ghost_error_t ghost_readRptOpen(ghost_midx_t *rpt, char *matrixPath, ghost_mnnz_
 
 #if GHOST_HAVE_LONGIDX
     if (swapReq) {
-        int64_t *tmp = (int64_t *)ghost_malloc(nRows*8);
+        int64_t *tmp;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
         if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
@@ -293,7 +297,8 @@ ghost_error_t ghost_readRptOpen(ghost_midx_t *rpt, char *matrixPath, ghost_mnnz_
     }
 #else // casting from 64 to 32 bit
     DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
-    int64_t *tmp = (int64_t *)ghost_malloc(nRows*8);
+    int64_t *tmp;
+    GHOST_CALL_RETURN(ghost_malloc(&tmp,nRows*8));
     if ((ghost_mnnz_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
         ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;

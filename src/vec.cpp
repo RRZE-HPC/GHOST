@@ -20,18 +20,27 @@
 
 template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_vec_t *vec)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t v;
-    v_t *s = (v_t *)ghost_malloc(vec->traits->nvecs*sizeof(v_t));
-    ghost_dotProduct(vec,vec,s);
+    v_t *s = NULL;
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits->nvecs*sizeof(v_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_dotProduct(vec,vec,s),err,ret);
 
     for (v=0; v<vec->traits->nvecs; v++)
     {
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
     }
-    vec->vscale(vec,s);
+    GHOST_CALL_GOTO(vec->vscale(vec,s),err,ret);
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+
+out:
+    free(s);
+
+    return ret;
 
 }
 
@@ -51,25 +60,32 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_vec_t *vec, g
 #pragma omp single
     nthreads = ghost_ompGetNumThreads();
 
-    v_t *partsums = (v_t *)ghost_malloc(16*nthreads*sizeof(v_t));
+    v_t *partsums;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
+
     for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
         v_t sum = 0;
         for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
-#pragma omp parallel for schedule(runtime)
-        for (i=0; i<nr; i++) {
-            partsums[ghost_ompGetThreadNum()*16] += 
-                *(v_t *)VECVAL(vec2,vec2->val,v,i)*
-                conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
+#pragma omp parallel 
+        {
+            int tid = ghost_ompGetThreadNum();
+#pragma omp for schedule(runtime)
+            for (i=0; i<nr; i++) {
+                partsums[tid*16] += 
+                    *(v_t *)VECVAL(vec2,vec2->val,v,i)*
+                    conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
+            }
         }
 
         for (i=0; i<nthreads; i++) sum += partsums[i*16];
 
         ((v_t *)res)[v] = sum;
     }
-    free(partsums);
-    return GHOST_SUCCESS;
 
+    free(partsums);
+    
+    return GHOST_SUCCESS;
 }
 
 template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
@@ -216,6 +232,7 @@ extern "C" ghost_error_t d_ghost_printVector(ghost_vec_t *vec)
 
 extern "C" ghost_error_t s_ghost_printVector(ghost_vec_t *vec) 
 { return ghost_vec_print_tmpl< float >(vec); }
+
 
 extern "C" ghost_error_t z_ghost_printVector(ghost_vec_t *vec) 
 { return ghost_vec_print_tmpl< ghost_complex<double> >(vec); }

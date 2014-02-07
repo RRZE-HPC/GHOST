@@ -89,7 +89,7 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
 {
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t v;
-    *vec = (ghost_vec_t *)ghost_malloc(sizeof(ghost_vec_t));
+    GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_vec_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
     getNrowsFromContext((*vec));
@@ -167,7 +167,7 @@ ghost_error_t ghost_createVector(ghost_context_t *ctx, ghost_vtraits_t *traits, 
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
-    (*vec)->val = (char **)ghost_malloc((*vec)->traits->nvecs*sizeof(char *));
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*vec)->val,(*vec)->traits->nvecs*sizeof(char *)),err,ret);
 
     for (v=0; v<(*vec)->traits->nvecs; v++) {
         (*vec)->val[v] = NULL;
@@ -266,7 +266,8 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
 {
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix with col offset %"PRvecIDX,src->traits->nrows,nc,coffs);
     ghost_vec_t *new;
-    ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
+    ghost_vtraits_t *newTraits;
+    ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->nvecs = nc;
 
     ghost_createVector(src->context,newTraits,&new);
@@ -299,7 +300,8 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" scattered dense matrix",src->traits->nrows,nc);
     ghost_vec_t *new;
     ghost_vidx_t v;
-    ghost_vtraits_t *newTraits = ghost_cloneVtraits(src->traits);
+    ghost_vtraits_t *newTraits;
+    ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->nvecs = nc;
 
     ghost_createVector(src->context,newTraits,&new);
@@ -332,7 +334,7 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
-            vec->val[0] = ghost_malloc_align(vec->traits->nvecs*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT);
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits->nvecs*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT));
             for (v=1; v<vec->traits->nvecs; v++) {
                 vec->val[v] = vec->val[0]+v*vec->traits->nrowspadded*vec->traits->elSize;
             }
@@ -346,10 +348,10 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
-            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
 #else
             //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
-            ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
 #endif
         }
 #endif
@@ -464,7 +466,8 @@ static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
     GHOST_INSTR_START(axpy);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
+    char *s;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
@@ -487,8 +490,10 @@ static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale,
     GHOST_INSTR_START(axpby);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
-    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
-    char *b = (char *)ghost_malloc(nc*vec->traits->elSize);
+    char *s;
+    char *b;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&b,nc*vec->traits->elSize),err,ret);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
@@ -527,8 +532,9 @@ static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale)
 {
     GHOST_INSTR_START(scale);
     ghost_error_t ret = GHOST_SUCCESS;
-        ghost_vidx_t nc = vec->traits->nvecs;
-    char *s = (char *)ghost_malloc(nc*vec->traits->elSize);
+    ghost_vidx_t nc = vec->traits->nvecs;
+    char *s;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
 
     ghost_vidx_t i;
     for (i=0; i<nc; i++) {
@@ -602,7 +608,8 @@ static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
 }
 
 static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
-{
+{ // TODO two separate functions
+
 #ifdef GHOST_HAVE_MPI
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
@@ -644,7 +651,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
         else if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
 #if GHOST_HAVE_CUDA
-            val = ghost_malloc(vec->traits->nrows*vec->traits->elSize);
+            GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             copied = 1;
             ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
 #endif
@@ -1101,7 +1108,7 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
     /* permutes values in vector so that i-th entry is mapped to position perm[i] */
     ghost_midx_t i;
     ghost_vidx_t len = vec->traits->nrows, c;
-    char* tmp;
+    char* tmp = NULL;
 
     if (perm == NULL) {
         DEBUG_LOG(1,"Permutation vector is NULL, returning.");
@@ -1112,7 +1119,7 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 
 
     for (c=0; c<vec->traits->nvecs; c++) {
-        tmp = ghost_malloc(vec->traits->elSize*len);
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->traits->elSize*len));
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
                 ERROR_LOG("Permutation index out of bounds: %"PRmatIDX" > %"PRmatIDX,perm[i],len);
@@ -1134,7 +1141,9 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
 static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
     ghost_vec_t *new;
-    ghost_createVector(src->context,ghost_cloneVtraits(src->traits),&new);
+    ghost_vtraits_t *newTraits;
+    ghost_cloneVtraits(src->traits,&newTraits);
+    ghost_createVector(src->context,newTraits,&new);
     new->traits->nvecs = nc;
 
     // copy the data even if the input vector is itself a view
@@ -1153,7 +1162,8 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
 
     ghost_vidx_t v,i;
 
-    char *val = (char *)ghost_malloc(vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
+    char *val;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
 
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrowspadded; i++)
@@ -1182,10 +1192,10 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_vtraits_t * ghost_cloneVtraits(ghost_vtraits_t *t1)
+ghost_error_t ghost_cloneVtraits(ghost_vtraits_t *t1, ghost_vtraits_t **t2)
 {
-    ghost_vtraits_t *t2 = (ghost_vtraits_t *)ghost_malloc(sizeof(ghost_vtraits_t));
+    GHOST_CALL_RETURN(ghost_malloc((void **)t2,sizeof(ghost_vtraits_t)));
     memcpy(t2,t1,sizeof(ghost_vtraits_t));
 
-    return t2;
+    return GHOST_SUCCESS;
 }

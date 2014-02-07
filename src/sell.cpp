@@ -76,7 +76,7 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
 #pragma omp parallel
         nthreads = ghost_ompGetNumThreads();
 
-        partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
         for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
             partsums[i] = 0.;
@@ -175,9 +175,9 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 #pragma omp parallel
         nthreads = ghost_ompGetNumThreads();
 
-        partsums = (v_t *)ghost_malloc(3*lhs->traits->nvecs*nthreads*sizeof(v_t));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-        for (i=0; i<3*lhs->traits->nvecs*nthreads; i++) {
+        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -247,17 +247,37 @@ static int compareNZEPerRow( const void* a, const void* b )
 template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating SELL matrix");
+    ghost_error_t ret = GHOST_SUCCESS;
     ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
     ghost_midx_t i,j,c;
     unsigned int flags = mat->traits->flags;
 
-    ghost_midx_t *rowPerm = NULL;
-    ghost_midx_t *invRowPerm = NULL;
 
     ghost_sorting_t* rowSort = NULL;
     //mat->data = (ghost_sell_t *)ghost_malloc(sizeof(ghost_sell_t));
     mat->nnz = crsmat->nnz;
+    
+    ghost_midx_t chunkMin = crsmat->ncols;
+    ghost_midx_t chunkLen = 0;
+    ghost_midx_t chunkLenPadded = 0;
+    ghost_midx_t chunkEnts = 0;
+    ghost_mnnz_t nnz = 0;
+    double chunkAvg = 0.;
+    ghost_midx_t curChunk = 1;
+    double avgRowlen = 0;
+    std::map<ghost_midx_t,ghost_midx_t> rowlengths;
 
+    ghost_midx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkStart, (nChunks+1)*sizeof(ghost_mnnz_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_midx_t)),err,ret);
+    SELL(mat)->chunkStart[0] = 0;
+    SELL(mat)->maxRowLen = 0;
+
+    SELL(mat)->beta = 0.;
    /* mat->nrows = cr->nrows;
     mat->nEnts = 0;
 
@@ -286,19 +306,11 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
         }
         SELL(mat)->T = ((int *)(mat->traits->aux))[2];
     }*/
-    mat->context->rowPerm = rowPerm;
-    mat->context->invRowPerm = invRowPerm;
     if (mat->traits->flags & GHOST_SPM_SORTED) {
-        rowPerm = (ghost_midx_t *)ghost_malloc(crsmat->nrows*sizeof(ghost_midx_t));
-        invRowPerm = (ghost_midx_t *)ghost_malloc(crsmat->nrows*sizeof(ghost_midx_t));
 
-        mat->context->rowPerm = rowPerm;
-        mat->context->invRowPerm = invRowPerm;
-
-        DEBUG_LOG(1,"Sorting matrix rows");
-
-        /* get max number of entries in one row ###########################*/
-        rowSort = (ghost_sorting_t*)ghost_malloc(crsmat->nrows * sizeof(ghost_sorting_t));
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->rowPerm,mat->nrows*sizeof(ghost_midx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->invRowPerm,mat->nrows*sizeof(ghost_midx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
 
         for (c=0; c<crsmat->nrows/SELL(mat)->scope; c++)  
         {
@@ -340,8 +352,8 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
              */
             //    if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRmatIDX" in %"PRmatIDX,rowSort[i].row, i); 
 
-            (invRowPerm)[i] = rowSort[i].row;
-            (rowPerm)[rowSort[i].row] = i;
+            (mat->context->invRowPerm)[i] = rowSort[i].row;
+            (mat->context->rowPerm)[rowSort[i].row] = i;
         }
     }
 
@@ -352,28 +364,9 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
 
     //    SELL(mat)->chunkHeight = mat->nrowsPadded;
 
-    ghost_midx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
-    SELL(mat)->chunkStart = (ghost_mnnz_t *)ghost_malloc((nChunks+1)*sizeof(ghost_mnnz_t));
-    SELL(mat)->chunkMin = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
-    SELL(mat)->chunkLen = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
-    SELL(mat)->chunkLenPadded = (ghost_midx_t *)ghost_malloc((nChunks)*sizeof(ghost_midx_t));
-    SELL(mat)->rowLen = (ghost_midx_t *)ghost_malloc((mat->nrowsPadded)*sizeof(ghost_midx_t));
-    SELL(mat)->rowLenPadded = (ghost_midx_t *)ghost_malloc((mat->nrowsPadded)*sizeof(ghost_midx_t));
-    SELL(mat)->chunkStart[0] = 0;
-    SELL(mat)->maxRowLen = 0;
-
-    ghost_midx_t chunkMin = crsmat->ncols;
-    ghost_midx_t chunkLen = 0;
-    ghost_midx_t chunkLenPadded = 0;
-    ghost_midx_t chunkEnts = 0;
-    ghost_mnnz_t nnz = 0;
-    double chunkAvg = 0.;
-    ghost_midx_t curChunk = 1;
-    SELL(mat)->beta = 0.;
 
     // TODO CHECK FOR OVERFLOW
 
-    std::map<int,int> rowlengths;
 
     for (i=0; i<mat->nrowsPadded; i++) {
         if (i<crsmat->nrows) {
@@ -417,13 +410,13 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
         SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,SELL(mat)->rowLenPadded[i]);
     }
     SELL(mat)->beta = nnz*1.0/(double)mat->nEnts;
+    avgRowlen = nnz*1.0/(double)mat->nrows;
 
-    double avgRowlen = nnz*1.0/(double)mat->nrows;
 
     rowlengths.erase(0); // erase padded rows
     SELL(mat)->variance = 0.;
     SELL(mat)->deviation = 0.;
-    for (std::map<int,int>::const_iterator it = rowlengths.begin(); it != rowlengths.end(); it++) {
+    for (std::map<ghost_midx_t,ghost_midx_t>::const_iterator it = rowlengths.begin(); it != rowlengths.end(); it++) {
         SELL(mat)->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
     SELL(mat)->variance /= mat->nrows;
@@ -434,8 +427,8 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
         SELL(mat)->nMaxRows = rowlengths.rbegin()->second;
     }
 
-    SELL(mat)->val = (char *)ghost_malloc_align(sizeof(m_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
-    SELL(mat)->col = (ghost_midx_t *)ghost_malloc_align(sizeof(ghost_midx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->traits->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_midx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 
     DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
     if (SELL(mat)->chunkHeight < mat->nrowsPadded) 
@@ -478,15 +471,15 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
 
                 if (j<SELL(mat)->rowLen[row]) {
                     if (flags & GHOST_SPM_SORTED) {
-                        if (invRowPerm == NULL) {
+                        if (mat->context->invRowPerm == NULL) {
                             ERROR_LOG("The matris is sorted but the permutation vector is NULL");
                             return GHOST_ERR_INVALID_ARG;
                         }
-                        ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(invRowPerm)[row]]+j];
+                        ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(mat->context->invRowPerm)[row]]+j];
                         if (flags & GHOST_SPM_PERMUTECOLIDX)
-                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (rowPerm)[cr->col[cr->rpt[(invRowPerm)[row]]+j]];
+                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (mat->context->rowPerm)[cr->col[cr->rpt[(mat->context->invRowPerm)[row]]+j]];
                         else
-                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(invRowPerm)[row]]+j];
+                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(mat->context->invRowPerm)[row]]+j];
                     } else {
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[row]+j];
                         SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[row]+j];
@@ -500,7 +493,31 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t
         }
     }
     DEBUG_LOG(1,"Successfully created SELL");
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    free(SELL(mat)->val); SELL(mat)->val = NULL;
+    free(SELL(mat)->col); SELL(mat)->col = NULL;
+    free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+    free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+    free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+    free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+    free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
+    free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+    SELL(mat)->maxRowLen = 0;
+    SELL(mat)->nMaxRows = 0;
+    SELL(mat)->variance = 0.;
+    SELL(mat)->deviation = 0.;
+    SELL(mat)->cv = 0.;
+    SELL(mat)->beta = 0;
+    mat->nEnts = 0;
+    mat->nnz = 0;
+    free(mat->context->rowPerm); mat->context->rowPerm = NULL;
+    free(mat->context->invRowPerm); mat->context->invRowPerm = NULL;
+
+out:
+    free(rowSort); rowSort = NULL;
+    
+    return ret;
 }
 
 template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int dense)

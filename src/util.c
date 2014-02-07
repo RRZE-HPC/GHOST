@@ -381,32 +381,33 @@ ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding)
     }
     return nrowsPadded;
 }
-void *ghost_malloc(const size_t size)
-{
-    void *mem = NULL;
 
+ghost_error_t ghost_malloc(void **mem, const size_t size)
+{
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
-    mem = malloc(size);
+    *mem = malloc(size);
 
-    if( ! mem ) {
-        //  ABORT("Error in memory allocation of %zu bytes: %s",size,strerror(errno));
+    if(!(*mem)) {
+        ERROR_LOG("Malloc failed: %s",strerror(errno));
+        return GHOST_ERR_UNKNOWN;
     }
-    return mem;
+
+    return GHOST_SUCCESS;
 }
 
-void *ghost_malloc_align(const size_t size, const size_t align)
+ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)
 {
-    void *mem = NULL;
     int ierr;
 
-    if ((ierr = posix_memalign((void**) &mem, align, size)) != 0) {
+    if ((ierr = posix_memalign(mem, align, size)) != 0) {
         ERROR_LOG("Error while allocating using posix_memalign: %s",strerror(ierr));
+        return GHOST_ERR_UNKNOWN;
     }
 
-    return mem;
+    return GHOST_SUCCESS;
 }
 
 

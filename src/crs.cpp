@@ -48,8 +48,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         nthreads = ghost_ompGetNumThreads();
         }
 
-        partsums = (v_t *)ghost_malloc(16*lhs->traits->nvecs*nthreads*sizeof(v_t)); // 3 -> 16: avoid false sharing
-
+        // 3 -> 16: avoid false sharing
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits->nvecs*nthreads*sizeof(v_t))); 
         for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
             partsums[i] = 0.;
         }
