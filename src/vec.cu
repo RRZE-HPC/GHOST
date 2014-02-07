@@ -94,8 +94,8 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_vidx_t nrows, gho
 extern "C" ghost_error_t ghost_vec_cu_vaxpy(ghost_vec_t *v1, ghost_vec_t *v2, void *a)
 {
     void *d_a;
-    GHOST_CALL_RETURN(ghost_cu_allocDeviceMemory(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
-    ghost_cu_copyHostToDevice(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
+    GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
+    ghost_cu_upload(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
     if (v1->traits->datatype != v2->traits->datatype)
     {
         ERROR_LOG("Cannot VAXPY vectors with different data types");
@@ -131,11 +131,11 @@ extern "C" ghost_error_t ghost_vec_cu_vaxpby(ghost_vec_t *v1, ghost_vec_t *v2, v
 {
     void *d_a;
     void *d_b;
-    GHOST_CALL_RETURN(ghost_cu_allocDeviceMemory(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype))); //TODO goto and free
-    GHOST_CALL_RETURN(ghost_cu_allocDeviceMemory(&d_b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
+    GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype))); //TODO goto and free
+    GHOST_CALL_RETURN(ghost_cu_malloc(&d_b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype)));
 
-    ghost_cu_copyHostToDevice(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
-    ghost_cu_copyHostToDevice(d_b,b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
+    ghost_cu_upload(d_a,a,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
+    ghost_cu_upload(d_b,b,v1->traits->nvecs*ghost_sizeofDataType(v1->traits->datatype));
     if (v1->traits->datatype != v2->traits->datatype)
     {
         ERROR_LOG("Cannot VAXPBY vectors with different data types");
@@ -342,8 +342,8 @@ extern "C" ghost_error_t ghost_vec_cu_scale(ghost_vec_t *vec, void *a)
 extern "C" ghost_error_t ghost_vec_cu_vscale(ghost_vec_t *vec, void *a)
 {
     void *d_a;
-    GHOST_CALL_RETURN(ghost_cu_allocDeviceMemory(&d_a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype)));
-    ghost_cu_copyHostToDevice(d_a,a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
+    GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype)));
+    ghost_cu_upload(d_a,a,vec->traits->nvecs*ghost_sizeofDataType(vec->traits->datatype));
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)

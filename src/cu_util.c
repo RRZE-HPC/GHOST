@@ -41,7 +41,7 @@ ghost_error_t ghost_cu_init(int dev)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_allocDeviceMemory(void **mem, size_t bytesize)
+ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
 {
     if (bytesize == 0) {
         return GHOST_SUCCESS;
@@ -52,16 +52,7 @@ ghost_error_t ghost_cu_allocDeviceMemory(void **mem, size_t bytesize)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cu_copyDeviceToHost(void * hostmem, void * devmem, size_t bytesize) 
-{
-    if (bytesize > 0) {
-        CUDA_CALL_RETURN(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
-    }
-
-    return GHOST_SUCCESS;
-}
-
-ghost_error_t ghost_cu_copyDeviceToDevice(void *dest, void *src, size_t bytesize)
+ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize)
 {
     if (bytesize > 0) {
         CUDA_CALL_RETURN(cudaMemcpy(dest,src,bytesize,cudaMemcpyDeviceToDevice));
@@ -78,21 +69,21 @@ ghost_error_t ghost_cu_memset(void *s, int c, size_t n)
     return GHOST_SUCCESS;
 } 
 
-ghost_error_t ghost_cu_copyHostToDeviceOffset(void * devmem, void *hostmem,
-        size_t bytesize, size_t offset)
-{
-    if (bytesize > 0) {
-        CUDA_CALL_RETURN(cudaMemcpy(((char *)devmem)+offset,((char *)hostmem)+offset,bytesize,cudaMemcpyHostToDevice));
-    }
-    return GHOST_SUCCESS;
-}
-
-ghost_error_t ghost_cu_copyHostToDevice(void * devmem, void *hostmem, size_t bytesize)
+ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
+        size_t bytesize)
 {
     if (bytesize > 0) {
         CUDA_CALL_RETURN(cudaMemcpy(devmem,hostmem,bytesize,cudaMemcpyHostToDevice));
     }
+    return GHOST_SUCCESS;
+}
 
+ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
+        size_t bytesize)
+{
+    if (bytesize > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy(hostmem,devmem,bytesize,cudaMemcpyDeviceToHost));
+    }
     return GHOST_SUCCESS;
 }
 
@@ -114,17 +105,6 @@ ghost_error_t ghost_cu_finish()
 {
 
     return GHOST_SUCCESS;
-}
-
-
-ghost_error_t ghost_cu_uploadVector( ghost_vec_t *vec )
-{
-    return ghost_cu_copyHostToDevice(vec->cu_val,vec->val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
-}
-
-ghost_error_t ghost_cu_downloadVector( ghost_vec_t *vec )
-{
-    return ghost_cu_copyDeviceToHost(vec->val,vec->cu_val,vec->traits->nrows*ghost_sizeofDataType(vec->traits->datatype));
 }
 
 static int stringcmp(const void *x, const void *y)
