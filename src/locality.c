@@ -29,11 +29,6 @@ static int stringcmp(const void *x, const void *y)
 
 ghost_error_t ghost_setCore(int coreNumber)
 {
-    IF_DEBUG(2) {
-        int core;
-        GHOST_CALL_RETURN(ghost_getCore(&core));
-        DEBUG_LOG(2,"Pinning OpenMP thread %d to core %d",ghost_ompGetThreadNum(),core);
-    }
     hwloc_topology_t topology;
     ghost_getTopology(&topology);
     
@@ -50,6 +45,12 @@ ghost_error_t ghost_setCore(int coreNumber)
         return GHOST_ERR_HWLOC;
     }
     hwloc_bitmap_free(cpuset);
+    
+    IF_DEBUG(2) {
+        int core;
+        GHOST_CALL_RETURN(ghost_getCore(&core));
+        DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_ompGetThreadNum(),core);
+    }
 
     return GHOST_SUCCESS;
 }

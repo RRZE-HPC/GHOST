@@ -18,20 +18,21 @@
  * This macro creates the variables <func>_tmin/_tmax/_tavg of type double holding the minimal, maximal and average execution time.
  */
 #define GHOST_TIME(nIter,func,...) \
-    double func ## _start, func ## _end, func ## _tstart;\
+    double func ## _start, func ## _end, func ## _tstart, func ## _tend;\
     double func ## _tmin = DBL_MAX;\
     double func ## _tmax = 0.;\
     double func ## _tavg = 0.;\
     int func ## _it;\
-    func ## _tstart=ghost_wctime();\
+    ghost_wctime(&func ## _tstart);\
     for (func ## _it=0; func ## _it<nIter; func ## _it++) {\
-        func ## _start = ghost_wctime();\
+        ghost_wctime(&func ## _start);\
         func(__VA_ARGS__);\
-        func ## _end = ghost_wctime();\
+        ghost_wctime(&func ## _end);\
         func ## _tmin = MIN(func ## _end-func ## _start,func ## _tmin);\
         func ## _tmin = MAX(func ## _end-func ## _start,func ## _tmin);\
     }\
-    func ## _tavg = (ghost_wctime()-func ## _tstart)/((double)nIter);\
+    ghost_wctime(&func ## _tend);\
+    func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
 
 #ifdef __cplusplus
 extern "C" {

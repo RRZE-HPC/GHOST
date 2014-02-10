@@ -5,10 +5,11 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/machine.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/task.h"
 #include "ghost/thpool.h"
 #include "ghost/timing.h"
+#include "ghost/cpumap.h"
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
@@ -224,7 +225,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_getHwConfig(&hwconfig);
 
     if (hwconfig.maxCores == GHOST_HW_CONFIG_INVALID) {
-        ghost_getNumberOfPhysicalCores(&hwconfig.maxCores);
+        ghost_getNumberOfCores(&hwconfig.maxCores, GHOST_NUMANODE_ANY);
     }
     if (hwconfig.smtLevel == GHOST_HW_CONFIG_INVALID) {
         ghost_getSMTlevel(&hwconfig.smtLevel);
@@ -318,9 +319,12 @@ ghost_error_t ghost_init(int argc, char **argv)
     char *cpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
+
+    ghost_taskq_init();
     void *(*threadFunc)(void *);
     ghost_getTaskqueueFunction(&threadFunc);
-    ghost_thpool_init(mycpuset,threadFunc);
+    ghost_thpool_init(hwloc_bitmap_weight(mycpuset),threadFunc);
+    ghost_createCPUmap(mycpuset);
 
     ghost_rand_init();
 
@@ -346,6 +350,7 @@ ghost_error_t ghost_finalize()
     ghost_taskq_finish();
     ghost_thpool_finish();
     ghost_destroyTopology();
+    ghost_destroyCPUmap();
 
     free(ghost_rand_states);
     ghost_rand_states=NULL;

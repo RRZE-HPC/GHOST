@@ -1,13 +1,12 @@
 /**
- * @file affinity.h
- * @brief Types and functions for controlling or gathering information about affinity.
+ * @file locality.h
+ * @brief Types and functions for gathering locality information.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_AFFINITY_H
-#define GHOST_AFFINITY_H
+#ifndef GHOST_LOCALITY_H
+#define GHOST_LOCALITY_H
 
-#include "config.h"
-#include "types.h"
+#include "error.h"
 #include <hwloc.h>
 
 #if GHOST_HAVE_MPI

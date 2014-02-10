@@ -15,6 +15,8 @@
  */
 #define GHOST_DATA_ALIGNMENT 1024
 
+#define GHOST_NUMANODE_ANY -1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,13 +64,14 @@ extern "C" {
      */
     ghost_error_t ghost_getSizeOfCacheLine(unsigned *size);
     /**
-     * @brief Get the number of physical cores in the machine.
+     * @brief Get the number of (physical) cores in the machine.
      *
      * @param nCores Where to store the number of cores.
+     * @param numaNode Only look for PUs inside this NUMA node.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getNumberOfPhysicalCores(int *nCores);
+    ghost_error_t ghost_getNumberOfCores(int *nCores, int numaNode);
     /**
      * @brief Get the number of SMT threads per core in the machine.
      *
@@ -78,13 +81,15 @@ extern "C" {
      */
     ghost_error_t ghost_getSMTlevel(int *nLevels);
     /**
-     * @brief Get the number of available hardware threads (= physical cores times SMT level)  in the machine.
+     * @brief Get the number of available hardware threads (= physical cores times SMT level) 
+     * or processing units in the machine.
      *
-     * @param nThreads Where to store the number.
+     * @param nPUs Where to store the number.
+     * @param numaNode Only look for PUs inside this NUMA node.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getNumberOfHwThreads(int *nThreads);
+    ghost_error_t ghost_getNumberOfPUs(int *nPUs, int numaNode);
     /**
      * @brief Get the number of NUMA nodes in the machine.
      *
@@ -93,6 +98,7 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes);
+    ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx);
     /**
      * @brief Check whether machine is big endian.
      *

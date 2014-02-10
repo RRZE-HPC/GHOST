@@ -13,6 +13,7 @@
 #include "ghost/mat.h"
 #include "ghost/context.h"
 #include "ghost/affinity.h"
+#include "ghost/timing.h"
 #include "ghost/sell.h"
 #include "ghost/crs.h"
 

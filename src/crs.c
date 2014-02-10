@@ -95,7 +95,7 @@ ghost_error_t ghost_CRS_init(ghost_mat_t *mat)
 #ifdef GHOST_HAVE_MPI
     mat->split = &CRS_split;
 #endif
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->data,sizeof(ghost_crs_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->data),sizeof(ghost_crs_t)),err,ret);
 
     CR(mat)->rpt = NULL;
     CR(mat)->col = NULL;
@@ -277,7 +277,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     ghost_midx_t i,j;
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->rpt,(mat->nrows+1)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_midx_t)),err,ret);
     mat->nEnts = 0;
 
 #pragma omp parallel for schedule(runtime)
@@ -298,10 +298,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 #pragma omp ordered
             CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
         }
-        free(tmpval); tmpval = 0;
-        free(tmpcol); tmpcol = 0;
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
     }
-    if (ret != GHOST_SUCCESS) {
+    if (ret != GHOST_SUCCESS){
         goto err;
     }
         
@@ -310,8 +310,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
     mat->nEnts = nEnts;
     mat->nnz = mat->nEnts;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,mat->nEnts*sizeof(ghost_midx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->val,mat->nEnts*mat->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),mat->nEnts*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->traits->elSize),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < mat->nrows; i++) {
@@ -335,8 +335,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
             memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_midx_t));
             memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*mat->traits->elSize],tmpval,rowlen*mat->traits->elSize);
         }
-        free(tmpval); tmpval = 0;
-        free(tmpcol); tmpcol = 0;
+        free(tmpval); tmpval = NULL;
+        free(tmpcol); tmpcol = NULL;
     }
     if (ret != GHOST_SUCCESS) {
         goto err;
@@ -393,9 +393,9 @@ static ghost_error_t CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
     CR(mat)->col = NULL;
     CR(mat)->val = NULL;
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->rpt,(crsmat->nrows+1)*sizeof(ghost_midx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,crsmat->nEnts*sizeof(ghost_midx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->val,crsmat->nEnts*mat->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(crsmat->nrows+1)*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),crsmat->nEnts*sizeof(ghost_midx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),crsmat->nEnts*mat->traits->elSize),err,ret);
 
 #pragma omp parallel for schedule(runtime)
     for( i = 0; i < mat->nrows+1; i++ ) {
@@ -467,13 +467,13 @@ static ghost_error_t CRS_split(ghost_mat_t *mat)
         ghost_createMatrix(&(mat->remotePart),mat->context,&mat->traits[0],1);
         remoteCR = mat->remotePart->data;
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localCR->val,lnEnts_l*mat->traits->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localCR->col,lnEnts_l*sizeof(ghost_midx_t)),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&localCR->rpt,(mat->context->lnrows[me]+1)*sizeof(ghost_midx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->val),lnEnts_l*mat->traits->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->col),lnEnts_l*sizeof(ghost_midx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_midx_t)),err,ret); 
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteCR->val,lnEnts_r*mat->traits->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteCR->col,lnEnts_r*sizeof(ghost_midx_t)),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&remoteCR->rpt,(mat->context->lnrows[me]+1)*sizeof(ghost_midx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->val),lnEnts_r*mat->traits->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->col),lnEnts_r*sizeof(ghost_midx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_midx_t)),err,ret); 
 
         mat->localPart->nrows = mat->context->lnrows[me];
         mat->localPart->nEnts = lnEnts_l;
@@ -613,9 +613,9 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
     if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->rpt,(mat->nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->col,mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->val,mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(mat->nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime)
         for (i = 0; i < mat->nrows+1; i++) {
@@ -655,7 +655,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
             if (context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
                 ((ghost_crs_t *)(mat->data))->rpt = context->rpt;
             } else {
-                GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->rpt,(header.nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT),err,ret);
+                GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(header.nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT),err,ret);
 #pragma omp parallel for schedule(runtime) 
                 for (i = 0; i < header.nrows+1; i++) {
                     CR(mat)->rpt[i] = 0;
@@ -683,7 +683,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         DEBUG_LOG(1,"Mallocing space for %"PRmatIDX" rows",context->lnrows[me]);
 
         if (me != 0) {
-            GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->rpt,(context->lnrows[me]+1)*sizeof(ghost_midx_t),GHOST_DATA_ALIGNMENT),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(context->lnrows[me]+1)*sizeof(ghost_midx_t),GHOST_DATA_ALIGNMENT),err,ret);
 #pragma omp parallel for schedule(runtime)
             for (i = 0; i < context->lnrows[me]+1; i++) {
                 CR(mat)->rpt[i] = 0;
@@ -723,8 +723,8 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         mat->nrows = context->lnrows[me];
         mat->nEnts = context->lnEnts[me];
 
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->col,mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&CR(mat)->val,mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < mat->nrows; i++) {
@@ -737,7 +737,7 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
         GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfEnt[me], mat->nEnts),err,ret);
         GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfEnt[me], mat->nEnts),err,ret);
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->nzDist,sizeof(ghost_mnnz_t)*(2*mat->nrows-1)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->nzDist),sizeof(ghost_mnnz_t)*(2*mat->nrows-1)),err,ret);
         memset(mat->nzDist,0,sizeof(ghost_mnnz_t)*(2*mat->nrows-1));
 
         ghost_midx_t col;

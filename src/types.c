@@ -120,7 +120,7 @@ char * ghost_datatypeString(int datatype)
     return "invalid";
 }
 
-int ghost_dataTypeIdx(int datatype)
+int ghost_datatypeIdx(int datatype)
 {
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX)

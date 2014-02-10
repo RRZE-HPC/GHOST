@@ -27,14 +27,15 @@ check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 set (SOURCES
-		src/affinity.c
 		src/context.c
         src/core.c
+        src/cpumap.c
 		src/crs.c 
 		src/crs.cpp 
         src/error.c
         src/io.c
-        src/io.cpp 
+        src/io.cpp
+        src/locality.c
         src/machine.c
 		src/mat.c
 		src/math.c
@@ -51,15 +52,16 @@ set (SOURCES
 	)
 
 set (HEADERS
-		include/ghost/affinity.h	
 		include/ghost/blas_mangle.h
 		include/ghost/complex.h
 		include/ghost/constants.h
 		include/ghost/context.h
         include/ghost/core.h
+        include/ghost/cpumap.h
 		include/ghost/crs.h
 		include/ghost/error.h
         include/ghost/io.h
+		include/ghost/locality.h	
         include/ghost/log.h
 		include/ghost/mat.h
 		include/ghost/math.h
@@ -229,6 +231,11 @@ else ()
     endif()
 # -fstrict-aliasing is set in GCC with -O3
 endif ()
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+endif()
+
 
 if (USE_MPI)	
 	find_package(MPI REQUIRED)

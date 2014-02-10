@@ -167,8 +167,8 @@ ghost_error_t ghost_printSysInfo()
         int nthreads;
         int nphyscores;
         int ncores;
-        ghost_getNumberOfPhysicalCores(&nphyscores);
-        ghost_getNumberOfHwThreads(&ncores);
+        ghost_getNumberOfCores(&nphyscores,GHOST_NUMANODE_ANY);
+        ghost_getNumberOfPUs(&ncores,GHOST_NUMANODE_ANY);
 
 #ifdef GHOST_HAVE_OPENMP
         char omp_sched_str[32];
@@ -384,6 +384,11 @@ ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding)
 
 ghost_error_t ghost_malloc(void **mem, const size_t size)
 {
+    if (!mem) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if (size/(1024.*1024.*1024.) > 1.) {
         DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }

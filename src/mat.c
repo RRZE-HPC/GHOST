@@ -18,7 +18,7 @@ ghost_error_t ghost_createMatrix(ghost_mat_t ** mat, ghost_context_t *context, g
 
     int me;
     GHOST_CALL_GOTO(ghost_getRank(context->mpicomm,&me),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat,sizeof(ghost_mat_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_mat_t)),err,ret);
     
     (*mat)->traits = traits;
     (*mat)->context = context;
@@ -57,8 +57,10 @@ ghost_error_t ghost_createMatrix(ghost_mat_t ** mat, ghost_context_t *context, g
     switch (traits->format) {
         case GHOST_SPM_FORMAT_CRS:
             GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
+            break;
         case GHOST_SPM_FORMAT_SELL:
             GHOST_CALL_GOTO(ghost_SELL_init(*mat),err,ret);
+            break;
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
             traits->format = GHOST_SPM_FORMAT_CRS;

@@ -20,6 +20,7 @@
 #include "ghost/affinity.h"
 #include "ghost/task.h"
 #include "ghost/thpool.h"
+#include "ghost/cpumap.h"
 #include "ghost/util.h"
 #include "ghost/machine.h"
 #include "ghost/log.h"
@@ -236,6 +237,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         int t = 0;
         int curThread;
+        ghost_cpumap_t *cpumap;
+        ghost_getCPUmap(&cpumap);
+
 
         hwloc_bitmap_t mybusy = hwloc_bitmap_alloc();
         if ((curTask->flags & GHOST_TASK_USE_PARENTS) && curTask->parent) {
@@ -243,9 +247,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                hwloc_bitmap_list_asprintf(&a,ghost_thpool->busy);
                hwloc_bitmap_list_asprintf(&b,parentscores);
                INFO_LOG("Need %d cores, available cores: %d (busy %s) + %d from parent (free in parent %s)",curTask->nThreads,NIDLECORES,a,hwloc_bitmap_weight(parentscores),b);*/
-            hwloc_bitmap_andnot(mybusy,ghost_thpool->busy,parentscores);
+            hwloc_bitmap_andnot(mybusy,cpumap->busy,parentscores);
         } else {
-            hwloc_bitmap_copy(mybusy,ghost_thpool->busy);
+            hwloc_bitmap_copy(mybusy,cpumap->busy);
         }
 
 #pragma omp parallel
@@ -255,14 +259,15 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             for (curThread=0; curThread<curTask->nThreads; curThread++) {
 #pragma omp ordered
                 for (; t<ghost_thpool->nThreads; t++) {
-                    int core = coreIdx(curTask->LD,t);
+                    int core = cpumap->PUs[curTask->LD][t]->os_index;
+                    //core = coreIdx(curTask->LD,t);
                     if ((curTask->flags & GHOST_TASK_ONLY_HYPERTHREADS) && 
-                            (ghost_thpool->PUs[core]->sibling_rank == 0)) {
+                            (cpumap->PUs[curTask->LD][t]->sibling_rank == 0)) {
                         //    WARNING_LOG("only HT");
                         continue;
                     }
                     if ((curTask->flags & GHOST_TASK_NO_HYPERTHREADS) && 
-                            (ghost_thpool->PUs[core]->sibling_rank > 0)) {
+                            (cpumap->PUs[curTask->LD][t]->sibling_rank > 0)) {
                         //    WARNING_LOG("no HT");
                         continue;
                     }
@@ -273,10 +278,10 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                         DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_ompGetThreadNum(),
                                 (int)pthread_self(),core);
 
-                        //                            hwloc_bitmap_set(ghost_thpool->busy,core);
+                       //                            hwloc_bitmap_set(ghost_thpool->busy,core);
                         hwloc_bitmap_set(mybusy,core);
-                        DEBUG_LOG(2,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),ghost_thpool->PUs[core]->os_index);
-                        ghost_setCore(ghost_thpool->PUs[core]->os_index);
+                        DEBUG_LOG(2,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),cpumap->PUs[curTask->LD][t]->os_index);
+                        ghost_setCore(core);
                         hwloc_bitmap_set(curTask->coremap,core);
                         curTask->cores[reservedCores] = core;
                         reservedCores++;
@@ -297,7 +302,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                 //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
                 //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
             }
-            hwloc_bitmap_or(ghost_thpool->busy,ghost_thpool->busy,mybusy);
+            hwloc_bitmap_or(cpumap->busy,cpumap->busy,mybusy);
 
             if (reservedCores < curTask->nThreads) {
                 WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
@@ -444,7 +449,7 @@ ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *))
                 {
                     hwloc_bitmap_clr(task->parent->childusedmap,task->cores[t]);
                 } else {
-                    hwloc_bitmap_clr(ghost_thpool->busy,task->cores[t]);
+                    ghost_setCPUidle(task->cores[t]);
                 }
             }
         }
@@ -826,11 +831,11 @@ ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *))
                 WARNING_LOG("FILL_LD does only work when the LD is given! Not adding task!");
                 return GHOST_ERR_INVALID_ARG;
             }
-            (*t)->nThreads = nThreadsPerLD(LD);
+            ghost_getNumberOfPUs(&(*t)->nThreads,LD);
         } 
         else if (nThreads == GHOST_TASK_FILL_ALL) {
 #ifdef GHOST_HAVE_OPENMP
-            (*t)->nThreads = ghost_thpool->nThreads;
+            GHOST_CALL_RETURN(ghost_getNumberOfPUs(&(*t)->nThreads,GHOST_NUMANODE_ANY));
 #else
             (*t)->nThreads = 1; //TODO is this the correct behavior?
 #endif
@@ -849,13 +854,13 @@ ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *))
         GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads));
         GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)));
         GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->ret,sizeof(void *)));
         *((*t)->state) = GHOST_TASK_INVALID;
         (*t)->coremap = hwloc_bitmap_alloc();
         (*t)->childusedmap = hwloc_bitmap_alloc();
         (*t)->next = NULL;
         (*t)->prev = NULL;
         (*t)->parent = NULL;
-        (*t)->ret = NULL;
 
         return GHOST_SUCCESS;
     }

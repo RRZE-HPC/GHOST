@@ -88,26 +88,42 @@ ghost_error_t ghost_getTopology(hwloc_topology_t *topo)
 
 }
 
-ghost_error_t ghost_getNumberOfPhysicalCores(int *nCores)
+ghost_error_t ghost_getNumberOfCores(int *nCores, int numaNode)
 {
-    hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
-    int ncores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
-    if (ncores < 0) {
-        ERROR_LOG("Could not obtain number of physical cores");
-        return GHOST_ERR_HWLOC;
+    int nPUs;
+    int smt;
+    GHOST_CALL_RETURN(ghost_getNumberOfPUs(&nPUs, numaNode));
+    GHOST_CALL_RETURN(ghost_getSMTlevel(&smt));
+
+    if (smt == 0) {
+        ERROR_LOG("The SMT level is zero");
+        return GHOST_ERR_UNKNOWN;
     }
 
-    *nCores = ncores;
+    if (nPUs % smt) {
+        ERROR_LOG("The number of PUs is not a multiple of the SMT level");
+        return GHOST_ERR_UNKNOWN;
+    }
+
+    *nCores = nPUs/smt;
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getNumberOfHwThreads(int *nThreads)
+ghost_error_t ghost_getNumberOfPUs(int *nPUs, int numaNode)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_getTopology(&topology));
-    *nThreads = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU);    
+    hwloc_const_cpuset_t cpuset = NULL;
+    if (numaNode == GHOST_NUMANODE_ANY) {
+        cpuset = hwloc_topology_get_allowed_cpuset(topology);
+    } else {
+        hwloc_obj_t node;
+        ghost_getNumaNode(&node,numaNode);
+        cpuset = node->cpuset;
+    }
+
+    *nPUs = hwloc_bitmap_weight(cpuset);
 
     return GHOST_SUCCESS;
 }
@@ -117,19 +133,15 @@ ghost_error_t ghost_getSMTlevel(int *nLevels)
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_getTopology(&topology));
 
-    int nHwThreads;
-    int nCores;
-
-    GHOST_CALL_RETURN(ghost_getNumberOfHwThreads(&nHwThreads));
-    GHOST_CALL_RETURN(ghost_getNumberOfPhysicalCores(&nCores));
-
+    int nCores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
     if (nCores == 0) {
         ERROR_LOG("Can not compute SMT level because the number of cores is zero");
         return GHOST_ERR_HWLOC;
     }
 
-    *nLevels = nHwThreads/nCores;
-
+    hwloc_obj_t firstCore = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,0);
+    *nLevels = (int)firstCore->arity;
+    
     return GHOST_SUCCESS;
 }
 
@@ -158,3 +170,48 @@ char ghost_machineIsBigEndian()
 
     return (endiantest[0] == 0);
 }
+
+ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx)
+{
+    if (!node) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    hwloc_topology_t topology;
+    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    
+    int nNodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
+    
+    if (idx < 0 || idx >= nNodes) {
+        ERROR_LOG("Index out of range");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (nNodes == 0) {    
+        *node = hwloc_get_obj_by_type(topology,HWLOC_OBJ_SOCKET,0);
+    } else {
+        *node = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,idx);
+    }
+
+    return GHOST_SUCCESS;
+}
+/*
+ghost_error_t ghost_getNumberOfPUsInLD(int ld)
+{
+    int i,n = 0;
+    hwloc_obj_t obj,runner;
+    for (i=0; i<ghost_thpool->nThreads; i++) {    
+        obj = ghost_thpool->PUs[i];
+        for (runner=obj; runner; runner=runner->parent) {
+            if (runner->type <= HWLOC_OBJ_NODE) {
+                if ((int)runner->logical_index == ld) {
+                    n++;
+                }
+                break;
+            }
+        }
+    }
+
+    return n;
+}*/
