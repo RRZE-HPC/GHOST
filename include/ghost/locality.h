@@ -42,7 +42,7 @@ ghost_error_t ghost_setHybridMode(ghost_hybridmode_t hm);
 ghost_error_t ghost_getHybridMode(ghost_hybridmode_t *hm);
 ghost_error_t ghost_setHwConfig(ghost_hw_config_t);
 ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
-ghost_error_t ghost_getRank(ghost_mpi_comm_t, int *rank);
+ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank);
 ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes);
 ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks);
 ghost_error_t ghost_getCore(int *core);

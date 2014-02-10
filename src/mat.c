@@ -6,7 +6,7 @@
 #include "ghost/constants.h"
 #include "ghost/context.h"
 #include "ghost/util.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/log.h"
 
 const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPM_SYMM_GENERAL};

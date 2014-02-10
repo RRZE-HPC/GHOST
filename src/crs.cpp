@@ -5,7 +5,7 @@
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/complex.h"
 #include "ghost/math.h"
 #include "ghost/util.h"

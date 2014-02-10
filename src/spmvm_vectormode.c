@@ -1,6 +1,6 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/vec.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"

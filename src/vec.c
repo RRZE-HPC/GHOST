@@ -5,7 +5,7 @@
 #include "ghost/vec.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/context.h"
 #include "ghost/instr.h"
 #include "ghost/machine.h"

@@ -3,7 +3,6 @@
 #include "ghost/util.h"
 
 //static int** coreidx = NULL;
-static int firstThreadOfLD(int ld);
 static ghost_cpumap_t *cpumap = NULL;
 
 /*int coreIdx(int LD, int t)

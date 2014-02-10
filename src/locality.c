@@ -3,7 +3,7 @@
 #include "ghost/types.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/error.h"

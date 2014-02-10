@@ -4,7 +4,7 @@
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/vec.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/blas_mangle.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
