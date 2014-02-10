@@ -2,7 +2,7 @@
 #include "ghost/core.h"
 #include "ghost/crs.h"
 #include "ghost/util.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/mat.h"
 #include "ghost/constants.h"
 #include "ghost/context.h"

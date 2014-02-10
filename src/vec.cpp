@@ -13,7 +13,7 @@
 #include "ghost/vec.h"
 #include "ghost/math.h"
 #include "ghost/constants.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/log.h"
 
 

@@ -12,7 +12,7 @@
 #include "ghost/math.h"
 #include "ghost/mat.h"
 #include "ghost/context.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/timing.h"
 #include "ghost/sell.h"
 #include "ghost/crs.h"

@@ -8,7 +8,7 @@
 #include "ghost/math.h"
 #include "ghost/task.h"
 #include "ghost/constants.h"
-#include "ghost/affinity.h"
+#include "ghost/locality.h"
 #include "ghost/machine.h"
 #include "ghost/io.h"
 #include "ghost/log.h"
