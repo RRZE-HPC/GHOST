@@ -84,9 +84,6 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     ghost_error_t ret = GHOST_SUCCESS;
     
     pumap = NULL;
-    pumap->PUs = NULL;
-    pumap->cpuset = NULL;
-    pumap->busy = NULL;
     hwloc_nodeset_t nodeset = NULL;
     hwloc_obj_t numaNode = NULL;
 
