@@ -613,6 +613,10 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
     DEBUG_LOG(1,"CRS matrix has %"PRmatIDX" rows, %"PRmatIDX" cols and %"PRmatNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
     if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
+        mat->nrows = (ghost_midx_t)header.nrows;
+        mat->nEnts = (ghost_midx_t)header.nnz;
+        mat->nnz = mat->nEnts;
+        
         GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(mat->nrows+1) * sizeof(ghost_mnnz_t), GHOST_DATA_ALIGNMENT),err,ret);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_midx_t), GHOST_DATA_ALIGNMENT),err,ret);
         GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
@@ -631,10 +635,6 @@ static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
                 memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
             }
         }
-
-        mat->nrows = (ghost_midx_t)header.nrows;
-        mat->nEnts = (ghost_midx_t)header.nnz;
-        mat->nnz = mat->nEnts;
 
         GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nEnts),err,ret);
         GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nEnts),err,ret);
