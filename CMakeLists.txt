@@ -41,7 +41,10 @@ set (SOURCES
         src/pumap.c
 		src/sell.c 
 		src/sell.cpp
+        src/spmvm_goodfaithhybrid.c 
 		src/spmvm_nompi.c 
+        src/spmvm_taskmode.c
+        src/spmvm_vectormode.c 
 		src/task.c
 		src/taskq.c
         src/thpool.c
@@ -63,6 +66,7 @@ set (HEADERS
         include/ghost/io.h
 		include/ghost/locality.h	
         include/ghost/log.h
+		include/ghost/machine.h
 		include/ghost/mat.h
 		include/ghost/math.h
         include/ghost/pumap.h
@@ -78,9 +82,6 @@ set (HEADERS
 
 if (USE_MPI)
 	set (SOURCES ${SOURCES} 
-			src/spmvm_vectormode.c 
-			src/spmvm_goodfaithhybrid.c 
-			src/spmvm_taskmode.c
 		)
 endif()
 

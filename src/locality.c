@@ -113,7 +113,7 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
 #ifndef GHOST_HAVE_MPI
     UNUSED(stringcmp);
     UNUSED(comm);
-    UNUSED(nNodes);
+    *nNodes = 1;
     return GHOST_SUCCESS;
 #else
 
@@ -150,7 +150,6 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
     MPI_CALL_GOTO(MPI_Bcast(&distinctNames,1,MPI_INT,0,comm),err,ret);
 
     *nNodes = distinctNames;
-#endif
 
     goto out;
 
@@ -159,6 +158,7 @@ err:
 
 out:
     return ret;;
+#endif
 }
 
 ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
@@ -167,8 +167,7 @@ ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
     MPI_CALL_RETURN(MPI_Comm_size(comm,nRanks));
 #else
     UNUSED(comm);
-    UNUSED(nRanks);
-    return 1;
+    *nRanks = 1;
 #endif
     return GHOST_SUCCESS;
 }

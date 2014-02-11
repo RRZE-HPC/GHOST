@@ -84,6 +84,8 @@ ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_
         solver = &ghost_spmv_goodfaith;
     } else if (*spmvmOptions & GHOST_SPMVM_MODE_TASKMODE) {
         solver = &ghost_spmv_taskmode; 
+    } else if (*spmvmOptions & GHOST_SPMVM_MODE_NOMPI) {
+        solver = &ghost_spmv_nompi; 
     }
 
     if (!solver) {

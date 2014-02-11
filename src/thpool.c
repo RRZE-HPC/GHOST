@@ -3,23 +3,11 @@
 #include "ghost/machine.h"
 
 /**
- * @brief The thread pool created by ghost_thpool_init(). This variable is exported in ghost_taskq.h
+ * @brief The thread pool created by ghost_thpool_create(). 
  */
 static ghost_thpool_t *ghost_thpool = NULL;
 
 
-
-
-/**
- * @brief Initializes a thread pool with a given number of threads.
- * @param nThreads
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
- * 
- * A number of pthreads will be created and each one will have thread_main() as start routine.
- * In order to make sure that each thread has entered the infinite loop, a wait on a semaphore is
- * performed before this function returns.
-
- */
 ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 {
     int t;
@@ -58,11 +46,6 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
     return GHOST_SUCCESS;
 }
 
-/**
- * @brief Free all resources of the thread pool
- *
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
- */
 ghost_error_t ghost_thpool_destroy()
 {
     if (ghost_thpool == NULL)

@@ -7,7 +7,9 @@
 #include "ghost/instr.h"
 #include "ghost/mat.h"
 
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -18,6 +20,15 @@
 // if called with context==NULL: clean up variables
 ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
+#ifndef GHOST_HAVE_MPI
+    UNUSED(context);
+    UNUSED(res);
+    UNUSED(mat);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    return GHOST_ERR_UNKNOWN;
+#else
     if (context == NULL) {
         ERROR_LOG("The context is NULL");
         return GHOST_ERR_INVALID_ARG;
@@ -123,5 +134,6 @@ out:
     free(work);
 
     return ret;
+#endif
 }
 

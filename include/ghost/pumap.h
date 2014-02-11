@@ -1,3 +1,8 @@
+/**
+ * @file pumap.h
+ * @brief Types and functions for the PU (processing unit) map functionality. 
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #include <hwloc.h>
 
 #include "error.h"
@@ -30,10 +35,70 @@ typedef struct ghost_pumap_t {
     int nDomains;
 } ghost_pumap_t;
 
-ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset);
-void ghost_pumap_destroy();
-ghost_error_t ghost_pumap_get(ghost_pumap_t **map);
-ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset);
-ghost_error_t ghost_pumap_setIdleIdx(int idx);
-ghost_error_t ghost_pumap_setBusy(hwloc_bitmap_t cpuset);
-ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    /**
+     * @brief Create a PU map.
+     *
+     * @param cpuset The CPU set to be covered by the PU map.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset);
+    /**
+     * @brief Destroy the PU map.
+     */
+    void ghost_pumap_destroy();
+    /**
+     * @brief Get the PU map.
+     *
+     * @param map Where to store the map.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_pumap_get(ghost_pumap_t **map);
+    /**
+     * @brief Set the given CPU set in the PU map to idle.  
+     *
+     * @param cpuset The CPU set to be set idle.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     *
+     * If the CPU set is not included in the PU map's CPU set an error is returned.
+     */
+    ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset);
+    /**
+     * @brief Set the given index in the PU map to idle.  
+     *
+     * @param idx The index.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     *
+     * If the index is not included in the PU map's CPU set an error is returned.
+     */
+    ghost_error_t ghost_pumap_setIdleIdx(int idx);
+    /**
+     * @brief Set the given CPU set in the PU map to busy.  
+     *
+     * @param cpuset The CPU set to be set busy.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     *
+     * If the CPU set is not included in the PU map's CPU set an error is returned.
+     */
+    ghost_error_t ghost_pumap_setBusy(hwloc_bitmap_t cpuset);
+    /**
+     * @brief Get the number of idle processing units in total or in a given NUMA node.
+     *
+     * @param nPUs Where to store the number.
+     * @param numaNode The NUMA node to consider or GHOST_NUMANODE_ANY.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode);
+
+#ifdef __cplusplus
+}
+#endif

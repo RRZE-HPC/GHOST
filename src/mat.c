@@ -69,6 +69,7 @@ ghost_error_t ghost_createMatrix(ghost_mat_t ** mat, ghost_context_t *context, g
 
     goto out;
 err:
+    ERROR_LOG("Error. Free'ing resources");
     free(*mat); *mat = NULL;
 
 out:

@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/constants.h"
 #include "ghost/locality.h"
@@ -25,6 +26,10 @@
 #include "ghost/util.h"
 #include "ghost/machine.h"
 #include "ghost/log.h"
+
+#ifdef GHOST_HAVE_INSTR_LIKWID
+#include <likwid.h>
+#endif
 
 #if GHOST_HAVE_OPENMP
 #include <omp.h>

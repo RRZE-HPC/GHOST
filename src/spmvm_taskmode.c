@@ -11,7 +11,10 @@
 #include "ghost/instr.h"
 #include "ghost/mat.h"
 
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
+#endif
+
 #include <sys/types.h>
 #include <string.h>
 
@@ -23,6 +26,7 @@
 #include <omp.h>
 #endif
 
+#ifdef GHOST_HAVE_MPI
 typedef struct {
     ghost_vec_t *rhs;
     ghost_context_t *context;
@@ -126,9 +130,19 @@ err:
 out:
     return ret;
 }
+#endif
 
 ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
+#ifndef GHOST_HAVE_MPI
+    UNUSED(context);
+    UNUSED(res);
+    UNUSED(mat);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    return GHOST_ERR_UNKNOWN;
+#else
     GHOST_INSTR_START(spMVM_taskmode_entiresolver)
     ghost_mnnz_t max_dues;
     char *work = NULL;
@@ -278,4 +292,5 @@ out:
     free(commTask->ret); commTask->ret = NULL;
 
     return ret;
+#endif
 }

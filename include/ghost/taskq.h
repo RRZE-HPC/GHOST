@@ -1,3 +1,8 @@
+/**
+ * @file taskq.h
+ * @brief Types and functions for the task queue.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_TASKQ_H
 #define GHOST_TASKQ_H
 
@@ -7,7 +12,7 @@
 #include "task.h"
 
 /**
- * @brief This struct represents the task queue.
+ * @brief The task queue.
  */
 typedef struct {
     /**
@@ -37,6 +42,7 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t **, int, int*);
 ghost_error_t ghost_taskq_print();
 ghost_error_t ghost_taskq_addTask(ghost_task_t *task);
 ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *));
+int ghost_taskq_inTask();
 
 extern pthread_key_t ghost_thread_key;
 

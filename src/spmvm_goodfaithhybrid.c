@@ -7,7 +7,9 @@
 #include "ghost/instr.h"
 #include "ghost/mat.h"
 
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
+#endif
 #include <sys/types.h>
 #include <string.h>
 
@@ -17,6 +19,15 @@
 
 ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
 {
+#ifndef GHOST_HAVE_MPI
+    UNUSED(context);
+    UNUSED(res);
+    UNUSED(mat);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    ERROR_LOG("Cannot execute this spMV solver without MPI");
+    return GHOST_ERR_UNKNOWN;
+#else
     ghost_mnnz_t max_dues;
     char *work = NULL;
     ghost_error_t ret = GHOST_SUCCESS;
@@ -120,4 +131,5 @@ out:
     free(work);
 
     return ret;
+#endif
 }

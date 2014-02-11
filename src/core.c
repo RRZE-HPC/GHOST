@@ -1,5 +1,4 @@
-#include <hwloc.h>
-
+#include "ghost/config.h"
 #include "ghost/core.h"
 #include "ghost/log.h"
 #include "ghost/util.h"
@@ -10,6 +9,11 @@
 #include "ghost/thpool.h"
 #include "ghost/timing.h"
 #include "ghost/pumap.h"
+
+#include <hwloc.h>
+#ifdef GHOST_HAVE_INSTR_LIKWID
+#include <likwid.h>
+#endif
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
@@ -112,7 +116,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 #endif // ifdef GHOST_HAVE_MPI
 
-#if GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_INIT;
 
 #pragma omp parallel
