@@ -3,7 +3,7 @@
 #include "ghost/crs.h"
 #include "ghost/util.h"
 #include "ghost/core.h"
-#include "ghost/mat.h"
+#include "ghost/sparsemat.h"
 #include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/context.h"
@@ -25,34 +25,34 @@
 
 #include <dlfcn.h>
 
-ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t options) = 
+ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options) = 
 {{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
     {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
     {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
 
-const char * (*CRS_stringify_funcs[4]) (ghost_mat_t *, int) = 
+const char * (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, int) = 
 {&s_CRS_stringify, &d_CRS_stringify, &c_CRS_stringify, &z_CRS_stringify}; 
 
-static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath);
-static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath);
-static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
-static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
-static void CRS_printInfo(ghost_mat_t *mat);
-static const char * CRS_formatName(ghost_mat_t *mat);
-static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i);
-static size_t CRS_byteSize (ghost_mat_t *mat);
-static const char * CRS_stringify(ghost_mat_t *mat, int dense);
-static void CRS_free(ghost_mat_t * mat);
-static ghost_error_t CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t *, ghost_vec_t *, ghost_spmv_flags_t);
-static ghost_error_t CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat);
+static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
+static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
+static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
+static void CRS_printInfo(ghost_sparsemat_t *mat);
+static const char * CRS_formatName(ghost_sparsemat_t *mat);
+static ghost_midx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_midx_t i);
+static size_t CRS_byteSize (ghost_sparsemat_t *mat);
+static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense);
+static void CRS_free(ghost_sparsemat_t * mat);
+static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
+static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat);
 #ifdef GHOST_HAVE_MPI
-static ghost_error_t CRS_split(ghost_mat_t *mat);
+static ghost_error_t CRS_split(ghost_sparsemat_t *mat);
 #endif
-static ghost_error_t CRS_upload(ghost_mat_t *mat);
+static ghost_error_t CRS_upload(ghost_sparsemat_t *mat);
 
 
-ghost_error_t ghost_CRS_init(ghost_mat_t *mat)
+ghost_error_t ghost_CRS_init(ghost_sparsemat_t *mat)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 
@@ -110,13 +110,13 @@ out:
 
 }
 
-static ghost_error_t CRS_upload(ghost_mat_t *mat)
+static ghost_error_t CRS_upload(ghost_sparsemat_t *mat)
 {
     UNUSED(mat);
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-static ghost_error_t CRS_permute(ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm)
+static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm)
 {
     if (perm == NULL) {
         return GHOST_SUCCESS;
@@ -223,24 +223,24 @@ out:
 
 }
 
-static const char * CRS_stringify(ghost_mat_t *mat, int dense)
+static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
 {
     return CRS_stringify_funcs[ghost_datatypeIdx(mat->traits->datatype)](mat, dense);
 }
 
-static void CRS_printInfo(ghost_mat_t *mat)
+static void CRS_printInfo(ghost_sparsemat_t *mat)
 {
     UNUSED(mat);
     return;
 }
 
-static const char * CRS_formatName(ghost_mat_t *mat)
+static const char * CRS_formatName(ghost_sparsemat_t *mat)
 {
     UNUSED(mat);
     return "CRS";
 }
 
-static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
+static ghost_midx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_midx_t i)
 {
     if (mat && i<mat->nrows) {
         return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
@@ -249,7 +249,7 @@ static ghost_midx_t CRS_rowLen (ghost_mat_t *mat, ghost_midx_t i)
     return 0;
 }
 
-static size_t CRS_byteSize (ghost_mat_t *mat)
+static size_t CRS_byteSize (ghost_sparsemat_t *mat)
 {
     if (mat->data == NULL) {
         return 0;
@@ -259,7 +259,7 @@ static size_t CRS_byteSize (ghost_mat_t *mat)
             mat->nEnts*(sizeof(ghost_midx_t)+mat->traits->elSize));
 }
 
-static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags)
+static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     UNUSED(base);
@@ -376,7 +376,7 @@ out:
     return ret;
 }
 
-static ghost_error_t CRS_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
+static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating CRS matrix from CRS matrix");
     ghost_error_t ret = GHOST_SUCCESS;
@@ -425,7 +425,7 @@ out:
 
 #ifdef GHOST_HAVE_MPI
 
-static ghost_error_t CRS_split(ghost_mat_t *mat)
+static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 {
     if (!mat) {
         ERROR_LOG("Matrix is NULL");
@@ -569,7 +569,7 @@ out:
  * If the row pointers have already been read-in and stored in the context
  * they will not be read in again.
  */
-static ghost_error_t CRS_fromBin(ghost_mat_t *mat, char *matrixPath)
+static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Reading CRS matrix from file");
     ghost_error_t ret = GHOST_SUCCESS;
@@ -787,7 +787,7 @@ out:
 
 }
 
-static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath)
+static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
     ghost_midx_t i;
     ghost_mnnz_t j;
@@ -890,7 +890,7 @@ static ghost_error_t CRS_toBin(ghost_mat_t *mat, char *matrixPath)
 
 }
 
-static void CRS_free(ghost_mat_t * mat)
+static void CRS_free(ghost_sparsemat_t * mat)
 {
     if (mat) {
         DEBUG_LOG(1,"Freeing CRS matrix");
@@ -911,7 +911,7 @@ static void CRS_free(ghost_mat_t * mat)
     }
 }
 
-static ghost_error_t CRS_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, ghost_spmv_flags_t options)
+static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options)
 {
     /*    if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
           ghost_midx_t i, j;
@@ -980,11 +980,11 @@ hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
     lhsv[i] = hlp1;
     }
      */
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->nvecs);
+    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->ncols);
     //    lhs->print(lhs);
     //    rhs->print(rhs);
 
-    /*if (lhs->traits->nvecs == 1) {
+    /*if (lhs->traits->ncols == 1) {
       if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
       if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
       c_CRS_kernel_plain(mat,lhs,rhs,options);

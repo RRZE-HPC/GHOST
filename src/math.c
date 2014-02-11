@@ -3,7 +3,7 @@
 #include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
-#include "ghost/vec.h"
+#include "ghost/densemat.h"
 #include "ghost/locality.h"
 #include "ghost/blas_mangle.h"
 #include "ghost/instr.h"
@@ -19,7 +19,7 @@ extern cublasHandle_t ghost_cublas_handle;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
-ghost_error_t ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+ghost_error_t ghost_dotProduct(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot_with_reduce)
     ghost_mpi_op_t sumOp;
@@ -30,7 +30,7 @@ ghost_error_t ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 #ifdef GHOST_HAVE_MPI
     int v;
     if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
-        for (v=0; v<MIN(vec->traits->nvecs,vec2->traits->nvecs); v++) {
+        for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
             MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->traits->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
@@ -41,7 +41,7 @@ ghost_error_t ghost_dotProduct(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
 
 }
 
-void ghost_normalizeVec(ghost_vec_t *vec)
+void ghost_normalizeVec(ghost_densemat_t *vec)
 {
     GHOST_INSTR_START(normalize)
     if (vec->traits->datatype & GHOST_DT_FLOAT) {
@@ -72,7 +72,7 @@ void ghost_normalizeVec(ghost_vec_t *vec)
     GHOST_INSTR_STOP(normalize)
 }
 
-ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
+ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
         int *spmvmOptions)
 {
     GHOST_INSTR_START(spmvm)
@@ -99,7 +99,7 @@ ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_vec_t *x, void *alpha, void *beta, int reduce)
+ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce)
 {
     GHOST_INSTR_START(gemm)
     if (v->traits->flags & GHOST_VEC_SCATTERED)
@@ -138,14 +138,14 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     // TODO if rhs vector data will not be continous
     if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
     {
-        nrV=v->traits->nrows; ncV=v->traits->nvecs;
+        nrV=v->traits->nrows; ncV=v->traits->ncols;
     }
     else
     {
-        nrV=v->traits->nvecs; ncV=v->traits->nrows;
+        nrV=v->traits->ncols; ncV=v->traits->nrows;
     }
-    nrW=w->traits->nrows; ncW=w->traits->nvecs;
-    nrX=x->traits->nrows; ncX=w->traits->nvecs;
+    nrW=w->traits->nrows; ncW=w->traits->ncols;
+    nrX=x->traits->nrows; ncX=w->traits->ncols;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         WARNING_LOG("GEMM with incompatible vectors!");
         return GHOST_ERR_INVALID_ARG;
@@ -264,7 +264,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_vec_t *v, ghost_vec_t *w, ghost_
     } 
     else 
     {
-        for (i=0; i<x->traits->nvecs; ++i) 
+        for (i=0; i<x->traits->ncols; ++i) 
         {
             int copied = 0;
             void *val = NULL;
@@ -345,7 +345,7 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
     }
 }
 
-ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions)
+ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, int spmvmOptions)
 {
 
     DEBUG_LOG(1,"Computing reference solution");
@@ -359,20 +359,20 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
     GHOST_CALL_RETURN(ghost_malloc((void **)&zero,sizeofdt));
 
     memset(zero,0,sizeofdt);
-    ghost_vec_t *globLHS; 
-    ghost_mtraits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
+    ghost_densemat_t *globLHS; 
+    ghost_sparsemat_traits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
     ghost_context_t *context;
 
     ghost_createContext(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
-    ghost_mat_t *mat;
+    ghost_sparsemat_t *mat;
     ghost_createMatrix(&mat, context, &trait, 1);
     mat->fromFile(mat,matrixPath);
-    ghost_vtraits_t rtraits = GHOST_VTRAITS_INITIALIZER;
+    ghost_densemat_traits_t rtraits = GHOST_VTRAITS_INITIALIZER;
     rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
     rtraits.datatype = rhs->traits->datatype;;
-    rtraits.nvecs=rhs->traits->nvecs;
+    rtraits.ncols=rhs->traits->ncols;
 
-    ghost_vec_t *globRHS;
+    ghost_densemat_t *globRHS;
     GHOST_CALL_RETURN(ghost_createVector(&globRHS, context, &rtraits));
     globRHS->fromScalar(globRHS,zero);
 
@@ -384,10 +384,10 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
         DEBUG_LOG(1,"Computing actual reference solution with one process");
 
 
-        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
         ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
         ltraits.datatype = rhs->traits->datatype;
-        ltraits.nvecs = rhs->traits->nvecs;
+        ltraits.ncols = rhs->traits->ncols;
 
         GHOST_CALL_RETURN(ghost_createVector(&globLHS, context, &ltraits)); 
         globLHS->fromScalar(globLHS,&zero);
@@ -407,10 +407,10 @@ ghost_error_t ghost_referenceSolver(ghost_vec_t *nodeLHS, char *matrixPath, int 
         globRHS->destroy(globRHS);
         ghost_destroyContext(context);
     } else {
-        ghost_vtraits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
         ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
         ltraits.datatype = rhs->traits->datatype;
-        ltraits.nvecs = rhs->traits->nvecs;
+        ltraits.ncols = rhs->traits->ncols;
         ghost_createVector(&globLHS, context, &ltraits);
     }
     DEBUG_LOG(1,"Scattering result of reference solution");

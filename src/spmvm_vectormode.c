@@ -1,11 +1,11 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/locality.h"
-#include "ghost/vec.h"
+#include "ghost/densemat.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/instr.h"
-#include "ghost/mat.h"
+#include "ghost/sparsemat.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -18,7 +18,7 @@
 #endif
 
 // if called with context==NULL: clean up variables
-ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -46,8 +46,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
     
-    MPI_Request request[invec->traits->nvecs*2*nprocs];
-    MPI_Status  status[invec->traits->nvecs*2*nprocs];
+    MPI_Request request[invec->traits->ncols*2*nprocs];
+    MPI_Status  status[invec->traits->ncols*2*nprocs];
     
 
     max_dues = 0;
@@ -57,7 +57,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
         }
     }
     
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
 
     GHOST_INSTR_START(spMVM_vectormode_comm);
     invec->downloadNonHalo(invec);
@@ -68,13 +68,13 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
 #endif
 
     msgcount=0;
-    for (i=0;i<invec->traits->nvecs*2*nprocs;i++) { 
+    for (i=0;i<invec->traits->ncols*2*nprocs;i++) { 
         request[i] = MPI_REQUEST_NULL;
     }
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
         if (context->wishes[from_PE]>0){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*invec->traits->elSize,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
             }
@@ -85,7 +85,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
     if (mat->traits->flags & GHOST_SPM_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
                     memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
@@ -95,7 +95,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
     } else {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
                     memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),invec->traits->elSize);
@@ -109,7 +109,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, 
 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (context->dues[to_PE]>0){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*invec->traits->elSize + to_PE*max_dues*invec->traits->elSize, context->dues[to_PE]*invec->traits->elSize, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount]),err,ret);
                 msgcount++;
             }

@@ -4,14 +4,14 @@
 #include "config.h"
 #include "types.h"
 #include "context.h"
-#include "mat.h"
-#include "vec.h"
+#include "sparsemat.h"
+#include "densemat.h"
 #include "error.h"
 
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
-typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
+typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_context_t *, ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, int);
 
 
 #ifdef __cplusplus
@@ -28,7 +28,7 @@ static inline float conjugate(float * c) {return *c;}
 extern "C" {
 #endif
 
-void ghost_normalizeVec(ghost_vec_t *);
+void ghost_normalizeVec(ghost_densemat_t *);
 /**
  * @ingroup globops
  *
@@ -42,16 +42,16 @@ void ghost_normalizeVec(ghost_vec_t *);
  *
  * This function first computes the local dot product and then performs an allreduce on the result.
  */
-ghost_error_t ghost_dotProduct(ghost_vec_t *a, ghost_vec_t *b, void *res);
-ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_vec_t *res, ghost_mat_t *mat, ghost_vec_t *invec, 
+ghost_error_t ghost_dotProduct(ghost_densemat_t *a, ghost_densemat_t *b, void *res);
+ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
         int *spmvmOptions);
-ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-ghost_error_t ghost_spmv_nompi(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions);
-ghost_error_t ghost_referenceSolver(ghost_vec_t *, char *matrixPath, int datatype, ghost_vec_t *rhs, int nIter, int spmvmOptions);
+ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions);
+ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions);
+ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions);
+ghost_error_t ghost_spmv_nompi(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions);
+ghost_error_t ghost_referenceSolver(ghost_densemat_t *, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, int spmvmOptions);
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions);
-ghost_error_t ghost_gemm(char *, ghost_vec_t *,  ghost_vec_t *, ghost_vec_t *, void *, void *, int); 
+ghost_error_t ghost_gemm(char *, ghost_densemat_t *,  ghost_densemat_t *, ghost_densemat_t *, void *, void *, int); 
 void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len);
 void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len);
 ghost_error_t ghost_mpi_createOperations();

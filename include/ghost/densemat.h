@@ -1,18 +1,18 @@
 /**
- * @file vec.h
- * @brief Types and functions related to GHOST vectors.
+ * @file densemat.h
+ * @brief Types and functions related to dense matrices/vectors.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_VEC_H
-#define GHOST_VEC_H
+#ifndef GHOST_DENSEMAT_H
+#define GHOST_DENSEMAT_H
 
 #include "config.h"
 #include "types.h"
 #include "context.h"
 
 
-typedef struct ghost_vtraits_t ghost_vtraits_t;
-typedef struct ghost_vec_t ghost_vec_t;
+typedef struct ghost_densemat_traits_t ghost_densemat_traits_t;
+typedef struct ghost_densemat_t ghost_densemat_t;
 typedef enum {
     GHOST_VEC_DEFAULT   = 0,
     GHOST_VEC_RHS       = 1,
@@ -23,7 +23,7 @@ typedef enum {
     GHOST_VEC_DUMMY     = 32,
     GHOST_VEC_VIEW      = 64,
     GHOST_VEC_SCATTERED = 128
-} ghost_vec_flags_t;
+} ghost_densemat_flags_t;
 
 /**
  * @ingroup types
@@ -33,12 +33,12 @@ typedef enum {
  * The according functions act locally and are accessed via function pointers. The first argument of
  * each member function always has to be a pointer to the vector itself.
  */
-struct ghost_vec_t
+struct ghost_densemat_t
 {
     /**
      * @brief The vector's traits.
      */
-    ghost_vtraits_t *traits;
+    ghost_densemat_traits_t *traits;
     /**
      * @brief The context in which the vector is living.
      */
@@ -57,7 +57,7 @@ struct ghost_vec_t
      * @param x The input vector
      * @param a Points to the scale factor.
      */
-    ghost_error_t          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
+    ghost_error_t          (*axpy) (ghost_densemat_t *y, ghost_densemat_t *x, void *a);
     /**
      * @ingroup globops
      *
@@ -68,7 +68,7 @@ struct ghost_vec_t
      * @param a Points to the scale factor a.
      * @param b Points to the scale factor b.
      */
-    ghost_error_t          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
+    ghost_error_t          (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, void *b);
     /**
      * @brief Clones a given number of columns of a source vector at a given
      * column offset.
@@ -79,7 +79,7 @@ struct ghost_vec_t
      *
      * @return A clone of the source vector.
      */
-    ghost_vec_t * (*clone) (ghost_vec_t *vec, ghost_vidx_t ncols, ghost_vidx_t
+    ghost_densemat_t * (*clone) (ghost_densemat_t *vec, ghost_vidx_t ncols, ghost_vidx_t
             coloffset);
     /**
      * @brief Compresses a vector, i.e., make it non-scattered.
@@ -87,7 +87,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    ghost_error_t          (*compress) (ghost_vec_t *vec);
+    ghost_error_t          (*compress) (ghost_densemat_t *vec);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
@@ -95,20 +95,20 @@ struct ghost_vec_t
      * @param vec The distributed vector.
      * @param globalVec The global vector.
      */
-    ghost_error_t (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
+    ghost_error_t (*collect) (ghost_densemat_t *vec, ghost_densemat_t *globalVec);
     /**
      * @brief Destroys a vector, i.e., frees all its data structures.
      *
      * @param vec The vector
      */
-    void          (*destroy) (ghost_vec_t *vec);
+    void          (*destroy) (ghost_densemat_t *vec);
     /**
      * @brief Distributes a global vector into node-local vetors.
      *
      * @param vec The global vector.
      * @param localVec The local vector.
      */
-    ghost_error_t (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
+    ghost_error_t (*distribute) (ghost_densemat_t *vec, ghost_densemat_t *localVec);
     /**
      * @ingroup locops
      * 
@@ -124,7 +124,7 @@ struct ghost_vec_t
      *
      * @see ghost_dotProduct()
      */
-    ghost_error_t          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
+    ghost_error_t          (*dotProduct) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
     /**
      * @ingroup gputransfer
      * 
@@ -135,7 +135,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*download) (ghost_vec_t *vec);
+    ghost_error_t          (*download) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -146,7 +146,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*downloadHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*downloadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -158,7 +158,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*downloadNonHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*downloadNonHalo) (ghost_densemat_t *vec);
     /**
      * @brief Stores the entry of the vector at a given index (row i, column j)
      * into entry.
@@ -170,7 +170,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
+    ghost_error_t          (*entry) (ghost_densemat_t *vec, ghost_vidx_t i, ghost_vidx_t j,
             void *entry);
     /**
      * @ingroup denseinit
@@ -183,7 +183,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
+    ghost_error_t (*fromFunc) (ghost_densemat_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
     /**
      * @ingroup denseinit
      *
@@ -196,7 +196,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
+    ghost_error_t          (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_vidx_t offset);
     /**
      * @ingroup denseinit
      *
@@ -208,7 +208,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromFile) (ghost_vec_t *vec, char *filename);
+    ghost_error_t (*fromFile) (ghost_densemat_t *vec, char *filename);
     /**
      * @ingroup denseinit
      *
@@ -218,7 +218,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromRand) (ghost_vec_t *vec);
+    ghost_error_t          (*fromRand) (ghost_densemat_t *vec);
     /**
      * @ingroup denseinit
      *
@@ -229,7 +229,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromScalar) (ghost_vec_t *vec, void *val);
+    ghost_error_t          (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
      * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
      *
@@ -237,7 +237,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*normalize) (ghost_vec_t *vec);
+    ghost_error_t          (*normalize) (ghost_densemat_t *vec);
     /**
      * @brief Permute a vector with a given permutation.
      *
@@ -246,7 +246,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
+    ghost_error_t  (*permute) (ghost_densemat_t *vec, ghost_vidx_t *perm);
     /**
      * @brief Print a vector.
      *
@@ -254,7 +254,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*print) (ghost_vec_t *vec);
+    ghost_error_t (*print) (ghost_densemat_t *vec);
     /**
      * @brief Scale a vector with a given scalar.
      *
@@ -263,7 +263,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*scale) (ghost_vec_t *vec, void *scale);
+    ghost_error_t          (*scale) (ghost_densemat_t *vec, void *scale);
     /**
      * @deprecated because not needed
      * @brief Swap two vectors.
@@ -273,7 +273,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
+    ghost_error_t          (*swap) (ghost_densemat_t *vec1, ghost_densemat_t *vec2);
     /**
      * @brief Write a vector to a file.
      *
@@ -282,7 +282,7 @@ struct ghost_vec_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*toFile) (ghost_vec_t *vec, char *filename);
+    ghost_error_t          (*toFile) (ghost_densemat_t *vec, char *filename);
     /**
      * @ingroup gputransfer
      * 
@@ -291,7 +291,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    ghost_error_t          (*upload) (ghost_vec_t *vec);
+    ghost_error_t          (*upload) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -300,7 +300,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    ghost_error_t (*uploadHalo) (ghost_vec_t *vec);
+    ghost_error_t (*uploadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -310,7 +310,7 @@ struct ghost_vec_t
      *
      * @param vec The vector.
      */
-    ghost_error_t          (*uploadNonHalo) (ghost_vec_t *vec);
+    ghost_error_t          (*uploadNonHalo) (ghost_densemat_t *vec);
     /**
      * @brief View plain data in the vector.
      * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided.
@@ -323,9 +323,9 @@ struct ghost_vec_t
      * @param ghost_vidx_t coffs The column offset.
      * @param ghost_vidx_t lda The number of rows per column.
      */
-    ghost_error_t          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+    ghost_error_t          (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
 
-    ghost_vec_t * (*viewScatteredVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
+    ghost_densemat_t * (*viewScatteredVec) (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
 
 
     /**
@@ -337,37 +337,36 @@ struct ghost_vec_t
      *
      * @return The new vector.
      */
-    ghost_vec_t * (*viewVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
+    ghost_densemat_t * (*viewVec) (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
     /**
      * @brief Scale each column of a vector with a given scale factor.
      *
      * @param vec The vector.
      * @param scale The scale factors.
      */
-    ghost_error_t          (*vscale) (ghost_vec_t *, void *);
-    ghost_error_t          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
-    ghost_error_t          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
-    ghost_error_t          (*zero) (ghost_vec_t *);
+    ghost_error_t          (*vscale) (ghost_densemat_t *, void *);
+    ghost_error_t          (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
+    ghost_error_t          (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+    ghost_error_t          (*zero) (ghost_densemat_t *);
 
 #ifdef GHOST_HAVE_CUDA
     void * cu_val;
 #endif
 };
 
-struct ghost_vtraits_t
+struct ghost_densemat_traits_t
 {
     ghost_midx_t nrows;
     ghost_midx_t nrowshalo;
     ghost_midx_t nrowspadded;
-    ghost_midx_t nvecs;
-    ghost_vec_flags_t flags;
+    ghost_midx_t ncols;
+    ghost_densemat_flags_t flags;
     int datatype;
     size_t elSize;
     void * aux;
     void * localdot;
 };
-extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
-#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
+extern const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER;
 
 #ifdef MIC
 //#define SELL_LEN 8
@@ -388,13 +387,13 @@ extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->traits->elSize])
 
 #ifdef __cplusplus
-template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_vec_t *vec);
-template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
-template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *);
-template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_vec_t *vec, ghost_vec_t *vec2, void *, void *);
-template <typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_vec_t *vec, void *vscale);
-template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_vec_t *vec);
-template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_vec_t *vec);
+template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec);
+template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res);
+template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *);
+template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *, void *);
+template <typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *vscale);
+template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec);
+template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec);
 
 extern "C" {
 #endif
@@ -410,38 +409,38 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_createVector(ghost_vec_t **vec, ghost_context_t *ctx, ghost_vtraits_t *traits);
-    ghost_error_t ghost_cloneVtraits(ghost_vtraits_t *t1, ghost_vtraits_t **t2);
+    ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits);
+    ghost_error_t ghost_cloneVtraits(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
 
-    ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
-    ghost_error_t d_ghost_printVector(ghost_vec_t *vec); 
-    ghost_error_t s_ghost_printVector(ghost_vec_t *vec); 
-    ghost_error_t z_ghost_printVector(ghost_vec_t *vec);
-    ghost_error_t c_ghost_printVector(ghost_vec_t *vec);
-    ghost_error_t d_ghost_normalizeVector(ghost_vec_t *vec); 
-    ghost_error_t s_ghost_normalizeVector(ghost_vec_t *vec); 
-    ghost_error_t z_ghost_normalizeVector(ghost_vec_t *vec);
-    ghost_error_t c_ghost_normalizeVector(ghost_vec_t *vec);
-    ghost_error_t d_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
-    ghost_error_t s_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res); 
-    ghost_error_t z_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
-    ghost_error_t c_ghost_vec_dotprod(ghost_vec_t *vec1, ghost_vec_t *vec2, void *res);
-    ghost_error_t d_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
-    ghost_error_t s_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale); 
-    ghost_error_t z_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
-    ghost_error_t c_ghost_vec_vscale(ghost_vec_t *vec1, void *vscale);
-    ghost_error_t d_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
-    ghost_error_t s_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *); 
-    ghost_error_t z_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
-    ghost_error_t c_ghost_vec_vaxpy(ghost_vec_t *vec1, ghost_vec_t *vec2, void *);
-    ghost_error_t d_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
-    ghost_error_t s_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *); 
-    ghost_error_t z_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
-    ghost_error_t c_ghost_vec_vaxpby(ghost_vec_t *vec1, ghost_vec_t *vec2, void *, void *);
-    ghost_error_t d_ghost_vec_fromRand(ghost_vec_t *vec); 
-    ghost_error_t s_ghost_vec_fromRand(ghost_vec_t *vec); 
-    ghost_error_t z_ghost_vec_fromRand(ghost_vec_t *vec); 
-    ghost_error_t c_ghost_vec_fromRand(ghost_vec_t *vec); 
+    ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
+    ghost_error_t d_ghost_printVector(ghost_densemat_t *vec); 
+    ghost_error_t s_ghost_printVector(ghost_densemat_t *vec); 
+    ghost_error_t z_ghost_printVector(ghost_densemat_t *vec);
+    ghost_error_t c_ghost_printVector(ghost_densemat_t *vec);
+    ghost_error_t d_ghost_normalizeVector(ghost_densemat_t *vec); 
+    ghost_error_t s_ghost_normalizeVector(ghost_densemat_t *vec); 
+    ghost_error_t z_ghost_normalizeVector(ghost_densemat_t *vec);
+    ghost_error_t c_ghost_normalizeVector(ghost_densemat_t *vec);
+    ghost_error_t d_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res); 
+    ghost_error_t s_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res); 
+    ghost_error_t z_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res);
+    ghost_error_t c_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res);
+    ghost_error_t d_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale); 
+    ghost_error_t s_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale); 
+    ghost_error_t z_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale);
+    ghost_error_t c_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale);
+    ghost_error_t d_ghost_vec_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
+    ghost_error_t s_ghost_vec_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
+    ghost_error_t z_ghost_vec_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *);
+    ghost_error_t c_ghost_vec_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *);
+    ghost_error_t d_ghost_vec_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
+    ghost_error_t s_ghost_vec_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
+    ghost_error_t z_ghost_vec_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *);
+    ghost_error_t c_ghost_vec_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *);
+    ghost_error_t d_ghost_vec_fromRand(ghost_densemat_t *vec); 
+    ghost_error_t s_ghost_vec_fromRand(ghost_densemat_t *vec); 
+    ghost_error_t z_ghost_vec_fromRand(ghost_densemat_t *vec); 
+    ghost_error_t c_ghost_vec_fromRand(ghost_densemat_t *vec); 
 #ifdef __cplusplus
 }
 #endif

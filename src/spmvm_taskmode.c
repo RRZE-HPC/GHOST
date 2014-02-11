@@ -1,7 +1,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/locality.h"
-#include "ghost/vec.h"
+#include "ghost/densemat.h"
 #include "ghost/task.h"
 #include "ghost/taskq.h"
 #include "ghost/pumap.h"
@@ -9,7 +9,7 @@
 #include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/instr.h"
-#include "ghost/mat.h"
+#include "ghost/sparsemat.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -28,7 +28,7 @@
 
 #ifdef GHOST_HAVE_MPI
 typedef struct {
-    ghost_vec_t *rhs;
+    ghost_densemat_t *rhs;
     ghost_context_t *context;
     int nprocs,me,msgcount;
     char *work;
@@ -60,7 +60,7 @@ static void *communicate(void *vargs)
             INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
-            for (c=0; c<args->rhs->traits->nvecs; c++) {
+            for (c=0; c<args->rhs->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->traits->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
@@ -73,7 +73,7 @@ static void *communicate(void *vargs)
     
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
         if (args->context->dues[to_PE]>0){
-            for (c=0; c<args->rhs->traits->nvecs; c++) {
+            for (c=0; c<args->rhs->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->traits->elSize + to_PE*args->max_dues*args->rhs->traits->elSize, args->context->dues[to_PE]*args->rhs->traits->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #if GHOST_HAVE_INSTR_TIMING
@@ -106,9 +106,9 @@ out:
 }
 
 typedef struct {
-    ghost_mat_t *mat;
-    ghost_vec_t *res;
-    ghost_vec_t *invec;
+    ghost_sparsemat_t *mat;
+    ghost_densemat_t *res;
+    ghost_densemat_t *invec;
     int spmvmOptions;
 } compArgs;
 
@@ -132,7 +132,7 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, ghost_mat_t* mat, ghost_vec_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -176,15 +176,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     DEBUG_LOG(1,"In task mode spMVM solver");
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
-    MPI_Request request[invec->traits->nvecs*2*nprocs];
-    MPI_Status  status[invec->traits->nvecs*2*nprocs];
+    MPI_Request request[invec->traits->ncols*2*nprocs];
+    MPI_Status  status[invec->traits->ncols*2*nprocs];
 
     max_dues = 0;
     for (i=0;i<nprocs;i++)
         if (context->dues[i]>max_dues) 
             max_dues = context->dues[i];
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->nvecs*max_dues*nprocs * invec->traits->elSize));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
 
     int taskflags = GHOST_TASK_DEFAULT;
     if (pthread_getspecific(ghost_thread_key) != NULL) {
@@ -220,7 +220,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     cplargs.res = res;
     cplargs.spmvmOptions = localopts;
 
-    for (i=0;i<invec->traits->nvecs*2*nprocs;i++) {
+    for (i=0;i<invec->traits->ncols*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
     }
 
@@ -238,7 +238,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     if (mat->traits->flags & GHOST_SPM_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
                     memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
@@ -248,7 +248,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
     } else {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits->nvecs; c++) {
+            for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
                     memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),invec->traits->elSize);

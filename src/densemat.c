@@ -2,7 +2,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/core.h"
-#include "ghost/vec.h"
+#include "ghost/densemat.h"
 #include "ghost/util.h"
 #include "ghost/constants.h"
 #include "ghost/locality.h"
@@ -26,70 +26,70 @@
 extern cublasHandle_t ghost_cublas_handle;
 #endif
 
-const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1 };
+const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
 
-ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_vec_t *) = 
+ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
-ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
 {&s_ghost_vec_dotprod, &d_ghost_vec_dotprod, &c_ghost_vec_dotprod, &z_ghost_vec_dotprod};
 
-ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_densemat_t *, void*) = 
 {&s_ghost_vec_vscale, &d_ghost_vec_vscale, &c_ghost_vec_vscale, &z_ghost_vec_vscale};
 
-ghost_error_t (*ghost_vec_vaxpy_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*) = 
+ghost_error_t (*ghost_vec_vaxpy_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
 {&s_ghost_vec_vaxpy, &d_ghost_vec_vaxpy, &c_ghost_vec_vaxpy, &z_ghost_vec_vaxpy};
 
-ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_vec_t *, ghost_vec_t *, void*, void*) = 
+ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*, void*) = 
 {&s_ghost_vec_vaxpby, &d_ghost_vec_vaxpby, &c_ghost_vec_vaxpby, &z_ghost_vec_vaxpby};
 
-ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_vec_t *) = 
+ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
-ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_vec_t *) = 
+ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_printVector, &d_ghost_printVector, &c_ghost_printVector, &z_ghost_printVector};
 
-static ghost_error_t vec_print(ghost_vec_t *vec);
-static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale);
-static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale);
-static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
-static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
-static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale);
-static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b);
-static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res);
-static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *));
-static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs);
-static ghost_error_t vec_fromRand(ghost_vec_t *vec);
-static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val);
-static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path);
-static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path);
-static ghost_error_t ghost_zeroVector(ghost_vec_t *vec);
-static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2);
-static ghost_error_t ghost_normalizeVector( ghost_vec_t *vec);
-static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec);
-static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec); 
-static void ghost_freeVector( ghost_vec_t* const vec );
-static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm); 
-static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t, ghost_vidx_t);
-static ghost_error_t vec_entry(ghost_vec_t *, ghost_vidx_t, ghost_vidx_t, void *);
-static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
-static ghost_vec_t * vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
-static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
-static ghost_error_t vec_compress(ghost_vec_t *vec);
-static ghost_error_t vec_upload(ghost_vec_t *vec);
-static ghost_error_t vec_download(ghost_vec_t *vec);
-static ghost_error_t vec_uploadHalo(ghost_vec_t *vec);
-static ghost_error_t vec_downloadHalo(ghost_vec_t *vec);
-static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec);
-static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec);
-static ghost_error_t getNrowsFromContext(ghost_vec_t *vec);
-ghost_error_t ghost_vec_malloc(ghost_vec_t *vec);
+static ghost_error_t vec_print(ghost_densemat_t *vec);
+static ghost_error_t vec_scale(ghost_densemat_t *vec, void *scale);
+static ghost_error_t vec_vscale(ghost_densemat_t *vec, void *scale);
+static ghost_error_t vec_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
+static ghost_error_t vec_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
+static ghost_error_t vec_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
+static ghost_error_t vec_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
+static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res);
+static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(int,int,void *));
+static ghost_error_t vec_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_vidx_t coffs);
+static ghost_error_t vec_fromRand(ghost_densemat_t *vec);
+static ghost_error_t vec_fromScalar(ghost_densemat_t *vec, void *val);
+static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path);
+static ghost_error_t vec_toFile(ghost_densemat_t *vec, char *path);
+static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec);
+static ghost_error_t ghost_swapVectors(ghost_densemat_t *v1, ghost_densemat_t *v2);
+static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec);
+static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
+static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
+static void ghost_freeVector( ghost_densemat_t* const vec );
+static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_vidx_t* perm); 
+static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_vidx_t, ghost_vidx_t);
+static ghost_error_t vec_entry(ghost_densemat_t *, ghost_vidx_t, ghost_vidx_t, void *);
+static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
+static ghost_densemat_t * vec_viewScatteredVec (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
+static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+static ghost_error_t vec_compress(ghost_densemat_t *vec);
+static ghost_error_t vec_upload(ghost_densemat_t *vec);
+static ghost_error_t vec_download(ghost_densemat_t *vec);
+static ghost_error_t vec_uploadHalo(ghost_densemat_t *vec);
+static ghost_error_t vec_downloadHalo(ghost_densemat_t *vec);
+static ghost_error_t vec_uploadNonHalo(ghost_densemat_t *vec);
+static ghost_error_t vec_downloadNonHalo(ghost_densemat_t *vec);
+static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec);
+ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
 
-ghost_error_t ghost_createVector(ghost_vec_t **vec, ghost_context_t *ctx, ghost_vtraits_t *traits)
+ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_vidx_t v;
-    GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_vec_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
     getNrowsFromContext((*vec));
@@ -167,9 +167,9 @@ ghost_error_t ghost_createVector(ghost_vec_t **vec, ghost_context_t *ctx, ghost_
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*vec)->val,(*vec)->traits->nvecs*sizeof(char *)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*vec)->val,(*vec)->traits->ncols*sizeof(char *)),err,ret);
 
-    for (v=0; v<(*vec)->traits->nvecs; v++) {
+    for (v=0; v<(*vec)->traits->ncols; v++) {
         (*vec)->val[v] = NULL;
     }
 
@@ -181,13 +181,13 @@ out:
     return ret;
 }
 
-static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
+static ghost_error_t vec_uploadHalo(ghost_densemat_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading halo elements of vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,vec->traits->nrows),
                     VECVAL(vec,vec->val,v,vec->traits->nrows), 
                     vec->context->halo_elements*vec->traits->elSize);
@@ -197,7 +197,7 @@ static ghost_error_t vec_uploadHalo(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_downloadHalo(ghost_vec_t *vec)
+static ghost_error_t vec_downloadHalo(ghost_densemat_t *vec)
 {
 
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
@@ -206,13 +206,13 @@ static ghost_error_t vec_downloadHalo(ghost_vec_t *vec)
     }
     return GHOST_SUCCESS;
 }
-static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec)
+static ghost_error_t vec_uploadNonHalo(ghost_densemat_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],VECVAL(vec,vec->val,v,0), vec->traits->nrows*vec->traits->elSize);
         }
 #endif
@@ -220,13 +220,13 @@ static ghost_error_t vec_uploadNonHalo(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec)
+static ghost_error_t vec_downloadNonHalo(ghost_densemat_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
         }
 #endif
@@ -234,13 +234,13 @@ static ghost_error_t vec_downloadNonHalo(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_upload(ghost_vec_t *vec) 
+static ghost_error_t vec_upload(ghost_densemat_t *vec) 
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             ghost_cu_upload(&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize],VECVAL(vec,vec->val,v,0), vec->traits->nrowshalo*vec->traits->elSize);
         }
 #endif
@@ -248,13 +248,13 @@ static ghost_error_t vec_upload(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_download(ghost_vec_t *vec)
+static ghost_error_t vec_download(ghost_densemat_t *vec)
 {
     if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             ghost_cu_download(VECVAL(vec,vec->val,v,0),&vec->cu_val[vec->traits->nrowspadded*v*vec->traits->elSize)],vec->traits->nrowshalo*vec->traits->elSize);
         }
 #endif
@@ -262,18 +262,18 @@ static ghost_error_t vec_download(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
+static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix with col offset %"PRvecIDX,src->traits->nrows,nc,coffs);
-    ghost_vec_t *new;
-    ghost_vtraits_t *newTraits;
+    ghost_densemat_t *new;
+    ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
-    newTraits->nvecs = nc;
+    newTraits->ncols = nc;
 
     ghost_createVector(&new,src->context,newTraits);
     ghost_vidx_t v;
 
-    for (v=0; v<new->traits->nvecs; v++) {
+    for (v=0; v<new->traits->ncols; v++) {
         new->val[v] = VECVAL(src,src->val,coffs+v,0);
     }
 
@@ -281,13 +281,13 @@ static ghost_vec_t * vec_view (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t c
     return new;
 }
 
-static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda)
+static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda)
 {
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" dense matrix from plain data with offset %"PRvecIDX"x%"PRvecIDX,nr,nc,roffs,coffs);
 
     ghost_vidx_t v;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->traits->elSize];
     }
     vec->traits->flags |= GHOST_VEC_VIEW;
@@ -295,14 +295,14 @@ static ghost_error_t vec_viewPlain (ghost_vec_t *vec, void *data, ghost_vidx_t n
     return GHOST_SUCCESS;
 }
 
-static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs)
+static ghost_densemat_t* vec_viewScatteredVec (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRvecIDX"x%"PRvecIDX" scattered dense matrix",src->traits->nrows,nc);
-    ghost_vec_t *new;
+    ghost_densemat_t *new;
     ghost_vidx_t v;
-    ghost_vtraits_t *newTraits;
+    ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
-    newTraits->nvecs = nc;
+    newTraits->ncols = nc;
 
     ghost_createVector(&new,src->context,newTraits);
 
@@ -315,27 +315,27 @@ static ghost_vec_t* vec_viewScatteredVec (ghost_vec_t *src, ghost_vidx_t nc, gho
     return new;
 }
 
-static ghost_error_t ghost_normalizeVector( ghost_vec_t *vec)
+static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec)
 {
     ghost_normalizeVector_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_print(ghost_vec_t *vec)
+static ghost_error_t vec_print(ghost_densemat_t *vec)
 {
     return ghost_vec_print_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
 
 }
 
-ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
+ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec)
 {
 
     ghost_vidx_t v;
     if (vec->traits->flags & GHOST_VEC_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
-            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits->nvecs*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT));
-            for (v=1; v<vec->traits->nvecs; v++) {
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits->ncols*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT));
+            for (v=1; v<vec->traits->ncols; v++) {
                 vec->val[v] = vec->val[0]+v*vec->traits->nrowspadded*vec->traits->elSize;
             }
         }
@@ -348,10 +348,10 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->ncols*vec->traits->elSize));
 #else
-            //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->nvecs));
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
+            //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits->nrowspadded,vec->traits->nrowshalo*sizeofdt,vec->traits->ncols));
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits->nrowspadded*vec->traits->ncols*vec->traits->elSize));
 #endif
         }
 #endif
@@ -360,7 +360,7 @@ ghost_error_t ghost_vec_malloc(ghost_vec_t *vec)
     return GHOST_SUCCESS; 
 }
 
-static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
+static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 {
     DEBUG_LOG(1,"Computing the number of vector rows from the context");
 
@@ -421,13 +421,13 @@ static ghost_error_t getNrowsFromContext(ghost_vec_t *vec)
 }
 
 
-static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx_t coffs)
+static ghost_error_t vec_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_vidx_t coffs)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRvecIDX,coffs);
     ghost_vidx_t v;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
         if (vec->traits->flags & GHOST_VEC_DEVICE)
         {
             if (vec2->traits->flags & GHOST_VEC_DEVICE)
@@ -461,11 +461,11 @@ static ghost_error_t vec_fromVec(ghost_vec_t *vec, ghost_vec_t *vec2, ghost_vidx
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_axpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+static ghost_error_t vec_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
     GHOST_INSTR_START(axpy);
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+    ghost_vidx_t nc = MIN(vec->traits->ncols,vec2->traits->ncols);
     char *s = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
 
@@ -485,11 +485,11 @@ out:
     return ret;
 }
 
-static ghost_error_t vec_axpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *_b)
+static ghost_error_t vec_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *_b)
 {
     GHOST_INSTR_START(axpby);
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_vidx_t nc = MIN(vec->traits->nvecs,vec2->traits->nvecs);
+    ghost_vidx_t nc = MIN(vec->traits->ncols,vec2->traits->ncols);
     char *s = NULL;
     char *b = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
@@ -512,7 +512,7 @@ out:
     return ret;
 }
 
-static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
+static ghost_error_t vec_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
     GHOST_INSTR_START(vaxpy);
     ghost_error_t ret = ghost_vec_vaxpy_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale);
@@ -520,7 +520,7 @@ static ghost_error_t vec_vaxpy(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale)
     return ret;
 }
 
-static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale, void *b)
+static ghost_error_t vec_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b)
 {
     GHOST_INSTR_START(vaxpby);
     ghost_error_t ret = ghost_vec_vaxpby_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
@@ -528,11 +528,11 @@ static ghost_error_t vec_vaxpby(ghost_vec_t *vec, ghost_vec_t *vec2, void *scale
     return ret;
 }
 
-static ghost_error_t vec_scale(ghost_vec_t *vec, void *scale)
+static ghost_error_t vec_scale(ghost_densemat_t *vec, void *scale)
 {
     GHOST_INSTR_START(scale);
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_vidx_t nc = vec->traits->nvecs;
+    ghost_vidx_t nc = vec->traits->ncols;
     char *s;
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,nc*vec->traits->elSize),err,ret);
 
@@ -551,7 +551,7 @@ out:
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale)
+static ghost_error_t vec_vscale(ghost_densemat_t *vec, void *scale)
 {
     GHOST_INSTR_START(vscale);
     ghost_error_t ret = ghost_vec_vscale_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,scale);
@@ -560,7 +560,7 @@ static ghost_error_t vec_vscale(ghost_vec_t *vec, void *scale)
     return ret;
 }
 
-static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
+static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot);
     ghost_error_t ret = ghost_vec_dotprod_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,res);
@@ -569,7 +569,7 @@ static ghost_error_t vec_dotprod(ghost_vec_t *vec, ghost_vec_t *vec2, void *res)
     return ret;
 }
 
-static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
+static ghost_error_t vec_entry(ghost_densemat_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
@@ -585,12 +585,12 @@ static ghost_error_t vec_entry(ghost_vec_t * vec, ghost_vidx_t r, ghost_vidx_t c
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_fromRand(ghost_vec_t *vec)
+static ghost_error_t vec_fromRand(ghost_densemat_t *vec)
 {
     return ghost_vec_fromRand_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
 }
 
-static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
+static ghost_error_t vec_fromScalar(ghost_densemat_t *vec, void *val)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRvecIDX" rows",vec->traits->nrows);
@@ -598,7 +598,7 @@ static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
     int i,v;
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrows; i++) {
-        for (v=0; v<vec->traits->nvecs; v++) {
+        for (v=0; v<vec->traits->ncols; v++) {
             memcpy(VECVAL(vec,vec->val,v,i),val,vec->traits->elSize);
         }
     }
@@ -607,7 +607,7 @@ static ghost_error_t vec_fromScalar(ghost_vec_t *vec, void *val)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
+static ghost_error_t vec_toFile(ghost_densemat_t *vec, char *path)
 { // TODO two separate functions
 
 #ifdef GHOST_HAVE_MPI
@@ -619,7 +619,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
     int32_t datatype = vec->traits->datatype;
     int64_t nrows = (int64_t)vec->context->gnrows;
-    int64_t ncols = (int64_t)vec->traits->nvecs;
+    int64_t ncols = (int64_t)vec->traits->ncols;
     MPI_File fileh;
     MPI_Status status;
     MPI_CALL_RETURN(MPI_File_open(vec->context->mpicomm,path,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
@@ -640,7 +640,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     MPI_CALL_RETURN(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
     MPI_Offset fileoffset = vec->context->lfRow[rank];
     ghost_vidx_t vecoffset = 0;
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
         char *val = NULL;
         int copied = 0;
         if (vec->traits->flags & GHOST_VEC_HOST)
@@ -674,7 +674,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     int32_t order = GHOST_BINVEC_ORDER_COL_FIRST;
     int32_t datatype = vec->traits->datatype;
     int64_t nrows = (int64_t)vec->traits->nrows;
-    int64_t ncols = (int64_t)vec->traits->nvecs;
+    int64_t ncols = (int64_t)vec->traits->ncols;
 
     FILE *filed;
 
@@ -715,7 +715,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
     }
 
     ghost_vidx_t v;
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
         char *val = NULL;
         int copied = 0;
         if (vec->traits->flags & GHOST_VEC_HOST)
@@ -752,7 +752,7 @@ static ghost_error_t vec_toFile(ghost_vec_t *vec, char *path)
 
 }
 
-static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
+static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path)
 {
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
@@ -841,7 +841,7 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
     }
 
     int v;
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
         if (fseeko(filed,offset*vec->traits->elSize,SEEK_CUR)) {
             ERROR_LOG("seek failed");
             vec->destroy(vec);
@@ -883,7 +883,7 @@ static ghost_error_t vec_fromFile(ghost_vec_t *vec, char *path)
 
 }
 
-static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
+static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(int,int,void *))
 {
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
@@ -892,7 +892,7 @@ static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
 
     int i,v;
 
-    for (v=0; v<vec->traits->nvecs; v++) {
+    for (v=0; v<vec->traits->ncols; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
         for (i=0; i<vec->traits->nrows; i++) {
             fp(vec->context->lfRow[rank]+i,v,VECVAL(vec,vec->val,v,i));
@@ -904,7 +904,7 @@ static ghost_error_t vec_fromFunc(ghost_vec_t *vec, void (*fp)(int,int,void *))
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_zeroVector(ghost_vec_t *vec) 
+static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec) 
 {
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
@@ -912,12 +912,12 @@ static ghost_error_t ghost_zeroVector(ghost_vec_t *vec)
     if (vec->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize);
+        ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->ncols*vec->traits->elSize);
 #endif
     }
     if (vec->traits->flags & GHOST_VEC_HOST)
     {
-        for (v=0; v<vec->traits->nvecs; v++) 
+        for (v=0; v<vec->traits->ncols; v++) 
         {
             memset(VECVAL(vec,vec->val,v,0),0,vec->traits->nrowspadded*vec->traits->elSize);
         }
@@ -926,7 +926,7 @@ static ghost_error_t ghost_zeroVector(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeVec)
+static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec)
 {
     DEBUG_LOG(1,"Distributing vector");
     int me;
@@ -943,20 +943,20 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
 
     int i;
 
-    MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
-    MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
+    MPI_Request req[vec->traits->ncols*2*(nprocs-1)];
+    MPI_Status stat[vec->traits->ncols*2*(nprocs-1)];
     int msgcount = 0;
 
-    for (i=0;i<vec->traits->nvecs*2*(nprocs-1);i++) 
+    for (i=0;i<vec->traits->ncols*2*(nprocs-1);i++) 
         req[i] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        for (c=0; c<vec->traits->nvecs; c++) {
+        for (c=0; c<vec->traits->ncols; c++) {
             MPI_CALL_RETURN(MPI_Irecv(nodeVec->val[c],nodeVec->context->lnrows[me],mpidt,0,me,nodeVec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
-        for (c=0; c<vec->traits->nvecs; c++) {
+        for (c=0; c<vec->traits->ncols; c++) {
             memcpy(nodeVec->val[c],vec->val[c],vec->traits->elSize*nodeVec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
                 MPI_CALL_RETURN(MPI_Isend(VECVAL(vec,vec->val,c,nodeVec->context->lfRow[i]),nodeVec->context->lnrows[i],mpidt,i,i,nodeVec->context->mpicomm,&req[msgcount]));
@@ -967,7 +967,7 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
     MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
 
-    for (c=0; c<vec->traits->nvecs; c++) {
+    for (c=0; c<vec->traits->ncols; c++) {
         memcpy(nodeVec->val[c],vec->val[c],vec->traits->nrows*vec->traits->elSize);
     }
     //    *nodeVec = vec->clone(vec);
@@ -980,7 +980,7 @@ static ghost_error_t ghost_distributeVector(ghost_vec_t *vec, ghost_vec_t *nodeV
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVec) 
+static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec) 
 {
     ghost_vidx_t c;
 #ifdef GHOST_HAVE_MPI
@@ -996,20 +996,20 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 
     int i;
 
-    MPI_Request req[vec->traits->nvecs*2*(nprocs-1)];
-    MPI_Status stat[vec->traits->nvecs*2*(nprocs-1)];
+    MPI_Request req[vec->traits->ncols*2*(nprocs-1)];
+    MPI_Status stat[vec->traits->ncols*2*(nprocs-1)];
     int msgcount = 0;
 
-    for (i=0;i<vec->traits->nvecs*2*(nprocs-1);i++) 
+    for (i=0;i<vec->traits->ncols*2*(nprocs-1);i++) 
         req[i] = MPI_REQUEST_NULL;
 
     if (me != 0) {
-        for (c=0; c<vec->traits->nvecs; c++) {
+        for (c=0; c<vec->traits->ncols; c++) {
             MPI_CALL_RETURN(MPI_Isend(vec->val[c],vec->context->lnrows[me],mpidt,0,me,vec->context->mpicomm,&req[msgcount]));
             msgcount++;
         }
     } else {
-        for (c=0; c<vec->traits->nvecs; c++) {
+        for (c=0; c<vec->traits->ncols; c++) {
             memcpy(totalVec->val[c],vec->val[c],vec->traits->elSize*vec->context->lnrows[0]);
             for (i=1;i<nprocs;i++) {
                 MPI_CALL_RETURN(MPI_Irecv(VECVAL(totalVec,totalVec->val,c,vec->context->lfRow[i]),vec->context->lnrows[i],mpidt,i,i,vec->context->mpicomm,&req[msgcount]));
@@ -1021,7 +1021,7 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 #else
     if (vec->context != NULL) {
         vec->permute(vec,vec->context->invRowPerm);
-        for (c=0; c<vec->traits->nvecs; c++) {
+        for (c=0; c<vec->traits->ncols; c++) {
             memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*vec->traits->elSize);
         }
     }
@@ -1031,9 +1031,9 @@ static ghost_error_t ghost_collectVectors(ghost_vec_t *vec, ghost_vec_t *totalVe
 
 }
 
-static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2) 
+static ghost_error_t ghost_swapVectors(ghost_densemat_t *v1, ghost_densemat_t *v2) 
 {
-    if ((v1->traits->nvecs > 1) || (v2->traits->nvecs > 1)) {
+    if ((v1->traits->ncols > 1) || (v2->traits->ncols > 1)) {
         ERROR_LOG("Multi-column vector swapping not yet implemented");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -1057,7 +1057,7 @@ static ghost_error_t ghost_swapVectors(ghost_vec_t *v1, ghost_vec_t *v2)
 }
 
 
-static void ghost_freeVector( ghost_vec_t* vec ) 
+static void ghost_freeVector( ghost_densemat_t* vec ) 
 {
     if( vec ) {
         if (!(vec->traits->flags & GHOST_VEC_VIEW)) {
@@ -1065,12 +1065,12 @@ static void ghost_freeVector( ghost_vec_t* vec )
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             /*if (vec->traits->flags & GHOST_VEC_DEVICE) {
-              for (v=0; v<vec->traits->nvecs; v++) { 
+              for (v=0; v<vec->traits->ncols; v++) { 
               ghost_cu_safecall(cudaFreeHost(vec->val[v]));
               }
               }*/
             if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-                for (v=0; v<vec->traits->nvecs; v++) {
+                for (v=0; v<vec->traits->ncols; v++) {
                     free(vec->val[v]);
                 }
             }
@@ -1083,7 +1083,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
             //      construct it otherwise), but we check anyway in case
             //      the user has built his own funny vector in memory.
             if (vec->traits->flags & GHOST_VEC_SCATTERED) {
-                for (v=0; v<vec->traits->nvecs; v++) {
+                for (v=0; v<vec->traits->ncols; v++) {
                     free(vec->val[v]);
                 }
             }
@@ -1102,7 +1102,7 @@ static void ghost_freeVector( ghost_vec_t* vec )
         // TODO free traits ???
     }
 }
-static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm) 
+static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_vidx_t* perm) 
 {
     // TODO enhance performance
     /* permutes values in vector so that i-th entry is mapped to position perm[i] */
@@ -1118,7 +1118,7 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
     }
 
 
-    for (c=0; c<vec->traits->nvecs; c++) {
+    for (c=0; c<vec->traits->ncols; c++) {
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->traits->elSize*len));
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
@@ -1138,13 +1138,13 @@ static ghost_error_t ghost_permuteVector( ghost_vec_t* vec, ghost_vidx_t* perm)
     return GHOST_SUCCESS;
 }
 
-static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
+static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs)
 {
-    ghost_vec_t *new;
-    ghost_vtraits_t *newTraits;
+    ghost_densemat_t *new;
+    ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
     ghost_createVector(&new,src->context,newTraits);
-    new->traits->nvecs = nc;
+    new->traits->ncols = nc;
 
     // copy the data even if the input vector is itself a view
     // (bitwise NAND operation to unset the view flag if set)
@@ -1154,7 +1154,7 @@ static ghost_vec_t * ghost_cloneVector(ghost_vec_t *src, ghost_vidx_t nc, ghost_
     return new;
 }
 
-static ghost_error_t vec_compress(ghost_vec_t *vec)
+static ghost_error_t vec_compress(ghost_densemat_t *vec)
 {
     if (!(vec->traits->flags & GHOST_VEC_SCATTERED)) {
         return GHOST_SUCCESS;
@@ -1163,18 +1163,18 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
     ghost_vidx_t v,i;
 
     char *val = NULL;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrowspadded*vec->traits->nvecs*vec->traits->elSize));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrowspadded*vec->traits->ncols*vec->traits->elSize));
 
 #pragma omp parallel for schedule(runtime) private(v)
     for (i=0; i<vec->traits->nrowspadded; i++)
     {
-        for (v=0; v<vec->traits->nvecs; v++)
+        for (v=0; v<vec->traits->ncols; v++)
         {
             val[(v*vec->traits->nrowspadded+i)*vec->traits->elSize] = 0;
         }
     }
 
-    for (v=0; v<vec->traits->nvecs; v++)
+    for (v=0; v<vec->traits->ncols; v++)
     {
         memcpy(&val[(v*vec->traits->nrowspadded)*vec->traits->elSize],
                 VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*vec->traits->elSize);
@@ -1192,10 +1192,10 @@ static ghost_error_t vec_compress(ghost_vec_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_cloneVtraits(ghost_vtraits_t *t1, ghost_vtraits_t **t2)
+ghost_error_t ghost_cloneVtraits(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2)
 {
-    GHOST_CALL_RETURN(ghost_malloc((void **)t2,sizeof(ghost_vtraits_t)));
-    memcpy(t2,t1,sizeof(ghost_vtraits_t));
+    GHOST_CALL_RETURN(ghost_malloc((void **)t2,sizeof(ghost_densemat_traits_t)));
+    memcpy(t2,t1,sizeof(ghost_densemat_traits_t));
 
     return GHOST_SUCCESS;
 }

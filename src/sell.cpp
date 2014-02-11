@@ -10,7 +10,7 @@
 #include "ghost/util.h"
 #include "ghost/crs.h"
 #include "ghost/sell.h"
-#include "ghost/vec.h"
+#include "ghost/densemat.h"
 #include "ghost/math.h"
 #include "ghost/constants.h"
 #include "ghost/log.h"
@@ -53,7 +53,7 @@
 
 using namespace std;
 
-template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 {
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *rhsv = NULL;
@@ -79,7 +79,7 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
+        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -91,7 +91,7 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
         { // loop over chunks
-            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -125,9 +125,9 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
                         }
                     
                         if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                            partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
                         }
                    }
 
@@ -137,11 +137,11 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
             }
         }
         free(partsums);
@@ -151,7 +151,7 @@ template<typename m_t, typename v_t, int chunkHeight> ghost_error_t SELL_kernel_
 }
 
 
-template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 {
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
     v_t *rhsv = NULL;
@@ -178,7 +178,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
+        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -190,7 +190,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 #pragma omp for schedule(runtime)
         for (i=0; i<mat->nrows; i++) 
         {
-            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -216,19 +216,19 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                     lhsv[i] = tmp;
                 }
                 if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
                 }
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
             }
         }
         free(partsums);
@@ -245,7 +245,7 @@ static int compareNZEPerRow( const void* a, const void* b )
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
 
-template <typename m_t> ghost_error_t SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crsmat)
+template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
 {
     DEBUG_LOG(1,"Creating SELL matrix");
     ghost_error_t ret = GHOST_SUCCESS;
@@ -521,7 +521,7 @@ out:
     return ret;
 }
 
-template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int dense)
+template <typename m_t> static const char * SELL_stringify(ghost_sparsemat_t *mat, int dense)
 {
     ghost_midx_t chunk,i,j,row=0;
     m_t *val = (m_t *)SELL(mat)->val;
@@ -554,74 +554,74 @@ template <typename m_t> static const char * SELL_stringify(ghost_mat_t *mat, int
 }
 
 
-extern "C" ghost_error_t dd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dd_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t ds_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t ds_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,float,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t dc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dc_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,ghost_complex<float>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t dz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dz_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,double,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sd_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,float,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t ss_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t ss_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,float,float,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sc_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,float,ghost_complex<float>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sz_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,float,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cd_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<float>,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cs_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cs_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<float>,float,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cc_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<float>,ghost_complex<float>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cz_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<float>,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zd_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zd_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,double,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zs_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zs_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,float,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zc_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zc_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<float>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zz_SELL_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zz_SELL_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { CHOOSE_KERNEL(SELL_kernel_plain_tmpl,ghost_complex<double>,ghost_complex<double>,SELL(mat)->chunkHeight,mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t d_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t d_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 { return SELL_fromCRS< double >(mat,crs); }
 
-extern "C" ghost_error_t s_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t s_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 { return SELL_fromCRS< float >(mat,crs); }
 
-extern "C" ghost_error_t z_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t z_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 { return SELL_fromCRS< ghost_complex<double> >(mat,crs); }
 
-extern "C" ghost_error_t c_SELL_fromCRS(ghost_mat_t *mat, ghost_mat_t *crs)
+extern "C" ghost_error_t c_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
 
-extern "C" const char * d_SELL_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * d_SELL_stringify(ghost_sparsemat_t *mat, int dense)
 { return SELL_stringify< double >(mat, dense); }
 
-extern "C" const char * s_SELL_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * s_SELL_stringify(ghost_sparsemat_t *mat, int dense)
 { return SELL_stringify< float >(mat, dense); }
 
-extern "C" const char * z_SELL_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * z_SELL_stringify(ghost_sparsemat_t *mat, int dense)
 { return SELL_stringify< ghost_complex<double> >(mat, dense); }
 
-extern "C" const char * c_SELL_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * c_SELL_stringify(ghost_sparsemat_t *mat, int dense)
 { return SELL_stringify< ghost_complex<float> >(mat, dense); }

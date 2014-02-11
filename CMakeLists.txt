@@ -31,16 +31,18 @@ set (SOURCES
         src/core.c
 		src/crs.c 
 		src/crs.cpp 
+		src/densemat.c 
+		src/densemat.cpp 
         src/error.c
         src/io.c
         src/io.cpp
         src/locality.c
         src/machine.c
-		src/mat.c
 		src/math.c
         src/pumap.c
 		src/sell.c 
 		src/sell.cpp
+		src/sparsemat.c
         src/spmvm_goodfaithhybrid.c 
 		src/spmvm_nompi.c 
         src/spmvm_taskmode.c
@@ -51,8 +53,6 @@ set (SOURCES
         src/timing.c
         src/types.c
 		src/util.c 
-		src/vec.c 
-		src/vec.cpp 
 	)
 
 set (HEADERS
@@ -62,28 +62,23 @@ set (HEADERS
 		include/ghost/context.h
         include/ghost/core.h
 		include/ghost/crs.h
+		include/ghost/densemat.h
 		include/ghost/error.h
         include/ghost/io.h
 		include/ghost/locality.h	
         include/ghost/log.h
 		include/ghost/machine.h
-		include/ghost/mat.h
 		include/ghost/math.h
         include/ghost/pumap.h
 		include/ghost/sell.h
+		include/ghost/sparsemat.h
 		include/ghost/task.h
 		include/ghost/taskq.h
         include/ghost/thpool.h
         include/ghost/timing.h
 		include/ghost/types.h
 		include/ghost/util.h
-		include/ghost/vec.h
 	)
-
-if (USE_MPI)
-	set (SOURCES ${SOURCES} 
-		)
-endif()
 
 if (USE_CUDA)
 	find_package(CUDA QUIET)
@@ -96,7 +91,7 @@ if (USE_CUDA)
 		    list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
 		cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
-		cuda_compile(VEC_CU_O src/vec.cu)
+		cuda_compile(VEC_CU_O src/densemat.cu)
 		cuda_compile(CRS_CU_O src/crs.cu)
 		set (SOURCES 
 				${SOURCES} 
@@ -108,7 +103,7 @@ if (USE_CUDA)
 		include_directories(${CUDA_INCLUDE_DIRS})
 		set (HEADERS ${HEADERS}
 				include/ghost/cu_util.h
-                include/ghost/cu_vec.h
+                include/ghost/cu_densemat.h
                 include/ghost/cu_crs.h
 			)
         if (USE_CUDA_PINNEDMEM)

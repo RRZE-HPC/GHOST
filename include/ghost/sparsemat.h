@@ -9,7 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "context.h"
-#include "vec.h"
+#include "densemat.h"
 
 #define GHOST_SPM_FORMAT_CRS 0
 #define GHOST_SPM_FORMAT_SELL 1
@@ -36,8 +36,8 @@ typedef enum {
 
 
 typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
-typedef struct ghost_mtraits_t ghost_mtraits_t;
-typedef struct ghost_mat_t ghost_mat_t;
+typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
+typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
 typedef enum {
     GHOST_SPMFROMROWFUNC_DEFAULT = 0
@@ -85,7 +85,7 @@ typedef enum {
 #define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
 #define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_FULL | GHOST_SPMVM_MODES_SPLIT)
 
-struct ghost_mtraits_t
+struct ghost_sparsemat_traits_t
 {
     int format;
     ghost_spm_flags_t flags;
@@ -101,7 +101,7 @@ struct ghost_mtraits_t
 /**
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
  */
-extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
+extern const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER;
 #define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
 /**
@@ -112,11 +112,11 @@ extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
  * The according functions act locally and are accessed via function pointers. The first argument of
  * each member function always has to be a pointer to the vector itself.
  */
-struct ghost_mat_t
+struct ghost_sparsemat_t
 {
-    ghost_mtraits_t *traits;
-    ghost_mat_t *localPart;
-    ghost_mat_t *remotePart;
+    ghost_sparsemat_traits_t *traits;
+    ghost_sparsemat_t *localPart;
+    ghost_sparsemat_t *remotePart;
     ghost_context_t *context;
     char *name;
     void *data;
@@ -141,7 +141,7 @@ struct ghost_mat_t
      * @param perm The permutation vector.
      * @param invPerm The inverse permutation vector.
      */
-    ghost_error_t (*permute) (ghost_mat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
+    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
     /**
      * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
      *
@@ -152,7 +152,7 @@ struct ghost_mat_t
      *
      * For detailed information on the flags check the documentation of ghost_spmv_flags_t.
      */
-    ghost_error_t (*spmv) (ghost_mat_t *mat, ghost_vec_t *res, ghost_vec_t *rhs, ghost_spmv_flags_t flags);
+    ghost_error_t (*spmv) (ghost_sparsemat_t *mat, ghost_densemat_t *res, ghost_densemat_t *rhs, ghost_spmv_flags_t flags);
     /**
      * @brief Destroy the matrix, i.e., free all of its data.
      *
@@ -160,7 +160,7 @@ struct ghost_mat_t
      *
      * Returns if the matrix is NULL.
      */
-    void       (*destroy) (ghost_mat_t *mat);
+    void       (*destroy) (ghost_sparsemat_t *mat);
     /**
      * @brief Prints specific information on the matrix.
      *
@@ -169,7 +169,7 @@ struct ghost_mat_t
      * This function is called in ghost_printMatrixInfo() to print format-specific information alongside with
      * general matrix information.
      */
-    void       (*printInfo) (ghost_mat_t *mat);
+    void       (*printInfo) (ghost_sparsemat_t *mat);
     /**
      * @brief Turns the matrix into a string.
      *
@@ -179,7 +179,7 @@ struct ghost_mat_t
      *
      * @return The stringified matrix.
      */
-    const char * (*stringify) (ghost_mat_t *mat, int dense);
+    const char * (*stringify) (ghost_sparsemat_t *mat, int dense);
     /**
      * @brief Get the length of the given row.
      *
@@ -188,7 +188,7 @@ struct ghost_mat_t
      *
      * @return The length of the row or zero if the row index is out of bounds. 
      */
-    ghost_midx_t  (*rowLen) (ghost_mat_t *mat, ghost_midx_t row);
+    ghost_midx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_midx_t row);
     /**
      * @brief Return the name of the storage format.
      *
@@ -196,14 +196,14 @@ struct ghost_mat_t
      *
      * @return A string containing the storage format name. 
      */
-    const char *  (*formatName) (ghost_mat_t *mat);
+    const char *  (*formatName) (ghost_sparsemat_t *mat);
     /**
      * @brief Create the matrix from a matrix file in GHOST's binary CRS format.
      *
      * @param mat The matrix. 
      * @param path Path to the file.
      */
-    ghost_error_t (*fromFile)(ghost_mat_t *mat, char *path);
+    ghost_error_t (*fromFile)(ghost_sparsemat_t *mat, char *path);
     /**
      * @brief Create the matrix from a function which defined the matrix row by row.
      *
@@ -215,20 +215,20 @@ struct ghost_mat_t
      *
      * The function func may be called several times for each row concurrently by multiple threads.
      */
-    ghost_error_t (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
     /**
      * @brief Write a matrix to a binary CRS file.
      *
      * @param mat The matrix. 
      * @param path Path of the file.
      */
-    ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
+    ghost_error_t (*toFile)(ghost_sparsemat_t *mat, char *path);
     /**
      * @brief Upload the matrix to the CUDA device.
      *
      * @param mat The matrix.
      */
-    ghost_error_t (*upload)(ghost_mat_t * mat);
+    ghost_error_t (*upload)(ghost_sparsemat_t * mat);
     /**
      * @brief Get the entire memory footprint of the matrix.
      *
@@ -236,20 +236,20 @@ struct ghost_mat_t
      *
      * @return The memory footprint of the matrix in bytes or zero if the matrix is not valid.
      */
-    size_t     (*byteSize)(ghost_mat_t *mat);
+    size_t     (*byteSize)(ghost_sparsemat_t *mat);
     /**
      * @brief Create a matrix from a CRS matrix.
      *
      * @param mat The matrix. 
      * @param crsMat The CRS matrix.
      */
-    ghost_error_t     (*fromCRS)(ghost_mat_t *mat, ghost_mat_t *crsMat);
+    ghost_error_t     (*fromCRS)(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsMat);
     /**
      * @brief Split the matrix into a local and a remote part.
      *
      * @param mat The matrix.
      */
-    ghost_error_t       (*split)(ghost_mat_t *mat);
+    ghost_error_t       (*split)(ghost_sparsemat_t *mat);
 };
 
 
@@ -269,10 +269,10 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_createMatrix(ghost_mat_t **mat, ghost_context_t *ctx, ghost_mtraits_t *traits, int nTraits);
-    ghost_error_t ghost_printMatrixInfo(ghost_mat_t *matrix);
-    ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat);
-    ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat);
+    ghost_error_t ghost_createMatrix(ghost_sparsemat_t **mat, ghost_context_t *ctx, ghost_sparsemat_traits_t *traits, int nTraits);
+    ghost_error_t ghost_printMatrixInfo(ghost_sparsemat_t *matrix);
+    ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_sparsemat_t *mat);
 
 #ifdef __cplusplus
 } extern "C"

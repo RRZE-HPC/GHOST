@@ -18,7 +18,7 @@
 using namespace std;
 // TODO shift, scale als templateparameter
 
-template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 {
     ghost_crs_t *cr = CR(mat);
     v_t *rhsv = NULL;
@@ -49,8 +49,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         }
 
         // 3 -> 16: avoid false sharing
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits->nvecs*nthreads*sizeof(v_t))); 
-        for (i=0; i<16*lhs->traits->nvecs*nthreads; i++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits->ncols*nthreads*sizeof(v_t))); 
+        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -60,7 +60,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         int tid = ghost_ompGetThreadNum();
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
-            for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++)
+            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -84,19 +84,19 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                 }
 
                 if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits->nvecs)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
                 }
             }
         }
     }
     if (options & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
-        for (v=0; v<MIN(lhs->traits->nvecs,rhs->traits->nvecs); v++) {
+        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->nvecs)*16 + 0];
-                local_dot_product[v +   lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->nvecs] += partsums[(v+i*lhs->traits->nvecs)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
             }
         }
         free(partsums);
@@ -104,7 +104,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     return GHOST_SUCCESS;
 }
 
-template <typename m_t> static const char * CRS_stringify(ghost_mat_t *mat, int dense)
+template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
 {
     ghost_midx_t i,j,col;
     m_t *val = (m_t *)CR(mat)->val;
@@ -145,62 +145,62 @@ template <typename m_t> static const char * CRS_stringify(ghost_mat_t *mat, int 
     return buffer.str().c_str();
 }
 
-extern "C" ghost_error_t dd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t ds_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t ds_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< double,float >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t dc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< double,ghost_complex<float> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t dz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t dz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< double,ghost_complex<double> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< float,double >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t ss_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t ss_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< float,float >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< float,ghost_complex<float> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t sz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t sz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< float,ghost_complex<double> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<float>,double >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cs_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cs_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<float>,float >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<float> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t cz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t cz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<double> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zd_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,double >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zs_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zs_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,float >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zc_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<float> >(mat,lhs,rhs,options); }
 
-extern "C" ghost_error_t zz_CRS_kernel_plain(ghost_mat_t *mat, ghost_vec_t *lhs, ghost_vec_t *rhs, ghost_spmv_flags_t options)
+extern "C" ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
 
-extern "C" const char * d_CRS_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * d_CRS_stringify(ghost_sparsemat_t *mat, int dense)
 { return CRS_stringify< double >(mat, dense); }
 
-extern "C" const char * s_CRS_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * s_CRS_stringify(ghost_sparsemat_t *mat, int dense)
 { return CRS_stringify< float >(mat, dense); }
 
-extern "C" const char * z_CRS_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * z_CRS_stringify(ghost_sparsemat_t *mat, int dense)
 { return CRS_stringify< ghost_complex<double> >(mat, dense); }
 
-extern "C" const char * c_CRS_stringify(ghost_mat_t *mat, int dense)
+extern "C" const char * c_CRS_stringify(ghost_sparsemat_t *mat, int dense)
 { return CRS_stringify< ghost_complex<float> >(mat, dense); }

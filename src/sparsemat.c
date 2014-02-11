@@ -2,23 +2,23 @@
 #include "ghost/types.h"
 #include "ghost/crs.h"
 #include "ghost/sell.h"
-#include "ghost/mat.h"
+#include "ghost/sparsemat.h"
 #include "ghost/constants.h"
 #include "ghost/context.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
-const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPM_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPM_SYMM_GENERAL};
 
-ghost_error_t ghost_createMatrix(ghost_mat_t ** mat, ghost_context_t *context, ghost_mtraits_t *traits, int nTraits)
+ghost_error_t ghost_createMatrix(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
     UNUSED(nTraits);
     ghost_error_t ret = GHOST_SUCCESS;
 
     int me;
     GHOST_CALL_GOTO(ghost_getRank(context->mpicomm,&me),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_mat_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat_t)),err,ret);
     
     (*mat)->traits = traits;
     (*mat)->context = context;
@@ -76,7 +76,7 @@ out:
     return ret;    
 }
 
-ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat)
+ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_sparsemat_t *mat)
 {
     if (!nrows) {
         ERROR_LOG("NULL pointer");
@@ -98,7 +98,7 @@ ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_mat_t *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat)
+ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat)
 {
     if (!nnz) {
         ERROR_LOG("NULL pointer");
@@ -120,7 +120,7 @@ ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_mat_t *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_printMatrixInfo(ghost_mat_t *mat)
+ghost_error_t ghost_printMatrixInfo(ghost_sparsemat_t *mat)
 {
     ghost_midx_t nrows;
     ghost_midx_t nnz;
