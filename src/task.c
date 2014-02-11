@@ -84,7 +84,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 
 ghost_task_state_t ghost_task_test(ghost_task_t * t)
 {
-    if (t == NULL || t->state == NULL) {
+    if (!t) {
         return GHOST_TASK_INVALID;
     }
     return t->state;
@@ -156,34 +156,22 @@ void ghost_task_destroy(ghost_task_t *t)
     free(t); t = NULL;
 }
 
-ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, int flags)
+ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
+
     GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
-    /*  if (ghost_thpool == NULL) {
-        WARNING_LOG("The thread pool is not initialized. Something went terribly wrong.");*/
-    /*        int nt = ghost_getNumberOfPhysicalCores()/ghost_getNumberOfRanks(ghost_node_comm);
-              int ft = ghost_getRank(ghost_node_comm)*nt;
-              int poolThreads[] = {nt,nt};
-              int firstThread[] = {ft,ft};
-              int levels = ghost_getNumberOfHwThreads()/ghost_getNumberOfPhysicalCores();
-    //DEBUG_LOG(1,"Trying to initialize a task but the thread pool has not yet been initialized. Doing the init now with %d threads!",nt*levels);
-    //ghost_thpool_init(poolThreads,firstThread,levels);*/
-    //        }
-    /* if (taskq == NULL) {
-       DEBUG_LOG(1,"Trying to initialize a task but the task queues have not yet been initialized. Doing the init now...");
-       ghost_taskq_init();
-       }
-     */
+    
     if (nThreads == GHOST_TASK_FILL_LD) {
         if (LD < 0) {
-            WARNING_LOG("FILL_LD does only work when the LD is given! Not adding task!");
+            WARNING_LOG("FILL_LD does only work when the LD is given! Not creating task!");
             return GHOST_ERR_INVALID_ARG;
         }
         ghost_getNumberOfPUs(&(*t)->nThreads,LD);
     } 
     else if (nThreads == GHOST_TASK_FILL_ALL) {
 #ifdef GHOST_HAVE_OPENMP
-        GHOST_CALL_RETURN(ghost_getNumberOfPUs(&(*t)->nThreads,GHOST_NUMANODE_ANY));
+        GHOST_CALL_GOTO(ghost_getNumberOfPUs(&(*t)->nThreads,GHOST_NUMANODE_ANY),err,ret);
 #else
         (*t)->nThreads = 1; //TODO is this the correct behavior?
 #endif
@@ -197,18 +185,36 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->arg = arg;
     (*t)->flags = flags;
 
-    //    t->freed = 0;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&(*t)->ret,sizeof(void *)));
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
     (*t)->state = GHOST_TASK_CREATED;
     (*t)->coremap = hwloc_bitmap_alloc();
     (*t)->childusedmap = hwloc_bitmap_alloc();
+    if (!(*t)->coremap || !(*t)->childusedmap) {
+        ERROR_LOG("Could not allocate hwloc bitmaps");
+        ret = GHOST_ERR_HWLOC;
+        goto err;
+    }
+
     (*t)->next = NULL;
     (*t)->prev = NULL;
     (*t)->parent = NULL;
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+    if (*t) {
+        free((*t)->cores); (*t)->cores = NULL;
+        free((*t)->finishedCond); (*t)->finishedCond = NULL;
+        free((*t)->mutex); (*t)->mutex = NULL;
+        free((*t)->ret); (*t)->ret = NULL;
+        hwloc_bitmap_free((*t)->coremap); (*t)->coremap = NULL;
+        hwloc_bitmap_free((*t)->childusedmap); (*t)->childusedmap = NULL;
+    }
+    free(*t); *t = NULL;
+out:
+
+    return ret;
 }
 
