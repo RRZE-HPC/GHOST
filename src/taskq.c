@@ -376,7 +376,7 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
             pthread_mutex_unlock(&newTaskMutex);
 
             pthread_mutex_lock(myTask->mutex);
-            *(myTask->state) = GHOST_TASK_RUNNING;    
+            myTask->state = GHOST_TASK_RUNNING;    
             pthread_mutex_unlock(myTask->mutex);
 
             DEBUG_LOG(1,"Thread %d: Finally executing task %p",(int)pthread_self(),(void *)myTask);
@@ -407,7 +407,7 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
 
             pthread_mutex_lock(myTask->mutex); 
             DEBUG_LOG(1,"Thread %d: Finished with task %p. Setting state to finished...",(int)pthread_self(),(void *)myTask);
-            *(myTask->state) = GHOST_TASK_FINISHED;
+            myTask->state = GHOST_TASK_FINISHED;
             pthread_cond_broadcast(myTask->finishedCond);
             pthread_mutex_unlock(myTask->mutex);
             DEBUG_LOG(1,"Thread %d: Finished with task %p. Sending signal to all waiters (cond: %p).",(int)pthread_self(),(void *)myTask,(void *)myTask->finishedCond);
@@ -579,7 +579,7 @@ ghost_error_t ghost_taskq_addTask(ghost_task_t *t)
         for (t=0; t<nt; t++)
         { // look if one of the tasks is already finished
             pthread_mutex_lock(tasks[t]->mutex);
-            if (*(tasks[t]->state) == GHOST_TASK_FINISHED) 
+            if (tasks[t]->state == GHOST_TASK_FINISHED) 
             { // one of the tasks is already finished
                 DEBUG_LOG(1,"One of the tasks has already finished");
                 ret = 1;
@@ -607,7 +607,7 @@ ghost_error_t ghost_taskq_addTask(ghost_task_t *t)
         for (t=0; t<nt; t++)
         { // again look which tasks are finished
             pthread_mutex_lock(tasks[t]->mutex);
-            if (*(tasks[t]->state) == GHOST_TASK_FINISHED) 
+            if (tasks[t]->state == GHOST_TASK_FINISHED) 
             {
                 index[t] = 1;
             } else {

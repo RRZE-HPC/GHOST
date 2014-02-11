@@ -135,10 +135,12 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         }    
     }
     hwloc_bitmap_free(remoteCPUset);
+    IF_DEBUG(2) {
     for (q=0; q<pumap->nDomains; q++) {
         for (t=0; t<totalThreads; t++) {
-            INFO_LOG("LD: %d, t[%d] %d",q,t,pumap->PUs[q][t]->logical_index);
+            DEBUG_LOG(2,"LD: %d, t[%d] %d",q,t,pumap->PUs[q][t]->logical_index);
         }
+    }
     }
 
     goto out;

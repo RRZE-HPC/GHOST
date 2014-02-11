@@ -19,22 +19,22 @@ typedef enum {
     /**
      * @brief The default task
      */
-    GHOST_TASK_DEFAULT 0,
+    GHOST_TASK_DEFAULT = 0,
     /**
      * @brief The task will be treated as high-priority
      */
-    GHOST_TASK_PRIO_HIGH 1,
+    GHOST_TASK_PRIO_HIGH = 1,
     /**
      * @brief The task _must_ be executed in the given NUMA node
      */
-    GHOST_TASK_LD_STRICT 2,
+    GHOST_TASK_LD_STRICT = 2,
     /**
      * @brief Task can use the cores which are reserved by the adding task.
      */
-    GHOST_TASK_USE_PARENTS 4, 
-    GHOST_TASK_NO_PIN 8, 
-    GHOST_TASK_ONLY_HYPERTHREADS 16,
-    GHOST_TASK_NO_HYPERTHREADS 32
+    GHOST_TASK_USE_PARENTS = 4, 
+    GHOST_TASK_NO_PIN = 8, 
+    GHOST_TASK_ONLY_HYPERTHREADS = 16,
+    GHOST_TASK_NO_HYPERTHREADS = 32
 } ghost_task_flags_t;
 
 
