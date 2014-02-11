@@ -363,7 +363,6 @@ struct ghost_densemat_traits_t
     ghost_densemat_flags_t flags;
     int datatype;
     size_t elSize;
-    void * aux;
     void * localdot;
 };
 extern const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER;

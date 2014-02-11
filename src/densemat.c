@@ -26,7 +26,7 @@
 extern cublasHandle_t ghost_cublas_handle;
 #endif
 
-const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
+const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
 
 ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
