@@ -14,8 +14,8 @@
  * @brief This is the alignment size for memory allocated using `ghost_malloc_align()`.
  */
 #define GHOST_DATA_ALIGNMENT 1024
-
 #define GHOST_NUMANODE_ANY -1
+
 
 #ifdef __cplusplus
 extern "C" {

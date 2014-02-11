@@ -20,7 +20,7 @@ static ghost_thpool_t *ghost_thpool = NULL;
  * performed before this function returns.
 
  */
-ghost_error_t ghost_thpool_init(int nThreads, void *(func)(void *))
+ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 {
     int t;
     int totalThreads;
@@ -63,7 +63,7 @@ ghost_error_t ghost_thpool_init(int nThreads, void *(func)(void *))
  *
  * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
  */
-ghost_error_t ghost_thpool_finish()
+ghost_error_t ghost_thpool_destroy()
 {
     if (ghost_thpool == NULL)
         return GHOST_SUCCESS;
@@ -88,7 +88,7 @@ ghost_error_t ghost_thpool_finish()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getThreadpool(ghost_thpool_t **thpool)
+ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool)
 {
     if (!thpool) {
         ERROR_LOG("NULL pointer");

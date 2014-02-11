@@ -6,7 +6,16 @@
 #ifndef GHOST_TIMING_H
 #define GHOST_TIMING_H
 
+#include <float.h>
+
 #include "error.h"
+
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef MAX
+#define MAX(x,y) ((x)<(y)?(y):(x))
+#endif
 
 /**
  * @brief Measure the execution time of a function with a given numbe of iterations.

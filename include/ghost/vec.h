@@ -345,7 +345,7 @@ struct ghost_vtraits_t
     void * localdot;
 };
 extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
-#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, .localdot = NULL, ## __VA_ARGS__ }
+#define GHOST_VTRAITS_INIT(...) {.flags = GHOST_VEC_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .nvecs = 1, ## __VA_ARGS__ }
 
 #ifdef MIC
 //#define SELL_LEN 8

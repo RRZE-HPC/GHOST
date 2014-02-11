@@ -5,8 +5,8 @@
 #include <hwloc.h>
 #include "error.h"
 
-#define GHOST_TASK_LD_UNDEFINED -1 // initializer
-#define GHOST_TASK_LD_ANY 0 // execute task on any LD
+#define GHOST_TASK_LD_UNDEFINED -2 // initializer
+//#define GHOST_TASK_LD_ANY -1 // execute task on any LD
 
 #define GHOST_TASK_DEFAULT 0
 #define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
@@ -30,10 +30,6 @@ typedef enum ghost_task_state_t {
     GHOST_TASK_RUNNING, // task is currently running
     GHOST_TASK_FINISHED // task has finished
 } ghost_task_state_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @brief This structure represents a GHOST task.
@@ -116,48 +112,22 @@ typedef struct ghost_task_t {
     int freed;
 } ghost_task_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/**
- * @brief This struct represents the task queue.
- */
-typedef struct ghost_taskq_t {
-    /**
-     * @brief The first (= highest priority) task in the queue
-     */
-    ghost_task_t *head;
-    /**
-     * @brief The last (= lowest priority) task in the queue
-     */
-    ghost_task_t *tail;
-    /**
-     * @brief Serialize access to the queue
-     */
-    pthread_mutex_t mutex;
-} ghost_taskq_t;
-
-
-ghost_error_t ghost_taskq_init();
-ghost_error_t ghost_taskq_finish();
-
-ghost_error_t ghost_task_init(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
-ghost_error_t ghost_task_add(ghost_task_t *);
+ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
+ghost_error_t ghost_task_enqueue(ghost_task_t *);
 ghost_error_t ghost_task_wait(ghost_task_t *);
-ghost_error_t ghost_task_waitall();
-ghost_error_t ghost_task_waitsome(ghost_task_t **, int, int*);
 ghost_task_state_t ghost_task_test(ghost_task_t *);
-ghost_error_t ghost_task_destroy(ghost_task_t *); // care for free'ing siblings
-ghost_error_t ghost_task_print(ghost_task_t *t);
-ghost_error_t ghost_taskq_print_all(); 
-ghost_error_t ghost_getTaskqueueFunction(void *(**func)(void *));
+void ghost_task_destroy(ghost_task_t *); 
+ghost_error_t ghost_task_unpin(ghost_task_t *task);
 
-char *ghost_task_strstate(ghost_task_state_t state);
-
-//extern ghost_thpool_t *ghost_thpool; // the thread pool
-extern pthread_key_t ghost_thread_key;
+char *ghost_task_stateString(ghost_task_state_t state);
 
 
 #ifdef __cplusplus
 }// extern "C"
 #endif
 
-#endif //__GHOST_TASKQ_H__
+#endif

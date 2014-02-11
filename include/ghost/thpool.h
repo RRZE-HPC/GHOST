@@ -14,12 +14,10 @@
 typedef struct ghost_thpool_t {
     /**
      * @brief The pthread of each GHOST thread.
+     *
+     * Length: #nThreads.
      */
     pthread_t *threads;
-    /**
-     * @brief The PU (Processing Unit) of each GHOST thread.
-     */
-    //hwloc_obj_t *PUs;
     /**
      * @brief The total number of threads in the thread pool
      */
@@ -30,13 +28,9 @@ typedef struct ghost_thpool_t {
     sem_t *sem; // counts the number of initialized threads
 } ghost_thpool_t;
 
-ghost_error_t ghost_thpool_init(int nThreads, void *(*func)(void *));
-ghost_error_t ghost_thpool_finish();
-ghost_error_t ghost_getThreadpool(ghost_thpool_t **thpool);
-int nBusyCoresAtLD(hwloc_bitmap_t bm, int ld);
-int nIdleCoresAtLD(int ld);
-int nThreadsPerLD(int ld);
-int nIdleCores();
+ghost_error_t ghost_thpool_create(int nThreads, void *(*func)(void *));
+ghost_error_t ghost_thpool_destroy();
+ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool);
 
 #endif
 

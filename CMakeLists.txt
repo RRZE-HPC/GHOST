@@ -29,7 +29,6 @@ add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY
 set (SOURCES
 		src/context.c
         src/core.c
-        src/cpumap.c
 		src/crs.c 
 		src/crs.cpp 
         src/error.c
@@ -39,10 +38,12 @@ set (SOURCES
         src/machine.c
 		src/mat.c
 		src/math.c
+        src/pumap.c
 		src/sell.c 
 		src/sell.cpp
 		src/spmvm_nompi.c 
 		src/task.c
+		src/taskq.c
         src/thpool.c
         src/timing.c
         src/types.c
@@ -57,7 +58,6 @@ set (HEADERS
 		include/ghost/constants.h
 		include/ghost/context.h
         include/ghost/core.h
-        include/ghost/cpumap.h
 		include/ghost/crs.h
 		include/ghost/error.h
         include/ghost/io.h
@@ -65,8 +65,10 @@ set (HEADERS
         include/ghost/log.h
 		include/ghost/mat.h
 		include/ghost/math.h
+        include/ghost/pumap.h
 		include/ghost/sell.h
 		include/ghost/task.h
+		include/ghost/taskq.h
         include/ghost/thpool.h
         include/ghost/timing.h
 		include/ghost/types.h

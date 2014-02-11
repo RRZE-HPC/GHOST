@@ -521,3 +521,18 @@ ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t)
 
     return GHOST_SUCCESS;
 }
+
+char * ghost_modeName(int spmvmOptions) 
+{
+    if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
+        return "non-MPI";
+    if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
+        return "vector mode";
+    if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
+        return "g/f hybrid";
+    if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
+        return "task mode";
+    return "invalid";
+
+}
+

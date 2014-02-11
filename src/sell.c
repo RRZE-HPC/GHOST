@@ -310,7 +310,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     SELL(mat)->chunkStart[0] = 0;
 
     if (mat->traits->flags & GHOST_SPM_SORTED) {
-#pragma omp parallel private(i)
+#pragma omp parallel private(i,tmpval,tmpcol)
         { 
             GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_midx_t)),ret);
@@ -361,7 +361,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
             (mat->context->rowPerm)[rowSort[i].row] = i;
         }
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz)
+#pragma omp parallel private(maxRowLenInChunk,i,tmpcol,tmpval) reduction (+:nEnts,nnz)
         { 
             GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_midx_t)),ret);
@@ -397,7 +397,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
         }
     } else {
 
-#pragma omp parallel private(maxRowLenInChunk,i) reduction (+:nEnts,nnz) 
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz) 
         { 
             GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_midx_t)),ret);
@@ -457,7 +457,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, 
     }
 
 
-#pragma omp parallel private(i,col,row)
+#pragma omp parallel private(i,col,row,tmpval,tmpcol)
     {
         GHOST_CALL(ghost_malloc((void **)&tmpval,SELL(mat)->chunkHeight*maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_midx_t)),ret);
@@ -1305,6 +1305,7 @@ static ghost_error_t SELL_kernel_plain (ghost_mat_t *mat, ghost_vec_t * lhs, gho
         [ghost_datatypeIdx(lhs->traits->datatype)];
 #endif
 
+    kernel = NULL;
     if (kernel == NULL) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain

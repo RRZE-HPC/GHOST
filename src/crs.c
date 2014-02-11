@@ -287,7 +287,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 
     ghost_mnnz_t nEnts = 0;
 
-#pragma omp parallel private(i,rowlen) reduction (+:nEnts)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
     { 
         GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_midx_t)),ret);
@@ -323,7 +323,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_mat_t *mat, ghost_midx_t maxrowlen, i
 
     // TODO load balancing if distribution by nnz
 
-#pragma omp parallel private(i,rowlen)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol)
     { 
         GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_midx_t)),ret);

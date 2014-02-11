@@ -3,7 +3,9 @@
 #include "ghost/locality.h"
 #include "ghost/vec.h"
 #include "ghost/task.h"
-#include "ghost/thpool.h"
+#include "ghost/taskq.h"
+#include "ghost/pumap.h"
+#include "ghost/machine.h"
 #include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/instr.h"
@@ -175,14 +177,17 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
         DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
         taskflags |= GHOST_TASK_USE_PARENTS;
         ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
-        ghost_task_init(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_init(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
+        ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
 
 
     } else {
         DEBUG_LOG(1,"No parent task in task mode spMVM solver");
-        ghost_task_init(&compTask, nIdleCores()-1, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_init(&commTask, 1, 0, &communicate, &cargs, taskflags);
+
+        int nIdleCores;
+        ghost_pumap_getNumberOfIdlePUs(&nIdleCores,GHOST_NUMANODE_ANY);
+        ghost_task_create(&compTask, nIdleCores-remoteExists, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
     }
 
 
@@ -241,9 +246,9 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_vec_t* res, gh
 
     GHOST_INSTR_START(spMVM_taskmode_both_tasks);
     if (remoteExists) {
-        ghost_task_add(commTask);
+        ghost_task_enqueue(commTask);
     }
-    ghost_task_add(compTask);
+    ghost_task_enqueue(compTask);
     ghost_task_wait(compTask);
     if ((ret = *((ghost_error_t *)(compTask->ret))) != GHOST_SUCCESS) {
         goto err;

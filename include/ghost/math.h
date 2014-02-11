@@ -58,6 +58,7 @@ ghost_error_t ghost_mpi_createOperations();
 ghost_error_t ghost_mpi_destroyOperations();
 ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
 ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t);
+char * ghost_modeName(int spmvmOptions);
 
 #ifdef __cplusplus
 } //extern "C"

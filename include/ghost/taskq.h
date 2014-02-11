@@ -1,0 +1,47 @@
+#ifndef GHOST_TASKQ_H
+#define GHOST_TASKQ_H
+
+#include <pthread.h>
+#include <hwloc.h>
+#include "error.h"
+#include "task.h"
+
+/**
+ * @brief This struct represents the task queue.
+ */
+typedef struct {
+    /**
+     * @brief The first (= highest priority) task in the queue
+     */
+    ghost_task_t *head;
+    /**
+     * @brief The last (= lowest priority) task in the queue
+     */
+    ghost_task_t *tail;
+    /**
+     * @brief Serialize access to the queue
+     */
+    pthread_mutex_t mutex;
+} ghost_taskq_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+ghost_error_t ghost_taskq_create();
+ghost_error_t ghost_taskq_destroy();
+
+ghost_error_t ghost_taskq_waitall();
+ghost_error_t ghost_taskq_waitsome(ghost_task_t **, int, int*);
+ghost_error_t ghost_taskq_print();
+ghost_error_t ghost_taskq_addTask(ghost_task_t *task);
+ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *));
+
+extern pthread_key_t ghost_thread_key;
+
+#ifdef __cplusplus
+}// extern "C"
+#endif
+
+#endif

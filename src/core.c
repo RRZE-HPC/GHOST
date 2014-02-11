@@ -6,10 +6,10 @@
 #include "ghost/math.h"
 #include "ghost/machine.h"
 #include "ghost/locality.h"
-#include "ghost/task.h"
+#include "ghost/taskq.h"
 #include "ghost/thpool.h"
 #include "ghost/timing.h"
-#include "ghost/cpumap.h"
+#include "ghost/pumap.h"
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
@@ -130,7 +130,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (hwloc_bitmap_weight(cpuset) < hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_PU)) {
         WARNING_LOG("GHOST is running in a restricted CPU set. This is probably not what you want because GHOST cares for pinning itself...");
     }
-    hwloc_bitmap_free(cpuset);
+    hwloc_bitmap_free(cpuset); cpuset = NULL;
 
 
     // auto-set rank types 
@@ -319,17 +319,18 @@ ghost_error_t ghost_init(int argc, char **argv)
     char *cpusetstr;
     hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
     INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
-
-    ghost_taskq_init();
+    
     void *(*threadFunc)(void *);
-    ghost_getTaskqueueFunction(&threadFunc);
-    ghost_thpool_init(hwloc_bitmap_weight(mycpuset),threadFunc);
-    ghost_createCPUmap(mycpuset);
+
+    ghost_taskq_create();
+    ghost_taskq_getStartRoutine(&threadFunc);
+    ghost_thpool_create(hwloc_bitmap_weight(mycpuset),threadFunc);
+    ghost_pumap_create(mycpuset);
 
     ghost_rand_init();
 
-    hwloc_bitmap_free(mycpuset);   
-    hwloc_bitmap_free(globcpuset);   
+    hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
+    hwloc_bitmap_free(globcpuset); globcpuset = NULL;
     return GHOST_SUCCESS;
 }
 
@@ -347,10 +348,6 @@ ghost_error_t ghost_getRandState(unsigned int *s)
 ghost_error_t ghost_finalize()
 {
 
-    ghost_taskq_finish();
-    ghost_thpool_finish();
-    ghost_destroyTopology();
-    ghost_destroyCPUmap();
 
     free(ghost_rand_states);
     ghost_rand_states=NULL;
@@ -367,6 +364,11 @@ ghost_error_t ghost_finalize()
         MPI_Finalize();
     }
 #endif
+    ghost_taskq_waitall();
+    ghost_taskq_destroy();
+    ghost_thpool_destroy();
+    ghost_pumap_destroy();
+    ghost_destroyTopology();
 
     return GHOST_SUCCESS;
 }
