@@ -126,6 +126,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Downloads an entire vector from a compute device. Does nothing if
      * the vector is not present on the device.
      *
@@ -135,6 +137,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*download) (ghost_vec_t *vec);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Downloads only a vector's halo elements from a compute device.
      * Does nothing if the vector is not present on the device.
      *
@@ -144,6 +148,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*downloadHalo) (ghost_vec_t *vec);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Downloads only a vector's local elements (i.e., without halo
      * elements) from a compute device. Does nothing if the vector is not
      * present on the device.
@@ -167,6 +173,8 @@ struct ghost_vec_t
     ghost_error_t          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
             void *entry);
     /**
+     * @ingroup denseinit
+     *
      * @brief Initializes a vector from a given function.
      * Malloc's memory for the vector's values if this hasn't happened before.
      *
@@ -177,6 +185,8 @@ struct ghost_vec_t
      */
     ghost_error_t (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
     /**
+     * @ingroup denseinit
+     *
      * @brief Initializes a vector from another vector at a given column offset.
      * Malloc's memory for the vector's values if this hasn't happened before.
      *
@@ -188,6 +198,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
     /**
+     * @ingroup denseinit
+     *
      * @brief Initializes a vector from a file.
      * Malloc's memory for the vector's values if this hasn't happened before.
      *
@@ -198,6 +210,8 @@ struct ghost_vec_t
      */
     ghost_error_t (*fromFile) (ghost_vec_t *vec, char *filename);
     /**
+     * @ingroup denseinit
+     *
      * @brief Initiliazes a vector from random values.
      *
      * @param vec The vector.
@@ -206,6 +220,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*fromRand) (ghost_vec_t *vec);
     /**
+     * @ingroup denseinit
+     *
      * @brief Initializes a vector from a given scalar value.
      *
      * @param vec The vector.
@@ -268,6 +284,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*toFile) (ghost_vec_t *vec, char *filename);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Uploads an entire vector to a compute device. Does nothing if
      * the vector is not present on the device.
      *
@@ -275,6 +293,8 @@ struct ghost_vec_t
      */
     ghost_error_t          (*upload) (ghost_vec_t *vec);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Uploads only a vector's halo elements to a compute device.
      * Does nothing if the vector is not present on the device.
      *
@@ -282,6 +302,8 @@ struct ghost_vec_t
      */
     ghost_error_t (*uploadHalo) (ghost_vec_t *vec);
     /**
+     * @ingroup gputransfer
+     * 
      * @brief Uploads only a vector's local elements (i.e., without halo
      * elements) to a compute device. Does nothing if the vector is not
      * present on the device.

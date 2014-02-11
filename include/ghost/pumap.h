@@ -1,4 +1,5 @@
 /**
+ * @ingroup task @{
  * @file pumap.h
  * @brief Types and functions for the PU (processing unit) map functionality. 
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
@@ -102,3 +103,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+/** @} */

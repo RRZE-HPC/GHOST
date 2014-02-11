@@ -1,23 +1,34 @@
 /** 
- * @defgroup types Types
- * @brief Basic types.
- *
+ * @defgroup types Data types
+ * @brief Basic data types and structures.
+ */
+
+/**
+ * @defgroup denseinit Dense matrix initialization
+ * @brief Functions to initialize dense matrices/vectors.
+ */
+
+/**
+ * @defgroup gputransfer GPU data transfer
+ * @brief Function to transfer data to/from GPUs
  */
 
 /** 
- * @defgroup locops Local operations
+ * @defgroup locops Local math
  * @brief Mathematical operations which act locally.
- *
  */
 
 /** 
- * @defgroup globops Global operations
+ * @defgroup globops Global math
  * @brief Mathematical operations which act globally (and hence, also locally).
- *
  */
 
 /** 
- * @defgroup machine Machine
+ * @defgroup machine Machine query
  * @brief Query machine information.
- *
+ */
+
+/**
+ * @defgroup task Task and thread management
+ * @brief Functionality related to tasks, queues, threads and managing processing units.
  */

@@ -1,3 +1,9 @@
+/**
+ * @ingroup task @{
+ * @file task.h
+ * @brief Types and functions for the tasks.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_TASK_H
 #define GHOST_TASK_H
 
@@ -8,27 +14,60 @@
 #define GHOST_TASK_LD_UNDEFINED -2 // initializer
 //#define GHOST_TASK_LD_ANY -1 // execute task on any LD
 
-#define GHOST_TASK_DEFAULT 0
-#define GHOST_TASK_PRIO_HIGH 1 // task will be added to the head of the queue
-#define GHOST_TASK_LD_STRICT 2 // task _must_ be executed on the defined LD
-#define GHOST_TASK_USE_PARENTS 4 // task can use the parent's resources if added from within a task 
-#define GHOST_TASK_NO_PIN 8 
-#define GHOST_TASK_ONLY_HYPERTHREADS 16
-#define GHOST_TASK_NO_HYPERTHREADS 32
+
+typedef enum {
+    /**
+     * @brief The default task
+     */
+    GHOST_TASK_DEFAULT 0,
+    /**
+     * @brief The task will be treated as high-priority
+     */
+    GHOST_TASK_PRIO_HIGH 1,
+    /**
+     * @brief The task _must_ be executed in the given NUMA node
+     */
+    GHOST_TASK_LD_STRICT 2,
+    /**
+     * @brief Task can use the cores which are reserved by the adding task.
+     */
+    GHOST_TASK_USE_PARENTS 4, 
+    GHOST_TASK_NO_PIN 8, 
+    GHOST_TASK_ONLY_HYPERTHREADS 16,
+    GHOST_TASK_NO_HYPERTHREADS 32
+} ghost_task_flags_t;
 
 
-#define GHOST_TASK_FILL_LD -1 // use all threads of the given LD
-#define GHOST_TASK_FILL_ALL -2 // use all threads of all LDs
+/**
+ * @brief Use all processing units in the given NUMA domain.
+ */
+#define GHOST_TASK_FILL_LD -1
+/**
+ * @brief Use all available processing units.
+ */
+#define GHOST_TASK_FILL_ALL -2
 
-#define GHOST_THPOOL_NTHREADS_FULLNODE ((int*)(0xBEEF))
-#define GHOST_THPOOL_FTHREAD_DEFAULT ((int *)(0xBEEF))
-#define GHOST_THPOOL_LEVELS_FULLSMT 0
-
-typedef enum ghost_task_state_t {
-    GHOST_TASK_INVALID, // task has not been enqueued
-    GHOST_TASK_ENQUEUED, // task has been enqueued
-    GHOST_TASK_RUNNING, // task is currently running
-    GHOST_TASK_FINISHED // task has finished
+typedef enum {
+    /**
+     * @brief Task is invalid (e.g., not yet created). 
+     */
+    GHOST_TASK_INVALID,
+    /**
+     * @brief Task has been created. 
+     */
+    GHOST_TASK_CREATED,
+    /**
+     * @brief Task has been enqueued.
+     */
+    GHOST_TASK_ENQUEUED,
+    /**
+     * @brief Task is running.
+     */
+    GHOST_TASK_RUNNING,
+    /**
+     * @brief Task has finished.
+     */
+    GHOST_TASK_FINISHED
 } ghost_task_state_t;
 
 /**
@@ -66,7 +105,7 @@ typedef struct ghost_task_t {
     /**
      * @brief The current state of the task. (set by the library)
      */
-    int *state;
+    ghost_task_state_t state;
     /**
      * @brief The list of cores where the task's threads are running. (set by the library)
      */
@@ -116,18 +155,68 @@ typedef struct ghost_task_t {
 extern "C" {
 #endif
 
-ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, int flags);
-ghost_error_t ghost_task_enqueue(ghost_task_t *);
-ghost_error_t ghost_task_wait(ghost_task_t *);
-ghost_task_state_t ghost_task_test(ghost_task_t *);
-void ghost_task_destroy(ghost_task_t *); 
-ghost_error_t ghost_task_unpin(ghost_task_t *task);
+    /**
+     * @brief Create a task. 
+     *
+     * @param task Where to store the task
+     * @param nThreads The number of threads which are reserved for the task
+     * @param LD The index of the task queue this task should be added to
+     * @param func The function the task should execute
+     * @param arg The arguments to the task's function
+     * @param flags The task's flags
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags);
+    ghost_error_t ghost_task_enqueue(ghost_task_t *);
+    /**
+     * @brief Wait for a task to finish
+     *
+     * @param t The task to wait for
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_task_wait(ghost_task_t *);
+    /**
+     * @brief Test the task's current state
+     *
+     * @param t The task to test
+     *
+     * @return  The state of the task
+     */
+    ghost_task_state_t ghost_task_test(ghost_task_t *);
+    void ghost_task_destroy(ghost_task_t *); 
+    /**
+     * @brief Free a task's resources.
+     *
+     * @param t The task to be destroyed
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_task_unpin(ghost_task_t *task);
 
-char *ghost_task_stateString(ghost_task_state_t state);
+    /**
+     * @brief Return a string representing the task's state
+     *
+     * @param state The task to test
+     *
+     * @return The state string
+     */
+    char *ghost_task_stateString(ghost_task_state_t state);
 
+    /**
+     * @brief Print a task and all relevant informatio to stdout.
+     *
+     * @param t The task
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_task_print(ghost_task_t *t); 
 
 #ifdef __cplusplus
 }// extern "C"
 #endif
 
 #endif
+
+/** @} */

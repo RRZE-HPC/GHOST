@@ -1,11 +1,3 @@
-/**
- * @file task.c
- * @author Moritz Kreutzer (moritz.kreutzer@fau.de)
- * @date August 2013
- *
- * In this file, the task queue functionality of GHOST is implemented.
- */
-
 #define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,10 +76,6 @@ pthread_key_t ghost_thread_key = 0;
 
 static void * thread_main(void *arg);
 
-/**
- * @brief Initializes a task queues.
- * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
- */
 ghost_error_t ghost_taskq_create()
 {
     GHOST_CALL_RETURN(ghost_malloc((void **)&taskq,sizeof(ghost_taskq_t)));

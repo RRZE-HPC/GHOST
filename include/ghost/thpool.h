@@ -1,4 +1,5 @@
 /**
+ * @ingroup task @{
  * @file thpool.h
  * @brief Types and functions for the thread pool.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
@@ -76,3 +77,4 @@ extern "C" {
 
 #endif
 
+/** @} */

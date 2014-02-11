@@ -1,4 +1,5 @@
 /**
+ * @ingroup task @{
  * @file taskq.h
  * @brief Types and functions for the task queue.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
@@ -34,6 +35,10 @@ extern "C" {
 #endif
 
 
+/**
+ * @brief Initializes a task queues.
+ * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
+ */
 ghost_error_t ghost_taskq_create();
 ghost_error_t ghost_taskq_destroy();
 
@@ -42,7 +47,6 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t **, int, int*);
 ghost_error_t ghost_taskq_print();
 ghost_error_t ghost_taskq_addTask(ghost_task_t *task);
 ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *));
-int ghost_taskq_inTask();
 
 extern pthread_key_t ghost_thread_key;
 
@@ -51,3 +55,5 @@ extern pthread_key_t ghost_thread_key;
 #endif
 
 #endif
+
+/** @} */
