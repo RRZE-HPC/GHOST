@@ -26,10 +26,21 @@
 
 ghost_error_t ghost_task_unpin(ghost_task_t *task)
 {
+    unsigned int pu;
     ghost_thpool_t *ghost_thpool = NULL;
     ghost_thpool_get(&ghost_thpool);
     if (!(task->flags & GHOST_TASK_NO_PIN)) {
-        for (int t=0; t<task->nThreads; t++) {
+        hwloc_bitmap_foreach_begin(pu,task->coremap);
+            if ((task->flags & GHOST_TASK_USE_PARENTS) && 
+                    task->parent && 
+                    hwloc_bitmap_isset(task->parent->coremap,pu)) 
+            {
+                hwloc_bitmap_clr(task->parent->childusedmap,pu);
+            } else {
+                ghost_pumap_setIdleIdx(pu);
+            }
+        hwloc_bitmap_foreach_end();
+/*        for (int t=0; t<task->nThreads; t++) {
             if ((task->flags & GHOST_TASK_USE_PARENTS) && 
                     task->parent && 
                     hwloc_bitmap_isset(task->parent->coremap,task->cores[t])) 
@@ -38,7 +49,7 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
             } else {
                 ghost_pumap_setIdleIdx(task->cores[t]);
             }
-        }
+        }*/
     }
     //    task->freed = 1;
 
@@ -66,7 +77,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     pthread_cond_init(t->finishedCond,NULL);
     pthread_mutex_init(t->mutex,NULL);
     t->state = GHOST_TASK_INVALID;
-    memset(t->cores,0,sizeof(int)*t->nThreads);
+//    memset(t->cores,0,sizeof(int)*t->nThreads);
 
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
@@ -149,7 +160,7 @@ void ghost_task_destroy(ghost_task_t *t)
         pthread_mutex_destroy(t->mutex);
         pthread_cond_destroy(t->finishedCond);
 
-        free(t->cores);
+//        free(t->cores);
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
         //free(t->ret);
@@ -188,7 +199,7 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->arg = arg;
     (*t)->flags = flags;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
+//    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
@@ -208,7 +219,7 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     goto out;
 err:
     if (*t) {
-        free((*t)->cores); (*t)->cores = NULL;
+        //free((*t)->cores); (*t)->cores = NULL;
         free((*t)->finishedCond); (*t)->finishedCond = NULL;
         free((*t)->mutex); (*t)->mutex = NULL;
         free((*t)->ret); (*t)->ret = NULL;

@@ -264,7 +264,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                         DEBUG_LOG(2,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),pumap->PUs[curTask->LD][t]->os_index);
                         ghost_setCore(core);
                         hwloc_bitmap_set(curTask->coremap,core);
-                        curTask->cores[reservedCores] = core;
+                        //curTask->cores[reservedCores] = core;
                         reservedCores++;
                         t++;
                         break;

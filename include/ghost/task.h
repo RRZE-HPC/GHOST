@@ -109,7 +109,7 @@ typedef struct ghost_task_t {
     /**
      * @brief The list of cores where the task's threads are running. (set by the library)
      */
-    int *cores;
+//    int *cores;
     /**
      * @brief Map of cores this task is using. (set by the library)
      */
