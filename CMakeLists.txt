@@ -45,10 +45,10 @@ set (SOURCES
 		src/sell.c 
 		src/sell.cpp
 		src/sparsemat.c
-        src/spmvm_goodfaithhybrid.c 
-		src/spmvm_nompi.c 
-        src/spmvm_taskmode.c
-        src/spmvm_vectormode.c 
+        src/spmv_overlap.c 
+		src/spmv_nompi.c 
+        src/spmv_task.c
+        src/spmv_vector.c 
 		src/task.c
 		src/taskq.c
         src/thpool.c
