@@ -9,6 +9,7 @@
 #include "ghost/thpool.h"
 #include "ghost/timing.h"
 #include "ghost/pumap.h"
+#include "ghost/omp.h"
 
 #include <hwloc.h>
 #ifdef GHOST_HAVE_INSTR_LIKWID

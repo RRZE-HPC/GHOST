@@ -1,4 +1,5 @@
 #include "ghost/config.h"
+#include "ghost/omp.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h

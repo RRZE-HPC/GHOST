@@ -18,6 +18,7 @@
 #include "ghost/util.h"
 #include "ghost/machine.h"
 #include "ghost/log.h"
+#include "ghost/omp.h"
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>

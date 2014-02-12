@@ -7,6 +7,7 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/error.h"
+#include "ghost/omp.h"
 
 #include <string.h>
 #include <sys/mman.h>

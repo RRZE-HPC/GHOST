@@ -12,6 +12,7 @@
 #include "ghost/machine.h"
 #include "ghost/io.h"
 #include "ghost/log.h"
+#include "ghost/omp.h"
 #include <libgen.h>
 #include <unistd.h>
 #include <byteswap.h>
@@ -410,33 +411,6 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
 
 
 
-
-void ghost_ompSetNumThreads(int nthreads)
-{
-#ifdef GHOST_HAVE_OPENMP
-    omp_set_num_threads(nthreads);
-#else
-    UNUSED(nthreads);
-#endif
-}
-
-int ghost_ompGetNumThreads()
-{
-#ifdef GHOST_HAVE_OPENMP
-    return omp_get_num_threads();
-#else 
-    return 1;
-#endif
-}
-
-int ghost_ompGetThreadNum()
-{
-#ifdef GHOST_HAVE_OPENMP
-    return omp_get_thread_num();
-#else
-    return 0;
-#endif
-}
 
 int ghost_hash(int a, int b, int c)
 {

@@ -88,10 +88,6 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
-    
-    void ghost_ompSetNumThreads(int nthreads);
-    int ghost_ompGetThreadNum();
-    int ghost_ompGetNumThreads();
 
     /**
      * @brief Computes a hash from three integral input values.
