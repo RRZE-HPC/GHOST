@@ -120,13 +120,13 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
                     GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1),err,ret);
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
-                    ghost_spmFromRowFunc_t func;
-                    if (sizeof(void *) != sizeof(ghost_spmFromRowFunc_t)) {
+                    ghost_sparsemat_fromRowFunc_t func;
+                    if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
                         ERROR_LOG("Object pointers are of different size than function pointers. That probably means that you are not running on a POSIX-compatible OS.");
                         goto err;
                     }
 
-                    memcpy(&func,&matrixSource,sizeof(ghost_spmFromRowFunc_t));
+                    memcpy(&func,&matrixSource,sizeof(ghost_sparsemat_fromRowFunc_t));
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,(*context)->gncols*sizeof(complex double)),err,ret);
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,(*context)->gncols*sizeof(ghost_midx_t)),err,ret);
                     (*context)->rpt[0] = 0;

@@ -235,7 +235,12 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
             }
 
         } else {
-            ghost_castArray_funcs[ghost_datatypeIdx(datatype)][ghost_datatypeIdx(header.datatype)](val,tmpval,nEnts);
+            ghost_datatype_idx_t matDtIdx;
+            ghost_datatype_idx_t headerDtIdx;
+            GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,datatype));
+            GHOST_CALL_RETURN(ghost_datatypeIdx(&headerDtIdx,header.datatype));
+
+            ghost_castArray_funcs[matDtIdx][headerDtIdx](val,tmpval,nEnts);
         }
 
         free(tmpval);

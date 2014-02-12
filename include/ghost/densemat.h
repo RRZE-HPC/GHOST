@@ -10,9 +10,9 @@
 #include "types.h"
 #include "context.h"
 
-
 typedef struct ghost_densemat_traits_t ghost_densemat_traits_t;
 typedef struct ghost_densemat_t ghost_densemat_t;
+
 typedef enum {
     GHOST_VEC_DEFAULT   = 0,
     GHOST_VEC_RHS       = 1,
@@ -31,30 +31,37 @@ typedef enum {
  * @brief A dense vector/matrix.  
  * 
  * The according functions act locally and are accessed via function pointers. The first argument of
- * each member function always has to be a pointer to the vector itself.
+ * each member function always has to be a pointer to the vector/matrix itself.
  */
 struct ghost_densemat_t
 {
     /**
-     * @brief The vector's traits.
+     * @brief The vector/matrix's traits.
      */
     ghost_densemat_traits_t *traits;
     /**
-     * @brief The context in which the vector is living.
+     * @brief The context in which the vector/matrix is living.
      */
     ghost_context_t *context;
     /**
-     * @brief The values of the vector.
+     * @brief The values of the vector/matrix.
      */
     char** val;
+
+#ifdef GHOST_HAVE_CUDA
+    /**
+     * @brief The values of the vector/matrix on the CUDA device.
+     */
+    void * cu_val;
+#endif
 
     /** 
      * @ingroup globops
      *
      * @brief Performs <em>y := a*x + y</em> with scalar a
      *
-     * @param y The in-/output vector
-     * @param x The input vector
+     * @param y The in-/output vector/matrix
+     * @param x The input vector/matrix
      * @param a Points to the scale factor.
      */
     ghost_error_t          (*axpy) (ghost_densemat_t *y, ghost_densemat_t *x, void *a);
@@ -63,59 +70,59 @@ struct ghost_densemat_t
      *
      * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
      *
-     * @param y The in-/output vector.
-     * @param x The input vector
+     * @param y The in-/output vector/matrix.
+     * @param x The input vector/matrix
      * @param a Points to the scale factor a.
      * @param b Points to the scale factor b.
      */
     ghost_error_t          (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, void *b);
     /**
-     * @brief Clones a given number of columns of a source vector at a given
+     * @brief Clones a given number of columns of a source vector/matrix at a given
      * column offset.
      *
-     * @param vec The source vector.
+     * @param vec The source vector/matrix.
      * @param ncols The number of columns to clone.
      * @param coloffset The first column to clone.
      *
-     * @return A clone of the source vector.
+     * @return A clone of the source vector/matrix.
      */
     ghost_densemat_t * (*clone) (ghost_densemat_t *vec, ghost_vidx_t ncols, ghost_vidx_t
             coloffset);
     /**
-     * @brief Compresses a vector, i.e., make it non-scattered.
-     * If the vector is a view, it will no longer be one afterwards.
+     * @brief Compresses a vector/matrix, i.e., make it non-scattered.
+     * If the vector/matrix is a view, it will no longer be one afterwards.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      */
     ghost_error_t          (*compress) (ghost_densemat_t *vec);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
      *
-     * @param vec The distributed vector.
-     * @param globalVec The global vector.
+     * @param vec The distributed vector/matrix.
+     * @param globalVec The global vector/matrix.
      */
     ghost_error_t (*collect) (ghost_densemat_t *vec, ghost_densemat_t *globalVec);
     /**
-     * @brief Destroys a vector, i.e., frees all its data structures.
+     * @brief Destroys a vector/matrix, i.e., frees all its data structures.
      *
-     * @param vec The vector
+     * @param vec The vector/matrix
      */
     void          (*destroy) (ghost_densemat_t *vec);
     /**
-     * @brief Distributes a global vector into node-local vetors.
+     * @brief Distributes a global vector/matrix into node-local vetors.
      *
-     * @param vec The global vector.
-     * @param localVec The local vector.
+     * @param vec The global vector/matrix.
+     * @param localVec The local vector/matrix.
      */
     ghost_error_t (*distribute) (ghost_densemat_t *vec, ghost_densemat_t *localVec);
     /**
      * @ingroup locops
      * 
-     * @brief Compute the local dot product of two vectors.
+     * @brief Compute the local dot product of two vectors/matrices.
      *
-     * @param a The first vector.
-     * @param b The second vector.
+     * @param a The first vector/matrix.
+     * @param b The second vector/matrix.
      * @param res Where to store the result.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
@@ -124,14 +131,14 @@ struct ghost_densemat_t
      *
      * @see ghost_dotProduct()
      */
-    ghost_error_t          (*dotProduct) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
+    ghost_error_t          (*dot) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
     /**
      * @ingroup gputransfer
      * 
-     * @brief Downloads an entire vector from a compute device. Does nothing if
-     * the vector is not present on the device.
+     * @brief Downloads an entire vector/matrix from a compute device. Does nothing if
+     * the vector/matrix is not present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
@@ -139,10 +146,10 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Downloads only a vector's halo elements from a compute device.
-     * Does nothing if the vector is not present on the device.
+     * @brief Downloads only a vector/matrix's halo elements from a compute device.
+     * Does nothing if the vector/matrix is not present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
@@ -150,20 +157,20 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Downloads only a vector's local elements (i.e., without halo
-     * elements) from a compute device. Does nothing if the vector is not
+     * @brief Downloads only a vector/matrix's local elements (i.e., without halo
+     * elements) from a compute device. Does nothing if the vector/matrix is not
      * present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*downloadNonHalo) (ghost_densemat_t *vec);
     /**
-     * @brief Stores the entry of the vector at a given index (row i, column j)
+     * @brief Stores the entry of the vector/matrix at a given index (row i, column j)
      * into entry.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param ghost_vidx_t i The row.
      * @param ghost_vidx_t j The column.
      * @param entry Where to store the entry.
@@ -175,10 +182,10 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initializes a vector from a given function.
-     * Malloc's memory for the vector's values if this hasn't happened before.
+     * @brief Initializes a vector/matrix from a given function.
+     * Malloc's memory for the vector/matrix's values if this hasn't happened before.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
@@ -187,12 +194,12 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initializes a vector from another vector at a given column offset.
-     * Malloc's memory for the vector's values if this hasn't happened before.
+     * @brief Initializes a vector/matrix from another vector/matrix at a given column offset.
+     * Malloc's memory for the vector/matrix's values if this hasn't happened before.
      *
-     * @param vec The vector.
-     * @param src The source vector.
-     * @param ghost_vidx_t The column offset in the source vector.
+     * @param vec The vector/matrix.
+     * @param src The source vector/matrix.
+     * @param ghost_vidx_t The column offset in the source vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
@@ -200,10 +207,10 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initializes a vector from a file.
-     * Malloc's memory for the vector's values if this hasn't happened before.
+     * @brief Initializes a vector/matrix from a file.
+     * Malloc's memory for the vector/matrix's values if this hasn't happened before.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param filename Path to the file.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
@@ -212,9 +219,9 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initiliazes a vector from random values.
+     * @brief Initiliazes a vector/matrix from random values.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
@@ -222,62 +229,52 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initializes a vector from a given scalar value.
+     * @brief Initializes a vector/matrix from a given scalar value.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param val A pointer to the value.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
-     * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
+     * @brief Normalize a vector/matrix, i.e., scale it such that its 2-norm is one.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*normalize) (ghost_densemat_t *vec);
     /**
-     * @brief Permute a vector with a given permutation.
+     * @brief Permute a vector/matrix with a given permutation.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param perm The permutation.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t  (*permute) (ghost_densemat_t *vec, ghost_vidx_t *perm);
     /**
-     * @brief Print a vector.
+     * @brief Print a vector/matrix.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*print) (ghost_densemat_t *vec);
     /**
-     * @brief Scale a vector with a given scalar.
+     * @brief Scale a vector/matrix with a given scalar.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param scale The scale factor.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t          (*scale) (ghost_densemat_t *vec, void *scale);
     /**
-     * @deprecated because not needed
-     * @brief Swap two vectors.
+     * @brief Write a vector/matrix to a file.
      *
-     * @param vec1 The first vector.
-     * @param vec2 The second vector.
-     *
-     * @return GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t          (*swap) (ghost_densemat_t *vec1, ghost_densemat_t *vec2);
-    /**
-     * @brief Write a vector to a file.
-     *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param filename The path to the file.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
@@ -286,36 +283,36 @@ struct ghost_densemat_t
     /**
      * @ingroup gputransfer
      * 
-     * @brief Uploads an entire vector to a compute device. Does nothing if
-     * the vector is not present on the device.
+     * @brief Uploads an entire vector/matrix to a compute device. Does nothing if
+     * the vector/matrix is not present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      */
     ghost_error_t          (*upload) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
-     * @brief Uploads only a vector's halo elements to a compute device.
-     * Does nothing if the vector is not present on the device.
+     * @brief Uploads only a vector/matrix's halo elements to a compute device.
+     * Does nothing if the vector/matrix is not present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      */
     ghost_error_t (*uploadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
-     * @brief Uploads only a vector's local elements (i.e., without halo
-     * elements) to a compute device. Does nothing if the vector is not
+     * @brief Uploads only a vector/matrix's local elements (i.e., without halo
+     * elements) to a compute device. Does nothing if the vector/matrix is not
      * present on the device.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      */
     ghost_error_t          (*uploadNonHalo) (ghost_densemat_t *vec);
     /**
-     * @brief View plain data in the vector.
-     * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided.
+     * @brief View plain data in the vector/matrix.
+     * That means that the vector/matrix has no memory malloc'd but its data pointer only points to the memory provided.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param data The plain data.
      * @param ghost_vidx_t nr The number of rows.
      * @param ghost_vidx_t nc The number of columns.
@@ -329,29 +326,25 @@ struct ghost_densemat_t
 
 
     /**
-     * @brief Create a vector as a view of another vector.
+     * @brief Create a vector/matrix as a view of another vector/matrix.
      *
-     * @param src The source vector.
+     * @param src The source vector/matrix.
      * @param nc The nunber of columns to view.
      * @param coffs The column offset.
      *
-     * @return The new vector.
+     * @return The new vector/matrix.
      */
     ghost_densemat_t * (*viewVec) (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
     /**
-     * @brief Scale each column of a vector with a given scale factor.
+     * @brief Scale each column of a vector/matrix with a given scale factor.
      *
-     * @param vec The vector.
+     * @param vec The vector/matrix.
      * @param scale The scale factors.
      */
     ghost_error_t          (*vscale) (ghost_densemat_t *, void *);
     ghost_error_t          (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
     ghost_error_t          (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
     ghost_error_t          (*zero) (ghost_densemat_t *);
-
-#ifdef GHOST_HAVE_CUDA
-    void * cu_val;
-#endif
 };
 
 struct ghost_densemat_traits_t
@@ -365,22 +358,10 @@ struct ghost_densemat_traits_t
     size_t elSize;
     void * localdot;
 };
+/**
+ * @brief Defined in densemat.c
+ */
 extern const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER;
-
-#ifdef MIC
-//#define SELL_LEN 8
-#define VEC_PAD 16
-#elif defined (AVX)
-#define VEC_PAD 4 // TODO single/double precision
-#elif defined (SSE)
-#define VEC_PAD 2
-#elif defined (CUDA)
-#define VEC_PAD 256
-#elif defined (VSX)
-#define VEC_PAD 2
-#else
-#define VEC_PAD 16
-#endif
 
 #define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->traits->elSize])
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->traits->elSize])

@@ -9,7 +9,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
-const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPM_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
 
 ghost_error_t ghost_createMatrix(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
@@ -55,15 +55,15 @@ ghost_error_t ghost_createMatrix(ghost_sparsemat_t ** mat, ghost_context_t *cont
     GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
     
     switch (traits->format) {
-        case GHOST_SPM_FORMAT_CRS:
+        case GHOST_SPARSEMAT_CRS:
             GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
             break;
-        case GHOST_SPM_FORMAT_SELL:
+        case GHOST_SPARSEMAT_SELL:
             GHOST_CALL_GOTO(ghost_SELL_init(*mat),err,ret);
             break;
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
-            traits->format = GHOST_SPM_FORMAT_CRS;
+            traits->format = GHOST_SPARSEMAT_CRS;
             GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
     }
 
@@ -133,9 +133,9 @@ ghost_error_t ghost_printMatrixInfo(ghost_sparsemat_t *mat)
     if (myrank == 0) {
 
         char *matrixLocation;
-        if (mat->traits->flags & GHOST_SPM_DEVICE)
+        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
             matrixLocation = "Device";
-        else if (mat->traits->flags & GHOST_SPM_HOST)
+        else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
             matrixLocation = "Host";
         else
             matrixLocation = "Default";

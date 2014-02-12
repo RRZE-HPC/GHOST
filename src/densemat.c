@@ -64,7 +64,6 @@ static ghost_error_t vec_fromScalar(ghost_densemat_t *vec, void *val);
 static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path);
 static ghost_error_t vec_toFile(ghost_densemat_t *vec, char *path);
 static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec);
-static ghost_error_t ghost_swapVectors(ghost_densemat_t *v1, ghost_densemat_t *v2);
 static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
@@ -111,7 +110,7 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
     if ((*vec)->traits->flags & GHOST_VEC_DEVICE)
     {
 #if GHOST_HAVE_CUDA
-        (*vec)->dotProduct = &ghost_vec_cu_dotprod;
+        (*vec)->dot = &ghost_vec_cu_dotprod;
         (*vec)->vaxpy = &ghost_vec_cu_vaxpy;
         (*vec)->vaxpby = &ghost_vec_cu_vaxpby;
         (*vec)->axpy = &ghost_vec_cu_axpy;
@@ -124,7 +123,7 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
     }
     else if ((*vec)->traits->flags & GHOST_VEC_HOST)
     {
-        (*vec)->dotProduct = &vec_dotprod;
+        (*vec)->dot = &vec_dotprod;
         (*vec)->vaxpy = &vec_vaxpy;
         (*vec)->vaxpby = &vec_vaxpby;
         (*vec)->axpy = &vec_axpy;
@@ -144,7 +143,6 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
     (*vec)->zero = &ghost_zeroVector;
     (*vec)->distribute = &ghost_distributeVector;
     (*vec)->collect = &ghost_collectVectors;
-    (*vec)->swap = &ghost_swapVectors;
     (*vec)->normalize = &ghost_normalizeVector;
     (*vec)->destroy = &ghost_freeVector;
     (*vec)->permute = &ghost_permuteVector;
@@ -317,14 +315,17 @@ static ghost_densemat_t* vec_viewScatteredVec (ghost_densemat_t *src, ghost_vidx
 
 static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec)
 {
-    ghost_normalizeVector_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,vec->traits->datatype));
+    ghost_normalizeVector_funcs[dtIdx](vec);
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_print(ghost_densemat_t *vec)
 {
-    return ghost_vec_print_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
-
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,vec->traits->datatype));
+    return ghost_vec_print_funcs[dtIdx](vec);
 }
 
 ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec)
@@ -474,7 +475,9 @@ static ghost_error_t vec_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, voi
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
 
-    GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,s),err,ret);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vaxpy_funcs[dtIdx](vec,vec2,s),err,ret);
 
     goto out;
 err:
@@ -500,7 +503,9 @@ static ghost_error_t vec_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, vo
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
         memcpy(&b[i*vec->traits->elSize],_b,vec->traits->elSize);
     }
-    GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,s,b),err,ret);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vaxpby_funcs[dtIdx](vec,vec2,s,b),err,ret);
 
     goto out;
 err:
@@ -514,17 +519,30 @@ out:
 
 static ghost_error_t vec_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     GHOST_INSTR_START(vaxpy);
-    ghost_error_t ret = ghost_vec_vaxpy_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    ret = ghost_vec_vaxpy_funcs[dtIdx](vec,vec2,scale);
     GHOST_INSTR_STOP(vaxpy);
+
+    goto out;
+err:
+out:
     return ret;
 }
 
 static ghost_error_t vec_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     GHOST_INSTR_START(vaxpby);
-    ghost_error_t ret = ghost_vec_vaxpby_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,scale,b);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    ret = ghost_vec_vaxpby_funcs[dtIdx](vec,vec2,scale,b);
     GHOST_INSTR_STOP(vaxpby);
+    goto out;
+err:
+out:
     return ret;
 }
 
@@ -540,7 +558,9 @@ static ghost_error_t vec_scale(ghost_densemat_t *vec, void *scale)
     for (i=0; i<nc; i++) {
         memcpy(&s[i*vec->traits->elSize],scale,vec->traits->elSize);
     }
-    GHOST_CALL_GOTO(ghost_vec_vscale_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,s),err,ret);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_vec_vscale_funcs[dtIdx](vec,s),err,ret);
 
     goto out;
 err:
@@ -553,19 +573,31 @@ out:
 
 static ghost_error_t vec_vscale(ghost_densemat_t *vec, void *scale)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     GHOST_INSTR_START(vscale);
-    ghost_error_t ret = ghost_vec_vscale_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,scale);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    ret = ghost_vec_vscale_funcs[dtIdx](vec,scale);
     GHOST_INSTR_STOP(vscale);
 
+    goto out;
+err:
+out:
     return ret;
 }
 
 static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
+    ghost_error_t ret = GHOST_SUCCESS;
     GHOST_INSTR_START(dot);
-    ghost_error_t ret = ghost_vec_dotprod_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec,vec2,res);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_GOTO(ghost_datatypeIdx(&dtIdx,vec->traits->datatype),err,ret);
+    ret = ghost_vec_dotprod_funcs[dtIdx](vec,vec2,res);
     GHOST_INSTR_STOP(dot);
-
+ 
+    goto out;
+err:
+out:
     return ret;
 }
 
@@ -587,7 +619,9 @@ static ghost_error_t vec_entry(ghost_densemat_t * vec, ghost_vidx_t r, ghost_vid
 
 static ghost_error_t vec_fromRand(ghost_densemat_t *vec)
 {
-    return ghost_vec_fromRand_funcs[ghost_datatypeIdx(vec->traits->datatype)](vec);
+    ghost_datatype_idx_t dtIdx;
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,vec->traits->datatype));
+    return ghost_vec_fromRand_funcs[dtIdx](vec);
 }
 
 static ghost_error_t vec_fromScalar(ghost_densemat_t *vec, void *val)
@@ -1030,32 +1064,6 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     return GHOST_SUCCESS;
 
 }
-
-static ghost_error_t ghost_swapVectors(ghost_densemat_t *v1, ghost_densemat_t *v2) 
-{
-    if ((v1->traits->ncols > 1) || (v2->traits->ncols > 1)) {
-        ERROR_LOG("Multi-column vector swapping not yet implemented");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    if (!v1 || !v2) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    char *dtmp = NULL;
-
-    dtmp = v1->val[0];
-    v1->val[0] = v2->val[0];
-    v2->val[0] = dtmp;
-#ifdef GHOST_HAVE_CUDA
-    dtmp = v1->cu_val;
-    v1->cu_val = v2->cu_val;
-    v2->cu_val = dtmp;
-#endif
-
-    return GHOST_SUCCESS;
-}
-
 
 static void ghost_freeVector( ghost_densemat_t* vec ) 
 {

@@ -159,11 +159,11 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     int remoteExists = mat->remotePart->nnz > 0;
    
     if (remoteExists) {
-        localopts &= ~GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT;
+        localopts &= ~GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT;
 
-        remoteopts &= ~GHOST_SPMVM_AXPBY;
-        remoteopts &= ~GHOST_SPMVM_APPLY_SHIFT;
-        remoteopts |= GHOST_SPMVM_AXPY;
+        remoteopts &= ~GHOST_SPMV_AXPBY;
+        remoteopts &= ~GHOST_SPMV_APPLY_SHIFT;
+        remoteopts |= GHOST_SPMV_AXPY;
     }
 
 
@@ -235,7 +235,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     GHOST_INSTR_START(spMVM_taskmode_assemblebuffer);
     invec->downloadNonHalo(invec);
 
-    if (mat->traits->flags & GHOST_SPM_SORTED) {
+    if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {

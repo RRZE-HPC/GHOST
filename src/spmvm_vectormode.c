@@ -82,7 +82,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     }
 
     GHOST_INSTR_START(spMVM_vectormode_copybuffers)
-    if (mat->traits->flags & GHOST_SPM_SORTED) {
+    if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {

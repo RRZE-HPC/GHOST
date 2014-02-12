@@ -31,7 +31,7 @@ ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs
             rhs    = _mm_loadh_pd(rhs,&rval[(SELL(mat)->col[offs++])]);
             tmp    = _mm_add_pd(tmp,_mm_mul_pd(val,rhs));           // accumulate
         }
-        if (options & GHOST_SPMVM_AXPY) {
+        if (options & GHOST_SPMV_AXPY) {
             _mm_store_pd(&lval[c*2],_mm_add_pd(tmp,_mm_load_pd(&lval[c*2])));
         } else {
             _mm_stream_pd(&lval[c*2],tmp);
@@ -77,7 +77,7 @@ ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, 
             rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
             tmp    = _mm256_add_pd(tmp,_mm256_mul_pd(val,rhs));           // accumulate
         }
-        if (spmvmOptions & GHOST_SPMVM_AXPY) {
+        if (spmvmOptions & GHOST_SPMV_AXPY) {
             _mm256_store_pd(&lval[c*SELL(mat)->chunkHeight],_mm256_add_pd(tmp,_mm256_load_pd(&lval[c*SELL(mat)->chunkHeight])));
         } else {
             _mm256_stream_pd(&lval[c*SELL(mat)->chunkHeight],tmp);
@@ -109,11 +109,11 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     __m256d shift, scale, beta;
         
     
-    if (spmvmOptions & GHOST_SPMVM_APPLY_SHIFT)
+    if (spmvmOptions & GHOST_SPMV_APPLY_SHIFT)
         shift = _mm256_broadcast_sd(mat->traits->shift);
-    if (spmvmOptions & GHOST_SPMVM_APPLY_SCALE)
+    if (spmvmOptions & GHOST_SPMV_APPLY_SCALE)
         scale = _mm256_broadcast_sd(mat->traits->scale);
-    if (spmvmOptions & GHOST_SPMVM_AXPBY)
+    if (spmvmOptions & GHOST_SPMV_AXPBY)
         beta = _mm256_broadcast_sd(mat->traits->beta);
 
 
@@ -211,7 +211,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                 tmp8    = _mm256_add_pd(tmp8,_mm256_mul_pd(val,rhs));           // accumulate
             }
 
-            if (spmvmOptions & GHOST_SPMVM_APPLY_SHIFT) {
+            if (spmvmOptions & GHOST_SPMV_APPLY_SHIFT) {
                 tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
                 tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
                 tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
@@ -221,7 +221,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                 tmp7 = _mm256_sub_pd(tmp7,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+24])));
                 tmp8 = _mm256_sub_pd(tmp8,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+28])));
             }
-            if (spmvmOptions & GHOST_SPMVM_APPLY_SCALE) {
+            if (spmvmOptions & GHOST_SPMV_APPLY_SCALE) {
                 tmp1 = _mm256_mul_pd(scale,tmp1);
                 tmp2 = _mm256_mul_pd(scale,tmp2);
                 tmp3 = _mm256_mul_pd(scale,tmp3);
@@ -231,7 +231,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                 tmp7 = _mm256_mul_pd(scale,tmp7);
                 tmp8 = _mm256_mul_pd(scale,tmp8);
             }
-            if (spmvmOptions & GHOST_SPMVM_AXPY) {
+            if (spmvmOptions & GHOST_SPMV_AXPY) {
                 _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_load_pd(&lval[c*32])));
                 _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*32+4])));
                 _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*32+8])));
@@ -240,7 +240,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                 _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[c*32+20])));
                 _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[c*32+24])));
                 _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[c*32+28])));
-            } else if (spmvmOptions & GHOST_SPMVM_AXPBY) {
+            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                 _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32]))));
                 _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+4]))));
                 _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+8]))));
@@ -259,7 +259,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                 _mm256_stream_pd(&lval[c*32+24],tmp7);
                 _mm256_stream_pd(&lval[c*32+28],tmp8);
             }
-            if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+            if (spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
                 dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
                 dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
                 dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
@@ -290,7 +290,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
             }
         }
    
-        if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+        if (spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
             __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
             __m128d sum12high = _mm256_extractf128_pd(sum12,1);
             __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
@@ -304,7 +304,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
             dots3 = ((double *)&res12)[0];
         }
     }
-    if (spmvmOptions & GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
         ((double *)(invec->traits->localdot))[0] = dots1;
         ((double *)(invec->traits->localdot))[1] = dots2;
         ((double *)(invec->traits->localdot))[2] = dots3;
@@ -420,7 +420,7 @@ ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *mat, ghost_densemat_t* re
             rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
             tmp8    = _mm256_add_pd(tmp8,_mm256_mul_pd(val,rhs));           // accumulate
         }
-        if (spmvmOptions & GHOST_SPMVM_AXPY) {
+        if (spmvmOptions & GHOST_SPMV_AXPY) {
             _mm256_store_pd(&lval[c*SELL(mat)->chunkHeight],_mm256_add_pd(tmp1,_mm256_load_pd(&lval[c*SELL(mat)->chunkHeight])));
             _mm256_store_pd(&lval[c*SELL(mat)->chunkHeight+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*SELL(mat)->chunkHeight+4])));
             _mm256_store_pd(&lval[c*SELL(mat)->chunkHeight+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*SELL(mat)->chunkHeight+8])));
@@ -488,7 +488,7 @@ ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *mat, ghost_densemat_t* re
 
             offs += 8;
         }
-        if (spmvmOptions & GHOST_SPMVM_AXPY) {
+        if (spmvmOptions & GHOST_SPMV_AXPY) {
             _mm512_store_pd(&lval[c*SELL(mat)->chunkHeight],_mm512_add_pd(tmp1,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight])));
             _mm512_store_pd(&lval[c*SELL(mat)->chunkHeight+8],_mm512_add_pd(tmp2,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight+8])));
         } else {
@@ -565,7 +565,7 @@ ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *mat, ghost_densemat_t* re
 
             offs += 8;
         }
-        if (spmvmOptions & GHOST_SPMVM_AXPY) {
+        if (spmvmOptions & GHOST_SPMV_AXPY) {
             _mm512_store_pd(&lval[c*SELL(mat)->chunkHeight],_mm512_add_pd(tmp1,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight])));
             _mm512_store_pd(&lval[c*SELL(mat)->chunkHeight+8],_mm512_add_pd(tmp2,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight+8])));
             _mm512_store_pd(&lval[c*SELL(mat)->chunkHeight+16],_mm512_add_pd(tmp3,_mm512_load_pd(&lval[c*SELL(mat)->chunkHeight+16])));

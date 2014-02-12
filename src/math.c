@@ -19,14 +19,14 @@ extern cublasHandle_t ghost_cublas_handle;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
-ghost_error_t ghost_dotProduct(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
     GHOST_INSTR_START(dot_with_reduce)
     ghost_mpi_op_t sumOp;
     ghost_mpi_datatype_t mpiDt;
     ghost_mpi_op_sum(&sumOp,vec->traits->datatype);
     ghost_mpi_datatype(&mpiDt,vec->traits->datatype);
-    vec->dotProduct(vec,vec2,res);
+    vec->dot(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
     int v;
     if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
@@ -41,50 +41,63 @@ ghost_error_t ghost_dotProduct(ghost_densemat_t *vec, ghost_densemat_t *vec2, vo
 
 }
 
-void ghost_normalizeVec(ghost_densemat_t *vec)
+ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 {
-    GHOST_INSTR_START(normalize)
+    ghost_midx_t ncols = vec->traits->ncols;
+    ghost_midx_t c;
+
+    GHOST_INSTR_START(normalize);
     if (vec->traits->datatype & GHOST_DT_FLOAT) {
         if (vec->traits->datatype & GHOST_DT_COMPLEX) {
-            complex float res;
-            ghost_dotProduct(vec,vec,&res);
-            res = 1.f/csqrtf(res);
-            vec->scale(vec,&res);
+            complex float res[ncols];
+            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            for (c=0; c<ncols; c++) {
+                res[c] = 1.f/csqrtf(res[c]);
+            }
+            GHOST_CALL_RETURN(vec->vscale(vec,res));
         } else {
-            float res;
-            ghost_dotProduct(vec,vec,&res);
-            res = 1.f/sqrtf(res);
-            vec->scale(vec,&res);
+            float res[ncols];
+            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            for (c=0; c<ncols; c++) {
+                res[c] = 1.f/sqrtf(res[c]);
+            }
+            GHOST_CALL_RETURN(vec->vscale(vec,res));
         }
     } else {
         if (vec->traits->datatype & GHOST_DT_COMPLEX) {
-            complex double res;
-            ghost_dotProduct(vec,vec,&res);
-            res = 1./csqrt(res);
-            vec->scale(vec,&res);
+            complex double res[ncols];
+            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            for (c=0; c<ncols; c++) {
+                res[c] = 1./csqrt(res[c]);
+            }
+            GHOST_CALL_RETURN(vec->vscale(vec,res));
         } else {
-            double res;
-            ghost_dotProduct(vec,vec,&res);
-            res = 1./sqrt(res);
-            vec->scale(vec,&res);
+            double res[ncols];
+            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            for (c=0; c<ncols; c++) {
+                res[c] = 1./sqrt(res[c]);
+            }
+            GHOST_CALL_RETURN(vec->vscale(vec,res));
         }
     }
-    GHOST_INSTR_STOP(normalize)
+    GHOST_INSTR_STOP(normalize);
+
+    return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmvm(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
+ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
         int *spmvmOptions)
 {
     GHOST_INSTR_START(spmvm)
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
-    if (*spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE) {
+    if (*spmvmOptions & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
-    } else if (*spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH) {
+    } else if (*spmvmOptions & GHOST_SPMV_MODE_OVERLAP) {
         solver = &ghost_spmv_goodfaith;
-    } else if (*spmvmOptions & GHOST_SPMVM_MODE_TASKMODE) {
+    } else if (*spmvmOptions & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
-    } else if (*spmvmOptions & GHOST_SPMVM_MODE_NOMPI) {
+    } else if (*spmvmOptions & GHOST_SPMV_MODE_NOMPI) {
         solver = &ghost_spmv_nompi; 
     }
 
@@ -360,7 +373,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 
     memset(zero,0,sizeofdt);
     ghost_densemat_t *globLHS; 
-    ghost_sparsemat_traits_t trait = {.format = GHOST_SPM_FORMAT_CRS, .flags = GHOST_SPM_HOST, .aux = NULL, .datatype = datatype};
+    ghost_sparsemat_traits_t trait = {.format = GHOST_SPARSEMAT_CRS, .flags = GHOST_SPARSEMAT_HOST, .aux = NULL, .datatype = datatype};
     ghost_context_t *context;
 
     ghost_createContext(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
@@ -394,11 +407,11 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 
         int iter;
 
-        if (mat->traits->symmetry == GHOST_SPM_SYMM_GENERAL) {
+        if (mat->traits->symmetry == GHOST_SPARSEMAT_SYMM_GENERAL) {
             for (iter=0; iter<nIter; iter++) {
                 mat->spmv(mat,globLHS,globRHS,spmvmOptions);
             }
-        } else if (mat->traits->symmetry == GHOST_SPM_SYMM_SYMMETRIC) {
+        } else if (mat->traits->symmetry == GHOST_SPARSEMAT_SYMM_SYMMETRIC) {
             WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
             for (iter=0; iter<nIter; iter++) {
             }
@@ -430,15 +443,15 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 
 void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
 {
-    if (!(*spmvmOptions & GHOST_SPMVM_MODES_ALL)) { // no mode specified
+    if (!(*spmvmOptions & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
         if (context->flags & GHOST_CONTEXT_REDUNDANT)
-            *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+            *spmvmOptions |= GHOST_SPMV_MODE_NOMPI;
         else
-            *spmvmOptions |= GHOST_SPMVM_MODE_GOODFAITH;
+            *spmvmOptions |= GHOST_SPMV_MODE_OVERLAP;
 #else
         UNUSED(context);
-        *spmvmOptions |= GHOST_SPMVM_MODE_NOMPI;
+        *spmvmOptions |= GHOST_SPMV_MODE_NOMPI;
 #endif
         DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default, namely %s",ghost_modeName(*spmvmOptions));
 
@@ -526,13 +539,13 @@ ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t)
 
 char * ghost_modeName(int spmvmOptions) 
 {
-    if (spmvmOptions & GHOST_SPMVM_MODE_NOMPI)
+    if (spmvmOptions & GHOST_SPMV_MODE_NOMPI)
         return "non-MPI";
-    if (spmvmOptions & GHOST_SPMVM_MODE_VECTORMODE)
+    if (spmvmOptions & GHOST_SPMV_MODE_VECTOR)
         return "vector mode";
-    if (spmvmOptions & GHOST_SPMVM_MODE_GOODFAITH)
-        return "g/f hybrid";
-    if (spmvmOptions & GHOST_SPMVM_MODE_TASKMODE)
+    if (spmvmOptions & GHOST_SPMV_MODE_OVERLAP)
+        return "naive overlap mode";
+    if (spmvmOptions & GHOST_SPMV_MODE_TASK)
         return "task mode";
     return "invalid";
 

@@ -11,37 +11,85 @@
 #include "context.h"
 #include "densemat.h"
 
-#define GHOST_SPM_FORMAT_CRS 0
-#define GHOST_SPM_FORMAT_SELL 1
-
+/**
+ * @brief Available sparse matrix storage formats.
+ */
 typedef enum {
-    GHOST_SPMVM_DEFAULT = 0,
-    GHOST_SPMVM_AXPY = 1,
-    GHOST_SPMVM_MODE_NOMPI = 2,
-    GHOST_SPMVM_MODE_VECTORMODE = 4,
-    GHOST_SPMVM_MODE_GOODFAITH = 8,
-    GHOST_SPMVM_MODE_TASKMODE = 16,
-    GHOST_SPMVM_APPLY_SHIFT = 32,
-    GHOST_SPMVM_APPLY_SCALE = 64,
-    GHOST_SPMVM_AXPBY = 128,
-    GHOST_SPMVM_COMPUTE_LOCAL_DOTPRODUCT = 256
+    /**
+     * @brief The CRS data format.
+     */
+    GHOST_SPARSEMAT_CRS,
+    /**
+     * @brief The SELL (Sliced ELLPACK) data format.
+     */
+    GHOST_SPARSEMAT_SELL
+} ghost_sparsemat_format_t;
+
+/**
+ * @brief Flags to be passed to sparse matrix-vector multiplication.
+ */
+typedef enum {
+    GHOST_SPMV_DEFAULT = 0,
+    GHOST_SPMV_AXPY = 1,
+    GHOST_SPMV_MODE_NOMPI = 2,
+    GHOST_SPMV_MODE_VECTOR = 4,
+    GHOST_SPMV_MODE_OVERLAP = 8,
+    GHOST_SPMV_MODE_TASK = 16,
+    GHOST_SPMV_APPLY_SHIFT = 32,
+    GHOST_SPMV_APPLY_SCALE = 64,
+    GHOST_SPMV_AXPBY = 128,
+    GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT = 256
 } ghost_spmv_flags_t;
 
+/**
+ * @brief SpMV solver which do combined computation.
+ */
+#define GHOST_SPMV_MODES_FULL     (GHOST_SPMV_MODE_NOMPI | GHOST_SPMV_MODE_VECTOR)
+/**
+ * @brief SpMV solvers which do split computation.
+ */
+#define GHOST_SPMV_MODES_SPLIT    (GHOST_SPMV_MODE_OVERLAP | GHOST_SPMV_MODE_TASK)
+/**
+ * @brief All SpMV solver modes.
+ */
+#define GHOST_SPMV_MODES_ALL      (GHOST_SPMV_MODES_FULL | GHOST_SPMV_MODES_SPLIT)
+
+/**
+ * @brief Possible sparse matrix symmetries.
+ */
 typedef enum {
-    GHOST_SPM_SYMM_GENERAL = 1,
-    GHOST_SPM_SYMM_SYMMETRIC = 2,
-    GHOST_SPM_SYMM_SKEW_SYMMETRIC = 4,
-    GHOST_SPM_SYMM_HERMITIAN = 8
-} ghost_spm_symmetry_t;
+    /**
+     * @brief Non-symmetric (general) matrix.
+     */
+    GHOST_SPARSEMAT_SYMM_GENERAL = 1,
+    /**
+     * @brief Symmetric matrix.
+     */
+    GHOST_SPARSEMAT_SYMM_SYMMETRIC = 2,
+    /**
+     * @brief Skew-symmetric matrix.
+     */
+    GHOST_SPARSEMAT_SYMM_SKEW_SYMMETRIC = 4,
+    /**
+     * @brief Hermitian matrix.
+     */
+    GHOST_SPARSEMAT_SYMM_HERMITIAN = 8
+} ghost_sparsemat_symmetry_t;
 
 
-typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
+typedef void (*ghost_sparsemat_fromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
 typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
+/**
+ * @brief Flags to be passed to a row-wise matrix assembly function.
+ */
 typedef enum {
-    GHOST_SPMFROMROWFUNC_DEFAULT = 0
-} ghost_spmFromRowFunc_flags_t;
+    /**
+     * @brief Default behaviour.
+     */
+    GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT = 0
+} ghost_sparsemat_fromRowFunc_flags_t;
 
 /**
  * @brief Flags to a sparse matrix.
@@ -50,49 +98,58 @@ typedef enum {
     /**
      * @brief A default sparse matrix.
      */
-    GHOST_SPM_DEFAULT       = 0,
+    GHOST_SPARSEMAT_DEFAULT       = 0,
     /**
      * @brief Matrix is stored on host.
      */
-    GHOST_SPM_HOST          = 1,
+    GHOST_SPARSEMAT_HOST          = 1,
     /**
      * @brief Matrix is store on device.
      */
-    GHOST_SPM_DEVICE        = 2,
+    GHOST_SPARSEMAT_DEVICE        = 2,
     /**
      * @brief If the matrix rows have been re-ordered, also permute the column indices accordingly.
      */
-    GHOST_SPM_PERMUTECOLIDX = 4,
+    GHOST_SPARSEMAT_PERMUTECOLIDX = 4,
     /**
      * @brief The matrix rows should be re-ordered in a certain way (defined in the traits). 
      */
-    GHOST_SPM_SORTED        = 32,
+    GHOST_SPARSEMAT_SORTED        = 32,
     /**
      * @brief If the matrix columns have been re-ordered, care for ascending column indices in wrt. memory location. 
      */
-    GHOST_SPM_ASC_COLIDX    = 64,
+    GHOST_SPARSEMAT_ASC_COLIDX    = 64,
     /**
      * @brief Store the local and remote part of the matrix.
      */
-    GHOST_SPM_STORE_SPLIT = 128,
+    GHOST_SPARSEMAT_STORE_SPLIT = 128,
     /**
      * @brief Store the full matrix (local and remote combined).
      */
-    GHOST_SPM_STORE_FULL = 256
-} ghost_spm_flags_t;
+    GHOST_SPARSEMAT_STORE_FULL = 256
+} ghost_sparsemat_flags_t;
 
-#define GHOST_SPMVM_MODES_FULL     (GHOST_SPMVM_MODE_NOMPI | GHOST_SPMVM_MODE_VECTORMODE)
-#define GHOST_SPMVM_MODES_SPLIT    (GHOST_SPMVM_MODE_GOODFAITH | GHOST_SPMVM_MODE_TASKMODE)
-#define GHOST_SPMVM_MODES_ALL      (GHOST_SPMVM_MODES_FULL | GHOST_SPMVM_MODES_SPLIT)
 
+/**
+ * @brief Sparse matrix traits.
+ */
 struct ghost_sparsemat_traits_t
 {
     int format;
-    ghost_spm_flags_t flags;
-    ghost_spm_symmetry_t symmetry;
+    ghost_sparsemat_flags_t flags;
+    ghost_sparsemat_symmetry_t symmetry;
+    /**
+     * @brief Auxiliary matrix traits (to be interpreted by the concrete format implementation).
+     */
     void * aux;
+    /**
+     * @brief The number of given auxiliary traits (to be interpreted by the concrete format implementation).
+     */
     int nAux;
-    int datatype;
+    ghost_datatype_t datatype;
+    /**
+     * @brief Size (in bytes) of one matrix element.
+     */
     size_t elSize;
     void * shift;
     void * scale;
@@ -102,7 +159,6 @@ struct ghost_sparsemat_traits_t
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
  */
 extern const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER;
-#define GHOST_MTRAITS_INIT(...) {.flags = GHOST_SPM_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPM_FORMAT_CRS, .shift = NULL, .scale = NULL, ## __VA_ARGS__ }
 
 /**
  * @ingroup types
@@ -215,7 +271,7 @@ struct ghost_sparsemat_t
      *
      * The function func may be called several times for each row concurrently by multiple threads.
      */
-    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_midx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
     /**
      * @brief Write a matrix to a binary CRS file.
      *

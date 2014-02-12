@@ -36,7 +36,7 @@ const char * (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, int) =
 
 static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
-static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags);
+static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
 static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
 static void CRS_printInfo(ghost_sparsemat_t *mat);
 static const char * CRS_formatName(ghost_sparsemat_t *mat);
@@ -57,25 +57,25 @@ ghost_error_t ghost_CRS_init(ghost_sparsemat_t *mat)
     ghost_error_t ret = GHOST_SUCCESS;
 
     DEBUG_LOG(1,"Initializing CRS functions");
-    if (!(mat->traits->flags & (GHOST_SPM_HOST | GHOST_SPM_DEVICE)))
+    if (!(mat->traits->flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
-        mat->traits->flags |= GHOST_SPM_HOST;
+        mat->traits->flags |= GHOST_SPARSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            mat->traits->flags |= GHOST_SPM_DEVICE;
+            mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
         }
     }
 
-    if (mat->traits->flags & GHOST_SPM_DEVICE)
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
     {
 #if GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
         //   mat->spmv = &ghost_cu_crsspmv;
 #endif
     }
-    else if (mat->traits->flags & GHOST_SPM_HOST)
+    else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
     {
         mat->spmv   = &CRS_kernel_plain;
     }
@@ -225,7 +225,12 @@ out:
 
 static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
 {
-    return CRS_stringify_funcs[ghost_datatypeIdx(mat->traits->datatype)](mat, dense);
+    ghost_datatype_idx_t dtIdx;
+    if (ghost_datatypeIdx(&dtIdx,mat->traits->datatype) != GHOST_SUCCESS) {
+        return "Invalid";
+    }
+
+    return CRS_stringify_funcs[dtIdx](mat, dense);
 }
 
 static void CRS_printInfo(ghost_sparsemat_t *mat)
@@ -259,7 +264,7 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
             mat->nEnts*(sizeof(ghost_midx_t)+mat->traits->elSize));
 }
 
-static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, ghost_spmFromRowFunc_flags_t flags)
+static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     UNUSED(base);
@@ -447,7 +452,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
     GHOST_CALL_GOTO(ghost_setupCommunication(mat->context,fullCR->col),err,ret);
 
-    if (mat->traits->flags & GHOST_SPM_STORE_SPLIT) { // split computation
+    if (mat->traits->flags & GHOST_SPARSEMAT_STORE_SPLIT) { // split computation
 
         lnEnts_l=0;
         for (i=0; i<mat->context->lnEnts[me];i++) {
@@ -913,108 +918,11 @@ static void CRS_free(ghost_sparsemat_t * mat)
 
 static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options)
 {
-    /*    if (mat->symmetry == GHOST_BINCRS_SYMM_SYMMETRIC) {
-          ghost_midx_t i, j;
-          ghost_dt hlp1;
-          ghost_midx_t col;
-          ghost_dt val;
+    ghost_datatype_idx_t matDtIdx;
+    ghost_datatype_idx_t vecDtIdx;
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
 
-#pragma omp    parallel for schedule(runtime) private (hlp1, j, col, val)
-for (i=0; i<mat->nrows; i++){
-hlp1 = 0.0;
-
-j = CR(mat)->rpt[i];
-
-if (CR(mat)->col[j] == i) {
-col = CR(mat)->col[j];
-val = CR(mat)->val[j];
-
-hlp1 += val * rhs->val[col];
-
-j++;
-} else {
-printf("row %d has diagonal 0\n",i);
+    return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options);
 }
-
-
-for (; j<CR(mat)->rpt[i+1]; j++){
-col = CR(mat)->col[j];
-val = CR(mat)->val[j];
-
-
-hlp1 += val * rhs->val[col];
-
-if (i!=col) {    
-#pragma omp atomic
-lhs->val[col] += val * rhs->val[i];  // FIXME non-axpy case maybe doesnt work
-}
-
-}
-if (options & GHOST_SPMVM_AXPY) {
-lhs->val[i] += hlp1;
-} else {
-lhs->val[i] = hlp1;
-}
-}
-
-} else {
-
-DEBUG_LOG(0,"lhs vector has %s data",ghost_datatypeName(lhs->traits->datatype));
-
-double *rhsv = (double *)rhs->val;    
-double *lhsv = (double *)lhs->val;    
-ghost_midx_t i, j;
-double hlp1;
-ghost_crs_t *cr = CR(mat);
-
-#pragma omp parallel for schedule(runtime) private (hlp1, j)
-for (i=0; i<cr->nrows; i++){
-hlp1 = 0.0;
-for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-hlp1 = hlp1 + (double)cr->val[j] * rhsv[cr->col[j]];
-    //        printf("%d: %d: %f*%f (%d) = %f\n",ghost_getRank(mat->context->mpicomm),i,cr->val[j],rhsv[cr->col[j]],cr->col[j],hlp1);
-    }
-    if (options & GHOST_SPMVM_AXPY) 
-    lhsv[i] += hlp1;
-    else
-    lhsv[i] = hlp1;
-    }
-     */
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRvecIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->ncols);
-    //    lhs->print(lhs);
-    //    rhs->print(rhs);
-
-    /*if (lhs->traits->ncols == 1) {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      c_CRS_kernel_plain(mat,lhs,rhs,options);
-      else
-      s_CRS_kernel_plain(mat,lhs,rhs,options);
-      } else {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      z_CRS_kernel_plain(mat,lhs,rhs,options);
-      else
-      d_CRS_kernel_plain(mat,lhs,rhs,options);
-      }
-      } else {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_FLOAT) {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      c_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-      else
-      s_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-      } else {
-      if (lhs->traits->datatype & GHOST_BINCRS_DT_COMPLEX)
-      z_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-      else
-      d_CRS_kernel_plain_multvec(mat,lhs,rhs,options);
-      }
-      }*/
-
-
-
-    //}
-
-
-    return CRS_kernels_plain[ghost_datatypeIdx(mat->traits->datatype)][ghost_datatypeIdx(lhs->traits->datatype)](mat,lhs,rhs,options);
-    }
 

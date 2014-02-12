@@ -5,7 +5,7 @@
 static ghost_mpi_datatype_t GHOST_MPI_DT_C = MPI_DATATYPE_NULL;
 static ghost_mpi_datatype_t GHOST_MPI_DT_Z = MPI_DATATYPE_NULL;
 
-ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, int datatype)
+ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype)
 {
     if (!dt) {
         ERROR_LOG("NULL pointer");
@@ -58,27 +58,29 @@ ghost_error_t ghost_mpi_destroyDatatypes()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sizeofDatatype(size_t *size, int dt)
+ghost_error_t ghost_sizeofDatatype(size_t *size, ghost_datatype_t datatype)
 {
-    if (!ghost_datatypeValid(dt)) {
+    if (!ghost_datatypeValid(datatype)) {
         ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }
 
     *size = 0;
 
-    if (dt & GHOST_DT_FLOAT)
+    if (datatype & GHOST_DT_FLOAT) {
         *size = sizeof(float);
-    else
+    } else {
         *size = sizeof(double);
+    }
 
-    if (dt & GHOST_DT_COMPLEX)
+    if (datatype & GHOST_DT_COMPLEX) {
         *size *= 2;
+    }
 
     return GHOST_SUCCESS;
 }
 
-char ghost_datatypeValid(int datatype)
+char ghost_datatypeValid(ghost_datatype_t datatype)
 {
     if ((datatype & GHOST_DT_FLOAT) &&
             (datatype & GHOST_DT_DOUBLE))
@@ -99,7 +101,7 @@ char ghost_datatypeValid(int datatype)
     return 1;
 }
 
-char * ghost_datatypeString(int datatype)
+char * ghost_datatypeString(ghost_datatype_t datatype)
 {
     if (!ghost_datatypeValid(datatype)) {
         return "invalid";
@@ -120,17 +122,26 @@ char * ghost_datatypeString(int datatype)
     return "invalid";
 }
 
-int ghost_datatypeIdx(int datatype)
+ghost_error_t ghost_datatypeIdx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)
 {
-    if (datatype & GHOST_DT_FLOAT) {
-        if (datatype & GHOST_DT_COMPLEX)
-            return GHOST_DT_C_IDX;
-        else
-            return GHOST_DT_S_IDX;
-    } else {
-        if (datatype & GHOST_DT_COMPLEX)
-            return GHOST_DT_Z_IDX;
-        else
-            return GHOST_DT_D_IDX;
+    if (!ghost_datatypeValid(datatype)) {
+        ERROR_LOG("Invalid data type");
+        return GHOST_ERR_INVALID_ARG;
     }
+
+    if (datatype & GHOST_DT_FLOAT) {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *idx = GHOST_DT_C_IDX;
+        } else {
+            *idx = GHOST_DT_S_IDX;
+        }
+    } else {
+        if (datatype & GHOST_DT_COMPLEX) {
+            *idx = GHOST_DT_Z_IDX;
+        } else {
+            *idx = GHOST_DT_D_IDX;
+        }
+    }
+
+    return GHOST_SUCCESS;
 }

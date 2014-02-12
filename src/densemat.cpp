@@ -25,7 +25,7 @@ template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits->ncols*sizeof(v_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_dotProduct(vec,vec,s),err,ret);
+    GHOST_CALL_GOTO(ghost_dot(vec,vec,s),err,ret);
 
     for (v=0; v<vec->traits->ncols; v++)
     {
