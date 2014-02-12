@@ -1,6 +1,8 @@
 #ifndef GHOST_LOG_H
 #define GHOST_LOG_H
 
+#include "config.h"
+
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
