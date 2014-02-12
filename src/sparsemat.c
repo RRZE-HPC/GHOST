@@ -125,11 +125,13 @@ ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *mat)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
+    int myrank;
     ghost_midx_t nrows = 0;
     ghost_midx_t nnz = 0;
     
     GHOST_CALL_RETURN(ghost_getMatNrows(&nrows,mat));
     GHOST_CALL_RETURN(ghost_getMatNnz(&nnz,mat));
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
 
 
     char *matrixLocation;
@@ -141,7 +143,7 @@ ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *mat)
         matrixLocation = "Default";
 
 
-    ghost_printHeader(str,mat->name);
+    ghost_printHeader(str,"%s @ rank %d",mat->name,myrank);
     ghost_printLine(str,"Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
     ghost_printLine(str,"Matrix location",NULL,"%s",matrixLocation);
     ghost_printLine(str,"Number of rows",NULL,"%"PRmatIDX,nrows);
@@ -158,11 +160,11 @@ ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *mat)
         ghost_printLine(str,"Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
     }
 
-    ghost_printLine(str,"Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
+    ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
     {
-        ghost_printLine(str,"Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
-        ghost_printLine(str,"Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+        ghost_printLine(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+        ghost_printLine(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
     }
 
     mat->printInfo(str,mat);

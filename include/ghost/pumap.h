@@ -100,6 +100,18 @@ extern "C" {
      */
     ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode);
 
+    /**
+     * @brief Get the number of processing units in total or in a given NUMA node.
+     *
+     * @param nPUs Where to store the number.
+     * @param numaNode The NUMA node to consider or GHOST_NUMANODE_ANY.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode);
+
+    ghost_error_t ghost_pumap_string(char **str);
+
 #ifdef __cplusplus
 }
 #endif

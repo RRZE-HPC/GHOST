@@ -1,8 +1,35 @@
 #include "ghost/pumap.h"
 #include "ghost/machine.h"
 #include "ghost/util.h"
+#include "ghost/locality.h"
 
 static ghost_pumap_t *pumap = NULL;
+
+ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode)
+{
+
+    if (!(*nPUs)) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (numaNode == GHOST_NUMANODE_ANY) {
+        *nPUs = hwloc_bitmap_weight(pumap->cpuset);
+    } else {
+        hwloc_obj_t node;
+        ghost_getNumaNode(&node,numaNode);
+        hwloc_bitmap_t LDBM = node->cpuset;
+
+        hwloc_bitmap_t contained = hwloc_bitmap_alloc();
+        hwloc_bitmap_and(contained,LDBM,pumap->cpuset);
+
+        *nPUs = hwloc_bitmap_weight(contained);
+
+        hwloc_bitmap_free(contained);
+    }
+
+    return GHOST_SUCCESS;
+}
 
 ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode)
 {
@@ -41,7 +68,7 @@ ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset)
 ghost_error_t ghost_pumap_setIdleIdx(int idx)
 {
     if (!hwloc_bitmap_isset(pumap->cpuset,idx)) {
-        ERROR_LOG("The given index is not included in the PU map's CPU set");
+        ERROR_LOG("The given index %d is not included in the PU map's CPU set",idx);
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -177,3 +204,33 @@ void ghost_pumap_destroy()
 
 }
 
+ghost_error_t ghost_pumap_string(char **str)
+{
+    int myrank;
+    int mynoderank;
+    ghost_mpi_comm_t nodecomm;
+    
+    GHOST_CALL_RETURN(ghost_getNodeComm(&nodecomm));
+    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
+    GHOST_CALL_RETURN(ghost_getRank(nodecomm,&mynoderank));
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+    
+
+    int nIdle = 0;
+    char *cpusetstr;
+    char *busystr;
+    
+    hwloc_bitmap_list_asprintf(&cpusetstr,pumap->cpuset);
+    hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
+    GHOST_CALL_RETURN(ghost_pumap_getNumberOfIdlePUs(&nIdle,GHOST_NUMANODE_ANY));
+
+    ghost_printHeader(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
+    ghost_printLine(str,"Total CPU set",NULL,"%s",cpusetstr);
+    ghost_printLine(str,"Busy CPU set",NULL,"%s",cpusetstr);
+    ghost_printLine(str,"No. of idle PUs",NULL,"%d",nIdle);
+    ghost_printFooter(str);
+
+    return GHOST_SUCCESS;
+
+}

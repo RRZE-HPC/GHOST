@@ -206,10 +206,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
         if (nnoderanks <=  nLocalCuda+1) {
             GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERNODE));
-            INFO_LOG("One CPU rank per node");
         } else if (nnoderanks == nLocalCuda+nnumanodes) {
             GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERNUMA));
-            INFO_LOG("One CPU rank per NUMA domain");
         } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
             GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERCORE));
             WARNING_LOG("One MPI process per core not supported");
@@ -319,11 +317,6 @@ ghost_error_t ghost_init(int argc, char **argv)
         mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
     }
 
-
-    char *cpusetstr;
-    hwloc_bitmap_list_asprintf(&cpusetstr,mycpuset);
-    INFO_LOG("Process cpuset (OS indexing): %s",cpusetstr);
-    
     void *(*threadFunc)(void *);
 
     ghost_taskq_create();
