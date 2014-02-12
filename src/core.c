@@ -357,16 +357,17 @@ ghost_error_t ghost_finalize()
     ghost_mpi_destroyDatatypes();
     ghost_mpi_destroyOperations();
 
-#ifdef GHOST_HAVE_MPI
-    if (!MPIwasInitialized) {
-        MPI_Finalize();
-    }
-#endif
     ghost_taskq_waitall();
     ghost_taskq_destroy();
     ghost_thpool_destroy();
     ghost_pumap_destroy();
     ghost_destroyTopology();
+
+#ifdef GHOST_HAVE_MPI
+    if (!MPIwasInitialized) {
+        MPI_Finalize();
+    }
+#endif
 
     return GHOST_SUCCESS;
 }
