@@ -239,28 +239,26 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_printContextInfo(ghost_context_t *context)
+ghost_error_t ghost_printContextInfo(char **str, ghost_context_t *context)
 {
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
     int nranks;
-    int myrank;
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nranks));
-    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&myrank));
 
-    if (myrank == 0) {
-        char *contextType = "";
-        if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
-            contextType = "Distributed";
-        else if (context->flags & GHOST_CONTEXT_REDUNDANT)
-            contextType = "Redundant";
+    char *contextType = "";
+    if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
+        contextType = "Distributed";
+    else if (context->flags & GHOST_CONTEXT_REDUNDANT)
+        contextType = "Redundant";
 
 
-        ghost_printHeader("Context");
-        ghost_printLine("MPI processes",NULL,"%d",nranks);
-        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,context->gnrows);
-        ghost_printLine("Type",NULL,"%s",contextType);
-        ghost_printLine("Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
-        ghost_printFooter();
-    }
+    ghost_printHeader(str,"Context");
+    ghost_printLine(str,"MPI processes",NULL,"%d",nranks);
+    ghost_printLine(str,"Number of rows",NULL,"%"PRmatIDX,context->gnrows);
+    ghost_printLine(str,"Type",NULL,"%s",contextType);
+    ghost_printLine(str,"Work distribution scheme",NULL,"%s",ghost_workdistName(context->flags));
+    ghost_printFooter(str);
     return GHOST_SUCCESS;
 
 }

@@ -47,12 +47,15 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
 
 }
 
-ghost_error_t ghost_task_print(ghost_task_t *t) 
+ghost_error_t ghost_task_print(char **str, ghost_task_t *t) 
 {
-    ghost_printHeader("Task %p",(void *)t);
-    ghost_printLine("No. of threads",NULL,"%d",t->nThreads);
-    ghost_printLine("LD",NULL,"%d",t->LD);
-    ghost_printFooter();
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+
+    ghost_printHeader(str,"Task %p",(void *)t);
+    ghost_printLine(str,"No. of threads",NULL,"%d",t->nThreads);
+    ghost_printLine(str,"NUMA node",NULL,"%d",t->LD);
+    ghost_printFooter(str);
 
     return GHOST_SUCCESS;
 }

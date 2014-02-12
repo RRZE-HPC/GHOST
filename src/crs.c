@@ -38,7 +38,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
 static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
-static void CRS_printInfo(ghost_sparsemat_t *mat);
+static void CRS_printInfo(char **str, ghost_sparsemat_t *mat);
 static const char * CRS_formatName(ghost_sparsemat_t *mat);
 static ghost_midx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_midx_t i);
 static size_t CRS_byteSize (ghost_sparsemat_t *mat);
@@ -233,9 +233,10 @@ static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
     return CRS_stringify_funcs[dtIdx](mat, dense);
 }
 
-static void CRS_printInfo(ghost_sparsemat_t *mat)
+static void CRS_printInfo(char **str, ghost_sparsemat_t *mat)
 {
     UNUSED(mat);
+    UNUSED(str);
     return;
 }
 

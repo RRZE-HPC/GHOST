@@ -211,7 +211,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_print(ghost_task_t *t); 
+    ghost_error_t ghost_task_print(char **str, ghost_task_t *t); 
 
 #ifdef __cplusplus
 }// extern "C"

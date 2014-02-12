@@ -225,7 +225,7 @@ struct ghost_sparsemat_t
      * This function is called in ghost_printMatrixInfo() to print format-specific information alongside with
      * general matrix information.
      */
-    void       (*printInfo) (ghost_sparsemat_t *mat);
+    void       (*printInfo) (char **str, ghost_sparsemat_t *mat);
     /**
      * @brief Turns the matrix into a string.
      *
@@ -326,7 +326,7 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_createMatrix(ghost_sparsemat_t **mat, ghost_context_t *ctx, ghost_sparsemat_traits_t *traits, int nTraits);
-    ghost_error_t ghost_printMatrixInfo(ghost_sparsemat_t *matrix);
+    ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *matrix);
     ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat);
     ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_sparsemat_t *mat);
 

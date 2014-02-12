@@ -140,7 +140,7 @@ extern "C" {
      */
     ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_mpi_comm_t comm, double weight); 
     
-    ghost_error_t ghost_printContextInfo(ghost_context_t *context);
+    ghost_error_t ghost_printContextInfo(char **str, ghost_context_t *context);
     ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx);
     /**
      * @brief Free the context's resources.

@@ -429,31 +429,6 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
 
 
     /**
-     * @brief Print all tasks of all queues. 
-     *
-     * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
-     */
-    ghost_error_t ghost_taskq_print() 
-    {
-        ghost_task_t *t;
-
-        pthread_mutex_lock(&taskq->mutex);
-        ghost_printHeader("Task queue");
-
-        t = taskq->head;
-        while (t != NULL)
-        {
-            printf("%p ",(void *)t);
-            t=t->next;
-        }
-        printf("\n");
-        ghost_printFooter();
-        pthread_mutex_unlock(&taskq->mutex);
-        return GHOST_SUCCESS;
-    }
-
-
-    /**
      * @brief Helper function to add a task to a queue
      *
      * @param q The queue

@@ -32,6 +32,8 @@
 
 #define PRINTWIDTH 80
 #define LABELWIDTH 40
+#define HEADERHEIGHT 3
+#define FOOTERHEIGHT 3
 
 #ifdef PRETTYPRINT
 #define PRINTSEP "┊"
@@ -44,8 +46,12 @@
 
 extern char ** environ;
 
-void ghost_printHeader(const char *fmt, ...)
+void ghost_printHeader(char **str, const char *fmt, ...)
 {
+    size_t headerLen = (PRINTWIDTH+1)*HEADERHEIGHT+1;
+    *str = realloc(*str,strlen(*str)+headerLen);
+    memset(*str+strlen(*str),'\0',1);
+
     char label[1024] = "";
 
     if (fmt != NULL) {
@@ -56,60 +62,78 @@ void ghost_printHeader(const char *fmt, ...)
     }
 
     const int spacing = 4;
+    int offset = 0;
     int len = strlen(label);
     int nDash = (PRINTWIDTH-2*spacing-len)/2;
     int rem = (PRINTWIDTH-2*spacing-len)%2;
     int i;
 #ifdef PRETTYPRINT
-    printf("┌");
-    for (i=0; i<PRINTWIDTH-2; i++) printf("─");
-    printf("┐");
-    printf("\n");
-    printf("├");
-    for (i=0; i<nDash-1; i++) printf("─");
-    for (i=0; i<spacing; i++) printf(" ");
-    printf("%s",label);
-    for (i=0; i<spacing+rem; i++) printf(" ");
-    for (i=0; i<nDash-1; i++) printf("─");
-    printf("┤");
-    printf("\n");
-    printf("├");
-    for (i=0; i<LABELWIDTH; i++) printf("─");
-    printf("┬");
-    for (i=0; i<VALUEWIDTH; i++) printf("─");
-    printf("┤");
-    printf("\n");
+    sprintf(*str,"┌");
+    for (i=0; i<PRINTWIDTH-2; i++) sprintf(*str,"─");
+    sprintf(*str,"┐");
+    sprintf(*str,"\n");
+    sprintf(*str,"├");
+    for (i=0; i<nDash-1; i++) sprintf(*str,"─");
+    for (i=0; i<spacing; i++) sprintf(*str," ");
+    sprintf(*str,"%s",label);
+    for (i=0; i<spacing+rem; i++) sprintf(*str," ");
+    for (i=0; i<nDash-1; i++) sprintf(*str,"─");
+    sprintf(*str,"┤");
+    sprintf(*str,"\n");
+    sprintf(*str,"├");
+    for (i=0; i<LABELWIDTH; i++) sprintf(*str,"─");
+    sprintf(*str,"┬");
+    for (i=0; i<VALUEWIDTH; i++) sprintf(*str,"─");
+    sprintf(*str,"┤");
+    sprintf(*str,"\n");
 #else
-    for (i=0; i<PRINTWIDTH; i++) printf("-");
-    printf("\n");
-    for (i=0; i<nDash; i++) printf("-");
-    for (i=0; i<spacing; i++) printf(" ");
-    printf("%s",label);
-    for (i=0; i<spacing+rem; i++) printf(" ");
-    for (i=0; i<nDash; i++) printf("-");
-    printf("\n");
-    for (i=0; i<PRINTWIDTH; i++) printf("-");
-    printf("\n");
+    for (i=0; i<PRINTWIDTH; i++) sprintf(*str+offset+i,"-");
+    offset = PRINTWIDTH;
+    sprintf(*str+offset,"\n");
+    offset++;
+    for (i=0; i<nDash; i++) sprintf(*str+offset+i,"-");
+    offset += nDash;
+    for (i=0; i<spacing; i++) sprintf(*str+offset+i," ");
+    offset += spacing;
+    sprintf(*str+offset,"%s",label);
+    offset += strlen(label);
+    for (i=0; i<spacing+rem; i++) sprintf(*str+offset+i," ");
+    offset += spacing+rem;
+    for (i=0; i<nDash; i++) sprintf(*str+offset+i,"-");
+    offset += nDash;
+    sprintf(*str+offset,"\n");
+    offset++;
+    for (i=0; i<PRINTWIDTH; i++) sprintf(*str+offset+i,"-");
+    offset += PRINTWIDTH;
+    sprintf(*str+offset,"\n");
 #endif
 }
 
-void ghost_printFooter() 
+void ghost_printFooter(char **str) 
 {
+    size_t len = strlen(*str);
+    size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
+    *str = realloc(*str,strlen(*str)+footerLen);
     int i;
 #ifdef PRETTYPRINT
-    printf("└");
-    for (i=0; i<LABELWIDTH; i++) printf("─");
-    printf("┴");
-    for (i=0; i<VALUEWIDTH; i++) printf("─");
-    printf("┘");
+    sprintf(*str,"└");
+    for (i=0; i<LABELWIDTH; i++) sprintf(*str,"─");
+    sprintf(*str,"┴");
+    for (i=0; i<VALUEWIDTH; i++) sprintf(*str,"─");
+    sprintf(*str,"┘");
 #else
-    for (i=0; i<PRINTWIDTH; i++) printf("-");
+    for (i=0; i<PRINTWIDTH; i++) sprintf(*str+len+i,"-");
 #endif
-    printf("\n\n");
+    sprintf(*str+len+PRINTWIDTH,"\n");
 }
 
-void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
+void ghost_printLine(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
+    size_t len = strlen(*str);
+
+    *str = realloc(*str,len+PRINTWIDTH+2);
+    memset(*str+len,'\0',1);
+
     va_list args;
     va_start(args,fmt);
     char dummy[1025];
@@ -117,18 +141,18 @@ void ghost_printLine(const char *label, const char *unit, const char *fmt, ...)
     va_end(args);
 
 #ifdef PRETTYPRINT
-    printf("│");
+    sprintf(*str,"│");
 #endif
     if (unit) {
         int unitLen = strlen(unit);
-        printf("%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
+        sprintf(*str+len,"%-*s (%s)%s%*s",LABELWIDTH-unitLen-3,label,unit,PRINTSEP,VALUEWIDTH,dummy);
     } else {
-        printf("%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
+        sprintf(*str+len,"%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
     }
 #ifdef PRETTYPRINT
-    printf("│");
+    sprintf(*str+len,"│");
 #endif
-    printf("\n");
+    sprintf(*str+len+PRINTWIDTH,"\n");
 }
 
 
@@ -146,14 +170,18 @@ static char *env(char *key)
 
 }
 
-ghost_error_t ghost_printSysInfo()
+
+ghost_error_t ghost_sysInfoString(char **str)
 {
+
     int nranks;
     int nnodes;
-    int myrank;
+
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&nranks));
     GHOST_CALL_RETURN(ghost_getNumberOfNodes(MPI_COMM_WORLD,&nnodes));
-    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
+
 
 #ifdef GHOST_HAVE_CUDA
     int cuVersion;
@@ -162,73 +190,211 @@ ghost_error_t ghost_printSysInfo()
     ghost_gpu_info_t * CUdevInfo;
     GHOST_CALL_RETURN(ghost_cu_getDeviceInfo(&CUdevInfo));
 #endif
-    if (myrank == 0) {
 
-        int nthreads;
-        int nphyscores;
-        int ncores;
-        ghost_getNumberOfCores(&nphyscores,GHOST_NUMANODE_ANY);
-        ghost_getNumberOfPUs(&ncores,GHOST_NUMANODE_ANY);
+
+    int nthreads;
+    int nphyscores;
+    int ncores;
+    ghost_getNumberOfCores(&nphyscores,GHOST_NUMANODE_ANY);
+    ghost_getNumberOfPUs(&ncores,GHOST_NUMANODE_ANY);
 
 #ifdef GHOST_HAVE_OPENMP
-        char omp_sched_str[32];
-        omp_sched_t omp_sched;
-        int omp_sched_mod;
-        omp_get_schedule(&omp_sched,&omp_sched_mod);
-        switch (omp_sched) {
-            case omp_sched_static:
-                sprintf(omp_sched_str,"static,%d",omp_sched_mod);
-                break;
-            case omp_sched_dynamic:
-                sprintf(omp_sched_str,"dynamic,%d",omp_sched_mod);
-                break;
-            case omp_sched_guided:
-                sprintf(omp_sched_str,"guided,%d",omp_sched_mod);
-                break;
-            case omp_sched_auto:
-                sprintf(omp_sched_str,"auto,%d",omp_sched_mod);
-                break;
-            default:
-                sprintf(omp_sched_str,"unknown");
-                break;
-        }
+    char omp_sched_str[32];
+    omp_sched_t omp_sched;
+    int omp_sched_mod;
+    omp_get_schedule(&omp_sched,&omp_sched_mod);
+    switch (omp_sched) {
+        case omp_sched_static:
+            sprintf(omp_sched_str,"static,%d",omp_sched_mod);
+            break;
+        case omp_sched_dynamic:
+            sprintf(omp_sched_str,"dynamic,%d",omp_sched_mod);
+            break;
+        case omp_sched_guided:
+            sprintf(omp_sched_str,"guided,%d",omp_sched_mod);
+            break;
+        case omp_sched_auto:
+            sprintf(omp_sched_str,"auto,%d",omp_sched_mod);
+            break;
+        default:
+            sprintf(omp_sched_str,"unknown");
+            break;
+    }
 #else
-        char omp_sched_str[] = "N/A";
+    char omp_sched_str[] = "N/A";
 #endif
 #pragma omp parallel
 #pragma omp master
-        nthreads = ghost_ompGetNumThreads();
+    nthreads = ghost_ompGetNumThreads();
 
-        uint64_t cacheSize;
-        unsigned int cacheLineSize;
-        ghost_getSizeOfLLC(&cacheSize);
-        ghost_getSizeOfCacheLine(&cacheLineSize);
+    uint64_t cacheSize;
+    unsigned int cacheLineSize;
+    ghost_getSizeOfLLC(&cacheSize);
+    ghost_getSizeOfCacheLine(&cacheLineSize);
 
-        ghost_printHeader("System");
-        ghost_printLine("Overall nodes",NULL,"%d",nnodes);
-        ghost_printLine("Overall MPI processes",NULL,"%d",nranks);
-        ghost_printLine("MPI processes per node",NULL,"%d",nranks/nnodes);
-        ghost_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
-        ghost_printLine("OpenMP threads per node",NULL,"%d",nranks/nnodes*nthreads);
-        ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
-        ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
-        ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
-        ghost_printLine("LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
-        ghost_printLine("Cache line size","B","%.2f",cacheLineSize);
+    ghost_printHeader(str,"System");
+
+    ghost_printLine(str,"Overall nodes",NULL,"%d",nnodes); 
+    ghost_printLine(str,"Overall MPI processes",NULL,"%d",nranks);
+    ghost_printLine(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
+    ghost_printLine(str,"Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
+    ghost_printLine(str,"OpenMP threads per node",NULL,"%d",nranks/nnodes*nthreads);
+    ghost_printLine(str,"OpenMP threads per process",NULL,"%d",nthreads);
+    ghost_printLine(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
+    ghost_printLine(str,"KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
+    ghost_printLine(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+    ghost_printLine(str,"Cache line size","B","%.2f",cacheLineSize);
 #ifdef GHOST_HAVE_CUDA
-        ghost_printLine("CUDA version",NULL,"%d",cuVersion);
-        ghost_printLine("CUDA devices",NULL,NULL);
-        int j;
-        for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
-            if (strcasecmp(CUdevInfo->names[j],"None")) {
-                ghost_printLine("",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
-            }
+    ghost_printLine(str,"CUDA version",NULL,"%d",cuVersion);
+    ghost_printLine(str,"CUDA devices",NULL,NULL);
+    int j;
+    for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
+        if (strcasecmp(CUdevInfo->names[j],"None")) {
+            ghost_printLine(str,"",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
         }
-#endif
-        ghost_printFooter();
     }
+#endif
+    ghost_printFooter(str);
 
     return GHOST_SUCCESS;
+
+}
+
+ghost_error_t ghost_infoString(char **str) 
+{
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+
+    ghost_printHeader(str,"%s", GHOST_NAME); 
+    ghost_printLine(str,"Version",NULL,"%s",GHOST_VERSION);
+    ghost_printLine(str,"Build date",NULL,"%s",__DATE__);
+    ghost_printLine(str,"Build time",NULL,"%s",__TIME__);
+#ifdef GHOST_HAVE_MIC
+    ghost_printLine(str,"MIC kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"MIC kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_AVX
+    ghost_printLine(str,"AVX kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"AVX kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_SSE
+    ghost_printLine(str,"SSE kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"SSE kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_OPENMP
+    ghost_printLine(str,"OpenMP support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"OpenMP support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_MPI
+    ghost_printLine(str,"MPI support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"MPI support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_CUDA
+    ghost_printLine(str,"CUDA support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"CUDA support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_INSTR_LIKWID
+    ghost_printLine(str,"Instrumentation",NULL,"Likwid");
+#elif defined(GHOST_HAVE_INSTR_TIMING)
+    ghost_printLine(str,"Instrumentation",NULL,"Timing");
+#else
+    ghost_printLine(str,"Instrumentation",NULL,"Disabled");
+#endif
+    ghost_printFooter(str);
+
+    return GHOST_SUCCESS;
+
+}
+/*
+   ghost_error_t ghost_printSysInfo()
+   {
+   int nranks;
+   int nnodes;
+   int myrank;
+   GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&nranks));
+   GHOST_CALL_RETURN(ghost_getNumberOfNodes(MPI_COMM_WORLD,&nnodes));
+   GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
+
+#ifdef GHOST_HAVE_CUDA
+int cuVersion;
+GHOST_CALL_RETURN(ghost_cu_getVersion(&cuVersion));
+
+ghost_gpu_info_t * CUdevInfo;
+GHOST_CALL_RETURN(ghost_cu_getDeviceInfo(&CUdevInfo));
+#endif
+if (myrank == 0) {
+
+int nthreads;
+int nphyscores;
+int ncores;
+ghost_getNumberOfCores(&nphyscores,GHOST_NUMANODE_ANY);
+ghost_getNumberOfPUs(&ncores,GHOST_NUMANODE_ANY);
+
+#ifdef GHOST_HAVE_OPENMP
+char omp_sched_str[32];
+omp_sched_t omp_sched;
+int omp_sched_mod;
+omp_get_schedule(&omp_sched,&omp_sched_mod);
+switch (omp_sched) {
+case omp_sched_static:
+sprintf(omp_sched_str,"static,%d",omp_sched_mod);
+break;
+case omp_sched_dynamic:
+sprintf(omp_sched_str,"dynamic,%d",omp_sched_mod);
+break;
+case omp_sched_guided:
+sprintf(omp_sched_str,"guided,%d",omp_sched_mod);
+break;
+case omp_sched_auto:
+sprintf(omp_sched_str,"auto,%d",omp_sched_mod);
+break;
+default:
+sprintf(omp_sched_str,"unknown");
+break;
+}
+#else
+char omp_sched_str[] = "N/A";
+#endif
+#pragma omp parallel
+#pragma omp master
+nthreads = ghost_ompGetNumThreads();
+
+uint64_t cacheSize;
+unsigned int cacheLineSize;
+ghost_getSizeOfLLC(&cacheSize);
+ghost_getSizeOfCacheLine(&cacheLineSize);
+
+ghost_printHeader("System");
+ghost_printLine("Overall nodes",NULL,"%d",nnodes);
+ghost_printLine("Overall MPI processes",NULL,"%d",nranks);
+ghost_printLine("MPI processes per node",NULL,"%d",nranks/nnodes);
+ghost_printLine("Avail. threads (phys/HW) per node",NULL,"%d/%d",nphyscores,ncores);
+ghost_printLine("OpenMP threads per node",NULL,"%d",nranks/nnodes*nthreads);
+ghost_printLine("OpenMP threads per process",NULL,"%d",nthreads);
+ghost_printLine("OpenMP scheduling",NULL,"%s",omp_sched_str);
+ghost_printLine("KMP_BLOCKTIME",NULL,"%s",env("KMP_BLOCKTIME"));
+ghost_printLine("LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+ghost_printLine("Cache line size","B","%.2f",cacheLineSize);
+#ifdef GHOST_HAVE_CUDA
+ghost_printLine("CUDA version",NULL,"%d",cuVersion);
+ghost_printLine("CUDA devices",NULL,NULL);
+int j;
+for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
+    if (strcasecmp(CUdevInfo->names[j],"None")) {
+        ghost_printLine("",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
+    }
+}
+#endif
+ghost_printFooter();
+}
+
+return GHOST_SUCCESS;
 
 }
 
@@ -238,7 +404,7 @@ ghost_error_t ghost_printGhostInfo()
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
 
     if (myrank == 0) {
-        
+
         ghost_printHeader("%s", GHOST_NAME);
         ghost_printLine("Version",NULL,"%s",GHOST_VERSION);
         ghost_printLine("Build date",NULL,"%s",__DATE__);
@@ -284,7 +450,7 @@ ghost_error_t ghost_printGhostInfo()
 
     return GHOST_SUCCESS;
 }
-
+*/
 
 /*void ghost_freeCommunicator( ghost_comm_t* const comm ) 
   {
@@ -358,7 +524,7 @@ ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding)
     if (padding < 1 || nrows < 1) {
         return nrows;
     }
-    
+
     ghost_midx_t nrowsPadded;
 
     if (nrows % padding != 0) {

@@ -79,7 +79,7 @@ ghost_error_t (*SELL_fromCRS_funcs[4]) (ghost_sparsemat_t *, ghost_sparsemat_t *
 const char * (*SELL_stringify_funcs[4]) (ghost_sparsemat_t *, int) = 
 {&s_SELL_stringify, &d_SELL_stringify, &c_SELL_stringify, &z_SELL_stringify}; 
 
-static void SELL_printInfo(ghost_sparsemat_t *mat);
+static void SELL_printInfo(char **str, ghost_sparsemat_t *mat);
 static const char * SELL_formatName(ghost_sparsemat_t *mat);
 static ghost_midx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_midx_t i);
 static size_t SELL_byteSize (ghost_sparsemat_t *mat);
@@ -207,21 +207,21 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_midx_t *perm, g
     return GHOST_ERR_NOT_IMPLEMENTED;
 
 }
-static void SELL_printInfo(ghost_sparsemat_t *mat)
+static void SELL_printInfo(char **str, ghost_sparsemat_t *mat)
 {
-    ghost_printLine("Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
-    ghost_printLine("Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
-    ghost_printLine("Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_printLine("Row length variance",NULL,"%f",SELL(mat)->variance);
-    ghost_printLine("Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
-    ghost_printLine("Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
-    ghost_printLine("Threads per row (T)",NULL,"%d",SELL(mat)->T);
+    ghost_printLine(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
+    ghost_printLine(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
+    ghost_printLine(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
+    ghost_printLine(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
+    ghost_printLine(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
+    ghost_printLine(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
+    ghost_printLine(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
     if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
-        ghost_printLine("Sorted",NULL,"yes");
-        ghost_printLine("Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
-        ghost_printLine("Permuted columns",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTECOLIDX?"yes":"no");
+        ghost_printLine(str,"Sorted",NULL,"yes");
+        ghost_printLine(str,"Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
+        ghost_printLine(str,"Permuted columns",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTECOLIDX?"yes":"no");
     } else {
-        ghost_printLine("Sorted",NULL,"no");
+        ghost_printLine(str,"Sorted",NULL,"no");
     }
 }
 

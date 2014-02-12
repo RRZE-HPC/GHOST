@@ -24,7 +24,7 @@ ghost_error_t ghost_createMatrix(ghost_sparsemat_t ** mat, ghost_context_t *cont
     (*mat)->context = context;
     (*mat)->localPart = NULL;
     (*mat)->remotePart = NULL;
-    (*mat)->name = NULL;
+    (*mat)->name = "Sparse matrix";
     (*mat)->data = NULL;
     (*mat)->nzDist = NULL;
     (*mat)->fromFile = NULL;
@@ -120,55 +120,53 @@ ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_printMatrixInfo(ghost_sparsemat_t *mat)
+ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *mat)
 {
-    ghost_midx_t nrows;
-    ghost_midx_t nnz;
-    int myrank;
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+
+    ghost_midx_t nrows = 0;
+    ghost_midx_t nnz = 0;
     
     GHOST_CALL_RETURN(ghost_getMatNrows(&nrows,mat));
     GHOST_CALL_RETURN(ghost_getMatNnz(&nnz,mat));
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
-
-    if (myrank == 0) {
-
-        char *matrixLocation;
-        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
-            matrixLocation = "Device";
-        else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
-            matrixLocation = "Host";
-        else
-            matrixLocation = "Default";
 
 
-        ghost_printHeader(mat->name);
-        ghost_printLine("Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
-        ghost_printLine("Matrix location",NULL,"%s",matrixLocation);
-        ghost_printLine("Number of rows",NULL,"%"PRmatIDX,nrows);
-        ghost_printLine("Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
-        ghost_printLine("Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
+    char *matrixLocation;
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
+        matrixLocation = "Device";
+    else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
+        matrixLocation = "Host";
+    else
+        matrixLocation = "Default";
 
-        ghost_printLine("Full   matrix format",NULL,"%s",mat->formatName(mat));
-        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-        {
-            ghost_printLine("Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-            ghost_printLine("Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-            ghost_printLine("Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
-        } else {
-            ghost_printLine("Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
-        }
 
-        ghost_printLine("Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
-        if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-        {
-            ghost_printLine("Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
-            ghost_printLine("Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
-        }
+    ghost_printHeader(str,mat->name);
+    ghost_printLine(str,"Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
+    ghost_printLine(str,"Matrix location",NULL,"%s",matrixLocation);
+    ghost_printLine(str,"Number of rows",NULL,"%"PRmatIDX,nrows);
+    ghost_printLine(str,"Number of nonzeros",NULL,"%"PRmatNNZ,nnz);
+    ghost_printLine(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
 
-        mat->printInfo(mat);
-        ghost_printFooter();
-
+    ghost_printLine(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
+    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+    {
+        ghost_printLine(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+        ghost_printLine(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+        ghost_printLine(str,"Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
+    } else {
+        ghost_printLine(str,"Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
     }
+
+    ghost_printLine(str,"Full   matrix size (rank 0)","MB","%u",mat->byteSize(mat)/(1024*1024));
+    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
+    {
+        ghost_printLine(str,"Local  matrix size (rank 0)","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+        ghost_printLine(str,"Remote matrix size (rank 0)","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+    }
+
+    mat->printInfo(str,mat);
+    ghost_printFooter(str);
 
     return GHOST_SUCCESS;
 
