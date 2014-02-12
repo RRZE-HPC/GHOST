@@ -327,7 +327,7 @@ ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     *comm = ghost_node_comm;
 #else
     UNUSED(ghost_node_comm);
@@ -339,7 +339,7 @@ ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm)
 
 ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
 {
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     int mpiRank;
     GHOST_CALL_RETURN(ghost_getRank(comm,&mpiRank));
     int error;

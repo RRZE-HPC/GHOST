@@ -26,7 +26,7 @@
 extern cublasHandle_t ghost_cublas_handle;
 #endif
 
-const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_VEC_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
+const ghost_densemat_traits_t GHOST_VTRAITS_INITIALIZER = {.flags = GHOST_DENSEMAT_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
 
 ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
@@ -96,20 +96,20 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
 
     DEBUG_LOG(1,"Initializing vector");
 
-    if (!((*vec)->traits->flags & (GHOST_VEC_HOST | GHOST_VEC_DEVICE)))
+    if (!((*vec)->traits->flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting vector placement");
-        (*vec)->traits->flags |= GHOST_VEC_HOST;
+        (*vec)->traits->flags |= GHOST_DENSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_getType(&ghost_type));
-        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
-            (*vec)->traits->flags |= GHOST_VEC_DEVICE;
+        if (ghost_type == GHOST_TYPE_CUDA) {
+            (*vec)->traits->flags |= GHOST_DENSEMAT_DEVICE;
         }
     }
 
-    if ((*vec)->traits->flags & GHOST_VEC_DEVICE)
+    if ((*vec)->traits->flags & GHOST_DENSEMAT_DEVICE)
     {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
         (*vec)->dot = &ghost_vec_cu_dotprod;
         (*vec)->vaxpy = &ghost_vec_cu_vaxpy;
         (*vec)->vaxpby = &ghost_vec_cu_vaxpby;
@@ -121,7 +121,7 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
         (*vec)->fromRand = &ghost_vec_cu_fromRand;
 #endif
     }
-    else if ((*vec)->traits->flags & GHOST_VEC_HOST)
+    else if ((*vec)->traits->flags & GHOST_DENSEMAT_HOST)
     {
         (*vec)->dot = &vec_dotprod;
         (*vec)->vaxpy = &vec_vaxpy;
@@ -159,7 +159,7 @@ ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, g
     (*vec)->uploadNonHalo = &vec_uploadNonHalo;
     (*vec)->downloadNonHalo = &vec_downloadNonHalo;
 #ifdef GHOST_HAVE_CUDA
-    if ((*vec)->traits->flags & GHOST_VEC_DEVICE) {
+    if ((*vec)->traits->flags & GHOST_DENSEMAT_DEVICE) {
         (*vec)->cu_val = NULL;
     }
 #endif
@@ -181,7 +181,7 @@ out:
 
 static ghost_error_t vec_uploadHalo(ghost_densemat_t *vec)
 {
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading halo elements of vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
@@ -198,7 +198,7 @@ static ghost_error_t vec_uploadHalo(ghost_densemat_t *vec)
 static ghost_error_t vec_downloadHalo(ghost_densemat_t *vec)
 {
 
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading halo elements of vector");
         WARNING_LOG("Not yet implemented!");
     }
@@ -206,7 +206,7 @@ static ghost_error_t vec_downloadHalo(ghost_densemat_t *vec)
 }
 static ghost_error_t vec_uploadNonHalo(ghost_densemat_t *vec)
 {
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
@@ -220,7 +220,7 @@ static ghost_error_t vec_uploadNonHalo(ghost_densemat_t *vec)
 
 static ghost_error_t vec_downloadNonHalo(ghost_densemat_t *vec)
 {
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
@@ -234,7 +234,7 @@ static ghost_error_t vec_downloadNonHalo(ghost_densemat_t *vec)
 
 static ghost_error_t vec_upload(ghost_densemat_t *vec) 
 {
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRvecIDX" rows of vector",vec->traits->nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
@@ -248,7 +248,7 @@ static ghost_error_t vec_upload(ghost_densemat_t *vec)
 
 static ghost_error_t vec_download(ghost_densemat_t *vec)
 {
-    if ((vec->traits->flags & GHOST_VEC_HOST) && (vec->traits->flags & GHOST_VEC_DEVICE)) {
+    if ((vec->traits->flags & GHOST_DENSEMAT_HOST) && (vec->traits->flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
 #ifdef GHOST_HAVE_CUDA
         ghost_vidx_t v;
@@ -275,7 +275,7 @@ static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_vidx_t nc, ghos
         new->val[v] = VECVAL(src,src->val,coffs+v,0);
     }
 
-    new->traits->flags |= GHOST_VEC_VIEW;
+    new->traits->flags |= GHOST_DENSEMAT_VIEW;
     return new;
 }
 
@@ -288,7 +288,7 @@ static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_vid
     for (v=0; v<vec->traits->ncols; v++) {
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->traits->elSize];
     }
-    vec->traits->flags |= GHOST_VEC_VIEW;
+    vec->traits->flags |= GHOST_DENSEMAT_VIEW;
 
     return GHOST_SUCCESS;
 }
@@ -308,8 +308,8 @@ static ghost_densemat_t* vec_viewScatteredVec (ghost_densemat_t *src, ghost_vidx
         new->val[v] = VECVAL(src,src->val,coffs[v],0);
     }    
 
-    new->traits->flags |= GHOST_VEC_VIEW;
-    new->traits->flags |= GHOST_VEC_SCATTERED;
+    new->traits->flags |= GHOST_DENSEMAT_VIEW;
+    new->traits->flags |= GHOST_DENSEMAT_SCATTERED;
     return new;
 }
 
@@ -332,7 +332,7 @@ ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec)
 {
 
     ghost_vidx_t v;
-    if (vec->traits->flags & GHOST_VEC_HOST) {
+    if (vec->traits->flags & GHOST_DENSEMAT_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
             GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits->ncols*vec->traits->nrowspadded*vec->traits->elSize,GHOST_DATA_ALIGNMENT));
@@ -342,7 +342,7 @@ ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec)
         }
     }
 
-    if (vec->traits->flags & GHOST_VEC_DEVICE) {
+    if (vec->traits->flags & GHOST_DENSEMAT_DEVICE) {
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
         if (vec->cu_val == NULL) {
@@ -368,13 +368,13 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     if (vec->context != NULL) {
         if (vec->traits->nrows == 0) {
             DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
-            if (vec->traits->flags & GHOST_VEC_DUMMY) {
+            if (vec->traits->flags & GHOST_DENSEMAT_DUMMY) {
                 vec->traits->nrows = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_DENSEMAT_GLOBAL))
             {
-                if (vec->traits->flags & GHOST_VEC_LHS) {
+                if (vec->traits->flags & GHOST_DENSEMAT_LHS) {
                     vec->traits->nrows = vec->context->gnrows;
-                } else if (vec->traits->flags & GHOST_VEC_RHS) {
+                } else if (vec->traits->flags & GHOST_DENSEMAT_RHS) {
                     vec->traits->nrows = vec->context->gncols;
                 }
             } 
@@ -387,15 +387,15 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         }
         if (vec->traits->nrowshalo == 0) {
             DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
-            if (vec->traits->flags & GHOST_VEC_DUMMY) {
+            if (vec->traits->flags & GHOST_DENSEMAT_DUMMY) {
                 vec->traits->nrowshalo = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_VEC_GLOBAL))
+            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits->flags & GHOST_DENSEMAT_GLOBAL))
             {
                 vec->traits->nrowshalo = vec->traits->nrows;
             } 
             else 
             {
-                if (!(vec->traits->flags & GHOST_VEC_GLOBAL) && vec->traits->flags & GHOST_VEC_RHS) {
+                if (!(vec->traits->flags & GHOST_DENSEMAT_GLOBAL) && vec->traits->flags & GHOST_DENSEMAT_RHS) {
                     if (vec->context->halo_elements == -1) {
                         ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                         return GHOST_ERR_UNKNOWN;
@@ -429,26 +429,26 @@ static ghost_error_t vec_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, 
     ghost_vidx_t v;
 
     for (v=0; v<vec->traits->ncols; v++) {
-        if (vec->traits->flags & GHOST_VEC_DEVICE)
+        if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
         {
-            if (vec2->traits->flags & GHOST_VEC_DEVICE)
+            if (vec2->traits->flags & GHOST_DENSEMAT_DEVICE)
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
             else
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
         }
         else
         {
-            if (vec2->traits->flags & GHOST_VEC_DEVICE)
+            if (vec2->traits->flags & GHOST_DENSEMAT_DEVICE)
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 ghost_cu_download(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits->nrows*vec->traits->elSize);
 #endif
             }
@@ -603,13 +603,13 @@ out:
 
 static ghost_error_t vec_entry(ghost_densemat_t * vec, ghost_vidx_t r, ghost_vidx_t c, void *val) 
 {
-    if (vec->traits->flags & GHOST_VEC_DEVICE)
+    if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
     {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
         ghost_cu_download(val,&vec->cu_val[(c*vec->traits->nrowspadded+r)*vec->traits->elSize],vec->traits->elSize);
 #endif
     }
-    else if (vec->traits->flags & GHOST_VEC_HOST)
+    else if (vec->traits->flags & GHOST_DENSEMAT_HOST)
     {
         memcpy(val,VECVAL(vec,vec->val,c,r),vec->traits->elSize);
     }
@@ -677,14 +677,14 @@ static ghost_error_t vec_toFile(ghost_densemat_t *vec, char *path)
     for (v=0; v<vec->traits->ncols; v++) {
         char *val = NULL;
         int copied = 0;
-        if (vec->traits->flags & GHOST_VEC_HOST)
+        if (vec->traits->flags & GHOST_DENSEMAT_HOST)
         {
             vec->download(vec);
             val = VECVAL(vec,vec->val,v,0);
         }
-        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        else if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
         {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
             GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             copied = 1;
             ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
@@ -752,14 +752,14 @@ static ghost_error_t vec_toFile(ghost_densemat_t *vec, char *path)
     for (v=0; v<vec->traits->ncols; v++) {
         char *val = NULL;
         int copied = 0;
-        if (vec->traits->flags & GHOST_VEC_HOST)
+        if (vec->traits->flags & GHOST_DENSEMAT_HOST)
         {
             vec->download(vec);
             val = VECVAL(vec,vec->val,v,0);
         }
-        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        else if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
         {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
             GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             copied = 1;
             ghost_cu_download(val,&vec->cu_val[v*vec->traits->nrowspadded*vec->traits->elSize],vec->traits->nrows*vec->traits->elSize);
@@ -881,7 +881,7 @@ static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path)
             vec->destroy(vec);
             return GHOST_ERR_IO;
         }
-        if (vec->traits->flags & GHOST_VEC_HOST)
+        if (vec->traits->flags & GHOST_DENSEMAT_HOST)
         {
             if ((ghost_midx_t)(ret = fread(VECVAL(vec,vec->val,v,0), vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
@@ -890,9 +890,9 @@ static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path)
             }
             vec->upload(vec);
         }
-        else if (vec->traits->flags & GHOST_VEC_DEVICE)
+        else if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
         {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
             GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits->nrows*vec->traits->elSize));
             if ((ret = fread(val, vec->traits->elSize, vec->traits->nrows,filed)) != vec->traits->nrows) {
                 ERROR_LOG("fread failed: %zu",ret);
@@ -943,13 +943,13 @@ static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec)
     DEBUG_LOG(1,"Zeroing vector");
     ghost_vidx_t v;
 
-    if (vec->traits->flags & GHOST_VEC_DEVICE)
+    if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
     {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
         ghost_cu_memset(vec->cu_val,0,vec->traits->nrowspadded*vec->traits->ncols*vec->traits->elSize);
 #endif
     }
-    if (vec->traits->flags & GHOST_VEC_HOST)
+    if (vec->traits->flags & GHOST_DENSEMAT_HOST)
     {
         for (v=0; v<vec->traits->ncols; v++) 
         {
@@ -1068,16 +1068,16 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 static void ghost_freeVector( ghost_densemat_t* vec ) 
 {
     if( vec ) {
-        if (!(vec->traits->flags & GHOST_VEC_VIEW)) {
+        if (!(vec->traits->flags & GHOST_DENSEMAT_VIEW)) {
             ghost_vidx_t v;
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
-            /*if (vec->traits->flags & GHOST_VEC_DEVICE) {
+            /*if (vec->traits->flags & GHOST_DENSEMAT_DEVICE) {
               for (v=0; v<vec->traits->ncols; v++) { 
               ghost_cu_safecall(cudaFreeHost(vec->val[v]));
               }
               }*/
-            if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+            if (vec->traits->flags & GHOST_DENSEMAT_SCATTERED) {
                 for (v=0; v<vec->traits->ncols; v++) {
                     free(vec->val[v]);
                 }
@@ -1090,7 +1090,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             //      always a view of some other (there is no method to                        
             //      construct it otherwise), but we check anyway in case
             //      the user has built his own funny vector in memory.
-            if (vec->traits->flags & GHOST_VEC_SCATTERED) {
+            if (vec->traits->flags & GHOST_DENSEMAT_SCATTERED) {
                 for (v=0; v<vec->traits->ncols; v++) {
                     free(vec->val[v]);
                 }
@@ -1100,7 +1100,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             }
 #endif
 #ifdef GHOST_HAVE_CUDA
-            if (vec->traits->flags & GHOST_VEC_DEVICE) {
+            if (vec->traits->flags & GHOST_DENSEMAT_DEVICE) {
                 ghost_cu_free(vec->cu_val);
             }
 #endif
@@ -1156,7 +1156,7 @@ static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_vidx_t 
 
     // copy the data even if the input vector is itself a view
     // (bitwise NAND operation to unset the view flag if set)
-    new->traits->flags &= ~GHOST_VEC_VIEW;
+    new->traits->flags &= ~GHOST_DENSEMAT_VIEW;
 
     new->fromVec(new,src,coffs);
     return new;
@@ -1164,7 +1164,7 @@ static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_vidx_t 
 
 static ghost_error_t vec_compress(ghost_densemat_t *vec)
 {
-    if (!(vec->traits->flags & GHOST_VEC_SCATTERED)) {
+    if (!(vec->traits->flags & GHOST_DENSEMAT_SCATTERED)) {
         return GHOST_SUCCESS;
     }
 
@@ -1187,15 +1187,15 @@ static ghost_error_t vec_compress(ghost_densemat_t *vec)
         memcpy(&val[(v*vec->traits->nrowspadded)*vec->traits->elSize],
                 VECVAL(vec,vec->val,v,0),vec->traits->nrowspadded*vec->traits->elSize);
 
-        if (!(vec->traits->flags & GHOST_VEC_VIEW))
+        if (!(vec->traits->flags & GHOST_DENSEMAT_VIEW))
         {
             free(vec->val[v]);
         }
         vec->val[v] = &val[(v*vec->traits->nrowspadded)*vec->traits->elSize];
     }
 
-    vec->traits->flags &= ~GHOST_VEC_VIEW;
-    vec->traits->flags &= ~GHOST_VEC_SCATTERED;
+    vec->traits->flags &= ~GHOST_DENSEMAT_VIEW;
+    vec->traits->flags &= ~GHOST_DENSEMAT_SCATTERED;
 
     return GHOST_SUCCESS;
 }

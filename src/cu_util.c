@@ -34,7 +34,7 @@ ghost_error_t ghost_cu_init(int dev)
         CUDA_CALL_RETURN(cudaSetDevice(ghost_cu_device));
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
-#if GHOST_HAVE_CUDA_PINNEDMEM
+#ifdef GHOST_HAVE_CUDA_PINNEDMEM
     CUDA_CALL_RETURN(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
 
@@ -178,7 +178,7 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
         }
     }
 /*
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_safecall(MPI_Bcast(&((*devInfo)->nDistinctDevices),1,MPI_INT,0,MPI_COMM_WORLD));
 #endif
 */
@@ -205,7 +205,7 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
         free(names);
     }
 /*
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_safecall(MPI_Bcast((*devInfo)->nDevices,(*devInfo)->nDistinctDevices,MPI_INT,0,MPI_COMM_WORLD));
 
     for (i=0; i<(*devInfo)->nDistinctDevices; i++) {

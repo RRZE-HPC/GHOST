@@ -14,7 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 
@@ -65,7 +65,7 @@ ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t
     {&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
     {&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
 {{&ss_SELL_kernel_CU,&sd_SELL_kernel_CU,&sc_SELL_kernel_CU,&sz_SELL_kernel_CU},
     {&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
@@ -110,7 +110,7 @@ ghost_error_t ghost_SELL_init(ghost_sparsemat_t *mat)
         DEBUG_LOG(2,"Setting matrix placement");
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
-        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+        if (ghost_type == GHOST_TYPE_CUDA) {
             mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
         } else {
             mat->traits->flags |= GHOST_SPARSEMAT_HOST;
@@ -136,8 +136,8 @@ ghost_error_t ghost_SELL_init(ghost_sparsemat_t *mat)
 #ifdef VSX_INTR
     mat->spmv = &SELL_kernel_VSX;
 #endif
-#if GHOST_HAVE_CUDA
-    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+#ifdef GHOST_HAVE_CUDA
+    if (ghost_type == GHOST_TYPE_CUDA) {
         mat->spmv   = &SELL_kernel_CU;
     }
 #endif
@@ -510,7 +510,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxro
     }
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 
         mat->context->lnEnts[me] = mat->nEnts;
 
@@ -820,7 +820,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_sorting_t* rowSort = NULL;
     FILE *filed = NULL;
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_Request req[nprocs];
     MPI_Status stat[nprocs];
 #endif
@@ -893,7 +893,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             rpt = context->rpt;
         }
     }
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_midx, 0, context->mpicomm),err,ret);
 #endif
@@ -913,7 +913,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     if (me != 0) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(context->lnrows[me]+1)*sizeof(ghost_midx_t)),err,ret);
     }
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     int msgcount = 0;
 
     for (proc=0;proc<nprocs;proc++) 
@@ -1021,7 +1021,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     mat->context->lnEnts[me] = mat->nEnts;
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     ghost_mnnz_t nents;
     nents = mat->context->lnEnts[me];
     MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_mnnz,mat->context->lnEnts,1,ghost_mpi_dt_mnnz,mat->context->mpicomm),err,ret);
@@ -1254,7 +1254,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
     ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = NULL;
 
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
     /*    static int first = 1;
           if ((mat->byteSize(mat) < ghost_getSizeOfLLC()) || (SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)) < 0.4)) {
           if (first) {
@@ -1275,7 +1275,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
 
 
-#if GHOST_HAVE_SSE
+#ifdef GHOST_HAVE_SSE
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMV_AXPBY) ||
                 (options & GHOST_SPMV_APPLY_SCALE) ||
@@ -1285,7 +1285,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [vecDtIdx];
     }
 #endif
-#elif GHOST_HAVE_AVX
+#elifdef GHOST_HAVE_AVX
     if (SELL(mat)->chunkHeight == 4) {
         kernel = SELL_kernels_AVX
             [matDtIdx]
@@ -1295,7 +1295,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [matDtIdx]
             [vecDtIdx];
     }
-#elif GHOST_HAVE_MIC
+#elifdef GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMV_AXPBY) ||
                 (options & GHOST_SPMV_APPLY_SCALE) ||
@@ -1331,7 +1331,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 }
 
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags)
 {
     DEBUG_LOG(1,"Calling SELL CUDA kernel");

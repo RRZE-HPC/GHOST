@@ -19,15 +19,15 @@
 #include <cblas.h>
 #endif
 
-#if GHOST_HAVE_MKL
+#ifdef GHOST_HAVE_MKL
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
 #define BLAS_Complex16 MKL_Complex16 
-#elif GHOST_HAVE_GSL
+#elif defined(GHOST_HAVE_GSL)
 #define BLAS_MANGLE(name,NAME) cblas_##name
 #define BLAS_Complex8 gsl_complex_float
 #define BLAS_Complex16 gsl_complex
-#elif GHOST_HAVE_LIBSCI
+#elif defined(GHOST_HAVE_LIBSCI)
 #define BLAS_MANGLE(name,NAME) cblas_##name
 #define BLAS_Complex8 void
 #define BLAS_Complex16 void

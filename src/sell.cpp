@@ -1,7 +1,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <stdio.h>

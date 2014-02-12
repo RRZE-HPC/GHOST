@@ -1,4 +1,9 @@
 /** 
+ * @defgroup core Core functionality
+ * @brief GHOST's core functionality.
+ */
+
+/** 
  * @defgroup types Data types
  * @brief Basic data types and structures.
  */

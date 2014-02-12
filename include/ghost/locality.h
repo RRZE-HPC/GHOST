@@ -9,7 +9,7 @@
 #include "error.h"
 #include <hwloc.h>
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
 

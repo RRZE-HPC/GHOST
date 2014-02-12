@@ -1,6 +1,6 @@
 #include "ghost/config.h"
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h> //mpi.h has to be included before stdio.h
 #endif
 #include <cstdlib>
@@ -189,7 +189,7 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *
 template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec)
 {
     char prefix[16] = "";
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
         int rank;
         GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
@@ -204,13 +204,13 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec
         std::cout << prefix << "\t";
         for (v=0; v<vec->traits->ncols; v++) {
             v_t val = 0.;
-            if (vec->traits->flags & GHOST_VEC_DEVICE)
+            if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits->nrowspadded+i]),sizeof(v_t));
 #endif
             }
-            else if (vec->traits->flags & GHOST_VEC_HOST)
+            else if (vec->traits->flags & GHOST_DENSEMAT_HOST)
             {
                 val = *(v_t *)VECVAL(vec,vec->val,v,i);
             }

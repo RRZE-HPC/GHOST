@@ -1,7 +1,7 @@
 #ifndef GHOST_LOG_H
 #define GHOST_LOG_H
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
 
@@ -39,7 +39,7 @@
             TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, ONE, throwaway)
 #define SELECT_10TH(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...) a10
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 
 #define LOG(type,color,...) {\
     int me;\

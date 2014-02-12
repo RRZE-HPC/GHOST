@@ -109,7 +109,7 @@ ghost_datatype_t name = GHOST_DT_FLOAT|GHOST_DT_COMPLEX; \
     typedef complex double name ## _t; \
 ghost_datatype_t name = GHOST_DT_DOUBLE|GHOST_DT_COMPLEX; \
 
-#if GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX
 /**
  * @brief Type for row/column indices of matrix
  */

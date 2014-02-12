@@ -34,6 +34,7 @@ set (SOURCES
 		src/densemat.c 
 		src/densemat.cpp 
         src/error.c
+        src/instr.c
         src/io.c
         src/io.cpp
         src/locality.c
@@ -65,6 +66,7 @@ set (HEADERS
 		include/ghost/densemat.h
 		include/ghost/error.h
         include/ghost/io.h
+        include/ghost/instr.h
 		include/ghost/locality.h	
         include/ghost/log.h
 		include/ghost/machine.h
@@ -248,18 +250,21 @@ if (BUILD_MIC)
 	set(GHOST_HAVE_MIC 1)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
-elseif (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
-	AutodetectHostArchitecture()
-	OptimizeForArchitecture()
-    if (AVX_FOUND)
-	    set(GHOST_HAVE_AVX 1)
-    endif()
-    if (SSE_FOUND)
-	    set(GHOST_HAVE_SSE 1)
-    endif()
+else()
+    set(GHOST_HAVE_MIC 0)
+        if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
+        AutodetectHostArchitecture()
+        OptimizeForArchitecture()
+        if (AVX_FOUND)
+            set(GHOST_HAVE_AVX 1)
+        endif()
+        if (SSE_FOUND)
+            set(GHOST_HAVE_SSE 1)
+        endif()
 
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
+    endif()
 endif()
 
 configure_file (
@@ -288,7 +293,7 @@ configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONL
 
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
-	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+	configure_file(${CMAKE_SOURCE_DIR}/doxygen/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
 	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
 endif()
 

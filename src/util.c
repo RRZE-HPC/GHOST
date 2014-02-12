@@ -17,7 +17,7 @@
 #include <byteswap.h>
 
 #include <errno.h>
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 #include <string.h>

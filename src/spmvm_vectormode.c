@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 

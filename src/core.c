@@ -149,7 +149,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     int nnumanodes;
     ghost_getNumberOfNumaNodes(&nnumanodes);
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
     ghost_cu_getDeviceCount(&ncudadevs);
 #endif
 
@@ -158,24 +158,24 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     if (ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
-            ghost_setType(GHOST_TYPE_COMPUTE);
+            ghost_setType(GHOST_TYPE_WORK);
         } else if (noderank <= ncudadevs) {
-            ghost_setType(GHOST_TYPE_CUDAMGMT);
+            ghost_setType(GHOST_TYPE_CUDA);
         } else {
-            ghost_setType(GHOST_TYPE_COMPUTE);
+            ghost_setType(GHOST_TYPE_WORK);
         }
     } 
     GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
 #ifndef GHOST_HAVE_CUDA
-    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+    if (ghost_type == GHOST_TYPE_CUDA) {
         WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
-        ghost_setType(GHOST_TYPE_COMPUTE);
+        ghost_setType(GHOST_TYPE_WORK);
     }
 #endif
 
 
-    int nLocalCuda = ghost_type==GHOST_TYPE_CUDAMGMT;
+    int nLocalCuda = ghost_type==GHOST_TYPE_CUDA;
 
     int i;
     int localTypes[nnoderanks];
@@ -184,7 +184,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         localTypes[i] = GHOST_TYPE_INVALID;
     }
     localTypes[noderank] = ghost_type;
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     ghost_mpi_comm_t ghost_node_comm;
     GHOST_CALL_RETURN(ghost_getNodeComm(&ghost_node_comm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
@@ -248,11 +248,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_foreach_end();
 
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
 
     for (i=0; i<nnoderanks; i++) {
-        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
+        if (localTypes[i] == GHOST_TYPE_CUDA) {
             if (i == noderank) {
                 ghost_cu_init(cudaDevice);
             }
@@ -264,7 +264,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     // CUDA ranks have a physical core
     cudaDevice = 0;
     for (i=0; i<nnoderanks; i++) {
-        if (localTypes[i] == GHOST_TYPE_CUDAMGMT) {
+        if (localTypes[i] == GHOST_TYPE_CUDA) {
             hwloc_obj_t mynode = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,cudaDevice%nnumanodes);
             hwloc_obj_t runner = mynode;
             while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
@@ -285,14 +285,14 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNODE) {
-        if (ghost_type == GHOST_TYPE_COMPUTE) {
+        if (ghost_type == GHOST_TYPE_WORK) {
             hwloc_bitmap_copy(mycpuset,globcpuset);
         }
         hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
     } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERNUMA) {
         int numaNode = 0;
         for (i=0; i<nnoderanks; i++) {
-            if (localTypes[i] == GHOST_TYPE_COMPUTE) {
+            if (localTypes[i] == GHOST_TYPE_WORK) {
                 if (nnumanodes > numaNode) {
                     hwloc_cpuset_t nodeCpuset;
                     if (hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE) > 0) {
@@ -356,14 +356,14 @@ ghost_error_t ghost_finalize()
     free(ghost_rand_states);
     ghost_rand_states=NULL;
 
-#if GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_CLOSE;
 #endif
 
     ghost_mpi_destroyDatatypes();
     ghost_mpi_destroyOperations();
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     if (!MPIwasInitialized) {
         MPI_Finalize();
     }

@@ -51,7 +51,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
     if ((gnrows < 1) || (gncols < 1)) {
         ghost_matfile_header_t fileheader;
         GHOST_CALL_GOTO(ghost_readMatFileHeader((char *)matrixSource,&fileheader),err,ret);
-#if !(GHOST_HAVE_LONGIDX)
+#ifndef GHOST_HAVE_LONGIDX
         if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
             return GHOST_ERR_IO;
@@ -63,7 +63,7 @@ ghost_error_t ghost_createContext(ghost_context_t **context, ghost_midx_t gnrows
             (*context)->gncols = (ghost_midx_t)fileheader.ncols;
 
     } else {
-#if !(GHOST_HAVE_LONGIDX)
+#ifndef GHOST_HAVE_LONGIDX
         if ((gnrows >= (int64_t)INT_MAX) || (gncols >= (int64_t)INT_MAX)) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
             return GHOST_ERR_IO;
@@ -330,7 +330,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs));
     GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&me));
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_Request req[2*nprocs];
     MPI_Status stat[2*nprocs];
 #endif
@@ -461,7 +461,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
      * ctx->wishes = <{0,2,1},{2,0,1},{1,0,0}>
      */
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allgather(ctx->wishes, nprocs, ghost_mpi_dt_midx, tmp_transfers, 
                 nprocs, ghost_mpi_dt_midx, ctx->mpicomm),err,ret);
 #endif
@@ -588,7 +588,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
         }
     }
 
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     for (i=0;i<2*nprocs;i++) 
         req[i] = MPI_REQUEST_NULL;
 

@@ -63,14 +63,14 @@ ghost_error_t ghost_CRS_init(ghost_sparsemat_t *mat)
         mat->traits->flags |= GHOST_SPARSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_getType(&ghost_type),err,ret);
-        if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+        if (ghost_type == GHOST_TYPE_CUDA) {
             mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
         }
     }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
     {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
         //   mat->spmv = &ghost_cu_crsspmv;
 #endif
@@ -348,7 +348,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_midx_t maxrow
     }
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
 
         mat->context->lnEnts[me] = mat->nEnts;
 

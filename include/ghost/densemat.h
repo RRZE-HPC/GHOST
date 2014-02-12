@@ -14,15 +14,15 @@ typedef struct ghost_densemat_traits_t ghost_densemat_traits_t;
 typedef struct ghost_densemat_t ghost_densemat_t;
 
 typedef enum {
-    GHOST_VEC_DEFAULT   = 0,
-    GHOST_VEC_RHS       = 1,
-    GHOST_VEC_LHS       = 2,
-    GHOST_VEC_HOST      = 4,
-    GHOST_VEC_DEVICE    = 8,
-    GHOST_VEC_GLOBAL    = 16,
-    GHOST_VEC_DUMMY     = 32,
-    GHOST_VEC_VIEW      = 64,
-    GHOST_VEC_SCATTERED = 128
+    GHOST_DENSEMAT_DEFAULT   = 0,
+    GHOST_DENSEMAT_RHS       = 1,
+    GHOST_DENSEMAT_LHS       = 2,
+    GHOST_DENSEMAT_HOST      = 4,
+    GHOST_DENSEMAT_DEVICE    = 8,
+    GHOST_DENSEMAT_GLOBAL    = 16,
+    GHOST_DENSEMAT_DUMMY     = 32,
+    GHOST_DENSEMAT_VIEW      = 64,
+    GHOST_DENSEMAT_SCATTERED = 128
 } ghost_densemat_flags_t;
 
 /**

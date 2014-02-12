@@ -22,7 +22,7 @@
 #include <likwid.h>
 #endif
 
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 
@@ -50,20 +50,20 @@ static void *communicate(void *vargs)
     int to_PE, from_PE;
     ghost_vidx_t c;
     commArgs *args = (commArgs *)vargs;
-#if GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_TIMING
     size_t recvBytes = 0, sendBytes = 0;
     size_t recvMsgs = 0, sendMsgs = 0;
 #endif
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
-#if GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_TIMING
             INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->traits->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
-#if GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_TIMING
                 recvBytes += args->context->wishes[from_PE]*args->rhs->traits->elSize;
                 recvMsgs++;
 #endif
@@ -76,7 +76,7 @@ static void *communicate(void *vargs)
             for (c=0; c<args->rhs->traits->ncols; c++) {
                 MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->traits->elSize + to_PE*args->max_dues*args->rhs->traits->elSize, args->context->dues[to_PE]*args->rhs->traits->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
-#if GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_TIMING
                 sendBytes += args->context->dues[to_PE]*args->rhs->traits->elSize;
                 sendMsgs++;
 #endif
@@ -91,7 +91,7 @@ static void *communicate(void *vargs)
     
     GHOST_INSTR_STOP(spMVM_taskmode_communicate);
 
-#if GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_TIMING
     INFO_LOG("sendbytes: %zu",sendBytes);
     INFO_LOG("recvbytes: %zu",recvBytes);
     INFO_LOG("sendmsgs : %zu",sendMsgs);

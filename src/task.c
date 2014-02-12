@@ -18,7 +18,7 @@
 #include "ghost/log.h"
 #include "ghost/taskq.h"
 
-#if GHOST_HAVE_OPENMP
+#ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 

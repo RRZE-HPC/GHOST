@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <limits.h>
 
-#if GHOST_HAVE_BSWAP
+#ifdef GHOST_HAVE_BSWAP
 #include <byteswap.h>
 #else
 static inline uint32_t bswap_32(uint32_t val)
@@ -57,7 +57,7 @@ ghost_error_t ghost_readColOpen(ghost_midx_t *col, char *matrixPath, ghost_mnnz_
         return GHOST_ERR_IO;
     }
 
-#if GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX
     if (swapReq) {
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
@@ -284,7 +284,7 @@ ghost_error_t ghost_readRptOpen(ghost_midx_t *rpt, char *matrixPath, ghost_mnnz_
         return GHOST_ERR_IO;
     }
 
-#if GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX
     if (swapReq) {
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));

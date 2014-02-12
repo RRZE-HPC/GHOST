@@ -11,7 +11,7 @@
 #include <strings.h>
 #include <math.h>
 #include <complex.h>
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 #include <cublas_v2.h>
 extern cublasHandle_t ghost_cublas_handle;
 #endif
@@ -29,7 +29,7 @@ ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res
     vec->dot(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
     int v;
-    if (!(vec->traits->flags & GHOST_VEC_GLOBAL)) {
+    if (!(vec->traits->flags & GHOST_DENSEMAT_GLOBAL)) {
         for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
             MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->traits->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
@@ -115,15 +115,15 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
 ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce)
 {
     GHOST_INSTR_START(gemm)
-    if (v->traits->flags & GHOST_VEC_SCATTERED)
+    if (v->traits->flags & GHOST_DENSEMAT_SCATTERED)
     {
         v->compress(v);
     }
-    if (w->traits->flags & GHOST_VEC_SCATTERED)
+    if (w->traits->flags & GHOST_DENSEMAT_SCATTERED)
     {
         w->compress(w);
     }
-    if (x->traits->flags & GHOST_VEC_SCATTERED)
+    if (x->traits->flags & GHOST_DENSEMAT_SCATTERED)
     {
         x->compress(x);
     }
@@ -168,7 +168,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
         return GHOST_ERR_INVALID_ARG;
     }
 
-#if GHOST_HAVE_LONGIDX // TODO
+#ifdef GHOST_HAVE_LONGIDX // TODO
     UNUSED(alpha);
     UNUSED(beta);
     ERROR_LOG("GEMM with LONGIDX not implemented");
@@ -215,7 +215,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
         mybeta = &zero;
     }
     DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",*m,*k,*k,*n,*m,*n);
-    if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_HOST)
+    if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_HOST)
     {
 
         if (v->traits->datatype & GHOST_DT_COMPLEX) 
@@ -241,9 +241,9 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             }    
         }
     }
-    else if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_VEC_DEVICE)
+    else if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_DEVICE)
     {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
         cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
         if (v->traits->datatype & GHOST_DT_COMPLEX) 
         {
@@ -281,16 +281,16 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
         {
             int copied = 0;
             void *val = NULL;
-            if (x->traits->flags & GHOST_VEC_DEVICE)
+            if (x->traits->flags & GHOST_DENSEMAT_DEVICE)
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*ghost_sizeofDatatype(x->traits->datatype)));
                 ghost_cu_copyDeviceToHost(val,&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
                 copied = 1;
 #endif
             }
-            else if (x->traits->flags & GHOST_VEC_HOST)
+            else if (x->traits->flags & GHOST_DENSEMAT_HOST)
             {
                 val = VECVAL(x,x->val,i,0);
             }
@@ -316,7 +316,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             }
             if (copied)
             {
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
                 GHOST_CALL_RETURN(ghost_cu_copyHostToDevice(&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
                         x->traits->nrows*ghost_sizeofDataType(x->traits->datatype)));
                 free(val);
@@ -381,7 +381,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     ghost_createMatrix(&mat, context, &trait, 1);
     mat->fromFile(mat,matrixPath);
     ghost_densemat_traits_t rtraits = GHOST_VTRAITS_INITIALIZER;
-    rtraits.flags = GHOST_VEC_RHS|GHOST_VEC_HOST;
+    rtraits.flags = GHOST_DENSEMAT_RHS|GHOST_DENSEMAT_HOST;
     rtraits.datatype = rhs->traits->datatype;;
     rtraits.ncols=rhs->traits->ncols;
 
@@ -398,7 +398,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 
 
         ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
-        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST;
+        ltraits.flags = GHOST_DENSEMAT_LHS|GHOST_DENSEMAT_HOST;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;
 
@@ -421,7 +421,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
         ghost_destroyContext(context);
     } else {
         ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
-        ltraits.flags = GHOST_VEC_LHS|GHOST_VEC_HOST|GHOST_VEC_DUMMY;
+        ltraits.flags = GHOST_DENSEMAT_LHS|GHOST_DENSEMAT_HOST|GHOST_DENSEMAT_DUMMY;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;
         ghost_createVector(&globLHS, context, &ltraits);
@@ -465,7 +465,7 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_COMPLEX) {
             *op = GHOST_MPI_OP_SUM_C;
@@ -490,7 +490,7 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
 
 ghost_error_t ghost_mpi_createOperations()
 {
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_z,1,&GHOST_MPI_OP_SUM_Z));
 #else
@@ -503,7 +503,7 @@ ghost_error_t ghost_mpi_createOperations()
 
 ghost_error_t ghost_mpi_destroyOperations()
 {
-#if GHOST_HAVE_MPI
+#ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_C));
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_Z));
 #endif

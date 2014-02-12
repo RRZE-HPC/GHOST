@@ -1,0 +1,10 @@
+/**
+@page instrumentation Code instrumentation 
+
+#GHOST_INSTR_START(tag) and #GHOST_INSTR_STOP(tag)
+ghost_instr_setPrefix() ghost_instr_setSuffix()
+
+
+
+
+*/
