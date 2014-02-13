@@ -145,7 +145,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     nodeset = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs,sizeof(hwloc_obj_t *)*pumap->nDomains),err,ret);
-    
+
     hwloc_cpuset_t remoteCPUset = hwloc_bitmap_alloc();
     // sort the cores according to the locality domain
     for (q=0; q<pumap->nDomains; q++) {
@@ -155,7 +155,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         hwloc_bitmap_andnot(remoteCPUset,pumap->cpuset,numaNode->cpuset);
 
         for (t=0; t<localthreads; t++) { // my own threads
-            pumap->PUs[q][t] = hwloc_get_obj_inside_cpuset_by_type(topology,numaNode->cpuset,HWLOC_OBJ_PU,t);
+            pumap->PUs[q][t] = hwloc_get_obj_inside_cpuset_by_type(topology,pumap->cpuset,HWLOC_OBJ_PU,t);
         }
         for (t=0; t<totalThreads-localthreads; t++) { // other NUMA nodes
             pumap->PUs[q][localthreads+t] = hwloc_get_obj_inside_cpuset_by_type(topology,remoteCPUset,HWLOC_OBJ_PU,t);
@@ -163,11 +163,11 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     }
     hwloc_bitmap_free(remoteCPUset);
     IF_DEBUG(2) {
-    for (q=0; q<pumap->nDomains; q++) {
-        for (t=0; t<totalThreads; t++) {
-            DEBUG_LOG(2,"LD: %d, t[%d] %d",q,t,pumap->PUs[q][t]->logical_index);
+        for (q=0; q<pumap->nDomains; q++) {
+            for (t=0; t<totalThreads; t++) {
+                DEBUG_LOG(2,"LD: %d, t[%d] %d",q,t,pumap->PUs[q][t]->logical_index);
+            }
         }
-    }
     }
 
     goto out;
