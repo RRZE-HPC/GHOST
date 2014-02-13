@@ -23,13 +23,13 @@ typedef struct ghost_pumap_t {
     /**
      * @brief The cpuset for this CPU map. 
      */
-    hwloc_bitmap_t cpuset;
+    hwloc_cpuset_t cpuset;
     /**
      * @brief A bitmap indicating busy cores.
      *
      * The ordering is the same as in the cpuset.
      */
-    hwloc_bitmap_t busy;
+    hwloc_cpuset_t busy;
     /**
      * @brief The number of NUMA domains covered by the CPU map.
      */

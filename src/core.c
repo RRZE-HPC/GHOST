@@ -84,6 +84,9 @@ ghost_error_t ghost_getType(ghost_type_t *t)
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
+    hwloc_topology_t topology;
+    ghost_createTopology();
+    ghost_getTopology(&topology);
 #ifdef GHOST_HAVE_MPI
     int req, prov;
 
@@ -105,7 +108,6 @@ ghost_error_t ghost_init(int argc, char **argv)
         INFO_LOG("MPI was already initialized, not doing it!");
     }
 
-
     ghost_setupNodeMPI(MPI_COMM_WORLD);
     ghost_mpi_createDatatypes();
     ghost_mpi_createOperations();
@@ -123,11 +125,6 @@ ghost_error_t ghost_init(int argc, char **argv)
 #pragma omp parallel
     LIKWID_MARKER_THREADINIT;
 #endif
-
-    hwloc_topology_t topology;
-
-    ghost_createTopology();
-    ghost_getTopology(&topology);
 
 
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
@@ -206,24 +203,25 @@ ghost_error_t ghost_init(int argc, char **argv)
     int oversubscribed = 0;
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
         if (nnoderanks <=  nLocalCuda+1) {
-            GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERNODE));
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNODE;
         } else if (nnoderanks == nLocalCuda+nnumanodes) {
-            GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERNUMA));
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
         } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
-            GHOST_CALL_RETURN(ghost_setHybridMode(GHOST_HYBRIDMODE_ONEPERCORE));
+            ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
             WARNING_LOG("One MPI process per core not supported");
         } else {
+            ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
             WARNING_LOG("Invalid number of ranks on node");
             // TODO handle this correctly
             oversubscribed = 1;
         }
     }
-    GHOST_CALL_RETURN(ghost_getHybridMode(&ghost_hybridmode));
+    GHOST_CALL_RETURN(ghost_setHybridMode(ghost_hybridmode));
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
-    hwloc_cpuset_t globcpuset  = hwloc_bitmap_dup(hwloc_topology_get_allowed_cpuset(topology));
+    hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
-    hwloc_obj_t obj;
+    hwloc_bitmap_copy(globcpuset,hwloc_topology_get_allowed_cpuset(topology));
     ghost_hw_config_t hwconfig;
     ghost_getHwConfig(&hwconfig);
 
@@ -235,17 +233,12 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     ghost_setHwConfig(hwconfig);
 
-    int cpu;
-    hwloc_bitmap_foreach_begin(cpu,globcpuset);
-    obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
-    if ((int)obj->sibling_rank >= hwconfig.smtLevel) {
-        hwloc_bitmap_clr(globcpuset,cpu);
+    IF_DEBUG(2) {
+        char *cpusetStr;
+        hwloc_bitmap_list_asprintf(&cpusetStr,globcpuset);
+        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
+        free(cpusetStr);
     }
-    if ((int)obj->parent->logical_index >= hwconfig.maxCores) { 
-        hwloc_bitmap_clr(globcpuset,cpu);
-    }
-    hwloc_bitmap_foreach_end();
-
 
 #ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
@@ -268,8 +261,6 @@ ghost_error_t ghost_init(int argc, char **argv)
             hwloc_obj_t runner = mynode;
             while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
                 runner = runner->first_child;
-                char *foo;
-                hwloc_bitmap_list_asprintf(&foo,runner->cpuset);
             }
             if (i == noderank) {
                 hwloc_bitmap_copy(mycpuset,runner->cpuset);
@@ -313,10 +304,29 @@ ghost_error_t ghost_init(int argc, char **argv)
         }
     }
 
-
     if (oversubscribed) {
         mycpuset = hwloc_bitmap_dup(hwloc_get_obj_by_depth(topology,HWLOC_OBJ_SYSTEM,0)->cpuset);
     }
+
+    // delete PUs from cpuset according to hwconfig
+    hwloc_obj_t obj;
+    unsigned int cpu, cores = 0;
+    hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
+
+    hwloc_bitmap_foreach_begin(cpu,backup);
+    obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
+
+    if (obj->sibling_rank == 0) {
+        cores++;
+    }
+    if ((int)(obj->sibling_rank) >= hwconfig.smtLevel) {
+        hwloc_bitmap_clr(mycpuset,obj->os_index);
+    } 
+    if (cores > hwconfig.maxCores) {
+        hwloc_bitmap_clr(mycpuset,obj->os_index);
+    }
+    hwloc_bitmap_foreach_end();
+
 
     void *(*threadFunc)(void *);
 
@@ -326,9 +336,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_pumap_create(mycpuset);
 
     ghost_rand_init();
-
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
+
     return GHOST_SUCCESS;
 }
 

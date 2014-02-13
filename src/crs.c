@@ -771,7 +771,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
 
-        DEBUG_LOG(1,"Adjust number of rows and number of nonzeros");
+        DEBUG_LOG(1,"Split matrix");
         GHOST_CALL_GOTO(mat->split(mat),err,ret);
 #else
         ERROR_LOG("Trying to create a distributed context without MPI!");

@@ -8,7 +8,7 @@ static ghost_pumap_t *pumap = NULL;
 ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode)
 {
 
-    if (!(*nPUs)) {
+    if (!nPUs) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -113,7 +113,10 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     pumap = NULL;
     hwloc_nodeset_t nodeset = NULL;
     hwloc_obj_t numaNode = NULL;
+    hwloc_cpuset_t remoteCPUset = NULL;
+    hwloc_cpuset_t localCPUset = NULL;
 
+    int *domains = NULL;
     int q,t;
     int localthreads;
 
@@ -122,7 +125,6 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     GHOST_CALL_GOTO(ghost_getTopology(&topology),err,ret);
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&pumap,sizeof(ghost_pumap_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs,totalThreads*sizeof(hwloc_obj_t)),err,ret);
     pumap->cpuset = hwloc_bitmap_dup(cpuset);
     pumap->busy = hwloc_bitmap_alloc();
 
@@ -141,17 +143,26 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     }
     hwloc_cpuset_to_nodeset(topology,cpuset,nodeset);
     pumap->nDomains = hwloc_bitmap_weight(nodeset);
-    hwloc_bitmap_free(nodeset); 
-    nodeset = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs,pumap->nDomains*sizeof(hwloc_obj_t *)),err,ret);
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs,sizeof(hwloc_obj_t *)*pumap->nDomains),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&domains,pumap->nDomains*sizeof(int)),err,ret);
+    unsigned int domainIdx;
+    q = 0;
+    hwloc_bitmap_foreach_begin(domainIdx,nodeset);
+    domains[q] = domainIdx;
+    q++;
+    hwloc_bitmap_foreach_end();
 
-    hwloc_cpuset_t remoteCPUset = hwloc_bitmap_alloc();
+    remoteCPUset = hwloc_bitmap_alloc();
+    localCPUset = hwloc_bitmap_alloc();
     // sort the cores according to the locality domain
     for (q=0; q<pumap->nDomains; q++) {
-        GHOST_CALL_GOTO(ghost_getNumberOfPUs(&localthreads,q),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs[q],sizeof(hwloc_obj_t)*totalThreads),err,ret);
-        GHOST_CALL_GOTO(ghost_getNumaNode(&numaNode,q),err,ret); 
+
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(pumap->PUs[q]),sizeof(hwloc_obj_t)*totalThreads),err,ret);
+        GHOST_CALL_GOTO(ghost_getNumaNode(&numaNode,domains[q]),err,ret); 
+        
+        hwloc_bitmap_and(localCPUset,pumap->cpuset,numaNode->cpuset);
+        localthreads = hwloc_bitmap_weight(localCPUset); 
         hwloc_bitmap_andnot(remoteCPUset,pumap->cpuset,numaNode->cpuset);
 
         for (t=0; t<localthreads; t++) { // my own threads
@@ -161,30 +172,33 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
             pumap->PUs[q][localthreads+t] = hwloc_get_obj_inside_cpuset_by_type(topology,remoteCPUset,HWLOC_OBJ_PU,t);
         }    
     }
-    hwloc_bitmap_free(remoteCPUset);
     IF_DEBUG(2) {
         for (q=0; q<pumap->nDomains; q++) {
             for (t=0; t<totalThreads; t++) {
-                DEBUG_LOG(2,"LD: %d, t[%d] %d",q,t,pumap->PUs[q][t]->logical_index);
+                DEBUG_LOG(2,"Domain[%d]: %d, t[%d]: %d (log. idx)",q,domains[q],t,pumap->PUs[q][t]->logical_index);
             }
         }
     }
 
     goto out;
 err:
-    if (pumap->PUs) {
-        int d;
-        for (d=0; d<pumap->nDomains; d++) {
-            free(pumap->PUs[d]); pumap->PUs[d] = NULL;
+    if (pumap) {
+        if (pumap->PUs) {
+            int d;
+            for (d=0; d<pumap->nDomains; d++) {
+                free(pumap->PUs[d]); pumap->PUs[d] = NULL;
+            }
         }
         free(pumap->PUs); pumap->PUs = NULL;
         hwloc_bitmap_free(pumap->cpuset); pumap->cpuset = NULL;
         hwloc_bitmap_free(pumap->busy); pumap->busy = NULL;
     }
     free(pumap); pumap = NULL;
-    hwloc_bitmap_free(nodeset); nodeset = NULL;
     
 out:
+    hwloc_bitmap_free(nodeset); nodeset = NULL;
+    hwloc_bitmap_free(remoteCPUset); remoteCPUset = NULL;
+    free(domains); domains = NULL;
     return ret;
 
 }
@@ -192,9 +206,11 @@ out:
 void ghost_pumap_destroy()
 {
     if (pumap) {
-        int d;
-        for (d=0; d<pumap->nDomains; d++) {
-            free(pumap->PUs[d]); pumap->PUs[d] = NULL;
+        if (pumap->PUs) {
+            int d;
+            for (d=0; d<pumap->nDomains; d++) {
+                free(pumap->PUs[d]); pumap->PUs[d] = NULL;
+            }
         }
         free(pumap->PUs); pumap->PUs = NULL;
         hwloc_bitmap_free(pumap->cpuset); pumap->cpuset = NULL;

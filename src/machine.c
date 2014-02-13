@@ -133,10 +133,9 @@ ghost_error_t ghost_getSMTlevel(int *nLevels)
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_getTopology(&topology));
 
-    int nCores = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE);
-    if (nCores == 0) {
-        ERROR_LOG("Can not compute SMT level because the number of cores is zero");
-        return GHOST_ERR_HWLOC;
+    if (!topology) {
+        ERROR_LOG("The topology is NULL");
+        return GHOST_ERR_UNKNOWN;
     }
 
     hwloc_obj_t firstCore = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,0);

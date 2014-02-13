@@ -38,7 +38,8 @@ typedef enum {
     GHOST_SPMV_APPLY_SHIFT = 32,
     GHOST_SPMV_APPLY_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
-    GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT = 256
+    GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT = 256,
+    GHOST_SPMV_REDUCE = 512
 } ghost_spmv_flags_t;
 
 /**
@@ -158,7 +159,7 @@ struct ghost_sparsemat_traits_t
 /**
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
  */
-extern const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER;
+extern const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER;
 
 /**
  * @ingroup types

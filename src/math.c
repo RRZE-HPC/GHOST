@@ -88,7 +88,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
         int *spmvmOptions)
 {
-    GHOST_INSTR_START(spmvm)
+    GHOST_INSTR_START(spmv)
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
     if (*spmvmOptions & GHOST_SPMV_MODE_VECTOR) {
@@ -107,7 +107,17 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
     }
 
     solver(context,res,mat,invec,*spmvmOptions);
-    GHOST_INSTR_STOP(spmvm)
+
+    if ((*spmvmOptions & GHOST_SPMV_REDUCE) && (*spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
+        ghost_mpi_op_t op;
+        ghost_mpi_datatype_t dt;
+        ghost_mpi_op_sum(&op,res->traits->datatype);
+        ghost_mpi_datatype(&dt,res->traits->datatype);
+
+        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, context->mpicomm));
+    }
+
+    GHOST_INSTR_STOP(spmv)
 
     return GHOST_SUCCESS;
 }
@@ -380,7 +390,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     ghost_sparsemat_t *mat;
     ghost_createMatrix(&mat, context, &trait, 1);
     mat->fromFile(mat,matrixPath);
-    ghost_densemat_traits_t rtraits = GHOST_VTRAITS_INITIALIZER;
+    ghost_densemat_traits_t rtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     rtraits.flags = GHOST_DENSEMAT_RHS|GHOST_DENSEMAT_HOST;
     rtraits.datatype = rhs->traits->datatype;;
     rtraits.ncols=rhs->traits->ncols;
@@ -397,7 +407,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
         DEBUG_LOG(1,"Computing actual reference solution with one process");
 
 
-        ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ghost_densemat_traits_t ltraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         ltraits.flags = GHOST_DENSEMAT_LHS|GHOST_DENSEMAT_HOST;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;
@@ -420,7 +430,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
         globRHS->destroy(globRHS);
         ghost_destroyContext(context);
     } else {
-        ghost_densemat_traits_t ltraits = GHOST_VTRAITS_INITIALIZER;
+        ghost_densemat_traits_t ltraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         ltraits.flags = GHOST_DENSEMAT_LHS|GHOST_DENSEMAT_HOST|GHOST_DENSEMAT_DUMMY;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;

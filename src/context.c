@@ -537,7 +537,7 @@ ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col)
                     col[t] =  pseudocol[myrevcol[col[t]-ctx->lfRow[i]]];
                 }
             }
-            free(myrevcol);
+            free(myrevcol); myrevcol = NULL;
         } else { // first i iteration goes here
             for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == me) { // local element for myself

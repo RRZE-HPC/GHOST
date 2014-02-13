@@ -9,7 +9,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
-const ghost_sparsemat_traits_t GHOST_MTRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_STORE_FULL|GHOST_SPARSEMAT_STORE_SPLIT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
 
 ghost_error_t ghost_createMatrix(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
@@ -153,19 +153,20 @@ ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *mat)
     ghost_printLine(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
     {
-        ghost_printLine(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-        ghost_printLine(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-        ghost_printLine(str,"Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
+        if (mat->localPart) {
+            ghost_printLine(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+            ghost_printLine(str,"Local  matrix symmetry",NULL,"%s",ghost_symmetryName(mat->localPart->traits->symmetry));
+            ghost_printLine(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+        }
+        if (mat->remotePart) {
+            ghost_printLine(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+            ghost_printLine(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+        }
     } else {
         ghost_printLine(str,"Full   matrix symmetry",NULL,"%s",ghost_symmetryName(mat->traits->symmetry));
     }
 
     ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
-    {
-        ghost_printLine(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
-        ghost_printLine(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
-    }
 
     mat->printInfo(str,mat);
     ghost_printFooter(str);

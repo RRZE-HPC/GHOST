@@ -522,6 +522,10 @@ ghost_error_t ghost_taskq_addTask(ghost_task_t *t)
      */
     ghost_error_t ghost_taskq_waitall()
     {
+        if (!taskq) {
+            return GHOST_SUCCESS;
+        }
+
         ghost_task_t *t;
 
         pthread_mutex_lock(&globalMutex);
