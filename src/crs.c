@@ -347,6 +347,32 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
     if (ret != GHOST_SUCCESS) {
         goto err;
     }
+    
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->nzDist),sizeof(ghost_nnz_t)*(2*mat->nrows-1)),err,ret);
+    memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->nrows-1));
+    
+    ghost_idx_t col;
+    mat->lowerBandwidth = 0;
+    mat->upperBandwidth = 0;
+    for (i = 0; i < mat->nrows; i++) {
+        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+            col = CR(mat)->col[j];
+            if (col >= mat->nrows) {
+                continue;
+            }
+            if (col < i) { // lower
+                mat->lowerBandwidth = MAX(mat->lowerBandwidth, i-col);
+                mat->nzDist[mat->nrows-1-(i-col)]++;
+            } else if (col > i) { // upper
+                mat->upperBandwidth = MAX(mat->upperBandwidth, col-i);
+                mat->nzDist[mat->nrows-1+col-i]++;
+            } else { // diag
+                mat->nzDist[mat->nrows-1]++;
+            }
+
+        }
+    }
+    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
 #ifdef GHOST_HAVE_MPI

@@ -57,7 +57,7 @@ static ghost_error_t vec_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, v
 static ghost_error_t vec_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
 static ghost_error_t vec_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
 static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res);
-static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(int,int,void *));
+static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *));
 static ghost_error_t vec_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_idx_t coffs);
 static ghost_error_t vec_fromRand(ghost_densemat_t *vec);
 static ghost_error_t vec_fromScalar(ghost_densemat_t *vec, void *val);
@@ -918,7 +918,7 @@ static ghost_error_t vec_fromFile(ghost_densemat_t *vec, char *path)
 
 }
 
-static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(int,int,void *))
+static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *))
 {
     int rank;
     GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));

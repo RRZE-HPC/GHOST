@@ -1287,7 +1287,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [vecDtIdx];
     }
 #endif
-#elifdef GHOST_HAVE_AVX
+#elif defined(GHOST_HAVE_AVX)
     if (SELL(mat)->chunkHeight == 4) {
         kernel = SELL_kernels_AVX
             [matDtIdx]
@@ -1297,7 +1297,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [matDtIdx]
             [vecDtIdx];
     }
-#elifdef GHOST_HAVE_MIC
+#elif defined(GHOST_HAVE_MIC)
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMV_AXPBY) ||
                 (options & GHOST_SPMV_APPLY_SCALE) ||
@@ -1319,7 +1319,6 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
         [vecDtIdx];
 #endif
 
-    kernel = NULL;
     if (kernel == NULL) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
