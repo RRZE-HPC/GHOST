@@ -42,7 +42,7 @@ static void *communicate(void *vargs)
 //#pragma omp parallel
 //    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
-    GHOST_INSTR_START(spMVM_taskmode_communicate);
+    GHOST_INSTR_START(spmv_task_communicate);
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
@@ -89,7 +89,7 @@ static void *communicate(void *vargs)
     MPI_CALL_GOTO(MPI_Waitall(args->msgcount, args->request, args->status),err,*ret);
     GHOST_CALL_GOTO(args->rhs->uploadHalo(args->rhs),err,*ret);
     
-    GHOST_INSTR_STOP(spMVM_taskmode_communicate);
+    GHOST_INSTR_STOP(spmv_task_communicate);
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     INFO_LOG("sendbytes: %zu",sendBytes);
@@ -109,7 +109,7 @@ typedef struct {
     ghost_sparsemat_t *mat;
     ghost_densemat_t *res;
     ghost_densemat_t *invec;
-    int spmvmOptions;
+    int spmvOptions;
 } compArgs;
 
 static void *computeLocal(void *vargs)
@@ -120,10 +120,10 @@ static void *computeLocal(void *vargs)
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
-    GHOST_INSTR_START(spMVM_taskmode_computeLocal);
+    GHOST_INSTR_START(spmv_task_computeLocal);
     compArgs *args = (compArgs *)vargs;
-    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvmOptions),err,*ret);
-    GHOST_INSTR_STOP(spMVM_taskmode_computeLocal);
+    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions),err,*ret);
+    GHOST_INSTR_STOP(spmv_task_computeLocal);
 
     goto out;
 err:
@@ -132,18 +132,18 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
+    UNUSED(spmvOptions);
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    GHOST_INSTR_START(spMVM_taskmode_entiresolver)
+    GHOST_INSTR_START(spmv_task_entiresolver)
     ghost_mnnz_t max_dues;
     char *work = NULL;
     ghost_error_t ret = GHOST_SUCCESS;
@@ -153,8 +153,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     int i;
 
 
-    int localopts = spmvmOptions;
-    int remoteopts = spmvmOptions;
+    int localopts = spmvOptions;
+    int remoteopts = spmvOptions;
 
     int remoteExists = mat->remotePart->nnz > 0;
    
@@ -171,9 +171,9 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     compArgs cplargs;
     ghost_task_t *commTask;
     ghost_task_t *compTask;
-    GHOST_INSTR_START(spMVM_taskmode_prepare);
+    GHOST_INSTR_START(spmv_task_prepare);
 
-    DEBUG_LOG(1,"In task mode spMVM solver");
+    DEBUG_LOG(1,"In task mode spmv solver");
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
     MPI_Request request[invec->traits->ncols*2*nprocs];
@@ -188,7 +188,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
 
     int taskflags = GHOST_TASK_DEFAULT;
     if (pthread_getspecific(ghost_thread_key) != NULL) {
-        DEBUG_LOG(1,"using the parent's cores for the task mode spmvm solver");
+        DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
         taskflags |= GHOST_TASK_USE_PARENTS;
         ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
         ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
@@ -196,7 +196,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
 
 
     } else {
-        DEBUG_LOG(1,"No parent task in task mode spMVM solver");
+        DEBUG_LOG(1,"No parent task in task mode spmv solver");
 
         int nIdleCores;
         ghost_pumap_getNumberOfIdlePUs(&nIdleCores,GHOST_NUMANODE_ANY);
@@ -218,7 +218,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
-    cplargs.spmvmOptions = localopts;
+    cplargs.spmvOptions = localopts;
 
     for (i=0;i<invec->traits->ncols*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
@@ -231,8 +231,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     int to_PE;
     ghost_vidx_t c;
     
-    GHOST_INSTR_STOP(spMVM_taskmode_prepare);
-    GHOST_INSTR_START(spMVM_taskmode_assemblebuffer);
+    GHOST_INSTR_STOP(spmv_task_prepare);
+    GHOST_INSTR_START(spmv_task_assemblebuffer);
     invec->downloadNonHalo(invec);
 
     if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
@@ -256,9 +256,9 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
             }
         }
     }
-    GHOST_INSTR_STOP(spMVM_taskmode_assemblebuffer);
+    GHOST_INSTR_STOP(spmv_task_assemblebuffer);
 
-    GHOST_INSTR_START(spMVM_taskmode_both_tasks);
+    GHOST_INSTR_START(spmv_task_both_tasks);
     if (remoteExists) {
         ghost_task_enqueue(commTask);
     }
@@ -273,15 +273,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
             goto err;
         }
     }
-    GHOST_INSTR_STOP(spMVM_taskmode_both_tasks);
+    GHOST_INSTR_STOP(spmv_task_both_tasks);
 
-    GHOST_INSTR_START(spMVM_taskmode_computeRemote);
+    GHOST_INSTR_START(spmv_task_computeRemote);
     if (remoteExists) {
         mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);
     }
-    GHOST_INSTR_STOP(spMVM_taskmode_computeRemote);
+    GHOST_INSTR_STOP(spmv_task_computeRemote);
        
-    GHOST_INSTR_STOP(spMVM_taskmode_entiresolver)
+    GHOST_INSTR_STOP(spmv_task_entiresolver)
 
     goto out;
 err:

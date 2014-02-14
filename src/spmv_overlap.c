@@ -110,19 +110,19 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
         }
     }
 
-    GHOST_INSTR_START(spmvm_gf_local);
+    GHOST_INSTR_START(spmv_overlap_local);
     GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts),err,ret);
-    GHOST_INSTR_STOP(spmvm_gf_local);
+    GHOST_INSTR_STOP(spmv_overlap_local);
 
-    GHOST_INSTR_START(spmvm_gf_waitall);
+    GHOST_INSTR_START(spmv_overlap_waitall);
     MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
-    GHOST_INSTR_STOP(spmvm_gf_waitall);
+    GHOST_INSTR_STOP(spmv_overlap_waitall);
 
     GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
 
-    GHOST_INSTR_START(spmvm_gf_remote);
+    GHOST_INSTR_START(spmv_overlap_remote);
     GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts),err,ret);
-    GHOST_INSTR_STOP(spmvm_gf_remote);
+    GHOST_INSTR_STOP(spmv_overlap_remote);
 
     goto out;
 err:

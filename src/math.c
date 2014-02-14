@@ -21,21 +21,21 @@ static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
 ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
-    GHOST_INSTR_START(dot_with_reduce)
+    vec->dot(vec,vec2,res);
+#ifdef GHOST_HAVE_MPI
+    GHOST_INSTR_START(dot_reduce)
     ghost_mpi_op_t sumOp;
     ghost_mpi_datatype_t mpiDt;
     ghost_mpi_op_sum(&sumOp,vec->traits->datatype);
     ghost_mpi_datatype(&mpiDt,vec->traits->datatype);
-    vec->dot(vec,vec2,res);
-#ifdef GHOST_HAVE_MPI
     int v;
     if (!(vec->traits->flags & GHOST_DENSEMAT_GLOBAL)) {
         for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
             MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->traits->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
+    GHOST_INSTR_STOP(dot_reduce)
 #endif
-    GHOST_INSTR_STOP(dot_with_reduce)
 
     return GHOST_SUCCESS;
 
@@ -85,10 +85,8 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, 
-        int *spmvmOptions)
+ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, int *spmvmOptions)
 {
-    GHOST_INSTR_START(spmv)
     ghost_spmvsolver_t solver = NULL;
     ghost_pickSpMVMMode(context,spmvmOptions);
     if (*spmvmOptions & GHOST_SPMV_MODE_VECTOR) {
@@ -107,10 +105,9 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
     }
 
     solver(context,res,mat,invec,*spmvmOptions);
-    GHOST_INSTR_STOP(spmv);
 
 #ifdef GHOST_HAVE_MPI
-    GHOST_INSTR_START(reduce_spmv_dots);
+    GHOST_INSTR_START(spmv_dot_reduce);
 
     if ((*spmvmOptions & GHOST_SPMV_REDUCE) && (*spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
         ghost_mpi_op_t op;
@@ -120,7 +117,7 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, context->mpicomm));
     }
-    GHOST_INSTR_STOP(reduce_spmv_dots);
+    GHOST_INSTR_STOP(spmv_dot_reduce);
 #endif
 
 

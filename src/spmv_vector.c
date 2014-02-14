@@ -18,14 +18,14 @@
 #endif
 
 // if called with context==NULL: clean up variables
-ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
-    UNUSED(spmvmOptions);
+    UNUSED(spmvOptions);
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
@@ -59,7 +59,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
 
-    GHOST_INSTR_START(spMVM_vectormode_comm);
+    GHOST_INSTR_START(spmv_vector_comm);
     invec->downloadNonHalo(invec);
 
 
@@ -81,7 +81,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
         }
     }
 
-    GHOST_INSTR_START(spMVM_vectormode_copybuffers)
+    GHOST_INSTR_START(spmv_vector_copybuffers)
     if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -104,7 +104,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
         }
     }
 
-    GHOST_INSTR_STOP(spMVM_vectormode_copybuffers)
+    GHOST_INSTR_STOP(spmv_vector_copybuffers)
 
 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -116,16 +116,16 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
         }
     }
 
-    GHOST_INSTR_START(spMVM_vectormode_waitall)
+    GHOST_INSTR_START(spmv_vector_waitall)
     MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
-    GHOST_INSTR_STOP(spMVM_vectormode_waitall)
+    GHOST_INSTR_STOP(spmv_vector_waitall)
 
     GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
-    GHOST_INSTR_STOP(spMVM_vectormode_comm);
+    GHOST_INSTR_STOP(spmv_vector_comm);
 
-    GHOST_INSTR_START(spMVM_vectormode_comp);
-    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,spmvmOptions),err,ret);    
-    GHOST_INSTR_STOP(spMVM_vectormode_comp);
+    GHOST_INSTR_START(spmv_vector_comp);
+    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,spmvOptions),err,ret);    
+    GHOST_INSTR_STOP(spmv_vector_comp);
 
     goto out;
 err:

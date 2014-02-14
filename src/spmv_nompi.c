@@ -12,11 +12,11 @@ ghost_error_t ghost_spmv_nompi(ghost_context_t *context, ghost_densemat_t* res, 
         return GHOST_ERR_INVALID_ARG;
     }
 
-    GHOST_INSTR_START(spmvm_nompi);
+    GHOST_INSTR_START(spmv_nompi);
     
     ghost_error_t err = mat->spmv(mat,res,invec,spmvmOptions);
     
-    GHOST_INSTR_STOP(spmvm_nompi);
+    GHOST_INSTR_STOP(spmv_nompi);
 
     return err;
 }
