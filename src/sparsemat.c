@@ -110,7 +110,7 @@ ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat)
         *nnz = lnnz;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,&nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_mnnz,MPI_SUM,mat->context->mpicomm));
 #else
         ERROR_LOG("Trying to get the number of matrix nonzeros in a distributed context without MPI");
         return GHOST_ERR_UNKNOWN;
