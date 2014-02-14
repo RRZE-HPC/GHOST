@@ -107,6 +107,8 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
     }
 
     solver(context,res,mat,invec,*spmvmOptions);
+    GHOST_INSTR_STOP(spmv)
+    GHOST_INSTR_START(reduce_spmv_dots)
 
     if ((*spmvmOptions & GHOST_SPMV_REDUCE) && (*spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
         ghost_mpi_op_t op;
@@ -116,8 +118,8 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, context->mpicomm));
     }
+    GHOST_INSTR_STOP(reduce_spmv_dots)
 
-    GHOST_INSTR_STOP(spmv)
 
     return GHOST_SUCCESS;
 }
