@@ -26,8 +26,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     v_t *lhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
-    ghost_midx_t i, j;
-    ghost_vidx_t v;
+    ghost_idx_t i, j;
+    ghost_idx_t v;
     int nthreads = 1;
 
 // TODO false sharing avoidance w/ hwloc
@@ -107,7 +107,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 
 template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
 {
-    ghost_midx_t i,j,col;
+    ghost_idx_t i,j,col;
     m_t *val = (m_t *)CR(mat)->val;
 
     stringstream buffer;

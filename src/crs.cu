@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <cusparse_v2.h>
 
-ghost_error_t ghost_cu_crsspmv(ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options)
+ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options)
 {
     ERROR_LOG("CUDA CRS spMV not implemented");
     return GHOST_ERR_NOT_IMPLEMENTED;

@@ -64,7 +64,7 @@ struct ghost_densemat_t
      * @param x The input vector/matrix
      * @param a Points to the scale factor.
      */
-    ghost_error_t          (*axpy) (ghost_densemat_t *y, ghost_densemat_t *x, void *a);
+    ghost_error_t      (*axpy) (ghost_densemat_t *y, ghost_densemat_t *x, void *a);
     /**
      * @ingroup globops
      *
@@ -75,7 +75,7 @@ struct ghost_densemat_t
      * @param a Points to the scale factor a.
      * @param b Points to the scale factor b.
      */
-    ghost_error_t          (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, void *b);
+    ghost_error_t      (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, void *b);
     /**
      * @brief Clones a given number of columns of a source vector/matrix at a given
      * column offset.
@@ -86,15 +86,14 @@ struct ghost_densemat_t
      *
      * @return A clone of the source vector/matrix.
      */
-    ghost_densemat_t * (*clone) (ghost_densemat_t *vec, ghost_vidx_t ncols, ghost_vidx_t
-            coloffset);
+    ghost_densemat_t * (*clone) (ghost_densemat_t *vec, ghost_idx_t ncols, ghost_idx_t coloffset);
     /**
      * @brief Compresses a vector/matrix, i.e., make it non-scattered.
      * If the vector/matrix is a view, it will no longer be one afterwards.
      *
      * @param vec The vector/matrix.
      */
-    ghost_error_t          (*compress) (ghost_densemat_t *vec);
+    ghost_error_t       (*compress) (ghost_densemat_t *vec);
     /**
      * @brief Collects vec from all MPI ranks and combines them into globalVec.
      * The row permutation (if present) if vec's context is used.
@@ -102,20 +101,20 @@ struct ghost_densemat_t
      * @param vec The distributed vector/matrix.
      * @param globalVec The global vector/matrix.
      */
-    ghost_error_t (*collect) (ghost_densemat_t *vec, ghost_densemat_t *globalVec);
+    ghost_error_t       (*collect) (ghost_densemat_t *vec, ghost_densemat_t *globalVec);
     /**
      * @brief Destroys a vector/matrix, i.e., frees all its data structures.
      *
      * @param vec The vector/matrix
      */
-    void          (*destroy) (ghost_densemat_t *vec);
+    void                (*destroy) (ghost_densemat_t *vec);
     /**
      * @brief Distributes a global vector/matrix into node-local vetors.
      *
      * @param vec The global vector/matrix.
      * @param localVec The local vector/matrix.
      */
-    ghost_error_t (*distribute) (ghost_densemat_t *vec, ghost_densemat_t *localVec);
+    ghost_error_t       (*distribute) (ghost_densemat_t *vec, ghost_densemat_t *localVec);
     /**
      * @ingroup locops
      * 
@@ -131,7 +130,7 @@ struct ghost_densemat_t
      *
      * @see ghost_dotProduct()
      */
-    ghost_error_t          (*dot) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
+    ghost_error_t       (*dot) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
     /**
      * @ingroup gputransfer
      * 
@@ -142,7 +141,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*download) (ghost_densemat_t *vec);
+    ghost_error_t       (*download) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -153,7 +152,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*downloadHalo) (ghost_densemat_t *vec);
+    ghost_error_t       (*downloadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -165,20 +164,19 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*downloadNonHalo) (ghost_densemat_t *vec);
+    ghost_error_t       (*downloadNonHalo) (ghost_densemat_t *vec);
     /**
      * @brief Stores the entry of the vector/matrix at a given index (row i, column j)
      * into entry.
      *
      * @param vec The vector/matrix.
-     * @param ghost_vidx_t i The row.
-     * @param ghost_vidx_t j The column.
+     * @param ghost_idx_t i The row.
+     * @param ghost_idx_t j The column.
      * @param entry Where to store the entry.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*entry) (ghost_densemat_t *vec, ghost_vidx_t i, ghost_vidx_t j,
-            void *entry);
+    ghost_error_t       (*entry) (ghost_densemat_t *vec, ghost_idx_t i, ghost_idx_t j, void *entry);
     /**
      * @ingroup denseinit
      *
@@ -190,7 +188,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromFunc) (ghost_densemat_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
+    ghost_error_t       (*fromFunc) (ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *));
     /**
      * @ingroup denseinit
      *
@@ -199,11 +197,11 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param src The source vector/matrix.
-     * @param ghost_vidx_t The column offset in the source vector/matrix.
+     * @param ghost_idx_t The column offset in the source vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_vidx_t offset);
+    ghost_error_t       (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_idx_t offset);
     /**
      * @ingroup denseinit
      *
@@ -215,7 +213,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromFile) (ghost_densemat_t *vec, char *filename);
+    ghost_error_t       (*fromFile) (ghost_densemat_t *vec, char *filename);
     /**
      * @ingroup denseinit
      *
@@ -225,7 +223,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromRand) (ghost_densemat_t *vec);
+    ghost_error_t       (*fromRand) (ghost_densemat_t *vec);
     /**
      * @ingroup denseinit
      *
@@ -236,7 +234,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*fromScalar) (ghost_densemat_t *vec, void *val);
+    ghost_error_t       (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
      * @brief Normalize a vector/matrix, i.e., scale it such that its 2-norm is one.
      *
@@ -244,7 +242,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*normalize) (ghost_densemat_t *vec);
+    ghost_error_t       (*normalize) (ghost_densemat_t *vec);
     /**
      * @brief Permute a vector/matrix with a given permutation.
      *
@@ -253,7 +251,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*permute) (ghost_densemat_t *vec, ghost_vidx_t *perm);
+    ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_idx_t *perm);
     /**
      * @brief Print a vector/matrix.
      *
@@ -261,7 +259,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*print) (ghost_densemat_t *vec);
+    ghost_error_t       (*print) (ghost_densemat_t *vec);
     /**
      * @brief Scale a vector/matrix with a given scalar.
      *
@@ -270,7 +268,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*scale) (ghost_densemat_t *vec, void *scale);
+    ghost_error_t       (*scale) (ghost_densemat_t *vec, void *scale);
     /**
      * @brief Write a vector/matrix to a file.
      *
@@ -279,7 +277,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t          (*toFile) (ghost_densemat_t *vec, char *filename);
+    ghost_error_t       (*toFile) (ghost_densemat_t *vec, char *filename);
     /**
      * @ingroup gputransfer
      * 
@@ -288,7 +286,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      */
-    ghost_error_t          (*upload) (ghost_densemat_t *vec);
+    ghost_error_t       (*upload) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -297,7 +295,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      */
-    ghost_error_t (*uploadHalo) (ghost_densemat_t *vec);
+    ghost_error_t       (*uploadHalo) (ghost_densemat_t *vec);
     /**
      * @ingroup gputransfer
      * 
@@ -307,22 +305,22 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      */
-    ghost_error_t          (*uploadNonHalo) (ghost_densemat_t *vec);
+    ghost_error_t       (*uploadNonHalo) (ghost_densemat_t *vec);
     /**
      * @brief View plain data in the vector/matrix.
      * That means that the vector/matrix has no memory malloc'd but its data pointer only points to the memory provided.
      *
      * @param vec The vector/matrix.
      * @param data The plain data.
-     * @param ghost_vidx_t nr The number of rows.
-     * @param ghost_vidx_t nc The number of columns.
-     * @param ghost_vidx_t roffs The row offset.
-     * @param ghost_vidx_t coffs The column offset.
-     * @param ghost_vidx_t lda The number of rows per column.
+     * @param ghost_idx_t nr The number of rows.
+     * @param ghost_idx_t nc The number of columns.
+     * @param ghost_idx_t roffs The row offset.
+     * @param ghost_idx_t coffs The column offset.
+     * @param ghost_idx_t lda The number of rows per column.
      */
-    ghost_error_t          (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
+    ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 
-    ghost_densemat_t * (*viewScatteredVec) (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
+    ghost_densemat_t *  (*viewScatteredVec) (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t *coffs);
 
 
     /**
@@ -334,27 +332,27 @@ struct ghost_densemat_t
      *
      * @return The new vector/matrix.
      */
-    ghost_densemat_t * (*viewVec) (ghost_densemat_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
+    ghost_densemat_t *  (*viewVec) (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs);
     /**
      * @brief Scale each column of a vector/matrix with a given scale factor.
      *
      * @param vec The vector/matrix.
      * @param scale The scale factors.
      */
-    ghost_error_t          (*vscale) (ghost_densemat_t *, void *);
-    ghost_error_t          (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
-    ghost_error_t          (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
-    ghost_error_t          (*zero) (ghost_densemat_t *);
+    ghost_error_t       (*vscale) (ghost_densemat_t *, void *);
+    ghost_error_t       (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
+    ghost_error_t       (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+    ghost_error_t       (*zero) (ghost_densemat_t *);
 };
 
 struct ghost_densemat_traits_t
 {
-    ghost_midx_t nrows;
-    ghost_midx_t nrowshalo;
-    ghost_midx_t nrowspadded;
-    ghost_midx_t ncols;
+    ghost_idx_t nrows;
+    ghost_idx_t nrowshalo;
+    ghost_idx_t nrowspadded;
+    ghost_idx_t ncols;
     ghost_densemat_flags_t flags;
-    int datatype;
+    ghost_datatype_t datatype;
     size_t elSize;
     void * localdot;
 };
@@ -389,7 +387,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_createVector(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits);
+    ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits);
     ghost_error_t ghost_cloneVtraits(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
@@ -425,8 +423,8 @@ extern "C" {
 }
 #endif
 
-#if GHOST_HAVE_CUDA
-#include "cu_vec.h"
+#ifdef GHOST_HAVE_CUDA
+#include "cu_densemat.h"
 #endif
 
 #endif

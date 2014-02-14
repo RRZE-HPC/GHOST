@@ -14,9 +14,9 @@
 #endif
 
 typedef struct {
-    int maxCores;
-    int smtLevel;
-} ghost_hw_config_t;
+    int nCores;
+    int nSmt;
+} ghost_hwconfig_t;
 
 typedef enum {
     GHOST_HYBRIDMODE_INVALID, 
@@ -28,7 +28,7 @@ typedef enum {
 
 #define GHOST_HW_CONFIG_INVALID -1
 
-extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
+extern const ghost_hwconfig_t GHOST_HWCONFIG_INITIALIZER;
 
 
 //extern hwloc_topology_t topology;
@@ -38,10 +38,10 @@ extern const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER;
 extern "C" {
 #endif
 
-ghost_error_t ghost_setHybridMode(ghost_hybridmode_t hm);
-ghost_error_t ghost_getHybridMode(ghost_hybridmode_t *hm);
-ghost_error_t ghost_setHwConfig(ghost_hw_config_t);
-ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig);
+ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm);
+ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm);
+ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t);
+ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig);
 ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank);
 ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes);
 ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks);

@@ -61,18 +61,29 @@ extern "C" {
      * - Destroy the MPI operations and data types
      */
     ghost_error_t ghost_finalize();
-    ghost_error_t ghost_setType(ghost_type_t t);
-    ghost_error_t ghost_getType(ghost_type_t *t);
+    ghost_error_t ghost_type_set(ghost_type_t t);
+    ghost_error_t ghost_type_get(ghost_type_t *t);
     /**
      * @brief Get a random state for the calling OpenMP thread.
      *
      * @param s Where to store the state.
      *
-     * @return 
+     * @return GHOST_SUCCESS on success or an error indicator.
      *
      * This function is used for thread-safe random number generation.
      */
     ghost_error_t ghost_getRandState(unsigned int *s);
+    
+    /**
+     * @ingroup stringification
+     *
+     * @brief Construct string holding information on GHOST.
+     *
+     * @param str Where to store the string.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_string(char **str);
 
 #ifdef __cplusplus
 }

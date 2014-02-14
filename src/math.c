@@ -43,8 +43,8 @@ ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res
 
 ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 {
-    ghost_midx_t ncols = vec->traits->ncols;
-    ghost_midx_t c;
+    ghost_idx_t ncols = vec->traits->ncols;
+    ghost_idx_t c;
 
     GHOST_INSTR_START(normalize);
     if (vec->traits->datatype & GHOST_DT_FLOAT) {
@@ -85,17 +85,17 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, int *spmvmOptions)
+ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags)
 {
     ghost_spmvsolver_t solver = NULL;
-    ghost_pickSpMVMMode(context,spmvmOptions);
-    if (*spmvmOptions & GHOST_SPMV_MODE_VECTOR) {
+    ghost_spmv_selectMode(context,flags);
+    if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
-    } else if (*spmvmOptions & GHOST_SPMV_MODE_OVERLAP) {
+    } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {
         solver = &ghost_spmv_goodfaith;
-    } else if (*spmvmOptions & GHOST_SPMV_MODE_TASK) {
+    } else if (*flags & GHOST_SPMV_MODE_TASK) {
         solver = &ghost_spmv_taskmode; 
-    } else if (*spmvmOptions & GHOST_SPMV_MODE_NOMPI) {
+    } else if (*flags & GHOST_SPMV_MODE_NOMPI) {
         solver = &ghost_spmv_nompi; 
     }
 
@@ -104,12 +104,12 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
 
-    solver(context,res,mat,invec,*spmvmOptions);
+    solver(context,res,mat,invec,*flags);
 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START(spmv_dot_reduce);
 
-    if ((*spmvmOptions & GHOST_SPMV_REDUCE) && (*spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
+    if ((*flags & GHOST_SPMV_REDUCE) && (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
         ghost_mpi_op_t op;
         ghost_mpi_datatype_t dt;
         ghost_mpi_op_sum(&op,res->traits->datatype);
@@ -159,7 +159,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
         reduce = 0;
     }
 
-    ghost_midx_t nrV,ncV,nrW,ncW,nrX,ncX;
+    ghost_idx_t nrV,ncV,nrW,ncW,nrX,ncX;
     // TODO if rhs vector data will not be continous
     if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
     {
@@ -226,7 +226,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     {
         mybeta = &zero;
     }
-    DEBUG_LOG(1,"Calling XGEMM with (%"PRvecIDX"x%"PRvecIDX") * (%"PRvecIDX"x%"PRvecIDX") = (%"PRvecIDX"x%"PRvecIDX")",*m,*k,*k,*n,*m,*n);
+    DEBUG_LOG(1,"Calling XGEMM with (%"PRIDX"x%"PRIDX") * (%"PRIDX"x%"PRIDX") = (%"PRIDX"x%"PRIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_HOST)
     {
 
@@ -283,7 +283,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     }
 
 #ifdef GHOST_HAVE_MPI 
-    ghost_vidx_t i;
+    ghost_idx_t i;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
     } 
@@ -296,9 +296,12 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             if (x->traits->flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*ghost_sizeofDatatype(x->traits->datatype)));
-                ghost_cu_copyDeviceToHost(val,&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],
-                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype));
+                size_t sizeofdt;
+                ghost_sizeofDatatype(&sizeofdt,x->traits->datatype);
+
+                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*sizeofdt));
+                ghost_cu_download(val,&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],
+                        x->traits->nrows*sizeofdt);
                 copied = 1;
 #endif
             }
@@ -329,8 +332,10 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             if (copied)
             {
 #ifdef GHOST_HAVE_CUDA
-                GHOST_CALL_RETURN(ghost_cu_copyHostToDevice(&x->cu_val[(i*x->traits->nrowspadded)*ghost_sizeofDataType(x->traits->datatype)],val,
-                        x->traits->nrows*ghost_sizeofDataType(x->traits->datatype)));
+                size_t sizeofdt;
+                ghost_sizeofDatatype(&sizeofdt,x->traits->datatype);
+                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],val,
+                        x->traits->nrows*sizeofdt));
                 free(val);
 #endif
             }
@@ -346,7 +351,9 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
 
 }
 
-void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len)
+#ifdef GHOST_HAVE_MPI
+
+static void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len)
 {
     int i;
     ghost_mpi_c c;
@@ -358,7 +365,7 @@ void ghost_mpi_add_c(ghost_mpi_c *invec, ghost_mpi_c *inoutvec, int *len)
     }
 }
 
-void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
+static void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
 {
     int i;
     ghost_mpi_z c;
@@ -370,7 +377,9 @@ void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
     }
 }
 
-ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, int spmvmOptions)
+#endif
+
+ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, ghost_spmv_flags_t flags)
 {
 
     DEBUG_LOG(1,"Computing reference solution");
@@ -388,9 +397,9 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     ghost_sparsemat_traits_t trait = {.format = GHOST_SPARSEMAT_CRS, .flags = GHOST_SPARSEMAT_HOST, .aux = NULL, .datatype = datatype};
     ghost_context_t *context;
 
-    ghost_createContext(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
+    ghost_context_create(&context,0,0,GHOST_CONTEXT_REDUNDANT,matrixPath,MPI_COMM_WORLD,1.0);
     ghost_sparsemat_t *mat;
-    ghost_createMatrix(&mat, context, &trait, 1);
+    ghost_sparsemat_create(&mat, context, &trait, 1);
     mat->fromFile(mat,matrixPath);
     ghost_densemat_traits_t rtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
     rtraits.flags = GHOST_DENSEMAT_RHS|GHOST_DENSEMAT_HOST;
@@ -398,7 +407,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     rtraits.ncols=rhs->traits->ncols;
 
     ghost_densemat_t *globRHS;
-    GHOST_CALL_RETURN(ghost_createVector(&globRHS, context, &rtraits));
+    GHOST_CALL_RETURN(ghost_densemat_create(&globRHS, context, &rtraits));
     globRHS->fromScalar(globRHS,zero);
 
 
@@ -414,14 +423,14 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;
 
-        GHOST_CALL_RETURN(ghost_createVector(&globLHS, context, &ltraits)); 
+        GHOST_CALL_RETURN(ghost_densemat_create(&globLHS, context, &ltraits)); 
         globLHS->fromScalar(globLHS,&zero);
 
         int iter;
 
         if (mat->traits->symmetry == GHOST_SPARSEMAT_SYMM_GENERAL) {
             for (iter=0; iter<nIter; iter++) {
-                mat->spmv(mat,globLHS,globRHS,spmvmOptions);
+                mat->spmv(mat,globLHS,globRHS,flags);
             }
         } else if (mat->traits->symmetry == GHOST_SPARSEMAT_SYMM_SYMMETRIC) {
             WARNING_LOG("Computing the refernce solution for a symmetric matrix is not implemented!");
@@ -430,13 +439,13 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
         }
 
         globRHS->destroy(globRHS);
-        ghost_destroyContext(context);
+        ghost_context_destroy(context);
     } else {
         ghost_densemat_traits_t ltraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
         ltraits.flags = GHOST_DENSEMAT_LHS|GHOST_DENSEMAT_HOST|GHOST_DENSEMAT_DUMMY;
         ltraits.datatype = rhs->traits->datatype;
         ltraits.ncols = rhs->traits->ncols;
-        ghost_createVector(&globLHS, context, &ltraits);
+        ghost_densemat_create(&globLHS, context, &ltraits);
     }
     DEBUG_LOG(1,"Scattering result of reference solution");
 
@@ -453,20 +462,20 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     return GHOST_SUCCESS;
 }
 
-void ghost_pickSpMVMMode(ghost_context_t * context, int *spmvmOptions)
+void ghost_spmv_selectMode(ghost_context_t * context, int *flags)
 {
-    if (!(*spmvmOptions & GHOST_SPMV_MODES_ALL)) { // no mode specified
+    if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
-        if (context->flags & GHOST_CONTEXT_REDUNDANT)
-            *spmvmOptions |= GHOST_SPMV_MODE_NOMPI;
-        else
-            *spmvmOptions |= GHOST_SPMV_MODE_OVERLAP;
+        if (context->flags & GHOST_CONTEXT_REDUNDANT) {
+            *flags |= GHOST_SPMV_MODE_NOMPI;
+        } else {
+            *flags |= GHOST_SPMV_MODE_OVERLAP;
+        }
 #else
         UNUSED(context);
-        *spmvmOptions |= GHOST_SPMV_MODE_NOMPI;
+        *flags |= GHOST_SPMV_MODE_NOMPI;
 #endif
-        DEBUG_LOG(1,"No spMVM mode has been specified, picking a sensible default, namely %s",ghost_modeName(*spmvmOptions));
-
+        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_modeName(*flags));
     }
 
 }
@@ -523,7 +532,7 @@ ghost_error_t ghost_mpi_destroyOperations()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t)
+ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t)
 {
     if (!ghost_datatypeValid(m_t) || !ghost_datatypeValid(v_t)) {
         ERROR_LOG("Invalid data type");
@@ -549,15 +558,15 @@ ghost_error_t ghost_flopsPerSpmvm(int *nFlops, int m_t, int v_t)
     return GHOST_SUCCESS;
 }
 
-char * ghost_modeName(int spmvmOptions) 
+char * ghost_modeName(ghost_spmv_flags_t flags) 
 {
-    if (spmvmOptions & GHOST_SPMV_MODE_NOMPI)
+    if (flags & GHOST_SPMV_MODE_NOMPI)
         return "non-MPI";
-    if (spmvmOptions & GHOST_SPMV_MODE_VECTOR)
+    if (flags & GHOST_SPMV_MODE_VECTOR)
         return "vector mode";
-    if (spmvmOptions & GHOST_SPMV_MODE_OVERLAP)
+    if (flags & GHOST_SPMV_MODE_OVERLAP)
         return "naive overlap mode";
-    if (spmvmOptions & GHOST_SPMV_MODE_TASK)
+    if (flags & GHOST_SPMV_MODE_TASK)
         return "task mode";
     return "invalid";
 

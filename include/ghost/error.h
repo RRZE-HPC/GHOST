@@ -74,7 +74,7 @@ typedef enum {
 #define GHOST_CALL(call,__err) {\
     __err = call;\
     if (__err != GHOST_SUCCESS) {\
-        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_errorString((ghost_error_t)__err));\
+        LOG(GHOST_ERROR,ANSI_COLOR_RED,"%s",ghost_error_string((ghost_error_t)__err));\
     }\
 }\
 
@@ -177,7 +177,7 @@ typedef enum {
 extern "C" {
 #endif
 
-    char * ghost_errorString(ghost_error_t e);
+    char * ghost_error_string(ghost_error_t e);
 
 #ifdef __cplusplus
 }

@@ -18,8 +18,9 @@
 #define LOCAL_HOSTNAME_MAX 	256
 #define ROTL32(num,amount) (((num) << (amount)) | ((num) >> (32 - (amount))))
 
-const ghost_hw_config_t GHOST_HW_CONFIG_INITIALIZER = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
-static ghost_hw_config_t ghost_hw_config = {.maxCores = GHOST_HW_CONFIG_INVALID, .smtLevel = GHOST_HW_CONFIG_INVALID};
+const ghost_hwconfig_t GHOST_HWCONFIG_INITIALIZER = {.nCores = GHOST_HW_CONFIG_INVALID, .nSmt = GHOST_HW_CONFIG_INVALID};
+static ghost_hwconfig_t ghost_hwconfig = {.nCores = GHOST_HW_CONFIG_INVALID, .nSmt = GHOST_HW_CONFIG_INVALID};
+
 static ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 static ghost_mpi_comm_t ghost_node_comm = MPI_COMM_NULL;
 
@@ -31,7 +32,7 @@ static int stringcmp(const void *x, const void *y)
 ghost_error_t ghost_setCore(int coreNumber)
 {
     hwloc_topology_t topology;
-    ghost_getTopology(&topology);
+    ghost_topology_get(&topology);
     
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     if (!cpuset) {
@@ -64,7 +65,7 @@ ghost_error_t ghost_unsetCore()
         DEBUG_LOG(2,"Unpinning OpenMP thread %d from core %d",ghost_ompGetThreadNum(),core);
     }
     hwloc_topology_t topology;
-    ghost_getTopology(&topology);
+    ghost_topology_get(&topology);
    
     hwloc_const_cpuset_t cpuset = hwloc_topology_get_allowed_cpuset(topology);
     if (!cpuset) {
@@ -80,7 +81,7 @@ ghost_error_t ghost_unsetCore()
 ghost_error_t ghost_getCore(int *core)
 {
     hwloc_topology_t topology;
-    ghost_getTopology(&topology);
+    ghost_topology_get(&topology);
     
     hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
     hwloc_get_cpubind(topology,cpuset,HWLOC_CPUBIND_THREAD);
@@ -173,32 +174,32 @@ ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_setHwConfig(ghost_hw_config_t a)
+ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t a)
 {
-   ghost_hw_config = a;
+   ghost_hwconfig = a;
    return GHOST_SUCCESS; 
 }
 
-ghost_error_t ghost_getHwConfig(ghost_hw_config_t * hwconfig)
+ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
 {
     if (!hwconfig) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    hwconfig->maxCores = ghost_hw_config.maxCores;
-    hwconfig->smtLevel = ghost_hw_config.smtLevel;
+    hwconfig->nCores = ghost_hwconfig.nCores;
+    hwconfig->nSmt = ghost_hwconfig.nSmt;
     
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_setHybridMode(ghost_hybridmode_t hm)
+ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm)
 {
     ghost_hybridmode = hm;
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getHybridMode(ghost_hybridmode_t *hm)
+ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm)
 {
     if (!hm) {
         ERROR_LOG("NULL pointer");

@@ -78,7 +78,7 @@ typedef enum {
 } ghost_sparsemat_symmetry_t;
 
 
-typedef void (*ghost_sparsemat_fromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
+typedef void (*ghost_sparsemat_fromRowFunc_t)(ghost_idx_t, ghost_idx_t *, ghost_idx_t *, void *);
 typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
 typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
@@ -178,18 +178,18 @@ struct ghost_sparsemat_t
     char *name;
     void *data;
 
-    ghost_midx_t nrows;
-    ghost_midx_t ncols;
-    ghost_midx_t nrowsPadded;
-    ghost_mnnz_t nnz;
-    ghost_midx_t lowerBandwidth;
-    ghost_midx_t upperBandwidth;
-    ghost_midx_t bandwidth;
+    ghost_idx_t nrows;
+    ghost_idx_t ncols;
+    ghost_idx_t nrowsPadded;
+    ghost_nnz_t nnz;
+    ghost_idx_t lowerBandwidth;
+    ghost_idx_t upperBandwidth;
+    ghost_idx_t bandwidth;
     /**
      * @brief Array of length nrows with nzDist[i] = number nonzeros with distance i from diagonal
      */
-    ghost_mnnz_t *nzDist;
-    ghost_mnnz_t nEnts;
+    ghost_nnz_t *nzDist;
+    ghost_nnz_t nEnts;
 
     /**
      * @brief Permute the matrix rows and column indices (if set in mat->traits->flags) with the given permutation.
@@ -198,7 +198,7 @@ struct ghost_sparsemat_t
      * @param perm The permutation vector.
      * @param invPerm The inverse permutation vector.
      */
-    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_midx_t *perm, ghost_midx_t *invPerm);
+    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_idx_t *perm, ghost_idx_t *invPerm);
     /**
      * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
      *
@@ -245,7 +245,7 @@ struct ghost_sparsemat_t
      *
      * @return The length of the row or zero if the row index is out of bounds. 
      */
-    ghost_midx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_midx_t row);
+    ghost_idx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_idx_t row);
     /**
      * @brief Return the name of the storage format.
      *
@@ -272,7 +272,7 @@ struct ghost_sparsemat_t
      *
      * The function func may be called several times for each row concurrently by multiple threads.
      */
-    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_midx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
+    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
     /**
      * @brief Write a matrix to a binary CRS file.
      *
@@ -326,10 +326,12 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_createMatrix(ghost_sparsemat_t **mat, ghost_context_t *ctx, ghost_sparsemat_traits_t *traits, int nTraits);
-    ghost_error_t ghost_printMatrixInfo(char **str, ghost_sparsemat_t *matrix);
-    ghost_error_t ghost_getMatNnz(ghost_mnnz_t *nnz, ghost_sparsemat_t *mat);
-    ghost_error_t ghost_getMatNrows(ghost_midx_t *nrows, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t **mat, ghost_context_t *ctx, ghost_sparsemat_traits_t *traits, int nTraits);
+    ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *matrix);
+    ghost_error_t ghost_sparsemat_nnz(ghost_nnz_t *nnz, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
+    char * ghost_sparsemat_symmetryString(int symmetry);
+    char ghost_sparsemat_symmetryValid(int symmetry);
 
 #ifdef __cplusplus
 } extern "C"

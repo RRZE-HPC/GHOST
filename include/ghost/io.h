@@ -52,12 +52,12 @@ extern "C" {
 #endif
 
     ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
-    ghost_error_t ghost_readCol(ghost_midx_t *col, char *matrixPath, ghost_mnnz_t offs, ghost_mnnz_t nEnts);
-    ghost_error_t ghost_readColOpen(ghost_midx_t *col, char *matrixPath, ghost_mnnz_t offsEnts, ghost_mnnz_t nEnts, FILE *filed);
-    ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_mnnz_t offs, ghost_mnnz_t nEnts);
-    ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_mnnz_t offs, ghost_mnnz_t nEnts, FILE *filed);
-    ghost_error_t ghost_readRpt(ghost_mnnz_t *rpt, char *matrixPath, ghost_mnnz_t offsRows, ghost_mnnz_t nRows);
-    ghost_error_t ghost_readRptOpen(ghost_midx_t *rpt, char *matrixPath, ghost_mnnz_t offsRows, ghost_mnnz_t nRows, FILE *filed);
+    ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offs, ghost_nnz_t nEnts);
+    ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsEnts, ghost_nnz_t nEnts, FILE *filed);
+    ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz_t offs, ghost_nnz_t nEnts);
+    ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_nnz_t offs, ghost_nnz_t nEnts, FILE *filed);
+    ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows);
+    ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, FILE *filed);
 
     /**
      * @brief Check if the machine endianess differs from the sparse matrix file.

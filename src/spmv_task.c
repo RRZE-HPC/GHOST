@@ -34,7 +34,7 @@ typedef struct {
     char *work;
     MPI_Request *request;
     MPI_Status *status;
-    ghost_midx_t max_dues;
+    ghost_idx_t max_dues;
 } commArgs;
 
 static void *communicate(void *vargs)
@@ -48,7 +48,7 @@ static void *communicate(void *vargs)
     *ret = GHOST_SUCCESS;
 
     int to_PE, from_PE;
-    ghost_vidx_t c;
+    ghost_idx_t c;
     commArgs *args = (commArgs *)vargs;
 #ifdef GHOST_HAVE_INSTR_TIMING
     size_t recvBytes = 0, sendBytes = 0;
@@ -144,7 +144,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     return GHOST_ERR_UNKNOWN;
 #else
     GHOST_INSTR_START(spmv_task_entiresolver)
-    ghost_mnnz_t max_dues;
+    ghost_nnz_t max_dues;
     char *work = NULL;
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
@@ -153,8 +153,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     int i;
 
 
-    int localopts = spmvOptions;
-    int remoteopts = spmvOptions;
+    ghost_spmv_flags_t localopts = spmvOptions;
+    ghost_spmv_flags_t remoteopts = spmvOptions;
 
     int remoteExists = mat->remotePart->nnz > 0;
    
@@ -229,7 +229,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
 #endif
     
     int to_PE;
-    ghost_vidx_t c;
+    ghost_idx_t c;
     
     GHOST_INSTR_STOP(spmv_task_prepare);
     GHOST_INSTR_START(spmv_task_assemblebuffer);

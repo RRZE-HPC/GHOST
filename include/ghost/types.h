@@ -111,17 +111,13 @@ ghost_datatype_t name = GHOST_DT_DOUBLE|GHOST_DT_COMPLEX; \
 
 #ifdef GHOST_HAVE_LONGIDX
 /**
- * @brief Type for row/column indices of matrix
+ * @brief Type for row/column indices of matrices/vectors.
  */
-typedef int64_t ghost_midx_t; 
+typedef int64_t ghost_idx_t; 
 /**
  * @brief Type for nonzero indices of matrix
  */
-typedef int64_t ghost_mnnz_t;
-/**
- * @brief Type for row/column indices of a dense matrix/vector
- */
-typedef int64_t ghost_vidx_t;
+typedef int64_t ghost_nnz_t;
 /**
  * @brief Type for indices used in BLAS calls
  */
@@ -130,38 +126,32 @@ typedef long long int ghost_blas_idx_t;
 /**
  * @brief MPI data type for matrix row/column indices
  */
-#define ghost_mpi_dt_midx MPI_LONG_LONG
+#define ghost_mpi_dt_idx MPI_LONG_LONG
 /**
  * @brief MPI data type for matrix nonzero indices
  */
-#define ghost_mpi_dt_mnnz MPI_LONG_LONG
+#define ghost_mpi_dt_nnz MPI_LONG_LONG
 
 /**
  * @brief Macro to print matrix nonzero indices depending on index size
  */
-#define PRmatNNZ PRId64
+#define PRNNZ PRId64
 /**
- * @brief Macro to print matrix row/column indices depending on index size
+ * @brief Macro to print matrix/vector row/column indices depending on index size
  */
-#define PRmatIDX PRId64
-/**
- * @brief Macro to print vector indices depending on index size
- */
-#define PRvecIDX PRId64
+#define PRIDX PRId64
 
 #else
 
-typedef int32_t ghost_midx_t;
-typedef int32_t ghost_mnnz_t; 
-typedef int32_t ghost_vidx_t;
+typedef int32_t ghost_idx_t;
+typedef int32_t ghost_nnz_t; 
 typedef int ghost_blas_idx_t;
 
-#define ghost_mpi_dt_midx MPI_INT
-#define ghost_mpi_dt_mnnz MPI_INT
+#define ghost_mpi_dt_idx MPI_INT
+#define ghost_mpi_dt_nnz MPI_INT
 
-#define PRmatNNZ PRId32
-#define PRmatIDX PRId32
-#define PRvecIDX PRId32
+#define PRNNZ PRId32
+#define PRIDX PRId32
 
 #endif
 

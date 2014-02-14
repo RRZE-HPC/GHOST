@@ -63,14 +63,14 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_setType(ghost_type_t t)
+ghost_error_t ghost_type_set(ghost_type_t t)
 {
     ghost_type = t;
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getType(ghost_type_t *t)
+ghost_error_t ghost_type_get(ghost_type_t *t)
 {
     if (!t) {
         ERROR_LOG("NULL pointer");
@@ -84,9 +84,6 @@ ghost_error_t ghost_getType(ghost_type_t *t)
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
-    hwloc_topology_t topology;
-    ghost_createTopology();
-    ghost_getTopology(&topology);
 #ifdef GHOST_HAVE_MPI
     int req, prov;
 
@@ -118,6 +115,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     UNUSED(argv);
 
 #endif // ifdef GHOST_HAVE_MPI
+    
+    hwloc_topology_t topology;
+    ghost_topology_create();
+    ghost_topology_get(&topology);
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
     LIKWID_MARKER_INIT;
@@ -145,32 +146,33 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     int ncudadevs = 0;
     int nnumanodes;
-    ghost_getNumberOfNumaNodes(&nnumanodes);
+    ghost_machine_nNumaNodes(&nnumanodes);
 
 #ifdef GHOST_HAVE_CUDA
     ghost_cu_getDeviceCount(&ncudadevs);
 #endif
 
     ghost_type_t ghost_type;
-    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
+    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
     if (ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
-            ghost_setType(GHOST_TYPE_WORK);
+            ghost_type = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
-            ghost_setType(GHOST_TYPE_CUDA);
+            ghost_type = GHOST_TYPE_CUDA;
         } else {
-            ghost_setType(GHOST_TYPE_WORK);
+            ghost_type = GHOST_TYPE_WORK;
         }
     } 
-    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
 
 #ifndef GHOST_HAVE_CUDA
     if (ghost_type == GHOST_TYPE_CUDA) {
         WARNING_LOG("This rank is supposed to be a CUDA management rank but CUDA is not available. Re-setting GHOST type");
-        ghost_setType(GHOST_TYPE_WORK);
+        ghost_type = GHOST_TYPE_WORK;
     }
 #endif
+    
+    GHOST_CALL_RETURN(ghost_type_set(ghost_type));
 
 
     int nLocalCuda = ghost_type==GHOST_TYPE_CUDA;
@@ -198,7 +200,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif   
 
     ghost_hybridmode_t ghost_hybridmode;
-    GHOST_CALL_RETURN(ghost_getHybridMode(&ghost_hybridmode));
+    GHOST_CALL_RETURN(ghost_hybridmode_get(&ghost_hybridmode));
 
     int oversubscribed = 0;
     if (ghost_hybridmode == GHOST_HYBRIDMODE_INVALID) {
@@ -216,22 +218,22 @@ ghost_error_t ghost_init(int argc, char **argv)
             oversubscribed = 1;
         }
     }
-    GHOST_CALL_RETURN(ghost_setHybridMode(ghost_hybridmode));
+    GHOST_CALL_RETURN(ghost_hybridmode_set(ghost_hybridmode));
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
     hwloc_bitmap_copy(globcpuset,hwloc_topology_get_allowed_cpuset(topology));
-    ghost_hw_config_t hwconfig;
-    ghost_getHwConfig(&hwconfig);
+    ghost_hwconfig_t hwconfig;
+    ghost_hwconfig_get(&hwconfig);
 
-    if (hwconfig.maxCores == GHOST_HW_CONFIG_INVALID) {
-        ghost_getNumberOfCores(&hwconfig.maxCores, GHOST_NUMANODE_ANY);
+    if (hwconfig.nCores == GHOST_HW_CONFIG_INVALID) {
+        ghost_machine_nCores(&hwconfig.nCores, GHOST_NUMANODE_ANY);
     }
-    if (hwconfig.smtLevel == GHOST_HW_CONFIG_INVALID) {
-        ghost_getSMTlevel(&hwconfig.smtLevel);
+    if (hwconfig.nSmt == GHOST_HW_CONFIG_INVALID) {
+        ghost_machine_nSmt(&hwconfig.nSmt);
     }
-    ghost_setHwConfig(hwconfig);
+    ghost_hwconfig_set(hwconfig);
 
     IF_DEBUG(2) {
         char *cpusetStr;
@@ -319,10 +321,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (obj->sibling_rank == 0) {
         cores++;
     }
-    if ((int)(obj->sibling_rank) >= hwconfig.smtLevel) {
+    if ((int)(obj->sibling_rank) >= hwconfig.nSmt) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
-    if (cores > hwconfig.maxCores) {
+    if (cores > hwconfig.nCores) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     }
     hwloc_bitmap_foreach_end();
@@ -371,7 +373,7 @@ ghost_error_t ghost_finalize()
     ghost_taskq_destroy();
     ghost_thpool_destroy();
     ghost_pumap_destroy();
-    ghost_destroyTopology();
+    ghost_topology_destroy();
 
 #ifdef GHOST_HAVE_MPI
     if (!MPIwasInitialized) {
@@ -380,5 +382,57 @@ ghost_error_t ghost_finalize()
 #endif
 
     return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_string(char **str) 
+{
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+
+    ghost_printHeader(str,"%s", GHOST_NAME); 
+    ghost_printLine(str,"Version",NULL,"%s",GHOST_VERSION);
+    ghost_printLine(str,"Build date",NULL,"%s",__DATE__);
+    ghost_printLine(str,"Build time",NULL,"%s",__TIME__);
+#ifdef GHOST_HAVE_MIC
+    ghost_printLine(str,"MIC kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"MIC kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_AVX
+    ghost_printLine(str,"AVX kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"AVX kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_SSE
+    ghost_printLine(str,"SSE kernels",NULL,"Enabled");
+#else
+    ghost_printLine(str,"SSE kernels",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_OPENMP
+    ghost_printLine(str,"OpenMP support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"OpenMP support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_MPI
+    ghost_printLine(str,"MPI support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"MPI support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_CUDA
+    ghost_printLine(str,"CUDA support",NULL,"Enabled");
+#else
+    ghost_printLine(str,"CUDA support",NULL,"Disabled");
+#endif
+#ifdef GHOST_HAVE_INSTR_LIKWID
+    ghost_printLine(str,"Instrumentation",NULL,"Likwid");
+#elif defined(GHOST_HAVE_INSTR_TIMING)
+    ghost_printLine(str,"Instrumentation",NULL,"Timing");
+#else
+    ghost_printLine(str,"Instrumentation",NULL,"Disabled");
+#endif
+    ghost_printFooter(str);
+
+    return GHOST_SUCCESS;
+
 }
 

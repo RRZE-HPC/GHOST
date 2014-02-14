@@ -1,9 +1,33 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
+#include "ghost/util.h"
+#include "ghost/locality.h"
+#include "ghost/omp.h"
 
+#include <strings.h>
+#ifdef GHOST_HAVE_OPENMP
+#include <omp.h>
+#endif
+
+extern char ** environ;
 static hwloc_topology_t ghost_topology = NULL;
 
-ghost_error_t ghost_createTopology()
+static char *env(char *key)
+{
+    int i=0;
+    while (environ[i]) {
+        if (!strncasecmp(key,environ[i],strlen(key)))
+        {
+            return environ[i]+strlen(key)+1;
+        }
+        i++;
+    }
+    return "undefined";
+
+}
+
+
+ghost_error_t ghost_topology_create()
 {
     if (ghost_topology) {
         return GHOST_SUCCESS;
@@ -22,17 +46,35 @@ ghost_error_t ghost_createTopology()
     return GHOST_SUCCESS;
 }
 
-void ghost_destroyTopology()
+void ghost_topology_destroy()
 {
     hwloc_topology_destroy(ghost_topology);
 
     return;
 }
 
-ghost_error_t ghost_getSizeOfLLC(uint64_t *size)
+ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
+{
+    if (!topo) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (!ghost_topology) {
+        ERROR_LOG("Topology does not exist!");
+        return GHOST_ERR_UNKNOWN;
+    }
+    
+    *topo = ghost_topology;
+
+    return GHOST_SUCCESS;
+
+}
+
+ghost_error_t ghost_machine_outerCacheSize(uint64_t *size)
 {
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
     hwloc_obj_t obj;
     int depth;
 
@@ -51,10 +93,10 @@ ghost_error_t ghost_getSizeOfLLC(uint64_t *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getSizeOfCacheLine(unsigned *size)
+ghost_error_t ghost_machine_cacheLineSize(unsigned *size)
 {
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
 
     
     hwloc_obj_t obj;
@@ -70,30 +112,12 @@ ghost_error_t ghost_getSizeOfCacheLine(unsigned *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getTopology(hwloc_topology_t *topo)
-{
-    if (!topo) {
-        ERROR_LOG("NULL pointer");
-        return GHOST_ERR_INVALID_ARG;
-    }
-
-    if (!ghost_topology) {
-        ERROR_LOG("Topology does not exist!");
-        return GHOST_ERR_UNKNOWN;
-    }
-    
-    *topo = ghost_topology;
-
-    return GHOST_SUCCESS;
-
-}
-
-ghost_error_t ghost_getNumberOfCores(int *nCores, int numaNode)
+ghost_error_t ghost_machine_nCores(int *nCores, int numaNode)
 {
     int nPUs;
     int smt;
-    GHOST_CALL_RETURN(ghost_getNumberOfPUs(&nPUs, numaNode));
-    GHOST_CALL_RETURN(ghost_getSMTlevel(&smt));
+    GHOST_CALL_RETURN(ghost_machine_nPus(&nPUs, numaNode));
+    GHOST_CALL_RETURN(ghost_machine_nSmt(&smt));
 
     if (smt == 0) {
         ERROR_LOG("The SMT level is zero");
@@ -110,16 +134,16 @@ ghost_error_t ghost_getNumberOfCores(int *nCores, int numaNode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getNumberOfPUs(int *nPUs, int numaNode)
+ghost_error_t ghost_machine_nPus(int *nPUs, int numaNode)
 {
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
     hwloc_const_cpuset_t cpuset = NULL;
     if (numaNode == GHOST_NUMANODE_ANY) {
         cpuset = hwloc_topology_get_allowed_cpuset(topology);
     } else {
         hwloc_obj_t node;
-        ghost_getNumaNode(&node,numaNode);
+        ghost_machine_numaNode(&node,numaNode);
         cpuset = node->cpuset;
     }
 
@@ -128,10 +152,10 @@ ghost_error_t ghost_getNumberOfPUs(int *nPUs, int numaNode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getSMTlevel(int *nLevels)
+ghost_error_t ghost_machine_nSmt(int *nLevels)
 {
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
 
     if (!topology) {
         ERROR_LOG("The topology is NULL");
@@ -144,10 +168,10 @@ ghost_error_t ghost_getSMTlevel(int *nLevels)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes)
+ghost_error_t ghost_machine_nNumaNodes(int *nNodes)
 {
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
     int nnodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
     if (nnodes < 0) {
         ERROR_LOG("Could not obtain number of NUMA nodes");
@@ -162,7 +186,7 @@ ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes)
 
 }
 
-char ghost_machineIsBigEndian()
+char ghost_machine_bigEndian()
 {
     int test = 1;
     unsigned char *endiantest = (unsigned char *)&test;
@@ -170,7 +194,7 @@ char ghost_machineIsBigEndian()
     return (endiantest[0] == 0);
 }
 
-ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx)
+ghost_error_t ghost_machine_numaNode(hwloc_obj_t *node, int idx)
 {
     if (!node) {
         ERROR_LOG("NULL pointer");
@@ -178,7 +202,7 @@ ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx)
     }
 
     hwloc_topology_t topology;
-    GHOST_CALL_RETURN(ghost_getTopology(&topology));
+    GHOST_CALL_RETURN(ghost_topology_get(&topology));
     
     int nNodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
     
@@ -195,22 +219,87 @@ ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx)
 
     return GHOST_SUCCESS;
 }
-/*
-ghost_error_t ghost_getNumberOfPUsInLD(int ld)
+
+ghost_error_t ghost_machine_string(char **str)
 {
-    int i,n = 0;
-    hwloc_obj_t obj,runner;
-    for (i=0; i<ghost_thpool->nThreads; i++) {    
-        obj = ghost_thpool->PUs[i];
-        for (runner=obj; runner; runner=runner->parent) {
-            if (runner->type <= HWLOC_OBJ_NODE) {
-                if ((int)runner->logical_index == ld) {
-                    n++;
-                }
-                break;
-            }
+
+    UNUSED(&env);
+
+    int nranks;
+    int nnodes;
+
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&nranks));
+    GHOST_CALL_RETURN(ghost_getNumberOfNodes(MPI_COMM_WORLD,&nnodes));
+
+
+#ifdef GHOST_HAVE_CUDA
+    int cuVersion;
+    GHOST_CALL_RETURN(ghost_cu_getVersion(&cuVersion));
+
+    ghost_gpu_info_t * CUdevInfo;
+    GHOST_CALL_RETURN(ghost_cu_getDeviceInfo(&CUdevInfo));
+#endif
+
+
+    int nphyscores;
+    int ncores;
+    ghost_machine_nCores(&nphyscores,GHOST_NUMANODE_ANY);
+    ghost_machine_nPus(&ncores,GHOST_NUMANODE_ANY);
+
+#ifdef GHOST_HAVE_OPENMP
+    char omp_sched_str[32];
+    omp_sched_t omp_sched;
+    int omp_sched_mod;
+    omp_get_schedule(&omp_sched,&omp_sched_mod);
+    switch (omp_sched) {
+        case omp_sched_static:
+            sprintf(omp_sched_str,"static,%d",omp_sched_mod);
+            break;
+        case omp_sched_dynamic:
+            sprintf(omp_sched_str,"dynamic,%d",omp_sched_mod);
+            break;
+        case omp_sched_guided:
+            sprintf(omp_sched_str,"guided,%d",omp_sched_mod);
+            break;
+        case omp_sched_auto:
+            sprintf(omp_sched_str,"auto,%d",omp_sched_mod);
+            break;
+        default:
+            sprintf(omp_sched_str,"unknown");
+            break;
+    }
+#else
+    char omp_sched_str[] = "N/A";
+#endif
+
+    uint64_t cacheSize;
+    unsigned int cacheLineSize;
+    ghost_machine_outerCacheSize(&cacheSize);
+    ghost_machine_cacheLineSize(&cacheLineSize);
+
+    ghost_printHeader(str,"Machine");
+
+    ghost_printLine(str,"Overall nodes",NULL,"%d",nnodes); 
+    ghost_printLine(str,"Overall MPI processes",NULL,"%d",nranks);
+    ghost_printLine(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
+    ghost_printLine(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
+    ghost_printLine(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
+    ghost_printLine(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+    ghost_printLine(str,"Cache line size","B","%zu",cacheLineSize);
+#ifdef GHOST_HAVE_CUDA
+    ghost_printLine(str,"CUDA version",NULL,"%d",cuVersion);
+    ghost_printLine(str,"CUDA devices",NULL,NULL);
+    int j;
+    for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
+        if (strcasecmp(CUdevInfo->names[j],"None")) {
+            ghost_printLine(str,"",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
         }
     }
+#endif
+    ghost_printFooter(str);
 
-    return n;
-}*/
+    return GHOST_SUCCESS;
+
+}

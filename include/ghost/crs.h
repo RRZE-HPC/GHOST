@@ -5,7 +5,7 @@
 #include "types.h"
 #include "sparsemat.h"
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 #include "cu_crs.h"
 #endif
 
@@ -14,8 +14,8 @@
  */
 typedef struct 
 {
-    ghost_mnnz_t  *rpt;
-    ghost_midx_t  *col;
+    ghost_nnz_t  *rpt;
+    ghost_idx_t  *col;
     char *val;
 } 
 ghost_crs_t;

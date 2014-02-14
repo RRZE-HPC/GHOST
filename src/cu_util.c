@@ -2,8 +2,8 @@
 #include "ghost/types.h"
 #include "ghost/core.h"
 #include "ghost/util.h"
-#include "ghost/mat.h"
-#include "ghost/affinity.h"
+#include "ghost/sparsemat.h"
+#include "ghost/locality.h"
 #include "ghost/constants.h"
 #include "ghost/log.h"
 #include <string.h>
@@ -137,9 +137,9 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
 
     GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&me));
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&size));
-    GHOST_CALL_RETURN(ghost_getType(&ghost_type));
+    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
-    if (ghost_type == GHOST_TYPE_CUDAMGMT) {
+    if (ghost_type == GHOST_TYPE_CUDA) {
         struct cudaDeviceProp devProp;
         CUDA_CALL_GOTO(cudaGetDeviceProperties(&devProp,ghost_cu_device),err,ret);
         strncpy(name,devProp.name,ghost_cu_MAX_DEVICE_NAME_LEN);
@@ -149,9 +149,9 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
 
 
     if (me==0) {
-        names = (char *)ghost_malloc(size*ghost_cu_MAX_DEVICE_NAME_LEN*sizeof(char));
-        recvcounts = (int *)ghost_malloc(sizeof(int)*size);
-        displs = (int *)ghost_malloc(sizeof(int)*size);
+        GHOST_CALL_RETURN(ghost_malloc((void **)&names,size*ghost_cu_MAX_DEVICE_NAME_LEN*sizeof(char)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&recvcounts,sizeof(int)*size));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&displs,sizeof(int)*size));
         
         for (i=0; i<size; i++) {
             recvcounts[i] = ghost_cu_MAX_DEVICE_NAME_LEN;
@@ -162,7 +162,7 @@ ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **devInfo)
 
 
 #ifdef GHOST_HAVE_MPI
-    MPI_safecall(MPI_Gatherv(name,ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
+    MPI_CALL_RETURN(MPI_Gatherv(name,ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,names,
                 recvcounts,displs,MPI_CHAR,0,MPI_COMM_WORLD));
 #else
     strncpy(names,name,ghost_cu_MAX_DEVICE_NAME_LEN);

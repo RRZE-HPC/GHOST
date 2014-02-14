@@ -8,6 +8,12 @@
  * @brief Basic data types and structures.
  */
 
+/** 
+ * @defgroup stringification Object stringification
+ * @brief Create strings holding information on GHOST objects.
+ */
+
+
 /**
  * @defgroup denseinit Dense matrix initialization
  * @brief Functions to initialize dense matrices/vectors.

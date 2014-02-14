@@ -9,7 +9,7 @@
 #include "config.h"
 #include "types.h"
 
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 #include "cu_util.h"
 #endif
 
@@ -35,10 +35,20 @@
 #define MAX(x,y) ((x)<(y)?(y):(x))
 #endif
 
+/**
+ * @brief Pad a number to a multiple of a second number.
+ *
+ * @param n The number to be padded.
+ * @param p The desired padding.
+ *
+ * @return n padded to a multiple of p or n if p or n smaller than 1.
+ */
+#define PAD(n,p) (((n)<1 || (p)<1)?(n):(((n) % (p)) ? ((n) + (p) - (n) % (p)) : (n)))
 
-
+/**
+ * @brief Avoid unused variable/function warnings.
+ */
 #define UNUSED(x) (void)(x)
-/******************************************************************************/
 
 
 #ifdef __cplusplus
@@ -48,25 +58,6 @@ extern "C" {
     void ghost_printHeader(char **str, const char *fmt, ...);
     void ghost_printFooter(char **str); 
     void ghost_printLine(char **str, const char *label, const char *unit, const char *format, ...);
-   // ghost_error_t ghost_printSysInfo();
-   // ghost_error_t ghost_printGhostInfo();
-
-    ghost_error_t ghost_sysInfoString(char **str);
-    ghost_error_t ghost_infoString(char **str);
-    char * ghost_workdistName(int ghostOptions);
-    char * ghost_symmetryName(int symmetry);
-
-    /**
-     * @brief Pad a number to a multiple of a second number.
-     *
-     * @param nrows The number to be padded.
-     * @param padding The desired padding.
-     *
-     * @return nrows padded to a multiple of padding or nrows if padding or nrows are smaller than 1.
-     */
-    ghost_midx_t ghost_pad(ghost_midx_t nrows, ghost_midx_t padding);
-
-    int ghost_symmetryValid(int symmetry);
 
 
     /**

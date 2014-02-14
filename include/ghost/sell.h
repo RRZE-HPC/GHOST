@@ -15,15 +15,15 @@
 typedef struct 
 {
     char * val;
-    ghost_midx_t * col;
-    ghost_midx_t * rowLen;
-    ghost_midx_t * rowLenPadded;
-    ghost_mnnz_t * chunkStart;
-    ghost_midx_t * chunkLen;
-/*    ghost_midx_t nrows;
-    ghost_midx_t nrowsPadded;
+    ghost_idx_t * col;
+    ghost_idx_t * rowLen;
+    ghost_idx_t * rowLenPadded;
+    ghost_nnz_t * chunkStart;
+    ghost_idx_t * chunkLen;
+/*    ghost_idx_t nrows;
+    ghost_idx_t nrowsPadded;
     int T; // number of threads per row (if applicable)
-    ghost_midx_t chunkHeight;*/
+    ghost_idx_t chunkHeight;*/
 }
 ghost_cu_sell_t;
 
@@ -33,22 +33,22 @@ ghost_cu_sell_t;
 typedef struct 
 {
     char *val;
-    ghost_midx_t *col;
-    ghost_mnnz_t *chunkStart;
+    ghost_idx_t *col;
+    ghost_nnz_t *chunkStart;
     double beta; // chunk occupancy
     double variance; // row length variance
     double deviation; // row lenght standard deviation
     double cv; // row lenght coefficient of variation
     int T; // number of threads per row (if applicable)
-    ghost_midx_t *chunkMin; // for version with remainder loop
-    ghost_midx_t *chunkLen; // for version with remainder loop
-    ghost_midx_t *chunkLenPadded; // for version with remainder loop
-    ghost_midx_t *rowLen;   // for version with remainder loop
-    ghost_midx_t *rowLenPadded; // for SELL-T 
-    ghost_midx_t maxRowLen;
-    ghost_midx_t nMaxRows;
-    ghost_midx_t chunkHeight;
-    ghost_midx_t scope;
+    ghost_idx_t *chunkMin; // for version with remainder loop
+    ghost_idx_t *chunkLen; // for version with remainder loop
+    ghost_idx_t *chunkLenPadded; // for version with remainder loop
+    ghost_idx_t *rowLen;   // for version with remainder loop
+    ghost_idx_t *rowLenPadded; // for SELL-T 
+    ghost_idx_t maxRowLen;
+    ghost_idx_t nMaxRows;
+    ghost_idx_t chunkHeight;
+    ghost_idx_t scope;
     
     ghost_cu_sell_t *cumat;
 }
@@ -56,7 +56,7 @@ ghost_sell_t;
 
 typedef struct 
 {
-    ghost_midx_t row, nEntsInRow;
+    ghost_idx_t row, nEntsInRow;
 } 
 ghost_sorting_t;
 #define SELL(mat) ((ghost_sell_t *)(mat->data))
@@ -96,7 +96,7 @@ ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *, ghost_densemat_t *, gho
 ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
 ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
 ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
-#if GHOST_HAVE_CUDA
+#ifdef GHOST_HAVE_CUDA
 ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
 ghost_error_t ds_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
 ghost_error_t dc_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);

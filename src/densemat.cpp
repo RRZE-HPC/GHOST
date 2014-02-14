@@ -22,7 +22,7 @@
 template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_vidx_t v;
+    ghost_idx_t v;
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits->ncols*sizeof(v_t)),err,ret);
@@ -53,8 +53,8 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *v
     if (vec->traits->ncols != vec2->traits->ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_vidx_t i,v;
-    ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t i,v;
+    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
     int nthreads;
 #pragma omp parallel
@@ -91,9 +91,9 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *v
 
 template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
-    ghost_vidx_t i,v;
+    ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
-    ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
     for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
 #pragma omp parallel for schedule(runtime) 
@@ -106,10 +106,10 @@ template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec
 
 template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
-    ghost_vidx_t i,v;
+    ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
-    ghost_vidx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
 
     for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
 #pragma omp parallel for schedule(runtime) 
@@ -123,7 +123,7 @@ template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *ve
 
 template<typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_vidx_t i,v;
+    ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
 
     for (v=0; v<vec->traits->ncols; v++) {
@@ -166,7 +166,7 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
-    ghost_vidx_t i,v;
+    ghost_idx_t i,v;
 
 #pragma omp parallel private (v,i)
     {
@@ -199,7 +199,7 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec
     }
 #endif
 
-    ghost_vidx_t i,v;
+    ghost_idx_t i,v;
     std::cout.setf(std::ios::fixed, std::ios::floatfield);
     for (i=0; i<vec->traits->nrows; i++) {
         std::cout << prefix << "\t";

@@ -50,59 +50,59 @@ struct ghost_context_t
     // if the context is distributed by nnz, the row pointers are being read
     // at context creation in order to create the distribution. once the matrix
     // is being created, the row pointers are distributed
-    ghost_midx_t *rpt;
+    ghost_idx_t *rpt;
 
    // ghost_comm_t *communicator;
-    ghost_midx_t gnrows;
-    ghost_midx_t gncols;
+    ghost_idx_t gnrows;
+    ghost_idx_t gncols;
     int flags;
     double weight;
 
-    ghost_midx_t *rowPerm;    // may be NULL
-    ghost_midx_t *invRowPerm; // may be NULL
+    ghost_idx_t *rowPerm;    // may be NULL
+    ghost_idx_t *invRowPerm; // may be NULL
 
     ghost_mpi_comm_t mpicomm;
     
     /**
      * @brief Number of remote elements with unique colidx
      */
-    ghost_midx_t halo_elements; // TODO rename nHaloElements
+    ghost_idx_t halo_elements; // TODO rename nHaloElements
     /**
      * @brief Number of matrix elements for each rank
      */
-    ghost_mnnz_t* lnEnts; // TODO rename nLclEnts
+    ghost_nnz_t* lnEnts; // TODO rename nLclEnts
     /**
      * @brief Index of first element into the global matrix for each rank
      */
-    ghost_mnnz_t* lfEnt; // TODO rename firstLclEnt
+    ghost_nnz_t* lfEnt; // TODO rename firstLclEnt
     /**
      * @brief Number of matrix rows for each rank
      */
-    ghost_midx_t* lnrows; // TODO rename nLclRows
+    ghost_idx_t* lnrows; // TODO rename nLclRows
     /**
      * @brief Index of first matrix row for each rank
      */
-    ghost_midx_t* lfRow; // TODO rename firstLclRow
+    ghost_idx_t* lfRow; // TODO rename firstLclRow
     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_mnnz_t * wishes; // TODO rename nWishes
+    ghost_nnz_t * wishes; // TODO rename nWishes
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_midx_t ** wishlist; // TODO rename wishes
+    ghost_idx_t ** wishlist; // TODO rename wishes
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_mnnz_t * dues; // TODO rename nDues
+    ghost_nnz_t * dues; // TODO rename nDues
     /**
      * @brief Column indices of dues to each rank
      */
-    ghost_midx_t ** duelist; // TODO rename dues
+    ghost_idx_t ** duelist; // TODO rename dues
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_midx_t* hput_pos; // TODO rename
+    ghost_idx_t* hput_pos; // TODO rename
 };
 
 
@@ -138,10 +138,18 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error_t ghost_createContext(ghost_context_t **ctx, ghost_midx_t gnrows, ghost_midx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_mpi_comm_t comm, double weight); 
+    ghost_error_t ghost_context_create(ghost_context_t **ctx, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_mpi_comm_t comm, double weight); 
     
-    ghost_error_t ghost_printContextInfo(char **str, ghost_context_t *context);
-    ghost_error_t ghost_globalIndex(ghost_context_t *ctx, ghost_midx_t lidx, ghost_midx_t *gidx);
+    /**
+     * @ingroup stringification
+     * @brief Create a string containing information on the context.
+     *
+     * @param str
+     * @param context
+     *
+     * @return 
+     */
+    ghost_error_t ghost_context_string(char **str, ghost_context_t *context);
     /**
      * @brief Free the context's resources.
      *
@@ -149,7 +157,7 @@ extern "C" {
      *
      * If the context is NULL it will be ignored.
      */
-    void ghost_destroyContext(ghost_context_t *ctx);
+    void ghost_context_destroy(ghost_context_t *ctx);
 
     /**
      * @brief Assemble communication information in the given context.
@@ -161,7 +169,9 @@ extern "C" {
      * The following fields of ghost_context_t are being filled in this function:
      * wishes, wishlist, dues, duelist, hput_pos.
      */
-    ghost_error_t ghost_setupCommunication(ghost_context_t *ctx, ghost_midx_t *col);
+    ghost_error_t ghost_context_setupCommunication(ghost_context_t *ctx, ghost_idx_t *col);
+    
+    char * ghost_context_workdistString(ghost_context_flags_t flags);
 
 #ifdef __cplusplus
 } //extern "C"

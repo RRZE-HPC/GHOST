@@ -4,14 +4,14 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "vec.h"
-#include "mat.h"
+#include "densemat.h"
+#include "sparsemat.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-ghost_error_t ghost_cu_crsspmv(ghost_mat_t *mat, ghost_vec_t * lhs, ghost_vec_t * rhs, int options);
+ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options);
 
 #ifdef __cplusplus
 }

@@ -28,11 +28,11 @@ extern "C" {
      *
      * If the topology has been created before, this function returns immediately.
      */
-    ghost_error_t ghost_createTopology();
+    ghost_error_t ghost_topology_create();
     /**
      * @brief Destroy and free the topology object.
      */
-    void ghost_destroyTopology();
+    void ghost_topology_destroy();
     /**
      * @brief Get to topology object 
      *
@@ -40,7 +40,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getTopology(hwloc_topology_t *topo);
+    ghost_error_t ghost_topology_get(hwloc_topology_t *topo);
     /**
      * @ingroup machine
      * 
@@ -52,7 +52,7 @@ extern "C" {
      *
      * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
      */
-    ghost_error_t ghost_getSizeOfLLC(uint64_t *size);
+    ghost_error_t ghost_machine_outerCacheSize(uint64_t *size);
     /**
      * @brief Get the cache line siye. 
      *
@@ -62,7 +62,7 @@ extern "C" {
      *
      * This information may be useful in situations where false sharing has to be avoided.
      */
-    ghost_error_t ghost_getSizeOfCacheLine(unsigned *size);
+    ghost_error_t ghost_machine_cacheLineSize(unsigned *size);
     /**
      * @brief Get the number of (physical) cores in the machine.
      *
@@ -71,7 +71,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getNumberOfCores(int *nCores, int numaNode);
+    ghost_error_t ghost_machine_nCores(int *nCores, int numaNode);
     /**
      * @brief Get the number of SMT threads per core in the machine.
      *
@@ -79,7 +79,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getSMTlevel(int *nLevels);
+    ghost_error_t ghost_machine_nSmt(int *nLevels);
     /**
      * @brief Get the number of available hardware threads (= physical cores times SMT level) 
      * or processing units in the machine.
@@ -89,7 +89,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getNumberOfPUs(int *nPUs, int numaNode);
+    ghost_error_t ghost_machine_nPus(int *nPUs, int numaNode);
     /**
      * @brief Get the number of NUMA nodes in the machine.
      *
@@ -97,14 +97,15 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_getNumberOfNumaNodes(int *nNodes);
-    ghost_error_t ghost_getNumaNode(hwloc_obj_t *node, int idx);
+    ghost_error_t ghost_machine_nNumaNodes(int *nNodes);
+    ghost_error_t ghost_machine_numaNode(hwloc_obj_t *node, int idx);
     /**
      * @brief Check whether machine is big endian.
      *
      * @return 1 if machine is big endian, 0 if machine is little endian.
      */
-    char ghost_machineIsBigEndian();
+    char ghost_machine_bigEndian();
+    ghost_error_t ghost_machine_string(char **str);
 
 #ifdef __cplusplus
 }

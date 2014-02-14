@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvmOptions)
+ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -28,15 +28,15 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    ghost_mnnz_t max_dues;
+    ghost_nnz_t max_dues;
     char *work = NULL;
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
 
-    int localopts = spmvmOptions;
+    int localopts = flags;
     localopts &= ~GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT;
 
-    int remoteopts = spmvmOptions;
+    int remoteopts = flags;
     remoteopts &= ~GHOST_SPMV_AXPBY;
     remoteopts &= ~GHOST_SPMV_APPLY_SHIFT;
     remoteopts |= GHOST_SPMV_AXPY;
@@ -44,7 +44,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     int me; 
     int i, from_PE, to_PE;
     int msgcount;
-    ghost_vidx_t c;
+    ghost_idx_t c;
 
 
     GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));

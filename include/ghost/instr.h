@@ -78,6 +78,7 @@ extern "C" {
      */
     void ghost_instr_setPrefix(char *prefix);
     
+    char *ghost_instr_getPrefix();
     /**
      * @brief Set the instrumentation suffix.
      *
@@ -87,6 +88,7 @@ extern "C" {
      */
     void ghost_instr_setSuffix(char *suffix);
 
+    char *ghost_instr_getSuffix();
 
 #ifdef __cplusplus
 }

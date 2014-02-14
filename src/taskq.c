@@ -165,7 +165,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         }
 
         hwloc_obj_t numaNode;
-        ghost_getNumaNode(&numaNode,curTask->LD);
+        ghost_machine_numaNode(&numaNode,curTask->LD);
 
         int availcores = 0;
         if (curTask->flags & GHOST_TASK_LD_STRICT) {
