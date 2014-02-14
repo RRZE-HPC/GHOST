@@ -399,7 +399,7 @@ ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t ali
     int ierr;
 
     if ((ierr = posix_memalign(mem, align, size)) != 0) {
-        ERROR_LOG("Error while allocating using posix_memalign: %s",strerror(ierr));
+        ERROR_LOG("Error while allocating %zu bytes using posix_memalign: %s",size,strerror(ierr));
         return GHOST_ERR_UNKNOWN;
     }
 
