@@ -563,15 +563,19 @@ ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t)
 
 char * ghost_modeName(ghost_spmv_flags_t flags) 
 {
-    if (flags & GHOST_SPMV_MODE_NOMPI)
-        return "non-MPI";
-    if (flags & GHOST_SPMV_MODE_VECTOR)
-        return "vector mode";
-    if (flags & GHOST_SPMV_MODE_OVERLAP)
-        return "naive overlap mode";
-    if (flags & GHOST_SPMV_MODE_TASK)
-        return "task mode";
-    return "invalid";
+    if (flags & GHOST_SPMV_MODE_NOMPI) {
+        return "Non-MPI";
+    }
+    if (flags & GHOST_SPMV_MODE_VECTOR) {
+        return "Vector mode";
+    }
+    if (flags & GHOST_SPMV_MODE_OVERLAP) {
+        return "Naïve overlap mode";
+    }
+    if (flags & GHOST_SPMV_MODE_TASK) {
+        return "Task mode";
+    }
+    return "Invalid";
 
 }
 

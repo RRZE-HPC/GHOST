@@ -488,7 +488,10 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
 
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-    GHOST_CALL_GOTO(ghost_context_setupCommunication(mat->context,fullCR->col),err,ret);
+
+    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+        GHOST_CALL_GOTO(ghost_context_setupCommunication(mat->context,fullCR->col),err,ret);
+    }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_STORE_SPLIT) { // split computation
 
@@ -622,212 +625,54 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t i;
     ghost_nnz_t j;
 
-    ghost_matfile_header_t header;
-    ghost_readMatFileHeader(matrixPath,&header);
+    ghost_sparsemat_fromFile_common(mat,matrixPath,&(CR(mat)->rpt));
+    mat->nEnts = mat->nnz;
 
-    if (header.version != 1) {
-        ERROR_LOG("Can not read version %d of binary CRS format!",header.version);
-        return GHOST_ERR_IO;
-    }
+    ghost_context_t *context = mat->context;
+    int nprocs = 1;
+    int me;
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
 
-    if (header.base != 0) {
-        ERROR_LOG("Can not read matrix with %d-based indices!",header.base);
-        return GHOST_ERR_IO;
-    }
 
-    if (!ghost_sparsemat_symmetryValid(header.symmetry)) {
-        ERROR_LOG("Symmetry is invalid! (%d)",header.symmetry);
-        return GHOST_ERR_IO;
-    }
-
-    if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
-        ERROR_LOG("Can not handle symmetry different to general at the moment!");
-        return GHOST_ERR_IO;
-    }
-
-    if (!ghost_datatypeValid(header.datatype)) {
-        ERROR_LOG("Datatype is invalid! (%d)",header.datatype);
-        return GHOST_ERR_IO;
-    }
-
-    mat->traits->symmetry = header.symmetry;
-    mat->ncols = (ghost_idx_t)header.ncols;
-
-    DEBUG_LOG(1,"CRS matrix has %"PRIDX" rows, %"PRIDX" cols and %"PRNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
-
-    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        ghost_sparsemat_permFromScotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
-    }
-
-    if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
-        mat->nrows = (ghost_idx_t)header.nrows;
-        mat->nEnts = (ghost_idx_t)header.nnz;
-        mat->nnz = mat->nEnts;
-
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(mat->nrows+1) * sizeof(ghost_nnz_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
-
-#pragma omp parallel for schedule(runtime)
-        for (i = 0; i < mat->nrows+1; i++) {
-            CR(mat)->rpt[i] = 0;
-        }
-
-        GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1, mat->invRowPerm),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
-        for (i = 0; i < mat->nrows; i++) {
-            for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                CR(mat)->col[j] = 0;
-                memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
-            }
+    for (i = 0; i < mat->nrows; i++) {
+        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+            CR(mat)->col[j] = 0;
+            memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
         }
+    }
 
-        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
-        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nrows, mat->invRowPerm),err,ret);
+    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
+    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
 
-
-    } else {
-#ifdef GHOST_HAVE_MPI
-        DEBUG_LOG(1,"Reading in a distributed context");
-        DEBUG_LOG(1,"Creating distributed context with parallel MPI-IO");
-
-        ghost_context_t *context = mat->context;
-        int nprocs = 1;
-        int me;
-        GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-        GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-
-        if (me == 0) {
-            if (context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
-                ((ghost_crs_t *)(mat->data))->rpt = context->rpt;
-            } else { // read rpt and compute first entry and number of entries
-                GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(header.nrows+1) * sizeof(ghost_nnz_t), GHOST_DATA_ALIGNMENT),err,ret);
-#pragma omp parallel for schedule(runtime) 
-                for (i = 0; i < header.nrows+1; i++) {
-                    CR(mat)->rpt[i] = 0;
-                }
-                GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
-                context->lfEnt[0] = 0;
-
-                for (i=1; i<nprocs; i++){
-                    context->lfEnt[i] = CR(mat)->rpt[context->lfRow[i]];
-                }
-                for (i=0; i<nprocs-1; i++){
-                    context->lnEnts[i] = context->lfEnt[i+1] - context->lfEnt[i] ;
-                }
-
-                context->lnEnts[nprocs-1] = header.nnz - context->lfEnt[nprocs-1];
-            }
-        }
-        MPI_CALL_GOTO(MPI_Bcast(context->lfEnt,  nprocs, ghost_mpi_dt_idx, 0, context->mpicomm),err,ret);
-        MPI_CALL_GOTO(MPI_Bcast(context->lnEnts, nprocs, ghost_mpi_dt_idx, 0, context->mpicomm),err,ret);
-
-        mat->nnz = context->lnEnts[me];
-        mat->nEnts = mat->nnz;
-        mat->nrows = context->lnrows[me];
-
-        DEBUG_LOG(1,"Mallocing space for %"PRIDX" rows",context->lnrows[me]);
-
-        if (me != 0) {
-            GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->rpt),(context->lnrows[me]+1)*sizeof(ghost_idx_t),GHOST_DATA_ALIGNMENT),err,ret);
-#pragma omp parallel for schedule(runtime)
-            for (i = 0; i < context->lnrows[me]+1; i++) {
-                CR(mat)->rpt[i] = 0;
-            }
-        }
-
-        MPI_Request req[nprocs];
-        MPI_Status stat[nprocs];
-        int msgcount = 0;
-
-        for (i=0;i<nprocs;i++) 
-            req[i] = MPI_REQUEST_NULL;
-
-        if (me != 0) {
-            MPI_CALL_GOTO(MPI_Irecv(CR(mat)->rpt,context->lnrows[me]+1,ghost_mpi_dt_idx,0,me,context->mpicomm,&req[msgcount]),err,ret);
-            msgcount++;
-        } else {
-            for (i=1;i<nprocs;i++) {
-                MPI_CALL_GOTO(MPI_Isend(&CR(mat)->rpt[context->lfRow[i]],context->lnrows[i]+1,ghost_mpi_dt_idx,i,i,context->mpicomm,&req[msgcount]),err,ret);
-                msgcount++;
-            }
-        }
-        MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
+    memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
 
 
-        DEBUG_LOG(1,"Adjusting row pointers");
-        for (i=0;i<context->lnrows[me]+1;i++) {
-            CR(mat)->rpt[i] -= context->lfEnt[me];
-        }
+    mat->lowerBandwidth = 0;
+    mat->upperBandwidth = 0;
 
-        CR(mat)->rpt[context->lnrows[me]] = context->lnEnts[me];
-
-        INFO_LOG("local rows          = %"PRIDX,context->lnrows[me]);
-        INFO_LOG("local rows (offset) = %"PRIDX,context->lfRow[me]);
-        INFO_LOG("local entries          = %"PRNNZ,context->lnEnts[me]);
-        INFO_LOG("local entries (offset) = %"PRNNZ,context->lfEnt[me]);
-
-        mat->nrows = context->lnrows[me];
-        mat->nEnts = context->lnEnts[me];
-
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
-
-#pragma omp parallel for schedule(runtime) private (j)
-        for (i = 0; i < mat->nrows; i++) {
-            for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                CR(mat)->col[j] = 0;
-                memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
-            }
-        }
-
-        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
-        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
-
+    for (i=0;i<context->lnrows[me];i++) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
             // sort rows by ascending column indices
-            for (i=0;i<context->lnrows[me];i++) {
-                ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);
-            }
+            ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);
+            ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);
         }
-        
-        memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->nrows-1));
-
-        ghost_idx_t col, globrow;
-
-        mat->lowerBandwidth = 0;
-        mat->upperBandwidth = 0;
-        for (i = 0; i < mat->nrows; i++) {
-            globrow = mat->context->lfRow[me]+i;
-            for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                col = CR(mat)->col[j];
-                if (col < globrow) {
-                    mat->lowerBandwidth = MAX(mat->lowerBandwidth, globrow-col);
-                    mat->nzDist[mat->context->gnrows-1-(globrow-col)]++;
-                } else if (col > globrow) {
-                    mat->upperBandwidth = MAX(mat->upperBandwidth, col-globrow);
-                    mat->nzDist[mat->context->gnrows-1+col-globrow]++;
-                } else {
-                    mat->nzDist[mat->context->gnrows-1]++;
-                }
-
-            }
-        }
-#ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-#endif
-        mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
-
-
-        DEBUG_LOG(1,"Split matrix");
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
-#else
-        ERROR_LOG("Trying to create a distributed context without MPI!");
-        return GHOST_ERR_INVALID_ARG;
-#endif
     }
+
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+#endif
+    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+
+
+    DEBUG_LOG(1,"Split matrix");
+    GHOST_CALL_GOTO(mat->split(mat),err,ret);
     DEBUG_LOG(1,"Matrix read in successfully");
 
     goto out;

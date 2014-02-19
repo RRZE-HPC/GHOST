@@ -344,9 +344,19 @@ extern "C" {
     ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
     char * ghost_sparsemat_symmetryString(int symmetry);
     char ghost_sparsemat_symmetryValid(int symmetry);
-    ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, char *matrixPath, ghost_sparsemat_src_t srcType);
+    ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
     ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope);
     ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride);
+    /**
+     * @brief Common function for matrix creation from a file.
+     *
+     * @param mat
+     * @param matrixPath
+     *
+     * @return 
+     */
+    ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
+    ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
 
 #ifdef __cplusplus
 } extern "C"

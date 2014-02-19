@@ -37,7 +37,12 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishlist,nranks*sizeof(ghost_idx_t *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->duelist,nranks*sizeof(ghost_idx_t *)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_nnz_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_nnz_t)),err,ret); 
+
     for (i=0; i<nranks; i++){
+        (*context)->wishes[i] = 0;
+        (*context)->dues[i] = 0;
         (*context)->wishlist[i] = NULL;
         (*context)->duelist[i] = NULL;
     }
@@ -514,8 +519,6 @@ ghost_error_t ghost_context_setupCommunication(ghost_context_t *ctx, ghost_idx_t
      */
 
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->wishes,nprocs*sizeof(ghost_nnz_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->dues,nprocs*sizeof(ghost_nnz_t)),err,ret); 
 
     for (i=0; i<nprocs; i++) {
         for (j=0; j<max_loc_elements; j++) 

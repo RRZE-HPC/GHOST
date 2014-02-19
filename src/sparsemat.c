@@ -108,6 +108,174 @@ ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSiz
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
+{
+    ghost_idx_t c, col;
+
+    for (c=0; c<rowlen; c++) {
+        col = cols[c*stride];
+        if (col < row) {
+            mat->lowerBandwidth = MAX(mat->lowerBandwidth, row-col);
+            mat->nzDist[mat->context->gnrows-1-(row-col)]++;
+        } else if (col > row) {
+            mat->upperBandwidth = MAX(mat->upperBandwidth, col-row);
+            mat->nzDist[mat->context->gnrows-1+col-row]++;
+        } else {
+            mat->nzDist[mat->context->gnrows-1]++;
+        }
+    }
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt) 
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_idx_t i;
+    ghost_matfile_header_t header;
+    MPI_Request *req = NULL;
+    MPI_Status *stat = NULL;
+
+    ghost_readMatFileHeader(matrixPath,&header);
+    int nprocs = 1;
+    int me;
+    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
+
+    if (header.version != 1) {
+        ERROR_LOG("Can not read version %d of binary CRS format!",header.version);
+        return GHOST_ERR_IO;
+    }
+
+    if (header.base != 0) {
+        ERROR_LOG("Can not read matrix with %d-based indices!",header.base);
+        return GHOST_ERR_IO;
+    }
+
+    if (!ghost_sparsemat_symmetryValid(header.symmetry)) {
+        ERROR_LOG("Symmetry is invalid! (%d)",header.symmetry);
+        return GHOST_ERR_IO;
+    }
+
+    if (header.symmetry != GHOST_BINCRS_SYMM_GENERAL) {
+        ERROR_LOG("Can not handle symmetry different to general at the moment!");
+        return GHOST_ERR_IO;
+    }
+
+    if (!ghost_datatypeValid(header.datatype)) {
+        ERROR_LOG("Datatype is invalid! (%d)",header.datatype);
+        return GHOST_ERR_IO;
+    }
+
+    mat->traits->symmetry = header.symmetry;
+    mat->ncols = (ghost_idx_t)header.ncols;
+
+    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+        if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+            ghost_sparsemat_permFromScotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
+        } else {
+            ghost_sparsemat_permFromSorting(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,SELL(mat)->scope);
+        }
+    }
+
+    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
+        if (me == 0) {
+            if (mat->context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
+                *rpt = mat->context->rpt;
+            } else { // read rpt and compute first entry and number of entries
+                GHOST_CALL_GOTO(ghost_malloc_align((void **)rpt,(header.nrows+1) * sizeof(ghost_nnz_t), GHOST_DATA_ALIGNMENT),err,ret);
+#pragma omp parallel for schedule(runtime) 
+                for (i = 0; i < header.nrows+1; i++) {
+                    (*rpt)[i] = 0;
+                }
+                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
+                mat->context->lfEnt[0] = 0;
+
+                for (i=1; i<nprocs; i++){
+                    mat->context->lfEnt[i] = (*rpt)[mat->context->lfRow[i]];
+                }
+                for (i=0; i<nprocs-1; i++){
+                    mat->context->lnEnts[i] = mat->context->lfEnt[i+1] - mat->context->lfEnt[i] ;
+                }
+
+                mat->context->lnEnts[nprocs-1] = header.nnz - mat->context->lfEnt[nprocs-1];
+            }
+        }
+#ifdef GHOST_HAVE_MPI
+        MPI_CALL_GOTO(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_idx, 0, mat->context->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(mat->context->lnEnts, nprocs, ghost_mpi_dt_idx, 0, mat->context->mpicomm),err,ret);
+
+        if (me != 0) {
+            GHOST_CALL_GOTO(ghost_malloc_align((void **)rpt,(mat->context->lnrows[me]+1)*sizeof(ghost_idx_t),GHOST_DATA_ALIGNMENT),err,ret);
+#pragma omp parallel for schedule(runtime)
+            for (i = 0; i < mat->context->lnrows[me]+1; i++) {
+                (*rpt)[i] = 0;
+            }
+        }
+
+        int msgcount = 0;
+
+        for (i=0;i<nprocs;i++) 
+            req[i] = MPI_REQUEST_NULL;
+
+        if (me != 0) {
+            MPI_CALL_GOTO(MPI_Irecv(*rpt,mat->context->lnrows[me]+1,ghost_mpi_dt_idx,0,me,mat->context->mpicomm,&req[msgcount]),err,ret);
+            msgcount++;
+        } else {
+            for (i=1;i<nprocs;i++) {
+                MPI_CALL_GOTO(MPI_Isend(&(*rpt)[mat->context->lfRow[i]],mat->context->lnrows[i]+1,ghost_mpi_dt_idx,i,i,mat->context->mpicomm,&req[msgcount]),err,ret);
+                msgcount++;
+            }
+        }
+        MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
+
+        for (i=0;i<mat->context->lnrows[me]+1;i++) {
+            (*rpt)[i] -= mat->context->lfEnt[me];
+        }
+
+        (*rpt)[mat->context->lnrows[me]] = mat->context->lnEnts[me];
+#endif
+    }
+
+    else if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
+        GHOST_CALL_GOTO(ghost_malloc_align((void **)rpt,(header.nrows+1) * sizeof(ghost_nnz_t), GHOST_DATA_ALIGNMENT),err,ret);
+#pragma omp parallel for schedule(runtime) 
+        for (i = 0; i < header.nrows+1; i++) {
+            (*rpt)[i] = 0;
+        }
+        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
+        for (i=0; i<nprocs; i++){
+            mat->context->lfEnt[i] = 0;
+            mat->context->lfRow[i] = 0;
+        }
+        for (i=0; i<nprocs; i++){
+            mat->context->lnEnts[i] = header.nnz;
+            mat->context->lnrows[i] = header.nrows;
+        }
+    }
+
+
+
+    DEBUG_LOG(1,"local rows          = %"PRIDX,mat->context->lnrows[me]);
+    DEBUG_LOG(1,"local rows (offset) = %"PRIDX,mat->context->lfRow[me]);
+    DEBUG_LOG(1,"local entries          = %"PRNNZ,mat->context->lnEnts[me]);
+    DEBUG_LOG(1,"local entries (offset) = %"PRNNZ,mat->context->lfEnt[me]);
+
+    mat->nrows = mat->context->lnrows[me];
+    mat->nnz = mat->context->lnEnts[me];
+
+    goto out;
+
+err:
+
+out:
+
+
+    return ret;
+}
+
 static int compareNZEPerRow( const void* a, const void* b ) 
 {
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
@@ -187,7 +355,6 @@ out:
 
 ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
 {
-    INFO_LOG("Reducing matrix bandwidth");
     ghost_error_t ret = GHOST_SUCCESS;
     if (mat->rowPerm || mat->invRowPerm) {
         WARNING_LOG("Existing permutations will be overwritten!");
@@ -213,19 +380,6 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
-
-    /*ghost_idx_t target_rows = (ghost_idx_t)(mat->context->gnrows/nprocs);
-
-      mat->context->lfRow[0] = 0;
-
-      for (i=1; i<nprocs; i++){
-      mat->context->lfRow[i] = mat->context->lfRow[i-1]+target_rows;
-      }
-      for (i=0; i<nprocs-1; i++){
-      mat->context->lnrows[i] = mat->context->lfRow[i+1] - mat->context->lfRow[i] ;
-      }
-      mat->context->lnrows[nprocs-1] = mat->context->gnrows - mat->context->lfRow[nprocs-1] ;
-     */
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
     GHOST_CALL_GOTO(ghost_readRpt(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
 
@@ -235,19 +389,10 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,NULL),err,ret);
 
-    WARNING_LOG("nnz: %d",nnz); 
     for (i=1;i<mat->context->lnrows[me]+1;i++) {
         rpt[i] -= rpt[0];
-        WARNING_LOG("rpt[%d]: %d",i,rpt[i]); 
     }
     rpt[0] = 0;
-
-    ghost_idx_t j;
-    for (i=0;i<mat->context->lnrows[me];i++) {
-        for (j=rpt[i];j<rpt[i+1];j++) {
-            WARNING_LOG("col[%d]: %d",j,col[j]);
-        }
-    }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
@@ -287,9 +432,6 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     // assemble inverse permutation
     for (i=0; i<mat->context->gnrows; i++) {
         mat->invRowPerm[mat->rowPerm[i]] = i;
-    }
-    for (i=0; i<mat->context->gnrows; i++) {
-        INFO_LOG("perm[%d] = %d",i,mat->rowPerm[i]);
     }
 
     goto out;

@@ -104,7 +104,6 @@ ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t 
                 } else {
                     col[e++] = col_raw[j];
                 }
-                WARNING_LOG("col[%d]: %d",e-1,col[e-1]);
 
             }
         }
@@ -421,7 +420,6 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
         }
         rpt[0] = 0;
         for( i = 1; i < nRows; i++ ) {
-            INFO_LOG("rpt[%d] is raw[%d]-raw[%d]",i,invPerm[i-1]+1,invPerm[i-1]);
             rpt[i] = rpt[i-1]+(rpt_raw[invPerm[i-1]+1]-rpt_raw[invPerm[i-1]]);
         }
 
