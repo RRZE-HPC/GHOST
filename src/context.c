@@ -8,12 +8,8 @@
 #include "ghost/io.h"
 #include "ghost/log.h"
 
-#ifdef GHOST_HAVE_PTSCOTCH
-#include <ptscotch.h>
-#endif
 
-
-ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
+ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight) 
 {
     if (weight < 0) {
         ERROR_LOG("Negative weight");
@@ -212,6 +208,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                 ret = GHOST_ERR_INVALID_ARG;
                 goto err;
             }
+            WARNING_LOG("Will not take into account possible matrix re-ordering!");
 
 
             if (me == 0) {
@@ -220,10 +217,10 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                 for( row = 0; row < (*context)->gnrows+1; row++ ) {
                     (*context)->rpt[row] = 0;
                 }
-                if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
+                if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
                     //GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
                     GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
-                } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
+                } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
                         ERROR_LOG("Object pointers are of different size than function pointers. That probably means that you are not running on a POSIX-compatible OS.");

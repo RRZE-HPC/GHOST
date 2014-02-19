@@ -655,6 +655,10 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 
     DEBUG_LOG(1,"CRS matrix has %"PRIDX" rows, %"PRIDX" cols and %"PRNNZ" nonzeros",mat->nrows,mat->ncols,mat->nEnts);
 
+    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+        ghost_sparsemat_permFromScotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
+    }
+
     if (mat->context->flags & GHOST_CONTEXT_REDUNDANT) {
         mat->nrows = (ghost_idx_t)header.nrows;
         mat->nEnts = (ghost_idx_t)header.nnz;
@@ -781,7 +785,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
         GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
 
-        if (mat->rowPerm || mat->invRowPerm) {
+        if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
             // sort rows by ascending column indices
             for (i=0;i<context->lnrows[me];i++) {
                 ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);

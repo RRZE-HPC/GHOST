@@ -382,6 +382,8 @@ static void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
 ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, ghost_spmv_flags_t flags)
 {
 
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#if 0
     DEBUG_LOG(1,"Computing reference solution");
     int me;
     GHOST_CALL_RETURN(ghost_getRank(nodeLHS->context->mpicomm,&me));
@@ -460,6 +462,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
     DEBUG_LOG(1,"Reference solution has been computed and scattered successfully");
 
     return GHOST_SUCCESS;
+#endif
 }
 
 void ghost_spmv_selectMode(ghost_context_t * context, int *flags)

@@ -112,11 +112,10 @@ template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat
 
     stringstream buffer;
 
-    buffer << "---" << endl;
     for (i=0; i<mat->nrows; i++) {
         if (dense) {
             for (col=0, j=CR(mat)->rpt[i]; col<mat->ncols; col++) {
-                if (j<CR(mat)->rpt[i+1] && CR(mat)->col[j] == col) { // there is an entry at col
+                if (j<CR(mat)->rpt[i+1] && (CR(mat)->col[j] == col)) { // there is an entry at col
                     buffer << val[j] << "\t";
                     j++;
                 } else {
@@ -126,7 +125,7 @@ template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat
             }
         } else {
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTECOLIDX) {
+                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_COLS) {
                     if (CR(mat)->col[j] < mat->nrows) {
                         buffer << val[j] << " (o " << mat->invRowPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
                     } else {
@@ -139,9 +138,10 @@ template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat
 
             }
         }
-        buffer << endl;
+        if (i<mat->nrows-1) {
+            buffer << endl;
+        }
     }
-    buffer << "---" << endl;
 
     return buffer.str().c_str();
 }

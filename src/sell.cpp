@@ -308,7 +308,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
         }
         SELL(mat)->T = ((int *)(mat->traits->aux))[2];
     }*/
-    if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
+    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
@@ -372,7 +372,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
 
     for (i=0; i<mat->nrowsPadded; i++) {
         if (i<crsmat->nrows) {
-            if (flags & GHOST_SPARSEMAT_SORTED)
+            if (flags & GHOST_SPARSEMAT_PERMUTE)
                 SELL(mat)->rowLen[i] = rowSort[i].nEntsInRow;
             else
                 SELL(mat)->rowLen[i] = cr->rpt[i+1]-cr->rpt[i];
@@ -472,13 +472,13 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
                 ghost_idx_t row = c*SELL(mat)->chunkHeight+i;
 
                 if (j<SELL(mat)->rowLen[row]) {
-                    if (flags & GHOST_SPARSEMAT_SORTED) {
+                    if (flags & GHOST_SPARSEMAT_PERMUTE) {
                         if (mat->invRowPerm == NULL) {
                             ERROR_LOG("The matris is sorted but the permutation vector is NULL");
                             return GHOST_ERR_INVALID_ARG;
                         }
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(mat->invRowPerm)[row]]+j];
-                        if (flags & GHOST_SPARSEMAT_PERMUTECOLIDX)
+                        if (flags & GHOST_SPARSEMAT_PERMUTE_COLS)
                             SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (mat->rowPerm)[cr->col[cr->rpt[(mat->invRowPerm)[row]]+j]];
                         else
                             SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(mat->invRowPerm)[row]]+j];
@@ -524,31 +524,43 @@ out:
 
 template <typename m_t> static const char * SELL_stringify(ghost_sparsemat_t *mat, int dense)
 {
-    ghost_idx_t chunk,i,j,row=0;
+    ghost_idx_t chunk,i,j,row=0,col;
     m_t *val = (m_t *)SELL(mat)->val;
 
     stringstream buffer;
 
-    buffer << "---" << endl;
     for (chunk = 0; chunk < mat->nrowsPadded/SELL(mat)->chunkHeight; chunk++) {
         for (i=0; i<SELL(mat)->chunkHeight && row<mat->nrows; i++, row++) {
-            for (j=0; j<(dense?mat->ncols:SELL(mat)->chunkLen[chunk]); j++) {
-                ghost_nnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
-                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTECOLIDX) {
-                    if (SELL(mat)->col[idx] < mat->nrows) {
-                        buffer << val[idx] << " (o " << mat->invRowPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+            ghost_idx_t rowOffs = SELL(mat)->chunkStart[chunk]+i;
+            if (dense) {
+                for (col=0, j=0; col<mat->ncols; col++) {
+                    if ((j < SELL(mat)->rowLen[row]) && (SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col)) { // there is an entry at col
+                        buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
+                        j++;
                     } else {
-                        buffer << val[idx] << " (p " << SELL(mat)->col[idx] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                        buffer << ".\t";
+                    }
+                }
+            } else {
+                for (j=0; j<(dense?mat->ncols:SELL(mat)->chunkLen[chunk]); j++) {
+                    ghost_nnz_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
+                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_COLS) {
+                        if (SELL(mat)->col[idx] < mat->nrows) {
+                            buffer << val[idx] << " (o " << mat->invRowPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                        } else {
+                            buffer << val[idx] << " (p " << SELL(mat)->col[idx] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                        }
+
+                    } else {
+                        buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
                     }
 
-                } else {
-                    buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
                 }
-
             }
-            buffer << endl;
+            if (i<mat->nrows-1) {
+                buffer << endl;
+            }
         }
-        buffer << "---" << endl;
     }
 
     return buffer.str().c_str();

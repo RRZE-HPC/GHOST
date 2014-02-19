@@ -42,6 +42,12 @@ typedef enum {
     GHOST_SPMV_REDUCE = 512
 } ghost_spmv_flags_t;
 
+typedef struct 
+{
+    ghost_idx_t row, nEntsInRow;
+} 
+ghost_sorting_t;
+
 /**
  * @brief SpMV solver which do combined computation.
  */
@@ -111,27 +117,26 @@ typedef enum {
     /**
      * @brief If the matrix rows have been re-ordered, also permute the column indices accordingly.
      */
-    GHOST_SPARSEMAT_PERMUTECOLIDX = 4,
+    GHOST_SPARSEMAT_PERMUTE_COLS = 4,
     /**
      * @brief The matrix rows should be re-ordered in a certain way (defined in the traits). 
      */
-    GHOST_SPARSEMAT_SORTED        = 32,
+    GHOST_SPARSEMAT_PERMUTE       = 32,
     /**
      * @brief If the matrix columns have been re-ordered, care for ascending column indices in wrt. memory location. 
      */
-    GHOST_SPARSEMAT_ASC_COLIDX    = 64,
+    GHOST_SPARSEMAT_SORT_COLS    = 64,
     /**
      * @brief Store the local and remote part of the matrix.
      */
     GHOST_SPARSEMAT_STORE_SPLIT = 128,
-    /**
-     * @brief Store the full matrix (local and remote combined).
+    /*permFromScotchtore the full matrix (local and remote combined).
      */
     GHOST_SPARSEMAT_STORE_FULL = 256,
     /**
      * @brief Reduce the matrix bandwidth with PT-Scotch
      */
-    GHOST_SPARSEMAT_REDUCE_BANDWIDTH = 512
+    GHOST_SPARSEMAT_SCOTCHIFY = 512
 } ghost_sparsemat_flags_t;
 
 
@@ -339,7 +344,8 @@ extern "C" {
     ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
     char * ghost_sparsemat_symmetryString(int symmetry);
     char ghost_sparsemat_symmetryValid(int symmetry);
-    ghost_error_t ghost_sparsemat_createPermutation(ghost_sparsemat_t *mat, char *matrixPath);
+    ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, char *matrixPath, ghost_sparsemat_src_t srcType);
+    ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope);
     ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride);
 
 #ifdef __cplusplus

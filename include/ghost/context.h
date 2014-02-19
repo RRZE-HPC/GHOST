@@ -36,12 +36,11 @@ typedef enum {
     /**
      * @brief Obtain matrix row information from a provided matrix file.
      */
-    GHOST_CONTEXT_ROWS_FROM_FILE = 16,
+    //GHOST_CONTEXT_ROWS_FROM_FILE = 16,
     /**
      * @brief Obtain matrix row information from a provided matrix function.
      */
-    GHOST_CONTEXT_ROWS_FROM_FUNC = 32,
-    GHOST_CONTEXT_PERMUTED = 64
+    //GHOST_CONTEXT_ROWS_FROM_FUNC = 32,
 } ghost_context_flags_t;
 
 struct ghost_context_t
@@ -117,6 +116,11 @@ struct ghost_context_t
 };
 
 
+typedef enum {
+    GHOST_SPARSEMAT_SRC_FILE,
+    GHOST_SPARSEMAT_SRC_FUNC
+} ghost_sparsemat_src_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,7 +153,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error_t ghost_context_create(ghost_context_t **ctx, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t flags, void *matrixSource, ghost_mpi_comm_t comm, double weight); 
+    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
     
     /**
      * @ingroup stringification

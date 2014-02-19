@@ -54,11 +54,6 @@ typedef struct
 }
 ghost_sell_t;
 
-typedef struct 
-{
-    ghost_idx_t row, nEntsInRow;
-} 
-ghost_sorting_t;
 #define SELL(mat) ((ghost_sell_t *)(mat->data))
 
 #define SELL_CUDA_THREADSPERBLOCK 256
