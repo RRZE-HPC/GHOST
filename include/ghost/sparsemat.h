@@ -127,7 +127,11 @@ typedef enum {
     /**
      * @brief Store the full matrix (local and remote combined).
      */
-    GHOST_SPARSEMAT_STORE_FULL = 256
+    GHOST_SPARSEMAT_STORE_FULL = 256,
+    /**
+     * @brief Reduce the matrix bandwidth with PT-Scotch
+     */
+    GHOST_SPARSEMAT_REDUCE_BANDWIDTH = 512
 } ghost_sparsemat_flags_t;
 
 
@@ -332,6 +336,8 @@ extern "C" {
     ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
     char * ghost_sparsemat_symmetryString(int symmetry);
     char ghost_sparsemat_symmetryValid(int symmetry);
+    ghost_error_t ghost_sparsemat_createPermutation(ghost_sparsemat_t *mat, char *matrixPath);
+    ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride);
 
 #ifdef __cplusplus
 } extern "C"

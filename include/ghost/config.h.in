@@ -2,6 +2,7 @@
 #define __GHOST_CONFIG_H__
 #cmakedefine GHOST_HAVE_MPI
 #cmakedefine GHOST_HAVE_OPENMP
+#cmakedefine GHOST_HAVE_PTSCOTCH
 #cmakedefine GHOST_HAVE_CUDA
 #cmakedefine GHOST_HAVE_CUDA_PINNEDMEM
 #cmakedefine GHOST_HAVE_OPENCL

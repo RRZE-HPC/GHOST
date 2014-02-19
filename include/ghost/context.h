@@ -40,17 +40,30 @@ typedef enum {
     /**
      * @brief Obtain matrix row information from a provided matrix function.
      */
-    GHOST_CONTEXT_ROWS_FROM_FUNC = 32
+    GHOST_CONTEXT_ROWS_FROM_FUNC = 32,
+    GHOST_CONTEXT_PERMUTED = 64
 } ghost_context_flags_t;
 
 struct ghost_context_t
 {
     //ghost_spmvsolver_t *spmvsolvers;
 
-    // if the context is distributed by nnz, the row pointers are being read
-    // at context creation in order to create the distribution. once the matrix
-    // is being created, the row pointers are distributed
+    /**
+     * @brief Row pointers
+     * 
+     * if the context is distributed by nnz, the row pointers are being read
+     * at context creation in order to create the distribution. once the matrix
+     * is being created, the row pointers are distributed
+     */
     ghost_idx_t *rpt;
+
+    /**
+     * @brief Column indices
+     *
+     * If the context is configured to have a permutation, the column indices of the matrix
+     * may be read at context creation.
+     */
+    //ghost_idx_t *col;
 
    // ghost_comm_t *communicator;
     ghost_idx_t gnrows;

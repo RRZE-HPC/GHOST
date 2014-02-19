@@ -865,7 +865,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     if (me == 0) {
         if (context->flags & GHOST_CONTEXT_DIST_ROWS) { // lnents and lfent have to be filled!
             GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,sizeof(ghost_nnz_t)*(context->gnrows+1)),err,ret);
-            GHOST_CALL_GOTO(ghost_readRpt(rpt,matrixPath,0,context->gnrows+1),err,ret); 
+            GHOST_CALL_GOTO(ghost_readRpt(rpt,matrixPath,0,context->gnrows+1,mat->context->invRowPerm),err,ret); 
 
             /* DEBUG_LOG(1,"Adjust lfrow and lnrows for each process according to the SELL chunk height of %"PRIDX,SELL(mat)->chunkHeight);
                for (proc=0; proc<nprocs; proc++) {
@@ -1058,8 +1058,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
       char *tmpval = (char *)ghost_malloc(SELL(mat)->maxRowLen*SELL(mat)->chunkHeight*mat->traits->elSize);*/
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->traits->elSize),err,ret);
-    GHOST_CALL_GOTO(ghost_readCol(tmpcol, matrixPath, mat->context->lfEnt[me], mat->nnz),err,ret);
-    GHOST_CALL_GOTO(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfEnt[me], mat->nnz),err,ret);
+    GHOST_CALL_GOTO(ghost_readCol(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, NULL, NULL),err,ret);
+    GHOST_CALL_GOTO(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, NULL),err,ret);
 
     INFO_LOG("%"PRIDX" rows, %"PRIDX" chunks %"PRIDX" chunkheight",mat->nrows,nChunks,SELL(mat)->chunkHeight);
     ghost_idx_t row = 0;

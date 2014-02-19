@@ -8,6 +8,10 @@
 #include "ghost/io.h"
 #include "ghost/log.h"
 
+#ifdef GHOST_HAVE_PTSCOTCH
+#include <ptscotch.h>
+#endif
+
 
 ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_mpi_comm_t comm, double weight) 
 {
@@ -100,6 +104,107 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
         (*context)->halo_elements = -1;
 
+        if ((*context)->flags & GHOST_CONTEXT_PERMUTED) {
+            INFO_LOG("Reducing matrix bandwidth");
+            ghost_error_t ret = GHOST_SUCCESS;
+            if ((*context)->rowPerm || (*context)->invRowPerm) {
+                WARNING_LOG("Existing permutations will be overwritten!");
+            }
+
+            char *matrixPath = (char *)matrixSource;
+            ghost_idx_t *rpt = NULL, *col = NULL, i;
+            int me, nprocs;
+            
+            ghost_matfile_header_t header;
+            ghost_readMatFileHeader(matrixPath,&header);
+            MPI_Request *req = NULL;
+            MPI_Status *stat = NULL;
+
+            GHOST_CALL_GOTO(ghost_getRank((*context)->mpicomm,&me),err,ret);
+            GHOST_CALL_GOTO(ghost_getNumberOfRanks((*context)->mpicomm,&nprocs),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
+                
+            ghost_idx_t target_rows = (ghost_idx_t)((*context)->gnrows/nranks);
+
+            (*context)->lfRow[0] = 0;
+
+            for (i=1; i<nranks; i++){
+                (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows;
+            }
+            for (i=0; i<nranks-1; i++){
+                (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
+            }
+            (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
+                    
+            GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
+            GHOST_CALL_GOTO(ghost_readRpt(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
+
+
+            ghost_nnz_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
+                
+            GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
+            GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me], NULL,NULL),err,ret);
+            
+            WARNING_LOG("nnz: %d",nnz); 
+            for (i=1;i<(*context)->lnrows[me]+1;i++) {
+                rpt[i] -= rpt[0];
+                WARNING_LOG("rpt[%d]: %d",i,rpt[i]); 
+            }
+            rpt[0] = 0;
+
+            ghost_idx_t j;
+            for (i=0;i<(*context)->lnrows[me];i++) {
+                for (j=rpt[i];j<rpt[i+1];j++) {
+                    WARNING_LOG("col[%d]: %d",j,col[j]);
+                }
+            }
+            
+            GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->invRowPerm,sizeof(ghost_idx_t)*(*context)->gnrows),err,ret);
+            memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
+            memset((*context)->rowPerm,0,sizeof(ghost_idx_t)*(*context)->gnrows);
+            
+            SCOTCH_Dgraph * dgraph = SCOTCH_dgraphAlloc();
+            if (!dgraph) {
+                ERROR_LOG("Could not alloc SCOTCH graph");
+                ret = GHOST_ERR_SCOTCH;
+                goto err;
+            }
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphInit(dgraph,(*context)->mpicomm),err,ret);
+            SCOTCH_Strat * strat = SCOTCH_stratAlloc();
+            if (!strat) {
+                ERROR_LOG("Could not alloc SCOTCH strat");
+                ret = GHOST_ERR_SCOTCH;
+                goto err;
+            }
+            SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
+            SCOTCH_Dordering *dorder = SCOTCH_dorderAlloc();
+            if (!dorder) {
+                ERROR_LOG("Could not alloc SCOTCH order");
+                ret = GHOST_ERR_SCOTCH;
+                goto err;
+            }
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (*context)->lnrows[me], (*context)->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
+            SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,(*context)->rowPerm+(*context)->lfRow[me]),err,ret);
+
+            // combine permutation vectors
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,(*context)->rowPerm,(*context)->gnrows,ghost_mpi_dt_idx,MPI_MAX,(*context)->mpicomm),err,ret);
+
+            // assemble inverse permutation
+            for (i=0; i<(*context)->gnrows; i++) {
+                (*context)->invRowPerm[(*context)->rowPerm[i]] = i;
+            }
+            for (i=0; i<(*context)->gnrows; i++) {
+                INFO_LOG("perm[%d] = %d",i,(*context)->rowPerm[i]);
+            }
+        }
+                    
+
 
         if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
@@ -118,7 +223,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                     (*context)->rpt[row] = 0;
                 }
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
-                    GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1),err,ret);
+                    GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,(*context)->invRowPerm),err,ret);
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {

@@ -23,6 +23,7 @@ typedef enum {
     GHOST_ERR_CUBLAS,
     GHOST_ERR_CURAND,
     GHOST_ERR_HWLOC,
+    GHOST_ERR_SCOTCH,
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_NOT_IMPLEMENTED,
     GHOST_ERR_IO
@@ -170,6 +171,29 @@ typedef enum {
     if (err != CURAND_STATUS_SUCCESS) {\
         ERROR_LOG("CURAND Error: %d",err);\
         __err = GHOST_ERR_CURAND;\
+    }\
+}\
+
+#define SCOTCH_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    SCOTCH_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define SCOTCH_CALL_GOTO(call,label,__err) {\
+    SCOTCH_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define SCOTCH_CALL(call,__err) {\
+    int err = call;\
+    if (err) {\
+        ERROR_LOG("SCOTCH Error: %d",err);\
+        __err = GHOST_ERR_SCOTCH;\
     }\
 }\
 

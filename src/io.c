@@ -37,70 +37,138 @@ void (*ghost_castArray_funcs[4][4]) (void *, void *, int) =
     {&zs_ghost_castArray,&zd_ghost_castArray,&zc_ghost_castArray,&zz_ghost_castArray}};
 
 
-ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsEnts, ghost_nnz_t nEnts, FILE *filed)
+ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *perm, ghost_idx_t *invPerm, FILE *filed)
 {
     ghost_matfile_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
-    ghost_nnz_t i;
+    ghost_nnz_t i,j,e;
 
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
     GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
-
-    DEBUG_LOG(1,"Reading array with column indices");
-    offs = GHOST_BINCRS_SIZE_HEADER+
-        GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
-        GHOST_BINCRS_SIZE_COL_EL*offsEnts;
-    if (fseeko(filed,offs,SEEK_SET)) {
+    
+    int64_t *rpt_raw;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
+    if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
         ERROR_LOG("Seek failed");
         return GHOST_ERR_IO;
     }
-
-#ifdef GHOST_HAVE_LONGIDX
     if (swapReq) {
         int64_t *tmp;
-        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
-        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
-        for( i = 0; i < nEnts; i++ ) {
-            col[i] = bswap_64(tmp[i]);
+        for( i = 0; i < (header.nrows+1); i++ ) {
+            rpt_raw[i] = bswap_64(tmp[i]);
         }
+        free(tmp);
     } else {
-        if ((ret = fread(col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
     }
-#else // casting from 64 to 32 bit
-    DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
-    int64_t *tmp;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
-    if ((ghost_idx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
-        ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-        return GHOST_ERR_IO;
-    }
-    for(i = 0 ; i < nEnts; ++i) {
-        if (tmp[i] >= (int64_t)INT_MAX) {
-            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+    
+    if (invPerm) {
+        int64_t *col_raw;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,header.nnz*8));
+        if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1),SEEK_SET)) {
+            ERROR_LOG("Seek failed");
             return GHOST_ERR_IO;
         }
         if (swapReq) {
-            col[i] = (ghost_idx_t)(bswap_64(tmp[i]));
+            int64_t *tmp;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,header.nnz*8));
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != header.nnz){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+            for( i = 0; i < (header.nrows+1); i++ ) {
+                col_raw[i] = bswap_64(tmp[i]);
+            }
+            free(tmp);
         } else {
-            col[i] = (ghost_idx_t)tmp[i];
+            if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != header.nnz){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
         }
-    }
-    free(tmp);
-#endif
+        e = 0;
+        for(i = offsRows; i < offsRows+nRows; i++) {
+            for(j = rpt_raw[invPerm[i]]; j < rpt_raw[invPerm[i]+1]; j++) {
+                if (perm) {
+                    col[e++] = perm[col_raw[j]];
+                } else {
+                    col[e++] = col_raw[j];
+                }
+                WARNING_LOG("col[%d]: %d",e-1,col[e-1]);
 
+            }
+        }
+
+        free(col_raw);
+    } else {
+
+        ghost_idx_t nEnts = rpt_raw[nRows+offsRows]-rpt_raw[offsRows];
+
+        DEBUG_LOG(1,"Reading array with column indices");
+        offs = GHOST_BINCRS_SIZE_HEADER+
+            GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
+            GHOST_BINCRS_SIZE_COL_EL*rpt_raw[offsRows];
+        if (fseeko(filed,offs,SEEK_SET)) {
+            ERROR_LOG("Seek failed");
+            return GHOST_ERR_IO;
+        }
+
+#ifdef GHOST_HAVE_LONGIDX
+        if (swapReq) {
+            int64_t *tmp;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+            for( i = 0; i < nEnts; i++ ) {
+                col[i] = bswap_64(tmp[i]);
+            }
+        } else {
+            if ((ret = fread(col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+        }
+#else // casting from 64 to 32 bit
+        DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
+        int64_t *tmp;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
+        if ((ghost_idx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
+        }
+        for(i = 0 ; i < nEnts; ++i) {
+            if (tmp[i] >= (int64_t)INT_MAX) {
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
+                return GHOST_ERR_IO;
+            }
+            if (swapReq) {
+                col[i] = (ghost_idx_t)(bswap_64(tmp[i]));
+            } else {
+                col[i] = (ghost_idx_t)tmp[i];
+            }
+        }
+        free(tmp);
+#endif
+    }
+
+    free(rpt_raw);
     return GHOST_SUCCESS;
 }
 
 
-ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsEnts, ghost_nnz_t nEnts)
+ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *perm, ghost_idx_t *invPerm)
 {
     FILE *filed;
 
@@ -109,20 +177,20 @@ ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offs
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_readColOpen(col,matrixPath,offsEnts,nEnts,filed));
+    GHOST_CALL_RETURN(ghost_readColOpen(col,matrixPath,offsRows,nRows,perm,invPerm,filed));
 
     fclose(filed);
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_nnz_t offsEnts, ghost_nnz_t nEnts, FILE *filed)
+ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *invPerm, FILE *filed)
 {
     ghost_matfile_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
-    ghost_nnz_t i;
+    ghost_nnz_t i,j,e;
     size_t sizeofdt;
     GHOST_CALL_RETURN(ghost_sizeofDatatype(&sizeofdt,datatype));
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
@@ -131,11 +199,50 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     size_t valSize;
     GHOST_CALL_RETURN(ghost_sizeofDatatype(&valSize,header.datatype));
 
+    int64_t *rpt_raw;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
+    if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+        ERROR_LOG("Seek failed");
+        return GHOST_ERR_IO;
+    }
+    if (swapReq) {
+        int64_t *tmp;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
+        }
+        for( i = 0; i < (header.nrows+1); i++ ) {
+            rpt_raw[i] = bswap_64(tmp[i]);
+        }
+        free(tmp);
+    } else {
+        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+            ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            return GHOST_ERR_IO;
+        }
+    }
+        
+    
     DEBUG_LOG(1,"Reading array with values");
-    offs = GHOST_BINCRS_SIZE_HEADER+
-        GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
-        GHOST_BINCRS_SIZE_COL_EL*header.nnz+
-        valSize*offsEnts;
+        
+    char *val_raw;
+    ghost_idx_t nEnts;
+
+    if (invPerm) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&val_raw,header.nnz*sizeofdt));
+        nEnts = header.nnz;
+        offs = GHOST_BINCRS_SIZE_HEADER+
+            GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
+            GHOST_BINCRS_SIZE_COL_EL*header.nnz;
+    } else {
+        val_raw = val;
+        nEnts = rpt_raw[nRows+offsRows]-rpt_raw[offsRows];
+        offs = GHOST_BINCRS_SIZE_HEADER+
+            GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+
+            GHOST_BINCRS_SIZE_COL_EL*header.nnz+
+            valSize*rpt_raw[offsRows];
+    }
     if (fseeko(filed,offs,SEEK_SET)) {
         ERROR_LOG("Seek failed");
         return GHOST_ERR_IO;
@@ -155,16 +262,16 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
                         uint32_t *a = (uint32_t *)tmpval;
                         uint32_t rswapped = bswap_32(a[2*i]);
                         uint32_t iswapped = bswap_32(a[2*i+1]);
-                        memcpy(&(val[i]),&rswapped,4);
-                        memcpy(&(val[i])+4,&iswapped,4);
+                        memcpy(&(val_raw[i]),&rswapped,4);
+                        memcpy(&(val_raw[i])+4,&iswapped,4);
                     }
                 } else {
                     for (i = 0; i<nEnts; i++) {
                         uint64_t *a = (uint64_t *)tmpval;
                         uint64_t rswapped = bswap_64(a[2*i]);
                         uint64_t iswapped = bswap_64(a[2*i+1]);
-                        memcpy(&(val[i]),&rswapped,8);
-                        memcpy(&(val[i])+8,&iswapped,8);
+                        memcpy(&(val_raw[i]),&rswapped,8);
+                        memcpy(&(val_raw[i])+8,&iswapped,8);
                     }
                 }
             } else {
@@ -172,19 +279,19 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
                     for (i = 0; i<nEnts; i++) {
                         uint32_t *a = (uint32_t *)tmpval;
                         uint32_t swapped = bswap_32(a[i]);
-                        memcpy(&(val[i]),&swapped,4);
+                        memcpy(&(val_raw[i]),&swapped,4);
                     }
                 } else {
                     for (i = 0; i<nEnts; i++) {
                         uint64_t *a = (uint64_t *)tmpval;
                         uint64_t swapped = bswap_64(a[i]);
-                        memcpy(&(val[i]),&swapped,8);
+                        memcpy(&(val_raw[i]),&swapped,8);
                     }
                 }
 
             }
         } else {
-            if ((ghost_idx_t)(ret = fread(val, valSize, nEnts,filed)) != (nEnts)){
+            if ((ghost_idx_t)(ret = fread(val_raw, valSize, nEnts,filed)) != (nEnts)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -208,27 +315,27 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
                     for (i = 0; i<nEnts; i++) {
                         uint32_t re = bswap_32(tmpval[i*valSize]);
                         uint32_t im = bswap_32(tmpval[i*valSize+valSize/2]);
-                        memcpy(&val[i*sizeofdt],&re,4);
-                        memcpy(&val[i*sizeofdt+4],&im,4);
+                        memcpy(&val_raw[i*sizeofdt],&re,4);
+                        memcpy(&val_raw[i*sizeofdt+4],&im,4);
                     }
                 } else {
                     for (i = 0; i<nEnts; i++) {
                         uint32_t re = bswap_64(tmpval[i*valSize]);
                         uint32_t im = bswap_64(tmpval[i*valSize+valSize/2]);
-                        memcpy(&val[i*sizeofdt],&re,8);
-                        memcpy(&val[i*sizeofdt+8],&im,8);
+                        memcpy(&val_raw[i*sizeofdt],&re,8);
+                        memcpy(&val_raw[i*sizeofdt+8],&im,8);
                     }
                 }
             } else {
                 if (datatype & GHOST_BINCRS_DT_FLOAT) {
                     for (i = 0; i<nEnts; i++) {
                         uint32_t swappedVal = bswap_32(tmpval[i*valSize]);
-                        memcpy(&val[i*sizeofdt],&swappedVal,4);
+                        memcpy(&val_raw[i*sizeofdt],&swappedVal,4);
                     }
                 } else {
                     for (i = 0; i<nEnts; i++) {
                         uint32_t swappedVal = bswap_64(tmpval[i*valSize]);
-                        memcpy(&val[i*sizeofdt],&swappedVal,8);
+                        memcpy(&val_raw[i*sizeofdt],&swappedVal,8);
                     }
                 }
 
@@ -240,16 +347,28 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
             GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,datatype));
             GHOST_CALL_RETURN(ghost_datatypeIdx(&headerDtIdx,header.datatype));
 
-            ghost_castArray_funcs[matDtIdx][headerDtIdx](val,tmpval,nEnts);
+            ghost_castArray_funcs[matDtIdx][headerDtIdx](val_raw,tmpval,nEnts);
         }
 
         free(tmpval);
     }
 
+    if (invPerm) {
+        e = 0;
+        for(i = offsRows; i < offsRows+nRows; i++) {
+            for(j = rpt_raw[invPerm[i]]; j < rpt_raw[invPerm[i]+1]; j++) {
+                memcpy(val+e*sizeofdt,val_raw+j*sizeofdt,sizeofdt);
+                e++;
+            }
+        }
+        free(val_raw);
+
+    }
+
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz_t offsEnts, ghost_nnz_t nEnts)
+ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *invPerm)
 {
     FILE *filed;
 
@@ -258,14 +377,14 @@ ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz
         return GHOST_ERR_IO;
     }
 
-    ghost_readValOpen(val,datatype,matrixPath,offsEnts,nEnts,filed);
+    ghost_readValOpen(val,datatype,matrixPath,offsRows,nRows,invPerm,filed);
 
     fclose(filed);
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, FILE *filed)
+ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *invPerm, FILE *filed)
 {
     ghost_matfile_header_t header;
     size_t ret;
@@ -275,6 +394,42 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
 
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
     GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
+
+    if (invPerm) {
+        int64_t *rpt_raw;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
+        if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+            ERROR_LOG("Seek failed");
+            return GHOST_ERR_IO;
+        }
+        if (swapReq) {
+            int64_t *tmp;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+            for( i = 0; i < (header.nrows+1); i++ ) {
+                rpt_raw[i] = bswap_64(tmp[i]);
+            }
+            free(tmp);
+        } else {
+            if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                return GHOST_ERR_IO;
+            }
+        }
+        rpt[0] = 0;
+        for( i = 1; i < nRows; i++ ) {
+            INFO_LOG("rpt[%d] is raw[%d]-raw[%d]",i,invPerm[i-1]+1,invPerm[i-1]);
+            rpt[i] = rpt[i-1]+(rpt_raw[invPerm[i-1]+1]-rpt_raw[invPerm[i-1]]);
+        }
+
+        free(rpt_raw);
+        return GHOST_SUCCESS;
+    }
+
+
 
     DEBUG_LOG(1,"Reading array with column indices");
     offs = GHOST_BINCRS_SIZE_HEADER+
@@ -295,6 +450,7 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
         for( i = 0; i < nRows; i++ ) {
             rpt[i] = bswap_64(tmp[i]);
         }
+        free(tmp);
     } else {
         if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
@@ -326,7 +482,7 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows)
+ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_idx_t *invPerm)
 {
     FILE *filed;
 
@@ -335,7 +491,7 @@ ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offs
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_readRptOpen(rpt,matrixPath,offsRows,nRows,filed));
+    GHOST_CALL_RETURN(ghost_readRptOpen(rpt,matrixPath,offsRows,nRows,invPerm,filed));
 
     fclose(filed);
 

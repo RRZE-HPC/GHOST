@@ -21,6 +21,9 @@ char * ghost_error_string(ghost_error_t e)
         case GHOST_ERR_HWLOC:
             return "Error in hwloc";
             break;
+        case GHOST_ERR_SCOTCH:
+            return "Error in Scotch";
+            break;
         case GHOST_ERR_NOT_IMPLEMENTED:
             return "Not implemented";
             break;
