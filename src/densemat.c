@@ -1026,8 +1026,8 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     GHOST_CALL_RETURN(ghost_getNumberOfRanks(vec->context->mpicomm,&nprocs));
     GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits->datatype));
 
-    if (vec->context != NULL)
-        vec->permute(vec,vec->context->invRowPerm); 
+//    if (vec->context != NULL)
+//        vec->permute(vec,vec->context->invRowPerm); 
 
     int i;
 

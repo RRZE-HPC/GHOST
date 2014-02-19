@@ -241,7 +241,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,invec->context->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
                 }
             }
         }

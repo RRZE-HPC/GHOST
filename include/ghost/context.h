@@ -71,8 +71,6 @@ struct ghost_context_t
     int flags;
     double weight;
 
-    ghost_idx_t *rowPerm;    // may be NULL
-    ghost_idx_t *invRowPerm; // may be NULL
 
     ghost_mpi_comm_t mpicomm;
     

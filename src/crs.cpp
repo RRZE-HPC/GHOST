@@ -128,7 +128,7 @@ template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat
             for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                 if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTECOLIDX) {
                     if (CR(mat)->col[j] < mat->nrows) {
-                        buffer << val[j] << " (o " << mat->context->invRowPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
+                        buffer << val[j] << " (o " << mat->invRowPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
                     } else {
                         buffer << val[j] << " (p " << CR(mat)->col[j] << "|p " << CR(mat)->col[j] << ")" << "\t";
                     }

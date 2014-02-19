@@ -45,6 +45,8 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->spmv = NULL;
     (*mat)->destroy = NULL;
     (*mat)->split = NULL;
+    (*mat)->rowPerm = NULL;
+    (*mat)->invRowPerm = NULL;
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;

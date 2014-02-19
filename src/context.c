@@ -29,8 +29,6 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     
     GHOST_CALL_GOTO(ghost_malloc((void **)context,sizeof(ghost_context_t)),err,ret);
     (*context)->flags = context_flags;
-    (*context)->rowPerm = NULL;
-    (*context)->invRowPerm = NULL;
     (*context)->mpicomm = comm;
     (*context)->wishes   = NULL;
     (*context)->dues     = NULL;
@@ -103,7 +101,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     ghost_idx_t row;
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
         (*context)->halo_elements = -1;
-
+/*
         if ((*context)->flags & GHOST_CONTEXT_PERMUTED) {
             INFO_LOG("Reducing matrix bandwidth");
             ghost_error_t ret = GHOST_SUCCESS;
@@ -204,7 +202,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
             }
         }
                     
-
+*/
 
         if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
@@ -223,7 +221,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                     (*context)->rpt[row] = 0;
                 }
                 if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FILE) {
-                    GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,(*context)->invRowPerm),err,ret);
+                    //GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
+                    GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
                 } else if ((*context)->flags & GHOST_CONTEXT_ROWS_FROM_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
@@ -371,12 +370,7 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
 void ghost_context_destroy(ghost_context_t *context)
 {
     DEBUG_LOG(1,"Freeing context");
-    if (context != NULL) {
-        free(context->rowPerm);
-        free(context->invRowPerm);
-
-        free(context);
-    }
+    free(context);
     DEBUG_LOG(1,"Context freed successfully");
 }
 

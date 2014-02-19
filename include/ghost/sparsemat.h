@@ -182,6 +182,9 @@ struct ghost_sparsemat_t
     char *name;
     void *data;
 
+    ghost_idx_t *rowPerm;    // may be NULL
+    ghost_idx_t *invRowPerm; // may be NULL
+    
     ghost_idx_t nrows;
     ghost_idx_t ncols;
     ghost_idx_t nrowsPadded;

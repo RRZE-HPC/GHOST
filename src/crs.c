@@ -669,7 +669,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             CR(mat)->rpt[i] = 0;
         }
 
-        GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1, mat->context->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, mat->nrows+1, mat->invRowPerm),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
         for (i = 0; i < mat->nrows; i++) {
@@ -679,8 +679,8 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             }
         }
 
-        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nrows, mat->context->rowPerm, mat->context->invRowPerm),err,ret);
-        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nrows, mat->context->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, 0, mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, 0, mat->nrows, mat->invRowPerm),err,ret);
 
 
     } else {
@@ -703,7 +703,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
                 for (i = 0; i < header.nrows+1; i++) {
                     CR(mat)->rpt[i] = 0;
                 }
-                GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1, mat->context->invRowPerm),err,ret);
+                GHOST_CALL_GOTO(ghost_readRpt(CR(mat)->rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
                 context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -778,10 +778,10 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             }
         }
 
-        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->context->rowPerm, mat->context->invRowPerm),err,ret);
-        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->context->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
 
-        if (mat->context->rowPerm || mat->context->invRowPerm) {
+        if (mat->rowPerm || mat->invRowPerm) {
             // sort rows by ascending column indices
             for (i=0;i<context->lnrows[me];i++) {
                 ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);

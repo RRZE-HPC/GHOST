@@ -335,8 +335,8 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
             goto err;
         }
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
 
         ghost_idx_t c;
@@ -358,8 +358,8 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
         qsort( rowSort+c*SELL(mat)->scope, mat->nrows-c*SELL(mat)->scope, sizeof( ghost_sorting_t  ), compareNZEPerRow );
 
         for(i=0; i < mat->nrows; ++i) {
-            (mat->context->invRowPerm)[i] = rowSort[i].row;
-            (mat->context->rowPerm)[rowSort[i].row] = i;
+            (mat->invRowPerm)[i] = rowSort[i].row;
+            (mat->rowPerm)[rowSort[i].row] = i;
         }
 
 #pragma omp parallel private(maxRowLenInChunk,i,tmpcol,tmpval) reduction (+:nEnts,nnz)
@@ -373,7 +373,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                     ghost_idx_t row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
-                        func(mat->context->lfRow[me]+mat->context->invRowPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                        func(mat->context->lfRow[me]+mat->invRowPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                     } else {
                         SELL(mat)->rowLen[row] = 0;
                     }
@@ -473,7 +473,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
 
                 if (row < mat->nrows) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
-                        func(mat->context->lfRow[me]+mat->context->invRowPerm[row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
+                        func(mat->context->lfRow[me]+mat->invRowPerm[row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
                     } else {
                         func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
                     }
@@ -484,7 +484,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                         if ((tmpcol[i*maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                             memcpy(&SELL(mat)->val[mat->traits->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->traits->elSize*(i*maxrowlen+col)],mat->traits->elSize);
                             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTECOLIDX) {
-                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->rowPerm[tmpcol[i*maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->rowPerm[tmpcol[i*maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                             } else {
                                 SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
                             }
@@ -554,8 +554,8 @@ err:
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
-    free(mat->context->rowPerm); mat->context->rowPerm = NULL;
-    free(mat->context->invRowPerm); mat->context->invRowPerm = NULL;
+    free(mat->rowPerm); mat->rowPerm = NULL;
+    free(mat->invRowPerm); mat->invRowPerm = NULL;
 
 out:
     free(rowSort); rowSort = NULL;
@@ -865,7 +865,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     if (me == 0) {
         if (context->flags & GHOST_CONTEXT_DIST_ROWS) { // lnents and lfent have to be filled!
             GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,sizeof(ghost_nnz_t)*(context->gnrows+1)),err,ret);
-            GHOST_CALL_GOTO(ghost_readRpt(rpt,matrixPath,0,context->gnrows+1,mat->context->invRowPerm),err,ret); 
+            GHOST_CALL_GOTO(ghost_readRpt(rpt,matrixPath,0,context->gnrows+1,mat->invRowPerm),err,ret); 
 
             /* DEBUG_LOG(1,"Adjust lfrow and lnrows for each process according to the SELL chunk height of %"PRIDX,SELL(mat)->chunkHeight);
                for (proc=0; proc<nprocs; proc++) {
@@ -949,8 +949,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 
     if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
         DEBUG_LOG(1,"Extracting row lenghts");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
 
         ghost_idx_t c;
@@ -983,8 +983,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             /* invRowPerm maps an index in the permuted system to the original index,
              * rowPerm gets the original index and returns the corresponding permuted position.
              */
-            (mat->context->invRowPerm)[i] = rowSort[i].row;
-            (mat->context->rowPerm)[rowSort[i].row] = i;
+            (mat->invRowPerm)[i] = rowSort[i].row;
+            (mat->rowPerm)[rowSort[i].row] = i;
         }
 
     } 
@@ -1086,11 +1086,11 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         char * curRowVals;
         for (i=0; (i<SELL(mat)->chunkHeight) && (row < mat->nrows); i++, row++) {
             if (mat->traits->flags & GHOST_SPARSEMAT_SORTED) {
-                if (!mat->context->invRowPerm) {
+                if (!mat->invRowPerm) {
                     WARNING_LOG("invRowPerm is NULL but matrix should be sorted");
                 }
-                curRowCols = &tmpcol[rpt[mat->context->invRowPerm[row]]];
-                curRowVals = &tmpval[rpt[mat->context->invRowPerm[row]]*mat->traits->elSize];
+                curRowCols = &tmpcol[rpt[mat->invRowPerm[row]]];
+                curRowVals = &tmpval[rpt[mat->invRowPerm[row]]*mat->traits->elSize];
             } else {
                 curRowCols = &tmpcol[rpt[row]];
                 curRowVals = &tmpval[rpt[row]*mat->traits->elSize];
@@ -1101,7 +1101,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
                 if ((mat->traits->flags & (GHOST_SPARSEMAT_SORTED | GHOST_SPARSEMAT_PERMUTECOLIDX)) &&
                         (curRowCols[col] >= mat->context->lfRow[me]) && 
                         (curRowCols[col] < (mat->context->lfRow[me]+mat->nrows))) {
-                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->rowPerm[curRowCols[col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->rowPerm[curRowCols[col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                 } else {
                     SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = curRowCols[col];
                 }
@@ -1155,8 +1155,8 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    free(mat->context->rowPerm); mat->context->rowPerm = NULL;
-    free(mat->context->invRowPerm); mat->context->invRowPerm = NULL;
+    free(mat->rowPerm); mat->rowPerm = NULL;
+    free(mat->invRowPerm); mat->invRowPerm = NULL;
 
 out:
     free(rowSort); rowSort = NULL;
