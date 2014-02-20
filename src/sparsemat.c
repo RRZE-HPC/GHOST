@@ -11,11 +11,12 @@
 #include "ghost/machine.h"
 #include "ghost/io.h"
 
+#include <libgen.h>
 #ifdef GHOST_HAVE_PTSCOTCH
 #include <ptscotch.h>
 #endif
 
-const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_STORE_FULL|GHOST_SPARSEMAT_STORE_SPLIT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
 
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
@@ -169,8 +170,18 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
+    mat->name = basename(matrixPath);
     mat->traits->symmetry = header.symmetry;
     mat->ncols = (ghost_idx_t)header.ncols;
+        
+    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
+        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
+        if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_LOCAL) {
+            WARNING_LOG("Unsetting PERMUTE_LOCAL flag");
+            mat->traits->flags &= ~GHOST_SPARSEMAT_PERMUTE_LOCAL;
+        }
+    }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
@@ -375,6 +386,9 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     ghost_readMatFileHeader(matrixPath,&header);
     MPI_Request *req = NULL;
     MPI_Status *stat = NULL;
+    SCOTCH_Dgraph * dgraph = NULL;
+    SCOTCH_Strat * strat = NULL;
+    SCOTCH_Dordering *dorder = NULL;
 
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
     GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
@@ -399,21 +413,21 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     memset(mat->rowPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
     memset(mat->invRowPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
 
-    SCOTCH_Dgraph * dgraph = SCOTCH_dgraphAlloc();
+    dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
         ERROR_LOG("Could not alloc SCOTCH graph");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphInit(dgraph,mat->context->mpicomm),err,ret);
-    SCOTCH_Strat * strat = SCOTCH_stratAlloc();
+    strat = SCOTCH_stratAlloc();
     if (!strat) {
         ERROR_LOG("Could not alloc SCOTCH strat");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
-    SCOTCH_Dordering *dorder = SCOTCH_dorderAlloc();
+    dorder = SCOTCH_dorderAlloc();
     if (!dorder) {
         ERROR_LOG("Could not alloc SCOTCH order");
         ret = GHOST_ERR_SCOTCH;
@@ -422,9 +436,12 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+    //SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+    //SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=/(levl<3)?m{asc=b{strat=q{strat=f}},low=q{strat=h},seq=q{strat=m{low=h,asc=b}}};,ole=s,ose=s,osq=n{sep=/(levl<3)?m{asc=b,low=h};}}"),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->rowPerm+mat->context->lfRow[me]),err,ret);
+    
 
     // combine permutation vectors
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->rowPerm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
@@ -436,8 +453,19 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
 
     goto out;
 err:
+    ERROR_LOG("Deleting permutations");
+    free(mat->rowPerm); mat->rowPerm = NULL;
+    free(mat->invRowPerm); mat->invRowPerm = NULL;
 
 out:
+    free(req);
+    free(stat);
+    free(rpt);
+    free(col);
+    SCOTCH_dgraphOrderExit(dgraph,dorder);
+    SCOTCH_dgraphExit(dgraph);
+    SCOTCH_stratExit(strat);
+    
     return ret;
 }
 
@@ -537,6 +565,11 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     }
 
     ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
+    
+    ghost_printLine(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
+//        ghost_printLine(str,"Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
+    ghost_printLine(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+    ghost_printLine(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
 
     mat->printInfo(str,mat);
     ghost_printFooter(str);

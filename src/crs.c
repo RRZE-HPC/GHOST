@@ -13,7 +13,6 @@
 
 #include <unistd.h>
 #include <sys/types.h>
-#include <libgen.h>
 #include <limits.h>
 #include <errno.h>
 #include <math.h>
@@ -212,6 +211,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
@@ -493,7 +493,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         GHOST_CALL_GOTO(ghost_context_setupCommunication(mat->context,fullCR->col),err,ret);
     }
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_STORE_SPLIT) { // split computation
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
 
         lnEnts_l=0;
         for (i=0; i<mat->context->lnEnts[me];i++) {
@@ -617,23 +617,15 @@ out:
  */
 static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
-    WARNING_LOG("read crs");
     DEBUG_LOG(1,"Reading CRS matrix from file");
     ghost_error_t ret = GHOST_SUCCESS;
-    mat->name = basename(matrixPath);
 
-    ghost_idx_t i;
-    ghost_nnz_t j;
-
-    ghost_sparsemat_fromFile_common(mat,matrixPath,&(CR(mat)->rpt));
-    mat->nEnts = mat->nnz;
-
-    ghost_context_t *context = mat->context;
-    int nprocs = 1;
+    ghost_idx_t i, j;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-
+    GHOST_CALL_GOTO(ghost_sparsemat_fromFile_common(mat,matrixPath,&(CR(mat)->rpt)),err,ret);
+    mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
@@ -646,30 +638,27 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
     }
 
-    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
-    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
+    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
+    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
 
     memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
-
-
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
 
-    for (i=0;i<context->lnrows[me];i++) {
-        if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
+    for (i=0;i<mat->context->lnrows[me];i++) {
+        if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
             // sort rows by ascending column indices
-            ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);
-            ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1);
+            GHOST_CALL_GOTO(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
         }
+        GHOST_CALL_GOTO(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
     }
 
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
-
 
     DEBUG_LOG(1,"Split matrix");
     GHOST_CALL_GOTO(mat->split(mat),err,ret);

@@ -216,13 +216,6 @@ static void SELL_printInfo(char **str, ghost_sparsemat_t *mat)
     ghost_printLine(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
     ghost_printLine(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
     ghost_printLine(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
-    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-        ghost_printLine(str,"Sorted",NULL,"yes");
-        ghost_printLine(str,"Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
-        ghost_printLine(str,"Permuted columns",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE_COLS?"yes":"no");
-    } else {
-        ghost_printLine(str,"Sorted",NULL,"no");
-    }
 }
 
 static const char * SELL_formatName(ghost_sparsemat_t *mat)
@@ -483,10 +476,10 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                         if ((tmpcol[i*maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                             memcpy(&SELL(mat)->val[mat->traits->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->traits->elSize*(i*maxrowlen+col)],mat->traits->elSize);
-                            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_COLS) {
-                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->rowPerm[tmpcol[i*maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
-                            } else {
+                            if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                 SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*maxrowlen+col];
+                            } else {
+                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->rowPerm[tmpcol[i*maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                             }
                         } else { // remote entry: copy without permutation
                             memcpy(&SELL(mat)->val[mat->traits->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->traits->elSize*(i*maxrowlen+col)],mat->traits->elSize);
@@ -507,7 +500,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
     if (ret != GHOST_SUCCESS) {
         goto err;
     }
-    if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
         WARNING_LOG("Ignoring ASC_COLIDX flag");
     }
 
@@ -638,7 +631,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     mat->localPart->nnz = 0;
     mat->remotePart->nnz = 0;
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_STORE_SPLIT) { // split computation
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
 
         lnEnts_l = 0;
         lnEnts_r = 0;
@@ -915,7 +908,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
                 SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = curRowCols[col];
                 memcpy(&SELL(mat)->val[mat->traits->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&curRowVals[col*mat->traits->elSize],mat->traits->elSize);
             }
-            if (mat->traits->flags & GHOST_SPARSEMAT_SORT_COLS) {
+            if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
                 ghost_sparsemat_sortRow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->traits->elSize],mat->traits->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
             }
@@ -926,7 +919,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 

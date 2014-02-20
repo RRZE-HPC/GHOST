@@ -115,28 +115,37 @@ typedef enum {
      */
     GHOST_SPARSEMAT_DEVICE        = 2,
     /**
-     * @brief If the matrix rows have been re-ordered, also permute the column indices accordingly.
+     * @brief If the matrix rows have been re-ordered, do _NOT_ permute the column indices accordingly.
      */
-    GHOST_SPARSEMAT_PERMUTE_COLS = 4,
+    GHOST_SPARSEMAT_NOT_PERMUTE_COLS = 4,
     /**
      * @brief The matrix rows should be re-ordered in a certain way (defined in the traits). 
      */
-    GHOST_SPARSEMAT_PERMUTE       = 32,
+    GHOST_SPARSEMAT_PERMUTE       = 8,
     /**
-     * @brief If the matrix columns have been re-ordered, care for ascending column indices in wrt. memory location. 
+     * @brief The permutation is global. 
      */
-    GHOST_SPARSEMAT_SORT_COLS    = 64,
+    GHOST_SPARSEMAT_PERMUTE_GLOBAL  = 256,
     /**
-     * @brief Store the local and remote part of the matrix.
+     * @brief The permutation is local to the process. 
      */
-    GHOST_SPARSEMAT_STORE_SPLIT = 128,
-    /*permFromScotchtore the full matrix (local and remote combined).
+    GHOST_SPARSEMAT_PERMUTE_LOCAL  = 512,
+    /**
+     * @brief If the matrix columns have been re-ordered, do _NOT_ care for ascending column indices wrt. memory location. 
      */
-    GHOST_SPARSEMAT_STORE_FULL = 256,
+    GHOST_SPARSEMAT_NOT_SORT_COLS    = 16,
+    /**
+     * @brief Do _NOT_ store the local and remote part of the matrix.
+     */
+    GHOST_SPARSEMAT_NOT_STORE_SPLIT = 32,
+    /**
+     * @brief Do _NOT_ store the full matrix (local and remote combined).
+     */
+    GHOST_SPARSEMAT_NOT_STORE_FULL = 64,
     /**
      * @brief Reduce the matrix bandwidth with PT-Scotch
      */
-    GHOST_SPARSEMAT_SCOTCHIFY = 512
+    GHOST_SPARSEMAT_SCOTCHIFY = 128
 } ghost_sparsemat_flags_t;
 
 
