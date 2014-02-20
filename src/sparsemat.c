@@ -16,7 +16,7 @@
 #include <ptscotch.h>
 #endif
 
-const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .nAux = 0, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .sortScope = 1, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
 
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
@@ -60,6 +60,10 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->nrowsPadded = 0;
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
+
+    if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_GLOBALLY) {
+        (*mat)->traits->sortScope = (*mat)->nrows;
+    }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_nnz_t)*(2*context->gnrows-1)),err,ret);
     GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
@@ -182,12 +186,20 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
             mat->traits->flags &= ~GHOST_SPARSEMAT_PERMUTE_LOCAL;
         }
     }
+    if (mat->traits->sortScope > 1) {
+        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
+        if (mat->traits->sortScope > mat->context->lnrows[me]) {
+            mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
+        } else {
+            mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_LOCAL;
+        }
+    }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_permFromScotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
         } else {
-            ghost_sparsemat_permFromSorting(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,SELL(mat)->scope);
+            ghost_sparsemat_permFromSorting(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,mat->traits->sortScope);
         }
     }
 

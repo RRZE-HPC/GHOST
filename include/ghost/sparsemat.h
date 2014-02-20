@@ -11,6 +11,8 @@
 #include "context.h"
 #include "densemat.h"
 
+#define GHOST_SPARSEMAT_SORT_GLOBALLY -1
+
 /**
  * @brief Available sparse matrix storage formats.
  */
@@ -154,7 +156,7 @@ typedef enum {
  */
 struct ghost_sparsemat_traits_t
 {
-    int format;
+    ghost_sparsemat_format_t format;
     ghost_sparsemat_flags_t flags;
     ghost_sparsemat_symmetry_t symmetry;
     /**
@@ -164,7 +166,8 @@ struct ghost_sparsemat_traits_t
     /**
      * @brief The number of given auxiliary traits (to be interpreted by the concrete format implementation).
      */
-    int nAux;
+//    int nAux;
+    ghost_idx_t sortScope;
     ghost_datatype_t datatype;
     /**
      * @brief Size (in bytes) of one matrix element.
@@ -196,8 +199,18 @@ struct ghost_sparsemat_t
     char *name;
     void *data;
 
-    ghost_idx_t *rowPerm;    // may be NULL
-    ghost_idx_t *invRowPerm; // may be NULL
+    /**
+     * @brief Gets an original index and returns the corresponding permuted position.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_idx_t *rowPerm;
+    /**
+     * @brief Gets an index in the permuted system and returns the original index.
+     *
+     * NULL if no permutation applied to the matrix.
+     */
+    ghost_idx_t *invRowPerm;
     
     ghost_idx_t nrows;
     ghost_idx_t ncols;

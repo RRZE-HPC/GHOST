@@ -7,10 +7,6 @@
 
 #define GHOST_SELL_CHUNKHEIGHT_ELLPACK 0
 #define GHOST_SELL_CHUNKHEIGHT_AUTO -1
-#define GHOST_SELL_SORT_GLOBALLY -1
-#define SELL_AUX_S 0
-#define SELL_AUX_C 1
-#define SELL_AUX_T 2
 
 typedef struct 
 {
@@ -26,6 +22,15 @@ typedef struct
     ghost_idx_t chunkHeight;*/
 }
 ghost_cu_sell_t;
+
+typedef struct
+{
+    int C;
+    int T;
+} 
+ghost_sell_aux_t;
+
+extern const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER;
 
 /**
  * @brief Struct defining a SELL-C-sigma-T matrix.
@@ -53,6 +58,7 @@ typedef struct
     ghost_cu_sell_t *cumat;
 }
 ghost_sell_t;
+
 
 #define SELL(mat) ((ghost_sell_t *)(mat->data))
 
