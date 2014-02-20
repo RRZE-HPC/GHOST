@@ -43,7 +43,7 @@
 #endif
 
 #define VALUEWIDTH (PRINTWIDTH-LABELWIDTH-(int)strlen(PRINTSEP))
-
+#define MAXVALUELEN 1024
 
 
 void ghost_printHeader(char **str, const char *fmt, ...)
@@ -129,16 +129,24 @@ void ghost_printFooter(char **str)
 
 void ghost_printLine(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
+    int nLines, l;
     size_t len = strlen(*str);
-
-    *str = realloc(*str,len+PRINTWIDTH+2);
-    memset(*str+len,'\0',1);
 
     va_list args;
     va_start(args,fmt);
-    char dummy[1025];
-    vsnprintf(dummy,1024,fmt,args);
+    char dummy[MAXVALUELEN+1];
+    vsnprintf(dummy,MAXVALUELEN,fmt,args);
     va_end(args);
+    nLines = 1+strlen(dummy)/VALUEWIDTH;
+
+    // extend the string by PRINTWIDTH characters plus \n for each line plus \0
+    *str = realloc(*str,len+nLines*(PRINTWIDTH+1)+1);
+
+    //memset(*str+len,'\0',1);
+
+    if (nLines > 1) { 
+    INFO_LOG("%s %s",dummy,dummy+VALUEWIDTH);
+    }
 
 #ifdef PRETTYPRINT
     sprintf(*str,"│");
@@ -149,10 +157,16 @@ void ghost_printLine(char **str, const char *label, const char *unit, const char
     } else {
         sprintf(*str+len,"%-*s%s%*s",LABELWIDTH,label,PRINTSEP,VALUEWIDTH,dummy);
     }
+    sprintf(*str+len+PRINTWIDTH,"\n");
+    for (l=1; l<nLines; l++) {
+        sprintf(*str+len+l*(PRINTWIDTH+1),"%-*s%s%*s",LABELWIDTH,"",PRINTSEP,VALUEWIDTH,dummy+l*VALUEWIDTH);
+//        sprintf(*str+len+l*(PRINTWIDTH+1),"%*s",PRINTWIDTH,dummy+l*VALUEWIDTH);
+        sprintf(*str+len+(l+1)*PRINTWIDTH+1,"\n");
+    }
+
 #ifdef PRETTYPRINT
     sprintf(*str+len,"│");
 #endif
-    sprintf(*str+len+PRINTWIDTH,"\n");
 }
 
 
