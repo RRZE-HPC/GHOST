@@ -163,10 +163,7 @@ struct ghost_sparsemat_traits_t
      * @brief Auxiliary matrix traits (to be interpreted by the concrete format implementation).
      */
     void * aux;
-    /**
-     * @brief The number of given auxiliary traits (to be interpreted by the concrete format implementation).
-     */
-//    int nAux;
+    char * scotchStrat;
     ghost_idx_t sortScope;
     ghost_datatype_t datatype;
     /**

@@ -16,7 +16,18 @@
 #include <ptscotch.h>
 #endif
 
-const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_SPARSEMAT_DEFAULT, .aux = NULL, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .sortScope = 1, .format = GHOST_SPARSEMAT_CRS, .shift = NULL, .scale = NULL, .beta = NULL, .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL};
+const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
+    .flags = GHOST_SPARSEMAT_DEFAULT, 
+    .aux = NULL, 
+    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, 
+    .sortScope = 1, 
+    .format = GHOST_SPARSEMAT_CRS, 
+    .shift = NULL, 
+    .scale = NULL, 
+    .beta = NULL, 
+    .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
+    .scotchStrat = "n{ole=q{strat=g},ose=q{strat=g},osq=g}"
+};
 
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
@@ -56,8 +67,8 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
     (*mat)->nrows = context->lnrows[me];
+    (*mat)->nrowsPadded = (*mat)->nrows;
     (*mat)->ncols = context->gncols;
-    (*mat)->nrowsPadded = 0;
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
 
@@ -449,7 +460,7 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
     //SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=m{asc=b,low=b},ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{ole=q{strat=g},ose=q{strat=g},osq=g}"),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     //SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=/(levl<3)?m{asc=b{strat=q{strat=f}},low=q{strat=h},seq=q{strat=m{low=h,asc=b}}};,ole=s,ose=s,osq=n{sep=/(levl<3)?m{asc=b,low=h};}}"),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->rowPerm+mat->context->lfRow[me]),err,ret);
@@ -579,7 +590,11 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
     ghost_printLine(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
-//        ghost_printLine(str,"Scope (sigma)",NULL,"%u",*(unsigned int *)(mat->traits->aux));
+    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+        ghost_printLine(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
+    } else {
+        ghost_printLine(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+    }
     ghost_printLine(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
     ghost_printLine(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
 
