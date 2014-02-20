@@ -67,7 +67,7 @@ struct ghost_context_t
    // ghost_comm_t *communicator;
     ghost_idx_t gnrows;
     ghost_idx_t gncols;
-    int flags;
+    ghost_context_flags_t flags;
     double weight;
 
 
