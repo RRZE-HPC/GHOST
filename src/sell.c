@@ -166,20 +166,9 @@ ghost_error_t ghost_SELL_init(ghost_sparsemat_t *mat)
     if (mat->traits->aux == NULL) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->traits->aux,sizeof(ghost_sell_aux_t)),err,ret);
         *((ghost_sell_aux_t *)(mat->traits->aux)) = GHOST_SELL_AUX_INITIALIZER;
-//        SELL(mat)->scope = 1;
-//        SELL(mat)->T = 1;
-//        SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
-//        mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
     }
-    SELL(mat)->T =((ghost_sell_aux_t *)(mat->traits->aux))->T;
-    SELL(mat)->chunkHeight =((ghost_sell_aux_t *)(mat->traits->aux))->C;
-
-
-//        if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
-//            SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
-//            mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
-//        } else {
-//            if (((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
+    SELL(mat)->T = ((ghost_sell_aux_t *)(mat->traits->aux))->T;
+    SELL(mat)->chunkHeight = ((ghost_sell_aux_t *)(mat->traits->aux))->C;
 
     if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
         SELL(mat)->chunkHeight = PAD(mat->nrows,GHOST_PAD_MAX);
