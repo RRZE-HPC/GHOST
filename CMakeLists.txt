@@ -9,21 +9,20 @@ set(GHOST_VERSION "${GHOST_VERSION_MAJOR}.${GHOST_VERSION_MINOR}.${GHOST_VERSION
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
-include(CheckFunctionExists)
 
 option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 1)
-option(USE_PTSCOTCH "Use PT-Scotch for matrix re-ordering" 1)
+option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 1)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
-set(BLAS "MKL" CACHE STRING "BLAS library to be used (may be MKL, GSL or LIBSCI)")
-set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (may be SHARED or STATIC)")
-set(VERBOSITY 0 CACHE STRING "Level of printed DEBUG information")
-set(INSTRUMENTATION "NONE" CACHE STRING "Type of instrumentation (maybe NONE, TIMING, LIKWID)")
+set(BLAS "MKL" CACHE STRING "BLAS library to be used (required). Valid values: MKL, GSL, LIBSCI")
+set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
+set(VERBOSITY 0 CACHE STRING "Level of verbosity information. Valid values: 0 (print only warnings and errors), 1, 2, 3 (increasing level of verbosity)")
+set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation. Valid values: TIMING, LIKWID")
 
-check_function_exists(bswap_64 GHOST_HAVE_BSWAP)
+find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
@@ -85,50 +84,46 @@ set (HEADERS
 		include/ghost/util.h
 	)
 
-if (USE_CUDA)
-	find_package(CUDA QUIET)
-	if (CUDA_FOUND)
-		set(GHOST_HAVE_CUDA 1)
-		cuda_include_directories(${CMAKE_SOURCE_DIR}/include
-				${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost)
-		list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
-        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-		    list(APPEND CUDA_NVCC_FLAGS -G -g)
-        endif()
-		cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
-		cuda_compile(VEC_CU_O src/densemat.cu)
-		cuda_compile(CRS_CU_O src/crs.cu)
-		set (SOURCES 
-				${SOURCES} 
-				${SELL_KERNEL_CU_O}
-				${VEC_CU_O}
-				${CRS_CU_O}
-				src/cu_util.c
-			)
-		include_directories(${CUDA_INCLUDE_DIRS})
-		set (HEADERS ${HEADERS}
-				include/ghost/cu_util.h
-                include/ghost/cu_densemat.h
-                include/ghost/cu_crs.h
-			)
-        if (USE_CUDA_PINNEDMEM)
-            set(GHOST_HAVE_CUDA_PINNEDMEM 1)
-        endif()
-	endif()
-endif()
-
-if (USE_PTSCOTCH)
-    set(GHOST_HAVE_PTSCOTCH 1)
-    set(PTSCOTCH_INCDIR "${PTSCOTCH_INCDIR}" CACHE PATH "Location of PT-Scotch headers")
-    include_directories(${PTSCOTCH_INCDIR})
-endif()
-
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
     set (SOURCES ${SOURCES} src/sell_kernel_intr.c)
 else()
     set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
     add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
     set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
+endif()
+
+if (USE_CUDA)
+	find_package(CUDA)
+        if (FOUND_CUDA)
+        set(GHOST_HAVE_CUDA 1)
+        cuda_include_directories(${CMAKE_SOURCE_DIR}/include
+                ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
+        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+            list(APPEND CUDA_NVCC_FLAGS -G -g)
+        endif()
+        cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
+        cuda_compile(VEC_CU_O src/densemat.cu)
+        cuda_compile(CRS_CU_O src/crs.cu)
+        set (SOURCES 
+                ${SOURCES} 
+                ${SELL_KERNEL_CU_O}
+                ${VEC_CU_O}
+                ${CRS_CU_O}
+                src/cu_util.c
+            )
+        include_directories(${CUDA_INCLUDE_DIRS})
+        set (HEADERS ${HEADERS}
+                include/ghost/cu_util.h
+                include/ghost/cu_densemat.h
+                include/ghost/cu_crs.h
+            )
+        if (USE_CUDA_PINNEDMEM)
+            set(GHOST_HAVE_CUDA_PINNEDMEM 1)
+        endif()
+    else ()
+        message(WARNING "Could not find CUDA! You might want to make CUDA available or set USE_CUDA=OFF to suppress this warning.")
+    endif()
 endif()
 
 if (${LIBTYPE} STREQUAL "STATIC")
@@ -140,6 +135,26 @@ else ()
     set(LIBTYPE "SHARED")
     add_library(ghost SHARED ${SOURCES})
 endif()
+
+
+if (USE_CUDA)
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
+            ${CUDA_LIBRARIES})
+endif()
+
+if (USE_SCOTCH)
+    set(GHOST_HAVE_SCOTCH 1)
+    set(SCOTCH_INCLUDE_DIR "${SCOTCH_INCLUDE_DIR}" CACHE PATH "Location of PT-Scotch headers")
+    include_directories(${SCOTCH_INCLUDE_DIR})
+    get_filename_component(SCOTCH_LIBDIR ${SCOTCH_INCLUDE_DIR}/../lib REALPATH)
+	find_library(LIBPTSCOTCH ptscotch ${SCOTCH_LIBDIR})
+	find_library(LIBSCOTCH scotch ${SCOTCH_LIBDIR})
+	find_library(LIBPTSCOTCHERR ptscotcherr ${SCOTCH_LIBDIR})
+    set(SCOTCH_LIBRARIES ${LIBPTSCOTCH} ${LIBSCOTCH} ${LIBPTSCOTCHERR})
+    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${SCOTCH_LIBRARIES})
+endif()
+
 
 
 if (USE_LONGIDX)
@@ -158,6 +173,9 @@ if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
 	    set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
 		include_directories(${LIKWID_INCLUDE_DIR})
         add_definitions(-DLIKWID_PERFMON)
+        get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
+	    find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
+        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${LIKWID_LIBRARIES})
 	endif()
 endif()
 
@@ -170,16 +188,48 @@ if (USE_OPENMP)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+#if (${BLAS} STREQUAL "MKL")
+#    set(MKL_LIBDIR "" CACHE PATH "Location of libmkl")
+#	link_directories(${MKL_LIBDIR})
+#	link_libraries("-lmkl_core")
+#	if (CMAKE_COMPILER_IS_GNUCC)
+#		link_libraries("-lmkl_gf_lp64")
+#	else ()
+#		link_libraries("-mkl -lmkl_intel_lp64")
+#	endif()
+#elseif(${BLAS} STREQUAL "GSL")
+#	find_package(GSL REQUIRED)
+#	link_libraries(${GSL_LIBRARIES})
+#elseif(${BLAS} STREQUAL "LIBSCI")
+#	set(LIBSCI_LIBDIR "${LIBSCI_LIBDIR}" CACHE PATH "Location of LibSCI library")
+#	set(LIBSCI_INCDIR "${LIBSCI_INCDIR}" CACHE PATH "Location of cblas.h")
+#    include_directories(${LIBSCI_INCDIR})
+#    link_directories(${LIBSCI_LIBDIR})
+#    link_libraries("-lsci_cray_mp")
+#endif()
+
 if (${BLAS} STREQUAL "MKL")
 	set(GHOST_HAVE_MKL 1)
     set(MKL_INCLUDE_DIR "" CACHE PATH "Location of mkl.h")
 	include_directories(SYSTEM ${MKL_INCLUDE_DIR})
+    get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/intel64 REALPATH)
+	find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel") 
+        find_library(LIBMKL_X_LP64 mkl_intel_lp64 ${MKL_LIBDIR})
+        find_library(LIBMKL_X_THREAD mkl_intel_thread ${MKL_LIBDIR})
+    else ()
+        find_library(LIBMKL_X_LP64 mkl_gf_lp64 ${MKL_LIBDIR})
+        find_library(LIBMKL_X_THREAD mkl_gnu_thread ${MKL_LIBDIR})
+    endif()
+    set (BLAS_LIBRARIES ${LIBMKL_CORE} ${LIBMKL_X_LP64} ${LIBMKL_X_THREAD}) 
 elseif(${BLAS} STREQUAL "GSL")
 	set(GHOST_HAVE_GSL 1)
 	find_package(GSL REQUIRED)
 	include_directories(${GSL_INCLUDE_DIRS}/gsl)
+    set (BLAS_LIBRARIES ${GSL_LIBRARIES})
 elseif(${BLAS} STREQUAL "LIBSCI")
-	set(GHOST_HAVE_LIBSCI 1)
+	message(FATAL_ERROR "LibSci cmake not up-to-date")
+    set(GHOST_HAVE_LIBSCI 1)
     find_package(PkgConfig)
     if ( PKGCONFIG_FOUND )
         find_package(LibSci REQUIRED)
@@ -189,17 +239,22 @@ elseif(${BLAS} STREQUAL "LIBSCI")
 	include_directories(${LIBSCI_INCLUDE_DIR})
 endif()
 
+set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${BLAS_LIBRARIES})
 
-find_package(PkgConfig)
-if ( PKGCONFIG_FOUND )
+
+if (PKGCONFIG_FOUND)
 	find_package(HWLOC REQUIRED)
 else()
 	set(HWLOC_INCLUDE_DIR "" CACHE PATH "Location of hwloc.h")
 endif()
+    
+get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
+find_library(HWLOC_LIBRARIES hwloc ${HWLOC_LIBDIR})
+set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${HWLOC_LIBRARIES})
 
-#if (NOT EXISTS "${HWLOC_INCLUDEDIR}/hwloc.h")
-#	message(FATAL_ERROR "Could not find hw#loc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
-#endif()
+if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
+	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
@@ -247,11 +302,30 @@ endif()
 
 
 if (USE_MPI)	
-	find_package(MPI REQUIRED)
+    set(MPI_LIBRARIES "-lmpi_mt")
+	find_package(MPI)
+	include_directories(${MPI_INCLUDE_PATH})
+    foreach(item ${MPI_LIBRARIES})
+        string(REGEX MATCH ".*libmpi.so" match ${item})
+        if (match)
+            get_filename_component(MPI_LIBDIR ${match} PATH)
+            if (EXISTS "${MPI_LIBDIR}/libmpi_mt.so")
+                list(REMOVE_ITEM MPI_LIBRARIES ${item})
+                list(APPEND MPI_LIBRARIES ${MPI_LIBDIR}/libmpi_mt.so)
+            endif()
+        endif()
+    endforeach()
+#	link_libraries(${MPI_LIBRARIES})
+	get_filename_component(MPI_LIBDIR "${MPI_LIBRARY}" PATH)
+	find_library(LIBMPI_CXX mpi_cxx ${MPI_LIBDIR})
+	if (LIBMPI_CXX)
+        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${LIBMPI_CXX})
+#		link_libraries(${LIBMPI_CXX})
+	endif()
+    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${MPI_LIBRARIES})
 	set(GHOST_HAVE_MPI 1)
-	include_directories(include/mpi ${MPI_INCLUDE_PATH})
-	set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+#set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
+#	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif()
 
 
@@ -276,17 +350,24 @@ else()
     endif()
 endif()
 
+
 configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
 	"${PROJECT_BINARY_DIR}/ghost/config.h"
 )
+configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/ghost-config.cmake.in ${CMAKE_BINARY_DIR}/ghost-config.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/ghost-config-version.cmake.in ${CMAKE_BINARY_DIR}/ghost-config-version.cmake @ONLY)
 
 if (${LIBTYPE} STREQUAL "STATIC")
-install(TARGETS ghost EXPORT GHOST-targets ARCHIVE DESTINATION lib/ghost)
+    install(TARGETS ghost EXPORT ghost-targets ARCHIVE DESTINATION lib/ghost)
+#    install(EXPORT ghost-targets DESTINATION lib/ghost)
 elseif (${LIBTYPE} STREQUAL "SHARED")
-install(TARGETS ghost EXPORT GHOST-targets LIBRARY DESTINATION lib/ghost)
+    install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)
+#    install(EXPORT ghost-targets DESTINATION lib/ghost)
 endif()
-install(FILES GHOST-config.cmake DESTINATION lib/ghost)
+install(FILES ${CMAKE_BINARY_DIR}/ghost-config.cmake DESTINATION lib/ghost)
+install(FILES ${CMAKE_BINARY_DIR}/ghost-config-version.cmake DESTINATION lib/ghost)
 install(FILES include/ghost.h DESTINATION include)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
@@ -298,7 +379,6 @@ configure_file(
 	IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
 
-configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
 
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
