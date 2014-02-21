@@ -30,7 +30,7 @@ ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t 
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
     {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
 
-const char * (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, int) = 
+ghost_error_t (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, char **, int) = 
 {&s_CRS_stringify, &d_CRS_stringify, &c_CRS_stringify, &z_CRS_stringify}; 
 
 static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
@@ -41,7 +41,7 @@ static void CRS_printInfo(char **str, ghost_sparsemat_t *mat);
 static const char * CRS_formatName(ghost_sparsemat_t *mat);
 static ghost_idx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_idx_t i);
 static size_t CRS_byteSize (ghost_sparsemat_t *mat);
-static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense);
+static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 static void CRS_free(ghost_sparsemat_t * mat);
 static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
 static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat);
@@ -157,16 +157,12 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
         goto err;
     }
 
-    mat->bandwidth = 0;
     for (i = 0; i < mat->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
         }
     }
-    mat->lowerBandwidth = 0;
-    mat->upperBandwidth = 0;
     ghost_idx_t col;
     ghost_idx_t globrow;
-    memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->nrows-1));
     for (i=0; i<mat->nrows; i++) {
         globrow = mat->context->lfRow[me]+i;
         rowLen = rpt_perm[i+1]-rpt_perm[i];
@@ -237,14 +233,12 @@ out:
 
 }
 
-static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
+static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
 {
     ghost_datatype_idx_t dtIdx;
-    if (ghost_datatypeIdx(&dtIdx,mat->traits->datatype) != GHOST_SUCCESS) {
-        return "Invalid";
-    }
+    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,mat->traits->datatype));
 
-    return CRS_stringify_funcs[dtIdx](mat, dense);
+    return CRS_stringify_funcs[dtIdx](mat, str, dense);
 }
 
 static void CRS_printInfo(char **str, ghost_sparsemat_t *mat)
@@ -293,10 +287,12 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
     GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
 
+    GHOST_CALL_GOTO(ghost_sparsemat_fromRowFunc_common(mat,maxrowlen,func,flags),err,ret);
     ghost_idx_t rowlen;
     ghost_idx_t i,j;
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
+    
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
     mat->nEnts = 0;
 
@@ -308,12 +304,20 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
     ghost_nnz_t nEnts = 0;
 
 #pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
-    { 
+    {
         GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for ordered
         for( i = 0; i < mat->nrows; i++ ) {
-            func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL) {
+                    func(mat->invRowPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
+                } else {
+                    func(mat->context->lfRow[me]+mat->invRowPerm[i],&rowlen,tmpcol,tmpval);
+                }
+            } else {
+                func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+            }
             nEnts += rowlen;
 #pragma omp ordered
             CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
@@ -325,10 +329,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
         goto err;
     }
 
-
-
-    mat->nEnts = nEnts;
-    mat->nnz = mat->nEnts;
+    mat->nnz = CR(mat)->rpt[mat->nrows];
+    mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),mat->nEnts*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->traits->elSize),err,ret);
@@ -341,48 +343,54 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
         }
     }
 
-    // TODO load balancing if distribution by nnz
-
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol)
-    { 
-        GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
+#pragma omp parallel private(i,j,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+    {
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
-        memset(tmpval,0,mat->traits->elSize*maxrowlen);
         memset(tmpcol,0,sizeof(ghost_idx_t)*maxrowlen);
+    
 #pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
-            func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-            memcpy(&CR(mat)->col[CR(mat)->rpt[i]],tmpcol,rowlen*sizeof(ghost_idx_t));
-            memcpy(&((char *)CR(mat)->val)[CR(mat)->rpt[i]*mat->traits->elSize],tmpval,rowlen*mat->traits->elSize);
-        }
-        free(tmpval); tmpval = NULL;
-        free(tmpcol); tmpcol = NULL;
-    }
-    if (ret != GHOST_SUCCESS) {
-        goto err;
-    }
-
-    memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
-
-    ghost_idx_t col, globrow;
-    mat->lowerBandwidth = 0;
-    mat->upperBandwidth = 0;
-    for (i = 0; i < mat->nrows; i++) {
-        globrow = mat->context->lfRow[me]+i;
-        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            col = CR(mat)->col[j];
-            if (col < globrow) {
-                mat->lowerBandwidth = MAX(mat->lowerBandwidth, globrow-col);
-                mat->nzDist[mat->context->gnrows-1-(globrow-col)]++;
-            } else if (col > globrow) {
-                mat->upperBandwidth = MAX(mat->upperBandwidth, col-globrow);
-                mat->nzDist[mat->context->gnrows-1+col-globrow]++;
+            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL) {
+                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                        func(mat->context->lfRow[me]+mat->invRowPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                    } else {
+                        func(mat->invRowPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                            CR(mat)->col[j] = mat->rowPerm[tmpcol[j-CR(mat)->rpt[i]]];
+                        }
+                    }
+                } else {
+                    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                        func(mat->context->lfRow[me]+mat->invRowPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                    } else {
+                        func(mat->context->lfRow[me]+mat->invRowPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                            if ((tmpcol[j-CR(mat)->rpt[i]] >= mat->context->lfRow[me]) && (tmpcol[j-CR(mat)->rpt[i]] < mat->context->lfRow[me]+mat->context->lnrows[me])) {
+                                CR(mat)->col[j] = mat->rowPerm[tmpcol[j-CR(mat)->rpt[i]]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                            //INFO_LOG("if %d>=%d && %d<%d: %f|%d (%d->%d) goes to local part permuted",tmpcol[j-CR(mat)->rpt[i]], mat->context->lfRow[me], tmpcol[j-CR(mat)->rpt[i]], mat->context->lfRow[me]+mat->context->lnrows[me],((double *)(CR(mat)->val))[j],CR(mat)->col[j],tmpcol[j-CR(mat)->rpt[i]],mat->rowPerm[tmpcol[j-CR(mat)->rpt[i]]-mat->context->lfRow[me]]+mat->context->lfRow[me]);
+                            } else {
+                                CR(mat)->col[j] = tmpcol[j-CR(mat)->rpt[i]];
+                            }
+                        }
+                    }
+                }
             } else {
-                mat->nzDist[mat->context->gnrows-1]++;
+                func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
             }
-
+            if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
+                // sort rows by ascending column indices
+                GHOST_CALL(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
+            }
+            GHOST_CALL(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
     }
+
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+#endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
@@ -638,12 +646,13 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
     }
 
-    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
-    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
+    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, NULL, mat->invRowPerm),err,ret);
+    } else {
+        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->rowPerm, mat->invRowPerm),err,ret);
+    }
 
-    memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
-    mat->lowerBandwidth = 0;
-    mat->upperBandwidth = 0;
+    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->invRowPerm),err,ret);
 
     for (i=0;i<mat->context->lnrows[me];i++) {
         if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {

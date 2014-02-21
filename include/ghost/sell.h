@@ -53,7 +53,6 @@ typedef struct
     ghost_idx_t maxRowLen;
     ghost_idx_t nMaxRows;
     ghost_idx_t chunkHeight;
-    ghost_idx_t scope;
     
     ghost_cu_sell_t *cumat;
 }
@@ -120,10 +119,10 @@ ghost_error_t s_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
 ghost_error_t c_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
 ghost_error_t z_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
 
-const char * d_SELL_stringify(ghost_sparsemat_t *mat, int dense);
-const char * s_SELL_stringify(ghost_sparsemat_t *mat, int dense);
-const char * c_SELL_stringify(ghost_sparsemat_t *mat, int dense);
-const char * z_SELL_stringify(ghost_sparsemat_t *mat, int dense);
+ghost_error_t d_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t s_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t c_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t z_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 #ifdef __cplusplus
 }
 #endif

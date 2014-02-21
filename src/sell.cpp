@@ -248,6 +248,8 @@ static int compareNZEPerRow( const void* a, const void* b )
 
 template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
 {
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#if 0
     DEBUG_LOG(1,"Creating SELL matrix");
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
@@ -521,9 +523,10 @@ out:
     free(rowSort); rowSort = NULL;
     
     return ret;
+#endif
 }
 
-template <typename m_t> static const char * SELL_stringify(ghost_sparsemat_t *mat, int dense)
+template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense)
 {
     ghost_idx_t chunk,i,j,row=0,col;
     m_t *val = (m_t *)SELL(mat)->val;
@@ -563,7 +566,10 @@ template <typename m_t> static const char * SELL_stringify(ghost_sparsemat_t *ma
         }
     }
 
-    return buffer.str().c_str();
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
+    strcpy(*str,buffer.str().c_str());
+
+    return GHOST_SUCCESS;
 }
 
 
@@ -627,14 +633,14 @@ extern "C" ghost_error_t z_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_
 extern "C" ghost_error_t c_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 { return SELL_fromCRS< ghost_complex<float> >(mat,crs); }
 
-extern "C" const char * d_SELL_stringify(ghost_sparsemat_t *mat, int dense)
-{ return SELL_stringify< double >(mat, dense); }
+extern "C" ghost_error_t d_SELL_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
+{ return SELL_stringify< double >(mat, str, dense); }
 
-extern "C" const char * s_SELL_stringify(ghost_sparsemat_t *mat, int dense)
-{ return SELL_stringify< float >(mat, dense); }
+extern "C" ghost_error_t s_SELL_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
+{ return SELL_stringify< float >(mat, str, dense); }
 
-extern "C" const char * z_SELL_stringify(ghost_sparsemat_t *mat, int dense)
-{ return SELL_stringify< ghost_complex<double> >(mat, dense); }
+extern "C" ghost_error_t z_SELL_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
+{ return SELL_stringify< ghost_complex<double> >(mat, str, dense); }
 
-extern "C" const char * c_SELL_stringify(ghost_sparsemat_t *mat, int dense)
-{ return SELL_stringify< ghost_complex<float> >(mat, dense); }
+extern "C" ghost_error_t c_SELL_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
+{ return SELL_stringify< ghost_complex<float> >(mat, str, dense); }

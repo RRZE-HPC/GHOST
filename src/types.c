@@ -104,22 +104,22 @@ char ghost_datatypeValid(ghost_datatype_t datatype)
 char * ghost_datatypeString(ghost_datatype_t datatype)
 {
     if (!ghost_datatypeValid(datatype)) {
-        return "invalid";
+        return "Invalid";
     }
 
     if (datatype & GHOST_DT_FLOAT) {
         if (datatype & GHOST_DT_REAL)
-            return "float";
+            return "Float";
         else
-            return "complex float";
+            return "Complex float";
     } else {
         if (datatype & GHOST_DT_REAL)
-            return "double";
+            return "Double";
         else
-            return "complex double";
+            return "Complex double";
     }
 
-    return "invalid";
+    return "Invalid";
 }
 
 ghost_error_t ghost_datatypeIdx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)

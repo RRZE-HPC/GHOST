@@ -125,13 +125,9 @@ typedef enum {
      */
     GHOST_SPARSEMAT_PERMUTE       = 8,
     /**
-     * @brief The permutation is global. 
+     * @brief The permutation is global, i.e., across processes. 
      */
     GHOST_SPARSEMAT_PERMUTE_GLOBAL  = 256,
-    /**
-     * @brief The permutation is local to the process. 
-     */
-    GHOST_SPARSEMAT_PERMUTE_LOCAL  = 512,
     /**
      * @brief If the matrix columns have been re-ordered, do _NOT_ care for ascending column indices wrt. memory location. 
      */
@@ -267,7 +263,7 @@ struct ghost_sparsemat_t
      *
      * @return The stringified matrix.
      */
-    const char * (*stringify) (ghost_sparsemat_t *mat, int dense);
+    ghost_error_t (*stringify) (ghost_sparsemat_t *mat, char **str, int dense);
     /**
      * @brief Get the length of the given row.
      *
@@ -375,6 +371,7 @@ extern "C" {
      * @return 
      */
     ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
+ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags); 
     ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
 
 #ifdef __cplusplus

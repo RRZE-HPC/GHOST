@@ -105,7 +105,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     return GHOST_SUCCESS;
 }
 
-template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat, int dense)
+template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
 {
     ghost_idx_t i,j,col;
     m_t *val = (m_t *)CR(mat)->val;
@@ -141,8 +141,10 @@ template <typename m_t> static const char * CRS_stringify(ghost_sparsemat_t *mat
             buffer << endl;
         }
     }
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
+    strcpy(*str,buffer.str().c_str());
 
-    return buffer.str().c_str();
+    return GHOST_SUCCESS;
 }
 
 extern "C" ghost_error_t dd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
@@ -193,14 +195,14 @@ extern "C" ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_dense
 extern "C" ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options)
 { return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options); }
 
-extern "C" const char * d_CRS_stringify(ghost_sparsemat_t *mat, int dense)
-{ return CRS_stringify< double >(mat, dense); }
+extern "C" ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
+{ return CRS_stringify< double >(mat, str, dense); }
 
-extern "C" const char * s_CRS_stringify(ghost_sparsemat_t *mat, int dense)
-{ return CRS_stringify< float >(mat, dense); }
+extern "C" ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
+{ return CRS_stringify< float >(mat, str, dense); }
 
-extern "C" const char * z_CRS_stringify(ghost_sparsemat_t *mat, int dense)
-{ return CRS_stringify< ghost_complex<double> >(mat, dense); }
+extern "C" ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
+{ return CRS_stringify< ghost_complex<double> >(mat, str, dense); }
 
-extern "C" const char * c_CRS_stringify(ghost_sparsemat_t *mat, int dense)
-{ return CRS_stringify< ghost_complex<float> >(mat, dense); }
+extern "C" ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
+{ return CRS_stringify< ghost_complex<float> >(mat, str, dense); }

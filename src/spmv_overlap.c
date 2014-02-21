@@ -80,7 +80,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     }
 
     if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
-            (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_LOCAL)) {
+            (!(mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL))) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {

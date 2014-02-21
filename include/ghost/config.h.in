@@ -2,7 +2,7 @@
 #define __GHOST_CONFIG_H__
 #cmakedefine GHOST_HAVE_MPI
 #cmakedefine GHOST_HAVE_OPENMP
-#cmakedefine GHOST_HAVE_PTSCOTCH
+#cmakedefine GHOST_HAVE_SCOTCH
 #cmakedefine GHOST_HAVE_CUDA
 #cmakedefine GHOST_HAVE_CUDA_PINNEDMEM
 #cmakedefine GHOST_HAVE_OPENCL
@@ -15,7 +15,6 @@
 #cmakedefine GHOST_HAVE_INSTR_TIMING
 #cmakedefine GHOST_HAVE_INSTR_LIKWID
 #cmakedefine GHOST_HAVE_LONGIDX
-#cmakedefine GHOST_HAVE_BSWAP
 #define GHOST_NAME "${CMAKE_PROJECT_NAME}"
 #define GHOST_VERSION "${GHOST_VERSION}"
 #define GHOST_VERSION_MAJOR ${GHOST_VERSION_MAJOR}

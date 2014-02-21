@@ -44,10 +44,10 @@ ghost_error_t zd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost
 ghost_error_t zs_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options);
 ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options);
 ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options);
-const char * d_CRS_stringify(ghost_sparsemat_t *mat, int dense);
-const char * s_CRS_stringify(ghost_sparsemat_t *mat, int dense);
-const char * c_CRS_stringify(ghost_sparsemat_t *mat, int dense);
-const char * z_CRS_stringify(ghost_sparsemat_t *mat, int dense);
+ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 
 #ifdef __cplusplus
 }

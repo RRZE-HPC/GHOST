@@ -7,9 +7,6 @@
 #include <errno.h>
 #include <limits.h>
 
-#ifdef GHOST_HAVE_BSWAP
-#include <byteswap.h>
-#else
 static inline uint32_t bswap_32(uint32_t val)
 {
     return ((val & (uint32_t)0x000000ffUL) << 24)
@@ -28,7 +25,6 @@ static inline uint64_t bswap_64(uint64_t val)
         | ((val & (uint64_t)0x00ff000000000000ULL) >> 40)
         | ((val & (uint64_t)0xff00000000000000ULL) >> 56);
 }
-#endif
 
 void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
 {{&ss_ghost_castArray,&sd_ghost_castArray,&sc_ghost_castArray,&sz_ghost_castArray},

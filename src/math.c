@@ -382,6 +382,12 @@ static void ghost_mpi_add_z(ghost_mpi_z *invec, ghost_mpi_z *inoutvec, int *len)
 ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, ghost_spmv_flags_t flags)
 {
 
+    UNUSED(nodeLHS);
+    UNUSED(matrixPath);
+    UNUSED(datatype);
+    UNUSED(rhs);
+    UNUSED(nIter);
+    UNUSED(flags);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #if 0
     DEBUG_LOG(1,"Computing reference solution");
