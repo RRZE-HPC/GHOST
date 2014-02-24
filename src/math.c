@@ -87,6 +87,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 
 ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags)
 {
+    DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
     ghost_spmv_selectMode(context,flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {

@@ -11,7 +11,8 @@
 #include "context.h"
 #include "densemat.h"
 
-#define GHOST_SPARSEMAT_SORT_GLOBALLY -1
+#define GHOST_SPARSEMAT_SORT_GLOBAL -1
+#define GHOST_SPARSEMAT_SORT_LOCAL -2
 
 /**
  * @brief Available sparse matrix storage formats.
@@ -49,6 +50,7 @@ typedef struct
     ghost_idx_t row, nEntsInRow;
 } 
 ghost_sorting_t;
+
 
 /**
  * @brief SpMV solver which do combined computation.
@@ -127,7 +129,7 @@ typedef enum {
     /**
      * @brief The permutation is global, i.e., across processes. 
      */
-    GHOST_SPARSEMAT_PERMUTE_GLOBAL  = 256,
+    //GHOST_SPARSEMAT_PERMUTE_GLOBAL  = 256,
     /**
      * @brief If the matrix columns have been re-ordered, do _NOT_ care for ascending column indices wrt. memory location. 
      */
@@ -192,18 +194,9 @@ struct ghost_sparsemat_t
     char *name;
     void *data;
 
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_idx_t *rowPerm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_idx_t *invRowPerm;
+    ghost_permutation_t *permutation;
+    //ghost_idx_t *rowPerm;
+    //ghost_idx_t *invRowPerm;
     
     ghost_idx_t nrows;
     ghost_idx_t ncols;
@@ -249,21 +242,23 @@ struct ghost_sparsemat_t
      * @brief Prints specific information on the matrix.
      *
      * @param mat The matrix.
+     * @param str Where to store the string.
      *
      * This function is called in ghost_printMatrixInfo() to print format-specific information alongside with
      * general matrix information.
      */
-    void       (*printInfo) (char **str, ghost_sparsemat_t *mat);
+    void       (*auxString) (ghost_sparsemat_t *mat, char **str);
     /**
      * @brief Turns the matrix into a string.
      *
      * @param mat The matrix.
+     * @param str Where to store the string.
      * @param dense If 0, only the elements stored in the sparse matrix will be included.
      * If 1, the matrix will be interpreted as a dense matrix.
      *
      * @return The stringified matrix.
      */
-    ghost_error_t (*stringify) (ghost_sparsemat_t *mat, char **str, int dense);
+    ghost_error_t (*string) (ghost_sparsemat_t *mat, char **str, int dense);
     /**
      * @brief Get the length of the given row.
      *

@@ -68,7 +68,7 @@ static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static void ghost_freeVector( ghost_densemat_t* const vec );
-static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_idx_t* perm); 
+static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_entry(ghost_densemat_t *, ghost_idx_t, ghost_idx_t, void *);
 static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs);
@@ -1111,13 +1111,57 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         // TODO free traits ???
     }
 }
-static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_idx_t* perm) 
+static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir) 
 {
     // TODO enhance performance
     /* permutes values in vector so that i-th entry is mapped to position perm[i] */
     ghost_idx_t i;
-    ghost_idx_t len = vec->traits->nrows, c;
+    ghost_idx_t len, c;
     char* tmp = NULL;
+    ghost_densemat_t *permvec = NULL;
+    ghost_densemat_t *combined = NULL; 
+    ghost_densemat_traits_t *traits = NULL;
+
+    if (permutation->scope > vec->traits->nrows && !vec->context) {
+        ERROR_LOG("The permutation scope is larger than the vector but the vector does not have a context (i.e.,\
+            process-local vectors cannot be combined to a big vector for permuting.");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (permutation->scope > vec->traits->nrows && vec->context->gnrows != permutation->scope) {
+        ERROR_LOG("The permutation scope and the context size do not match!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits->nrows != permutation->len) {
+        ghost_malloc((void **)&traits,sizeof(ghost_densemat_traits_t));
+        *traits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+        //ghost_cloneVtraits(vec->traits,&traits);
+        traits->nrows = vec->context->gnrows;
+        traits->flags = GHOST_DENSEMAT_HOST;
+        char zero[vec->traits->elSize];
+        memset(zero,0,vec->traits->elSize);
+
+        ghost_densemat_create(&combined,vec->context,traits);
+        combined->fromScalar(combined,&zero);
+        vec->collect(vec,combined);
+        permvec = combined;
+
+        WARNING_LOG("Global permutation not tested");
+    } else {
+        permvec = vec;
+    }
+    if (permvec->traits->nrows != permutation->len) {
+        WARNING_LOG("Lenghts do not match!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    len = permvec->traits->nrows;
+
+    ghost_idx_t *perm = NULL;
+    if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+        perm = permutation->perm;
+    } else {
+        perm = permutation->invPerm;
+    }
 
     if (perm == NULL) {
         DEBUG_LOG(1,"Permutation vector is NULL, returning.");
@@ -1127,8 +1171,8 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_idx_t* pe
     }
 
 
-    for (c=0; c<vec->traits->ncols; c++) {
-        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->traits->elSize*len));
+    for (c=0; c<permvec->traits->ncols; c++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,permvec->traits->elSize*len));
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
                 ERROR_LOG("Permutation index out of bounds: %"PRIDX" > %"PRIDX,perm[i],len);
@@ -1136,12 +1180,18 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_idx_t* pe
                 return GHOST_ERR_UNKNOWN;
             }
 
-            memcpy(&tmp[vec->traits->elSize*perm[i]],VECVAL(vec,vec->val,c,i),vec->traits->elSize);
+            memcpy(&tmp[vec->traits->elSize*perm[i]],VECVAL(permvec,permvec->val,c,i),permvec->traits->elSize);
         }
         for(i=0; i < len; ++i) {
-            memcpy(VECVAL(vec,vec->val,c,i),&tmp[vec->traits->elSize*i],vec->traits->elSize);
+            memcpy(VECVAL(permvec,permvec->val,c,i),&tmp[permvec->traits->elSize*i],permvec->traits->elSize);
         }
         free(tmp);
+    }
+    
+    if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits->nrows != permutation->len) {
+        permvec->distribute(permvec,vec);
+        free(traits);
+        permvec->destroy(permvec);
     }
 
     return GHOST_SUCCESS;
@@ -1204,7 +1254,7 @@ static ghost_error_t vec_compress(ghost_densemat_t *vec)
 ghost_error_t ghost_cloneVtraits(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2)
 {
     GHOST_CALL_RETURN(ghost_malloc((void **)t2,sizeof(ghost_densemat_traits_t)));
-    memcpy(t2,t1,sizeof(ghost_densemat_traits_t));
+    memcpy(*t2,t1,sizeof(ghost_densemat_traits_t));
 
     return GHOST_SUCCESS;
 }

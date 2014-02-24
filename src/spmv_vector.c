@@ -83,13 +83,13 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
 
     GHOST_INSTR_START(spmv_vector_copybuffers)
     if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
-            (!(mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL))) {
+            (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
 #pragma omp parallel private(to_PE,i,c)
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->rowPerm[context->duelist[to_PE][i]]),invec->traits->elSize);
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[context->duelist[to_PE][i]]),invec->traits->elSize);
                 }
             }
         }

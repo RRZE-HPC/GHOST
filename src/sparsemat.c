@@ -49,20 +49,19 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->toFile = NULL;
     (*mat)->fromRowFunc = NULL;
     (*mat)->fromCRS = NULL;
-    (*mat)->printInfo = NULL;
+    (*mat)->auxString = NULL;
     (*mat)->formatName = NULL;
     (*mat)->rowLen = NULL;
     (*mat)->byteSize = NULL;
     (*mat)->permute = NULL;
     (*mat)->destroy = NULL;
-    (*mat)->stringify = NULL;
+    (*mat)->string = NULL;
     (*mat)->upload = NULL;
     (*mat)->permute = NULL;
     (*mat)->spmv = NULL;
     (*mat)->destroy = NULL;
     (*mat)->split = NULL;
-    (*mat)->rowPerm = NULL;
-    (*mat)->invRowPerm = NULL;
+    (*mat)->permutation = NULL;
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
@@ -72,12 +71,10 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
 
-    if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_GLOBALLY) {
-        if ((*mat)->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL) {
-            (*mat)->traits->sortScope = (*mat)->context->gnrows;
-        } else {
-            (*mat)->traits->sortScope = (*mat)->nrows;
-        }
+    if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
+        (*mat)->traits->sortScope = (*mat)->context->gnrows;
+    } else if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_LOCAL) {
+        (*mat)->traits->sortScope = (*mat)->nrows;
     }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_nnz_t)*(2*context->gnrows-1)),err,ret);
@@ -150,6 +147,8 @@ ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx
 
 ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags) 
 {
+    UNUSED(maxrowlen);
+    UNUSED(flags);
     ghost_error_t ret = GHOST_SUCCESS;
     
     int nprocs = 1;
@@ -163,11 +162,6 @@ ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_i
     
     if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
         mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
-        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
-    } else if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-        if (mat->traits->sortScope > mat->context->lnrows[me]) {
-            mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
-        }
     }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -244,11 +238,6 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         
     if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
         mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
-        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
-    } else if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-        if (mat->traits->sortScope > mat->context->lnrows[me]) {
-            mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
-        }
     }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -276,7 +265,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
                 for (i = 0; i < header.nrows+1; i++) {
                     (*rpt)[i] = 0;
                 }
-                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
+                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret);
                 mat->context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -331,7 +320,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         for (i = 0; i < header.nrows+1; i++) {
             (*rpt)[i] = 0;
         }
-        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->invRowPerm),err,ret);
+        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret);
         for (i=0; i<nprocs; i++){
             mat->context->lfEnt[i] = 0;
             mat->context->lfRow[i] = 0;
@@ -370,7 +359,7 @@ static int compareNZEPerRow( const void* a, const void* b )
 ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    if (mat->rowPerm || mat->invRowPerm) {
+    if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
     
@@ -381,18 +370,25 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
 
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL) {
+    
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
+    if (mat->traits->sortScope > mat->nrows) {
         nrows = mat->context->gnrows;
         rowOffset = 0;
+        mat->permutation->scope = GHOST_PERMUTATION_GLOBAL;
     } else {
         nrows = mat->nrows;
         rowOffset = mat->context->lfRow[me];
+        mat->permutation->scope = GHOST_PERMUTATION_LOCAL;
     }
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*nrows),err,ret);
+    mat->permutation->len = nrows;
+
+    memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*nrows);
+    memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*nrows);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,sizeof(ghost_idx_t)*nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,sizeof(ghost_idx_t)*nrows),err,ret);
-    memset(mat->rowPerm,0,sizeof(ghost_idx_t)*nrows);
-    memset(mat->invRowPerm,0,sizeof(ghost_idx_t)*nrows);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_nnz_t)),err,ret);
 
@@ -435,8 +431,8 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
     qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), compareNZEPerRow);
     
     for(i=0; i < nrows; ++i) {
-        (mat->invRowPerm)[i] = rowSort[i].row;
-        (mat->rowPerm)[rowSort[i].row] = i;
+        (mat->permutation->invPerm)[i] = rowSort[i].row;
+        (mat->permutation->perm)[rowSort[i].row] = i;
     }
 
     goto out;
@@ -461,15 +457,10 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     return GHOST_SUCCESS;
 #else
     ghost_error_t ret = GHOST_SUCCESS;
-    if (mat->rowPerm || mat->invRowPerm) {
+    if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
 
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_GLOBAL)) {
-        WARNING_LOG("Forcing global permutation for Scotch");
-        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE_GLOBAL;
-    }
-    
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
         ERROR_LOG("Scotchify from func not yet implemented");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
@@ -507,10 +498,13 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     }
     rpt[0] = 0;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
-    memset(mat->rowPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
-    memset(mat->invRowPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
+    memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
+    memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
+    mat->permutation->scope = GHOST_PERMUTATION_GLOBAL;
+    mat->permutation->len = mat->context->gnrows;
 
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
@@ -539,22 +533,22 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     //SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,"n{sep=/(levl<3)?m{asc=b{strat=q{strat=f}},low=q{strat=h},seq=q{strat=m{low=h,asc=b}}};,ole=s,ose=s,osq=n{sep=/(levl<3)?m{asc=b,low=h};}}"),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->rowPerm+mat->context->lfRow[me]),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->permutation->perm+mat->context->lfRow[me]),err,ret);
     
 
     // combine permutation vectors
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->rowPerm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
 
     // assemble inverse permutation
     for (i=0; i<mat->context->gnrows; i++) {
-        mat->invRowPerm[mat->rowPerm[i]] = i;
+        mat->permutation->invPerm[mat->permutation->perm[i]] = i;
     }
 
     goto out;
 err:
     ERROR_LOG("Deleting permutations");
-    free(mat->rowPerm); mat->rowPerm = NULL;
-    free(mat->invRowPerm); mat->invRowPerm = NULL;
+    free(mat->permutation->perm); mat->permutation->perm = NULL;
+    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
 
 out:
     free(req);
@@ -667,18 +661,20 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
     ghost_printLine(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
-    if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        ghost_printLine(str,"Permutation strategy",NULL,"Scotch");
-        ghost_printLine(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
-    } else {
-        ghost_printLine(str,"Permutation strategy",NULL,"Sorting");
-        ghost_printLine(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+        if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
+            ghost_printLine(str,"Permutation strategy",NULL,"Scotch");
+            ghost_printLine(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
+        } else {
+            ghost_printLine(str,"Permutation strategy",NULL,"Sorting");
+            ghost_printLine(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+        }
+        ghost_printLine(str,"Permutation scope",NULL,"%s",mat->permutation->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
+        ghost_printLine(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+        ghost_printLine(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
     }
-    ghost_printLine(str,"Permutation scope",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE_GLOBAL?"Across processes":"Local to process");
-    ghost_printLine(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
-    ghost_printLine(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
 
-    mat->printInfo(str,mat);
+    mat->auxString(mat,str);
     ghost_printFooter(str);
 
     return GHOST_SUCCESS;

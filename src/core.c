@@ -23,39 +23,32 @@ static unsigned int* ghost_rand_states=NULL;
 
 static ghost_error_t ghost_rand_init()
 {
-    int N_Th = 1;
-#pragma omp parallel
-    {
-#pragma omp single
-        N_Th = ghost_ompGetNumThreads();
-    }
-
-    int rank;
-    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&rank));
-
-    if(ghost_rand_states == NULL) {
-        ghost_rand_states=(unsigned int*)malloc(N_Th*sizeof(unsigned int));
-    }
-
     ghost_error_t ret = GHOST_SUCCESS;
-#pragma omp parallel
-    {
+    int i;
+    int nthreads;
+    int rank;
+
+    GHOST_CALL_GOTO(ghost_machine_nPus(&nthreads, GHOST_NUMANODE_ANY),err,ret);
+    GHOST_CALL_GOTO(ghost_getRank(MPI_COMM_WORLD,&rank),err,ret);
+
+    if (!ghost_rand_states) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ghost_rand_states,nthreads*sizeof(unsigned int)),err,ret);
+    }
+
+    for (i=0; i<nthreads; i++) {
         double time;
-        GHOST_CALL(ghost_wctimeMilli(&time),ret);
+        GHOST_CALL_GOTO(ghost_wctimeMilli(&time),err,ret);
 
         unsigned int seed=(unsigned int)ghost_hash(
                 (int)time,
                 rank,
-                (int)ghost_ompGetThreadNum());
-        ghost_rand_states[ghost_ompGetThreadNum()] = seed;
-    }
-
-    if (ret != GHOST_SUCCESS) {
-        goto err;
+                i);
+        ghost_rand_states[i] = seed;
     }
 
     goto out;
 err:
+    ERROR_LOG("Free rand states");
     free(ghost_rand_states);
 
 out:
@@ -346,11 +339,13 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 ghost_error_t ghost_getRandState(unsigned int *s)
 {
+    int pu;
+    GHOST_CALL_RETURN(ghost_getCore(&pu));
     if (!s) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    *s = ghost_rand_states[ghost_ompGetThreadNum()];
+    *s = ghost_rand_states[pu];
 
     return GHOST_SUCCESS;
 }

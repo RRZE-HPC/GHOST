@@ -129,7 +129,7 @@ template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *ma
                     buffer << val[j] << " (" << CR(mat)->col[j] << ")" << "\t";
                 } else {
                     if (CR(mat)->col[j] < mat->nrows) {
-                        buffer << val[j] << " (o " << mat->invRowPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
+                        buffer << val[j] << " (o " << mat->permutation->invPerm[CR(mat)->col[j]] << "|p " << CR(mat)->col[j] << ")" << "\t";
                     } else {
                         buffer << val[j] << " (p " << CR(mat)->col[j] << "|p " << CR(mat)->col[j] << ")" << "\t";
                     }

@@ -237,17 +237,17 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 
     return GHOST_SUCCESS;
 }
-
+/*
 static int compareNZEPerRow( const void* a, const void* b ) 
 {
-    /* comparison function for ghost_sorting_t; 
-     * sorts rows with higher number of non-zero elements first */
-
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
-
+*/
 template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
 {
+    UNUSED(mat);
+    UNUSED(crsmat);
+
     return GHOST_ERR_NOT_IMPLEMENTED;
 #if 0
     DEBUG_LOG(1,"Creating SELL matrix");
@@ -312,8 +312,8 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     }*/
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->rowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->invRowPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
 
         for (c=0; c<crsmat->nrows/SELL(mat)->scope; c++)  
@@ -351,13 +351,13 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
           printf("Error in row %"PRIDX": descending row number\n",i);
           }*/
         for(i=0; i < crsmat->nrows; ++i) {
-            /* invRowPerm maps an index in the permuted system to the original index,
-             * rowPerm gets the original index and returns the corresponding permuted position.
+            /* permutation->invPerm maps an index in the permuted system to the original index,
+             * permutation->perm gets the original index and returns the corresponding permuted position.
              */
             //    if( rowSort[i].row >= cr->nrows ) DEBUG_LOG(0,"error: invalid row number %"PRIDX" in %"PRIDX,rowSort[i].row, i); 
 
-            (mat->invRowPerm)[i] = rowSort[i].row;
-            (mat->rowPerm)[rowSort[i].row] = i;
+            (mat->permutation->invPerm)[i] = rowSort[i].row;
+            (mat->permutation->perm)[rowSort[i].row] = i;
         }
     }
 
@@ -475,15 +475,15 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
 
                 if (j<SELL(mat)->rowLen[row]) {
                     if (flags & GHOST_SPARSEMAT_PERMUTE) {
-                        if (mat->invRowPerm == NULL) {
+                        if (mat->permutation->invPerm == NULL) {
                             ERROR_LOG("The matris is sorted but the permutation vector is NULL");
                             return GHOST_ERR_INVALID_ARG;
                         }
-                        ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(mat->invRowPerm)[row]]+j];
+                        ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(mat->permutation->invPerm)[row]]+j];
                         if (!(flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS)) {
-                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (mat->rowPerm)[cr->col[cr->rpt[(mat->invRowPerm)[row]]+j]];
+                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (mat->permutation->perm)[cr->col[cr->rpt[(mat->permutation->invPerm)[row]]+j]];
                          } else {
-                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(mat->invRowPerm)[row]]+j];
+                            SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(mat->permutation->invPerm)[row]]+j];
                          }
                     } else {
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[row]+j];
@@ -516,8 +516,8 @@ err:
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
-    free(mat->rowPerm); mat->rowPerm = NULL;
-    free(mat->invRowPerm); mat->invRowPerm = NULL;
+    free(mat->permutation->perm); mat->permutation->perm = NULL;
+    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
 
 out:
     free(rowSort); rowSort = NULL;
@@ -552,7 +552,7 @@ template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *m
                         buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
                     } else {
                         if (SELL(mat)->col[idx] < mat->nrows) {
-                            buffer << val[idx] << " (o " << mat->invRowPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
+                            buffer << val[idx] << " (o " << mat->permutation->invPerm[SELL(mat)->col[idx]] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
                         } else {
                             buffer << val[idx] << " (p " << SELL(mat)->col[idx] << "|p " << SELL(mat)->col[idx] << ")" << "\t";
                         }

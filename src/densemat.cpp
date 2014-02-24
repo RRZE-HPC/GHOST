@@ -166,10 +166,10 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
-    ghost_idx_t i,v;
 
-#pragma omp parallel private (v,i)
+#pragma omp parallel
     {
+    ghost_idx_t i,v;
     unsigned int state;
     ghost_getRandState(&state);
         for (v=0; v<vec->traits->ncols; v++) 

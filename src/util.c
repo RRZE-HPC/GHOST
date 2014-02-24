@@ -178,7 +178,7 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
     }
 
     if (size/(1024.*1024.*1024.) > 1.) {
-        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+        WARNING_LOG("Allocating big array of size %f GB",size/(1024.*1024.*1024.));
     }
 
     *mem = malloc(size);
@@ -194,6 +194,9 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
 ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)
 {
     int ierr;
+    if (size/(1024.*1024.*1024.) > 1.) {
+        WARNING_LOG("Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+    }
 
     if ((ierr = posix_memalign(mem, align, size)) != 0) {
         ERROR_LOG("Error while allocating %zu bytes using posix_memalign: %s",size,strerror(ierr));

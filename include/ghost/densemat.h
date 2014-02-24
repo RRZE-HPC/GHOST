@@ -251,7 +251,7 @@ struct ghost_densemat_t
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_idx_t *perm);
+    ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_permutation_t *perm, ghost_permutation_direction_t dir);
     /**
      * @brief Print a vector/matrix.
      *
