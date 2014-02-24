@@ -18,7 +18,7 @@
 #endif
 
 // if called with context==NULL: clean up variables
-ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags)
+ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags,va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -125,7 +125,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     GHOST_INSTR_STOP(spmv_vector_comm);
 
     GHOST_INSTR_START(spmv_vector_comp);
-    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,flags),err,ret);    
+    GHOST_CALL_GOTO(mat->spmv(mat,res,invec,flags,argp),err,ret);    
     GHOST_INSTR_STOP(spmv_vector_comp);
 
     goto out;

@@ -6,8 +6,9 @@
 #include "ghost/util.h"
 #include <immintrin.h>
 
-ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * invec, ghost_spmv_flags_t options)
+ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * invec, ghost_spmv_flags_t options,va_list argp)
 {
+    UNUSED(argp);
 #ifdef GHOST_HAVE_SSE
     ghost_idx_t c,j;
     ghost_nnz_t offs;
@@ -46,8 +47,9 @@ ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs
     return GHOST_SUCCESS;
 }
 
-ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
+    UNUSED(argp);
 #ifdef GHOST_HAVE_AVX
     ghost_idx_t c,j;
     ghost_nnz_t offs;
@@ -92,7 +94,7 @@ ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
     ghost_idx_t j,c;
@@ -100,6 +102,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     double *mval = (double *)SELL(mat)->val;
     double *lval = (double *)res->val[0];
     double *rval = (double *)invec->val[0];
+    double *local_dot_product = NULL;
     __m256d tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8;
     __m256d dot1,dot2,dot3;
     double dots1 = 0, dots2 = 0, dots3 = 0;
@@ -108,14 +111,19 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     __m128d rhstmp;
     __m256d shift, scale, beta;
         
+    if (spmvmOptions & GHOST_SPMV_APPLY_SCALE) {
+        scale = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_AXPBY) {
+        beta = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_APPLY_SHIFT) {
+        shift = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+        local_dot_product = va_arg(argp,double *);
+    }
     
-    if (spmvmOptions & GHOST_SPMV_APPLY_SHIFT)
-        shift = _mm256_broadcast_sd(mat->traits->shift);
-    if (spmvmOptions & GHOST_SPMV_APPLY_SCALE)
-        scale = _mm256_broadcast_sd(mat->traits->scale);
-    if (spmvmOptions & GHOST_SPMV_AXPBY)
-        beta = _mm256_broadcast_sd(mat->traits->beta);
-
 
 #pragma omp parallel private(c,j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
     {
@@ -305,9 +313,9 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
         }
     }
     if (spmvmOptions & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
-        ((double *)(invec->traits->localdot))[0] = dots1;
-        ((double *)(invec->traits->localdot))[1] = dots2;
-        ((double *)(invec->traits->localdot))[2] = dots3;
+        local_dot_product[0] = dots1;
+        local_dot_product[1] = dots2;
+        local_dot_product[2] = dots3;
     }
     
 #else
@@ -319,8 +327,9 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     return GHOST_SUCCESS;
 }
 
-ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions)
+ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
+    UNUSED(argp);
 #ifdef GHOST_HAVE_AVX
     ghost_idx_t c,j;
     ghost_nnz_t offs;
@@ -449,8 +458,9 @@ ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *mat, ghost_densemat_t* re
     return GHOST_SUCCESS;
 }
 
-ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions)
+ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
+    UNUSED(argp);
 #ifdef GHOST_HAVE_MIC
     ghost_idx_t c,j;
     ghost_nnz_t offs;
@@ -505,8 +515,9 @@ ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *mat, ghost_densemat_t* re
     return GHOST_SUCCESS;
 }
 
-ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions)
+ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
+    UNUSED(argp);
 #ifdef GHOST_HAVE_MIC
     ghost_idx_t c,j;
     ghost_nnz_t offs;

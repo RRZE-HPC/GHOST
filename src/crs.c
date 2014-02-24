@@ -24,7 +24,7 @@
 
 #include <dlfcn.h>
 
-ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options) = 
+ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp) = 
 {{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
     {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
     {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
@@ -43,7 +43,7 @@ static ghost_idx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_idx_t i);
 static size_t CRS_byteSize (ghost_sparsemat_t *mat);
 static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 static void CRS_free(ghost_sparsemat_t * mat);
-static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
+static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat);
 #ifdef GHOST_HAVE_MPI
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat);
@@ -813,13 +813,13 @@ static void CRS_free(ghost_sparsemat_t * mat)
     }
 }
 
-static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options)
+static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
     GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,mat->traits->datatype));
     GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
 
-    return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options);
+    return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options,argp);
 }
 

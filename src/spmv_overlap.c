@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags)
+ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -112,7 +112,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     }
 
     GHOST_INSTR_START(spmv_overlap_local);
-    GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts),err,ret);
+    GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts,argp),err,ret);
     GHOST_INSTR_STOP(spmv_overlap_local);
 
     GHOST_INSTR_START(spmv_overlap_waitall);
@@ -122,7 +122,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
 
     GHOST_INSTR_START(spmv_overlap_remote);
-    GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts),err,ret);
+    GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp),err,ret);
     GHOST_INSTR_STOP(spmv_overlap_remote);
 
     goto out;

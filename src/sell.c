@@ -31,37 +31,37 @@
 
 const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER = {.C = 32, .T = 1};
 
-ghost_error_t (*SELL_kernels_SSE[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_SSE[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_SSE,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-ghost_error_t (*SELL_kernels_AVX[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_AVX[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-ghost_error_t (*SELL_kernels_AVX_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_AVX_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_32_rich,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-ghost_error_t (*SELL_kernels_MIC_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_MIC_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_MIC_32,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = 
+ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{&ss_SELL_kernel_plain,&sd_SELL_kernel_plain,&sc_SELL_kernel_plain,&sz_SELL_kernel_plain},
     {&ds_SELL_kernel_plain,&dd_SELL_kernel_plain,&dc_SELL_kernel_plain,&dz_SELL_kernel_plain},
     {&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
@@ -93,10 +93,10 @@ static ghost_error_t SELL_upload(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *);
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
 static void SELL_free(ghost_sparsemat_t *mat);
-static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t);
+static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 static int ghost_selectSellChunkHeight(int datatype);
 #ifdef GHOST_HAVE_CUDA
-static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags);
+static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags, va_list argp);
 #endif
 #ifdef VSX_INTR
 static void SELL_kernel_VSX (ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, int options);
@@ -1035,12 +1035,12 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
 }
 
-static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options)
+static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
     DEBUG_LOG(2,"lhs vector has %s data and %"PRIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->ncols);
 
-    ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t) = NULL;
+    ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list) = NULL;
 
 #ifdef GHOST_HAVE_OPENMP
     /*    static int first = 1;
@@ -1112,14 +1112,14 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [vecDtIdx];
     }
 
-    return kernel(mat,lhs,rhs,options);
+    return kernel(mat,lhs,rhs,options,argp);
 
 
 }
 
 
 #ifdef GHOST_HAVE_CUDA
-static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags)
+static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags,va_list argp)
 {
     DEBUG_LOG(1,"Calling SELL CUDA kernel");
     DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeString(lhs->traits->datatype));

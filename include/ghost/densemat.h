@@ -354,7 +354,7 @@ struct ghost_densemat_traits_t
     ghost_densemat_flags_t flags;
     ghost_datatype_t datatype;
     size_t elSize;
-    void * localdot;
+//    void * localdot;
 };
 /**
  * @brief Defined in densemat.c

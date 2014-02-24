@@ -11,6 +11,8 @@
 #include "context.h"
 #include "densemat.h"
 
+#include <stdarg.h>
+
 #define GHOST_SPARSEMAT_SORT_GLOBAL -1
 #define GHOST_SPARSEMAT_SORT_LOCAL -2
 
@@ -51,6 +53,14 @@ typedef struct
 } 
 ghost_sorting_t;
 
+/*typedef struct 
+{
+    char *alpha; // scale
+    char *beta; // result scale
+    char *gamma; // shift
+    char *dot;
+}
+ghost_spmv_aux_t;*/
 
 /**
  * @brief SpMV solver which do combined computation.
@@ -168,9 +178,9 @@ struct ghost_sparsemat_traits_t
      * @brief Size (in bytes) of one matrix element.
      */
     size_t elSize;
-    void * shift;
-    void * scale;
-    void * beta; // scale factor for AXPBY
+    //void * shift;
+    //void * scale;
+    //void * beta; // scale factor for AXPBY
 };
 /**
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
@@ -229,7 +239,7 @@ struct ghost_sparsemat_t
      *
      * For detailed information on the flags check the documentation of ghost_spmv_flags_t.
      */
-    ghost_error_t (*spmv) (ghost_sparsemat_t *mat, ghost_densemat_t *res, ghost_densemat_t *rhs, ghost_spmv_flags_t flags);
+    ghost_error_t (*spmv) (ghost_sparsemat_t *mat, ghost_densemat_t *res, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp);
     /**
      * @brief Destroy the matrix, i.e., free all of its data.
      *

@@ -110,6 +110,7 @@ typedef struct {
     ghost_densemat_t *res;
     ghost_densemat_t *invec;
     int spmvOptions;
+    va_list argp;
 } compArgs;
 
 static void *computeLocal(void *vargs)
@@ -122,7 +123,7 @@ static void *computeLocal(void *vargs)
 
     GHOST_INSTR_START(spmv_task_computeLocal);
     compArgs *args = (compArgs *)vargs;
-    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions),err,*ret);
+    GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions,args->argp),err,*ret);
     GHOST_INSTR_STOP(spmv_task_computeLocal);
 
     goto out;
@@ -132,7 +133,7 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions)
+ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions, va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(context);
@@ -219,6 +220,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     cplargs.invec = invec;
     cplargs.res = res;
     cplargs.spmvOptions = localopts;
+    va_copy(cplargs.argp,argp);
 
     for (i=0;i<invec->traits->ncols*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
@@ -278,7 +280,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
 
     GHOST_INSTR_START(spmv_task_computeRemote);
     if (remoteExists) {
-        mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts);
+        mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp);
     }
     GHOST_INSTR_STOP(spmv_task_computeRemote);
        

@@ -85,11 +85,11 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags)
+ghost_error_t ghost_vspmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
-    ghost_spmv_selectMode(context,flags);
+    ghost_spmv_selectMode(ctx,flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
     } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {
@@ -105,24 +105,37 @@ ghost_error_t ghost_spmv(ghost_context_t *context, ghost_densemat_t *res, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
 
-    solver(context,res,mat,invec,*flags);
+    solver(ctx,res,mat,invec,*flags,argp);
 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START(spmv_dot_reduce);
 
     if ((*flags & GHOST_SPMV_REDUCE) && (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
-        ghost_mpi_op_t op;
+        WARNING_LOG("not implemented");
+/*        ghost_mpi_op_t op;
         ghost_mpi_datatype_t dt;
         ghost_mpi_op_sum(&op,res->traits->datatype);
         ghost_mpi_datatype(&dt,res->traits->datatype);
 
-        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, ctx->mpicomm));*/
     }
     GHOST_INSTR_STOP(spmv_dot_reduce);
 #endif
 
 
     return GHOST_SUCCESS;
+
+
+}
+ghost_error_t ghost_spmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+    va_list argp;
+    va_start(argp, flags);
+    ret = ghost_vspmv(ctx,res,mat,invec,flags,argp);
+    va_end(argp);
+
+    return ret;
 }
 
 ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce)
