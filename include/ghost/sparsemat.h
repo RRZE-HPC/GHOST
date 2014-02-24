@@ -53,14 +53,42 @@ typedef struct
 } 
 ghost_sorting_t;
 
-/*typedef struct 
-{
-    char *alpha; // scale
-    char *beta; // result scale
-    char *gamma; // shift
-    char *dot;
-}
-ghost_spmv_aux_t;*/
+#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot){\
+    v_t *arg = NULL;\
+    if (flags & GHOST_SPMV_APPLY_SCALE) {\
+        printf("here\n");\
+        arg = va_arg(argp,v_t *);\
+        if (!arg) {\
+            ERROR_LOG("Scale argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        alpha = *arg;\
+    }\
+    if (flags & GHOST_SPMV_AXPBY) {\
+        arg = va_arg(argp,v_t *);\
+        if (!arg) {\
+            ERROR_LOG("AXPBY argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        beta = *arg;\
+    }\
+    if (flags & GHOST_SPMV_APPLY_SHIFT) {\
+        arg = va_arg(argp,v_t *);\
+        if (!arg) {\
+            ERROR_LOG("Shift argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        gamma = *arg;\
+    }\
+    if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+        arg = va_arg(argp,v_t *);\
+        if (!arg) {\
+            ERROR_LOG("Dot argument is NULL!");\
+            return GHOST_ERR_INVALID_ARG;\
+        }\
+        dot = arg;\
+    }\
+}\
 
 /**
  * @brief SpMV solver which do combined computation.

@@ -35,18 +35,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 
     v_t hlp1 = 0.;
     v_t shift, scale, beta;
-    
-    if (options & GHOST_SPMV_APPLY_SCALE) {
-        scale = *((v_t *)(va_arg(argp,char *)));
-    }
-    if (options & GHOST_SPMV_AXPBY) {
-        beta = *((v_t *)(va_arg(argp,char *)));
-    }
-    if (options & GHOST_SPMV_APPLY_SHIFT) {
-        shift = *((v_t *)(va_arg(argp,char *)));
-    }
+   
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product);
+
     if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
-        local_dot_product = ((v_t *)(va_arg(argp,char *)));
 
 #pragma omp parallel 
         {

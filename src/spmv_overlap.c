@@ -36,6 +36,8 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     int localopts = flags;
     localopts &= ~GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT;
 
+    va_list remote_argp;
+    va_copy(remote_argp,argp);
     int remoteopts = flags;
     remoteopts &= ~GHOST_SPMV_AXPBY;
     remoteopts &= ~GHOST_SPMV_APPLY_SHIFT;
@@ -122,7 +124,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_context_t *context, ghost_densemat_t* r
     GHOST_CALL_GOTO(invec->uploadHalo(invec),err,ret);
 
     GHOST_INSTR_START(spmv_overlap_remote);
-    GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp),err,ret);
+    GHOST_CALL_GOTO(mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,remote_argp),err,ret);
     GHOST_INSTR_STOP(spmv_overlap_remote);
 
     goto out;
