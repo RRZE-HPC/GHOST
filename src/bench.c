@@ -11,7 +11,7 @@ static void dummy(double *a) {
     }
 }
 
-int ghost_stream(int test, double *bw)
+ghost_error_t ghost_bench_stream(int test, double *bw)
 {
 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -51,7 +51,7 @@ out:
 }
 
 
-int ghost_pingpong(double *bw)
+ghost_error_t ghost_bench_pingpong(double *bw)
 {
 
     UNUSED(bw);
@@ -59,7 +59,7 @@ int ghost_pingpong(double *bw)
     return GHOST_SUCCESS;
 }
 
-int ghost_peakperformance(double *gf)
+ghost_error_t ghost_bench_peakperformance(double *gf)
 {
 
     UNUSED(gf);

@@ -8,6 +8,7 @@
 #include "ghost/blas_mangle.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
+#include "ghost/spmv_solvers.h"
 #include <strings.h>
 #include <math.h>
 #include <complex.h>
@@ -18,6 +19,8 @@ extern cublasHandle_t ghost_cublas_handle;
 
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
+
+static void ghost_spmv_selectMode(ghost_context_t * context, int *flags);
 
 ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
@@ -85,7 +88,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
+static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
@@ -485,7 +488,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 #endif
 }
 
-void ghost_spmv_selectMode(ghost_context_t * context, int *flags)
+static void ghost_spmv_selectMode(ghost_context_t * context, int *flags)
 {
     if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
@@ -555,7 +558,7 @@ ghost_error_t ghost_mpi_destroyOperations()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t)
+ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t)
 {
     if (!ghost_datatypeValid(m_t) || !ghost_datatypeValid(v_t)) {
         ERROR_LOG("Invalid data type");

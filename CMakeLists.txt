@@ -76,6 +76,7 @@ set (HEADERS
         include/ghost/pumap.h
 		include/ghost/sell.h
 		include/ghost/sparsemat.h
+		include/ghost/spmv_solvers.h
 		include/ghost/task.h
 		include/ghost/taskq.h
         include/ghost/thpool.h

@@ -27,11 +27,15 @@
 /** 
  * @defgroup locops Local math
  * @brief Mathematical operations which act locally.
+ * 
+ * These operations are usually executed by function pointers which are part of the matrix or vector. 
  */
 
 /** 
  * @defgroup globops Global math
- * @brief Mathematical operations which act globally (and hence, also locally).
+ * @brief Mathematical operations which act globally.
+ *
+ * These operations usually call one or more local operations (cf. \ref locops) together with communication calls.
  */
 
 /** 

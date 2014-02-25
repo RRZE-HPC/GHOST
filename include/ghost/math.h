@@ -37,7 +37,7 @@ extern "C" {
      *
      * @param mat The dense matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * This function normalizes every column of the matrix to have Euclidian norm 1.
      */
@@ -51,40 +51,68 @@ extern "C" {
      * @param b The second vector/matrix.
      * @param res Where to store the result.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
-     * This function first computes the local dot product and then performs an allreduce on the result.
+     * This function first computes the local dot product ghost_densemat_t::dot and then performs an allreduce on the result.
      */
     ghost_error_t ghost_dot(ghost_densemat_t *a, ghost_densemat_t *b, void *res);
-    ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp);
     /**
      * @ingroup globops
      *
      * @brief Multiply a sparse matrix with a dense vector.
      *
-     * @param res
-     * @param mat
-     * @param invec
-     * @param flags
-     * @param ...
+     * @param res The result vector.
+     * @param mat The sparse matrix.
+     * @param invec The right hand side vector.
+     * @param flags Configuration flags for the spMV operation.
+     * @param ... Further arguments \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, and \a dot (in that exact order) if configured in the flags (cf. detailed description).
      *
-     * @return 
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * In the most general case, this function computes the operation \f$y = \alpha (A - \gamma I) x + \beta y\f$.
+     * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, and \a dot have 
+     * to be given in the correct order as pointers to variables of the same type as the vector's data.
+     *
+     * Application of the scaling factor \f$\alpha\f$ can be switched on by setting ::GHOST_SPMV_APPLY_SCALE in the flags.
+     * Otherwise, \f$\alpha=1\f$.
+     *
+     * The scaling factor \f$\beta\f$ can be enabled by setting GHOST_SPMV_AXPBY in the flags.
+     * The flag ::GHOST_SPMV_AXPY sets \f$\beta\f$ to a fixed value of 1.
+     * 
+     * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_APPLY_SHIFT.
+     *
+     * In case ::GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT is set, \a dot has to point to a memory destination of the size
+     * of three vector values.
+     *
+     * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.
+     *
      */
     ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...);
-    ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_nompi(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t);
-    void          ghost_spmv_selectMode(ghost_context_t * context, int *spmvmOptions);
     /**
      * @deprecated Construct a test case with a known result instead (e.g., same as HPCCG)
      */
     ghost_error_t ghost_referenceSolver(ghost_densemat_t *, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, ghost_spmv_flags_t flags);
-    ghost_error_t ghost_gemm(char *, ghost_densemat_t *,  ghost_densemat_t *, ghost_densemat_t *, void *, void *, int); 
+    /**
+     * @ingroup globops
+     *
+     * @brief Compute the general (dense) matrix-matrix product.
+     *
+     * @param transpose
+     * @param v
+     * @param w
+     * @param x
+     * @param alpha
+     * @param beta
+     * @param reduce
+     *
+     * @return 
+     */
+    ghost_error_t ghost_gemm(char * transpose, ghost_densemat_t *v,  ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce); 
     ghost_error_t ghost_mpi_createOperations();
     ghost_error_t ghost_mpi_destroyOperations();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
+    
+    ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
     char * ghost_spmv_modeString(ghost_spmv_flags_t flags);
 
 #ifdef __cplusplus

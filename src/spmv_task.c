@@ -10,6 +10,7 @@
 #include "ghost/util.h"
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
+#include "ghost/spmv_solvers.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -133,7 +134,7 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions, va_list argp)
+ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t spmvOptions, va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(res);

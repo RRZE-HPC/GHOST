@@ -63,10 +63,7 @@ ghost_sell_t;
 
 #define SELL_CUDA_THREADSPERBLOCK 256
 
-enum GHOST_SELL_C {GHOST_SELL_C_1 = 1, GHOST_SELL_C_2 = 2, GHOST_SELL_C_4 = 4, GHOST_SELL_C_256 = 256};
-enum GHOST_SELL_T {GHOST_SELL_T_1 = 1, GHOST_SELL_T_2 = 2, GHOST_SELL_T_4 = 4, GHOST_SELL_T_256 = 256};
-
-ghost_error_t ghost_SELL_init(ghost_sparsemat_t *mat);
+ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 #ifdef __cplusplus
 //template<typename, typename, int> void SELL_kernel_plain_tmpl(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp);
 //template<typename, typename> void SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp);

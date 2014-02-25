@@ -102,7 +102,7 @@ static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * 
 static void SELL_kernel_VSX (ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, int options);
 #endif
 
-ghost_error_t ghost_SELL_init(ghost_sparsemat_t *mat)
+ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->data,sizeof(ghost_sell_t)),err,ret);
@@ -893,8 +893,10 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->traits->elSize),err,ret);
+    if (mat->permutation) {
     GHOST_CALL_GOTO(ghost_readCol(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation->perm, mat->permutation->invPerm),err,ret);
     GHOST_CALL_GOTO(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->permutation->invPerm),err,ret);
+    }
 
     ghost_idx_t row = 0;
     for (chunk = 0; chunk < nChunks; chunk++) {

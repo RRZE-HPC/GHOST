@@ -23,7 +23,7 @@ ghost_crs_t;
 
 #define CR(mat) ((ghost_crs_t *)((mat)->data))
 
-ghost_error_t ghost_CRS_init(ghost_sparsemat_t *mat);
+ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat);
 #ifdef __cplusplus
 extern "C" {
 #endif

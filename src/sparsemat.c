@@ -82,15 +82,15 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
 
     switch (traits->format) {
         case GHOST_SPARSEMAT_CRS:
-            GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
+            GHOST_CALL_GOTO(ghost_crs_init(*mat),err,ret);
             break;
         case GHOST_SPARSEMAT_SELL:
-            GHOST_CALL_GOTO(ghost_SELL_init(*mat),err,ret);
+            GHOST_CALL_GOTO(ghost_sell_init(*mat),err,ret);
             break;
         default:
             WARNING_LOG("Invalid sparse matrix format. Falling back to CRS!");
             traits->format = GHOST_SPARSEMAT_CRS;
-            GHOST_CALL_GOTO(ghost_CRS_init(*mat),err,ret);
+            GHOST_CALL_GOTO(ghost_crs_init(*mat),err,ret);
     }
 
     goto out;
@@ -265,7 +265,9 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
                 for (i = 0; i < header.nrows+1; i++) {
                     (*rpt)[i] = 0;
                 }
-                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret);
+                if (mat->permutation) {
+                    GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret); 
+                }
                 mat->context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){

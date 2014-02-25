@@ -6,6 +6,7 @@
 #include "ghost/constants.h"
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
+#include "ghost/spmv_solvers.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
