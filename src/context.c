@@ -316,6 +316,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     }
 
 #else
+    UNUSED(srcType);
     UNUSED(weight);
     (*context)->lnrows[0] = (*context)->gnrows;
     (*context)->lfRow[0] = 0;

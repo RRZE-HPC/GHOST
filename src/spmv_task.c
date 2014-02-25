@@ -141,6 +141,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     UNUSED(mat);
     UNUSED(invec);
     UNUSED(spmvOptions);
+    UNUSED(argp);
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else

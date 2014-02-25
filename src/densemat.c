@@ -1055,7 +1055,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     MPI_CALL_RETURN(MPI_Waitall(msgcount,req,stat));
 #else
     if (vec->context != NULL) {
-        vec->permute(vec,vec->context->invRowPerm);
+//        vec->permute(vec,vec->context->invRowPerm);
         for (c=0; c<vec->traits->ncols; c++) {
             memcpy(totalVec->val[c],vec->val[c],totalVec->traits->nrows*vec->traits->elSize);
         }

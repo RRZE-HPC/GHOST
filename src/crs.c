@@ -649,17 +649,8 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
     }
 
-    if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-        if (mat->permutation) {
-            GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, NULL, mat->permutation->invPerm),err,ret);
-        }
-    } else {
-        GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation->perm, mat->permutation->invPerm),err,ret);
-    }
-
-    if (mat->permutation) {
-        GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation->invPerm),err,ret);
-    }
+    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation,mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
+    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
 
     for (i=0;i<mat->context->lnrows[me];i++) {
         if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {

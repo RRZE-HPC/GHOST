@@ -13,7 +13,11 @@
 
 #include <libgen.h>
 #ifdef GHOST_HAVE_SCOTCH
+#ifdef GHOST_HAVE_MPI
 #include <ptscotch.h>
+#else
+#include <scotch.h>
+#endif
 #endif
 
 const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
@@ -193,16 +197,22 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t i;
     ghost_matfile_header_t header;
+
+#ifdef GHOST_HAVE_MPI
     MPI_Request *req = NULL;
     MPI_Status *stat = NULL;
+#endif
 
     ghost_readMatFileHeader(matrixPath,&header);
     int nprocs = 1;
     int me;
     GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+
+#ifdef GHOST_HAVE_MPI
     GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
+#endif
 
     if (header.version != 1) {
         ERROR_LOG("Can not read version %d of binary CRS format!",header.version);
@@ -266,7 +276,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
                     (*rpt)[i] = 0;
                 }
                 if (mat->permutation) {
-                    GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret); 
+                    GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
                 }
                 mat->context->lfEnt[0] = 0;
 
@@ -322,7 +332,9 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         for (i = 0; i < header.nrows+1; i++) {
             (*rpt)[i] = 0;
         }
-        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation->invPerm),err,ret);
+        if (mat->permutation) {
+            GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
+        }
         for (i=0; i<nprocs; i++){
             mat->context->lfEnt[i] = 0;
             mat->context->lfRow[i] = 0;
@@ -458,6 +470,13 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
+#ifndef GHOST_HAVE_MPI
+    UNUSED(mat);
+    UNUSED(matrixSource);
+    UNUSED(srcType);
+    WARNING_LOG("Serial Scotch not implemented. Will not create matrix permutation!");
+    return GHOST_SUCCESS;
+#else
     ghost_error_t ret = GHOST_SUCCESS;
     if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
@@ -493,7 +512,7 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     ghost_nnz_t nnz = rpt[mat->context->lnrows[me]]-rpt[0];
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,NULL),err,ret);
+    GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
 
     for (i=1;i<mat->context->lnrows[me]+1;i++) {
         rpt[i] -= rpt[0];
@@ -562,6 +581,7 @@ out:
     SCOTCH_stratExit(strat);
     
     return ret;
+#endif
 #endif
 }
 
