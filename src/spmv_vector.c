@@ -17,11 +17,11 @@
 #include <omp.h>
 #endif
 
-// if called with context==NULL: clean up variables
-ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags,va_list argp)
+// if called with mat->context==NULL: clean up variables
+ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags,va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
-    UNUSED(context);
+    UNUSED(mat->context);
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
@@ -29,8 +29,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    if (context == NULL) {
-        ERROR_LOG("The context is NULL");
+    if (mat->context == NULL) {
+        ERROR_LOG("The mat->context is NULL");
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -43,8 +43,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     int nprocs;
     int me; 
     
-    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
     
     MPI_Request request[invec->traits->ncols*2*nprocs];
     MPI_Status  status[invec->traits->ncols*2*nprocs];
@@ -52,8 +52,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
 
     max_dues = 0;
     for (i=0;i<nprocs;i++) {
-        if (context->dues[i]>max_dues) {
-            max_dues = context->dues[i];
+        if (mat->context->dues[i]>max_dues) {
+            max_dues = mat->context->dues[i];
         }
     }
     
@@ -73,9 +73,9 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
     }
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (context->wishes[from_PE]>0){
+        if (mat->context->wishes[from_PE]>0){
             for (c=0; c<invec->traits->ncols; c++) {
-                MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,context->hput_pos[from_PE]), context->wishes[from_PE]*invec->traits->elSize,MPI_CHAR, from_PE, from_PE, context->mpicomm,&request[msgcount]),err,ret);
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,mat->context->hput_pos[from_PE]), mat->context->wishes[from_PE]*invec->traits->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
             }
         }
@@ -88,8 +88,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
-                for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[context->duelist[to_PE][i]]),invec->traits->elSize);
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->traits->elSize);
                 }
             }
         }
@@ -98,8 +98,8 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
-                for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),invec->traits->elSize);
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->traits->elSize);
                 }
             }
         }
@@ -109,9 +109,9 @@ ghost_error_t ghost_spmv_vectormode(ghost_context_t *context, ghost_densemat_t* 
 
 
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        if (context->dues[to_PE]>0){
+        if (mat->context->dues[to_PE]>0){
             for (c=0; c<invec->traits->ncols; c++) {
-                MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*invec->traits->elSize + to_PE*max_dues*invec->traits->elSize, context->dues[to_PE]*invec->traits->elSize, MPI_CHAR, to_PE, me, context->mpicomm, &request[msgcount]),err,ret);
+                MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*invec->traits->elSize + to_PE*max_dues*invec->traits->elSize, mat->context->dues[to_PE]*invec->traits->elSize, MPI_CHAR, to_PE, me, mat->context->mpicomm, &request[msgcount]),err,ret);
                 msgcount++;
             }
         }

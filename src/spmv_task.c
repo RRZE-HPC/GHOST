@@ -57,7 +57,7 @@ static void *communicate(void *vargs)
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
 #ifdef GHOST_HAVE_INSTR_TIMING
-            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
+            INFO_LOG("from %d: %zu bytes",from_PE,args->mat->context->wishes[from_PE]*args->rhs->traits->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->ncols; c++) {
@@ -133,10 +133,9 @@ out:
 }
 #endif
 
-ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions, va_list argp)
+ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, int spmvOptions, va_list argp)
 {
 #ifndef GHOST_HAVE_MPI
-    UNUSED(context);
     UNUSED(res);
     UNUSED(mat);
     UNUSED(invec);
@@ -175,15 +174,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
     GHOST_INSTR_START(spmv_task_prepare);
 
     DEBUG_LOG(1,"In task mode spmv solver");
-    GHOST_CALL_RETURN(ghost_getRank(context->mpicomm,&me));
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
     MPI_Request request[invec->traits->ncols*2*nprocs];
     MPI_Status  status[invec->traits->ncols*2*nprocs];
 
     max_dues = 0;
     for (i=0;i<nprocs;i++)
-        if (context->dues[i]>max_dues) 
-            max_dues = context->dues[i];
+        if (mat->context->dues[i]>max_dues) 
+            max_dues = mat->context->dues[i];
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
 
@@ -207,7 +206,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
 
 
 
-    cargs.context = context;
+    cargs.context = mat->context;
     cargs.nprocs = nprocs;
     cargs.me = me;
     cargs.work = work;
@@ -243,8 +242,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
-                for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[context->duelist[to_PE][i]]),invec->traits->elSize);
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->traits->elSize);
                 }
             }
         }
@@ -253,8 +252,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_context_t *context, ghost_densemat_t* re
         for (to_PE=0 ; to_PE<nprocs ; to_PE++){
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
-                for (i=0; i<context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,context->duelist[to_PE][i]),invec->traits->elSize);
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->traits->elSize);
                 }
             }
         }

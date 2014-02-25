@@ -85,11 +85,11 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_vspmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
+ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
-    ghost_spmv_selectMode(ctx,flags);
+    ghost_spmv_selectMode(mat->context,flags);
     if (*flags & GHOST_SPMV_MODE_VECTOR) {
         solver = &ghost_spmv_vectormode;
     } else if (*flags & GHOST_SPMV_MODE_OVERLAP) {
@@ -105,7 +105,7 @@ ghost_error_t ghost_vspmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_spa
         return GHOST_ERR_INVALID_ARG;
     }
 
-    solver(ctx,res,mat,invec,*flags,argp);
+    solver(res,mat,invec,*flags,argp);
 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START(spmv_dot_reduce);
@@ -127,12 +127,12 @@ ghost_error_t ghost_vspmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_spa
 
 
 }
-ghost_error_t ghost_spmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
+ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
 {
     ghost_error_t ret = GHOST_SUCCESS;
     va_list argp;
     va_start(argp, flags);
-    ret = ghost_vspmv(ctx,res,mat,invec,flags,argp);
+    ret = ghost_vspmv(res,mat,invec,flags,argp);
     va_end(argp);
 
     return ret;
@@ -498,7 +498,7 @@ void ghost_spmv_selectMode(ghost_context_t * context, int *flags)
         UNUSED(context);
         *flags |= GHOST_SPMV_MODE_NOMPI;
 #endif
-        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_modeName(*flags));
+        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_modeString(*flags));
     }
 
 }
@@ -581,7 +581,7 @@ ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t)
     return GHOST_SUCCESS;
 }
 
-char * ghost_modeName(ghost_spmv_flags_t flags) 
+char * ghost_spmv_modeString(ghost_spmv_flags_t flags) 
 {
     if (flags & GHOST_SPMV_MODE_NOMPI) {
         return "Non-MPI";

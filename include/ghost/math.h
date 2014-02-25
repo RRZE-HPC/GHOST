@@ -14,7 +14,7 @@
 #define GHOST_GEMM_NO_REDUCE -2
 
 
-typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_context_t *, ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
+typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
 
 #ifdef __cplusplus
 #include "complex.h"
@@ -56,12 +56,25 @@ extern "C" {
      * This function first computes the local dot product and then performs an allreduce on the result.
      */
     ghost_error_t ghost_dot(ghost_densemat_t *a, ghost_densemat_t *b, void *res);
-    ghost_error_t ghost_vspmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp);
-    ghost_error_t ghost_spmv(ghost_context_t *ctx, ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...);
-    ghost_error_t ghost_spmv_vectormode(ghost_context_t *ctx, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_goodfaith(ghost_context_t *ctx, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_taskmode(ghost_context_t *ctx, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
-    ghost_error_t ghost_spmv_nompi(ghost_context_t *ctx, ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
+    ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp);
+    /**
+     * @ingroup globops
+     *
+     * @brief Multiply a sparse matrix with a dense vector.
+     *
+     * @param res
+     * @param mat
+     * @param invec
+     * @param flags
+     * @param ...
+     *
+     * @return 
+     */
+    ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...);
+    ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
+    ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
+    ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
+    ghost_error_t ghost_spmv_nompi(ghost_densemat_t* res, ghost_sparsemat_t* mat, ghost_densemat_t* invec, ghost_spmv_flags_t flags, va_list argp);
     ghost_error_t ghost_spmv_nflops(int *nFlops, int m_t, int v_t);
     void          ghost_spmv_selectMode(ghost_context_t * context, int *spmvmOptions);
     /**
@@ -72,7 +85,7 @@ extern "C" {
     ghost_error_t ghost_mpi_createOperations();
     ghost_error_t ghost_mpi_destroyOperations();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
-    char * ghost_modeName(ghost_spmv_flags_t flags);
+    char * ghost_spmv_modeString(ghost_spmv_flags_t flags);
 
 #ifdef __cplusplus
 } //extern "C"
