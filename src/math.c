@@ -114,18 +114,18 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START(spmv_dot_reduce);
 
-    if ((*flags & GHOST_SPMV_REDUCE) && (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
+    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT)) {
         void *dot;
-        if (*flags & GHOST_SPMV_APPLY_SCALE) {
+        if (*flags & GHOST_SPMV_SCALE) {
             dot = va_arg(argp_backup,void *);
         }
         if (*flags & GHOST_SPMV_AXPBY) {
             dot = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_APPLY_SHIFT) {
+        if (*flags & GHOST_SPMV_SHIFT) {
             dot = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+        if (*flags & GHOST_SPMV_DOT) {
             dot = va_arg(argp_backup,void *);
         }
         ghost_mpi_op_t op;

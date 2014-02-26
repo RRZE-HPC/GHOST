@@ -38,7 +38,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
    
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
 
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
         {
@@ -67,10 +67,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
                 }
 
-                if (options & GHOST_SPMV_APPLY_SHIFT) {
+                if (options & GHOST_SPMV_SHIFT) {
                     hlp1 = hlp1-shift*rhsv[i];
                 }
-                if (options & GHOST_SPMV_APPLY_SCALE) {
+                if (options & GHOST_SPMV_SCALE) {
                     hlp1 = hlp1*scale;
                 }
                 if (options & GHOST_SPMV_AXPY) {
@@ -81,7 +81,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     lhsv[i] = (hlp1);
                 }
 
-                if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+                if (options & GHOST_SPMV_DOT) {
                     partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
                     partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
                     partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
@@ -89,7 +89,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
             }
         }
     }
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];

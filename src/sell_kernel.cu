@@ -4,8 +4,6 @@
 #include "ghost/types.h"
 #include "ghost/sell.h"
 #include "ghost/complex.h"
-//#include "ghost/util.h"
-#include "ghost/constants.h"
 #include "ghost/instr.h"
 #include "ghost/log.h"
 #include "ghost/error.h"
@@ -31,29 +29,29 @@ extern __shared__ char shared[];
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
             if (flags & GHOST_SPMV_AXPY) {\
                 if (flags & GHOST_SPMV_AXPBY) {\
-                    if (flags & GHOST_SPMV_APPLY_SCALE) {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                    if (flags & GHOST_SPMV_SCALE) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,true,true,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,true,true,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,true,true,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,true,true,false,false,__VA_ARGS__)\
                             }\
                         }\
                     } else {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,true,false,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,true,false,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,true,false,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,true,false,false,false,__VA_ARGS__)\
@@ -61,29 +59,29 @@ extern __shared__ char shared[];
                         }\
                     }\
                 } else {\
-                    if (flags & GHOST_SPMV_APPLY_SCALE) {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                    if (flags & GHOST_SPMV_SCALE) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,false,true,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,false,true,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,false,true,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,false,true,false,false,__VA_ARGS__)\
                             }\
                         }\
                     } else {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,false,false,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,false,false,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,true,false,false,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,true,false,false,false,false,__VA_ARGS__)\
@@ -93,29 +91,29 @@ extern __shared__ char shared[];
                 }\
             } else {\
                 if (flags & GHOST_SPMV_AXPBY) {\
-                    if (flags & GHOST_SPMV_APPLY_SCALE) {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                    if (flags & GHOST_SPMV_SCALE) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,true,true,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,true,true,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,true,true,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,true,true,false,false,__VA_ARGS__)\
                             }\
                         }\
                     } else {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,true,false,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,true,false,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,true,false,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,true,false,false,false,__VA_ARGS__)\
@@ -123,29 +121,29 @@ extern __shared__ char shared[];
                         }\
                     }\
                 } else {\
-                    if (flags & GHOST_SPMV_APPLY_SCALE) {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                    if (flags & GHOST_SPMV_SCALE) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,false,true,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,false,true,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,false,true,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,false,true,false,false,__VA_ARGS__)\
                             }\
                         }\
                     } else {\
-                        if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                        if (flags & GHOST_SPMV_SHIFT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,false,false,true,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,false,false,true,false,__VA_ARGS__)\
                             }\
                         } else {\
-                            if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+                            if (flags & GHOST_SPMV_DOT) {\
                                 CALL(func,dt1,dt2,false,false,false,false,true,__VA_ARGS__)\
                             } else {\
                                 CALL(func,dt1,dt2,false,false,false,false,false,__VA_ARGS__)\
@@ -200,7 +198,7 @@ extern __shared__ char shared[];
     cudaDeviceSynchronize();\
     GHOST_INSTR_STOP(CU_SELL_SpMVM)\
     GHOST_INSTR_START(CU_SpMVM_localdot)\
-    if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+    if (flags & GHOST_SPMV_DOT) {\
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\

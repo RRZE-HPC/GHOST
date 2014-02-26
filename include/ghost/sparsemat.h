@@ -40,11 +40,11 @@ typedef enum {
     GHOST_SPMV_MODE_VECTOR = 4,
     GHOST_SPMV_MODE_OVERLAP = 8,
     GHOST_SPMV_MODE_TASK = 16,
-    GHOST_SPMV_APPLY_SHIFT = 32,
-    GHOST_SPMV_APPLY_SCALE = 64,
+    GHOST_SPMV_SHIFT = 32,
+    GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
-    GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT = 256,
-    GHOST_SPMV_REDUCE = 512
+    GHOST_SPMV_DOT = 256,
+    GHOST_SPMV_NOT_REDUCE = 512
 } ghost_spmv_flags_t;
 
 typedef struct 
@@ -55,7 +55,7 @@ ghost_sorting_t;
 
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt){\
     dt *arg = NULL;\
-    if (flags & GHOST_SPMV_APPLY_SCALE) {\
+    if (flags & GHOST_SPMV_SCALE) {\
         printf("here\n");\
         arg = va_arg(argp,dt *);\
         if (!arg) {\
@@ -72,7 +72,7 @@ ghost_sorting_t;
         }\
         beta = *arg;\
     }\
-    if (flags & GHOST_SPMV_APPLY_SHIFT) {\
+    if (flags & GHOST_SPMV_SHIFT) {\
         arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Shift argument is NULL!");\
@@ -80,7 +80,7 @@ ghost_sorting_t;
         }\
         gamma = *arg;\
     }\
-    if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
+    if (flags & GHOST_SPMV_DOT) {\
         arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Dot argument is NULL!");\

@@ -27,7 +27,7 @@ ghost_error_t ghost_vec_cu_fromRand(ghost_densemat_t *vec);
 
 
 #ifdef __cplusplus
-}z
+}
 #endif
 
 #endif

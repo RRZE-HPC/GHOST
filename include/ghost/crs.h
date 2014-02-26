@@ -10,10 +10,6 @@
 #include "types.h"
 #include "sparsemat.h"
 
-#ifdef GHOST_HAVE_CUDA
-#include "cu_crs.h"
-#endif
-
 /**
  * @brief Struct defining a CRS matrix.
  */

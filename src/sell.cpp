@@ -69,7 +69,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     v_t shift = 0., scale = 1., beta = 1.;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
     
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
         nthreads = ghost_ompGetNumThreads();
 
@@ -106,10 +106,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                 }
                 for (i=0; i<chunkHeight; i++) {
                     if (c*chunkHeight+i < mat->nrows) {
-                        if (options & GHOST_SPMV_APPLY_SHIFT) {
+                        if (options & GHOST_SPMV_SHIFT) {
                             tmp[i] = tmp[i]-shift*rhsv[c*chunkHeight+i];
                         }
-                        if (options & GHOST_SPMV_APPLY_SCALE) {
+                        if (options & GHOST_SPMV_SCALE) {
                             tmp[i] = tmp[i]*scale;
                         }
                         if (options & GHOST_SPMV_AXPY) {
@@ -120,7 +120,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                             lhsv[c*chunkHeight+i] = tmp[i];
                         }
                     
-                        if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+                        if (options & GHOST_SPMV_DOT) {
                             partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
                             partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
                             partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
@@ -132,7 +132,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
             }
         }
     }
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
@@ -163,7 +163,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     v_t shift = 0., scale = 1., beta = 1.;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
     
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
         nthreads = ghost_ompGetNumThreads();
 
@@ -193,10 +193,10 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                     tmp += (v_t)sellv[mat->nrowsPadded*j+i] * rhsv[sell->col[mat->nrowsPadded*j+i]];
                 }
                 
-                if (options & GHOST_SPMV_APPLY_SHIFT) {
+                if (options & GHOST_SPMV_SHIFT) {
                     tmp = tmp-shift*rhsv[i];
                 }
-                if (options & GHOST_SPMV_APPLY_SCALE) {
+                if (options & GHOST_SPMV_SCALE) {
                     tmp = tmp*scale;
                 }
                 if (options & GHOST_SPMV_AXPY) {
@@ -206,7 +206,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                 } else {
                     lhsv[i] = tmp;
                 }
-                if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+                if (options & GHOST_SPMV_DOT) {
                     partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
                     partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
                     partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
@@ -214,7 +214,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
             }
         }
     }
-    if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+    if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];

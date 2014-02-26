@@ -161,10 +161,10 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     int remoteExists = mat->remotePart->nnz > 0;
    
     if (remoteExists) {
-        localopts &= ~GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT;
+        localopts &= ~GHOST_SPMV_DOT;
 
         remoteopts &= ~GHOST_SPMV_AXPBY;
-        remoteopts &= ~GHOST_SPMV_APPLY_SHIFT;
+        remoteopts &= ~GHOST_SPMV_SHIFT;
         remoteopts |= GHOST_SPMV_AXPY;
     }
 

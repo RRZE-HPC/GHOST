@@ -2,7 +2,6 @@
 #undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/constants.h"
 #include "ghost/densemat.h"
 #include "ghost/log.h"
 #include "ghost/timing.h"

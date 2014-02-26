@@ -1,7 +1,7 @@
 #include "ghost/config.h"
 #undef GHOST_HAVE_MPI
 #include "ghost/types.h"
-#include "ghost/cu_crs.h"
+#include "ghost/crs.h"
 #include "ghost/log.h"
 
 #include <cuda_runtime.h>
