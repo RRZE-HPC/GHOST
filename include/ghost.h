@@ -1,3 +1,8 @@
+/**
+ * @file ghost.h
+ * @brief Includes the most relevant GHOST headers for applications.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_H
 #define GHOST_H
 

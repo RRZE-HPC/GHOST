@@ -1,3 +1,8 @@
+/**
+ * @file bench.h
+ * @brief Functions for micro-benchmarking.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_BENCH_H
 #define GHOST_BENCH_H
 

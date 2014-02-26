@@ -1,3 +1,8 @@
+/**
+ * @file omp.h
+ * @brief Function wrappers for OpenMP functions.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_OMP_H
 #define GHOST_OMP_H
 

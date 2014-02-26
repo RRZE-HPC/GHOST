@@ -45,6 +45,8 @@
  */
 #define PAD(n,p) (((n)<1 || (p)<1)?(n):(((n) % (p)) ? ((n) + (p) - (n) % (p)) : (n)))
 
+#define GHOST_PAD_MAX 1024
+
 /**
  * @brief Avoid unused variable/function warnings.
  */

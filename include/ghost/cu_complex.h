@@ -1,3 +1,8 @@
+/**
+ * @file cu_complex.h
+ * @brief Inline template functions for CUDA complex number handling.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_CU_COMPLEX_H
 #define GHOST_CU_COMPLEX_H
 

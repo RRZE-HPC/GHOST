@@ -1,5 +1,10 @@
-#ifndef __GHOST_SPMV_SOLVERS_H__
-#define __GHOST_SPMV_SOLVERS_H__
+/**
+ * @file spmv_solvers.h
+ * @brief SpMV solver functions.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_SPMV_SOLVERS_H
+#define GHOST_SPMV_SOLVERS_H
 
 #ifdef __cpluscplus
 extern "C" {

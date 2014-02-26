@@ -1,7 +1,0 @@
-#ifndef GHOST_CONSTANTS_H
-#define GHOST_CONSTANTS_H
-
-#define GHOST_PAD_MAX 1024
-
-
-#endif

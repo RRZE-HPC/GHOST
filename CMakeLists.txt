@@ -60,7 +60,6 @@ set (SOURCES
 set (HEADERS
 		include/ghost/blas_mangle.h
 		include/ghost/complex.h
-		include/ghost/constants.h
 		include/ghost/context.h
         include/ghost/core.h
 		include/ghost/crs.h
@@ -117,7 +116,6 @@ if (USE_CUDA)
         set (HEADERS ${HEADERS}
                 include/ghost/cu_util.h
                 include/ghost/cu_densemat.h
-                include/ghost/cu_crs.h
             )
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)

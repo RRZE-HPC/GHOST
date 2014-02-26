@@ -1,10 +1,10 @@
 /**
- * @file mat.h
- * @brief Types and functions related to GHOST sparse matrices.
+ * @file sparsemat.h
+ * @brief Types and functions related to sparse matrices.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_MAT_H
-#define GHOST_MAT_H
+#ifndef GHOST_SPARSEMAT_H
+#define GHOST_SPARSEMAT_H
 
 #include "config.h"
 #include "types.h"

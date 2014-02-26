@@ -1,5 +1,10 @@
-#ifndef GHOST_CU_VEC_H
-#define GHOST_CU_VEC_H
+/**
+ * @file cu_densemat.h
+ * @brief Functions for dense matrices/vectors with CUDA.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_CU_DENSEMAT_H
+#define GHOST_CU_DENSEMAT_H
 
 #include "config.h"
 #include "types.h"
@@ -22,7 +27,7 @@ ghost_error_t ghost_vec_cu_fromRand(ghost_densemat_t *vec);
 
 
 #ifdef __cplusplus
-}
+}z
 #endif
 
 #endif

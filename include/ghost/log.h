@@ -1,3 +1,8 @@
+/**
+ * @file log.h
+ * @brief Macros for logging.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_LOG_H
 #define GHOST_LOG_H
 

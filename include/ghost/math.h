@@ -1,3 +1,8 @@
+/**
+ * @file math.h
+ * @brief Functions for global mathematical operations.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_MATH_H
 #define GHOST_MATH_H
 

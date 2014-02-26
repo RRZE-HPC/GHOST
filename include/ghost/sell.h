@@ -1,3 +1,8 @@
+/**
+ * @file sell.h
+ * @brief Macros and functions for the SELL sparse matrix implementation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_SELL_H
 #define GHOST_SELL_H
 

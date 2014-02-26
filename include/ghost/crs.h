@@ -1,3 +1,8 @@
+/**
+ * @file crs.h
+ * @brief Macros and functions for the CRS sparse matrix implementation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_CRS_H
 #define GHOST_CRS_H
 
@@ -48,6 +53,10 @@ ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+
+#ifdef GHOST_HAVE_CUDA
+ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options);
+#endif
 
 #ifdef __cplusplus
 }

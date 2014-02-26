@@ -1,3 +1,8 @@
+/**
+ * @file cu_util.h
+ * @brief CUDA utility functions.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/core.h"
