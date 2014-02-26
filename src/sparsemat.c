@@ -407,9 +407,15 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
             GHOST_CALL(ghost_malloc((void **)&tmpcol,mat->ncols*sizeof(ghost_idx_t)),ret);
 #pragma omp for schedule(runtime)
             for (i=0; i<nrows; i++) {
-                func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval);
+                if (func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval)) {
+                    ERROR_LOG("Matrix construction function returned error");
+                    ret = GHOST_ERR_UNKNOWN;
+                }
                 rowSort[i].row = i;
             }
+        }
+        if (ret != GHOST_SUCCESS) {
+            goto err;
         }
 
     } else {

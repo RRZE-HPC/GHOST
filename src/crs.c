@@ -303,20 +303,25 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
 
     ghost_nnz_t nEnts = 0;
 
-//#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
     {
+        int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
-//#pragma omp for ordered
+#pragma omp for ordered
         for( i = 0; i < mat->nrows; i++ ) {
             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                    func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
+                    funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
                 } else {
-                    func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
+                    funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
                 }
             } else {
-                func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+                funcret = func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+            }
+            if (funcret) {
+                ERROR_LOG("Matrix construction function returned error");
+                ret = GHOST_ERR_UNKNOWN;
             }
             nEnts += rowlen;
 #pragma omp ordered
@@ -343,28 +348,29 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
         }
     }
 
-//#pragma omp parallel private(i,j,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+#pragma omp parallel private(i,j,rowlen,tmpval,tmpcol) reduction (+:nEnts)
     {
+        int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
         memset(tmpcol,0,sizeof(ghost_idx_t)*maxrowlen);
     
-//#pragma omp for schedule(runtime)
+#pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
                     } else {
-                        func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
                         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                             CR(mat)->col[j] = mat->permutation->perm[tmpcol[j-CR(mat)->rpt[i]]];
                         }
                     }
                 } else {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
                     } else {
-                        func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
                         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                             if ((tmpcol[j-CR(mat)->rpt[i]] >= mat->context->lfRow[me]) && (tmpcol[j-CR(mat)->rpt[i]] < mat->context->lfRow[me]+mat->context->lnrows[me])) {
                                 CR(mat)->col[j] = mat->permutation->perm[tmpcol[j-CR(mat)->rpt[i]]-mat->context->lfRow[me]]+mat->context->lfRow[me];
@@ -376,10 +382,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
                     }
                 }
             } else {
-                func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                funcret = func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
 //                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
 //                     INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
 //                 }
+            }
+            if (funcret) {
+                ERROR_LOG("Matrix construction function returned error");
+                ret = GHOST_ERR_UNKNOWN;
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices

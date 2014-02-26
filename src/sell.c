@@ -382,6 +382,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
 */
 #pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz) 
         {
+            int funcret = 0;
             maxRowLenInChunk = 0; 
             GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
@@ -393,12 +394,16 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                     if (row < mat->nrows) {
                         if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                             if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                                func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                                funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             } else {
-                                func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                                funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             }
                         } else {
-                            func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                            funcret = func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                        }
+                        if (funcret) {
+                            ERROR_LOG("Matrix construction function returned error");
+                            ret = GHOST_ERR_UNKNOWN;
                         }
                     } else {
                         SELL(mat)->rowLen[row] = 0;
@@ -451,6 +456,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
 
 #pragma omp parallel private(i,col,row,tmpval,tmpcol)
     {
+        int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,SELL(mat)->chunkHeight*maxrowlen*mat->traits->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,SELL(mat)->chunkHeight*maxrowlen*sizeof(ghost_idx_t)),ret);
         memset(tmpval,0,mat->traits->elSize*maxrowlen*SELL(mat)->chunkHeight);
@@ -463,13 +469,17 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                 if (row < mat->nrows) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                            func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
+                            funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
                         } else {
-                            func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
+                            funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
                         }
                     } else {
-                        func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[maxrowlen*i],&tmpval[maxrowlen*i*mat->traits->elSize]);
                     }
+                }
+                if (funcret) {
+                    ERROR_LOG("Matrix construction function returned error");
+                    ret = GHOST_ERR_UNKNOWN;
                 }
 
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {

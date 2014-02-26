@@ -128,7 +128,7 @@ typedef enum {
 } ghost_sparsemat_symmetry_t;
 
 
-typedef void (*ghost_sparsemat_fromRowFunc_t)(ghost_idx_t, ghost_idx_t *, ghost_idx_t *, void *);
+typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_idx_t, ghost_idx_t *, ghost_idx_t *, void *);
 typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
 typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
