@@ -241,11 +241,11 @@ ghost_error_t ghost_pumap_string(char **str)
     hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
     GHOST_CALL_RETURN(ghost_pumap_getNumberOfIdlePUs(&nIdle,GHOST_NUMANODE_ANY));
 
-    ghost_printHeader(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
-    ghost_printLine(str,"Total CPU set",NULL,"%s",cpusetstr);
-    ghost_printLine(str,"Busy CPU set",NULL,"%s",cpusetstr);
-    ghost_printLine(str,"No. of idle PUs",NULL,"%d",nIdle);
-    ghost_printFooter(str);
+    ghost_headerString(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
+    ghost_lineString(str,"Total CPU set",NULL,"%s",cpusetstr);
+    ghost_lineString(str,"Busy CPU set",NULL,"%s",cpusetstr);
+    ghost_lineString(str,"No. of idle PUs",NULL,"%d",nIdle);
+    ghost_footerString(str);
 
     return GHOST_SUCCESS;
 

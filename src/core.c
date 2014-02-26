@@ -391,48 +391,48 @@ ghost_error_t ghost_string(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
-    ghost_printHeader(str,"%s", GHOST_NAME); 
-    ghost_printLine(str,"Version",NULL,"%s",GHOST_VERSION);
-    ghost_printLine(str,"Build date",NULL,"%s",__DATE__);
-    ghost_printLine(str,"Build time",NULL,"%s",__TIME__);
+    ghost_headerString(str,"%s", GHOST_NAME); 
+    ghost_lineString(str,"Version",NULL,"%s",GHOST_VERSION);
+    ghost_lineString(str,"Build date",NULL,"%s",__DATE__);
+    ghost_lineString(str,"Build time",NULL,"%s",__TIME__);
 #ifdef GHOST_HAVE_MIC
-    ghost_printLine(str,"MIC kernels",NULL,"Enabled");
+    ghost_lineString(str,"MIC kernels",NULL,"Enabled");
 #else
-    ghost_printLine(str,"MIC kernels",NULL,"Disabled");
+    ghost_lineString(str,"MIC kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_AVX
-    ghost_printLine(str,"AVX kernels",NULL,"Enabled");
+    ghost_lineString(str,"AVX kernels",NULL,"Enabled");
 #else
-    ghost_printLine(str,"AVX kernels",NULL,"Disabled");
+    ghost_lineString(str,"AVX kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_SSE
-    ghost_printLine(str,"SSE kernels",NULL,"Enabled");
+    ghost_lineString(str,"SSE kernels",NULL,"Enabled");
 #else
-    ghost_printLine(str,"SSE kernels",NULL,"Disabled");
+    ghost_lineString(str,"SSE kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_OPENMP
-    ghost_printLine(str,"OpenMP support",NULL,"Enabled");
+    ghost_lineString(str,"OpenMP support",NULL,"Enabled");
 #else
-    ghost_printLine(str,"OpenMP support",NULL,"Disabled");
+    ghost_lineString(str,"OpenMP support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_MPI
-    ghost_printLine(str,"MPI support",NULL,"Enabled");
+    ghost_lineString(str,"MPI support",NULL,"Enabled");
 #else
-    ghost_printLine(str,"MPI support",NULL,"Disabled");
+    ghost_lineString(str,"MPI support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_printLine(str,"CUDA support",NULL,"Enabled");
+    ghost_lineString(str,"CUDA support",NULL,"Enabled");
 #else
-    ghost_printLine(str,"CUDA support",NULL,"Disabled");
+    ghost_lineString(str,"CUDA support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_INSTR_LIKWID
-    ghost_printLine(str,"Instrumentation",NULL,"Likwid");
+    ghost_lineString(str,"Instrumentation",NULL,"Likwid");
 #elif defined(GHOST_HAVE_INSTR_TIMING)
-    ghost_printLine(str,"Instrumentation",NULL,"Timing");
+    ghost_lineString(str,"Instrumentation",NULL,"Timing");
 #else
-    ghost_printLine(str,"Instrumentation",NULL,"Disabled");
+    ghost_lineString(str,"Instrumentation",NULL,"Disabled");
 #endif
-    ghost_printFooter(str);
+    ghost_footerString(str);
 
     return GHOST_SUCCESS;
 

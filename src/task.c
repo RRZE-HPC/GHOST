@@ -63,10 +63,10 @@ ghost_error_t ghost_task_print(char **str, ghost_task_t *t)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
-    ghost_printHeader(str,"Task %p",(void *)t);
-    ghost_printLine(str,"No. of threads",NULL,"%d",t->nThreads);
-    ghost_printLine(str,"NUMA node",NULL,"%d",t->LD);
-    ghost_printFooter(str);
+    ghost_headerString(str,"Task %p",(void *)t);
+    ghost_lineString(str,"No. of threads",NULL,"%d",t->nThreads);
+    ghost_lineString(str,"NUMA node",NULL,"%d",t->LD);
+    ghost_footerString(str);
 
     return GHOST_SUCCESS;
 }

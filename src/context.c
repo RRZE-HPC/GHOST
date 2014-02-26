@@ -360,12 +360,12 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
         contextType = "Redundant";
 
 
-    ghost_printHeader(str,"Context");
-    ghost_printLine(str,"MPI processes",NULL,"%d",nranks);
-    ghost_printLine(str,"Number of rows",NULL,"%"PRIDX,context->gnrows);
-    ghost_printLine(str,"Type",NULL,"%s",contextType);
-    ghost_printLine(str,"Work distribution scheme",NULL,"%s",ghost_context_workdistString(context->flags));
-    ghost_printFooter(str);
+    ghost_headerString(str,"Context");
+    ghost_lineString(str,"MPI processes",NULL,"%d",nranks);
+    ghost_lineString(str,"Number of rows",NULL,"%"PRIDX,context->gnrows);
+    ghost_lineString(str,"Type",NULL,"%s",contextType);
+    ghost_lineString(str,"Work distribution scheme",NULL,"%s",ghost_context_workdistString(context->flags));
+    ghost_footerString(str);
     return GHOST_SUCCESS;
 
 }

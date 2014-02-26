@@ -46,10 +46,14 @@
 #define MAXVALUELEN 1024
 
 
-void ghost_printHeader(char **str, const char *fmt, ...)
+ghost_error_t ghost_headerString(char **str, const char *fmt, ...)
 {
     size_t headerLen = (PRINTWIDTH+1)*HEADERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+headerLen);
+    if (!(*str)) {
+        ERROR_LOG("Error in realloc");
+        return GHOST_ERR_UNKNOWN;
+    }
     memset(*str+strlen(*str),'\0',1);
 
     char label[1024] = "";
@@ -107,13 +111,18 @@ void ghost_printHeader(char **str, const char *fmt, ...)
     offset += PRINTWIDTH;
     sprintf(*str+offset,"\n");
 #endif
+    return GHOST_SUCCESS;
 }
 
-void ghost_printFooter(char **str) 
+ghost_error_t ghost_footerString(char **str) 
 {
     size_t len = strlen(*str);
     size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+footerLen);
+    if (!(*str)) {
+        ERROR_LOG("Error in realloc");
+        return GHOST_ERR_UNKNOWN;
+    }
     int i;
 #ifdef PRETTYPRINT
     sprintf(*str,"└");
@@ -125,9 +134,11 @@ void ghost_printFooter(char **str)
     for (i=0; i<PRINTWIDTH; i++) sprintf(*str+len+i,"-");
 #endif
     sprintf(*str+len+PRINTWIDTH,"\n");
+
+    return GHOST_SUCCESS;
 }
 
-void ghost_printLine(char **str, const char *label, const char *unit, const char *fmt, ...)
+ghost_error_t ghost_lineString(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
     int nLines, l;
     size_t len = strlen(*str);
@@ -141,6 +152,10 @@ void ghost_printLine(char **str, const char *label, const char *unit, const char
 
     // extend the string by PRINTWIDTH characters plus \n for each line plus \0
     *str = realloc(*str,len+nLines*(PRINTWIDTH+1)+1);
+    if (!(*str)) {
+        ERROR_LOG("Error in realloc");
+        return GHOST_ERR_UNKNOWN;
+    }
 
     //memset(*str+len,'\0',1);
 
@@ -167,6 +182,7 @@ void ghost_printLine(char **str, const char *label, const char *unit, const char
 #ifdef PRETTYPRINT
     sprintf(*str+len,"│");
 #endif
+    return GHOST_SUCCESS;
 }
 
 

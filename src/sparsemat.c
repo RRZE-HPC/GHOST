@@ -641,52 +641,52 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
         matrixLocation = "Default";
 
 
-    ghost_printHeader(str,"%s @ rank %d",mat->name,myrank);
-    ghost_printLine(str,"Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
-    ghost_printLine(str,"Matrix location",NULL,"%s",matrixLocation);
-    ghost_printLine(str,"Total number of rows",NULL,"%"PRIDX,nrows);
-    ghost_printLine(str,"Total number of nonzeros",NULL,"%"PRNNZ,nnz);
-    ghost_printLine(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
-    ghost_printLine(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
+    ghost_headerString(str,"%s @ rank %d",mat->name,myrank);
+    ghost_lineString(str,"Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
+    ghost_lineString(str,"Matrix location",NULL,"%s",matrixLocation);
+    ghost_lineString(str,"Total number of rows",NULL,"%"PRIDX,nrows);
+    ghost_lineString(str,"Total number of nonzeros",NULL,"%"PRNNZ,nnz);
+    ghost_lineString(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
+    ghost_lineString(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
 
-    ghost_printLine(str,"Local number of rows",NULL,"%"PRIDX,mat->nrows);
-    ghost_printLine(str,"Local number of rows (padded)",NULL,"%"PRIDX,mat->nrowsPadded);
-    ghost_printLine(str,"Local number of nonzeros",NULL,"%"PRIDX,mat->nnz);
+    ghost_lineString(str,"Local number of rows",NULL,"%"PRIDX,mat->nrows);
+    ghost_lineString(str,"Local number of rows (padded)",NULL,"%"PRIDX,mat->nrowsPadded);
+    ghost_lineString(str,"Local number of nonzeros",NULL,"%"PRIDX,mat->nnz);
 
-    ghost_printLine(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
+    ghost_lineString(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
     {
         if (mat->localPart) {
-            ghost_printLine(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-            ghost_printLine(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->localPart->traits->symmetry));
-            ghost_printLine(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+            ghost_lineString(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+            ghost_lineString(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->localPart->traits->symmetry));
+            ghost_lineString(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
         }
         if (mat->remotePart) {
-            ghost_printLine(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-            ghost_printLine(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+            ghost_lineString(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+            ghost_lineString(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
         }
     } else {
-        ghost_printLine(str,"Full   matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->traits->symmetry));
+        ghost_lineString(str,"Full   matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->traits->symmetry));
     }
 
-    ghost_printLine(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
+    ghost_lineString(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
-    ghost_printLine(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
+    ghost_lineString(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_printLine(str,"Permutation strategy",NULL,"Scotch");
-            ghost_printLine(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
+            ghost_lineString(str,"Permutation strategy",NULL,"Scotch");
+            ghost_lineString(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
         } else {
-            ghost_printLine(str,"Permutation strategy",NULL,"Sorting");
-            ghost_printLine(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+            ghost_lineString(str,"Permutation strategy",NULL,"Sorting");
+            ghost_lineString(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
         }
-        ghost_printLine(str,"Permutation scope",NULL,"%s",mat->permutation->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
-        ghost_printLine(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
-        ghost_printLine(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
+        ghost_lineString(str,"Permutation scope",NULL,"%s",mat->permutation->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
+        ghost_lineString(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+        ghost_lineString(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
     }
 
     mat->auxString(mat,str);
-    ghost_printFooter(str);
+    ghost_footerString(str);
 
     return GHOST_SUCCESS;
 

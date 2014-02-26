@@ -189,7 +189,7 @@ ghost_error_t ghost_machine_nNumaNodes(int *nNodes)
 
 }
 
-char ghost_machine_bigEndian()
+bool ghost_machine_bigEndian()
 {
     int test = 1;
     unsigned char *endiantest = (unsigned char *)&test;
@@ -282,26 +282,26 @@ ghost_error_t ghost_machine_string(char **str)
     ghost_machine_outerCacheSize(&cacheSize);
     ghost_machine_cacheLineSize(&cacheLineSize);
 
-    ghost_printHeader(str,"Machine");
+    ghost_headerString(str,"Machine");
 
-    ghost_printLine(str,"Overall nodes",NULL,"%d",nnodes); 
-    ghost_printLine(str,"Overall MPI processes",NULL,"%d",nranks);
-    ghost_printLine(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
-    ghost_printLine(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
-    ghost_printLine(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
-    ghost_printLine(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
-    ghost_printLine(str,"Cache line size","B","%zu",cacheLineSize);
+    ghost_lineString(str,"Overall nodes",NULL,"%d",nnodes); 
+    ghost_lineString(str,"Overall MPI processes",NULL,"%d",nranks);
+    ghost_lineString(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
+    ghost_lineString(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
+    ghost_lineString(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
+    ghost_lineString(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+    ghost_lineString(str,"Cache line size","B","%zu",cacheLineSize);
 #ifdef GHOST_HAVE_CUDA
-    ghost_printLine(str,"CUDA version",NULL,"%d",cuVersion);
-    ghost_printLine(str,"CUDA devices",NULL,NULL);
+    ghost_lineString(str,"CUDA version",NULL,"%d",cuVersion);
+    ghost_lineString(str,"CUDA devices",NULL,NULL);
     int j;
     for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
         if (strcasecmp(CUdevInfo->names[j],"None")) {
-            ghost_printLine(str,"",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
+            ghost_lineString(str,"",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
         }
     }
 #endif
-    ghost_printFooter(str);
+    ghost_footerString(str);
 
     return GHOST_SUCCESS;
 

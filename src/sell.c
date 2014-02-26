@@ -199,13 +199,13 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_idx_t *perm, gh
 }
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str)
 {
-    ghost_printLine(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
-    ghost_printLine(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
-    ghost_printLine(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_printLine(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
-    ghost_printLine(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
-    ghost_printLine(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
-    ghost_printLine(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
+    ghost_lineString(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
+    ghost_lineString(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
+    ghost_lineString(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
+    ghost_lineString(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
+    ghost_lineString(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
+    ghost_lineString(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
+    ghost_lineString(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
 }
 
 static const char * SELL_formatName(ghost_sparsemat_t *mat)

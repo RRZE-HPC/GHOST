@@ -57,9 +57,9 @@
 extern "C" {
 #endif
 
-    void ghost_printHeader(char **str, const char *fmt, ...);
-    void ghost_printFooter(char **str); 
-    void ghost_printLine(char **str, const char *label, const char *unit, const char *format, ...);
+    ghost_error_t ghost_headerString(char **str, const char *fmt, ...);
+    ghost_error_t ghost_footerString(char **str); 
+    ghost_error_t ghost_lineString(char **str, const char *label, const char *unit, const char *format, ...);
 
 
     /**

@@ -7,6 +7,7 @@
 #define GHOST_MACHINE_H
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <hwloc.h>
 #include "ghost/error.h"
 
@@ -102,9 +103,9 @@ extern "C" {
     /**
      * @brief Check whether machine is big endian.
      *
-     * @return 1 if machine is big endian, 0 if machine is little endian.
+     * @return true if machine is big endian, false if machine is little endian.
      */
-    char ghost_machine_bigEndian();
+    bool ghost_machine_bigEndian();
     ghost_error_t ghost_machine_string(char **str);
 
 #ifdef __cplusplus
