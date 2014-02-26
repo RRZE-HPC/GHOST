@@ -25,6 +25,7 @@ typedef int ghost_mpi_datatype_t;
 
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
 /**
@@ -185,7 +186,7 @@ extern "C" {
      * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and 
      * exactly one of GHOST_DT_REAL and GHOST_DT_COMPLEX is set.
      */
-    char ghost_datatypeValid(ghost_datatype_t datatype);
+    bool ghost_datatypeValid(ghost_datatype_t datatype);
     /**
      * @brief Stringify a ghost_datatype_t.
      *

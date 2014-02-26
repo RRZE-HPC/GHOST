@@ -80,7 +80,7 @@ ghost_error_t ghost_sizeofDatatype(size_t *size, ghost_datatype_t datatype)
     return GHOST_SUCCESS;
 }
 
-char ghost_datatypeValid(ghost_datatype_t datatype)
+bool ghost_datatypeValid(ghost_datatype_t datatype)
 {
     if ((datatype & GHOST_DT_FLOAT) &&
             (datatype & GHOST_DT_DOUBLE))
