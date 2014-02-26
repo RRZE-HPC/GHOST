@@ -275,9 +275,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
                 for (i = 0; i < header.nrows+1; i++) {
                     (*rpt)[i] = 0;
                 }
-                if (mat->permutation) {
-                    GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
-                }
+                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
                 mat->context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -332,9 +330,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         for (i = 0; i < header.nrows+1; i++) {
             (*rpt)[i] = 0;
         }
-        if (mat->permutation) {
-            GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
-        }
+        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
         for (i=0; i<nprocs; i++){
             mat->context->lfEnt[i] = 0;
             mat->context->lfRow[i] = 0;

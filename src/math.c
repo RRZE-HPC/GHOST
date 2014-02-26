@@ -90,6 +90,8 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 
 static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
+    va_list argp_backup;
+    va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
     ghost_spmvsolver_t solver = NULL;
     ghost_spmv_selectMode(mat->context,flags);
@@ -114,13 +116,25 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     GHOST_INSTR_START(spmv_dot_reduce);
 
     if ((*flags & GHOST_SPMV_REDUCE) && (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT)) {
-        WARNING_LOG("not implemented");
-/*        ghost_mpi_op_t op;
+        void *dot;
+        if (*flags & GHOST_SPMV_APPLY_SCALE) {
+            dot = va_arg(argp_backup,void *);
+        }
+        if (*flags & GHOST_SPMV_AXPBY) {
+            dot = va_arg(argp_backup,void *);
+        }
+        if (*flags & GHOST_SPMV_APPLY_SHIFT) {
+            dot = va_arg(argp_backup,void *);
+        }
+        if (*flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
+            dot = va_arg(argp_backup,void *);
+        }
+        ghost_mpi_op_t op;
         ghost_mpi_datatype_t dt;
         ghost_mpi_op_sum(&op,res->traits->datatype);
         ghost_mpi_datatype(&dt,res->traits->datatype);
 
-        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, res->traits->localdot, 3, dt, op, ctx->mpicomm));*/
+        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3, dt, op, mat->context->mpicomm));
     }
     GHOST_INSTR_STOP(spmv_dot_reduce);
 #endif

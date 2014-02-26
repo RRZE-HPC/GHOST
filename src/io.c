@@ -68,7 +68,7 @@ ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t 
         }
     }
     
-    if (perm->invPerm) {
+    if (perm) {
         int64_t *col_raw;
         GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,header.nnz*8));
         if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1),SEEK_SET)) {
@@ -224,7 +224,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     char *val_raw;
     ghost_idx_t nEnts;
 
-    if (perm->invPerm) {
+    if (perm) {
         GHOST_CALL_RETURN(ghost_malloc((void **)&val_raw,header.nnz*sizeofdt));
         nEnts = header.nnz;
         offs = GHOST_BINCRS_SIZE_HEADER+
@@ -348,7 +348,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
         free(tmpval);
     }
 
-    if (perm->invPerm) {
+    if (perm) {
         e = 0;
         for(i = offsRows; i < offsRows+nRows; i++) {
             for(j = rpt_raw[perm->invPerm[i]]; j < rpt_raw[perm->invPerm[i]+1]; j++) {
@@ -390,7 +390,7 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
     GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
     GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
 
-    if (perm->invPerm) {
+    if (perm) {
         int64_t *rpt_raw;
         GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
         if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {

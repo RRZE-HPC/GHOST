@@ -667,9 +667,11 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
+#ifdef GHOST_HAVE_MPI
     DEBUG_LOG(1,"Split matrix");
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
     DEBUG_LOG(1,"Matrix read in successfully");
+#endif
 
     goto out;
 err:

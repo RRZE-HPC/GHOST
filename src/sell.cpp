@@ -66,7 +66,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     int nthreads = 1;
     v_t tmp[chunkHeight];
     
-    v_t shift, scale, beta;
+    v_t shift = 0., scale = 1., beta = 1.;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product);
     
     if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
@@ -160,7 +160,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
     
-    v_t shift, scale, beta;
+    v_t shift = 0., scale = 1., beta = 1.;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product);
     
     if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {

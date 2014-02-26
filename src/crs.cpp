@@ -34,7 +34,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 // TODO false sharing avoidance w/ hwloc
 
     v_t hlp1 = 0.;
-    v_t shift, scale, beta;
+    v_t shift = 0., scale = 1., beta = 1.;
    
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product);
 
