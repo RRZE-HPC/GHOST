@@ -43,9 +43,14 @@
     ghost_wctime(&func ## _tend);\
     func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+    void ghost_timing_tick(char *tag);
+    void ghost_timing_tock(char *tag);
+    ghost_error_t ghost_timing_string(char **str);
 
     ghost_error_t ghost_wctime(double *time);
     ghost_error_t ghost_wctimeMilli(double *time);

@@ -1,10 +1,14 @@
 /**
 @page instrumentation Code instrumentation 
 
-#GHOST_INSTR_START(tag) and #GHOST_INSTR_STOP(tag)
-ghost_instr_setPrefix() ghost_instr_setSuffix()
+It may be of interest to instrument certain regions of the source code.
+Instrumentation can be switched on at compilation time and it affects (by default) all mathematical kernels in GHOST.
+The region name will be the name of the kernel, e.g., axpy or spmv.
+At the moment, instrumentation can be configured to either print a region's runtime or use the Likwid Marker API.
 
+A user may define more regions with using macros #GHOST_INSTR_START(tag) and #GHOST_INSTR_STOP(tag) where tag is a string with the region name.
 
-
+If a kernel gets called in different surroundings, only a single region would be created for this kernel.
+In order to avoid that, the functions ghost_instr_setPrefix() and ghost_instr_setSuffix() can be used to set a specific pre-/suffix string for each surrounding.
 
 */

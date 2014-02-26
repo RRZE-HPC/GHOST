@@ -53,6 +53,7 @@ set (SOURCES
 		src/taskq.c
         src/thpool.c
         src/timing.c
+        src/timing.cpp
         src/types.c
 		src/util.c 
 	)

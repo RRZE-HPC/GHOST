@@ -11,15 +11,26 @@
 #include "log.h"
 #include "timing.h"
 
-#define GHOST_INSTR_START(tag)\
-    double __start_##tag;\
-ghost_error_t __err_##tag;\
-GHOST_CALL(ghost_wctime(&__start_##tag),__err_##tag);\
+#define GHOST_INSTR_START(tag) {\
+    char region[256];\
+    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    ghost_timing_tick(region);\
+}\
 
-#define GHOST_INSTR_STOP(tag)\
-    double __end_##tag;\
-GHOST_CALL(ghost_wctime(&__end_##tag),__err_##tag);\
-LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPrefix(),#tag,ghost_instr_getSuffix(),__end_##tag-__start_##tag);
+#define GHOST_INSTR_STOP(tag) {\
+    char region[256];\
+    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    ghost_timing_tock(region);\
+}\
+    
+//double __start_##tag;\
+//ghost_error_t __err_##tag;\
+//GHOST_CALL(ghost_wctime(&__start_##tag),__err_##tag);\
+
+//#define GHOST_INSTR_STOP(tag)\
+//    double __end_##tag;\
+//GHOST_CALL(ghost_wctime(&__end_##tag),__err_##tag);\
+//LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPrefix(),#tag,ghost_instr_getSuffix(),__end_##tag-__start_##tag);
 
 #elif defined(GHOST_HAVE_INSTR_LIKWID)
 

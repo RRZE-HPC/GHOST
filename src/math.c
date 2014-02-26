@@ -112,9 +112,9 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     solver(res,mat,invec,*flags,argp);
 
 #ifdef GHOST_HAVE_MPI
-    GHOST_INSTR_START(spmv_dot_reduce);
 
     if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT)) {
+        GHOST_INSTR_START(spmv_dot_reduce);
         void *dot;
         if (*flags & GHOST_SPMV_SCALE) {
             dot = va_arg(argp_backup,void *);
@@ -134,8 +134,8 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         ghost_mpi_datatype(&dt,res->traits->datatype);
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3, dt, op, mat->context->mpicomm));
+        GHOST_INSTR_STOP(spmv_dot_reduce);
     }
-    GHOST_INSTR_STOP(spmv_dot_reduce);
 #endif
 
 
@@ -145,11 +145,15 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 }
 ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
 {
+    GHOST_INSTR_START(spmv);
+
     ghost_error_t ret = GHOST_SUCCESS;
     va_list argp;
     va_start(argp, flags);
     ret = ghost_vspmv(res,mat,invec,flags,argp);
     va_end(argp);
+    
+    GHOST_INSTR_STOP(spmv);
 
     return ret;
 }
