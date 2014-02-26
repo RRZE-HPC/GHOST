@@ -692,7 +692,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
 }
 
-char ghost_sparsemat_symmetryValid(int symmetry)
+bool ghost_sparsemat_symmetryValid(int symmetry)
 {
     if ((symmetry & GHOST_SPARSEMAT_SYMM_GENERAL) &&
             (symmetry & ~GHOST_SPARSEMAT_SYMM_GENERAL))
