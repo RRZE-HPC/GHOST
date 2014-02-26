@@ -69,6 +69,8 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool);
+
+    ghost_error_t ghost_thpool_key(pthread_key_t *key);
     
 
 #ifdef __cplusplus

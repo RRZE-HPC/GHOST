@@ -220,10 +220,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_hwconfig_t hwconfig;
     ghost_hwconfig_get(&hwconfig);
 
-    if (hwconfig.nCores == GHOST_HW_CONFIG_INVALID) {
+    if (hwconfig.nCores == GHOST_HWCONFIG_INVALID) {
         ghost_machine_nCores(&hwconfig.nCores, GHOST_NUMANODE_ANY);
     }
-    if (hwconfig.nSmt == GHOST_HW_CONFIG_INVALID) {
+    if (hwconfig.nSmt == GHOST_HWCONFIG_INVALID) {
         ghost_machine_nSmt(&hwconfig.nSmt);
     }
     ghost_hwconfig_set(hwconfig);

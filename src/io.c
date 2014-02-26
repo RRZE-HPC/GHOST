@@ -26,7 +26,7 @@ static inline uint64_t bswap_64(uint64_t val)
         | ((val & (uint64_t)0xff00000000000000ULL) >> 56);
 }
 
-void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
+static void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
 {{&ss_ghost_castArray,&sd_ghost_castArray,&sc_ghost_castArray,&sz_ghost_castArray},
     {&ds_ghost_castArray,&dd_ghost_castArray,&dc_ghost_castArray,&dz_ghost_castArray},
     {&cs_ghost_castArray,&cd_ghost_castArray,&cc_ghost_castArray,&cz_ghost_castArray},

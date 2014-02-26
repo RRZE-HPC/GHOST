@@ -36,7 +36,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     v_t hlp1 = 0.;
     v_t shift = 0., scale = 1., beta = 1.;
    
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
 
     if (options & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {
 

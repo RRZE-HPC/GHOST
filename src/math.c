@@ -14,7 +14,6 @@
 #include <complex.h>
 #ifdef GHOST_HAVE_CUDA
 #include <cublas_v2.h>
-extern cublasHandle_t ghost_cublas_handle;
 #endif
 
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
@@ -287,6 +286,8 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     else if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
+        cublasHandle_t ghost_cublas_handle;
+        GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
         cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
         if (v->traits->datatype & GHOST_DT_COMPLEX) 
         {

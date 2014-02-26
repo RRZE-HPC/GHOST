@@ -12,13 +12,11 @@
 #include <unistd.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
-#include <cublas_v2.h>
 
 #define ghost_cu_MAX_DEVICE_NAME_LEN 500
 
-// TODO private variables
-cublasHandle_t ghost_cublas_handle;
-int ghost_cu_device;
+static cublasHandle_t ghost_cublas_handle;
+static int ghost_cu_device = -1;
 
 ghost_error_t ghost_cu_init(int dev)
 {
@@ -236,6 +234,28 @@ ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
     }
 
     CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocMapped));
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_getDevice(int *device)
+{
+    if (ghost_cu_device < 0) {
+        ERROR_LOG("CUDA not initialized!");
+        return GHOST_ERR_CUDA;
+    }
+    *device = ghost_cu_device;
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_getCublasHandle(cublasHandle_t *handle)
+{
+    if (!ghost_cublas_handle) {
+        ERROR_LOG("CUBLAS not initialized!");
+        return GHOST_ERR_CUBLAS;
+    }
+    *handle = ghost_cublas_handle;
 
     return GHOST_SUCCESS;
 }

@@ -21,19 +21,10 @@
 //#define SELLT_STRIDE_ONE
 
 extern __shared__ char shared[];
-extern int ghost_cu_device;
 
 #define CALL(func,dt1,dt2,b1,b2,b3,b4,b5,...){\
     dt2 shift, scale, beta;\
-    if (flags&GHOST_SPMV_APPLY_SHIFT) {\
-            shift = *(dt2 *)mat->traits->shift;\
-    }\
-    if (flags&GHOST_SPMV_APPLY_SCALE) {\
-            scale = *(dt2 *)mat->traits->scale;\
-    }\
-    if (flags&GHOST_SPMV_AXPBY) {\
-            beta = *(dt2 *)mat->traits->beta;\
-    }\
+    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2);\
     func<dt1,dt2,b1,b2,b3,b4,b5><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot);\
    }\
 
@@ -166,8 +157,11 @@ extern int ghost_cu_device;
 
 #define CHOOSE_KERNEL(dt1,dt2) {\
     ghost_error_t ret = GHOST_SUCCESS;\
+    int ghost_cu_device;\
+    GHOST_CALL_RETURN(ghost_cu_getDevice(&ghost_cu_device));\
     static int infoprinted=0;\
     void *cu_localdot = NULL;\
+    dt2 *localdot = NULL;\
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
     GHOST_INSTR_START(CU_SELL_SpMVM)\
@@ -210,9 +204,9 @@ extern int ghost_cu_device;
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
-        lhs->dot(lhs,lhs,lhs->traits->localdot);\
-        lhs->dot(lhs,rhs,(char *)lhs->traits->localdot+sizeof(dt2));\
-        lhs->dot(rhs,rhs,(char *)lhs->traits->localdot+2*sizeof(dt2));\
+        lhs->dot(lhs,lhs,&localdot[0]);\
+        lhs->dot(lhs,rhs,&localdot[1]);\
+        lhs->dot(rhs,rhs,&localdot[2]);\
     }\
     GHOST_INSTR_STOP(CU_SpMVM_localdot)\
     return ret;\
@@ -455,82 +449,82 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flag
 }
 
 
-extern "C" ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 {
     CHOOSE_KERNEL(double,double);
 }
 
-extern "C" ghost_error_t ds_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t ds_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,float);
 }
 
-extern "C" ghost_error_t dc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t dc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,cuFloatComplex);
 }
 
-extern "C" ghost_error_t dz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t dz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(double,cuDoubleComplex);
 }
 
-extern "C" ghost_error_t sd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t sd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,double);
 }
 
-extern "C" ghost_error_t ss_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t ss_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,float);
 }
 
-extern "C" ghost_error_t sc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t sc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,cuFloatComplex);
 }
 
-extern "C" ghost_error_t sz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t sz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(float,cuDoubleComplex);
 }
 
-extern "C" ghost_error_t zd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t zd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,double);
 }
 
-extern "C" ghost_error_t zs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t zs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,float);
 }
 
-extern "C" ghost_error_t zc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t zc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,cuFloatComplex);
 }
 
-extern "C" ghost_error_t zz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t zz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuDoubleComplex,cuDoubleComplex);
 }
 
-extern "C" ghost_error_t cd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t cd_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,double);
 }
 
-extern "C" ghost_error_t cs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t cs_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,float);
 }
 
-extern "C" ghost_error_t cc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t cc_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,cuFloatComplex);
 }
 
-extern "C" ghost_error_t cz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags)
+extern "C" ghost_error_t cz_SELL_kernel_CU(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t flags, va_list argp)
 { 
     CHOOSE_KERNEL(cuFloatComplex,cuDoubleComplex);
 }

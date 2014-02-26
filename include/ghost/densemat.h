@@ -359,7 +359,14 @@ struct ghost_densemat_traits_t
 /**
  * @brief Defined in densemat.c
  */
-extern const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER;
+#define GHOST_DENSEMAT_TRAITS_INITIALIZER (ghost_densemat_traits_t) {\
+    .flags = GHOST_DENSEMAT_DEFAULT,\
+    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
+    .nrows = 0,\
+    .nrowshalo = 0,\
+    .nrowspadded = 0,\
+    .ncols = 1\
+};
 
 #define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->traits->elSize])
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->traits->elSize])

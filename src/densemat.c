@@ -20,33 +20,27 @@
 #include <unistd.h>
 #include <errno.h>
 
-#ifdef GHOST_HAVE_CUDA
-#include <cuda_runtime.h> // TODO in cu_util
-#include <cublas_v2.h>
-extern cublasHandle_t ghost_cublas_handle;
-#endif
+//const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_DENSEMAT_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
 
-const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_DENSEMAT_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
-
-ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
+static ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
-ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
+static ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
 {&s_ghost_vec_dotprod, &d_ghost_vec_dotprod, &c_ghost_vec_dotprod, &z_ghost_vec_dotprod};
 
-ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_densemat_t *, void*) = 
+static ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_densemat_t *, void*) = 
 {&s_ghost_vec_vscale, &d_ghost_vec_vscale, &c_ghost_vec_vscale, &z_ghost_vec_vscale};
 
-ghost_error_t (*ghost_vec_vaxpy_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
+static ghost_error_t (*ghost_vec_vaxpy_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
 {&s_ghost_vec_vaxpy, &d_ghost_vec_vaxpy, &c_ghost_vec_vaxpy, &z_ghost_vec_vaxpy};
 
-ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*, void*) = 
+static ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*, void*) = 
 {&s_ghost_vec_vaxpby, &d_ghost_vec_vaxpby, &c_ghost_vec_vaxpby, &z_ghost_vec_vaxpby};
 
-ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_densemat_t *) = 
+static ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
-ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_densemat_t *) = 
+static ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_printVector, &d_ghost_printVector, &c_ghost_printVector, &z_ghost_printVector};
 
 static ghost_error_t vec_print(ghost_densemat_t *vec);

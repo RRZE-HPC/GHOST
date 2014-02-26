@@ -47,8 +47,6 @@ ghost_error_t ghost_taskq_waitsome(ghost_task_t **, int, int*);
 ghost_error_t ghost_taskq_addTask(ghost_task_t *task);
 ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *));
 
-extern pthread_key_t ghost_thread_key;
-
 #ifdef __cplusplus
 }// extern "C"
 #endif

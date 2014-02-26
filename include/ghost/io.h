@@ -70,7 +70,6 @@ extern "C" {
      */
     ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath);
 
-    extern void (*ghost_castArray_funcs[4][4]) (void *, void *, int); 
     void dd_ghost_castArray(void *, void *, int);
     void ds_ghost_castArray(void *, void *, int);
     void dc_ghost_castArray(void *, void *, int);

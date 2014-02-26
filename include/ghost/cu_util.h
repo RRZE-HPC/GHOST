@@ -1,6 +1,7 @@
 #ifndef GHOST_CU_UTIL_H
 #define GHOST_CU_UTIL_H
 
+#include <cublas_v2.h>
 #include "config.h"
 #include "types.h"
 #include "error.h"
@@ -29,6 +30,8 @@ ghost_error_t ghost_cu_finish();
 ghost_error_t ghost_cu_getDeviceCount(int *devcount);
 ghost_error_t ghost_cu_getVersion(int *ver);
 ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **);
+ghost_error_t ghost_cu_getDevice(int *device);
+ghost_error_t ghost_cu_getCublasHandle(cublasHandle_t *handle);
 
 #ifdef __cplusplus
 }

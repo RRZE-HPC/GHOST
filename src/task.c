@@ -81,7 +81,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
-    t->parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);
+    GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
     //    t->freed = 0;
 
     //DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",(void *)t,t->nThreads,(void *)taskq,t->LD);
@@ -230,5 +230,15 @@ err:
 out:
 
     return ret;
+}
+
+ghost_error_t ghost_task_cur(ghost_task_t **task)
+{
+    pthread_key_t key;
+    GHOST_CALL_RETURN(ghost_thpool_key(&key));
+    *task = (ghost_task_t *)pthread_getspecific(key);
+
+    return GHOST_SUCCESS;
+
 }
 

@@ -9,7 +9,10 @@
 #include <omp.h>
 #endif
 
+/** \cond */
 extern char ** environ;
+/** \endcond */
+
 static hwloc_topology_t ghost_topology = NULL;
 
 static char *env(char *key)

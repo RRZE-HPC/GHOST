@@ -1,7 +1,7 @@
 #include "ghost/instr.h"
 
-char *ghost_instr_prefix = "";
-char *ghost_instr_suffix = "";
+static char *ghost_instr_prefix = "";
+static char *ghost_instr_suffix = "";
 
 void ghost_instr_setPrefix(char *prefix)
 {

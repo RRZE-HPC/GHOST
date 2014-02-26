@@ -20,7 +20,6 @@
 
 #define THREADSPERBLOCK 256
 
-extern cublasHandle_t ghost_cublas_handle;
 
 template<typename T>  
 __global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_idx_t nrows, ghost_idx_t ncols, ghost_idx_t nrowspadded)
@@ -187,7 +186,9 @@ extern "C" ghost_error_t ghost_vec_cu_dotprod(ghost_densemat_t *vec, ghost_dense
     }
     size_t sizeofdt;
     ghost_sizeofDatatype(&sizeofdt,vec->traits->datatype);
-    
+   
+    cublasHandle_t ghost_cublas_handle;
+    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
     ghost_idx_t v;
     for (v=0; v<vec->traits->ncols; v++)
     {
@@ -230,6 +231,8 @@ extern "C" ghost_error_t ghost_vec_cu_axpy(ghost_densemat_t *vec, ghost_densemat
         ERROR_LOG("Cannot AXPY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
+    cublasHandle_t ghost_cublas_handle;
+    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
@@ -310,6 +313,8 @@ extern "C" ghost_error_t ghost_vec_cu_axpby(ghost_densemat_t *v1, ghost_densemat
 
 extern "C" ghost_error_t ghost_vec_cu_scale(ghost_densemat_t *vec, void *a)
 {
+    cublasHandle_t ghost_cublas_handle;
+    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)

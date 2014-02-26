@@ -30,7 +30,7 @@ typedef struct
 } 
 ghost_sell_aux_t;
 
-extern const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER;
+#define GHOST_SELL_AUX_INITIALIZER (ghost_sell_aux_t) {.C = 32, .T = 1};
 
 /**
  * @brief Struct defining a SELL-C-sigma-T matrix.

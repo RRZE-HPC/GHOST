@@ -18,8 +18,7 @@
 #define LOCAL_HOSTNAME_MAX 	256
 #define ROTL32(num,amount) (((num) << (amount)) | ((num) >> (32 - (amount))))
 
-const ghost_hwconfig_t GHOST_HWCONFIG_INITIALIZER = {.nCores = GHOST_HW_CONFIG_INVALID, .nSmt = GHOST_HW_CONFIG_INVALID};
-static ghost_hwconfig_t ghost_hwconfig = {.nCores = GHOST_HW_CONFIG_INVALID, .nSmt = GHOST_HW_CONFIG_INVALID};
+static ghost_hwconfig_t ghost_hwconfig = GHOST_HWCONFIG_INITIALIZER;
 
 static ghost_hybridmode_t ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
 static ghost_mpi_comm_t ghost_node_comm = MPI_COMM_NULL;

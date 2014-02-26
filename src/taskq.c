@@ -28,8 +28,10 @@
 #include <omp.h>
 #endif
 
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/cu_util.h"
+#endif
 
-extern int ghost_cu_device;
 
 /**
  * @brief The task queue created by ghost_taskq_init().
@@ -68,11 +70,6 @@ static pthread_cond_t anyTaskFinishedCond;
  */
 static pthread_mutex_t anyTaskFinishedMutex;
 
-/**
- * @brief Each of the threads in the thread pool gets assigned the task it executes via pthread_setspecific. 
- This is the key to this specific data. It is exported in ghost_taskq.h
- */
-pthread_key_t ghost_thread_key = 0;
 
 
 static void * thread_main(void *arg);
@@ -85,7 +82,6 @@ ghost_error_t ghost_taskq_create()
     taskq->head = NULL;
     pthread_mutex_init(&(taskq->mutex),NULL);
 
-    pthread_key_create(&ghost_thread_key,NULL);
     pthread_cond_init(&newTaskCond,NULL);
     pthread_mutex_init(&newTaskMutex,NULL);
     pthread_mutex_init(&globalMutex,NULL);
@@ -323,7 +319,9 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
     static void * thread_main(void *arg)
     {
 #ifdef GHOST_HAVE_CUDA
-        ghost_cu_init(ghost_cu_device);
+        int cu_device;
+        ghost_cu_getDevice(&cu_device);
+        ghost_cu_init(cu_device);
 #endif
         //    kmp_set_blocktime(200);
         //    kmp_set_library_throughput();
@@ -382,7 +380,9 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
 
             DEBUG_LOG(1,"Thread %d: Finally executing task %p",(int)pthread_self(),(void *)myTask);
 
-            pthread_setspecific(ghost_thread_key,myTask);
+            pthread_key_t key;
+            ghost_thpool_key(&key);
+            pthread_setspecific(key,myTask);
 
 #ifdef __INTEL_COMPILER
             //kmp_set_blocktime(0);
@@ -392,7 +392,7 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
 #ifdef __INTEL_COMPILER
             //kmp_set_blocktime(200);
 #endif
-            pthread_setspecific(ghost_thread_key,NULL);
+            pthread_setspecific(key,NULL);
 
             DEBUG_LOG(1,"Thread %lu: Finished executing task: %p. Free'ing resources and waking up another thread"
                     ,(unsigned long)pthread_self(),(void *)myTask);

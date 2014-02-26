@@ -95,7 +95,7 @@ endif()
 
 if (USE_CUDA)
 	find_package(CUDA)
-        if (FOUND_CUDA)
+    if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${CMAKE_SOURCE_DIR}/include
                 ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost)

@@ -53,11 +53,11 @@ typedef struct
 } 
 ghost_sorting_t;
 
-#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot){\
-    v_t *arg = NULL;\
+#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt){\
+    dt *arg = NULL;\
     if (flags & GHOST_SPMV_APPLY_SCALE) {\
         printf("here\n");\
-        arg = va_arg(argp,v_t *);\
+        arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Scale argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
@@ -65,7 +65,7 @@ ghost_sorting_t;
         alpha = *arg;\
     }\
     if (flags & GHOST_SPMV_AXPBY) {\
-        arg = va_arg(argp,v_t *);\
+        arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("AXPBY argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
@@ -73,7 +73,7 @@ ghost_sorting_t;
         beta = *arg;\
     }\
     if (flags & GHOST_SPMV_APPLY_SHIFT) {\
-        arg = va_arg(argp,v_t *);\
+        arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Shift argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
@@ -81,12 +81,14 @@ ghost_sorting_t;
         gamma = *arg;\
     }\
     if (flags & GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT) {\
-        arg = va_arg(argp,v_t *);\
+        arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Dot argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        dot = arg;\
+        if (dot) {\
+            dot = arg;\
+        }\
     }\
 }\
 
@@ -206,14 +208,19 @@ struct ghost_sparsemat_traits_t
      * @brief Size (in bytes) of one matrix element.
      */
     size_t elSize;
-    //void * shift;
-    //void * scale;
-    //void * beta; // scale factor for AXPBY
 };
 /**
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
  */
-extern const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER;
+#define GHOST_SPARSEMAT_TRAITS_INITIALIZER (ghost_sparsemat_traits_t) {\
+    .flags = GHOST_SPARSEMAT_DEFAULT,\
+    .aux = NULL,\
+    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
+    .sortScope = 1,\
+    .format = GHOST_SPARSEMAT_CRS,\
+    .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
+    .scotchStrat = "n{ole=q{strat=g},ose=q{strat=g},osq=g}"\
+};
 
 /**
  * @ingroup types

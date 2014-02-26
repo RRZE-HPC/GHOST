@@ -20,19 +20,6 @@
 #endif
 #endif
 
-const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
-    .flags = GHOST_SPARSEMAT_DEFAULT, 
-    .aux = NULL, 
-    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, 
-    .sortScope = 1, 
-    .format = GHOST_SPARSEMAT_CRS, 
-    //.shift = NULL, 
-    //.scale = NULL, 
-    //.beta = NULL, 
-    .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
-    .scotchStrat = "n{ole=q{strat=g},ose=q{strat=g},osq=g}"
-};
-
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
     UNUSED(nTraits);

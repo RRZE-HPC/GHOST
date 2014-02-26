@@ -58,7 +58,7 @@ static void *communicate(void *vargs)
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
 #ifdef GHOST_HAVE_INSTR_TIMING
-            INFO_LOG("from %d: %zu bytes",from_PE,args->mat->context->wishes[from_PE]*args->rhs->traits->elSize);
+            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->ncols; c++) {
@@ -189,10 +189,11 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
 
     int taskflags = GHOST_TASK_DEFAULT;
-    if (pthread_getspecific(ghost_thread_key) != NULL) {
+    ghost_task_t *parent = NULL;
+    GHOST_CALL_RETURN(ghost_task_cur(&parent));
+    if (parent) {
         DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
         taskflags |= GHOST_TASK_USE_PARENTS;
-        ghost_task_t *parent = pthread_getspecific(ghost_thread_key);
         ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
         ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
 

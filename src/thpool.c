@@ -3,6 +3,12 @@
 #include "ghost/machine.h"
 
 /**
+ * @brief Each of the threads in the thread pool gets assigned the task it executes via pthread_setspecific. 
+ This is the key to this specific data. It is exported in ghost_taskq.h
+ */
+static pthread_key_t ghost_thread_key = 0;
+
+/**
  * @brief The thread pool created by ghost_thpool_create(). 
  */
 static ghost_thpool_t *ghost_thpool = NULL;
@@ -28,6 +34,7 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
     ghost_thpool->nThreads = totalThreads;
     sem_init(ghost_thpool->sem, 0, 0);
 
+    pthread_key_create(&ghost_thread_key,NULL);
 
     //ghost_thpool->cpuset = hwloc_bitmap_alloc();
     //hwloc_bitmap_copy(ghost_thpool->cpuset,cpuset);
@@ -87,3 +94,14 @@ ghost_error_t ghost_thpool_get(ghost_thpool_t **thpool)
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_thpool_key(pthread_key_t *key)
+{
+    if (!key) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    *key = ghost_thread_key;
+
+    return GHOST_SUCCESS;
+}

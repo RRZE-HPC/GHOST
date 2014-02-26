@@ -6,9 +6,6 @@
 #ifndef GHOST_INSTR_H
 #define GHOST_INSTR_H
 
-extern char *ghost_instr_prefix;
-extern char *ghost_instr_suffix;
-
 #ifdef GHOST_HAVE_INSTR_TIMING
 
 #include "log.h"
@@ -22,7 +19,7 @@ GHOST_CALL(ghost_wctime(&__start_##tag),__err_##tag);\
 #define GHOST_INSTR_STOP(tag)\
     double __end_##tag;\
 GHOST_CALL(ghost_wctime(&__end_##tag),__err_##tag);\
-LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_prefix,#tag,ghost_instr_suffix,__end_##tag-__start_##tag);
+LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPrefix(),#tag,ghost_instr_getSuffix(),__end_##tag-__start_##tag);
 
 #elif defined(GHOST_HAVE_INSTR_LIKWID)
 
@@ -35,7 +32,7 @@ LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_prefi
  */
 #define GHOST_INSTR_START(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix, #tag, ghost_instr_suffix);\
+    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_START(region);\
 }
@@ -47,7 +44,7 @@ LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_prefi
  */
 #define GHOST_INSTR_STOP(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix, #tag, ghost_instr_suffix);\
+    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_STOP(region);\
 }
