@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 #include "ghost/types.h"
-#include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/task.h"
 #include "ghost/thpool.h"

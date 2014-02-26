@@ -3,7 +3,6 @@
 #include "ghost/crs.h"
 #include "ghost/sell.h"
 #include "ghost/sparsemat.h"
-#include "ghost/constants.h"
 #include "ghost/context.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
@@ -157,9 +156,9 @@ ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_i
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_sparsemat_permFromScotch(mat,func,GHOST_SPARSEMAT_SRC_FUNC);
+            ghost_sparsemat_permFromScotch(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC);
         } else {
-            ghost_sparsemat_permFromSorting(mat,func,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
+            ghost_sparsemat_permFromSorting(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
         }
     } else {
         if (mat->traits->sortScope > 1) {
@@ -467,6 +466,15 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     return GHOST_SUCCESS;
 #else
     ghost_error_t ret = GHOST_SUCCESS;
+    ghost_matfile_header_t header;
+    MPI_Request *req = NULL;
+    MPI_Status *stat = NULL;
+    SCOTCH_Dgraph * dgraph = NULL;
+    SCOTCH_Strat * strat = NULL;
+    SCOTCH_Dordering *dorder = NULL;
+    ghost_idx_t *rpt = NULL, *col = NULL, i;
+    int me, nprocs;
+    
     if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
@@ -478,17 +486,9 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     }
 
     char *matrixPath = (char *)matrixSource;
+    GHOST_CALL_GOTO(ghost_readMatFileHeader(matrixPath,&header),err,ret);
 
-    ghost_idx_t *rpt = NULL, *col = NULL, i;
-    int me, nprocs;
 
-    ghost_matfile_header_t header;
-    ghost_readMatFileHeader(matrixPath,&header);
-    MPI_Request *req = NULL;
-    MPI_Status *stat = NULL;
-    SCOTCH_Dgraph * dgraph = NULL;
-    SCOTCH_Strat * strat = NULL;
-    SCOTCH_Dordering *dorder = NULL;
 
     GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
     GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);

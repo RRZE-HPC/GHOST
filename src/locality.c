@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
 #include "ghost/log.h"

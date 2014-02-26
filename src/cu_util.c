@@ -9,7 +9,6 @@
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"
 #include "ghost/locality.h"
-#include "ghost/constants.h"
 #include "ghost/log.h"
 #include <string.h>
 #include <stdlib.h>

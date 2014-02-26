@@ -1,5 +1,6 @@
 #include "ghost/config.h"
-#include "omp.h"
+#include "ghost/omp.h"
+#include "ghost/util.h"
 
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>

@@ -6,7 +6,6 @@
 #include "ghost/taskq.h"
 #include "ghost/pumap.h"
 #include "ghost/machine.h"
-#include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"

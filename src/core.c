@@ -317,7 +317,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     if ((int)(obj->sibling_rank) >= hwconfig.nSmt) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
-    if (cores > hwconfig.nCores) {
+    if ((int)cores > hwconfig.nCores) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     }
     hwloc_bitmap_foreach_end();

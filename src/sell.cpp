@@ -13,7 +13,6 @@
 #include "ghost/sell.h"
 #include "ghost/densemat.h"
 #include "ghost/math.h"
-#include "ghost/constants.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include <iostream>

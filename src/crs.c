@@ -4,7 +4,6 @@
 #include "ghost/util.h"
 #include "ghost/core.h"
 #include "ghost/sparsemat.h"
-#include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/context.h"
 #include "ghost/machine.h"

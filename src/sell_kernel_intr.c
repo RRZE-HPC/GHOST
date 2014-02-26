@@ -2,7 +2,6 @@
 #undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/sell.h"
-#include "ghost/constants.h"
 #include "ghost/util.h"
 #include <immintrin.h>
 
@@ -323,6 +322,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     UNUSED(res);
     UNUSED(invec);
     UNUSED(spmvmOptions);
+    UNUSED(argp);
 #endif
     return GHOST_SUCCESS;
 }

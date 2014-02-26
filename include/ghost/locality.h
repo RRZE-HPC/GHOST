@@ -27,7 +27,7 @@ typedef enum {
 } ghost_hybridmode_t;
 
 #define GHOST_HWCONFIG_INVALID -1
-#define GHOST_HWCONFIG_INITIALIZER (ghost_hwconfig_t) {.nCores = GHOST_HWCONFIG_INVALID, .nSmt = GHOST_HWCONFIG_INVALID};
+#define GHOST_HWCONFIG_INITIALIZER (ghost_hwconfig_t) {.nCores = GHOST_HWCONFIG_INVALID, .nSmt = GHOST_HWCONFIG_INVALID}
 
 
 //extern hwloc_topology_t topology;

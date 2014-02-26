@@ -1,6 +1,5 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/constants.h"
 #include "ghost/util.h"
 #include "ghost/math.h"
 #include "ghost/densemat.h"
@@ -19,7 +18,7 @@
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_C = MPI_OP_NULL;
 static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
-static void ghost_spmv_selectMode(ghost_context_t * context, int *flags);
+static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags);
 
 ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 {
@@ -507,7 +506,7 @@ ghost_error_t ghost_referenceSolver(ghost_densemat_t *nodeLHS, char *matrixPath,
 #endif
 }
 
-static void ghost_spmv_selectMode(ghost_context_t * context, int *flags)
+static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags)
 {
     if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI

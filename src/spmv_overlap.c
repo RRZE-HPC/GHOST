@@ -3,7 +3,6 @@
 #include "ghost/locality.h"
 #include "ghost/densemat.h"
 #include "ghost/util.h"
-#include "ghost/constants.h"
 #include "ghost/instr.h"
 #include "ghost/sparsemat.h"
 #include "ghost/spmv_solvers.h"

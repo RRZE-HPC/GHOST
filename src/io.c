@@ -2,7 +2,6 @@
 #include "ghost/io.h"
 #include "ghost/log.h"
 #include "ghost/util.h"
-#include "ghost/constants.h"
 #include "ghost/machine.h"
 #include <errno.h>
 #include <limits.h>

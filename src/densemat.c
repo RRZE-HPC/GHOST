@@ -4,7 +4,6 @@
 #include "ghost/core.h"
 #include "ghost/densemat.h"
 #include "ghost/util.h"
-#include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/context.h"
 #include "ghost/instr.h"
@@ -1112,12 +1111,12 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
     ghost_densemat_t *combined = NULL; 
     ghost_densemat_traits_t *traits = NULL;
 
-    if (permutation->scope > vec->traits->nrows && !vec->context) {
+    if (permutation->len > vec->traits->nrows && !vec->context) {
         ERROR_LOG("The permutation scope is larger than the vector but the vector does not have a context (i.e.,\
             process-local vectors cannot be combined to a big vector for permuting.");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (permutation->scope > vec->traits->nrows && vec->context->gnrows != permutation->scope) {
+    if (permutation->len > vec->traits->nrows && vec->context->gnrows != permutation->len) {
         ERROR_LOG("The permutation scope and the context size do not match!");
         return GHOST_ERR_INVALID_ARG;
     }

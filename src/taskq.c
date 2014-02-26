@@ -9,7 +9,6 @@
 
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/constants.h"
 #include "ghost/locality.h"
 #include "ghost/task.h"
 #include "ghost/taskq.h"

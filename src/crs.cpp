@@ -11,7 +11,6 @@
 #include "ghost/math.h"
 #include "ghost/util.h"
 #include "ghost/crs.h"
-#include "ghost/constants.h"
 #include "ghost/io.h"
 
 #include <iostream>
