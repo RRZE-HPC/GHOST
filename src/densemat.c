@@ -20,8 +20,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-//const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {.flags = GHOST_DENSEMAT_DEFAULT, .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL, .nrows = 0, .nrowshalo = 0, .nrowspadded = 0, .ncols = 1 };
-
 static ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
@@ -63,10 +61,10 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
-static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_idx_t, ghost_idx_t);
+static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_entry(ghost_densemat_t *, ghost_idx_t, ghost_idx_t, void *);
-static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs);
-static ghost_densemat_t * vec_viewScatteredVec (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t *coffs);
+static ghost_error_t vec_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs);
+static ghost_error_t vec_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 static ghost_error_t vec_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_upload(ghost_densemat_t *vec);
@@ -254,23 +252,22 @@ static ghost_error_t vec_download(ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_densemat_t * vec_view (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs)
+static ghost_error_t vec_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix with col offset %"PRIDX,src->traits->nrows,nc,coffs);
-    ghost_densemat_t *new;
     ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->ncols = nc;
 
-    ghost_densemat_create(&new,src->context,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
     ghost_idx_t v;
 
-    for (v=0; v<new->traits->ncols; v++) {
-        new->val[v] = VECVAL(src,src->val,coffs+v,0);
+    for (v=0; v<(*new)->traits->ncols; v++) {
+        (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
     }
 
-    new->traits->flags |= GHOST_DENSEMAT_VIEW;
-    return new;
+    (*new)->traits->flags |= GHOST_DENSEMAT_VIEW;
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda)
@@ -287,24 +284,23 @@ static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx
     return GHOST_SUCCESS;
 }
 
-static ghost_densemat_t* vec_viewScatteredVec (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t *coffs)
+static ghost_error_t vec_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits->nrows,nc);
-    ghost_densemat_t *new;
     ghost_idx_t v;
     ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
     newTraits->ncols = nc;
 
-    ghost_densemat_create(&new,src->context,newTraits);
+    ghost_densemat_create(new,src->context,newTraits);
 
     for (v=0; v<nc; v++) {
-        new->val[v] = VECVAL(src,src->val,coffs[v],0);
+        (*new)->val[v] = VECVAL(src,src->val,coffs[v],0);
     }    
 
-    new->traits->flags |= GHOST_DENSEMAT_VIEW;
-    new->traits->flags |= GHOST_DENSEMAT_SCATTERED;
-    return new;
+    (*new)->traits->flags |= GHOST_DENSEMAT_VIEW;
+    (*new)->traits->flags |= GHOST_DENSEMAT_SCATTERED;
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec)
@@ -1191,20 +1187,19 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
     return GHOST_SUCCESS;
 }
 
-static ghost_densemat_t * ghost_cloneVector(ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs)
+static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
-    ghost_densemat_t *new;
     ghost_densemat_traits_t *newTraits;
     ghost_cloneVtraits(src->traits,&newTraits);
-    ghost_densemat_create(&new,src->context,newTraits);
-    new->traits->ncols = nc;
+    ghost_densemat_create(new,src->context,newTraits);
+    (*new)->traits->ncols = nc;
 
     // copy the data even if the input vector is itself a view
     // (bitwise NAND operation to unset the view flag if set)
-    new->traits->flags &= ~GHOST_DENSEMAT_VIEW;
+    (*new)->traits->flags &= ~GHOST_DENSEMAT_VIEW;
 
-    new->fromVec(new,src,coffs);
-    return new;
+    (*new)->fromVec(*new,src,coffs);
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_compress(ghost_densemat_t *vec)

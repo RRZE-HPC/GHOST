@@ -81,12 +81,13 @@ struct ghost_densemat_t
      * column offset.
      *
      * @param vec The source vector/matrix.
+     * @param dst Where to store the new vector.
      * @param ncols The number of columns to clone.
      * @param coloffset The first column to clone.
      *
-     * @return A clone of the source vector/matrix.
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_densemat_t * (*clone) (ghost_densemat_t *vec, ghost_idx_t ncols, ghost_idx_t coloffset);
+    ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_idx_t ncols, ghost_idx_t coloffset);
     /**
      * @brief Compresses a vector/matrix, i.e., make it non-scattered.
      * If the vector/matrix is a view, it will no longer be one afterwards.
@@ -320,19 +321,20 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 
-    ghost_densemat_t *  (*viewScatteredVec) (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t *coffs);
+    ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t *coffs);
 
 
     /**
      * @brief Create a vector/matrix as a view of another vector/matrix.
      *
      * @param src The source vector/matrix.
+     * @param dst Where to store the new vector.
      * @param nc The nunber of columns to view.
      * @param coffs The column offset.
      *
-     * @return The new vector/matrix.
+     * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_densemat_t *  (*viewVec) (ghost_densemat_t *src, ghost_idx_t nc, ghost_idx_t coffs);
+    ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t coffs);
     /**
      * @brief Scale each column of a vector/matrix with a given scale factor.
      *
