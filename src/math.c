@@ -240,7 +240,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     int myrank=0;
 
     if (reduce!=GHOST_GEMM_NO_REDUCE) {
-        GHOST_CALL_RETURN(ghost_rank(v->context->mpicomm,&myrank));
+        GHOST_CALL_RETURN(ghost_rank(&myrank,v->context->mpicomm));
     }
 
     void *mybeta;
