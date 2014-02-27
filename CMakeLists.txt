@@ -13,6 +13,7 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
+include(CheckCCompilerFlag)
 include(${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake)
 
 option(USE_MPI "Build with MPI" 1)
@@ -226,7 +227,11 @@ if (${BLAS} STREQUAL "MKL")
 	set(GHOST_HAVE_MKL 1)
     set(MKL_INCLUDE_DIR "" CACHE PATH "Location of mkl.h")
 	include_directories(SYSTEM ${MKL_INCLUDE_DIR})
-    get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/intel64 REALPATH)
+    if (BUILD_MIC)
+        get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/mic REALPATH)
+    else ()
+        get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/intel64 REALPATH)
+    endif()
 	find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
 
     set(LIBMKL_X_THREAD LIBMKL_X_THREAD-NOTFOUND)
@@ -272,11 +277,15 @@ if (PKGCONFIG_FOUND)
 else()
 	set(HWLOC_INCLUDE_DIR "" CACHE PATH "Location of hwloc.h")
 endif()
-    
+   
+set(LIBHWLOC LIBHWLOC-NOTFOUND) 
 get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
 find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR})
 set(HWLOC_LIBRARIES ${LIBHWLOC})
 set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${HWLOC_LIBRARIES})
+
+mark_as_advanced(LIBHWLOC)
+mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
 
 if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
 	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
@@ -359,6 +368,9 @@ endif()
 
 if (BUILD_MIC)
 	set(GHOST_HAVE_MIC 1)
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+        message(FATAL_ERROR "The ${CMAKE_CXX_COMPILER_ID} compiler cannot build MIC code. Specify a suited compiler or set BUILD_MIC=OFF!")
+    endif()
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 else()
@@ -377,7 +389,6 @@ else()
     endif()
 endif()
 
-mark_as_advanced(LIBHWLOC)
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
