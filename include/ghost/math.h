@@ -94,10 +94,6 @@ extern "C" {
      */
     ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...);
     /**
-     * @deprecated Construct a test case with a known result instead (e.g., same as HPCCG)
-     */
-    ghost_error_t ghost_referenceSolver(ghost_densemat_t *, char *matrixPath, int datatype, ghost_densemat_t *rhs, int nIter, ghost_spmv_flags_t flags);
-    /**
      * @ingroup globops
      *
      * @brief Compute the general (dense) matrix-matrix product.
