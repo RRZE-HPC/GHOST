@@ -68,7 +68,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_nnz_t)*(2*context->gnrows-1)),err,ret);
-    GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->traits->elSize,(*mat)->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
 
     switch (traits->format) {
         case GHOST_SPARSEMAT_CRS:
@@ -402,7 +402,7 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
         rpt[0] = 0;
 #pragma omp parallel private(i,tmpval,tmpcol)
         { 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,mat->ncols*mat->traits->elSize),ret);
+            GHOST_CALL(ghost_malloc((void **)&tmpval,mat->ncols*mat->elSize),ret);
             GHOST_CALL(ghost_malloc((void **)&tmpcol,mat->ncols*sizeof(ghost_idx_t)),ret);
 #pragma omp for schedule(runtime)
             for (i=0; i<nrows; i++) {

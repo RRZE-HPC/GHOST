@@ -47,6 +47,11 @@ struct ghost_densemat_t
      * @brief The values of the vector/matrix.
      */
     char** val;
+    
+    /**
+     * @brief Size (in bytes) of one matrix element.
+     */
+    size_t elSize;
 
 #ifdef GHOST_HAVE_CUDA
     /**
@@ -355,7 +360,6 @@ struct ghost_densemat_traits_t
     ghost_idx_t ncols;
     ghost_densemat_flags_t flags;
     ghost_datatype_t datatype;
-    size_t elSize;
 //    void * localdot;
 };
 /**
@@ -370,8 +374,8 @@ struct ghost_densemat_traits_t
     .ncols = 1\
 };
 
-#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->traits->elSize])
-#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->traits->elSize])
+#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
+#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->elSize])
 
 #ifdef __cplusplus
 template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec);

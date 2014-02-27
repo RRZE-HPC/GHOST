@@ -57,14 +57,14 @@ static void *communicate(void *vargs)
 
     for (from_PE=0; from_PE<args->nprocs; from_PE++){
 #ifdef GHOST_HAVE_INSTR_TIMING
-            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->traits->elSize);
+            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
 #endif
         if (args->context->wishes[from_PE]>0){
             for (c=0; c<args->rhs->traits->ncols; c++) {
-                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->traits->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
+                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #ifdef GHOST_HAVE_INSTR_TIMING
-                recvBytes += args->context->wishes[from_PE]*args->rhs->traits->elSize;
+                recvBytes += args->context->wishes[from_PE]*args->rhs->elSize;
                 recvMsgs++;
 #endif
             }
@@ -74,10 +74,10 @@ static void *communicate(void *vargs)
     for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
         if (args->context->dues[to_PE]>0){
             for (c=0; c<args->rhs->traits->ncols; c++) {
-                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->traits->elSize + to_PE*args->max_dues*args->rhs->traits->elSize, args->context->dues[to_PE]*args->rhs->traits->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
+                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->elSize + to_PE*args->max_dues*args->rhs->elSize, args->context->dues[to_PE]*args->rhs->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #ifdef GHOST_HAVE_INSTR_TIMING
-                sendBytes += args->context->dues[to_PE]*args->rhs->traits->elSize;
+                sendBytes += args->context->dues[to_PE]*args->rhs->elSize;
                 sendMsgs++;
 #endif
             }
@@ -185,7 +185,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
         if (mat->context->dues[i]>max_dues) 
             max_dues = mat->context->dues[i];
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->traits->elSize));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits->ncols*max_dues*nprocs * invec->elSize));
 
     int taskflags = GHOST_TASK_DEFAULT;
     ghost_task_t *parent = NULL;
@@ -245,7 +245,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->traits->elSize);
+                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->elSize);
                 }
             }
         }
@@ -255,7 +255,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
             for (c=0; c<invec->traits->ncols; c++) {
 #pragma omp for 
                 for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->traits->elSize + (to_PE*max_dues+i)*invec->traits->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->traits->elSize);
+                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->elSize);
                 }
             }
         }

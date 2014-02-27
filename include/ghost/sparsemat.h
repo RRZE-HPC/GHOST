@@ -204,10 +204,6 @@ struct ghost_sparsemat_traits_t
     char * scotchStrat;
     ghost_idx_t sortScope;
     ghost_datatype_t datatype;
-    /**
-     * @brief Size (in bytes) of one matrix element.
-     */
-    size_t elSize;
 };
 /**
  * @brief Initialize sparse matrix traits with default values as specified in mat.c
@@ -238,6 +234,11 @@ struct ghost_sparsemat_t
     ghost_context_t *context;
     char *name;
     void *data;
+    
+    /**
+     * @brief Size (in bytes) of one matrix element.
+     */
+    size_t elSize;
 
     ghost_permutation_t *permutation;
     //ghost_idx_t *rowPerm;

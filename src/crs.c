@@ -138,7 +138,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
     GHOST_CALL_GOTO(ghost_getRank(MPI_COMM_WORLD,&me),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt_perm,(mat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&col_perm,mat->nnz*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&val_perm,mat->nnz*mat->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&val_perm,mat->nnz*mat->elSize),err,ret);
 
     /*for (i=0; i<mat->nrows; i++) {
       printf("perm/inv[%"PRIDX"] = %"PRIDX" %"PRIDX"\n",i,perm[i],invPerm[i]);
@@ -165,7 +165,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
     for (i=0; i<mat->nrows; i++) {
         globrow = mat->context->lfRow[me]+i;
         rowLen = rpt_perm[i+1]-rpt_perm[i];
-        memcpy(&val_perm[rpt_perm[i]*mat->traits->elSize],&cr->val[cr->rpt[invPerm[i]]*mat->traits->elSize],rowLen*mat->traits->elSize);
+        memcpy(&val_perm[rpt_perm[i]*mat->elSize],&cr->val[cr->rpt[invPerm[i]]*mat->elSize],rowLen*mat->elSize);
         //memcpy(&col_perm[rpt_perm[i]],&cr->col[cr->rpt[invPerm[i]]],rowLen*sizeof(ghost_idx_t));
         for (j=rpt_perm[i], c=0; j<rpt_perm[i+1]; j++, c++) {
             if (
@@ -188,7 +188,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
         } 
         ghost_idx_t n;
         ghost_idx_t tmpcol;
-        char tmpval[mat->traits->elSize];
+        char tmpval[mat->elSize];
         for (n=rowLen; n>1; n--) {
             for (j=rpt_perm[i]; j<rpt_perm[i]+n-1; j++) {
                 if (col_perm[j] > col_perm[j+1]) {
@@ -196,9 +196,9 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
                     col_perm[j] = col_perm[j+1];
                     col_perm[j+1] = tmpcol;
 
-                    memcpy(&tmpval,&val_perm[mat->traits->elSize*j],mat->traits->elSize);
-                    memcpy(&val_perm[mat->traits->elSize*j],&val_perm[mat->traits->elSize*(j+1)],mat->traits->elSize);
-                    memcpy(&val_perm[mat->traits->elSize*(j+1)],&tmpval,mat->traits->elSize);
+                    memcpy(&tmpval,&val_perm[mat->elSize*j],mat->elSize);
+                    memcpy(&val_perm[mat->elSize*j],&val_perm[mat->elSize*(j+1)],mat->elSize);
+                    memcpy(&val_perm[mat->elSize*(j+1)],&tmpval,mat->elSize);
                 }
             }
         }
@@ -269,7 +269,7 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
     }
 
     return (size_t)((mat->nrows+1)*sizeof(ghost_nnz_t) + 
-            mat->nEnts*(sizeof(ghost_idx_t)+mat->traits->elSize));
+            mat->nEnts*(sizeof(ghost_idx_t)+mat->elSize));
 }
 
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags)
@@ -305,7 +305,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
 #pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
     {
         int funcret = 0;
-        GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->traits->elSize),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for ordered
         for( i = 0; i < mat->nrows; i++ ) {
@@ -337,13 +337,13 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
     mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),mat->nEnts*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),mat->nEnts*mat->elSize),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < mat->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
             CR(mat)->col[j] = 0;
-            memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
+            memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
         }
     }
 
@@ -358,18 +358,18 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
                     } else {
-                        funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
                         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                             CR(mat)->col[j] = mat->permutation->perm[tmpcol[j-CR(mat)->rpt[i]]];
                         }
                     }
                 } else {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
                     } else {
-                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                        funcret = func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
                         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                             if ((tmpcol[j-CR(mat)->rpt[i]] >= mat->context->lfRow[me]) && (tmpcol[j-CR(mat)->rpt[i]] < mat->context->lfRow[me]+mat->context->lnrows[me])) {
                                 CR(mat)->col[j] = mat->permutation->perm[tmpcol[j-CR(mat)->rpt[i]]-mat->context->lfRow[me]]+mat->context->lfRow[me];
@@ -381,7 +381,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
                     }
                 }
             } else {
-                funcret = func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize]);
+                funcret = func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
 //                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
 //                     INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
 //                 }
@@ -392,7 +392,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
-                GHOST_CALL(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
+                GHOST_CALL(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
             }
             GHOST_CALL(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
@@ -458,7 +458,7 @@ static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsm
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(crsmat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),crsmat->nEnts*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),crsmat->nEnts*mat->traits->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),crsmat->nEnts*mat->elSize),err,ret);
 
 #pragma omp parallel for schedule(runtime)
     for( i = 0; i < mat->nrows+1; i++ ) {
@@ -469,7 +469,7 @@ static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsm
     for( i = 0; i < mat->nrows; i++ ) {
         for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
             CR(mat)->col[j] = cr->col[j];
-            memcpy(&CR(mat)->val[j*mat->traits->elSize],&cr->val[j*mat->traits->elSize],mat->traits->elSize);
+            memcpy(&CR(mat)->val[j*mat->elSize],&cr->val[j*mat->elSize],mat->elSize);
         }
     }
 
@@ -533,11 +533,11 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         ghost_sparsemat_create(&(mat->remotePart),mat->context,&mat->traits[0],1);
         remoteCR = mat->remotePart->data;
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->val),lnEnts_l*mat->traits->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->val),lnEnts_l*mat->elSize),err,ret); 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->col),lnEnts_l*sizeof(ghost_idx_t)),err,ret); 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_idx_t)),err,ret); 
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->val),lnEnts_r*mat->traits->elSize),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->val),lnEnts_r*mat->elSize),err,ret); 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->col),lnEnts_r*sizeof(ghost_idx_t)),err,ret); 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_idx_t)),err,ret); 
 
@@ -550,13 +550,13 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         mat->remotePart->nnz = lnEnts_r;
 
 #pragma omp parallel for schedule(runtime)
-        for (i=0; i<lnEnts_l; i++) localCR->val[i*mat->traits->elSize] = 0;
+        for (i=0; i<lnEnts_l; i++) localCR->val[i*mat->elSize] = 0;
 
 #pragma omp parallel for schedule(runtime)
         for (i=0; i<lnEnts_l; i++) localCR->col[i] = 0.0;
 
 #pragma omp parallel for schedule(runtime)
-        for (i=0; i<lnEnts_r; i++) remoteCR->val[i*mat->traits->elSize] = 0;
+        for (i=0; i<lnEnts_r; i++) remoteCR->val[i*mat->elSize] = 0;
 
 #pragma omp parallel for schedule(runtime)
         for (i=0; i<lnEnts_r; i++) remoteCR->col[i] = 0.0;
@@ -574,12 +574,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
                 if (fullCR->col[j]<mat->context->lnrows[me]){
                     localCR->col[ localCR->rpt[i]+current_l ] = fullCR->col[j];
-                    memcpy(&localCR->val[(localCR->rpt[i]+current_l)*mat->traits->elSize],&fullCR->val[j*mat->traits->elSize],mat->traits->elSize);
+                    memcpy(&localCR->val[(localCR->rpt[i]+current_l)*mat->elSize],&fullCR->val[j*mat->elSize],mat->elSize);
                     current_l++;
                 }
                 else{
                     remoteCR->col[ remoteCR->rpt[i]+current_r ] = fullCR->col[j];
-                    memcpy(&remoteCR->val[(remoteCR->rpt[i]+current_r)*mat->traits->elSize],&fullCR->val[j*mat->traits->elSize],mat->traits->elSize);
+                    memcpy(&remoteCR->val[(remoteCR->rpt[i]+current_r)*mat->elSize],&fullCR->val[j*mat->elSize],mat->elSize);
                     current_r++;
                 }
 
@@ -648,13 +648,13 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->traits->elSize,GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->val),mat->nEnts * mat->elSize,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < mat->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
             CR(mat)->col[j] = 0;
-            memset(&CR(mat)->val[j*mat->traits->elSize],0,mat->traits->elSize);
+            memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
         }
     }
 
@@ -664,7 +664,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     for (i=0;i<mat->context->lnrows[me];i++) {
         if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
             // sort rows by ascending column indices
-            GHOST_CALL_GOTO(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->traits->elSize],mat->traits->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
+            GHOST_CALL_GOTO(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
         }
         GHOST_CALL_GOTO(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
     }
@@ -786,7 +786,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
             }
         }
     }
-    if ((ret = fwrite(CR(mat)->val,mat->traits->elSize,nnz,filed)) != nnz) {
+    if ((ret = fwrite(CR(mat)->val,mat->elSize,nnz,filed)) != nnz) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
