@@ -126,6 +126,14 @@ if (USE_CUDA)
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)
         endif()
+        mark_as_advanced(
+                CUDA_BUILD_CUBIN
+                CUDA_BUILD_EMULATION
+                CUDA_HOST_COMPILER
+                CUDA_SDK_ROOT_DIR
+                CUDA_SEPARABLE_COMPILATION
+                CUDA_VERBOSE_BUILD
+        )
     else ()
         message(WARNING "Could not find CUDA! You might want to make CUDA available or set USE_CUDA=OFF to suppress this warning.")
     endif()
@@ -158,6 +166,7 @@ if (USE_SCOTCH)
 	find_library(LIBPTSCOTCHERR ptscotcherr ${SCOTCH_LIBDIR})
     set(SCOTCH_LIBRARIES ${LIBPTSCOTCH} ${LIBSCOTCH} ${LIBPTSCOTCHERR})
     set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${SCOTCH_LIBRARIES})
+    mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR)
 endif()
 
 
@@ -219,6 +228,8 @@ if (${BLAS} STREQUAL "MKL")
 	include_directories(SYSTEM ${MKL_INCLUDE_DIR})
     get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/intel64 REALPATH)
 	find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
+
+    set(LIBMKL_X_THREAD LIBMKL_X_THREAD-NOTFOUND)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel") 
         find_library(LIBMKL_X_LP64 mkl_intel_lp64 ${MKL_LIBDIR})
         if(USE_OPENMP)
@@ -234,7 +245,8 @@ if (${BLAS} STREQUAL "MKL")
         find_library(LIBMKL_X_THREAD mkl_sequential ${MKL_LIBDIR})
     endif()
 
-    set (BLAS_LIBRARIES ${LIBMKL_CORE} ${LIBMKL_X_LP64} ${LIBMKL_X_THREAD}) 
+    set (BLAS_LIBRARIES ${LIBMKL_CORE} ${LIBMKL_X_LP64} ${LIBMKL_X_THREAD})
+    mark_as_advanced(LIBMKL_CORE LIBMKL_X_LP64 LIBMKL_X_THREAD) 
 elseif(${BLAS} STREQUAL "GSL")
 	set(GHOST_HAVE_GSL 1)
 	find_package(GSL REQUIRED)
@@ -256,13 +268,14 @@ set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${BLAS_LIBRAR
 
 
 if (PKGCONFIG_FOUND)
-	find_package(HWLOC REQUIRED)
+	find_package(HWLOC REQUIRED QUIET)
 else()
 	set(HWLOC_INCLUDE_DIR "" CACHE PATH "Location of hwloc.h")
 endif()
     
 get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
-find_library(HWLOC_LIBRARIES hwloc ${HWLOC_LIBDIR})
+find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR})
+set(HWLOC_LIBRARIES ${LIBHWLOC})
 set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${HWLOC_LIBRARIES})
 
 if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
@@ -339,6 +352,8 @@ if (USE_MPI)
 	set(GHOST_HAVE_MPI 1)
 #set_target_properties(ghost PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 #	set_target_properties(ghost PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+     mark_as_advanced(MPI_EXTRA_LIBRARY MPI_LIBRARY LIBMPI_CXX)
+     mark_as_advanced(CLEAR MPI_C_INCLUDE_PATH)
 endif()
 
 
@@ -347,8 +362,7 @@ if (BUILD_MIC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 else()
-    set(GHOST_HAVE_MIC 0)
-        if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
         AutodetectHostArchitecture()
         OptimizeForArchitecture()
         if (AVX_FOUND)
@@ -363,6 +377,7 @@ else()
     endif()
 endif()
 
+mark_as_advanced(LIBHWLOC)
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
