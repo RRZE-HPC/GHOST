@@ -474,7 +474,7 @@ ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *mat, ghost_densemat_t* re
     __m512i idx;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,idx,val,rhs,offs)
-    for (c=0; c<SELL(mat)->nrowsPadded>>4; c++) 
+    for (c=0; c<mat->nrowsPadded>>4; c++) 
     { // loop over chunks
         tmp1 = _mm512_setzero_pd(); // tmp1 = 0
         tmp2 = _mm512_setzero_pd(); // tmp2 = 0
@@ -533,7 +533,7 @@ ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *mat, ghost_densemat_t* re
     __m512i idx;
 
 #pragma omp parallel for schedule(runtime) private(j,tmp1,tmp2,tmp3,tmp4,idx,val,rhs,offs)
-    for (c=0; c<SELL(mat)->nrowsPadded>>5; c++) 
+    for (c=0; c<mat->nrowsPadded>>5; c++) 
     { // loop over chunks
         tmp1 = _mm512_setzero_pd(); // tmp1 = 0
         tmp2 = _mm512_setzero_pd(); // tmp2 = 0

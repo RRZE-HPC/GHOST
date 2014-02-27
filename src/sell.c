@@ -1099,8 +1099,8 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #elif defined(GHOST_HAVE_MIC)
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMV_AXPBY) ||
-                (options & GHOST_SPMV_APPLY_SCALE) ||
-                (options & GHOST_SPMV_APPLY_SHIFT))) {
+                (options & GHOST_SPMV_SCALE) ||
+                (options & GHOST_SPMV_SHIFT))) {
         if (SELL(mat)->chunkHeight == 16) {
             kernel = SELL_kernels_MIC_16
                 [matDtIdx]

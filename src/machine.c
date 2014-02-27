@@ -89,8 +89,10 @@ ghost_error_t ghost_machine_outerCacheSize(uint64_t *size)
         }
     }
 
-#if GHOST_HAVE_MIC
-    size = size*ghost_getNumberOfPhysicalCores(); // the cache is shared but not reported so
+#ifdef GHOST_HAVE_MIC
+    int ncores;
+    GHOST_CALL_RETURN(ghost_machine_nCores(&ncores,GHOST_NUMANODE_ANY));
+    *size *= ncores; // the cache is shared but not reported so
 #endif
 
     return GHOST_SUCCESS;
