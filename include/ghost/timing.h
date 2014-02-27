@@ -38,7 +38,7 @@
         func(__VA_ARGS__);\
         ghost_wctime(&func ## _end);\
         func ## _tmin = MIN(func ## _end-func ## _start,func ## _tmin);\
-        func ## _tmin = MAX(func ## _end-func ## _start,func ## _tmin);\
+        func ## _tmax = MAX(func ## _end-func ## _start,func ## _tmax);\
     }\
     ghost_wctime(&func ## _tend);\
     func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
