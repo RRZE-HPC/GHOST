@@ -141,12 +141,10 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         ret = GHOST_ERR_HWLOC;
         goto err;
     }
-#ifndef GHOST_HAVE_MIC
-    // TODO is this a bug in hwloc??
     hwloc_cpuset_to_nodeset(topology,cpuset,nodeset);
-#else
-    hwloc_bitmap_set(nodeset,0);
-#endif
+    if (hwloc_bitmap_isfull(nodeset)) { // non-NUMA case: we assume a single NUMA node
+        hwloc_bitmap_only(nodeset,0);
+    }
     pumap->nDomains = hwloc_bitmap_weight(nodeset);
     GHOST_CALL_GOTO(ghost_malloc((void **)&pumap->PUs,pumap->nDomains*sizeof(hwloc_obj_t *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&domains,pumap->nDomains*sizeof(int)),err,ret);
