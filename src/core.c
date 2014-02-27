@@ -353,13 +353,6 @@ ghost_error_t ghost_getRandState(unsigned int *s)
 ghost_error_t ghost_finalize()
 {
 
-#ifdef GHOST_HAVE_INSTR_TIMING
-    char *timing;
-    ghost_timing_string(&timing);
-    printf("\n%s\n",timing);
-    free(timing); timing = NULL;
-#endif
-
 
     free(ghost_rand_states);
     ghost_rand_states=NULL;
