@@ -211,7 +211,7 @@ ghost_error_t ghost_machine_numaNode(hwloc_obj_t *node, int idx)
     
     int nNodes = hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_NODE);
     
-    if (idx < 0 || idx >= nNodes) {
+    if (idx < 0 || (idx >= nNodes && nNodes > 0)) {
         ERROR_LOG("Index out of range");
         return GHOST_ERR_INVALID_ARG;
     }
