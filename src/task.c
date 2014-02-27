@@ -75,6 +75,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     // if a task is initialized _once_ but added several times, this has to be done each time it is added
     pthread_cond_init(t->finishedCond,NULL);
     pthread_mutex_init(t->mutex,NULL);
+    pthread_mutex_lock(t->mutex);
     t->state = GHOST_TASK_INVALID;
 //    memset(t->cores,0,sizeof(int)*t->nThreads);
 
@@ -88,6 +89,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     //taskq_additem(taskq,t);
     //ghost_task_destroy(&commTask);
     t->state = GHOST_TASK_ENQUEUED;
+    pthread_mutex_unlock(t->mutex);
 
 
     DEBUG_LOG(1,"Task added successfully");
