@@ -95,7 +95,7 @@ ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t 
         e = 0;
         for(i = offsRows; i < offsRows+nRows; i++) {
             for(j = rpt_raw[perm->invPerm[i]]; j < rpt_raw[perm->invPerm[i]+1]; j++) {
-                if (keepCols) {
+                if (!keepCols) {
                     col[e++] = perm->perm[col_raw[j]];
                 } else {
                     col[e++] = col_raw[j];
