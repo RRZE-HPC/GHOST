@@ -43,6 +43,15 @@
     ghost_wctime(&func ## _tend);\
     func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
 
+typedef struct
+{
+    int nCalls;
+    double *times;
+    double avgTime;
+    double minTime;
+    double maxTime;
+}
+ghost_timing_regionInfo_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,7 +59,9 @@ extern "C" {
 
     void ghost_timing_tick(char *tag);
     void ghost_timing_tock(char *tag);
-    ghost_error_t ghost_timing_string(char **str);
+    ghost_error_t ghost_timing_summaryString(char **str);
+    ghost_error_t ghost_timing_regionInfo_create(ghost_timing_regionInfo_t ** ri, char *region);
+    void ghost_timing_regionInfo_destroy(ghost_timing_regionInfo_t * ri);
 
     ghost_error_t ghost_wctime(double *time);
     ghost_error_t ghost_wctimeMilli(double *time);

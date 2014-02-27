@@ -18,6 +18,8 @@ typedef struct
 } 
 ghost_timing_info_t;
 
+       
+
 static map<string,ghost_timing_info_t> timings;
 
 void ghost_timing_tick(char *tag) 
@@ -35,7 +37,48 @@ void ghost_timing_tock(char *tag)
     ti->secs.push_back(end-ti->start);
 }
 
-ghost_error_t ghost_timing_string(char **str)
+ghost_error_t ghost_timing_regionInfo_create(ghost_timing_regionInfo_t ** ri, char *region)
+{
+    ghost_timing_info_t ti;
+    if (!timings.count(string(region))) {
+        ERROR_LOG("The region %s does not exist!",region);
+        return GHOST_ERR_INVALID_ARG;
+    }
+    ti = timings[string(region)];
+
+    ghost_error_t ret = GHOST_SUCCESS;
+    GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_regionInfo_t)),err,ret);
+    (*ri)->nCalls =  ti.secs.size();
+    (*ri)->minTime = *min_element(ti.secs.begin(),ti.secs.end());
+    (*ri)->maxTime = *max_element(ti.secs.begin(),ti.secs.end());
+    (*ri)->avgTime = accumulate(ti.secs.begin(),ti.secs.end(),0.)/(*ri)->nCalls;
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)(&((*ri)->times)),sizeof(double)*(*ri)->nCalls),err,ret);
+    memcpy((*ri)->times,&ti.secs[0],(*ri)->nCalls*sizeof(double));
+
+    goto out;
+
+err:
+    ERROR_LOG("Freeing region info");
+    if (*ri) {
+        free((*ri)->times); (*ri)->times = NULL;
+    }
+    free(*ri); (*ri) = NULL;
+out:
+
+    return ret;
+}
+
+void ghost_timing_regionInfo_destroy(ghost_timing_regionInfo_t * ri)
+{
+    if (ri) {
+        free(ri->times); ri->times = NULL;
+    }
+    free(ri);
+}
+
+
+ghost_error_t ghost_timing_summaryString(char **str)
 {
     stringstream buffer;
     map<string,ghost_timing_info_t>::iterator iter;
@@ -80,6 +123,4 @@ ghost_error_t ghost_timing_string(char **str)
     strcpy(*str,buffer.str().c_str());
 
     return GHOST_SUCCESS;
-
-
 }
