@@ -6,7 +6,7 @@
 #include <omp.h>
 #endif
 
-void ghost_ompSetNumThreads(int nthreads)
+void ghost_omp_nthread_set(int nthreads)
 {
 #ifdef GHOST_HAVE_OPENMP
     omp_set_num_threads(nthreads);
@@ -15,7 +15,7 @@ void ghost_ompSetNumThreads(int nthreads)
 #endif
 }
 
-int ghost_ompGetNumThreads()
+int ghost_omp_nthread()
 {
 #ifdef GHOST_HAVE_OPENMP
     return omp_get_num_threads();
@@ -24,7 +24,7 @@ int ghost_ompGetNumThreads()
 #endif
 }
 
-int ghost_ompGetThreadNum()
+int ghost_omp_threadnum()
 {
 #ifdef GHOST_HAVE_OPENMP
     return omp_get_thread_num();
