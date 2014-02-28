@@ -33,6 +33,8 @@ find_package(PkgConfig)
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
 
 set (SOURCES
+        src/bincrs.c
+        src/bincrs.cpp
 		src/context.c
         src/core.c
 		src/crs.c 
@@ -41,8 +43,6 @@ set (SOURCES
 		src/densemat.cpp 
         src/error.c
         src/instr.c
-        src/io.c
-        src/io.cpp
         src/locality.c
         src/machine.c
 		src/math.c
@@ -66,6 +66,8 @@ set (SOURCES
 	)
 
 set (HEADERS
+        include/ghost/bincrs.h
+        include/ghost/bindensemat.h
 		include/ghost/blas_mangle.h
 		include/ghost/complex.h
 		include/ghost/context.h
@@ -73,7 +75,6 @@ set (HEADERS
 		include/ghost/crs.h
 		include/ghost/densemat.h
 		include/ghost/error.h
-        include/ghost/io.h
         include/ghost/instr.h
 		include/ghost/locality.h	
         include/ghost/log.h

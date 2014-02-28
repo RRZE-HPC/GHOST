@@ -16,8 +16,8 @@ ghost_error_t ghost_rand_create()
     int nthreads;
     int rank;
 
-    GHOST_CALL_GOTO(ghost_machine_nPus(&nthreads, GHOST_NUMANODE_ANY),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(MPI_COMM_WORLD,&rank),err,ret);
+    GHOST_CALL_GOTO(ghost_machine_npu(&nthreads, GHOST_NUMANODE_ANY),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&rank, MPI_COMM_WORLD),err,ret);
 
     if (!ghost_rand_states) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&ghost_rand_states,nthreads*sizeof(unsigned int)),err,ret);
@@ -25,7 +25,7 @@ ghost_error_t ghost_rand_create()
 
     for (i=0; i<nthreads; i++) {
         double time;
-        GHOST_CALL_GOTO(ghost_wctimeMilli(&time),err,ret);
+        GHOST_CALL_GOTO(ghost_timing_wcmilli(&time),err,ret);
 
         unsigned int seed=(unsigned int)ghost_hash(
                 (int)time,
@@ -47,7 +47,7 @@ out:
 ghost_error_t ghost_rand_get(unsigned int *s)
 {
     int pu;
-    GHOST_CALL_RETURN(ghost_getCore(&pu));
+    GHOST_CALL_RETURN(ghost_cpu(&pu));
     if (!s) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;

@@ -1,15 +1,15 @@
 /**
- * @file io.h
- * @brief Types and functions for data I/O.
+ * @file bincrs.h
+ * @brief Types and functions for reading binary CRS files.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_IO_H
-#define GHOST_IO_H
+#ifndef GHOST_BINCRS_H
+#define GHOST_BINCRS_H
 
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "sparsemat.h"
+#include "context.h"
 
 #include <stdio.h>
 
@@ -17,7 +17,6 @@
 #define GHOST_BINCRS_SIZE_RPT_EL 8 /* one rpt element is 8 bytes */
 #define GHOST_BINCRS_SIZE_COL_EL 8 /* one col element is 8 bytes */
 
-#define GHOST_BINVEC_SIZE_HEADER 32
 #define GHOST_BINCRS_LITTLE_ENDIAN (0)
 
 #define GHOST_BINCRS_SYMM_GENERAL GHOST_SPARSEMAT_SYMM_GENERAL
@@ -30,13 +29,11 @@
 #define GHOST_BINCRS_DT_REAL    GHOST_DT_REAL
 #define GHOST_BINCRS_DT_COMPLEX GHOST_DT_COMPLEX
 
-#define GHOST_BINVEC_ORDER_COL_FIRST 0
-#define GHOST_BINVEC_ORDER_ROW_FIRST 1
 
 /**
  * @brief The header of a sparse matrix file.
  */
-typedef struct {
+typedef struct { 
     int32_t endianess;
     int32_t version;
     int32_t base;
@@ -45,20 +42,20 @@ typedef struct {
     int64_t nrows;
     int64_t ncols;
     int64_t nnz;
-} ghost_matfile_header_t;
+} ghost_bincrs_header_t;
 
 #ifdef __cplusplus
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);
 extern "C" {
 #endif
 
-    ghost_error_t ghost_readMatFileHeader(char *, ghost_matfile_header_t *);
-    ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols);
-    ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
-    ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
-    ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
+    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *, char *);
+    ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols);
+    ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
+    ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
+    ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
+    ghost_error_t ghost_bincrs_rpt_read(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
+    ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
 
     /**
      * @brief Check if the machine endianess differs from the sparse matrix file.
@@ -68,7 +65,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath);
+    //ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath);
 
     void dd_ghost_castArray(void *, void *, int);
     void ds_ghost_castArray(void *, void *, int);

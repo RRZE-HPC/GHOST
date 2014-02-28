@@ -62,10 +62,10 @@ ghost_error_t ghost_task_print(char **str, ghost_task_t *t)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
-    ghost_headerString(str,"Task %p",(void *)t);
-    ghost_lineString(str,"No. of threads",NULL,"%d",t->nThreads);
-    ghost_lineString(str,"NUMA node",NULL,"%d",t->LD);
-    ghost_footerString(str);
+    ghost_header_string(str,"Task %p",(void *)t);
+    ghost_line_string(str,"No. of threads",NULL,"%d",t->nThreads);
+    ghost_line_string(str,"NUMA node",NULL,"%d",t->LD);
+    ghost_footer_string(str);
 
     return GHOST_SUCCESS;
 }
@@ -85,7 +85,7 @@ ghost_error_t ghost_task_enqueue(ghost_task_t *t)
     //    t->freed = 0;
 
     //DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",(void *)t,t->nThreads,(void *)taskq,t->LD);
-    ghost_taskq_addTask(t);
+    ghost_taskq_add(t);
     //taskq_additem(taskq,t);
     //ghost_task_destroy(&commTask);
     t->state = GHOST_TASK_ENQUEUED;

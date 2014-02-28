@@ -4,7 +4,7 @@
 #include "ghost/context.h"
 #include "ghost/locality.h"
 #include "ghost/crs.h"
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 #include "ghost/log.h"
 
 
@@ -30,8 +30,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     (*context)->hput_pos = NULL;
 
     
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks((*context)->mpicomm,&nranks),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank((*context)->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
 
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishlist,nranks*sizeof(ghost_idx_t *)),err,ret); 
@@ -51,8 +51,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     }
 
     if ((gnrows < 1) || (gncols < 1)) {
-        ghost_matfile_header_t fileheader;
-        GHOST_CALL_GOTO(ghost_readMatFileHeader((char *)matrixSource,&fileheader),err,ret);
+        ghost_bincrs_header_t fileheader;
+        GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
 #ifndef GHOST_HAVE_LONGIDX
         if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
@@ -113,13 +113,13 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
             ghost_idx_t *rpt = NULL, *col = NULL, i;
             int me, nprocs;
             
-            ghost_matfile_header_t header;
-            ghost_readMatFileHeader(matrixPath,&header);
+            ghost_bincrs_header_t header;
+            ghost_bincrs_header_read(matrixPath,&header);
             MPI_Request *req = NULL;
             MPI_Status *stat = NULL;
 
-            GHOST_CALL_GOTO(ghost_getRank((*context)->mpicomm,&me),err,ret);
-            GHOST_CALL_GOTO(ghost_getNumberOfRanks((*context)->mpicomm,&nprocs),err,ret);
+            GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
+            GHOST_CALL_GOTO(ghost_nrank(&nprocs, (*context)->mpicomm),err,ret);
             GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
             GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
                 
@@ -136,7 +136,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
             (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
                     
             GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
-            GHOST_CALL_GOTO(ghost_readRpt(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
+            GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
 
 
             ghost_nnz_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
@@ -222,8 +222,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                     (*context)->rpt[row] = 0;
                 }
                 if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
-                    //GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
-                    GHOST_CALL_GOTO(ghost_readRpt((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+                    //GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
+                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
                 } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
@@ -232,7 +232,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                     }
 
                     memcpy(&func,&matrixSource,sizeof(ghost_sparsemat_fromRowFunc_t));
-                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,(*context)->gncols*sizeof(complex double)),err,ret);
+                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,(*context)->gncols*GHOST_DT_MAX_SIZE),err,ret);
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,(*context)->gncols*sizeof(ghost_idx_t)),err,ret);
                     (*context)->rpt[0] = 0;
                     ghost_idx_t rowlen;
@@ -350,7 +350,7 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
     int nranks;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(context->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_nrank(&nranks, context->mpicomm));
 
     char *contextType = "";
     if (context->flags & GHOST_CONTEXT_DISTRIBUTED)
@@ -359,12 +359,12 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
         contextType = "Redundant";
 
 
-    ghost_headerString(str,"Context");
-    ghost_lineString(str,"MPI processes",NULL,"%d",nranks);
-    ghost_lineString(str,"Number of rows",NULL,"%"PRIDX,context->gnrows);
-    ghost_lineString(str,"Type",NULL,"%s",contextType);
-    ghost_lineString(str,"Work distribution scheme",NULL,"%s",ghost_context_workdistString(context->flags));
-    ghost_footerString(str);
+    ghost_header_string(str,"Context");
+    ghost_line_string(str,"MPI processes",NULL,"%d",nranks);
+    ghost_line_string(str,"Number of rows",NULL,"%"PRIDX,context->gnrows);
+    ghost_line_string(str,"Type",NULL,"%s",contextType);
+    ghost_line_string(str,"Work distribution scheme",NULL,"%s",ghost_context_workdistString(context->flags));
+    ghost_footer_string(str);
     return GHOST_SUCCESS;
 
 }
@@ -413,8 +413,8 @@ ghost_error_t ghost_context_setupCommunication(ghost_context_t *ctx, ghost_idx_t
 
     int nprocs;
     int me;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(ctx->mpicomm,&nprocs));
-    GHOST_CALL_RETURN(ghost_getRank(ctx->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs, ctx->mpicomm));
+    GHOST_CALL_RETURN(ghost_rank(&me, ctx->mpicomm));
 
 #ifdef GHOST_HAVE_MPI
     MPI_Request req[2*nprocs];

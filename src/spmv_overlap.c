@@ -49,8 +49,8 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     ghost_idx_t c;
 
 
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
+    GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs, mat->context->mpicomm));
     MPI_Request request[invec->traits->ncols*2*nprocs];
     MPI_Status  status[invec->traits->ncols*2*nprocs];
 

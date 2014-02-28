@@ -184,7 +184,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     }
 
     int nranks;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(v->context->mpicomm,&nranks));
+    GHOST_CALL_RETURN(ghost_nrank(&nranks, v->context->mpicomm));
 
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (reduce >= nranks)) {
         WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
@@ -240,7 +240,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     int myrank=0;
 
     if (reduce!=GHOST_GEMM_NO_REDUCE) {
-        GHOST_CALL_RETURN(ghost_getRank(v->context->mpicomm,&myrank));
+        GHOST_CALL_RETURN(ghost_rank(v->context->mpicomm,&myrank));
     }
 
     void *mybeta;
@@ -290,7 +290,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
     {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
-        GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
+        GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
         cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
         if (v->traits->datatype & GHOST_DT_COMPLEX) 
         {
@@ -332,7 +332,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
-                ghost_sizeofDatatype(&sizeofdt,x->traits->datatype);
+                ghost_datatype_size(&sizeofdt,x->traits->datatype);
 
                 GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*sizeofdt));
                 ghost_cu_download(val,&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],
@@ -368,7 +368,7 @@ ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t 
             {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
-                ghost_sizeofDatatype(&sizeofdt,x->traits->datatype);
+                ghost_datatype_size(&sizeofdt,x->traits->datatype);
                 GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],val,
                         x->traits->nrows*sizeofdt));
                 free(val);
@@ -461,7 +461,7 @@ ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
 
 }
 
-ghost_error_t ghost_mpi_createOperations()
+ghost_error_t ghost_mpi_operations_create()
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_create((MPI_User_function *)&ghost_mpi_add_c,1,&GHOST_MPI_OP_SUM_C));
@@ -474,7 +474,7 @@ ghost_error_t ghost_mpi_createOperations()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_mpi_destroyOperations()
+ghost_error_t ghost_mpi_operations_destroy()
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Op_free(&GHOST_MPI_OP_SUM_C));
@@ -486,7 +486,7 @@ ghost_error_t ghost_mpi_destroyOperations()
 
 ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t)
 {
-    if (!ghost_datatypeValid(m_t) || !ghost_datatypeValid(v_t)) {
+    if (!ghost_datatype_valid(m_t) || !ghost_datatype_valid(v_t)) {
         ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }

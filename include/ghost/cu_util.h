@@ -8,8 +8,8 @@
 
 typedef struct
 {
-    int nDistinctDevices;
-    int *nDevices;
+    int ndistinctdevice;
+    int *ndevice;
     char **names;
 }ghost_gpu_info_t;
 
@@ -27,11 +27,11 @@ ghost_error_t ghost_cu_memset(void *s, int c, size_t n);
 ghost_error_t ghost_cu_free(void * mem);
 ghost_error_t ghost_cu_barrier();
 ghost_error_t ghost_cu_finish();
-ghost_error_t ghost_cu_getDeviceCount(int *devcount);
-ghost_error_t ghost_cu_getVersion(int *ver);
-ghost_error_t ghost_cu_getDeviceInfo(ghost_gpu_info_t **);
-ghost_error_t ghost_cu_getDevice(int *device);
-ghost_error_t ghost_cu_getCublasHandle(cublasHandle_t *handle);
+ghost_error_t ghost_cu_ndevice(int *devcount);
+ghost_error_t ghost_cu_version(int *ver);
+ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **);
+ghost_error_t ghost_cu_device(int *device);
+ghost_error_t ghost_cu_cublas_handle(cublasHandle_t *handle);
 
 #ifdef __cplusplus
 }

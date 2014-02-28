@@ -401,7 +401,7 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits);
-    ghost_error_t ghost_cloneVtraits(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
+    ghost_error_t ghost_densemat_traits_clone(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
     ghost_error_t d_ghost_printVector(ghost_densemat_t *vec); 

@@ -5,7 +5,7 @@
 #include "ghost/locality.h"
 #include "ghost/sparsemat.h"
 #include "ghost/context.h"
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
 
@@ -198,13 +198,13 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_idx_t *perm, gh
 }
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str)
 {
-    ghost_lineString(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
-    ghost_lineString(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
-    ghost_lineString(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_lineString(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
-    ghost_lineString(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
-    ghost_lineString(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
-    ghost_lineString(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
+    ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
+    ghost_line_string(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
+    ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
+    ghost_line_string(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
+    ghost_line_string(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
+    ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
+    ghost_line_string(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
 }
 
 static const char * SELL_formatName(ghost_sparsemat_t *mat)
@@ -271,8 +271,8 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
 
     ghost_sorting_t* rowSort = NULL;
 
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
 
     ghost_idx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
@@ -289,7 +289,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
     ghost_nnz_t nEnts = 0, nnz = 0;
     SELL(mat)->chunkStart[0] = 0;
 
-    GHOST_CALL_GOTO(ghost_sparsemat_fromRowFunc_common(mat,maxrowlen,func,flags),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,maxrowlen,func,flags),err,ret);
     /*if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
 #pragma omp parallel private(i,tmpval,tmpcol)
         { 
@@ -501,9 +501,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrow
                 }
                 if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                     // sort rows by ascending column indices
-                    ghost_sparsemat_sortRow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                    ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
-                ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
             memset(tmpval,0,mat->elSize*maxrowlen*SELL(mat)->chunkHeight);
             memset(tmpcol,0,sizeof(ghost_idx_t)*maxrowlen*SELL(mat)->chunkHeight);
@@ -592,7 +592,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     ghost_idx_t j;
     ghost_idx_t i;
     int me;
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
 
     ghost_nnz_t lnEnts_l, lnEnts_r;
     ghost_nnz_t current_l, current_r;
@@ -824,8 +824,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 
     int nprocs = 1;
     int me;
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs));
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&me));
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs, mat->context->mpicomm));
+    GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
 
     ghost_idx_t *rpt = NULL;
     ghost_idx_t *tmpcol = NULL;
@@ -834,7 +834,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t i;
     ghost_idx_t chunk,j;
 
-    ghost_sparsemat_fromFile_common(mat,matrixPath,&rpt);
+    ghost_sparsemat_fromfile_common(mat,matrixPath,&rpt);
     
     mat->nEnts = 0;
     mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
@@ -906,8 +906,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
-    GHOST_CALL_GOTO(ghost_readCol(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
-    GHOST_CALL_GOTO(ghost_readVal(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
 
     ghost_idx_t row = 0;
     for (chunk = 0; chunk < nChunks; chunk++) {
@@ -923,9 +923,9 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
-                ghost_sparsemat_sortRow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
             }
-            ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+            ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
         }
 
     }
@@ -972,7 +972,7 @@ out:
 static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense)
 {
     ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
 
     return SELL_stringify_funcs[dtIdx](mat, str, dense);
 }
@@ -980,7 +980,7 @@ static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dens
 static ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
 {
     ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
     return SELL_fromCRS_funcs[dtIdx](mat,crs);
 }
 
@@ -1051,7 +1051,7 @@ static void SELL_free(ghost_sparsemat_t *mat)
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRIDX" sub-vectors",ghost_datatypeString(lhs->traits->datatype),lhs->traits->ncols);
+    DEBUG_LOG(2,"lhs vector has %s data and %"PRIDX" sub-vectors",ghost_datatype_string(lhs->traits->datatype),lhs->traits->ncols);
 
     ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list) = NULL;
 
@@ -1072,8 +1072,8 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
 
 
 #ifdef GHOST_HAVE_SSE
@@ -1135,11 +1135,11 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags,va_list argp)
 {
     DEBUG_LOG(1,"Calling SELL CUDA kernel");
-    DEBUG_LOG(2,"lhs vector has %s data",ghost_datatypeString(lhs->traits->datatype));
+    DEBUG_LOG(2,"lhs vector has %s data",ghost_datatype_string(lhs->traits->datatype));
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
 
     return SELL_kernels_CU
         [matDtIdx]

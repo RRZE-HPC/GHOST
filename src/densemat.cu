@@ -94,7 +94,7 @@ extern "C" ghost_error_t ghost_vec_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat
 {
     void *d_a;
     size_t sizeofdt;
-    ghost_sizeofDatatype(&sizeofdt,v1->traits->datatype);
+    ghost_datatype_size(&sizeofdt,v1->traits->datatype);
     GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,v1->traits->ncols*sizeofdt));
     ghost_cu_upload(d_a,a,v1->traits->ncols*sizeofdt);
     if (v1->traits->datatype != v2->traits->datatype)
@@ -133,7 +133,7 @@ extern "C" ghost_error_t ghost_vec_cu_vaxpby(ghost_densemat_t *v1, ghost_densema
     void *d_a;
     void *d_b;
     size_t sizeofdt;
-    ghost_sizeofDatatype(&sizeofdt,v1->traits->datatype);
+    ghost_datatype_size(&sizeofdt,v1->traits->datatype);
     GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,v1->traits->ncols*sizeofdt)); //TODO goto and free
     GHOST_CALL_RETURN(ghost_cu_malloc(&d_b,v1->traits->ncols*sizeofdt));
     ghost_cu_upload(d_b,b,v1->traits->ncols*sizeofdt);
@@ -184,10 +184,10 @@ extern "C" ghost_error_t ghost_vec_cu_dotprod(ghost_densemat_t *vec, ghost_dense
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     size_t sizeofdt;
-    ghost_sizeofDatatype(&sizeofdt,vec->traits->datatype);
+    ghost_datatype_size(&sizeofdt,vec->traits->datatype);
    
     cublasHandle_t ghost_cublas_handle;
-    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
+    GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
     ghost_idx_t v;
     for (v=0; v<vec->traits->ncols; v++)
     {
@@ -231,7 +231,7 @@ extern "C" ghost_error_t ghost_vec_cu_axpy(ghost_densemat_t *vec, ghost_densemat
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     cublasHandle_t ghost_cublas_handle;
-    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
+    GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
@@ -313,7 +313,7 @@ extern "C" ghost_error_t ghost_vec_cu_axpby(ghost_densemat_t *v1, ghost_densemat
 extern "C" ghost_error_t ghost_vec_cu_scale(ghost_densemat_t *vec, void *a)
 {
     cublasHandle_t ghost_cublas_handle;
-    GHOST_CALL_RETURN(ghost_cu_getCublasHandle(&ghost_cublas_handle)); 
+    GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits->datatype & GHOST_DT_DOUBLE)
@@ -352,7 +352,7 @@ extern "C" ghost_error_t ghost_vec_cu_vscale(ghost_densemat_t *vec, void *a)
 {
     void *d_a;
     size_t sizeofdt;
-    ghost_sizeofDatatype(&sizeofdt,vec->traits->datatype);
+    ghost_datatype_size(&sizeofdt,vec->traits->datatype);
     GHOST_CALL_RETURN(ghost_cu_malloc(&d_a,vec->traits->ncols*sizeofdt));
     ghost_cu_upload(d_a,a,vec->traits->ncols*sizeofdt);
     if (vec->traits->datatype & GHOST_DT_COMPLEX)
@@ -430,7 +430,7 @@ extern "C" ghost_error_t ghost_vec_cu_fromRand(ghost_densemat_t *vec)
 {
     long pid = getpid();
     double time;
-    ghost_wctimeMilli(&time);
+    ghost_timing_wcmilli(&time);
     ghost_vec_malloc(vec);
     curandGenerator_t gen;
     CURAND_CALL_RETURN(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));

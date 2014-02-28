@@ -13,48 +13,52 @@ using namespace std;
 
 typedef struct
 {
-    vector<double> secs;
+    /**
+     * @brief The runtimes of this region.
+     */
+    vector<double> times;
+    /**
+     * @brief The last start time of this region.
+     */
     double start;
 } 
-ghost_timing_info_t;
+ghost_timing_region_accu_t;
 
-       
-
-static map<string,ghost_timing_info_t> timings;
+static map<string,ghost_timing_region_accu_t> timings;
 
 void ghost_timing_tick(char *tag) 
 {
     double start;
-    ghost_wctime(&start);
+    ghost_timing_wc(&start);
     timings[tag].start = start;
 }
 
 void ghost_timing_tock(char *tag) 
 {
     double end;
-    ghost_wctime(&end);
-    ghost_timing_info_t *ti = &timings[string(tag)];
-    ti->secs.push_back(end-ti->start);
+    ghost_timing_wc(&end);
+    ghost_timing_region_accu_t *ti = &timings[string(tag)];
+    ti->times.push_back(end-ti->start);
 }
 
-ghost_error_t ghost_timing_regionInfo_create(ghost_timing_regionInfo_t ** ri, char *region)
+ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, char *tag)
 {
-    ghost_timing_info_t ti;
-    if (!timings.count(string(region))) {
-        ERROR_LOG("The region %s does not exist!",region);
+    ghost_timing_region_accu_t ti;
+    if (!timings.count(string(tag))) {
+        ERROR_LOG("The region %s does not exist!",tag);
         return GHOST_ERR_INVALID_ARG;
     }
-    ti = timings[string(region)];
+    ti = timings[string(tag)];
 
     ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_regionInfo_t)),err,ret);
-    (*ri)->nCalls =  ti.secs.size();
-    (*ri)->minTime = *min_element(ti.secs.begin(),ti.secs.end());
-    (*ri)->maxTime = *max_element(ti.secs.begin(),ti.secs.end());
-    (*ri)->avgTime = accumulate(ti.secs.begin(),ti.secs.end(),0.)/(*ri)->nCalls;
+    GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_region_t)),err,ret);
+    (*ri)->nCalls =  ti.times.size();
+    (*ri)->minTime = *min_element(ti.times.begin(),ti.times.end());
+    (*ri)->maxTime = *max_element(ti.times.begin(),ti.times.end());
+    (*ri)->avgTime = accumulate(ti.times.begin(),ti.times.end(),0.)/(*ri)->nCalls;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)(&((*ri)->times)),sizeof(double)*(*ri)->nCalls),err,ret);
-    memcpy((*ri)->times,&ti.secs[0],(*ri)->nCalls*sizeof(double));
+    memcpy((*ri)->times,&ti.times[0],(*ri)->nCalls*sizeof(double));
 
     goto out;
 
@@ -69,7 +73,7 @@ out:
     return ret;
 }
 
-void ghost_timing_regionInfo_destroy(ghost_timing_regionInfo_t * ri)
+void ghost_timing_region_destroy(ghost_timing_region_t * ri)
 {
     if (ri) {
         free(ri->times); ri->times = NULL;
@@ -81,7 +85,7 @@ void ghost_timing_regionInfo_destroy(ghost_timing_regionInfo_t * ri)
 ghost_error_t ghost_timing_summaryString(char **str)
 {
     stringstream buffer;
-    map<string,ghost_timing_info_t>::iterator iter;
+    map<string,ghost_timing_region_accu_t>::iterator iter;
 
    
     size_t maxRegionLen = 0;
@@ -93,7 +97,7 @@ ghost_error_t ghost_timing_summaryString(char **str)
         maxRegionLen = max(iter->first.length(),maxRegionLen);
         tmp.str("");
 
-        tmp << iter->second.secs.size();
+        tmp << iter->second.times.size();
         maxCallsLen = max(maxCallsLen,tmp.str().length());
         tmp.str("");
     }
@@ -111,10 +115,10 @@ ghost_error_t ghost_timing_summaryString(char **str)
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
         buffer << scientific << left << setw(maxRegionLen) << iter->first << " | " << 
-            right << setw(maxCallsLen) << iter->second.secs.size() << " | " <<
-            *min_element(iter->second.secs.begin(),iter->second.secs.end()) << " | " <<
-            *max_element(iter->second.secs.begin(),iter->second.secs.end()) << " | " <<
-            accumulate(iter->second.secs.begin(),iter->second.secs.end(),0.)/iter->second.secs.size() << endl;
+            right << setw(maxCallsLen) << iter->second.times.size() << " | " <<
+            *min_element(iter->second.times.begin(),iter->second.times.end()) << " | " <<
+            *max_element(iter->second.times.begin(),iter->second.times.end()) << " | " <<
+            accumulate(iter->second.times.begin(),iter->second.times.end(),0.)/iter->second.times.size() << endl;
     }
 
 

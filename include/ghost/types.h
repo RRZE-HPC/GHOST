@@ -77,6 +77,11 @@ typedef enum {
 } ghost_datatype_idx_t;
 
 /**
+ * @brief Size of the largest data type (complex double).
+ */
+#define GHOST_DT_MAX_SIZE 16 
+
+/**
  * @brief Macro to "register" a double data type in an application
  *
  * @param name An identifier.
@@ -186,7 +191,7 @@ extern "C" {
      * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and 
      * exactly one of GHOST_DT_REAL and GHOST_DT_COMPLEX is set.
      */
-    bool ghost_datatypeValid(ghost_datatype_t datatype);
+    bool ghost_datatype_valid(ghost_datatype_t datatype);
     /**
      * @brief Stringify a ghost_datatype_t.
      *
@@ -194,12 +199,12 @@ extern "C" {
      *
      * @return A string representation of the data type. 
      */
-    char * ghost_datatypeString(ghost_datatype_t datatype);
-    ghost_error_t ghost_datatypeIdx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
-    ghost_error_t ghost_sizeofDatatype(size_t *size, ghost_datatype_t datatype);
+    char * ghost_datatype_string(ghost_datatype_t datatype);
+    ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
+    ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
     ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype);
-    ghost_error_t ghost_mpi_createDatatypes();
-    ghost_error_t ghost_mpi_destroyDatatypes();
+    ghost_error_t ghost_mpi_datatypes_create();
+    ghost_error_t ghost_mpi_datatypes_destroy();
 
 #ifdef __cplusplus
 }

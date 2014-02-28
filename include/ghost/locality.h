@@ -14,8 +14,8 @@
 #endif
 
 typedef struct {
-    int nCores;
-    int nSmt;
+    int ncore;
+    int nsmt;
 } ghost_hwconfig_t;
 
 typedef enum {
@@ -27,28 +27,25 @@ typedef enum {
 } ghost_hybridmode_t;
 
 #define GHOST_HWCONFIG_INVALID -1
-#define GHOST_HWCONFIG_INITIALIZER (ghost_hwconfig_t) {.nCores = GHOST_HWCONFIG_INVALID, .nSmt = GHOST_HWCONFIG_INVALID}
-
-
-//extern hwloc_topology_t topology;
-
+#define GHOST_HWCONFIG_INITIALIZER (ghost_hwconfig_t) {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm);
-ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm);
-ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t);
-ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig);
-ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank);
-ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes);
-ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks);
-ghost_error_t ghost_getCore(int *core);
-ghost_error_t ghost_setCore(int core);
-ghost_error_t ghost_unsetCore();
-ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm);
-ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm);
+    ghost_error_t ghost_hybridmode_set(ghost_hybridmode_t hm);
+    ghost_error_t ghost_hybridmode_get(ghost_hybridmode_t *hm);
+    ghost_error_t ghost_hwconfig_set(ghost_hwconfig_t);
+    ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig);
+    ghost_error_t ghost_rank(int *rank, ghost_mpi_comm_t comm);
+    ghost_error_t ghost_nnode(int *nnode, ghost_mpi_comm_t comm);
+    ghost_error_t ghost_nrank(int *nrank, ghost_mpi_comm_t comm);
+    ghost_error_t ghost_cpu(int *core);
+    ghost_error_t ghost_thread_pin(int core);
+    ghost_error_t ghost_thread_unpin();
+    ghost_error_t ghost_nodecomm_get(ghost_mpi_comm_t *comm);
+    ghost_error_t ghost_nodecomm_setup(ghost_mpi_comm_t comm);
+
 #ifdef __cplusplus
 }
 #endif

@@ -155,8 +155,8 @@ extern __shared__ char shared[];
 
 #define CHOOSE_KERNEL(dt1,dt2) {\
     ghost_error_t ret = GHOST_SUCCESS;\
-    int ghost_cu_device;\
-    GHOST_CALL_RETURN(ghost_cu_getDevice(&ghost_cu_device));\
+    int cu_device;\
+    GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
     static int infoprinted=0;\
     void *cu_localdot = NULL;\
     dt2 *localdot = NULL;\
@@ -167,10 +167,10 @@ extern __shared__ char shared[];
         if (SELL(mat)->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
             size_t reqSmem;\
-            ghost_sizeofDatatype(&reqSmem,lhs->traits->datatype);\
+            ghost_datatype_size(&reqSmem,lhs->traits->datatype);\
             reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
-            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
             if (prop.sharedMemPerBlock < reqSmem) {\
                 WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
             }\
@@ -182,10 +182,10 @@ extern __shared__ char shared[];
     }else{\
         if (SELL(mat)->T > 1) {\
             size_t reqSmem;\
-            ghost_sizeofDatatype(&reqSmem,lhs->traits->datatype);\
+            ghost_datatype_size(&reqSmem,lhs->traits->datatype);\
             reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
-            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,ghost_cu_device));\
+            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
             if (prop.sharedMemPerBlock < reqSmem) {\
                 WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
             }\

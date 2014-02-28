@@ -32,7 +32,7 @@ ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t data
 }
 
 
-ghost_error_t ghost_mpi_createDatatypes()
+ghost_error_t ghost_mpi_datatypes_create()
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_contiguous(2,MPI_FLOAT,&GHOST_MPI_DT_C));
@@ -48,7 +48,7 @@ ghost_error_t ghost_mpi_createDatatypes()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_mpi_destroyDatatypes()
+ghost_error_t ghost_mpi_datatypes_destroy()
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Type_free(&GHOST_MPI_DT_C));
@@ -58,9 +58,9 @@ ghost_error_t ghost_mpi_destroyDatatypes()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sizeofDatatype(size_t *size, ghost_datatype_t datatype)
+ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
 {
-    if (!ghost_datatypeValid(datatype)) {
+    if (!ghost_datatype_valid(datatype)) {
         ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -80,7 +80,7 @@ ghost_error_t ghost_sizeofDatatype(size_t *size, ghost_datatype_t datatype)
     return GHOST_SUCCESS;
 }
 
-bool ghost_datatypeValid(ghost_datatype_t datatype)
+bool ghost_datatype_valid(ghost_datatype_t datatype)
 {
     if ((datatype & GHOST_DT_FLOAT) &&
             (datatype & GHOST_DT_DOUBLE))
@@ -101,9 +101,9 @@ bool ghost_datatypeValid(ghost_datatype_t datatype)
     return 1;
 }
 
-char * ghost_datatypeString(ghost_datatype_t datatype)
+char * ghost_datatype_string(ghost_datatype_t datatype)
 {
-    if (!ghost_datatypeValid(datatype)) {
+    if (!ghost_datatype_valid(datatype)) {
         return "Invalid";
     }
 
@@ -122,9 +122,9 @@ char * ghost_datatypeString(ghost_datatype_t datatype)
     return "Invalid";
 }
 
-ghost_error_t ghost_datatypeIdx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)
+ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype)
 {
-    if (!ghost_datatypeValid(datatype)) {
+    if (!ghost_datatype_valid(datatype)) {
         ERROR_LOG("Invalid data type");
         return GHOST_ERR_INVALID_ARG;
     }

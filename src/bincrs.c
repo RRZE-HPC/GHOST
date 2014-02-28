@@ -1,5 +1,5 @@
 #define _XOPEN_SOURCE 500
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 #include "ghost/log.h"
 #include "ghost/util.h"
 #include "ghost/machine.h"
@@ -25,6 +25,8 @@ static inline uint64_t bswap_64(uint64_t val)
         | ((val & (uint64_t)0xff00000000000000ULL) >> 56);
 }
 
+#define SWAPREQ(header) (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN)?ghost_machine_bigendian()?1:0:ghost_machine_bigendian()?0:1
+
 static void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
 {{&ss_ghost_castArray,&sd_ghost_castArray,&sc_ghost_castArray,&sz_ghost_castArray},
     {&ds_ghost_castArray,&dd_ghost_castArray,&dc_ghost_castArray,&dz_ghost_castArray},
@@ -32,16 +34,16 @@ static void (*ghost_castArray_funcs[4][4]) (void *, void *, int) =
     {&zs_ghost_castArray,&zd_ghost_castArray,&zc_ghost_castArray,&zz_ghost_castArray}};
 
 
-ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
+ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
 {
-    ghost_matfile_header_t header;
+    ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
     ghost_nnz_t i,j,e;
 
-    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
+    swapReq = SWAPREQ(header);
     
     int64_t *rpt_raw;
     GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
@@ -162,7 +164,7 @@ ghost_error_t ghost_readColOpen(ghost_idx_t *col, char *matrixPath, ghost_nnz_t 
 }
 
 
-ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols)
+ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols)
 {
     FILE *filed;
 
@@ -171,27 +173,27 @@ ghost_error_t ghost_readCol(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offs
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_readColOpen(col,matrixPath,offsRows,nRows,perm,keepCols,filed));
+    GHOST_CALL_RETURN(ghost_bincrs_col_read_opened(col,matrixPath,offsRows,nRows,perm,keepCols,filed));
 
     fclose(filed);
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
+ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
 {
-    ghost_matfile_header_t header;
+    ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
     ghost_nnz_t i,j,e;
     size_t sizeofdt;
-    GHOST_CALL_RETURN(ghost_sizeofDatatype(&sizeofdt,datatype));
-    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_datatype_size(&sizeofdt,datatype));
+    GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
+    swapReq = SWAPREQ(header);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_sizeofDatatype(&valSize,header.datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,header.datatype));
 
     int64_t *rpt_raw;
     GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
@@ -292,7 +294,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
         }
     } else {
         INFO_LOG("This matrix is supposed to be of %s data but"
-                " the file contains %s data. Casting...",ghost_datatypeString(datatype),ghost_datatypeString(header.datatype));
+                " the file contains %s data. Casting...",ghost_datatype_string(datatype),ghost_datatype_string(header.datatype));
 
 
         uint8_t *tmpval;
@@ -338,8 +340,8 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
         } else {
             ghost_datatype_idx_t matDtIdx;
             ghost_datatype_idx_t headerDtIdx;
-            GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,datatype));
-            GHOST_CALL_RETURN(ghost_datatypeIdx(&headerDtIdx,header.datatype));
+            GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,datatype));
+            GHOST_CALL_RETURN(ghost_datatype_idx(&headerDtIdx,header.datatype));
 
             ghost_castArray_funcs[matDtIdx][headerDtIdx](val_raw,tmpval,nEnts);
         }
@@ -362,7 +364,7 @@ ghost_error_t ghost_readValOpen(char *val, int datatype, char *matrixPath, ghost
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
+ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
 {
     FILE *filed;
 
@@ -371,23 +373,23 @@ ghost_error_t ghost_readVal(char *val, int datatype, char *matrixPath, ghost_nnz
         return GHOST_ERR_IO;
     }
 
-    ghost_readValOpen(val,datatype,matrixPath,offsRows,nRows,perm,filed);
+    ghost_bincrs_val_read_opened(val,datatype,matrixPath,offsRows,nRows,perm,filed);
 
     fclose(filed);
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
+ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
 {
-    ghost_matfile_header_t header;
+    ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
     ghost_nnz_t i;
 
-    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
-    GHOST_CALL_RETURN(ghost_endianessDiffers(&swapReq,matrixPath));
+    GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
+    swapReq = SWAPREQ(header);
 
     if (perm) {
         int64_t *rpt_raw;
@@ -475,7 +477,7 @@ ghost_error_t ghost_readRptOpen(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
+ghost_error_t ghost_bincrs_rpt_read(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
 {
     FILE *filed;
 
@@ -484,7 +486,7 @@ ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offs
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_readRptOpen(rpt,matrixPath,offsRows,nRows,perm,filed));
+    GHOST_CALL_RETURN(ghost_bincrs_rpt_read_opened(rpt,matrixPath,offsRows,nRows,perm,filed));
 
     fclose(filed);
 
@@ -492,14 +494,14 @@ ghost_error_t ghost_readRpt(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offs
 
 }
 
-ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
+/*ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
 {
-    ghost_matfile_header_t header;
-    GHOST_CALL_RETURN(ghost_readMatFileHeader(matrixPath,&header));
+    ghost_bincrs_header_t header;
+    GHOST_CALL_RETURN(ghost_bincrs_header_read(matrixPath,&header));
 
-    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigEndian()) {
+    if (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigendian()) {
         *differs = 1;
-    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machine_bigEndian()) {
+    } else if (header.endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machine_bigendian()) {
         *differs = 1;
     } else {
         *differs = 0;
@@ -507,9 +509,9 @@ ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath)
 
     return GHOST_SUCCESS;
 
-}
+}*/
 
-ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *header)
+ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matrixPath)
 {
     FILE* file;
     long filesize;
@@ -527,10 +529,10 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     fseek(file,0L,SEEK_SET);
 
     fread(&header->endianess, 4, 1, file);
-    if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigEndian()) {
+    if (header->endianess == GHOST_BINCRS_LITTLE_ENDIAN && ghost_machine_bigendian()) {
         DEBUG_LOG(1,"Need to convert from little to big endian.");
         swapReq = 1;
-    } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machine_bigEndian()) {
+    } else if (header->endianess != GHOST_BINCRS_LITTLE_ENDIAN && !ghost_machine_bigendian()) {
         DEBUG_LOG(1,"Need to convert from big to little endian.");
         swapReq = 1;
     } else {
@@ -559,7 +561,7 @@ ghost_error_t ghost_readMatFileHeader(char *matrixPath, ghost_matfile_header_t *
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_sizeofDatatype(&valSize,header->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +

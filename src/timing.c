@@ -4,7 +4,7 @@
 #include "ghost/timing.h"
 
 
-ghost_error_t ghost_wctime(double *time)
+ghost_error_t ghost_timing_wc(double *time)
 {
     struct timeval tp;
     int err;
@@ -19,7 +19,7 @@ ghost_error_t ghost_wctime(double *time)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_wctimeMilli(double *time)
+ghost_error_t ghost_timing_wcmilli(double *time)
 {
     struct timeval tp;
     int err;

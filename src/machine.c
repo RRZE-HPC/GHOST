@@ -74,7 +74,7 @@ ghost_error_t ghost_topology_get(hwloc_topology_t *topo)
 
 }
 
-ghost_error_t ghost_machine_outerCacheSize(uint64_t *size)
+ghost_error_t ghost_machine_outercache_size(uint64_t *size)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
@@ -91,14 +91,14 @@ ghost_error_t ghost_machine_outerCacheSize(uint64_t *size)
 
 #ifdef GHOST_HAVE_MIC
     int ncores;
-    GHOST_CALL_RETURN(ghost_machine_nCores(&ncores,GHOST_NUMANODE_ANY));
+    GHOST_CALL_RETURN(ghost_machine_ncore(&ncores,GHOST_NUMANODE_ANY));
     *size *= ncores; // the cache is shared but not reported so
 #endif
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_cacheLineSize(unsigned *size)
+ghost_error_t ghost_machine_cacheline_size(unsigned *size)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
@@ -117,12 +117,12 @@ ghost_error_t ghost_machine_cacheLineSize(unsigned *size)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nCores(int *nCores, int numaNode)
+ghost_error_t ghost_machine_ncore(int *ncore, int numanode)
 {
     int nPUs;
     int smt;
-    GHOST_CALL_RETURN(ghost_machine_nPus(&nPUs, numaNode));
-    GHOST_CALL_RETURN(ghost_machine_nSmt(&smt));
+    GHOST_CALL_RETURN(ghost_machine_npu(&nPUs, numanode));
+    GHOST_CALL_RETURN(ghost_machine_nsmt(&smt));
 
     if (smt == 0) {
         ERROR_LOG("The SMT level is zero");
@@ -134,21 +134,21 @@ ghost_error_t ghost_machine_nCores(int *nCores, int numaNode)
         return GHOST_ERR_UNKNOWN;
     }
 
-    *nCores = nPUs/smt;
+    *ncore = nPUs/smt;
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nPus(int *nPUs, int numaNode)
+ghost_error_t ghost_machine_npu(int *nPUs, int numanode)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
     hwloc_const_cpuset_t cpuset = NULL;
-    if (numaNode == GHOST_NUMANODE_ANY) {
+    if (numanode == GHOST_NUMANODE_ANY) {
         cpuset = hwloc_topology_get_allowed_cpuset(topology);
     } else {
         hwloc_obj_t node;
-        ghost_machine_numaNode(&node,numaNode);
+        ghost_machine_numanode(&node,numanode);
         cpuset = node->cpuset;
     }
 
@@ -157,7 +157,7 @@ ghost_error_t ghost_machine_nPus(int *nPUs, int numaNode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nSmt(int *nLevels)
+ghost_error_t ghost_machine_nsmt(int *nLevels)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
@@ -173,7 +173,7 @@ ghost_error_t ghost_machine_nSmt(int *nLevels)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_machine_nNumaNodes(int *nNodes)
+ghost_error_t ghost_machine_nnuma(int *nNodes)
 {
     hwloc_topology_t topology;
     GHOST_CALL_RETURN(ghost_topology_get(&topology));
@@ -191,7 +191,7 @@ ghost_error_t ghost_machine_nNumaNodes(int *nNodes)
 
 }
 
-bool ghost_machine_bigEndian()
+bool ghost_machine_bigendian()
 {
     int test = 1;
     unsigned char *endiantest = (unsigned char *)&test;
@@ -199,7 +199,7 @@ bool ghost_machine_bigEndian()
     return (endiantest[0] == 0);
 }
 
-ghost_error_t ghost_machine_numaNode(hwloc_obj_t *node, int idx)
+ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx)
 {
     if (!node) {
         ERROR_LOG("NULL pointer");
@@ -235,23 +235,23 @@ ghost_error_t ghost_machine_string(char **str)
 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(MPI_COMM_WORLD,&nranks));
-    GHOST_CALL_RETURN(ghost_getNumberOfNodes(MPI_COMM_WORLD,&nnodes));
+    GHOST_CALL_RETURN(ghost_nrank(&nranks, MPI_COMM_WORLD));
+    GHOST_CALL_RETURN(ghost_nnode(&nnodes, MPI_COMM_WORLD));
 
 
 #ifdef GHOST_HAVE_CUDA
     int cuVersion;
-    GHOST_CALL_RETURN(ghost_cu_getVersion(&cuVersion));
+    GHOST_CALL_RETURN(ghost_cu_version(&cuVersion));
 
     ghost_gpu_info_t * CUdevInfo;
-    GHOST_CALL_RETURN(ghost_cu_getDeviceInfo(&CUdevInfo));
+    GHOST_CALL_RETURN(ghost_cu_gpu_info_create(&CUdevInfo));
 #endif
 
 
     int nphyscores;
     int ncores;
-    ghost_machine_nCores(&nphyscores,GHOST_NUMANODE_ANY);
-    ghost_machine_nPus(&ncores,GHOST_NUMANODE_ANY);
+    ghost_machine_ncore(&nphyscores,GHOST_NUMANODE_ANY);
+    ghost_machine_npu(&ncores,GHOST_NUMANODE_ANY);
 
 #ifdef GHOST_HAVE_OPENMP
     char omp_sched_str[32];
@@ -280,30 +280,30 @@ ghost_error_t ghost_machine_string(char **str)
 #endif
 
     uint64_t cacheSize;
-    unsigned int cacheLineSize;
-    ghost_machine_outerCacheSize(&cacheSize);
-    ghost_machine_cacheLineSize(&cacheLineSize);
+    unsigned int cacheline_size;
+    ghost_machine_outercache_size(&cacheSize);
+    ghost_machine_cacheline_size(&cacheline_size);
 
-    ghost_headerString(str,"Machine");
+    ghost_header_string(str,"Machine");
 
-    ghost_lineString(str,"Overall nodes",NULL,"%d",nnodes); 
-    ghost_lineString(str,"Overall MPI processes",NULL,"%d",nranks);
-    ghost_lineString(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
-    ghost_lineString(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
-    ghost_lineString(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
-    ghost_lineString(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
-    ghost_lineString(str,"Cache line size","B","%zu",cacheLineSize);
+    ghost_line_string(str,"Overall nodes",NULL,"%d",nnodes); 
+    ghost_line_string(str,"Overall MPI processes",NULL,"%d",nranks);
+    ghost_line_string(str,"MPI processes per node",NULL,"%d",nranks/nnodes);
+    ghost_line_string(str,"Avail. cores/PUs per node",NULL,"%d/%d",nphyscores,ncores);
+    ghost_line_string(str,"OpenMP scheduling",NULL,"%s",omp_sched_str);
+    ghost_line_string(str,"LLC size","MiB","%.2f",cacheSize*1.0/(1024.*1024.));
+    ghost_line_string(str,"Cache line size","B","%zu",cacheline_size);
 #ifdef GHOST_HAVE_CUDA
-    ghost_lineString(str,"CUDA version",NULL,"%d",cuVersion);
-    ghost_lineString(str,"CUDA devices",NULL,NULL);
+    ghost_line_string(str,"CUDA version",NULL,"%d",cuVersion);
+    ghost_line_string(str,"CUDA devices",NULL,NULL);
     int j;
-    for (j=0; j<CUdevInfo->nDistinctDevices; j++) {
+    for (j=0; j<CUdevInfo->ndistinctdevice; j++) {
         if (strcasecmp(CUdevInfo->names[j],"None")) {
-            ghost_lineString(str,"",NULL,"%dx %s",CUdevInfo->nDevices[j],CUdevInfo->names[j]);
+            ghost_line_string(str,"",NULL,"%dx %s",CUdevInfo->ndevice[j],CUdevInfo->names[j]);
         }
     }
 #endif
-    ghost_footerString(str);
+    ghost_footer_string(str);
 
     return GHOST_SUCCESS;
 

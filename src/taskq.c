@@ -159,8 +159,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             return curTask;
         }
 
-        hwloc_obj_t numaNode;
-        ghost_machine_numaNode(&numaNode,curTask->LD);
+        hwloc_obj_t numanode;
+        ghost_machine_numanode(&numanode,curTask->LD);
 
         int availcores = 0;
         if (curTask->flags & GHOST_TASK_LD_STRICT) {
@@ -178,7 +178,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             //hwloc_bitmap_list_asprintf(&c,parentscores);
             //WARNING_LOG("(%lu) %s = %s andnot %s (%p)",(unsigned long)pthread_self(),c,a,b,curTask->parent->childusedmap);
             if (curTask->flags & GHOST_TASK_LD_STRICT) {
-                hwloc_bitmap_and(parentscores,parentscores,numaNode->cpuset);
+                hwloc_bitmap_and(parentscores,parentscores,numanode->cpuset);
             }
             availcores += hwloc_bitmap_weight(parentscores);
         }
@@ -257,7 +257,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                        //                            hwloc_bitmap_set(ghost_thpool->busy,core);
                         hwloc_bitmap_set(mybusy,core);
                         DEBUG_LOG(2,"Pinning thread %lu to core %d",(unsigned long)pthread_self(),pumap->PUs[curTask->LD][t]->os_index);
-                        ghost_setCore(core);
+                        ghost_thread_pin(core);
                         hwloc_bitmap_set(curTask->coremap,core);
                         //curTask->cores[reservedCores] = core;
                         reservedCores++;
@@ -296,7 +296,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
     }
 
-ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
+ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 {
     if (!func) {
         ERROR_LOG("NULL pointer");
@@ -319,7 +319,7 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
     {
 #ifdef GHOST_HAVE_CUDA
         int cu_device;
-        ghost_cu_getDevice(&cu_device);
+        ghost_cu_device(&cu_device);
         ghost_cu_init(cu_device);
 #endif
         //    kmp_set_blocktime(200);
@@ -436,7 +436,7 @@ ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *))
      *
      * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
      */
-ghost_error_t ghost_taskq_addTask(ghost_task_t *t)
+ghost_error_t ghost_taskq_add(ghost_task_t *t)
     {
 
         if (taskq==NULL) {

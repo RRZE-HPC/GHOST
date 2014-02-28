@@ -1,4 +1,4 @@
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 #include "ghost/complex.h"
 
 template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts)

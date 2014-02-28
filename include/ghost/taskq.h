@@ -44,8 +44,8 @@ ghost_error_t ghost_taskq_destroy();
 
 ghost_error_t ghost_taskq_waitall();
 ghost_error_t ghost_taskq_waitsome(ghost_task_t **, int, int*);
-ghost_error_t ghost_taskq_addTask(ghost_task_t *task);
-ghost_error_t ghost_taskq_getStartRoutine(void *(**func)(void *));
+ghost_error_t ghost_taskq_add(ghost_task_t *task);
+ghost_error_t ghost_taskq_startroutine(void *(**func)(void *));
 
 #ifdef __cplusplus
 }// extern "C"

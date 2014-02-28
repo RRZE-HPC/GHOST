@@ -7,7 +7,7 @@
 #include "ghost/locality.h"
 #include "ghost/context.h"
 #include "ghost/machine.h"
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 #include "ghost/log.h"
 
 #include <unistd.h>
@@ -135,7 +135,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
     ghost_nnz_t *col_perm = NULL;
     char *val_perm = NULL;
 
-    GHOST_CALL_GOTO(ghost_getRank(MPI_COMM_WORLD,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, MPI_COMM_WORLD),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt_perm,(mat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&col_perm,mat->nnz*sizeof(ghost_idx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&val_perm,mat->nnz*mat->elSize),err,ret);
@@ -235,7 +235,7 @@ out:
 static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
 {
     ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&dtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
 
     return CRS_stringify_funcs[dtIdx](mat, str, dense);
 }
@@ -283,10 +283,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
 
     int nprocs = 1;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
-    GHOST_CALL_GOTO(ghost_sparsemat_fromRowFunc_common(mat,maxrowlen,func,flags),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,maxrowlen,func,flags),err,ret);
     ghost_idx_t rowlen;
     ghost_idx_t i,j;
     mat->ncols = mat->context->gncols;
@@ -392,9 +392,9 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_idx_t maxrowl
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
-                GHOST_CALL(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
+                GHOST_CALL(ghost_sparsemat_sortrow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
             }
-            GHOST_CALL(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
+            GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
     }
 
@@ -507,7 +507,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     int current_l, current_r;
 
 
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
         GHOST_CALL_GOTO(ghost_context_setupCommunication(mat->context,fullCR->col),err,ret);
@@ -643,8 +643,8 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t i, j;
     int me;
     
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-    GHOST_CALL_GOTO(ghost_sparsemat_fromFile_common(mat,matrixPath,&(CR(mat)->rpt)),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_sparsemat_fromfile_common(mat,matrixPath,&(CR(mat)->rpt)),err,ret);
     mat->nEnts = mat->nnz;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&(CR(mat)->col),mat->nEnts * sizeof(ghost_idx_t), GHOST_DATA_ALIGNMENT),err,ret);
@@ -658,15 +658,15 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
     }
 
-    GHOST_CALL_GOTO(ghost_readCol(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation,mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
-    GHOST_CALL_GOTO(ghost_readVal(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_col_read(CR(mat)->col, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation,mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_val_read(CR(mat)->val, mat->traits->datatype, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
 
     for (i=0;i<mat->context->lnrows[me];i++) {
         if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
             // sort rows by ascending column indices
-            GHOST_CALL_GOTO(ghost_sparsemat_sortRow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
+            GHOST_CALL_GOTO(ghost_sparsemat_sortrow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
         }
-        GHOST_CALL_GOTO(ghost_sparsemat_bandwidthFromRow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
+        GHOST_CALL_GOTO(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
     }
 
 #ifdef GHOST_HAVE_MPI
@@ -707,7 +707,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
     GHOST_CALL_RETURN(ghost_sparsemat_nnz(&mnnz,mat));
     size_t ret;
 
-    int32_t endianess = ghost_machine_bigEndian();
+    int32_t endianess = ghost_machine_bigendian();
     int32_t version = 1;
     int32_t base = 0;
     int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;
@@ -823,8 +823,8 @@ static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t 
 {
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatypeIdx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
 
     return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options,argp);
 }

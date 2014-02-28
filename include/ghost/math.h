@@ -109,8 +109,8 @@ extern "C" {
      * @return 
      */
     ghost_error_t ghost_gemm(char * transpose, ghost_densemat_t *v,  ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce); 
-    ghost_error_t ghost_mpi_createOperations();
-    ghost_error_t ghost_mpi_destroyOperations();
+    ghost_error_t ghost_mpi_operations_create();
+    ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);

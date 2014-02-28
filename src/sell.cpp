@@ -15,7 +15,8 @@
 #include "ghost/math.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
-#include <iostream>
+
+#include <sstream>
 #include <cstdlib>
 #include <map>
 #include <iostream>

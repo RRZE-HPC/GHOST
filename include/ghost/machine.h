@@ -53,7 +53,7 @@ extern "C" {
      *
      * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
      */
-    ghost_error_t ghost_machine_outerCacheSize(uint64_t *size);
+    ghost_error_t ghost_machine_outercache_size(uint64_t *size);
     /**
      * @brief Get the cache line siye. 
      *
@@ -63,7 +63,7 @@ extern "C" {
      *
      * This information may be useful in situations where false sharing has to be avoided.
      */
-    ghost_error_t ghost_machine_cacheLineSize(unsigned *size);
+    ghost_error_t ghost_machine_cacheline_size(unsigned *size);
     /**
      * @brief Get the number of (physical) cores in the machine.
      *
@@ -72,7 +72,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nCores(int *nCores, int numaNode);
+    ghost_error_t ghost_machine_ncore(int *nCores, int numaNode);
     /**
      * @brief Get the number of SMT threads per core in the machine.
      *
@@ -80,7 +80,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nSmt(int *nLevels);
+    ghost_error_t ghost_machine_nsmt(int *nLevels);
     /**
      * @brief Get the number of available hardware threads (= physical cores times SMT level) 
      * or processing units in the machine.
@@ -90,7 +90,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nPus(int *nPUs, int numaNode);
+    ghost_error_t ghost_machine_npu(int *nPUs, int numaNode);
     /**
      * @brief Get the number of NUMA nodes in the machine.
      *
@@ -98,14 +98,14 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_machine_nNumaNodes(int *nNodes);
-    ghost_error_t ghost_machine_numaNode(hwloc_obj_t *node, int idx);
+    ghost_error_t ghost_machine_nnuma(int *nNodes);
+    ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx);
     /**
      * @brief Check whether machine is big endian.
      *
      * @return true if machine is big endian, false if machine is little endian.
      */
-    bool ghost_machine_bigEndian();
+    bool ghost_machine_bigendian();
     ghost_error_t ghost_machine_string(char **str);
 
 #ifdef __cplusplus

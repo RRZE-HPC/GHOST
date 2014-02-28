@@ -14,19 +14,17 @@
 #endif
 
 #include <stdio.h>
-
+/*
 #ifndef __cplusplus
 #include <complex.h>
-#include <stdlib.h>
 #include <string.h>
 #include <float.h>
 #else
 #include <complex>
-#include <cstdlib>
 #include <cstring>
 #include <cfloat>
 #endif
-
+*/
 
 #ifndef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -57,9 +55,9 @@
 extern "C" {
 #endif
 
-    ghost_error_t ghost_headerString(char **str, const char *fmt, ...);
-    ghost_error_t ghost_footerString(char **str); 
-    ghost_error_t ghost_lineString(char **str, const char *label, const char *unit, const char *format, ...);
+    ghost_error_t ghost_header_string(char **str, const char *fmt, ...);
+    ghost_error_t ghost_footer_string(char **str); 
+    ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *format, ...);
 
 
     /**

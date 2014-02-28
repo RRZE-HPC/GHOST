@@ -5,7 +5,7 @@
 
 static ghost_pumap_t *pumap = NULL;
 
-ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode)
+ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numanode)
 {
 
     if (!nPUs) {
@@ -13,11 +13,11 @@ ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (numaNode == GHOST_NUMANODE_ANY) {
+    if (numanode == GHOST_NUMANODE_ANY) {
         *nPUs = hwloc_bitmap_weight(pumap->cpuset);
     } else {
         hwloc_obj_t node;
-        ghost_machine_numaNode(&node,numaNode);
+        ghost_machine_numanode(&node,numanode);
         hwloc_bitmap_t LDBM = node->cpuset;
 
         hwloc_bitmap_t contained = hwloc_bitmap_alloc();
@@ -31,14 +31,14 @@ ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode)
+ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numanode)
 {
 
-    if (numaNode == GHOST_NUMANODE_ANY) {
+    if (numanode == GHOST_NUMANODE_ANY) {
         *nPUs = hwloc_bitmap_weight(pumap->cpuset)-hwloc_bitmap_weight(pumap->busy);
     } else {
         hwloc_obj_t node;
-        ghost_machine_numaNode(&node,numaNode);
+        ghost_machine_numanode(&node,numanode);
         hwloc_bitmap_t LDBM = node->cpuset;
 
         hwloc_bitmap_t idle = hwloc_bitmap_alloc();
@@ -112,7 +112,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     
     pumap = NULL;
     hwloc_nodeset_t nodeset = NULL;
-    hwloc_obj_t numaNode = NULL;
+    hwloc_obj_t numanode = NULL;
     hwloc_cpuset_t remoteCPUset = NULL;
     hwloc_cpuset_t localCPUset = NULL;
 
@@ -161,11 +161,11 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
     for (q=0; q<pumap->nDomains; q++) {
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(pumap->PUs[q]),sizeof(hwloc_obj_t)*totalThreads),err,ret);
-        GHOST_CALL_GOTO(ghost_machine_numaNode(&numaNode,domains[q]),err,ret); 
+        GHOST_CALL_GOTO(ghost_machine_numanode(&numanode,domains[q]),err,ret); 
         
-        hwloc_bitmap_and(localCPUset,pumap->cpuset,numaNode->cpuset);
+        hwloc_bitmap_and(localCPUset,pumap->cpuset,numanode->cpuset);
         localthreads = hwloc_bitmap_weight(localCPUset); 
-        hwloc_bitmap_andnot(remoteCPUset,pumap->cpuset,numaNode->cpuset);
+        hwloc_bitmap_andnot(remoteCPUset,pumap->cpuset,numanode->cpuset);
 
         for (t=0; t<localthreads; t++) { // my own threads
             pumap->PUs[q][t] = hwloc_get_obj_inside_cpuset_by_type(topology,pumap->cpuset,HWLOC_OBJ_PU,t);
@@ -228,9 +228,9 @@ ghost_error_t ghost_pumap_string(char **str)
     int mynoderank;
     ghost_mpi_comm_t nodecomm;
     
-    GHOST_CALL_RETURN(ghost_getNodeComm(&nodecomm));
-    GHOST_CALL_RETURN(ghost_getRank(MPI_COMM_WORLD,&myrank));
-    GHOST_CALL_RETURN(ghost_getRank(nodecomm,&mynoderank));
+    GHOST_CALL_RETURN(ghost_nodecomm_get(&nodecomm));
+    GHOST_CALL_RETURN(ghost_rank(&myrank, MPI_COMM_WORLD));
+    GHOST_CALL_RETURN(ghost_rank(&mynoderank, nodecomm));
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
     
@@ -243,11 +243,11 @@ ghost_error_t ghost_pumap_string(char **str)
     hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
     GHOST_CALL_RETURN(ghost_pumap_getNumberOfIdlePUs(&nIdle,GHOST_NUMANODE_ANY));
 
-    ghost_headerString(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
-    ghost_lineString(str,"Total CPU set",NULL,"%s",cpusetstr);
-    ghost_lineString(str,"Busy CPU set",NULL,"%s",cpusetstr);
-    ghost_lineString(str,"No. of idle PUs",NULL,"%d",nIdle);
-    ghost_footerString(str);
+    ghost_header_string(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
+    ghost_line_string(str,"Total CPU set",NULL,"%s",cpusetstr);
+    ghost_line_string(str,"Busy CPU set",NULL,"%s",cpusetstr);
+    ghost_line_string(str,"No. of idle PUs",NULL,"%d",nIdle);
+    ghost_footer_string(str);
 
     return GHOST_SUCCESS;
 

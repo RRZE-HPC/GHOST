@@ -1,32 +1,10 @@
 #define _GNU_SOURCE
-#include "ghost/config.h"
-#include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/densemat.h"
-#include "ghost/context.h"
-#include "ghost/sparsemat.h"
-#include "ghost/math.h"
-#include "ghost/task.h"
-#include "ghost/locality.h"
-#include "ghost/machine.h"
-#include "ghost/io.h"
 #include "ghost/log.h"
-#include "ghost/omp.h"
-#include <libgen.h>
-#include <unistd.h>
-#include <byteswap.h>
 
-#include <errno.h>
-#ifdef GHOST_HAVE_OPENMP
-#include <omp.h>
-#endif
-#include <string.h>
 #include <stdarg.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/syscall.h>
-#include <dirent.h>
-#include <dlfcn.h>
+#include <stdlib.h>
+#include <errno.h>
 
 //#define PRETTYPRINT
 
@@ -45,7 +23,7 @@
 #define MAXVALUELEN 1024
 
 
-ghost_error_t ghost_headerString(char **str, const char *fmt, ...)
+ghost_error_t ghost_header_string(char **str, const char *fmt, ...)
 {
     size_t headerLen = (PRINTWIDTH+1)*HEADERHEIGHT+1;
     *str = realloc(*str,strlen(*str)+headerLen);
@@ -113,7 +91,7 @@ ghost_error_t ghost_headerString(char **str, const char *fmt, ...)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_footerString(char **str) 
+ghost_error_t ghost_footer_string(char **str) 
 {
     size_t len = strlen(*str);
     size_t footerLen = (PRINTWIDTH+1)*FOOTERHEIGHT+1;
@@ -137,7 +115,7 @@ ghost_error_t ghost_footerString(char **str)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_lineString(char **str, const char *label, const char *unit, const char *fmt, ...)
+ghost_error_t ghost_line_string(char **str, const char *label, const char *unit, const char *fmt, ...)
 {
     int nLines, l;
     size_t len = strlen(*str);

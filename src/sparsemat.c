@@ -8,7 +8,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 #include "ghost/machine.h"
-#include "ghost/io.h"
+#include "ghost/bincrs.h"
 
 #include <libgen.h>
 #ifdef GHOST_HAVE_SCOTCH
@@ -25,7 +25,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     ghost_error_t ret = GHOST_SUCCESS;
 
     int me;
-    GHOST_CALL_GOTO(ghost_getRank(context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)mat,sizeof(ghost_sparsemat_t)),err,ret);
 
     (*mat)->traits = traits;
@@ -68,7 +68,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     }
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_nnz_t)*(2*context->gnrows-1)),err,ret);
-    GHOST_CALL_GOTO(ghost_sizeofDatatype(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
+    GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
 
     switch (traits->format) {
         case GHOST_SPARSEMAT_CRS:
@@ -92,7 +92,7 @@ out:
     return ret;    
 }
 
-ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride)
+ghost_error_t ghost_sparsemat_sortrow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride)
 {
     ghost_idx_t n;
     ghost_idx_t c;
@@ -115,7 +115,7 @@ ghost_error_t ghost_sparsemat_sortRow(ghost_idx_t *col, char *val, size_t valSiz
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
+ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
 {
     ghost_idx_t c, col;
 
@@ -135,7 +135,7 @@ ghost_error_t ghost_sparsemat_bandwidthFromRow(ghost_sparsemat_t *mat, ghost_idx
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags) 
+ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags) 
 {
     UNUSED(maxrowlen);
     UNUSED(flags);
@@ -143,8 +143,8 @@ ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_i
     
     int nprocs = 1;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     
     memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
     mat->lowerBandwidth = 0;
@@ -156,9 +156,9 @@ ghost_error_t ghost_sparsemat_fromRowFunc_common(ghost_sparsemat_t *mat, ghost_i
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_sparsemat_permFromScotch(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC);
+            ghost_sparsemat_perm_scotch(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC);
         } else {
-            ghost_sparsemat_permFromSorting(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
+            ghost_sparsemat_perm_sort(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
         }
     } else {
         if (mat->traits->sortScope > 1) {
@@ -178,22 +178,22 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt) 
+ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt) 
 {
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t i;
-    ghost_matfile_header_t header;
+    ghost_bincrs_header_t header;
 
 #ifdef GHOST_HAVE_MPI
     MPI_Request *req = NULL;
     MPI_Status *stat = NULL;
 #endif
 
-    ghost_readMatFileHeader(matrixPath,&header);
+    ghost_bincrs_header_read(&header,matrixPath);
     int nprocs = 1;
     int me;
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
 #ifdef GHOST_HAVE_MPI
     GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
@@ -210,7 +210,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
-    if (!ghost_sparsemat_symmetryValid(header.symmetry)) {
+    if (!ghost_sparsemat_symmetry_valid(header.symmetry)) {
         ERROR_LOG("Symmetry is invalid! (%d)",header.symmetry);
         return GHOST_ERR_IO;
     }
@@ -220,7 +220,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
-    if (!ghost_datatypeValid(header.datatype)) {
+    if (!ghost_datatype_valid(header.datatype)) {
         ERROR_LOG("Datatype is invalid! (%d)",header.datatype);
         return GHOST_ERR_IO;
     }
@@ -238,9 +238,9 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_sparsemat_permFromScotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
+            ghost_sparsemat_perm_scotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
         } else {
-            ghost_sparsemat_permFromSorting(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,mat->traits->sortScope);
+            ghost_sparsemat_perm_sort(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,mat->traits->sortScope);
         }
     } else {
         if (mat->traits->sortScope > 1) {
@@ -261,7 +261,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
                 for (i = 0; i < header.nrows+1; i++) {
                     (*rpt)[i] = 0;
                 }
-                GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
+                GHOST_CALL_GOTO(ghost_bincrs_rpt_read(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
                 mat->context->lfEnt[0] = 0;
 
                 for (i=1; i<nprocs; i++){
@@ -316,7 +316,7 @@ ghost_error_t ghost_sparsemat_fromFile_common(ghost_sparsemat_t *mat, char *matr
         for (i = 0; i < header.nrows+1; i++) {
             (*rpt)[i] = 0;
         }
-        GHOST_CALL_GOTO(ghost_readRpt(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
         for (i=0; i<nprocs; i++){
             mat->context->lfEnt[i] = 0;
             mat->context->lfRow[i] = 0;
@@ -352,7 +352,7 @@ static int compareNZEPerRow( const void* a, const void* b )
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
 
-ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope)
+ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     if (mat->permutation) {
@@ -364,7 +364,7 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
     ghost_sorting_t *rowSort = NULL;
     ghost_idx_t *rpt = NULL;
 
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
     
 
@@ -420,7 +420,7 @@ ghost_error_t ghost_sparsemat_permFromSorting(ghost_sparsemat_t *mat, void *matr
     } else {
         char *matrixPath = (char *)matrixSource;
 
-        GHOST_CALL_GOTO(ghost_readRpt(rpt, matrixPath, rowOffset, nrows+1, NULL),err,ret);
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, rowOffset, nrows+1, NULL),err,ret);
         for (i=0; i<nrows; i++) {
             rowSort[i].nEntsInRow = rpt[i+1]-rpt[i];
             rowSort[i].row = i;
@@ -449,7 +449,7 @@ out:
 
 }
 
-ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
+ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType)
 {
 #ifndef GHOST_HAVE_SCOTCH
     UNUSED(mat);
@@ -466,7 +466,7 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     return GHOST_SUCCESS;
 #else
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_matfile_header_t header;
+    ghost_bincrs_header_t header;
     MPI_Request *req = NULL;
     MPI_Status *stat = NULL;
     SCOTCH_Dgraph * dgraph = NULL;
@@ -486,22 +486,22 @@ ghost_error_t ghost_sparsemat_permFromScotch(ghost_sparsemat_t *mat, void *matri
     }
 
     char *matrixPath = (char *)matrixSource;
-    GHOST_CALL_GOTO(ghost_readMatFileHeader(matrixPath,&header),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_header_read(&header,matrixPath),err,ret);
 
 
 
-    GHOST_CALL_GOTO(ghost_getRank(mat->context->mpicomm,&me),err,ret);
-    GHOST_CALL_GOTO(ghost_getNumberOfRanks(mat->context->mpicomm,&nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_readRpt(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
 
 
     ghost_nnz_t nnz = rpt[mat->context->lnrows[me]]-rpt[0];
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
 
     for (i=1;i<mat->context->lnrows[me]+1;i++) {
         rpt[i] -= rpt[0];
@@ -629,7 +629,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
     GHOST_CALL_RETURN(ghost_sparsemat_nrows(&nrows,mat));
     GHOST_CALL_RETURN(ghost_sparsemat_nnz(&nnz,mat));
-    GHOST_CALL_RETURN(ghost_getRank(mat->context->mpicomm,&myrank));
+    GHOST_CALL_RETURN(ghost_rank(&myrank, mat->context->mpicomm));
 
 
     char *matrixLocation;
@@ -641,58 +641,58 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
         matrixLocation = "Default";
 
 
-    ghost_headerString(str,"%s @ rank %d",mat->name,myrank);
-    ghost_lineString(str,"Data type",NULL,"%s",ghost_datatypeString(mat->traits->datatype));
-    ghost_lineString(str,"Matrix location",NULL,"%s",matrixLocation);
-    ghost_lineString(str,"Total number of rows",NULL,"%"PRIDX,nrows);
-    ghost_lineString(str,"Total number of nonzeros",NULL,"%"PRNNZ,nnz);
-    ghost_lineString(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
-    ghost_lineString(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
+    ghost_header_string(str,"%s @ rank %d",mat->name,myrank);
+    ghost_line_string(str,"Data type",NULL,"%s",ghost_datatype_string(mat->traits->datatype));
+    ghost_line_string(str,"Matrix location",NULL,"%s",matrixLocation);
+    ghost_line_string(str,"Total number of rows",NULL,"%"PRIDX,nrows);
+    ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRNNZ,nnz);
+    ghost_line_string(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
+    ghost_line_string(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
 
-    ghost_lineString(str,"Local number of rows",NULL,"%"PRIDX,mat->nrows);
-    ghost_lineString(str,"Local number of rows (padded)",NULL,"%"PRIDX,mat->nrowsPadded);
-    ghost_lineString(str,"Local number of nonzeros",NULL,"%"PRIDX,mat->nnz);
+    ghost_line_string(str,"Local number of rows",NULL,"%"PRIDX,mat->nrows);
+    ghost_line_string(str,"Local number of rows (padded)",NULL,"%"PRIDX,mat->nrowsPadded);
+    ghost_line_string(str,"Local number of nonzeros",NULL,"%"PRIDX,mat->nnz);
 
-    ghost_lineString(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
+    ghost_line_string(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)
     {
         if (mat->localPart) {
-            ghost_lineString(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
-            ghost_lineString(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->localPart->traits->symmetry));
-            ghost_lineString(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
+            ghost_line_string(str,"Local  matrix format",NULL,"%s",mat->localPart->formatName(mat->localPart));
+            ghost_line_string(str,"Local  matrix symmetry",NULL,"%s",ghost_sparsemat_symmetry_string(mat->localPart->traits->symmetry));
+            ghost_line_string(str,"Local  matrix size","MB","%u",mat->localPart->byteSize(mat->localPart)/(1024*1024));
         }
         if (mat->remotePart) {
-            ghost_lineString(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
-            ghost_lineString(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
+            ghost_line_string(str,"Remote matrix format",NULL,"%s",mat->remotePart->formatName(mat->remotePart));
+            ghost_line_string(str,"Remote matrix size","MB","%u",mat->remotePart->byteSize(mat->remotePart)/(1024*1024));
         }
     } else {
-        ghost_lineString(str,"Full   matrix symmetry",NULL,"%s",ghost_sparsemat_symmetryString(mat->traits->symmetry));
+        ghost_line_string(str,"Full   matrix symmetry",NULL,"%s",ghost_sparsemat_symmetry_string(mat->traits->symmetry));
     }
 
-    ghost_lineString(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
+    ghost_line_string(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
-    ghost_lineString(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
+    ghost_line_string(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_lineString(str,"Permutation strategy",NULL,"Scotch");
-            ghost_lineString(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
+            ghost_line_string(str,"Permutation strategy",NULL,"Scotch");
+            ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
         } else {
-            ghost_lineString(str,"Permutation strategy",NULL,"Sorting");
-            ghost_lineString(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
+            ghost_line_string(str,"Permutation strategy",NULL,"Sorting");
+            ghost_line_string(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
         }
-        ghost_lineString(str,"Permutation scope",NULL,"%s",mat->permutation->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
-        ghost_lineString(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
-        ghost_lineString(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
+        ghost_line_string(str,"Permutation scope",NULL,"%s",mat->permutation->scope==GHOST_PERMUTATION_GLOBAL?"Across processes":"Local to process");
+        ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
+        ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
     }
 
     mat->auxString(mat,str);
-    ghost_footerString(str);
+    ghost_footer_string(str);
 
     return GHOST_SUCCESS;
 
 }
 
-bool ghost_sparsemat_symmetryValid(int symmetry)
+bool ghost_sparsemat_symmetry_valid(int symmetry)
 {
     if ((symmetry & GHOST_SPARSEMAT_SYMM_GENERAL) &&
             (symmetry & ~GHOST_SPARSEMAT_SYMM_GENERAL))
@@ -705,7 +705,7 @@ bool ghost_sparsemat_symmetryValid(int symmetry)
     return 1;
 }
 
-char * ghost_sparsemat_symmetryString(int symmetry)
+char * ghost_sparsemat_symmetry_string(int symmetry)
 {
     if (symmetry & GHOST_SPARSEMAT_SYMM_GENERAL)
         return "General";

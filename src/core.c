@@ -64,9 +64,9 @@ ghost_error_t ghost_init(int argc, char **argv)
         INFO_LOG("MPI was already initialized, not doing it!");
     }
 
-    ghost_setupNodeMPI(MPI_COMM_WORLD);
-    ghost_mpi_createDatatypes();
-    ghost_mpi_createOperations();
+    ghost_nodecomm_setup(MPI_COMM_WORLD);
+    ghost_mpi_datatypes_create();
+    ghost_mpi_operations_create();
 
 #else // ifdef GHOST_HAVE_MPI
     UNUSED(MPIwasInitialized);
@@ -99,16 +99,16 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_mpi_comm_t nodeComm;
     int nnoderanks;
     int noderank;
-    GHOST_CALL_RETURN(ghost_getNodeComm(&nodeComm));
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(nodeComm,&nnoderanks));
-    GHOST_CALL_RETURN(ghost_getRank(nodeComm,&noderank));
+    GHOST_CALL_RETURN(ghost_nodecomm_get(&nodeComm));
+    GHOST_CALL_RETURN(ghost_nrank(&nnoderanks, nodeComm));
+    GHOST_CALL_RETURN(ghost_rank( &noderank,  nodeComm));
 
     int ncudadevs = 0;
     int nnumanodes;
-    ghost_machine_nNumaNodes(&nnumanodes);
+    ghost_machine_nnuma(&nnumanodes);
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_getDeviceCount(&ncudadevs);
+    ghost_cu_ndevice(&ncudadevs);
 #endif
 
     ghost_type_t ghost_type;
@@ -145,7 +145,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     localTypes[noderank] = ghost_type;
 #ifdef GHOST_HAVE_MPI
     ghost_mpi_comm_t ghost_node_comm;
-    GHOST_CALL_RETURN(ghost_getNodeComm(&ghost_node_comm));
+    GHOST_CALL_RETURN(ghost_nodecomm_get(&ghost_node_comm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&nLocalCuda,1,MPI_INT,MPI_SUM,ghost_node_comm));
 
 #ifdef GHOST_HAVE_CUDA
@@ -186,11 +186,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_hwconfig_t hwconfig;
     ghost_hwconfig_get(&hwconfig);
 
-    if (hwconfig.nCores == GHOST_HWCONFIG_INVALID) {
-        ghost_machine_nCores(&hwconfig.nCores, GHOST_NUMANODE_ANY);
+    if (hwconfig.ncore == GHOST_HWCONFIG_INVALID) {
+        ghost_machine_ncore(&hwconfig.ncore, GHOST_NUMANODE_ANY);
     }
-    if (hwconfig.nSmt == GHOST_HWCONFIG_INVALID) {
-        ghost_machine_nSmt(&hwconfig.nSmt);
+    if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
+        ghost_machine_nsmt(&hwconfig.nsmt);
     }
     ghost_hwconfig_set(hwconfig);
 
@@ -280,10 +280,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (obj->sibling_rank == 0) {
         cores++;
     }
-    if ((int)(obj->sibling_rank) >= hwconfig.nSmt) {
+    if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
-    if ((int)cores > hwconfig.nCores) {
+    if ((int)cores > hwconfig.ncore) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     }
     hwloc_bitmap_foreach_end();
@@ -292,7 +292,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     void *(*threadFunc)(void *);
 
     ghost_taskq_create();
-    ghost_taskq_getStartRoutine(&threadFunc);
+    ghost_taskq_startroutine(&threadFunc);
     ghost_thpool_create(hwloc_bitmap_weight(mycpuset),threadFunc);
     ghost_pumap_create(mycpuset);
 
@@ -313,8 +313,8 @@ ghost_error_t ghost_finalize()
     LIKWID_MARKER_CLOSE;
 #endif
 
-    ghost_mpi_destroyDatatypes();
-    ghost_mpi_destroyOperations();
+    ghost_mpi_datatypes_destroy();
+    ghost_mpi_operations_destroy();
 
     ghost_taskq_waitall();
     ghost_taskq_destroy();
@@ -336,48 +336,48 @@ ghost_error_t ghost_string(char **str)
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);
 
-    ghost_headerString(str,"%s", GHOST_NAME); 
-    ghost_lineString(str,"Version",NULL,"%s",GHOST_VERSION);
-    ghost_lineString(str,"Build date",NULL,"%s",__DATE__);
-    ghost_lineString(str,"Build time",NULL,"%s",__TIME__);
+    ghost_header_string(str,"%s", GHOST_NAME); 
+    ghost_line_string(str,"Version",NULL,"%s",GHOST_VERSION);
+    ghost_line_string(str,"Build date",NULL,"%s",__DATE__);
+    ghost_line_string(str,"Build time",NULL,"%s",__TIME__);
 #ifdef GHOST_HAVE_MIC
-    ghost_lineString(str,"MIC kernels",NULL,"Enabled");
+    ghost_line_string(str,"MIC kernels",NULL,"Enabled");
 #else
-    ghost_lineString(str,"MIC kernels",NULL,"Disabled");
+    ghost_line_string(str,"MIC kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_AVX
-    ghost_lineString(str,"AVX kernels",NULL,"Enabled");
+    ghost_line_string(str,"AVX kernels",NULL,"Enabled");
 #else
-    ghost_lineString(str,"AVX kernels",NULL,"Disabled");
+    ghost_line_string(str,"AVX kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_SSE
-    ghost_lineString(str,"SSE kernels",NULL,"Enabled");
+    ghost_line_string(str,"SSE kernels",NULL,"Enabled");
 #else
-    ghost_lineString(str,"SSE kernels",NULL,"Disabled");
+    ghost_line_string(str,"SSE kernels",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_OPENMP
-    ghost_lineString(str,"OpenMP support",NULL,"Enabled");
+    ghost_line_string(str,"OpenMP support",NULL,"Enabled");
 #else
-    ghost_lineString(str,"OpenMP support",NULL,"Disabled");
+    ghost_line_string(str,"OpenMP support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_MPI
-    ghost_lineString(str,"MPI support",NULL,"Enabled");
+    ghost_line_string(str,"MPI support",NULL,"Enabled");
 #else
-    ghost_lineString(str,"MPI support",NULL,"Disabled");
+    ghost_line_string(str,"MPI support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_CUDA
-    ghost_lineString(str,"CUDA support",NULL,"Enabled");
+    ghost_line_string(str,"CUDA support",NULL,"Enabled");
 #else
-    ghost_lineString(str,"CUDA support",NULL,"Disabled");
+    ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_INSTR_LIKWID
-    ghost_lineString(str,"Instrumentation",NULL,"Likwid");
+    ghost_line_string(str,"Instrumentation",NULL,"Likwid");
 #elif defined(GHOST_HAVE_INSTR_TIMING)
-    ghost_lineString(str,"Instrumentation",NULL,"Timing");
+    ghost_line_string(str,"Instrumentation",NULL,"Timing");
 #else
-    ghost_lineString(str,"Instrumentation",NULL,"Disabled");
+    ghost_line_string(str,"Instrumentation",NULL,"Disabled");
 #endif
-    ghost_footerString(str);
+    ghost_footer_string(str);
 
     return GHOST_SUCCESS;
 

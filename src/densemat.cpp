@@ -6,6 +6,7 @@
 #endif
 #include <cstdlib>
 #include <iostream>
+#include <complex>
 #include <stdio.h>
 
 #include "ghost/complex.h"
@@ -192,7 +193,7 @@ template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec
 #ifdef GHOST_HAVE_MPI
     if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
         int rank;
-        GHOST_CALL_RETURN(ghost_getRank(vec->context->mpicomm,&rank));
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
         int ndigits = (int)floor(log10(abs(rank))) + 1;
         snprintf(prefix,4+ndigits,"PE%d: ",rank);
     }

@@ -7,12 +7,13 @@
 extern "C" {
 #endif
     /**
-     * @brief Get a random state for the calling OpenMP thread.
+     * @brief Get a random state for the calling thread.
      *
      * @param s Where to store the state.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      *
+     * The random state is determined from the PU on which the calling thread is running.
      * This function is used for thread-safe random number generation.
      */
     ghost_error_t ghost_rand_get(unsigned int *s);

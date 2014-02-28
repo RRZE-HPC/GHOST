@@ -27,7 +27,7 @@ static int stringcmp(const void *x, const void *y)
     return (strcmp((char *)x, (char *)y));
 }
 
-ghost_error_t ghost_setCore(int coreNumber)
+ghost_error_t ghost_thread_pin(int coreNumber)
 {
     hwloc_topology_t topology;
     ghost_topology_get(&topology);
@@ -48,18 +48,18 @@ ghost_error_t ghost_setCore(int coreNumber)
     
     IF_DEBUG(2) {
         int core;
-        GHOST_CALL_RETURN(ghost_getCore(&core));
+        GHOST_CALL_RETURN(ghost_cpu(&core));
         DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_ompGetThreadNum(),core);
     }
 
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_unsetCore()
+ghost_error_t ghost_thread_unpin()
 {
     IF_DEBUG(2) {
         int core;
-        GHOST_CALL_RETURN(ghost_getCore(&core));
+        GHOST_CALL_RETURN(ghost_cpu(&core));
         DEBUG_LOG(2,"Unpinning OpenMP thread %d from core %d",ghost_ompGetThreadNum(),core);
     }
     hwloc_topology_t topology;
@@ -76,7 +76,7 @@ ghost_error_t ghost_unsetCore()
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getCore(int *core)
+ghost_error_t ghost_cpu(int *core)
 {
     hwloc_topology_t topology;
     ghost_topology_get(&topology);
@@ -96,7 +96,7 @@ ghost_error_t ghost_getCore(int *core)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank) 
+ghost_error_t ghost_rank(int *rank, ghost_mpi_comm_t comm) 
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Comm_rank(comm,rank));
@@ -108,7 +108,7 @@ ghost_error_t ghost_getRank(ghost_mpi_comm_t comm, int *rank)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
+ghost_error_t ghost_nnode(int *nNodes, ghost_mpi_comm_t comm)
 {
 #ifndef GHOST_HAVE_MPI
     UNUSED(stringcmp);
@@ -122,8 +122,8 @@ ghost_error_t ghost_getNumberOfNodes(ghost_mpi_comm_t comm, int *nNodes)
     char name[MPI_MAX_PROCESSOR_NAME] = "";
     char *names = NULL;
 
-    GHOST_CALL_RETURN(ghost_getRank(comm,&me));
-    GHOST_CALL_RETURN(ghost_getNumberOfRanks(comm,&size));
+    GHOST_CALL_RETURN(ghost_rank( &me,  comm));
+    GHOST_CALL_RETURN(ghost_nrank( &size,  comm));
     MPI_Get_processor_name(name,&nameLen);
 
 
@@ -161,7 +161,7 @@ out:
 #endif
 }
 
-ghost_error_t ghost_getNumberOfRanks(ghost_mpi_comm_t comm, int *nRanks)
+ghost_error_t ghost_nrank(int *nRanks, ghost_mpi_comm_t comm)
 {
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Comm_size(comm,nRanks));
@@ -184,8 +184,8 @@ ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    hwconfig->nCores = ghost_hwconfig.nCores;
-    hwconfig->nSmt = ghost_hwconfig.nSmt;
+    hwconfig->ncore = ghost_hwconfig.ncore;
+    hwconfig->nsmt = ghost_hwconfig.nsmt;
     
     return GHOST_SUCCESS;
 }
@@ -321,7 +321,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
     return 0;
 }
 
-ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm)
+ghost_error_t ghost_nodecomm_get(ghost_mpi_comm_t *comm)
 {
     if (!comm) {
         ERROR_LOG("NULL pointer");
@@ -337,11 +337,11 @@ ghost_error_t ghost_getNodeComm(ghost_mpi_comm_t *comm)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_setupNodeMPI(ghost_mpi_comm_t comm)
+ghost_error_t ghost_nodecomm_setup(ghost_mpi_comm_t comm)
 {
 #ifdef GHOST_HAVE_MPI
     int mpiRank;
-    GHOST_CALL_RETURN(ghost_getRank(comm,&mpiRank));
+    GHOST_CALL_RETURN(ghost_rank( &mpiRank,  comm));
     int error;
     char * hostname = NULL;
     size_t hostnameLength = 0;

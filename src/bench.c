@@ -31,12 +31,12 @@ ghost_error_t ghost_bench_stream(int test, double *bw)
         b[i] = i;
     }
     
-    start = ghost_wctime();
+    start = ghost_timing_wc();
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = b[i];
     }
-    *bw = 2*STREAM_BYTES/(ghost_wctime()-start);
+    *bw = 2*STREAM_BYTES/(ghost_timing_wc()-start);
 
     dummy(a);
 
