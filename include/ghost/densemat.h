@@ -378,13 +378,6 @@ struct ghost_densemat_traits_t
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->elSize])
 
 #ifdef __cplusplus
-template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec);
-template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res);
-template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *);
-template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *, void *);
-template <typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *vscale);
-template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec);
-template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec);
 
 extern "C" {
 #endif

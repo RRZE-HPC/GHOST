@@ -45,7 +45,7 @@ typedef struct {
 } ghost_bincrs_header_t;
 
 #ifdef __cplusplus
-template<typename m_t, typename f_t> void ghost_castArray_tmpl(void *out, void *in, int nEnts);
+template<typename m_t, typename f_t> void ghost_castarray_tmpl(void *out, void *in, int nEnts);
 extern "C" {
 #endif
 
@@ -67,22 +67,22 @@ extern "C" {
      */
     //ghost_error_t ghost_endianessDiffers(int *differs, char *matrixPath);
 
-    void dd_ghost_castArray(void *, void *, int);
-    void ds_ghost_castArray(void *, void *, int);
-    void dc_ghost_castArray(void *, void *, int);
-    void dz_ghost_castArray(void *, void *, int);
-    void sd_ghost_castArray(void *, void *, int);
-    void ss_ghost_castArray(void *, void *, int);
-    void sc_ghost_castArray(void *, void *, int);
-    void sz_ghost_castArray(void *, void *, int);
-    void cd_ghost_castArray(void *, void *, int);
-    void cs_ghost_castArray(void *, void *, int);
-    void cc_ghost_castArray(void *, void *, int);
-    void cz_ghost_castArray(void *, void *, int);
-    void zd_ghost_castArray(void *, void *, int);
-    void zs_ghost_castArray(void *, void *, int);
-    void zc_ghost_castArray(void *, void *, int);
-    void zz_ghost_castArray(void *, void *, int);
+    void dd_ghost_castarray(void *, void *, int);
+    void ds_ghost_castarray(void *, void *, int);
+    void dc_ghost_castarray(void *, void *, int);
+    void dz_ghost_castarray(void *, void *, int);
+    void sd_ghost_castarray(void *, void *, int);
+    void ss_ghost_castarray(void *, void *, int);
+    void sc_ghost_castarray(void *, void *, int);
+    void sz_ghost_castarray(void *, void *, int);
+    void cd_ghost_castarray(void *, void *, int);
+    void cs_ghost_castarray(void *, void *, int);
+    void cc_ghost_castarray(void *, void *, int);
+    void cz_ghost_castarray(void *, void *, int);
+    void zd_ghost_castarray(void *, void *, int);
+    void zs_ghost_castarray(void *, void *, int);
+    void zc_ghost_castarray(void *, void *, int);
+    void zz_ghost_castarray(void *, void *, int);
 
 
 #ifdef __cplusplus

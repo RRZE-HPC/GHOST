@@ -19,7 +19,8 @@
 
 
 
-template <typename v_t> ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec)
+template <typename v_t> 
+static ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t v;
@@ -45,7 +46,8 @@ out:
 
 }
 
-template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+template <typename v_t> 
+static ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
     if (vec->traits->nrows != vec2->traits->nrows) {
         WARNING_LOG("The input vectors of the dot product have different numbers of rows");
@@ -59,7 +61,7 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *v
     int nthreads;
 #pragma omp parallel
 #pragma omp single
-    nthreads = ghost_ompGetNumThreads();
+    nthreads = ghost_omp_nthread();
 
     v_t *partsums;
     GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
@@ -70,7 +72,7 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *v
 
 #pragma omp parallel 
         {
-            int tid = ghost_ompGetThreadNum();
+            int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime)
             for (i=0; i<nr; i++) {
                 partsums[tid*16] += 
@@ -89,7 +91,8 @@ template <typename v_t> ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *v
     return GHOST_SUCCESS;
 }
 
-template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
+template <typename v_t> 
+static ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
@@ -104,7 +107,8 @@ template <typename v_t> ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec
     return GHOST_SUCCESS;
 }
 
-template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
+template <typename v_t> 
+static ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
@@ -121,7 +125,8 @@ template <typename v_t> ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *ve
     return GHOST_SUCCESS;
 }
 
-template<typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *scale)
+template<typename v_t> 
+static ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
@@ -137,7 +142,7 @@ template<typename v_t> ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec
 
 // thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
 template <typename v_t>
-void my_rand(unsigned int* state, v_t* result)
+static void my_rand(unsigned int* state, v_t* result)
 {
     // default implementation
     static const v_t scal = (v_t)2.0/(v_t)RAND_MAX;
@@ -146,7 +151,7 @@ void my_rand(unsigned int* state, v_t* result)
 }
 
 template <typename float_type>
-void my_rand(unsigned int* state, std::complex<float_type>* result)
+static void my_rand(unsigned int* state, std::complex<float_type>* result)
 {
     float_type* ft_res = (float_type*)result;
     my_rand(state,&ft_res[0]);
@@ -154,7 +159,7 @@ void my_rand(unsigned int* state, std::complex<float_type>* result)
 }
 
 template <typename float_type>
-void my_rand(unsigned int* state, ghost_complex<float_type>* result)
+static void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 {
     my_rand<float_type>(state,(float_type *)result);
     my_rand<float_type>(state,((float_type *)result)+1);
@@ -162,7 +167,8 @@ void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 
 
 
-template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec)
+template <typename v_t> 
+static ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec)
 {
     ghost_vec_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
@@ -187,7 +193,8 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *
 }
 
 
-template <typename v_t> ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec)
+template <typename v_t> 
+static ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec)
 {
     char prefix[16] = "";
 #ifdef GHOST_HAVE_MPI

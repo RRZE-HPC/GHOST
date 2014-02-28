@@ -10,9 +10,9 @@
 extern "C" {
 #endif
     
-    void ghost_ompSetNumThreads(int nthreads);
-    int ghost_ompGetThreadNum();
-    int ghost_ompGetNumThreads();
+    void ghost_omp_nthread_set(int nthreads);
+    int ghost_omp_threadnum();
+    int ghost_omp_nthread();
 
 #ifdef __cplusplus
 }

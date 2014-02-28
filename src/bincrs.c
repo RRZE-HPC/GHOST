@@ -27,11 +27,11 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #define SWAPREQ(header) (header.endianess == GHOST_BINCRS_LITTLE_ENDIAN)?ghost_machine_bigendian()?1:0:ghost_machine_bigendian()?0:1
 
-static void (*ghost_castArray_funcs[4][4]) (void *, void *, int) = 
-{{&ss_ghost_castArray,&sd_ghost_castArray,&sc_ghost_castArray,&sz_ghost_castArray},
-    {&ds_ghost_castArray,&dd_ghost_castArray,&dc_ghost_castArray,&dz_ghost_castArray},
-    {&cs_ghost_castArray,&cd_ghost_castArray,&cc_ghost_castArray,&cz_ghost_castArray},
-    {&zs_ghost_castArray,&zd_ghost_castArray,&zc_ghost_castArray,&zz_ghost_castArray}};
+static void (*ghost_castarray_funcs[4][4]) (void *, void *, int) = 
+{{&ss_ghost_castarray,&sd_ghost_castarray,&sc_ghost_castarray,&sz_ghost_castarray},
+    {&ds_ghost_castarray,&dd_ghost_castarray,&dc_ghost_castarray,&dz_ghost_castarray},
+    {&cs_ghost_castarray,&cd_ghost_castarray,&cc_ghost_castarray,&cz_ghost_castarray},
+    {&zs_ghost_castarray,&zd_ghost_castarray,&zc_ghost_castarray,&zz_ghost_castarray}};
 
 
 ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
@@ -343,7 +343,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
             GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,datatype));
             GHOST_CALL_RETURN(ghost_datatype_idx(&headerDtIdx,header.datatype));
 
-            ghost_castArray_funcs[matDtIdx][headerDtIdx](val_raw,tmpval,nEnts);
+            ghost_castarray_funcs[matDtIdx][headerDtIdx](val_raw,tmpval,nEnts);
         }
 
         free(tmpval);

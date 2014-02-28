@@ -49,7 +49,7 @@ ghost_error_t ghost_thread_pin(int coreNumber)
     IF_DEBUG(2) {
         int core;
         GHOST_CALL_RETURN(ghost_cpu(&core));
-        DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_ompGetThreadNum(),core);
+        DEBUG_LOG(2,"Successfully pinned OpenMP thread %d to core %d",ghost_omp_threadnum(),core);
     }
 
     return GHOST_SUCCESS;
@@ -60,7 +60,7 @@ ghost_error_t ghost_thread_unpin()
     IF_DEBUG(2) {
         int core;
         GHOST_CALL_RETURN(ghost_cpu(&core));
-        DEBUG_LOG(2,"Unpinning OpenMP thread %d from core %d",ghost_ompGetThreadNum(),core);
+        DEBUG_LOG(2,"Unpinning OpenMP thread %d from core %d",ghost_omp_threadnum(),core);
     }
     hwloc_topology_t topology;
     ghost_topology_get(&topology);

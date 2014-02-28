@@ -42,7 +42,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 #pragma omp parallel 
         {
 #pragma omp single
-        nthreads = ghost_ompGetNumThreads();
+        nthreads = ghost_omp_nthread();
         }
 
         // 3 -> 16: avoid false sharing
@@ -54,7 +54,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 
 #pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
     {
-        int tid = ghost_ompGetThreadNum();
+        int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
             for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)

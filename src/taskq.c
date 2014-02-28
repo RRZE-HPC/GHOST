@@ -155,7 +155,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
     {
         if (curTask->flags & GHOST_TASK_NO_PIN) {
             taskq_deleteTask(q,curTask);    
-            ghost_ompSetNumThreads(curTask->nThreads);
+            ghost_omp_nthread_set(curTask->nThreads);
             return curTask;
         }
 
@@ -203,7 +203,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         DEBUG_LOG(1,"Deleting task itself");
         taskq_deleteTask(q,curTask);    
         DEBUG_LOG(1,"Pinning the task's threads");
-        ghost_ompSetNumThreads(curTask->nThreads);
+        ghost_omp_nthread_set(curTask->nThreads);
 
         //        if (curTask->flags & GHOST_TASK_NO_PIN) {
         //            return curTask;
@@ -251,7 +251,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
                     //if (!hwloc_bitmap_isset(ghost_thpool->busy,core)) {
                     if (!hwloc_bitmap_isset(mybusy,core)) {
-                        DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_ompGetThreadNum(),
+                        DEBUG_LOG(1,"Thread %d (%d): Core # %d is idle, using it",ghost_omp_threadnum(),
                                 (int)pthread_self(),core);
 
                        //                            hwloc_bitmap_set(ghost_thpool->busy,core);

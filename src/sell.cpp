@@ -71,7 +71,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     
     if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
-        nthreads = ghost_ompGetNumThreads();
+        nthreads = ghost_omp_nthread();
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
@@ -82,7 +82,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 
 #pragma omp parallel private(c,j,tmp,i,v)
     {
-        int tid = ghost_ompGetThreadNum();
+        int tid = ghost_omp_threadnum();
 
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
@@ -165,7 +165,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     
     if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
-        nthreads = ghost_ompGetNumThreads();
+        nthreads = ghost_omp_nthread();
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
@@ -177,7 +177,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 
 #pragma omp parallel private(i,j,tmp,v)
     {
-        int tid = ghost_ompGetThreadNum();
+        int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime)
         for (i=0; i<mat->nrows; i++) 
         {
