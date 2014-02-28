@@ -2,8 +2,8 @@
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/context.h"
+#include "ghost/sparsemat.h"
 #include "ghost/locality.h"
-#include "ghost/crs.h"
 #include "ghost/bincrs.h"
 #include "ghost/log.h"
 
