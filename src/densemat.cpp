@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 #include "ghost/complex.h"
-#include "ghost/core.h"
+#include "ghost/rand.h"
 #include "ghost/util.h"
 #include "ghost/densemat.h"
 #include "ghost/math.h"
@@ -170,7 +170,7 @@ template <typename v_t> ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *
     {
     ghost_idx_t i,v;
     unsigned int state;
-    ghost_getRandState(&state);
+    ghost_rand_get(&state);
         for (v=0; v<vec->traits->ncols; v++) 
         {
 #pragma omp for schedule(runtime)

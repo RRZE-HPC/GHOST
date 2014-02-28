@@ -48,6 +48,7 @@ set (SOURCES
 		src/math.c
         src/omp.c
         src/pumap.c
+        src/rand.c
 		src/sell.c 
 		src/sell.cpp
 		src/sparsemat.c
@@ -80,6 +81,7 @@ set (HEADERS
 		include/ghost/math.h
         include/ghost/omp.h
         include/ghost/pumap.h
+        include/ghost/rand.h
 		include/ghost/sell.h
 		include/ghost/sparsemat.h
 		include/ghost/spmv_solvers.h
