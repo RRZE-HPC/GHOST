@@ -179,11 +179,11 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
             }
         }
     }
-/*
+
 #ifdef GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast(&((*devInfo)->ndistinctdevice),1,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_CALL_GOTO(MPI_Bcast(&((*devInfo)->ndistinctdevice),1,MPI_INT,0,MPI_COMM_WORLD),err,ret);
 #endif
-*/
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->ndevice,sizeof(int)*(*devInfo)->ndistinctdevice),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*devInfo)->names,sizeof(char *)*(*devInfo)->ndistinctdevice),err,ret);
     for (i=0; i<(*devInfo)->ndistinctdevice; i++) {
@@ -206,15 +206,15 @@ ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **devInfo)
         }
         free(names);
     }
-/*
+
 #ifdef GHOST_HAVE_MPI
-    MPI_safecall(MPI_Bcast((*devInfo)->ndevice,(*devInfo)->ndistinctdevice,MPI_INT,0,MPI_COMM_WORLD));
+    MPI_CALL_GOTO(MPI_Bcast((*devInfo)->ndevice,(*devInfo)->ndistinctdevice,MPI_INT,0,MPI_COMM_WORLD),err,ret);
 
     for (i=0; i<(*devInfo)->ndistinctdevice; i++) {
-        MPI_safecall(MPI_Bcast((*devInfo)->names[i],ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD));
+        MPI_CALL_GOTO(MPI_Bcast((*devInfo)->names[i],ghost_cu_MAX_DEVICE_NAME_LEN,MPI_CHAR,0,MPI_COMM_WORLD),err,ret);
     }
 #endif
-*/
+
 
     goto out;
 err:
