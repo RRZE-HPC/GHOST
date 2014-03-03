@@ -510,7 +510,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        GHOST_CALL_GOTO(ghost_context_setupCommunication(mat->context,fullCR->col),err,ret);
+        GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,fullCR->col),err,ret);
     }
 
     if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation

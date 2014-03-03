@@ -363,7 +363,7 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
     ghost_line_string(str,"MPI processes",NULL,"%d",nranks);
     ghost_line_string(str,"Number of rows",NULL,"%"PRIDX,context->gnrows);
     ghost_line_string(str,"Type",NULL,"%s",contextType);
-    ghost_line_string(str,"Work distribution scheme",NULL,"%s",ghost_context_workdistString(context->flags));
+    ghost_line_string(str,"Work distribution scheme",NULL,"%s",ghost_context_workdist_string(context->flags));
     ghost_footer_string(str);
     return GHOST_SUCCESS;
 
@@ -376,7 +376,7 @@ void ghost_context_destroy(ghost_context_t *context)
     DEBUG_LOG(1,"Context freed successfully");
 }
 
-ghost_error_t ghost_context_setupCommunication(ghost_context_t *ctx, ghost_idx_t *col)
+ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
 {
 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -731,7 +731,7 @@ out:
     return ret;
 }
 
-char * ghost_context_workdistString(ghost_context_flags_t flags)
+char * ghost_context_workdist_string(ghost_context_flags_t flags)
 {
     if (flags & GHOST_CONTEXT_DIST_NZ) {
         return "Equal no. of nonzeros";

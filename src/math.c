@@ -20,7 +20,7 @@ static ghost_mpi_op_t GHOST_MPI_OP_SUM_Z = MPI_OP_NULL;
 
 static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t *flags);
 
-ghost_error_t ghost_dot(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
     vec->dot(vec,vec2,res);
 #ifdef GHOST_HAVE_MPI
@@ -51,14 +51,14 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     if (vec->traits->datatype & GHOST_DT_FLOAT) {
         if (vec->traits->datatype & GHOST_DT_COMPLEX) {
             complex float res[ncols];
-            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
                 res[c] = 1.f/csqrtf(res[c]);
             }
             GHOST_CALL_RETURN(vec->vscale(vec,res));
         } else {
             float res[ncols];
-            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
                 res[c] = 1.f/sqrtf(res[c]);
             }
@@ -67,14 +67,14 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     } else {
         if (vec->traits->datatype & GHOST_DT_COMPLEX) {
             complex double res[ncols];
-            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
                 res[c] = 1./csqrt(res[c]);
             }
             GHOST_CALL_RETURN(vec->vscale(vec,res));
         } else {
             double res[ncols];
-            GHOST_CALL_RETURN(ghost_dot(vec,vec,res));
+            GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
                 res[c] = 1./sqrt(res[c]);
             }
@@ -157,7 +157,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     return ret;
 }
 
-ghost_error_t ghost_gemm(char *transpose, ghost_densemat_t *v, ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce)
+ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce) 
 {
     GHOST_INSTR_START(gemm)
     if (v->traits->flags & GHOST_DENSEMAT_SCATTERED)
@@ -427,7 +427,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
         UNUSED(context);
         *flags |= GHOST_SPMV_MODE_NOMPI;
 #endif
-        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_modeString(*flags));
+        DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_mode_string(*flags));
     }
 
 }
@@ -510,7 +510,7 @@ ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatyp
     return GHOST_SUCCESS;
 }
 
-char * ghost_spmv_modeString(ghost_spmv_flags_t flags) 
+char * ghost_spmv_mode_string(ghost_spmv_flags_t flags) 
 {
     if (flags & GHOST_SPMV_MODE_NOMPI) {
         return "Non-MPI";

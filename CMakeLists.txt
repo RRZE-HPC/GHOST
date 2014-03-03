@@ -81,6 +81,7 @@ set (HEADERS
 		include/ghost/machine.h
 		include/ghost/math.h
         include/ghost/omp.h
+        include/ghost/perm.h
         include/ghost/pumap.h
         include/ghost/rand.h
 		include/ghost/sell.h

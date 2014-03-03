@@ -9,7 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
-#include "context.h"
+#include "perm.h"
 
 #include <stdio.h>
 
@@ -49,7 +49,7 @@ template<typename m_t, typename f_t> void ghost_castarray_tmpl(void *out, void *
 extern "C" {
 #endif
 
-    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *, char *);
+    ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
     ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols);
     ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
     ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);

@@ -602,7 +602,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     ghost_idx_t idx, row;
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        ghost_context_setupCommunication(mat->context,fullSELL->col);
+        ghost_context_comm_init(mat->context,fullSELL->col);
     }
 
     ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);

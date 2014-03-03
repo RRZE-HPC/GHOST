@@ -37,10 +37,10 @@ static ghost_error_t (*ghost_vec_vaxpby_funcs[4]) (ghost_densemat_t *, ghost_den
 static ghost_error_t (*ghost_vec_fromRand_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_vec_fromRand, &d_ghost_vec_fromRand, &c_ghost_vec_fromRand, &z_ghost_vec_fromRand};
 
-static ghost_error_t (*ghost_vec_print_funcs[4]) (ghost_densemat_t *) = 
-{&s_ghost_printVector, &d_ghost_printVector, &c_ghost_printVector, &z_ghost_printVector};
+static ghost_error_t (*ghost_vec_string_funcs[4]) (char **str, ghost_densemat_t *) = 
+{&s_ghost_densemat_string, &d_ghost_densemat_string, &c_ghost_densemat_string, &z_ghost_densemat_string};
 
-static ghost_error_t vec_print(ghost_densemat_t *vec);
+static ghost_error_t vec_print(ghost_densemat_t *vec, char **str);
 static ghost_error_t vec_scale(ghost_densemat_t *vec, void *scale);
 static ghost_error_t vec_vscale(ghost_densemat_t *vec, void *scale);
 static ghost_error_t vec_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
@@ -126,7 +126,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     }
 
     (*vec)->compress = &vec_compress;
-    (*vec)->print = &vec_print;
+    (*vec)->string = &vec_print;
     (*vec)->fromFunc = &vec_fromFunc;
     (*vec)->fromVec = &vec_fromVec;
     (*vec)->fromFile = &vec_fromFile;
@@ -310,11 +310,11 @@ static ghost_error_t ghost_normalizeVector( ghost_densemat_t *vec)
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_print(ghost_densemat_t *vec)
+static ghost_error_t vec_print(ghost_densemat_t *vec, char **str)
 {
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,vec->traits->datatype));
-    return ghost_vec_print_funcs[dtIdx](vec);
+    return ghost_vec_string_funcs[dtIdx](str,vec);
 }
 
 ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec)
@@ -1123,7 +1123,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
 
     if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits->nrows != permutation->len) {
         ghost_malloc((void **)&traits,sizeof(ghost_densemat_traits_t));
-        *traits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+        *traits = (ghost_densemat_traits_t) GHOST_DENSEMAT_TRAITS_INITIALIZER;
         //ghost_densemat_traits_clone(vec->traits,&traits);
         traits->nrows = vec->context->gnrows;
         traits->flags = GHOST_DENSEMAT_HOST;

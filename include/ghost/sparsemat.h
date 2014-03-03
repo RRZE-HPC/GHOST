@@ -205,10 +205,11 @@ struct ghost_sparsemat_traits_t
     ghost_idx_t sortScope;
     ghost_datatype_t datatype;
 };
+
 /**
- * @brief Initialize sparse matrix traits with default values as specified in mat.c
+ * @brief Initialize sparse matrix traits with default values.
  */
-#define GHOST_SPARSEMAT_TRAITS_INITIALIZER (ghost_sparsemat_traits_t) {\
+#define GHOST_SPARSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_SPARSEMAT_DEFAULT,\
     .aux = NULL,\
     .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\

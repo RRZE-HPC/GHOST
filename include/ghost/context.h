@@ -12,38 +12,7 @@
 
 typedef struct ghost_context_t ghost_context_t;
 
-typedef enum
-{
-    GHOST_PERMUTATION_LOCAL,
-    GHOST_PERMUTATION_GLOBAL
-}
-ghost_permutation_scope_t;
 
-typedef enum
-{
-    GHOST_PERMUTATION_ORIG2PERM,
-    GHOST_PERMUTATION_PERM2ORIG
-}
-ghost_permutation_direction_t;
-
-typedef struct
-{
-    /**
-     * @brief Gets an original index and returns the corresponding permuted position.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_idx_t *perm;
-    /**
-     * @brief Gets an index in the permuted system and returns the original index.
-     *
-     * NULL if no permutation applied to the matrix.
-     */
-    ghost_idx_t *invPerm;
-    ghost_permutation_scope_t scope;
-    ghost_idx_t len;
-}
-ghost_permutation_t;
 
 /**
  * @brief This struct holds all possible flags for a context.
@@ -217,9 +186,9 @@ extern "C" {
      * The following fields of ghost_context_t are being filled in this function:
      * wishes, wishlist, dues, duelist, hput_pos.
      */
-    ghost_error_t ghost_context_setupCommunication(ghost_context_t *ctx, ghost_idx_t *col);
+    ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col);
     
-    char * ghost_context_workdistString(ghost_context_flags_t flags);
+    char * ghost_context_workdist_string(ghost_context_flags_t flags);
 
 #ifdef __cplusplus
 } //extern "C"

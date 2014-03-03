@@ -9,6 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "context.h"
+#include "perm.h"
 
 typedef struct ghost_densemat_traits_t ghost_densemat_traits_t;
 typedef struct ghost_densemat_t ghost_densemat_t;
@@ -254,18 +255,20 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param perm The permutation.
+     * @param dir The permutation direction.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_permutation_t *perm, ghost_permutation_direction_t dir);
     /**
-     * @brief Print a vector/matrix.
+     * @brief Create a string from the vector.
      *
      * @param vec The vector/matrix.
+     * @param str Where to store the string.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*print) (ghost_densemat_t *vec);
+    ghost_error_t       (*string) (ghost_densemat_t *vec, char **str);
     /**
      * @brief Scale a vector/matrix with a given scalar.
      *
@@ -360,12 +363,9 @@ struct ghost_densemat_traits_t
     ghost_idx_t ncols;
     ghost_densemat_flags_t flags;
     ghost_datatype_t datatype;
-//    void * localdot;
 };
-/**
- * @brief Defined in densemat.c
- */
-#define GHOST_DENSEMAT_TRAITS_INITIALIZER (ghost_densemat_traits_t) {\
+
+#define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_DENSEMAT_DEFAULT,\
     .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
     .nrows = 0,\
@@ -397,10 +397,10 @@ extern "C" {
     ghost_error_t ghost_densemat_traits_clone(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
-    ghost_error_t d_ghost_printVector(ghost_densemat_t *vec); 
-    ghost_error_t s_ghost_printVector(ghost_densemat_t *vec); 
-    ghost_error_t z_ghost_printVector(ghost_densemat_t *vec);
-    ghost_error_t c_ghost_printVector(ghost_densemat_t *vec);
+    ghost_error_t d_ghost_densemat_string(char **str, ghost_densemat_t *vec); 
+    ghost_error_t s_ghost_densemat_string(char **str, ghost_densemat_t *vec); 
+    ghost_error_t z_ghost_densemat_string(char **str, ghost_densemat_t *vec);
+    ghost_error_t c_ghost_densemat_string(char **str, ghost_densemat_t *vec);
     ghost_error_t d_ghost_normalizeVector(ghost_densemat_t *vec); 
     ghost_error_t s_ghost_normalizeVector(ghost_densemat_t *vec); 
     ghost_error_t z_ghost_normalizeVector(ghost_densemat_t *vec);

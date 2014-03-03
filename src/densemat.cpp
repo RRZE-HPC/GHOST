@@ -17,6 +17,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
+using namespace std;
 
 
 template <typename v_t> 
@@ -27,7 +28,7 @@ static ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec)
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits->ncols*sizeof(v_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_dot(vec,vec,s),err,ret);
+    GHOST_CALL_GOTO(ghost_dot(s,vec,vec),err,ret);
 
     for (v=0; v<vec->traits->ncols; v++)
     {
@@ -194,22 +195,12 @@ static ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec)
 
 
 template <typename v_t> 
-static ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec)
+static ghost_error_t ghost_vec_string_tmpl(char **str, ghost_densemat_t *vec)
 {
-    char prefix[16] = "";
-#ifdef GHOST_HAVE_MPI
-    if (vec->context != NULL && vec->context->mpicomm != MPI_COMM_NULL) {
-        int rank;
-        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
-        int ndigits = (int)floor(log10(abs(rank))) + 1;
-        snprintf(prefix,4+ndigits,"PE%d: ",rank);
-    }
-#endif
+    stringstream buffer;
 
     ghost_idx_t i,v;
-    std::cout.setf(std::ios::fixed, std::ios::floatfield);
     for (i=0; i<vec->traits->nrows; i++) {
-        std::cout << prefix << "\t";
         for (v=0; v<vec->traits->ncols; v++) {
             v_t val = 0.;
             if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
@@ -222,27 +213,29 @@ static ghost_error_t ghost_vec_print_tmpl(ghost_densemat_t *vec)
             {
                 val = *(v_t *)VECVAL(vec,vec->val,v,i);
             }
-            std::cout << val << "\t";
+            buffer << val << "\t";
         }
-        std::cout << std::endl;
+        buffer << std::endl;
     }
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
+    strcpy(*str,buffer.str().c_str());
 
     return GHOST_SUCCESS;
 }
 
 
-extern "C" ghost_error_t d_ghost_printVector(ghost_densemat_t *vec) 
-{ return ghost_vec_print_tmpl< double >(vec); }
+extern "C" ghost_error_t d_ghost_densemat_string(char **str, ghost_densemat_t *vec) 
+{ return ghost_vec_string_tmpl< double >(str,vec); }
 
-extern "C" ghost_error_t s_ghost_printVector(ghost_densemat_t *vec) 
-{ return ghost_vec_print_tmpl< float >(vec); }
+extern "C" ghost_error_t s_ghost_densemat_string(char **str, ghost_densemat_t *vec) 
+{ return ghost_vec_string_tmpl< float >(str,vec); }
 
 
-extern "C" ghost_error_t z_ghost_printVector(ghost_densemat_t *vec) 
-{ return ghost_vec_print_tmpl< ghost_complex<double> >(vec); }
+extern "C" ghost_error_t z_ghost_densemat_string(char **str, ghost_densemat_t *vec) 
+{ return ghost_vec_string_tmpl< ghost_complex<double> >(str,vec); }
 
-extern "C" ghost_error_t c_ghost_printVector(ghost_densemat_t *vec) 
-{ return ghost_vec_print_tmpl< ghost_complex<float> >(vec); }
+extern "C" ghost_error_t c_ghost_densemat_string(char **str, ghost_densemat_t *vec) 
+{ return ghost_vec_string_tmpl< ghost_complex<float> >(str,vec); }
 
 extern "C" ghost_error_t d_ghost_normalizeVector(ghost_densemat_t *vec) 
 { return ghost_normalizeVector_tmpl< double >(vec); }

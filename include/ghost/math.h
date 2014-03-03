@@ -52,15 +52,15 @@ extern "C" {
      *
      * @brief Compute the global dot product of two dense vectors/matrices.
      *
+     * @param res Where to store the result.
      * @param a The first vector/matrix.
      * @param b The second vector/matrix.
-     * @param res Where to store the result.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * This function first computes the local dot product ghost_densemat_t::dot and then performs an allreduce on the result.
      */
-    ghost_error_t ghost_dot(ghost_densemat_t *a, ghost_densemat_t *b, void *res);
+    ghost_error_t ghost_dot(void *res, ghost_densemat_t *a, ghost_densemat_t *b);
     /**
      * @ingroup globops
      *
@@ -96,25 +96,25 @@ extern "C" {
     /**
      * @ingroup globops
      *
-     * @brief Compute the general (dense) matrix-matrix product.
+     * @brief Compute the general (dense) matrix-matrix product x = v*w
      *
-     * @param transpose
+     * @param x
      * @param v
      * @param w
-     * @param x
+     * @param transpose
      * @param alpha
      * @param beta
      * @param reduce
      *
      * @return 
      */
-    ghost_error_t ghost_gemm(char * transpose, ghost_densemat_t *v,  ghost_densemat_t *w, ghost_densemat_t *x, void *alpha, void *beta, int reduce); 
+    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce); 
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
-    char * ghost_spmv_modeString(ghost_spmv_flags_t flags);
+    char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
 
 #ifdef __cplusplus
 } //extern "C"
