@@ -49,7 +49,6 @@ ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
         return GHOST_SUCCESS;
     }
 
-    printf("%zu\n",bytesize);
     CUDA_CALL_RETURN(cudaMalloc(mem,bytesize));
 
     return GHOST_SUCCESS;
