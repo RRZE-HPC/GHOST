@@ -89,7 +89,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
 
     if (!((*vec)->traits.flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
     { // no placement specified
-        DEBUG_LOG(2,"Setting vector placement");
+        INFO_LOG("Setting vector placement");
         (*vec)->traits.flags |= GHOST_DENSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
@@ -914,14 +914,25 @@ static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx_t,
 
     int i,v;
 
-    for (v=0; v<vec->traits.ncols; v++) {
+    if (vec->traits.flags & GHOST_DENSEMAT_HOST) { // vector is stored _at least_ at host
+        for (v=0; v<vec->traits.ncols; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
-        for (i=0; i<vec->traits.nrows; i++) {
-            fp(vec->context->lfRow[rank]+i,v,VECVAL(vec,vec->val,v,i));
+            for (i=0; i<vec->traits.nrows; i++) {
+                fp(vec->context->lfRow[rank]+i,v,VECVAL(vec,vec->val,v,i));
+            }
         }
-    }
 
-    vec->upload(vec);
+        vec->upload(vec);
+    } else {
+        ghost_densemat_t *hostVec;
+        ghost_densemat_traits_t htraits = vec->traits;
+        htraits.flags &= ~GHOST_DENSEMAT_DEVICE;
+        htraits.flags |= GHOST_DENSEMAT_HOST;
+        GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
+        GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
+        GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0));
+        hostVec->destroy(hostVec);
+    }
 
     return GHOST_SUCCESS;
 }
