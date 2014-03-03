@@ -140,6 +140,12 @@ struct ghost_sparsemat_traits_t
     ghost_datatype_t datatype;
 };
 
+#ifdef GHOST_HAVE_MPI
+#define GHOST_SCOTCH_STRAT_DEFAULT "n{ole=q{strat=g},ose=q{strat=g},osq=g}"
+#else
+#define GHOST_SCOTCH_STRAT_DEFAULT "g"
+#endif
+
 /**
  * @brief Initialize sparse matrix traits with default values.
  */
@@ -150,7 +156,7 @@ struct ghost_sparsemat_traits_t
     .sortScope = 1,\
     .format = GHOST_SPARSEMAT_CRS,\
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
-    .scotchStrat = "n{ole=q{strat=g},ose=q{strat=g},osq=g}"\
+    .scotchStrat = GHOST_SCOTCH_STRAT_DEFAULT\
 };
 
 /**
