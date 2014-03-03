@@ -11,9 +11,6 @@
 #include "context.h"
 #include "perm.h"
 
-typedef struct ghost_densemat_traits_t ghost_densemat_traits_t;
-typedef struct ghost_densemat_t ghost_densemat_t;
-
 typedef enum {
     GHOST_DENSEMAT_DEFAULT   = 0,
     GHOST_DENSEMAT_RHS       = 1,
@@ -24,7 +21,22 @@ typedef enum {
     GHOST_DENSEMAT_DUMMY     = 32,
     GHOST_DENSEMAT_VIEW      = 64,
     GHOST_DENSEMAT_SCATTERED = 128
-} ghost_densemat_flags_t;
+} 
+ghost_densemat_flags_t;
+
+typedef struct
+{
+    ghost_idx_t nrows;
+    ghost_idx_t nrowshalo;
+    ghost_idx_t nrowspadded;
+    ghost_idx_t ncols;
+    ghost_densemat_flags_t flags;
+    ghost_datatype_t datatype;
+}
+ghost_densemat_traits_t;
+
+typedef struct ghost_densemat_t ghost_densemat_t;
+
 
 /**
  * @ingroup types
@@ -39,7 +51,7 @@ struct ghost_densemat_t
     /**
      * @brief The vector/matrix's traits.
      */
-    ghost_densemat_traits_t *traits;
+    ghost_densemat_traits_t traits;
     /**
      * @brief The context in which the vector/matrix is living.
      */
@@ -355,16 +367,6 @@ struct ghost_densemat_t
     ghost_error_t       (*zero) (ghost_densemat_t *);
 };
 
-struct ghost_densemat_traits_t
-{
-    ghost_idx_t nrows;
-    ghost_idx_t nrowshalo;
-    ghost_idx_t nrowspadded;
-    ghost_idx_t ncols;
-    ghost_densemat_flags_t flags;
-    ghost_datatype_t datatype;
-};
-
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_DENSEMAT_DEFAULT,\
     .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
@@ -375,7 +377,7 @@ struct ghost_densemat_traits_t
 };
 
 #define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
-#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits->nrowspadded+(__y))*vec->elSize])
+#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
 
 #ifdef __cplusplus
 
@@ -393,8 +395,8 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t *traits);
-    ghost_error_t ghost_densemat_traits_clone(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
+    ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits);
+//    ghost_error_t ghost_densemat_traits_clone(ghost_densemat_traits_t *t1, ghost_densemat_traits_t **t2);
 
     ghost_error_t ghost_vec_malloc(ghost_densemat_t *vec);
     ghost_error_t d_ghost_densemat_string(char **str, ghost_densemat_t *vec); 

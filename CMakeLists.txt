@@ -86,6 +86,7 @@ set (HEADERS
         include/ghost/rand.h
 		include/ghost/sell.h
 		include/ghost/sparsemat.h
+        include/ghost/spmv.h
 		include/ghost/spmv_solvers.h
 		include/ghost/task.h
 		include/ghost/taskq.h

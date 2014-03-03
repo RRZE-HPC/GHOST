@@ -27,10 +27,10 @@ static ghost_error_t ghost_normalizeVector_tmpl(ghost_densemat_t *vec)
     ghost_idx_t v;
     v_t *s = NULL;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits->ncols*sizeof(v_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
     GHOST_CALL_GOTO(ghost_dot(s,vec,vec),err,ret);
 
-    for (v=0; v<vec->traits->ncols; v++)
+    for (v=0; v<vec->traits.ncols; v++)
     {
         s[v] = (v_t)sqrt(s[v]);
         s[v] = (v_t)(((v_t)1.)/s[v]);
@@ -50,14 +50,14 @@ out:
 template <typename v_t> 
 static ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
-    if (vec->traits->nrows != vec2->traits->nrows) {
+    if (vec->traits.nrows != vec2->traits.nrows) {
         WARNING_LOG("The input vectors of the dot product have different numbers of rows");
     }
-    if (vec->traits->ncols != vec2->traits->ncols) {
+    if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
     ghost_idx_t i,v;
-    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
     int nthreads;
 #pragma omp parallel
@@ -67,7 +67,7 @@ static ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densema
     v_t *partsums;
     GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-    for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
+    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
         v_t sum = 0;
         for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
@@ -97,9 +97,9 @@ static ghost_error_t ghost_vec_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_
 {
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
-    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
-    for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
+    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
 #pragma omp parallel for schedule(runtime) 
         for (i=0; i<nr; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
@@ -114,9 +114,9 @@ static ghost_error_t ghost_vec_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
-    ghost_idx_t nr = MIN(vec->traits->nrows,vec2->traits->nrows);
+    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
-    for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
+    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
 #pragma omp parallel for schedule(runtime) 
         for (i=0; i<nr; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) = *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v] + 
@@ -132,9 +132,9 @@ static ghost_error_t ghost_vec_vscale_tmpl(ghost_densemat_t *vec, void *scale)
     ghost_idx_t i,v;
     v_t *s = (v_t *)scale;
 
-    for (v=0; v<vec->traits->ncols; v++) {
+    for (v=0; v<vec->traits.ncols; v++) {
 #pragma omp parallel for schedule(runtime) 
-        for (i=0; i<vec->traits->nrows; i++) {
+        for (i=0; i<vec->traits.nrows; i++) {
             *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
         }
     }
@@ -179,10 +179,10 @@ static ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec)
     ghost_idx_t i,v;
     unsigned int state;
     ghost_rand_get(&state);
-        for (v=0; v<vec->traits->ncols; v++) 
+        for (v=0; v<vec->traits.ncols; v++) 
         {
 #pragma omp for schedule(runtime)
-            for (i=0; i<vec->traits->nrows; i++) 
+            for (i=0; i<vec->traits.nrows; i++) 
             {
                 my_rand(&state,(v_t *)VECVAL(vec,vec->val,v,i));
             }
@@ -200,16 +200,16 @@ static ghost_error_t ghost_vec_string_tmpl(char **str, ghost_densemat_t *vec)
     stringstream buffer;
 
     ghost_idx_t i,v;
-    for (i=0; i<vec->traits->nrows; i++) {
-        for (v=0; v<vec->traits->ncols; v++) {
+    for (i=0; i<vec->traits.nrows; i++) {
+        for (v=0; v<vec->traits.ncols; v++) {
             v_t val = 0.;
-            if (vec->traits->flags & GHOST_DENSEMAT_DEVICE)
+            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits->nrowspadded+i]),sizeof(v_t));
+                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits.nrowspadded+i]),sizeof(v_t));
 #endif
             }
-            else if (vec->traits->flags & GHOST_DENSEMAT_HOST)
+            else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
             {
                 val = *(v_t *)VECVAL(vec,vec->val,v,i);
             }

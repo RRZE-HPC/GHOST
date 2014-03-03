@@ -75,7 +75,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
+        for (i=0; i<16*lhs->traits.ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -87,7 +87,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 #pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
         { // loop over chunks
-            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
+            for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -121,9 +121,9 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                         }
                     
                         if (options & GHOST_SPMV_DOT) {
-                            partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
                         }
                    }
 
@@ -133,11 +133,11 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
         }
     }
     if (options & GHOST_SPMV_DOT) {
-        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
+        for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 2];
             }
         }
         free(partsums);
@@ -169,7 +169,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
+        for (i=0; i<16*lhs->traits.ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -181,7 +181,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 #pragma omp for schedule(runtime)
         for (i=0; i<mat->nrows; i++) 
         {
-            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
+            for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -207,19 +207,19 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                     lhsv[i] = tmp;
                 }
                 if (options & GHOST_SPMV_DOT) {
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
                 }
             }
         }
     }
     if (options & GHOST_SPMV_DOT) {
-        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
+        for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 2];
             }
         }
         free(partsums);

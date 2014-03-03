@@ -1051,7 +1051,7 @@ static void SELL_free(ghost_sparsemat_t *mat)
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRIDX" sub-vectors",ghost_datatype_string(lhs->traits->datatype),lhs->traits->ncols);
+    DEBUG_LOG(2,"lhs vector has %s data and %"PRIDX" sub-vectors",ghost_datatype_string(lhs->traits.datatype),lhs->traits.ncols);
 
     ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list) = NULL;
 
@@ -1073,7 +1073,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
 
 #ifdef GHOST_HAVE_SSE
@@ -1135,11 +1135,11 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags,va_list argp)
 {
     DEBUG_LOG(1,"Calling SELL CUDA kernel");
-    DEBUG_LOG(2,"lhs vector has %s data",ghost_datatype_string(lhs->traits->datatype));
+    DEBUG_LOG(2,"lhs vector has %s data",ghost_datatype_string(lhs->traits.datatype));
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
     return SELL_kernels_CU
         [matDtIdx]

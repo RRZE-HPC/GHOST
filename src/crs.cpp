@@ -46,8 +46,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         }
 
         // 3 -> 16: avoid false sharing
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits->ncols*nthreads*sizeof(v_t))); 
-        for (i=0; i<16*lhs->traits->ncols*nthreads; i++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits.ncols*nthreads*sizeof(v_t))); 
+        for (i=0; i<16*lhs->traits.ncols*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -57,7 +57,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
         for (i=0; i<mat->nrows; i++){
-            for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++)
+            for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
             {
                 rhsv = (v_t *)rhs->val[v];
                 lhsv = (v_t *)lhs->val[v];
@@ -81,19 +81,19 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                 }
 
                 if (options & GHOST_SPMV_DOT) {
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits->ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                    partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
                 }
             }
         }
     }
     if (options & GHOST_SPMV_DOT) {
-        for (v=0; v<MIN(lhs->traits->ncols,rhs->traits->ncols); v++) {
+        for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits->ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits->ncols] += partsums[(v+i*lhs->traits->ncols)*16 + 2];
+                local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
+                local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
+                local_dot_product[v + 2*lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 2];
             }
         }
         free(partsums);

@@ -27,11 +27,11 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
     GHOST_INSTR_START(dot_reduce)
     ghost_mpi_op_t sumOp;
     ghost_mpi_datatype_t mpiDt;
-    ghost_mpi_op_sum(&sumOp,vec->traits->datatype);
-    ghost_mpi_datatype(&mpiDt,vec->traits->datatype);
+    ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
+    ghost_mpi_datatype(&mpiDt,vec->traits.datatype);
     int v;
-    if (!(vec->traits->flags & GHOST_DENSEMAT_GLOBAL)) {
-        for (v=0; v<MIN(vec->traits->ncols,vec2->traits->ncols); v++) {
+    if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL)) {
+        for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
             MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
         }
     }
@@ -44,12 +44,12 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
 
 ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 {
-    ghost_idx_t ncols = vec->traits->ncols;
+    ghost_idx_t ncols = vec->traits.ncols;
     ghost_idx_t c;
 
     GHOST_INSTR_START(normalize);
-    if (vec->traits->datatype & GHOST_DT_FLOAT) {
-        if (vec->traits->datatype & GHOST_DT_COMPLEX) {
+    if (vec->traits.datatype & GHOST_DT_FLOAT) {
+        if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             complex float res[ncols];
             GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
@@ -65,7 +65,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
             GHOST_CALL_RETURN(vec->vscale(vec,res));
         }
     } else {
-        if (vec->traits->datatype & GHOST_DT_COMPLEX) {
+        if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             complex double res[ncols];
             GHOST_CALL_RETURN(ghost_dot(res,vec,vec));
             for (c=0; c<ncols; c++) {
@@ -129,8 +129,8 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         }
         ghost_mpi_op_t op;
         ghost_mpi_datatype_t dt;
-        ghost_mpi_op_sum(&op,res->traits->datatype);
-        ghost_mpi_datatype(&dt,res->traits->datatype);
+        ghost_mpi_op_sum(&op,res->traits.datatype);
+        ghost_mpi_datatype(&dt,res->traits.datatype);
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3, dt, op, mat->context->mpicomm));
         GHOST_INSTR_STOP(spmv_dot_reduce);
@@ -160,20 +160,20 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
 ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce) 
 {
     GHOST_INSTR_START(gemm)
-    if (v->traits->flags & GHOST_DENSEMAT_SCATTERED)
+    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         v->compress(v);
     }
-    if (w->traits->flags & GHOST_DENSEMAT_SCATTERED)
+    if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         w->compress(w);
     }
-    if (x->traits->flags & GHOST_DENSEMAT_SCATTERED)
+    if (x->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         x->compress(x);
     }
     
-    if (v->traits->datatype != w->traits->datatype) {
+    if (v->traits.datatype != w->traits.datatype) {
         ERROR_LOG("GEMM with mixed datatypes does not work!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
@@ -196,19 +196,19 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     // TODO if rhs vector data will not be continous
     if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
     {
-        nrV=v->traits->nrows; ncV=v->traits->ncols;
+        nrV=v->traits.nrows; ncV=v->traits.ncols;
     }
     else
     {
-        nrV=v->traits->ncols; ncV=v->traits->nrows;
+        nrV=v->traits.ncols; ncV=v->traits.nrows;
     }
-    nrW=w->traits->nrows; ncW=w->traits->ncols;
-    nrX=x->traits->nrows; ncX=w->traits->ncols;
+    nrW=w->traits.nrows; ncW=w->traits.ncols;
+    nrX=x->traits.nrows; ncX=w->traits.ncols;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         WARNING_LOG("GEMM with incompatible vectors!");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (v->traits->datatype != w->traits->datatype) {
+    if (v->traits.datatype != w->traits.datatype) {
         WARNING_LOG("GEMM with vectors of different datatype does not work");
         return GHOST_ERR_INVALID_ARG;
     }
@@ -228,9 +228,9 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     m = (ghost_blas_idx_t *)&nrV;
     k = (ghost_blas_idx_t *)&ncV;
     n = (ghost_blas_idx_t *)&ncW;
-    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)&(v->traits->nrowspadded);
-    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits->nrowspadded);
-    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits->nrowspadded);
+    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)&(v->traits.nrowspadded);
+    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits.nrowspadded);
+    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits.nrowspadded);
 
     
     //note: if no reduction is requested, none of the input vecs may have
@@ -260,12 +260,12 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
         mybeta = &zero;
     }
     DEBUG_LOG(1,"Calling XGEMM with (%"PRIDX"x%"PRIDX") * (%"PRIDX"x%"PRIDX") = (%"PRIDX"x%"PRIDX")",*m,*k,*k,*n,*m,*n);
-    if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_HOST)
+    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
     {
 
-        if (v->traits->datatype & GHOST_DT_COMPLEX) 
+        if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
-            if (v->traits->datatype & GHOST_DT_DOUBLE) 
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
                 zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
             } 
@@ -276,7 +276,7 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
         } 
         else 
         {
-            if (v->traits->datatype & GHOST_DT_DOUBLE) 
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
                 dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
             } 
@@ -286,15 +286,15 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
             }    
         }
     }
-    else if (v->traits->flags & w->traits->flags & x->traits->flags & GHOST_DENSEMAT_DEVICE)
+    else if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
         GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
         cublasOperation_t trans = strncasecmp(transpose,"T",1)?CUBLAS_OP_N:CUBLAS_OP_T;
-        if (v->traits->datatype & GHOST_DT_COMPLEX) 
+        if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
-            if (v->traits->datatype & GHOST_DT_DOUBLE) 
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
                 CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->cu_val,*ldv,(cuDoubleComplex *)w->cu_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->cu_val,*ldx));
             } 
@@ -305,7 +305,7 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
         } 
         else 
         {
-            if (v->traits->datatype & GHOST_DT_DOUBLE) 
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
                 CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,trans,CUBLAS_OP_N,*m,*n,*k,(double *)alpha,(double *)v->cu_val,*ldv,(double *)w->cu_val,*ldw,(double *)mybeta,(double *)x->cu_val,*ldx));
             } 
@@ -324,53 +324,53 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     } 
     else 
     {
-        for (i=0; i<x->traits->ncols; ++i) 
+        for (i=0; i<x->traits.ncols; ++i) 
         {
             int copied = 0;
             void *val = NULL;
-            if (x->traits->flags & GHOST_DENSEMAT_DEVICE)
+            if (x->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
-                ghost_datatype_size(&sizeofdt,x->traits->datatype);
+                ghost_datatype_size(&sizeofdt,x->traits.datatype);
 
-                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits->nrows*sizeofdt));
-                ghost_cu_download(val,&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],
-                        x->traits->nrows*sizeofdt);
+                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits.nrows*sizeofdt));
+                ghost_cu_download(val,&x->cu_val[(i*x->traits.nrowspadded)*sizeofdt],
+                        x->traits.nrows*sizeofdt);
                 copied = 1;
 #endif
             }
-            else if (x->traits->flags & GHOST_DENSEMAT_HOST)
+            else if (x->traits.flags & GHOST_DENSEMAT_HOST)
             {
                 val = VECVAL(x,x->val,i,0);
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
-            GHOST_CALL_RETURN(ghost_mpi_op_sum(&sumOp,x->traits->datatype));
-            GHOST_CALL_RETURN(ghost_mpi_datatype(&mpiDt,x->traits->datatype));
+            GHOST_CALL_RETURN(ghost_mpi_op_sum(&sumOp,x->traits.datatype));
+            GHOST_CALL_RETURN(ghost_mpi_datatype(&mpiDt,x->traits.datatype));
 
             if (reduce == GHOST_GEMM_ALL_REDUCE) 
             {
-                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,x->traits->nrows,mpiDt,sumOp,v->context->mpicomm));
+                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,x->traits.nrows,mpiDt,sumOp,v->context->mpicomm));
             } 
             else 
             {
                 if (myrank == reduce) 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,x->traits->nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,x->traits.nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
                 } 
                 else 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,x->traits->nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,x->traits.nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
                 }
             }
             if (copied)
             {
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
-                ghost_datatype_size(&sizeofdt,x->traits->datatype);
-                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[(i*x->traits->nrowspadded)*sizeofdt],val,
-                        x->traits->nrows*sizeofdt));
+                ghost_datatype_size(&sizeofdt,x->traits.datatype);
+                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[(i*x->traits.nrowspadded)*sizeofdt],val,
+                        x->traits.nrows*sizeofdt));
                 free(val);
 #endif
             }

@@ -167,7 +167,7 @@ extern __shared__ char shared[];
         if (SELL(mat)->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
             size_t reqSmem;\
-            ghost_datatype_size(&reqSmem,lhs->traits->datatype);\
+            ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
             reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
             CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
@@ -182,7 +182,7 @@ extern __shared__ char shared[];
     }else{\
         if (SELL(mat)->T > 1) {\
             size_t reqSmem;\
-            ghost_datatype_size(&reqSmem,lhs->traits->datatype);\
+            ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
             reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
             struct cudaDeviceProp prop;\
             CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\

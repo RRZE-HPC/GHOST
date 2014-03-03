@@ -824,7 +824,7 @@ static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t 
     ghost_datatype_idx_t matDtIdx;
     ghost_datatype_idx_t vecDtIdx;
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
     return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options,argp);
 }
