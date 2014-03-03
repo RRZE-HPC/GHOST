@@ -162,7 +162,7 @@ extern __shared__ char shared[];
     dt2 *localdot = NULL;\
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
-    GHOST_INSTR_START(CU_SELL_SpMVM)\
+    GHOST_INSTR_START(spmv_cuda)\
     if (SELL(mat)->chunkHeight == mat->nrowsPadded) {\
         if (SELL(mat)->T > 1) {\
             INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
@@ -196,17 +196,17 @@ extern __shared__ char shared[];
         }\
     }\
     cudaDeviceSynchronize();\
-    GHOST_INSTR_STOP(CU_SELL_SpMVM)\
-    GHOST_INSTR_START(CU_SpMVM_localdot)\
+    GHOST_INSTR_STOP(spmv_cuda)\
     if (flags & GHOST_SPMV_DOT) {\
+        GHOST_INSTR_START(spmv_cuda_dot)\
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
         lhs->dot(lhs,lhs,&localdot[0]);\
         lhs->dot(lhs,rhs,&localdot[1]);\
         lhs->dot(rhs,rhs,&localdot[2]);\
+        GHOST_INSTR_STOP(spmv_cuda_dot)\
     }\
-    GHOST_INSTR_STOP(CU_SpMVM_localdot)\
     return ret;\
 }
 
