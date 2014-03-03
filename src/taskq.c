@@ -9,6 +9,7 @@
 
 #include "ghost/config.h"
 #include "ghost/types.h"
+#include "ghost/core.h"
 #include "ghost/locality.h"
 #include "ghost/task.h"
 #include "ghost/taskq.h"
@@ -318,9 +319,13 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
     static void * thread_main(void *arg)
     {
 #ifdef GHOST_HAVE_CUDA
-        int cu_device;
-        ghost_cu_device(&cu_device);
-        ghost_cu_init(cu_device);
+        ghost_type_t ghost_type;
+        ghost_type_get(&ghost_type);
+        if (ghost_type == GHOST_TYPE_CUDA) {
+            int cu_device;
+            ghost_cu_device(&cu_device);
+            ghost_cu_init(cu_device);
+        }
 #endif
         //    kmp_set_blocktime(200);
         //    kmp_set_library_throughput();
