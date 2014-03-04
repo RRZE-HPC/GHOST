@@ -159,6 +159,12 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
 
 ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce) 
 {
+#ifdef GHOST_HAVE_LONGIDX
+#ifndef GHOST_HAVE_MKL
+    ERROR_LOG("GEMM with LONGIDX only working for MKL!");
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+#endif
     GHOST_INSTR_START(gemm)
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
@@ -213,14 +219,6 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
         return GHOST_ERR_INVALID_ARG;
     }
 
-#ifdef GHOST_HAVE_LONGIDX // TODO
-    UNUSED(alpha);
-    UNUSED(beta);
-    ERROR_LOG("GEMM with LONGIDX not implemented");
-    
-    GHOST_INSTR_STOP(gemm)
-    return GHOST_ERR_NOT_IMPLEMENTED;
-#else
 
     complex double zero = 0.+I*0.;
 
@@ -382,8 +380,6 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
 
     GHOST_INSTR_STOP(gemm)
     return GHOST_SUCCESS;
-#endif
-
 }
 
 #ifdef GHOST_HAVE_MPI
