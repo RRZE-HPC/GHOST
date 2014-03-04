@@ -50,9 +50,7 @@ typedef enum {
             ERROR_LOG("Dot argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        if (dot) {\
-            dot = arg;\
-        }\
+        dot = arg;\
     }\
 }\
 
