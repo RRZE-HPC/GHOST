@@ -21,7 +21,6 @@ typedef enum {
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt){\
     dt *arg = NULL;\
     if (flags & GHOST_SPMV_SCALE) {\
-        printf("here\n");\
         arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Scale argument is NULL!");\
