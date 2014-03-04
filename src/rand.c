@@ -4,6 +4,7 @@
 #include "ghost/timing.h"
 #include "ghost/rand.h"
 #include "ghost/machine.h"
+#include "ghost/omp.h"
 #include "ghost/locality.h"
 
 
@@ -46,13 +47,11 @@ out:
 
 ghost_error_t ghost_rand_get(unsigned int *s)
 {
-    int pu;
-    GHOST_CALL_RETURN(ghost_cpu(&pu));
     if (!s) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    *s = ghost_rand_states[pu];
+    *s = ghost_rand_states[ghost_omp_threadnum()];
 
     return GHOST_SUCCESS;
 }

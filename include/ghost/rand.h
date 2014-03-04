@@ -13,10 +13,18 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      *
-     * The random state is determined from the PU on which the calling thread is running.
+     * The random state is determined from the calling OpenMP thread index.
+     * OpenMP do not have to be pinned in order to return correct random seeds.
      * This function is used for thread-safe random number generation.
      */
     ghost_error_t ghost_rand_get(unsigned int *s);
+    /**
+     * @brief Create a random seed for each PU of the machine.
+     *
+     * @return 
+     *
+     * This assumes that there at most as many OpenMP threads as there are PUs.
+     */
     ghost_error_t ghost_rand_create();
     void ghost_rand_destroy();
 
