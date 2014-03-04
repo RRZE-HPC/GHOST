@@ -1112,7 +1112,11 @@ static void ghost_freeVector( ghost_densemat_t* vec )
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir) 
 {
     // TODO enhance performance
-    /* permutes values in vector so that i-th entry is mapped to position perm[i] */
+    
+    if (!permutation) {
+        return GHOST_SUCCESS;
+    }
+
     ghost_idx_t i;
     ghost_idx_t len, c;
     char* tmp = NULL;
