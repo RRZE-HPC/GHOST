@@ -168,15 +168,24 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     GHOST_INSTR_START(gemm)
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
-        v->compress(v);
+        WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
+                "vector before computation but not be changed itself.");
+        ghost_densemat_t *vc;
+        v->clone(v,&vc,v->traits.ncols,0);
+        v = vc;
     }
     if (w->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
-        w->compress(w);
+        WARNING_LOG("The vector w is scattered. It will be cloned to a compressed "
+                "vector before computation but not be changed itself.");
+        ghost_densemat_t *wc;
+        w->clone(w,&wc,w->traits.ncols,0);
+        w = wc;
     }
     if (x->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
-        x->compress(x);
+        ERROR_LOG("The result vector x is scattered.");
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
     if (v->traits.datatype != w->traits.datatype) {
@@ -211,11 +220,11 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     nrW=w->traits.nrows; ncW=w->traits.ncols;
     nrX=x->traits.nrows; ncX=w->traits.ncols;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        WARNING_LOG("GEMM with incompatible vectors!");
+        ERROR_LOG("GEMM with incompatible vectors!");
         return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits.datatype != w->traits.datatype) {
-        WARNING_LOG("GEMM with vectors of different datatype does not work");
+        ERROR_LOG("GEMM with vectors of different datatype does not work");
         return GHOST_ERR_INVALID_ARG;
     }
 
