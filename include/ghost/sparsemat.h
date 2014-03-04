@@ -152,7 +152,7 @@ struct ghost_sparsemat_traits_t
 #define GHOST_SPARSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_SPARSEMAT_DEFAULT,\
     .aux = NULL,\
-    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
+    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL),\
     .sortScope = 1,\
     .format = GHOST_SPARSEMAT_CRS,\
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
