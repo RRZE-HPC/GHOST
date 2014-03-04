@@ -140,16 +140,16 @@ struct ghost_densemat_t
      * @brief Compute the local dot product of two vectors/matrices.
      *
      * @param a The first vector/matrix.
-     * @param b The second vector/matrix.
      * @param res Where to store the result.
+     * @param b The second vector/matrix.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      *
-     * For the global operation see ghost_dotProduct().
+     * For the global operation see ghost_dot().
      *
-     * @see ghost_dotProduct()
+     * @see ghost_dot()
      */
-    ghost_error_t       (*dot) (ghost_densemat_t *a, ghost_densemat_t *b, void *res);
+    ghost_error_t       (*dot) (ghost_densemat_t *a, void *res, ghost_densemat_t *b);
     /**
      * @ingroup gputransfer
      * 
@@ -189,13 +189,13 @@ struct ghost_densemat_t
      * into entry.
      *
      * @param vec The vector/matrix.
+     * @param entry Where to store the entry.
      * @param ghost_idx_t i The row.
      * @param ghost_idx_t j The column.
-     * @param entry Where to store the entry.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*entry) (ghost_densemat_t *vec, ghost_idx_t i, ghost_idx_t j, void *entry);
+    ghost_error_t       (*entry) (ghost_densemat_t *vec, void *entry, ghost_idx_t i, ghost_idx_t j);
     /**
      * @ingroup denseinit
      *
@@ -407,10 +407,10 @@ extern "C" {
     ghost_error_t s_ghost_normalizeVector(ghost_densemat_t *vec); 
     ghost_error_t z_ghost_normalizeVector(ghost_densemat_t *vec);
     ghost_error_t c_ghost_normalizeVector(ghost_densemat_t *vec);
-    ghost_error_t d_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res); 
-    ghost_error_t s_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res); 
-    ghost_error_t z_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res);
-    ghost_error_t c_ghost_vec_dotprod(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *res);
+    ghost_error_t d_ghost_vec_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2); 
+    ghost_error_t s_ghost_vec_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2); 
+    ghost_error_t z_ghost_vec_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2);
+    ghost_error_t c_ghost_vec_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2);
     ghost_error_t d_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale); 
     ghost_error_t s_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale); 
     ghost_error_t z_ghost_vec_vscale(ghost_densemat_t *vec1, void *vscale);

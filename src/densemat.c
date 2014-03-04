@@ -22,7 +22,7 @@
 static ghost_error_t (*ghost_normalizeVector_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_normalizeVector, &d_ghost_normalizeVector, &c_ghost_normalizeVector, &z_ghost_normalizeVector};
 
-static ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
+static ghost_error_t (*ghost_vec_dotprod_funcs[4]) (ghost_densemat_t *, void *, ghost_densemat_t *) = 
 {&s_ghost_vec_dotprod, &d_ghost_vec_dotprod, &c_ghost_vec_dotprod, &z_ghost_vec_dotprod};
 
 static ghost_error_t (*ghost_vec_vscale_funcs[4]) (ghost_densemat_t *, void*) = 
@@ -47,7 +47,7 @@ static ghost_error_t vec_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, vo
 static ghost_error_t vec_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
 static ghost_error_t vec_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
 static ghost_error_t vec_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
-static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res);
+static ghost_error_t vec_dotprod(ghost_densemat_t *vec, void * res, ghost_densemat_t *vec2);
 static ghost_error_t vec_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *));
 static ghost_error_t vec_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_idx_t coffs);
 static ghost_error_t vec_fromRand(ghost_densemat_t *vec);
@@ -61,7 +61,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 static void ghost_freeVector( ghost_densemat_t* const vec );
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t, ghost_idx_t);
-static ghost_error_t vec_entry(ghost_densemat_t *, ghost_idx_t, ghost_idx_t, void *);
+static ghost_error_t vec_entry(ghost_densemat_t *, void *, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs);
 static ghost_error_t vec_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
@@ -573,7 +573,7 @@ out:
     return ret;
 }
 
-static ghost_error_t vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+static ghost_error_t vec_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_INSTR_START(dot);
@@ -588,7 +588,7 @@ out:
     return ret;
 }
 
-static ghost_error_t vec_entry(ghost_densemat_t * vec, ghost_idx_t r, ghost_idx_t c, void *val) 
+static ghost_error_t vec_entry(ghost_densemat_t * vec, void *val, ghost_idx_t r, ghost_idx_t c) 
 {
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
     {

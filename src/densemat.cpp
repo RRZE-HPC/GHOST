@@ -48,7 +48,7 @@ out:
 }
 
 template <typename v_t> 
-static ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+static ghost_error_t ghost_vec_dotprod_tmpl(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
     if (vec->traits.nrows != vec2->traits.nrows) {
         WARNING_LOG("The input vectors of the dot product have different numbers of rows");
@@ -249,17 +249,17 @@ extern "C" ghost_error_t z_ghost_normalizeVector(ghost_densemat_t *vec)
 extern "C" ghost_error_t c_ghost_normalizeVector(ghost_densemat_t *vec) 
 { return ghost_normalizeVector_tmpl< ghost_complex<float> >(vec); }
 
-extern "C" ghost_error_t d_ghost_vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res) 
-{ return ghost_vec_dotprod_tmpl< double >(vec,vec2,res); }
+extern "C" ghost_error_t d_ghost_vec_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{ return ghost_vec_dotprod_tmpl< double >(vec,res,vec2); }
 
-extern "C" ghost_error_t s_ghost_vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res) 
-{ return ghost_vec_dotprod_tmpl< float >(vec,vec2,res); }
+extern "C" ghost_error_t s_ghost_vec_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{ return ghost_vec_dotprod_tmpl< float >(vec,res,vec2); }
 
-extern "C" ghost_error_t z_ghost_vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res) 
-{ return ghost_vec_dotprod_tmpl< ghost_complex<double> >(vec,vec2,res); }
+extern "C" ghost_error_t z_ghost_vec_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{ return ghost_vec_dotprod_tmpl< ghost_complex<double> >(vec,res,vec2); }
 
-extern "C" ghost_error_t c_ghost_vec_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res) 
-{ return ghost_vec_dotprod_tmpl< ghost_complex<float> >(vec,vec2,res); }
+extern "C" ghost_error_t c_ghost_vec_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{ return ghost_vec_dotprod_tmpl< ghost_complex<float> >(vec,res,vec2); }
 
 extern "C" ghost_error_t d_ghost_vec_vscale(ghost_densemat_t *vec, void *scale) 
 { return ghost_vec_vscale_tmpl< double >(vec, scale); }
