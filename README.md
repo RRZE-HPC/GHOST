@@ -26,26 +26,25 @@ Installation
 ============
 
 First of all, clone the git repository:
-`git clone git@bitbucket.org:essex/ghost.git
-cd ghost/`
+
+`git clone git@bitbucket.org:essex/ghost.git && cd ghost/`
 
 It is preferrable to perform an out-of-source build, i.e., create a build directory first:
-`mkdir build
-cd build/`
 
+`mkdir build && cd build/`
 
-ccmake ..
+For interactive specification of build variables, use ccmake to configure and generate a Makefile:
 
+`ccmake ..`
 
-make
-make install
+If you do not want to use the system compilers, invoke ccmake as follows (e.g., Intel Compilers):
 
-In order to set non-standard compilers, invoke ccmake as follows (e.g., Intel Compiler):
+`CC=icc CXX=icpc ccmake ..`
 
-...
-CC=icc CXX=icpc ccmake ..
-...
-Check the INSTALL file for installation notes.
+Once the Makefile is present you can type
+
+`make && make install`
+
 
 Documentation
 =============
