@@ -1,7 +1,0 @@
-apps/benchshell export-ignore
-test export-ignore
-bench export-ignore
-meas export-ignore
-TODO export-ignore
-.gitignore export-ignore
-.gitattributes export-ignore
