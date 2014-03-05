@@ -15,13 +15,36 @@ Requirements
 Optional
 ========
 
+In order to use GHOST at its best you can decide to make use of the following optional dependencies:
+
 1. An OpenMP-capable C/C++ compiler
 1. MPI ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
-1. CUDA ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
+1. [CUDA](http://www.nvidia.com/cuda) for employing GPU computation ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
+1. [SCOTCH](http://www.labri.fr/perso/pelegrin/scotch/) for sparse matrix re-ordering ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 
 Installation
 ============
 
+First of all, clone the git repository:
+`git clone git@bitbucket.org:essex/ghost.git
+cd ghost/`
+
+It is preferrable to perform an out-of-source build, i.e., create a build directory first:
+`mkdir build
+cd build/`
+
+
+ccmake ..
+
+
+make
+make install
+
+In order to set non-standard compilers, invoke ccmake as follows (e.g., Intel Compiler):
+
+...
+CC=icc CXX=icpc ccmake ..
+...
 Check the INSTALL file for installation notes.
 
 Documentation
