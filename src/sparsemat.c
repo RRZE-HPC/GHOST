@@ -458,47 +458,67 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #else
 #ifdef GHOST_HAVE_MPI
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_bincrs_header_t header;
-    MPI_Request *req = NULL;
-    MPI_Status *stat = NULL;
     SCOTCH_Dgraph * dgraph = NULL;
     SCOTCH_Strat * strat = NULL;
     SCOTCH_Dordering *dorder = NULL;
     ghost_idx_t *rpt = NULL, *col = NULL, i;
+    ghost_nnz_t nnz = 0;
     int me, nprocs;
     
     if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
 
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-        ERROR_LOG("Scotchify from func not yet implemented");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
+    if (srcType == GHOST_SPARSEMAT_SRC_NONE) {
+        ERROR_LOG("A valid matrix source has to be given!");
+        ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
 
-    char *matrixPath = (char *)matrixSource;
-    GHOST_CALL_GOTO(ghost_bincrs_header_read(&header,matrixPath),err,ret);
-
-
-
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&req,sizeof(MPI_Request)*nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&stat,sizeof(MPI_Status)*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
+    
+    
+    if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
+        char *matrixPath = (char *)matrixSource;
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
+        for (i=1;i<mat->context->lnrows[me]+1;i++) {
+            rpt[i] -= rpt[0];
+        }
+        rpt[0] = 0;
+        nnz = rpt[mat->context->lnrows[me]];
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
 
+    } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+        ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+        ghost_idx_t *dummycol;
+        char *dummyval;
+        GHOST_CALL_GOTO(ghost_malloc((void **)&dummycol,src->maxrowlen*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
 
-    ghost_nnz_t nnz = rpt[mat->context->lnrows[me]]-rpt[0];
+        ghost_idx_t rowlen;
+        rpt[0] = 0;
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+            src->func(mat->context->lfRow[me]+i,&rowlen,dummycol,dummyval);
+            rpt[i+1] = rpt[i]+rowlen;
+            nnz += rowlen;
+        }
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
+        
+        nnz = 0;
+        for (i=0; i<mat->context->lnrows[me]; i++) {
+            src->func(mat->context->lfRow[me]+i,&rowlen,&col[nnz],dummyval);
+            nnz += rowlen;
+        }
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
-
-    for (i=1;i<mat->context->lnrows[me]+1;i++) {
-        rpt[i] -= rpt[0];
+        free(dummyval);
+        free(dummycol);
+            
     }
-    rpt[0] = 0;
+
+
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
@@ -551,8 +571,6 @@ err:
     free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
 
 out:
-    free(req);
-    free(stat);
     free(rpt);
     free(col);
     SCOTCH_dgraphOrderExit(dgraph,dorder);
