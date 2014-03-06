@@ -120,7 +120,8 @@ struct ghost_context_t
 
 typedef enum {
     GHOST_SPARSEMAT_SRC_FILE,
-    GHOST_SPARSEMAT_SRC_FUNC
+    GHOST_SPARSEMAT_SRC_FUNC,
+    GHOST_SPARSEMAT_SRC_NONE,
 } ghost_sparsemat_src_t;
 
 
