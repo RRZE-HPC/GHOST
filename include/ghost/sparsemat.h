@@ -61,6 +61,7 @@ typedef enum {
     GHOST_SPARSEMAT_SYMM_HERMITIAN = 8
 } ghost_sparsemat_symmetry_t;
 
+    
 
 typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_idx_t, ghost_idx_t *, ghost_idx_t *, void *);
 typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
@@ -75,6 +76,21 @@ typedef enum {
      */
     GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT = 0
 } ghost_sparsemat_fromRowFunc_flags_t;
+
+typedef struct 
+{
+    ghost_sparsemat_fromRowFunc_t func;
+    ghost_idx_t maxrowlen;
+    int base;
+    ghost_sparsemat_fromRowFunc_flags_t flags;
+} ghost_sparsemat_src_rowfunc_t;
+
+#define GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER {\
+    .func = NULL,\
+    .maxrowlen = 0,\
+    .base = 0,\
+    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT\
+}
 
 /**
  * @brief Flags to a sparse matrix.
@@ -274,14 +290,12 @@ struct ghost_sparsemat_t
      * @brief Create the matrix from a function which defined the matrix row by row.
      *
      * @param mat The matrix.
-     * @param maxrowlen The maximum row length of the matrix.
-     * @param base The base of indices (e.g., 0 for C, 1 for Fortran).
-     * @param func The function defining the matrix.
-     * @param flags Flags to control the behaviour of the function.
+     * @param src The source.
      *
      * The function func may be called several times for each row concurrently by multiple threads.
      */
-    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
+    ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_sparsemat_src_rowfunc_t *src);
+    //ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
     /**
      * @brief Write a matrix to a binary CRS file.
      *
@@ -353,7 +367,7 @@ extern "C" {
      * @return 
      */
     ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
-ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags); 
+    ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
     ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
 
 #ifdef __cplusplus

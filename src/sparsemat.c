@@ -135,10 +135,8 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t ro
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_idx_t maxrowlen, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags) 
+ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src)
 {
-    UNUSED(maxrowlen);
-    UNUSED(flags);
     ghost_error_t ret = GHOST_SUCCESS;
     
     int nprocs = 1;
@@ -156,9 +154,9 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_idx_
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_sparsemat_perm_scotch(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC);
+            ghost_sparsemat_perm_scotch(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } else {
-            ghost_sparsemat_perm_sort(mat,(void *)func,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
+            ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
         }
     } else {
         if (mat->traits->sortScope > 1) {
