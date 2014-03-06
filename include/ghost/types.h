@@ -92,28 +92,28 @@ typedef enum {
  */
 #define GHOST_REGISTER_DT_D(name) \
     typedef double name ## _t; \
-ghost_datatype_t name = GHOST_DT_DOUBLE|GHOST_DT_REAL; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
 
 /**
  * @see GHOST_REGISTER_DT_D with float instead of double.
  */
 #define GHOST_REGISTER_DT_S(name) \
     typedef float name ## _t; \
-ghost_datatype_t name = GHOST_DT_FLOAT|GHOST_DT_REAL; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
 
 /**
  * @see GHOST_REGISTER_DT_D with float complex instead of double.
  */
 #define GHOST_REGISTER_DT_C(name) \
     typedef complex float name ## _t; \
-ghost_datatype_t name = GHOST_DT_FLOAT|GHOST_DT_COMPLEX; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
 
 /**
  * @see GHOST_REGISTER_DT_D with double complex instead of double.
  */
 #define GHOST_REGISTER_DT_Z(name) \
     typedef complex double name ## _t; \
-ghost_datatype_t name = GHOST_DT_DOUBLE|GHOST_DT_COMPLEX; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
 
 #ifdef GHOST_HAVE_LONGIDX
 /**

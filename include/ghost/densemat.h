@@ -369,7 +369,7 @@ struct ghost_densemat_t
 
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_DENSEMAT_DEFAULT,\
-    .datatype = GHOST_DT_DOUBLE|GHOST_DT_REAL,\
+    .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
     .nrows = 0,\
     .nrowshalo = 0,\
     .nrowspadded = 0,\
