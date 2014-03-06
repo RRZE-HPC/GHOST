@@ -177,7 +177,7 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
     *mem = malloc(size);
 
     if(!(*mem)) {
-        ERROR_LOG("Malloc failed: %s",strerror(errno));
+        ERROR_LOG("Malloc of %zu bytes failed: %s",size,strerror(errno));
         return GHOST_ERR_UNKNOWN;
     }
 
