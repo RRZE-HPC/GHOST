@@ -480,20 +480,22 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                 }
 
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
+                    memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
                     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-                        if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
-                            memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
-                            if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                        if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
+                            SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
+                        } else { // local permutation: distinction between global and local entries
+                            if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
+                                if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
+                                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
+                                } else {
+                                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                }
+                            } else { // remote entry: copy without permutation
                                 SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
-                            } else {
-                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                             }
-                        } else { // remote entry: copy without permutation
-                            memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
-                            SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                         }
                     } else {
-                        memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
                         SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                     }
                 }
@@ -502,7 +504,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
                 ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
-                }
+            }
             memset(tmpval,0,mat->elSize*src->maxrowlen*SELL(mat)->chunkHeight);
             memset(tmpcol,0,sizeof(ghost_idx_t)*src->maxrowlen*SELL(mat)->chunkHeight);
         }
