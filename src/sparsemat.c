@@ -387,7 +387,6 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_nnz_t)),err,ret);
 
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-        WARNING_LOG("Sorting from func not tested");
         ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
         char *tmpval = NULL;
         ghost_idx_t *tmpcol = NULL;
@@ -450,15 +449,14 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
-#ifdef GHOST_HAVE_MPI
     ghost_error_t ret = GHOST_SUCCESS;
-    SCOTCH_Dgraph * dgraph = NULL;
-    SCOTCH_Strat * strat = NULL;
-    SCOTCH_Dordering *dorder = NULL;
-    ghost_idx_t *rpt = NULL, *col = NULL, i;
+    ghost_idx_t *rpt = NULL, *col = NULL, i, c;
+    ghost_sorting_t *rowSort = NULL;
+    ghost_idx_t *grpt = NULL;
+    ghost_idx_t *col_loopless = NULL;
+    ghost_idx_t *rpt_loopless = NULL;
     ghost_nnz_t nnz = 0;
     int me, nprocs;
-    
     if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
@@ -472,7 +470,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
-    
     
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
@@ -511,9 +508,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         free(dummycol);
             
     }
-
-
-
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
@@ -521,6 +515,11 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
     mat->permutation->scope = GHOST_PERMUTATION_GLOBAL;
     mat->permutation->len = mat->context->gnrows;
+
+#ifdef GHOST_HAVE_MPI
+    SCOTCH_Dgraph * dgraph = NULL;
+    SCOTCH_Strat * strat = NULL;
+    SCOTCH_Dordering *dorder = NULL;
 
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
@@ -557,69 +556,19 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     for (i=0; i<mat->context->gnrows; i++) {
         mat->permutation->invPerm[mat->permutation->perm[i]] = i;
     }
-
-    goto out;
-err:
-    ERROR_LOG("Deleting permutations");
-    free(mat->permutation->perm); mat->permutation->perm = NULL;
-    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
-
-out:
-    free(rpt);
-    free(col);
-    SCOTCH_dgraphOrderExit(dgraph,dorder);
-    SCOTCH_dgraphExit(dgraph);
-    SCOTCH_stratExit(strat);
     
-    return ret;
 
 #else
 
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_bincrs_header_t header;
     SCOTCH_Graph * graph = NULL;
     SCOTCH_Strat * strat = NULL;
     SCOTCH_Ordering *order = NULL;
-    ghost_idx_t *rpt = NULL, *col = NULL, i, j;
-    
-    if (mat->permutation) {
-        WARNING_LOG("Existing permutations will be overwritten!");
-    }
-
-    if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-        ERROR_LOG("Scotchify from func not yet implemented");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
-
-    char *matrixPath = (char *)matrixSource;
-    GHOST_CALL_GOTO(ghost_bincrs_header_read(&header,matrixPath),err,ret);
-
-
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->nrows+1) * sizeof(ghost_nnz_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, 0, mat->nrows+1, NULL),err,ret);
-
-    ghost_nnz_t nnz = rpt[mat->nrows];
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, 0, mat->nrows, NULL,1),err,ret);
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->nrows),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->nrows),err,ret);
-    memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*mat->nrows);
-    memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*mat->nrows);
-    mat->permutation->scope = GHOST_PERMUTATION_GLOBAL;
-    mat->permutation->len = mat->nrows;
-    
-    ghost_idx_t *col_loopless;
-    ghost_idx_t *rpt_loopless;
     
     ghost_malloc((void **)&col_loopless,nnz*sizeof(ghost_idx_t));
     ghost_malloc((void **)&rpt_loopless,(mat->nrows+1)*sizeof(ghost_nnz_t));
     rpt_loopless[0] = 0;
     ghost_nnz_t nnz_loopless = 0;
+    ghost_idx_t j;
 
     // eliminate loops by deleting diagonal entries
     for (i=0; i<mat->nrows; i++) {
@@ -663,23 +612,79 @@ out:
         mat->permutation->invPerm[mat->permutation->perm[i]] = i;
     }
 
+#endif
+    
+    if (mat->traits->sortScope > 1) {
+        ghost_idx_t nrows = mat->context->gnrows;
+        ghost_idx_t scope = mat->traits->sortScope;
+        
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&grpt,nrows*sizeof(ghost_idx_t)),err,ret);
+
+        memset(grpt,0,nrows*sizeof(ghost_idx_t));
+        
+        if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
+            char *matrixPath = (char *)matrixSource;
+            GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, 0, nrows+1, NULL),err,ret);
+            for (i=0; i<nrows; i++) {
+                rowSort[mat->permutation->perm[i]].row = i;
+                rowSort[mat->permutation->perm[i]].nEntsInRow = grpt[i+1]-grpt[i];
+            
+            }
+        
+        } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+            ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+            ghost_idx_t *dummycol;
+            char *dummyval;
+            GHOST_CALL_GOTO(ghost_malloc((void **)&dummycol,src->maxrowlen*sizeof(ghost_idx_t)),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
+
+            for (i=0; i<nrows; i++) {
+                rowSort[mat->permutation->perm[i]].row = i;
+                src->func(i,&rowSort[mat->permutation->perm[i]].nEntsInRow,dummycol,dummyval);
+            }
+            
+            free(dummyval);
+            free(dummycol);
+        }
+       
+        for (c=0; c<nrows/scope; c++) {
+            qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), compareNZEPerRow );
+        }
+        qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), compareNZEPerRow);
+        
+        for(i=0; i < nrows; ++i) {
+            (mat->permutation->invPerm)[i] =rowSort[i].row;
+            (mat->permutation->perm)[rowSort[i].row] = i;
+        }
+    }
     goto out;
 err:
     ERROR_LOG("Deleting permutations");
     free(mat->permutation->perm); mat->permutation->perm = NULL;
     free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+    free(mat->permutation); mat->permutation = NULL;
 
 out:
     free(rpt);
+    free(grpt);
+    free(rowSort);
     free(col);
     free(rpt_loopless);
     free(col_loopless);
+#ifdef GHOST_HAVE_MPI
+    SCOTCH_dgraphOrderExit(dgraph,dorder);
+    SCOTCH_dgraphExit(dgraph);
+    SCOTCH_stratExit(strat);
+#else
     SCOTCH_graphOrderExit(graph,order);
     SCOTCH_graphExit(graph);
     SCOTCH_stratExit(strat);
+#endif
+    
     
     return ret;
-#endif
+
 #endif
 }
 
@@ -783,10 +788,12 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_line_string(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-            ghost_line_string(str,"Permutation strategy",NULL,"Scotch");
+            ghost_line_string(str,"Permutation strategy",NULL,"Scotch%s",mat->traits->sortScope>1?"+Sorting":"");
             ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
         } else {
             ghost_line_string(str,"Permutation strategy",NULL,"Sorting");
+        }
+        if (mat->traits->sortScope > 1) {
             ghost_line_string(str,"Sorting scope",NULL,"%d",mat->traits->sortScope);
         }
 #ifdef GHOST_HAVE_MPI
