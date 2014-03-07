@@ -388,23 +388,17 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
 
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
         WARNING_LOG("Sorting from func not tested");
-        ghost_sparsemat_fromRowFunc_t func;
-        if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
-            ERROR_LOG("Object pointers are of different size than function pointers. That probably means that you are not running on a POSIX-compatible OS.");
-            goto err;
-        }
-        memcpy(&func,&matrixSource,sizeof(ghost_sparsemat_fromRowFunc_t));
-
+        ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
         char *tmpval = NULL;
         ghost_idx_t *tmpcol = NULL;
         rpt[0] = 0;
 #pragma omp parallel private(i,tmpval,tmpcol)
         { 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,mat->ncols*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,mat->ncols*sizeof(ghost_idx_t)),ret);
+            GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
+            GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for schedule(runtime)
             for (i=0; i<nrows; i++) {
-                if (func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval)) {
+                if (src->func(rowOffset+i,&rowSort[i].nEntsInRow,tmpcol,tmpval)) {
                     ERROR_LOG("Matrix construction function returned error");
                     ret = GHOST_ERR_UNKNOWN;
                 }
