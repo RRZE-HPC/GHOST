@@ -46,13 +46,13 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_rand_get(unsigned int *s)
+ghost_error_t ghost_rand_get(unsigned int **s)
 {
     if (!s) {
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    *s = ghost_rand_states[ghost_omp_threadnum()];
+    *s = &ghost_rand_states[ghost_omp_threadnum()];
 
     return GHOST_SUCCESS;
 }

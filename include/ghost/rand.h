@@ -17,7 +17,7 @@ extern "C" {
      * OpenMP do not have to be pinned in order to return correct random seeds.
      * This function is used for thread-safe random number generation.
      */
-    ghost_error_t ghost_rand_get(unsigned int *s);
+    ghost_error_t ghost_rand_get(unsigned int **s);
     /**
      * @brief Create a random seed for each PU of the machine.
      *

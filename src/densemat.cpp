@@ -177,14 +177,14 @@ static ghost_error_t ghost_vec_fromRand_tmpl(ghost_densemat_t *vec)
 #pragma omp parallel
     {
     ghost_idx_t i,v;
-    unsigned int state;
+    unsigned int *state;
     ghost_rand_get(&state);
         for (v=0; v<vec->traits.ncols; v++) 
         {
 #pragma omp for schedule(runtime)
             for (i=0; i<vec->traits.nrows; i++) 
             {
-                my_rand(&state,(v_t *)VECVAL(vec,vec->val,v,i));
+                my_rand(state,(v_t *)VECVAL(vec,vec->val,v,i));
             }
         }
     }
