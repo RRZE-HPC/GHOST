@@ -25,11 +25,12 @@ ghost_error_t ghost_rand_create()
     }
 
     for (i=0; i<nthreads; i++) {
-        double time;
-        GHOST_CALL_GOTO(ghost_timing_wcmilli(&time),err,ret);
+        double dtime;
+        GHOST_CALL_GOTO(ghost_timing_wcmilli(&dtime),err,ret);
+        int time = (int)(((int64_t)(dtime)) & 0xFFFFFFLL);
 
         unsigned int seed=(unsigned int)ghost_hash(
-                (int)time,
+                time,
                 rank,
                 i);
         ghost_rand_states[i] = seed;
