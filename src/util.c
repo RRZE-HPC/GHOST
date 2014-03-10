@@ -136,10 +136,6 @@ ghost_error_t ghost_line_string(char **str, const char *label, const char *unit,
 
     //memset(*str+len,'\0',1);
 
-    if (nLines > 1) { 
-    INFO_LOG("%s %s",dummy,dummy+VALUEWIDTH);
-    }
-
 #ifdef PRETTYPRINT
     sprintf(*str,"│");
 #endif
