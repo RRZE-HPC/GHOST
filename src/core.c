@@ -179,6 +179,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     GHOST_CALL_RETURN(ghost_hybridmode_set(ghost_hybridmode));
 
+    int maxcore;
+    ghost_machine_ncore(&maxcore, GHOST_NUMANODE_ANY);
+
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
 
@@ -271,22 +274,22 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     // delete PUs from cpuset according to hwconfig
     hwloc_obj_t obj;
-    unsigned int cpu, cores = 0;
+    unsigned int cpu;
     hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
 
+    // delete excess SMT threads
     hwloc_bitmap_foreach_begin(cpu,backup);
     obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
 
-    if (obj->sibling_rank == 0) {
-        cores++;
-    }
     if ((int)(obj->sibling_rank) >= hwconfig.nsmt) {
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
-    if ((int)cores > hwconfig.ncore) {
-        hwloc_bitmap_clr(mycpuset,obj->os_index);
-    }
     hwloc_bitmap_foreach_end();
+
+    // delete excess cores
+    for (i=hwconfig.ncore; i<maxcore; i++) {
+        hwloc_bitmap_andnot(mycpuset,mycpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset);
+    }
 
 
     void *(*threadFunc)(void *);
