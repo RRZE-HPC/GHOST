@@ -13,13 +13,13 @@
 
 #define GHOST_INSTR_START(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     ghost_timing_tick(region);\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     ghost_timing_tock(region);\
 }\
     
@@ -43,7 +43,7 @@
  */
 #define GHOST_INSTR_START(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_START(region);\
 }
@@ -55,7 +55,7 @@
  */
 #define GHOST_INSTR_STOP(tag) {\
     char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_getPrefix(), #tag, ghost_instr_getSuffix());\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_STOP(region);\
 }
@@ -84,9 +84,9 @@ extern "C" {
      *
      * The prefix will be prepended to the instrumentation tag.
      */
-    void ghost_instr_setPrefix(char *prefix);
+    void ghost_instr_prefix_set(char *prefix);
     
-    char *ghost_instr_getPrefix();
+    char *ghost_instr_prefix_get();
     /**
      * @brief Set the instrumentation suffix.
      *
@@ -94,9 +94,9 @@ extern "C" {
      *
      * The suffix will be appended to the instrumentation tag.
      */
-    void ghost_instr_setSuffix(char *suffix);
+    void ghost_instr_suffix_set(char *suffix);
 
-    char *ghost_instr_getSuffix();
+    char *ghost_instr_suffix_get();
 
 #ifdef __cplusplus
 }
