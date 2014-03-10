@@ -254,10 +254,12 @@ if (${BLAS} STREQUAL "MKL")
     else ()
         get_filename_component(MKL_LIBDIR ${MKL_INCLUDE_DIR}/../lib/intel64 REALPATH)
     endif()
-	find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
 
+    set(LIBMKL_CORE LIBMKL_CORE-NOTFOUND)
     set(LIBMKL_X_THREAD LIBMKL_X_THREAD-NOTFOUND)
     set(LIBMKL_INTEL_XLP64 LIBMKL_INTEL_XLP64-NOTFOUND)
+	
+    find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
     
     if (USE_LONGIDX)
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_ilp64 ${MKL_LIBDIR})
