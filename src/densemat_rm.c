@@ -1175,14 +1175,12 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
         }
     }
 
-    INFO_LOG("nrows %d ncols %d ncolsorig %d ncolspadded %d",vec->traits.nrows,vec->traits.ncols,vec->traits.ncolsorig,vec->traits.ncolspadded);
 
     for (r=0; r<vec->traits.nrows; r++)
     {
         for (v=0,c=0; v<vec->traits.ncolsorig; v++)
         {
             if (hwloc_bitmap_isset(vec->mask,v)) {
-                INFO_LOG("copy %d/%d to %d/%d: %f",r,v,r,c,*(double *)(VECVAL(vec,vec->val,r,v)));
                 memcpy(&val[(r*vec->traits.ncolspadded+c)*vec->elSize],
                         VECVAL(vec,vec->val,r,v),vec->elSize);
                 c++;
