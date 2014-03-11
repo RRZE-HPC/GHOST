@@ -29,13 +29,14 @@ typedef enum {
      */
     GHOST_TASK_LD_STRICT = 2,
     /**
-     * @brief Task can use the cores which are reserved by the adding task.
+     * @brief A child task must not use this task's resources.
      */
-    GHOST_TASK_USE_PARENTS = 4, 
-    GHOST_TASK_NO_PIN = 8, 
+    GHOST_TASK_NOT_ALLOW_CHILD = 4, 
+    GHOST_TASK_NOT_PIN = 8, 
     GHOST_TASK_ONLY_HYPERTHREADS = 16,
     GHOST_TASK_NO_HYPERTHREADS = 32
-} ghost_task_flags_t;
+} 
+ghost_task_flags_t;
 
 
 /**

@@ -192,7 +192,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {
         DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
-        taskflags |= GHOST_TASK_USE_PARENTS;
         ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
         ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
 

@@ -28,10 +28,10 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
     unsigned int pu;
     ghost_thpool_t *ghost_thpool = NULL;
     ghost_thpool_get(&ghost_thpool);
-    if (!(task->flags & GHOST_TASK_NO_PIN)) {
+    if (!(task->flags & GHOST_TASK_NOT_PIN)) {
         hwloc_bitmap_foreach_begin(pu,task->coremap);
-            if ((task->flags & GHOST_TASK_USE_PARENTS) && 
-                    task->parent && 
+            if (task->parent && 
+                    !(task->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD) && 
                     hwloc_bitmap_isset(task->parent->coremap,pu)) 
             {
                 hwloc_bitmap_clr(task->parent->childusedmap,pu);
@@ -39,22 +39,9 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
                 ghost_pumap_setIdleIdx(pu);
             }
         hwloc_bitmap_foreach_end();
-/*        for (int t=0; t<task->nThreads; t++) {
-            if ((task->flags & GHOST_TASK_USE_PARENTS) && 
-                    task->parent && 
-                    hwloc_bitmap_isset(task->parent->coremap,task->cores[t])) 
-            {
-                hwloc_bitmap_clr(task->parent->childusedmap,task->cores[t]);
-            } else {
-                ghost_pumap_setIdleIdx(task->cores[t]);
-            }
-        }*/
     }
-    //    task->freed = 1;
 
     return GHOST_SUCCESS;
-
-
 }
 
 ghost_error_t ghost_task_print(char **str, ghost_task_t *t) 
