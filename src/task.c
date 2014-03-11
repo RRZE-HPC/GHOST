@@ -59,25 +59,16 @@ ghost_error_t ghost_task_print(char **str, ghost_task_t *t)
 
 ghost_error_t ghost_task_enqueue(ghost_task_t *t)
 {
-    // if a task is initialized _once_ but added several times, this has to be done each time it is added
-    pthread_cond_init(t->finishedCond,NULL);
-    pthread_mutex_init(t->mutex,NULL);
     pthread_mutex_lock(t->mutex);
     t->state = GHOST_TASK_INVALID;
-//    memset(t->cores,0,sizeof(int)*t->nThreads);
 
     hwloc_bitmap_zero(t->coremap);
     hwloc_bitmap_zero(t->childusedmap);
     GHOST_CALL_RETURN(ghost_task_cur(&t->parent));
-    //    t->freed = 0;
 
-    //DEBUG_LOG(1,"Task %p w/ %d threads goes to queue %p (LD %d)",(void *)t,t->nThreads,(void *)taskq,t->LD);
     ghost_taskq_add(t);
-    //taskq_additem(taskq,t);
-    //ghost_task_destroy(&commTask);
     t->state = GHOST_TASK_ENQUEUED;
     pthread_mutex_unlock(t->mutex);
-
 
     DEBUG_LOG(1,"Task added successfully");
 
@@ -191,6 +182,8 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->mutex,sizeof(pthread_mutex_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->ret,sizeof(void *)),err,ret);
+    pthread_mutex_init((*t)->mutex,NULL);
+    pthread_cond_init((*t)->finishedCond,NULL);
     (*t)->state = GHOST_TASK_CREATED;
     (*t)->coremap = hwloc_bitmap_alloc();
     (*t)->childusedmap = hwloc_bitmap_alloc();
