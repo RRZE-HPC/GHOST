@@ -96,11 +96,10 @@ ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, 
 ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    ghost_idx_t j,c;
+    ghost_idx_t j,c,v;
     ghost_nnz_t offs;
+    double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
-    double *lval = (double *)res->val[0];
-    double *rval = (double *)invec->val[0];
     double *local_dot_product = NULL;
     __m256d tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8;
     __m256d dot1,dot2,dot3;
@@ -132,168 +131,174 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded>>5; c++) 
         { // loop over chunks
-            tmp1 = _mm256_setzero_pd(); // tmp = 0
-            tmp2 = _mm256_setzero_pd(); // tmp = 0
-            tmp3 = _mm256_setzero_pd(); // tmp = 0
-            tmp4 = _mm256_setzero_pd(); // tmp = 0
-            tmp5 = _mm256_setzero_pd(); // tmp = 0
-            tmp6 = _mm256_setzero_pd(); // tmp = 0
-            tmp7 = _mm256_setzero_pd(); // tmp = 0
-            tmp8 = _mm256_setzero_pd(); // tmp = 0
-            offs = SELL(mat)->chunkStart[c];
+                
+            for (v=0; v<invec->traits.ncols; v++)
+            {
+                tmp1 = _mm256_setzero_pd(); // tmp = 0
+                tmp2 = _mm256_setzero_pd(); // tmp = 0
+                tmp3 = _mm256_setzero_pd(); // tmp = 0
+                tmp4 = _mm256_setzero_pd(); // tmp = 0
+                tmp5 = _mm256_setzero_pd(); // tmp = 0
+                tmp6 = _mm256_setzero_pd(); // tmp = 0
+                tmp7 = _mm256_setzero_pd(); // tmp = 0
+                tmp8 = _mm256_setzero_pd(); // tmp = 0
+                lval = (double *)res->val[v];
+                rval = (double *)invec->val[v];
+                offs = SELL(mat)->chunkStart[c];
 
-            for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])>>5; j++) 
-            { // loop inside chunk
+                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])>>5; j++) 
+                { // loop inside chunk
 
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp1    = _mm256_add_pd(tmp1,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp2    = _mm256_add_pd(tmp2,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp3    = _mm256_add_pd(tmp3,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp4    = _mm256_add_pd(tmp4,_mm256_mul_pd(val,rhs));           // accumulate
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp1    = _mm256_add_pd(tmp1,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp2    = _mm256_add_pd(tmp2,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp3    = _mm256_add_pd(tmp3,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp4    = _mm256_add_pd(tmp4,_mm256_mul_pd(val,rhs));           // accumulate
 
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp5    = _mm256_add_pd(tmp5,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp6    = _mm256_add_pd(tmp6,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp7    = _mm256_add_pd(tmp7,_mm256_mul_pd(val,rhs));           // accumulate
-                
-                val    = _mm256_load_pd(&mval[offs]);                      // load values
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
-                rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
-                rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
-                rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
-                tmp8    = _mm256_add_pd(tmp8,_mm256_mul_pd(val,rhs));           // accumulate
-            }
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp5    = _mm256_add_pd(tmp5,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp6    = _mm256_add_pd(tmp6,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp7    = _mm256_add_pd(tmp7,_mm256_mul_pd(val,rhs));           // accumulate
+                    
+                    val    = _mm256_load_pd(&mval[offs]);                      // load values
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load first 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);                  // insert to RHS
+                    rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]); // load second 128 bits of RHS
+                    rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);
+                    rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);                  // insert to RHS
+                    tmp8    = _mm256_add_pd(tmp8,_mm256_mul_pd(val,rhs));           // accumulate
+                }
 
-            if (spmvmOptions & GHOST_SPMV_SHIFT) {
-                tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
-                tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
-                tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
-                tmp4 = _mm256_sub_pd(tmp4,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+12])));
-                tmp5 = _mm256_sub_pd(tmp5,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+16])));
-                tmp6 = _mm256_sub_pd(tmp6,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+20])));
-                tmp7 = _mm256_sub_pd(tmp7,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+24])));
-                tmp8 = _mm256_sub_pd(tmp8,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+28])));
-            }
-            if (spmvmOptions & GHOST_SPMV_SCALE) {
-                tmp1 = _mm256_mul_pd(scale,tmp1);
-                tmp2 = _mm256_mul_pd(scale,tmp2);
-                tmp3 = _mm256_mul_pd(scale,tmp3);
-                tmp4 = _mm256_mul_pd(scale,tmp4);
-                tmp5 = _mm256_mul_pd(scale,tmp5);
-                tmp6 = _mm256_mul_pd(scale,tmp6);
-                tmp7 = _mm256_mul_pd(scale,tmp7);
-                tmp8 = _mm256_mul_pd(scale,tmp8);
-            }
-            if (spmvmOptions & GHOST_SPMV_AXPY) {
-                _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_load_pd(&lval[c*32])));
-                _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*32+4])));
-                _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*32+8])));
-                _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_load_pd(&lval[c*32+12])));
-                _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_load_pd(&lval[c*32+16])));
-                _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[c*32+20])));
-                _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[c*32+24])));
-                _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[c*32+28])));
-            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32]))));
-                _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+4]))));
-                _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+8]))));
-                _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+12]))));
-                _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+16]))));
-                _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+20]))));
-                _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+24]))));
-                _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+28]))));
-            } else {
-                _mm256_stream_pd(&lval[c*32],tmp1);
-                _mm256_stream_pd(&lval[c*32+4],tmp2);
-                _mm256_stream_pd(&lval[c*32+8],tmp3);
-                _mm256_stream_pd(&lval[c*32+12],tmp4);
-                _mm256_stream_pd(&lval[c*32+16],tmp5);
-                _mm256_stream_pd(&lval[c*32+20],tmp6);
-                _mm256_stream_pd(&lval[c*32+24],tmp7);
-                _mm256_stream_pd(&lval[c*32+28],tmp8);
-            }
-            if (spmvmOptions & GHOST_SPMV_DOT) {
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
-                dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
-                
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
-                dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
-                
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
-                dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
-                
+                if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                    tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
+                    tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
+                    tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
+                    tmp4 = _mm256_sub_pd(tmp4,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+12])));
+                    tmp5 = _mm256_sub_pd(tmp5,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+16])));
+                    tmp6 = _mm256_sub_pd(tmp6,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+20])));
+                    tmp7 = _mm256_sub_pd(tmp7,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+24])));
+                    tmp8 = _mm256_sub_pd(tmp8,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+28])));
+                }
+                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                    tmp1 = _mm256_mul_pd(scale,tmp1);
+                    tmp2 = _mm256_mul_pd(scale,tmp2);
+                    tmp3 = _mm256_mul_pd(scale,tmp3);
+                    tmp4 = _mm256_mul_pd(scale,tmp4);
+                    tmp5 = _mm256_mul_pd(scale,tmp5);
+                    tmp6 = _mm256_mul_pd(scale,tmp6);
+                    tmp7 = _mm256_mul_pd(scale,tmp7);
+                    tmp8 = _mm256_mul_pd(scale,tmp8);
+                }
+                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                    _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_load_pd(&lval[c*32])));
+                    _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*32+4])));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*32+8])));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_load_pd(&lval[c*32+12])));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_load_pd(&lval[c*32+16])));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[c*32+20])));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[c*32+24])));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[c*32+28])));
+                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                    _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32]))));
+                    _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+4]))));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+8]))));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+12]))));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+16]))));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+20]))));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+24]))));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+28]))));
+                } else {
+                    _mm256_stream_pd(&lval[c*32],tmp1);
+                    _mm256_stream_pd(&lval[c*32+4],tmp2);
+                    _mm256_stream_pd(&lval[c*32+8],tmp3);
+                    _mm256_stream_pd(&lval[c*32+12],tmp4);
+                    _mm256_stream_pd(&lval[c*32+16],tmp5);
+                    _mm256_stream_pd(&lval[c*32+20],tmp6);
+                    _mm256_stream_pd(&lval[c*32+24],tmp7);
+                    _mm256_stream_pd(&lval[c*32+28],tmp8);
+                }
+                if (spmvmOptions & GHOST_SPMV_DOT) {
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
+                    
+                }
             }
         }
    
