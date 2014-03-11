@@ -365,13 +365,15 @@ struct ghost_densemat_t
      * @brief Create a vector/matrix as a view of another vector/matrix.
      *
      * @param src The source vector/matrix.
+     * @param nr The nunber of rows to view.
+     * @param roffs The row offset.
      * @param dst Where to store the new vector.
      * @param nc The nunber of columns to view.
      * @param coffs The column offset.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t coffs);
+    ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
      * @brief Scale each column of a vector/matrix with a given scale factor.
      *

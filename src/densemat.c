@@ -128,6 +128,9 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
     }
+    if (vec->traits.nrowsorig == 0) {
+        vec->traits.nrowsorig = vec->traits.nrows;
+    }
 
     DEBUG_LOG(1,"The vector has %"PRIDX" w/ %"PRIDX" halo elements (padded: %"PRIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
