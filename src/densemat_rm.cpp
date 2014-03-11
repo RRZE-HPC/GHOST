@@ -200,8 +200,8 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     stringstream buffer;
 
     ghost_idx_t i,r;
-    for (i=0; i<vec->traits.nrows; i++) {
-        for (r=0; r<vec->traits.nrows; r++) {
+    for (r=0; r<vec->traits.nrows; r++) {
+        for (i=0; i<vec->traits.ncols; i++) {
             v_t val = 0.;
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
@@ -215,7 +215,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
             }
             buffer << val << "\t";
         }
-        if (i<vec->traits.nrows-1) {
+        if (r<vec->traits.nrows-1) {
             buffer << std::endl;
         }
     }
