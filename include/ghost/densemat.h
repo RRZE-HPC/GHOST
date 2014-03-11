@@ -38,6 +38,10 @@ typedef struct
     ghost_idx_t nrowshalo;
     ghost_idx_t nrowspadded;
     ghost_idx_t ncols;
+    /**
+     * @brief Relevant if the densemat is a view.
+     */
+    ghost_idx_t ncolsorig;
     ghost_idx_t ncolspadded;
     ghost_densemat_flags_t flags;
     ghost_densemat_storage_t storage;
