@@ -165,9 +165,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
         int availcores = 0;
         if (curTask->flags & GHOST_TASK_LD_STRICT) {
-            ghost_pumap_getNumberOfIdlePUs(&availcores,curTask->LD);
+            ghost_pumap_nidle(&availcores,curTask->LD);
         } else {
-            ghost_pumap_getNumberOfIdlePUs(&availcores,GHOST_NUMANODE_ANY);
+            ghost_pumap_nidle(&availcores,GHOST_NUMANODE_ANY);
         }
         hwloc_bitmap_t parentscores = hwloc_bitmap_alloc(); // TODO free
         if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
@@ -279,7 +279,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                 //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
                 //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
             }
-            ghost_pumap_setBusy(mybusy);
+            ghost_pumap_setbusy(mybusy);
 //            hwloc_bitmap_or(pumap->busy,pumap->busy,mybusy);
 
             if (reservedCores < curTask->nThreads) {

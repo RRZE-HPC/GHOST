@@ -36,7 +36,7 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
             {
                 hwloc_bitmap_clr(task->parent->childusedmap,pu);
             } else {
-                ghost_pumap_setIdleIdx(pu);
+                ghost_pumap_setidle_idx(pu);
             }
         hwloc_bitmap_foreach_end();
     }
@@ -163,11 +163,11 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
             WARNING_LOG("FILL_LD does only work when the LD is given! Not creating task!");
             return GHOST_ERR_INVALID_ARG;
         }
-        ghost_pumap_getNumberOfPUs(&(*t)->nThreads,LD);
+        ghost_pumap_npu(&(*t)->nThreads,LD);
     } 
     else if (nThreads == GHOST_TASK_FILL_ALL) {
 #ifdef GHOST_HAVE_OPENMP
-        GHOST_CALL_GOTO(ghost_pumap_getNumberOfPUs(&((*t)->nThreads),GHOST_NUMANODE_ANY),err,ret);
+        GHOST_CALL_GOTO(ghost_pumap_npu(&((*t)->nThreads),GHOST_NUMANODE_ANY),err,ret);
 #else
         (*t)->nThreads = 1; //TODO is this the correct behavior?
 #endif

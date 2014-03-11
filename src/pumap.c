@@ -5,7 +5,7 @@
 
 static ghost_pumap_t *pumap = NULL;
 
-ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numanode)
+ghost_error_t ghost_pumap_npu(int *nPUs, int numanode)
 {
 
     if (!nPUs) {
@@ -31,7 +31,7 @@ ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numanode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numanode)
+ghost_error_t ghost_pumap_nidle(int *nPUs, int numanode)
 {
 
     if (numanode == GHOST_NUMANODE_ANY) {
@@ -53,7 +53,7 @@ ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numanode)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset)
+ghost_error_t ghost_pumap_setidle(hwloc_bitmap_t cpuset)
 {
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
         ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
@@ -65,7 +65,7 @@ ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setIdleIdx(int idx)
+ghost_error_t ghost_pumap_setidle_idx(int idx)
 {
     if (!hwloc_bitmap_isset(pumap->cpuset,idx)) {
         ERROR_LOG("The given index %d is not included in the PU map's CPU set",idx);
@@ -77,7 +77,7 @@ ghost_error_t ghost_pumap_setIdleIdx(int idx)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_pumap_setBusy(hwloc_bitmap_t cpuset)
+ghost_error_t ghost_pumap_setbusy(hwloc_bitmap_t cpuset)
 {
     if (!hwloc_bitmap_isincluded(cpuset,pumap->cpuset)) {
         ERROR_LOG("The given CPU set is not included in the PU map's CPU set");
@@ -241,7 +241,7 @@ ghost_error_t ghost_pumap_string(char **str)
     
     hwloc_bitmap_list_asprintf(&cpusetstr,pumap->cpuset);
     hwloc_bitmap_list_asprintf(&busystr,pumap->busy);
-    GHOST_CALL_RETURN(ghost_pumap_getNumberOfIdlePUs(&nIdle,GHOST_NUMANODE_ANY));
+    GHOST_CALL_RETURN(ghost_pumap_nidle(&nIdle,GHOST_NUMANODE_ANY));
 
     ghost_header_string(str,"PU map @ local rank %d (glob %d)",mynoderank,myrank);
     ghost_line_string(str,"Total CPU set",NULL,"%s",cpusetstr);

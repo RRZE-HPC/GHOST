@@ -69,7 +69,7 @@ extern "C" {
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setIdle(hwloc_bitmap_t cpuset);
+    ghost_error_t ghost_pumap_setidle(hwloc_bitmap_t cpuset);
     /**
      * @brief Set the given index in the PU map to idle.  
      *
@@ -79,7 +79,7 @@ extern "C" {
      *
      * If the index is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setIdleIdx(int idx);
+    ghost_error_t ghost_pumap_setidle_idx(int idx);
     /**
      * @brief Set the given CPU set in the PU map to busy.  
      *
@@ -89,7 +89,7 @@ extern "C" {
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
-    ghost_error_t ghost_pumap_setBusy(hwloc_bitmap_t cpuset);
+    ghost_error_t ghost_pumap_setbusy(hwloc_bitmap_t cpuset);
     /**
      * @brief Get the number of idle processing units in total or in a given NUMA node.
      *
@@ -98,7 +98,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_getNumberOfIdlePUs(int *nPUs, int numaNode);
+    ghost_error_t ghost_pumap_nidle(int *nPUs, int numaNode);
 
     /**
      * @brief Get the number of processing units in total or in a given NUMA node.
@@ -108,7 +108,7 @@ extern "C" {
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_pumap_getNumberOfPUs(int *nPUs, int numaNode);
+    ghost_error_t ghost_pumap_npu(int *nPUs, int numaNode);
 
     ghost_error_t ghost_pumap_string(char **str);
 
