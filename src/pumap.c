@@ -168,7 +168,7 @@ ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset)
         hwloc_bitmap_andnot(remoteCPUset,pumap->cpuset,numanode->cpuset);
 
         for (t=0; t<localthreads; t++) { // my own threads
-            pumap->PUs[q][t] = hwloc_get_obj_inside_cpuset_by_type(topology,pumap->cpuset,HWLOC_OBJ_PU,t);
+            pumap->PUs[q][t] = hwloc_get_obj_inside_cpuset_by_type(topology,localCPUset,HWLOC_OBJ_PU,t);
         }
         for (t=0; t<totalThreads-localthreads; t++) { // other NUMA nodes
             pumap->PUs[q][localthreads+t] = hwloc_get_obj_inside_cpuset_by_type(topology,remoteCPUset,HWLOC_OBJ_PU,t);
