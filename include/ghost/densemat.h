@@ -20,10 +20,15 @@ typedef enum {
     GHOST_DENSEMAT_GLOBAL    = 16,
     GHOST_DENSEMAT_DUMMY     = 32,
     GHOST_DENSEMAT_VIEW      = 64,
-    GHOST_DENSEMAT_SCATTERED = 128,
-    GHOST_DENSEMAT_ROWMAJOR  = 256
+    GHOST_DENSEMAT_SCATTERED = 128
 } 
 ghost_densemat_flags_t;
+
+typedef enum {
+    GHOST_DENSEMAT_ROWMAJOR,
+    GHOST_DENSEMAT_COLMAJOR
+}
+ghost_densemat_storage_t;
 
 typedef struct
 {
@@ -31,7 +36,9 @@ typedef struct
     ghost_idx_t nrowshalo;
     ghost_idx_t nrowspadded;
     ghost_idx_t ncols;
+    ghost_idx_t ncolspadded;
     ghost_densemat_flags_t flags;
+    ghost_densemat_storage_t storage;
     ghost_datatype_t datatype;
 }
 ghost_densemat_traits_t;
@@ -370,6 +377,7 @@ struct ghost_densemat_t
 
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
     .flags = GHOST_DENSEMAT_DEFAULT,\
+    .storage = GHOST_DENSEMAT_COLMAJOR,\
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
     .nrows = 0,\
     .nrowshalo = 0,\

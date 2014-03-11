@@ -61,7 +61,7 @@ ghost_error_t ghost_mpi_datatypes_destroy()
 ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
-        ERROR_LOG("Invalid data type");
+        ERROR_LOG("Invalid data type %d",datatype);
         return GHOST_ERR_INVALID_ARG;
     }
 

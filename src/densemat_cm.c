@@ -839,7 +839,14 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path)
 static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *))
 {
     int rank;
-    GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+    ghost_idx_t offset;
+    if (vec->context) {
+        GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
+        offset = vec->context->lfRow[rank];
+    } else {
+        rank = 0;
+        offset = 0;
+    }
     GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
@@ -849,7 +856,7 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx
         for (v=0; v<vec->traits.ncols; v++) {
 #pragma omp parallel for schedule(runtime) private(i)
             for (i=0; i<vec->traits.nrows; i++) {
-                fp(vec->context->lfRow[rank]+i,v,VECVAL(vec,vec->val,v,i));
+                fp(offset+i,v,VECVAL(vec,vec->val,v,i));
             }
         }
 

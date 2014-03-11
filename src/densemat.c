@@ -45,7 +45,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         }
     }
 
-    if ((*vec)->traits.flags & GHOST_DENSEMAT_ROWMAJOR) {
+    if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         ghost_densemat_rm_create(*vec);
     } else {
         ghost_densemat_cm_create(*vec);
@@ -114,6 +114,11 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         DEBUG_LOG(2,"nrowspadded for vector not given. determining it from the context");
         vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),GHOST_PAD_MAX); // TODO needed?
     }
+    if (vec->traits.ncolspadded == 0) {
+        DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
+        vec->traits.ncolspadded = PAD(vec->traits.ncols,GHOST_PAD_MAX); // TODO needed?
+    }
+
     DEBUG_LOG(1,"The vector has %"PRIDX" w/ %"PRIDX" halo elements (padded: %"PRIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
     return GHOST_SUCCESS; 

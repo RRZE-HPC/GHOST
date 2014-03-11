@@ -199,19 +199,19 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
 {
     stringstream buffer;
 
-    ghost_idx_t i,v;
+    ghost_idx_t i,r;
     for (i=0; i<vec->traits.nrows; i++) {
-        for (v=0; v<vec->traits.ncols; v++) {
+        for (r=0; r<vec->traits.nrows; r++) {
             v_t val = 0.;
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits.nrowspadded+i]),sizeof(v_t));
+                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[r*vec->traits.ncolspadded+i]),sizeof(v_t));
 #endif
             }
             else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
             {
-                val = *(v_t *)VECVAL(vec,vec->val,v,i);
+                val = *(v_t *)VECVAL(vec,vec->val,r,i);
             }
             buffer << val << "\t";
         }
