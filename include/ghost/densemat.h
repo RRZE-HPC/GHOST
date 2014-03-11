@@ -35,6 +35,7 @@ ghost_densemat_storage_t;
 typedef struct
 {
     ghost_idx_t nrows;
+    ghost_idx_t nrowsorig;
     ghost_idx_t nrowshalo;
     ghost_idx_t nrowspadded;
     ghost_idx_t ncols;
