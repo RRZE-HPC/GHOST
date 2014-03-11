@@ -270,15 +270,21 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v;
+    ghost_idx_t c,r,i;
     ghost_densemat_traits_t newTraits = src->traits;
-    newTraits.ncols = nc;
 
     ghost_densemat_create(new,src->context,newTraits);
-
-    for (v=0; v<nc; v++) {
-        (*new)->val[v] = VECVAL(src,src->val,coffs[v],0);
-    }    
+    
+    for (c=0,i=0; c<(*new)->traits.ncols; c++) {
+        if (coffs[i] != c) {
+            hwloc_bitmap_clr((*new)->mask,c);
+        } else {
+            i++;
+        }
+    }
+    for (r=0; r<(*new)->traits.nrows; r++) {
+        (*new)->val[r] = VECVAL(src,src->val,r,0);
+    }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
     (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;
