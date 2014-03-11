@@ -215,7 +215,9 @@ static ghost_error_t ghost_vec_string_tmpl(char **str, ghost_densemat_t *vec)
             }
             buffer << val << "\t";
         }
-        buffer << std::endl;
+        if (i<vec->traits.nrows-1) {
+            buffer << std::endl;
+        }
     }
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
