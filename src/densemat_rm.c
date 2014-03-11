@@ -242,7 +242,6 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     
     for (c=0; c<src->traits.ncolsorig; c++) {
         if (c<coffs || (c >= coffs+nc)) {
-            INFO_LOG("clr %d",c);
             hwloc_bitmap_clr((*new)->mask,c);
         }
     }
