@@ -112,11 +112,14 @@ ghost_error_t ghost_task_wait(ghost_task_t * task)
 
 }
 
-char *ghost_task_stateString(ghost_task_state_t state)
+char *ghost_task_state_string(ghost_task_state_t state)
 {
     switch (state) {
         case GHOST_TASK_INVALID: 
             return "Invalid";
+            break;
+        case GHOST_TASK_CREATED: 
+            return "Created";
             break;
         case GHOST_TASK_ENQUEUED: 
             return "Enqueued";
