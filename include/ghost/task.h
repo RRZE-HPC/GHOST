@@ -148,6 +148,7 @@ typedef struct ghost_task_t {
      * @brief Set to one as soon as the task's resources have been free'd.
      * This can be the case when the task waits for a child-task to finish or
      * when the task itself is finished.
+     * @deprecated
      */
     int freed;
 } ghost_task_t;
@@ -203,7 +204,7 @@ extern "C" {
      *
      * @return The state string
      */
-    char *ghost_task_stateString(ghost_task_state_t state);
+    char *ghost_task_state_string(ghost_task_state_t state);
 
     /**
      * @brief Print a task and all relevant informatio to stdout.
