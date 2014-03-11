@@ -39,8 +39,11 @@ set (SOURCES
         src/core.c
 		src/crs.c 
 		src/crs.cpp 
-		src/densemat.c 
-		src/densemat.cpp 
+        src/densemat.c
+		src/densemat_cm.c 
+		src/densemat_rm.c 
+		src/densemat_cm.cpp 
+		src/densemat_rm.cpp 
         src/error.c
         src/instr.c
         src/locality.c
@@ -73,7 +76,8 @@ set (HEADERS
 		include/ghost/context.h
         include/ghost/core.h
 		include/ghost/crs.h
-		include/ghost/densemat.h
+		include/ghost/densemat_cm.h
+		include/ghost/densemat_rm.h
 		include/ghost/error.h
         include/ghost/instr.h
 		include/ghost/locality.h	
