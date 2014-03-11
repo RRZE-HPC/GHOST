@@ -202,18 +202,20 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     ghost_idx_t i,r;
     for (r=0; r<vec->traits.nrows; r++) {
         for (i=0; i<vec->traits.ncols; i++) {
-            v_t val = 0.;
-            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-            {
+            if (hwloc_bitmap_isset(vec->mask,i)) {
+                v_t val = 0.;
+                if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+                {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[r*vec->traits.ncolspadded+i]),sizeof(v_t));
+                    ghost_cu_download(&val,&(((v_t *)vec->cu_val)[r*vec->traits.ncolspadded+i]),sizeof(v_t));
 #endif
+                }
+                else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+                {
+                    val = *(v_t *)VECVAL(vec,vec->val,r,i);
+                }
+                buffer << val << "\t";
             }
-            else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
-            {
-                val = *(v_t *)VECVAL(vec,vec->val,r,i);
-            }
-            buffer << val << "\t";
         }
         if (r<vec->traits.nrows-1) {
             buffer << std::endl;

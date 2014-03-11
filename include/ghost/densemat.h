@@ -6,6 +6,8 @@
 #ifndef GHOST_DENSEMAT_H
 #define GHOST_DENSEMAT_H
 
+#include <hwloc/bitmap.h>
+
 #include "config.h"
 #include "types.h"
 #include "context.h"
@@ -73,6 +75,8 @@ struct ghost_densemat_t
      * @brief Size (in bytes) of one matrix element.
      */
     size_t elSize;
+
+    hwloc_bitmap_t mask;
 
 #ifdef GHOST_HAVE_CUDA
     /**

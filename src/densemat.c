@@ -29,6 +29,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
+    (*vec)->mask = hwloc_bitmap_alloc();
+    if (!(*vec)->mask) {
+        ERROR_LOG("Could not create dense matrix mask!");
+        goto err;
+    }
+    hwloc_bitmap_fill((*vec)->mask);
+
     getNrowsFromContext((*vec));
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
 

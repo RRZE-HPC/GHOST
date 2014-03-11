@@ -235,13 +235,18 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix with col offset %"PRIDX,src->traits.nrows,nc,coffs);
     ghost_densemat_traits_t newTraits = src->traits;
-    newTraits.ncols = nc;
 
     ghost_densemat_create(new,src->context,newTraits);
-    ghost_idx_t v;
+    ghost_idx_t r,c;
+    
+    for (c=0; c<src->traits.ncols; c++) {
+        if (c<coffs || (c >= coffs+nc)) {
+            hwloc_bitmap_clr((*new)->mask,c);
+        }
+    }
 
-    for (v=0; v<(*new)->traits.ncols; v++) {
-        (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
+    for (r=0; r<(*new)->traits.nrows; r++) {
+        (*new)->val[r] = VECVAL(src,src->val,r,0);
     }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
@@ -330,23 +335,26 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 
 static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_idx_t coffs)
 {
+    if (coffs) {
+        WARNING_LOG("Ignoring column offset!");
+    }
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRIDX,coffs);
-    ghost_idx_t v;
+    ghost_idx_t r;
 
-    for (v=0; v<vec->traits.ncols; v++) {
+    for (r=0; r<vec->traits.nrows; r++) {
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
         {
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits.nrows*vec->elSize);
+                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,r,0),CUVECVAL(vec2,vec2->cu_val,r,0),vec->traits.ncols*vec->elSize);
 #endif
             }
             else
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits.nrows*vec->elSize);
+                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,r,0),VECVAL(vec2,vec2->val,r,0),vec->traits.ncols*vec->elSize);
 #endif
             }
         }
@@ -355,12 +363,12 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(VECVAL(vec,vec->val,v,0),CUVECVAL(vec2,vec2->cu_val,coffs+v,0),vec->traits.nrows*vec->elSize);
+                ghost_cu_download(VECVAL(vec,vec->val,r,0),CUVECVAL(vec2,vec2->cu_val,r,0),vec->traits.ncols*vec->elSize);
 #endif
             }
             else
             {
-                memcpy(VECVAL(vec,vec->val,v,0),VECVAL(vec2,vec2->val,coffs+v,0),vec->traits.nrows*vec->elSize);
+                memcpy(VECVAL(vec,vec->val,r,0),VECVAL(vec2,vec2->val,r,0),vec->traits.ncols*vec->elSize);
             }
         }
 
@@ -1032,6 +1040,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         }
         free(vec->val);
         free(vec);
+        hwloc_bitmap_free(vec->mask);
         // TODO free traits ???
     }
 }
