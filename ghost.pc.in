@@ -2,9 +2,9 @@ prefix=@CMAKE_INSTALL_PREFIX@
 includedir=${prefix}/include/
 libdir=${prefix}/lib/ghost/
 
-Name: ghost
+Name: GHOST
 Description: General, Hybrid and Optimized Sparse Toolkit
-Version: @GHOST_VERSION_MAJOR@.@GHOST_VERSION_MINOR@.@GHOST_VERSION_BUILD@
+Version: @GHOST_VERSION_MAJOR@.@GHOST_VERSION_MINOR@.@GHOST_VERSION_REVISION@
 Requires: hwloc
 Cflags: -I${includedir}
 Libs: -L${libdir} -lghost

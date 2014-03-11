@@ -1,17 +1,20 @@
-#ifndef __GHOST_H__
-#define __GHOST_H__
+/**
+ * @file ghost.h
+ * @brief Includes the most relevant GHOST headers for applications.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_H
+#define GHOST_H
 
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/util.h"
-#include "ghost/math.h"
-#include "ghost/constants.h"
-#include "ghost/taskq.h"
-#include "ghost/vec.h"
-#include "ghost/math.h"
-#include "ghost/mat.h"
+#include "ghost/core.h"
+#include "ghost/sparsemat.h"
+#include "ghost/densemat.h"
 #include "ghost/context.h"
-#include "ghost/affinity.h"
-#include "ghost/sell.h"
+#include "ghost/task.h"
+#include "ghost/math.h"
+#include "ghost/timing.h"
+#include "ghost/locality.h"
 
 #endif

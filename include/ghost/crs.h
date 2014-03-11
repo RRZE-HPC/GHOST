@@ -1,106 +1,59 @@
-#ifndef __GHOST_SPMFORMAT_CRS__
-#define __GHOST_SPMFORMAT_CRS__
+/**
+ * @file crs.h
+ * @brief Macros and functions for the CRS sparse matrix implementation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_CRS_H
+#define GHOST_CRS_H
 
 #include "config.h"
 #include "types.h"
+#include "sparsemat.h"
 
-#if GHOST_HAVE_CUDA
-#include "cu_crs.h"
-#endif
-
-typedef struct
-{
-    ghost_midx_t len;
-    ghost_midx_t idx;
-    void *val;
-    ghost_midx_t minRow;
-    ghost_midx_t maxRow;
-}
-CONST_DIAG;
-
+/**
+ * @brief Struct defining a CRS matrix.
+ */
 typedef struct 
 {
-#ifdef GHOST_HAVE_OPENCL
-    ghost_cl_midx_t  nrows, ncols;
-    ghost_cl_mnnz_t  nEnts;
-    cl_mem rpt;
-    cl_mem col;
-    cl_mem val;
-#else
-    void *empty;
-#endif
-} 
-CL_CR_TYPE;
-
-typedef struct 
-{
-    ghost_midx_t  nrows, ncols;
-    ghost_mnnz_t  nEnts;
-    ghost_midx_t  *rpt;
-    ghost_midx_t  *col;
+    ghost_nnz_t  *rpt;
+    ghost_idx_t  *col;
     char *val;
-
-    CL_CR_TYPE *clmat;
-    ghost_midx_t nConstDiags;
-    CONST_DIAG *constDiags;
 } 
-CR_TYPE;
-
-/*typedef struct 
-{
-    ghost_midx_t row, col, nThEntryInRow;
-    ghost_dt val;
-} 
-NZE_TYPE;*/
+ghost_crs_t;
 
 
-#define CR(mat) ((CR_TYPE *)(mat->data))
+#define CR(mat) ((ghost_crs_t *)((mat)->data))
 
-ghost_mat_t * ghost_CRS_init(ghost_context_t *, ghost_mtraits_t *);
+ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat);
 #ifdef __cplusplus
-template<typename, typename> void CRS_kernel_plain_tmpl(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int);
-template<typename m_t, typename f_t> void CRS_castData_tmpl(void *matrixData, void *fileData, int nEnts);
-template<typename> void CRS_valToStr_tmpl(void *, char *, int);
 extern "C" {
 #endif
     
-ghost_midx_t * CRS_readRpt(ghost_midx_t nrpt, char *matrixPath);
-void dd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void ds_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void dc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void dz_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void sd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void ss_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void sc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void sz_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void cd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void cs_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void cc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void cz_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void zd_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void zs_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void zc_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void zz_CRS_kernel_plain(ghost_mat_t *, ghost_vec_t *, ghost_vec_t *, int options);
-void dd_CRS_castData(void *, void *, int);
-void ds_CRS_castData(void *, void *, int);
-void dc_CRS_castData(void *, void *, int);
-void dz_CRS_castData(void *, void *, int);
-void sd_CRS_castData(void *, void *, int);
-void ss_CRS_castData(void *, void *, int);
-void sc_CRS_castData(void *, void *, int);
-void sz_CRS_castData(void *, void *, int);
-void cd_CRS_castData(void *, void *, int);
-void cs_CRS_castData(void *, void *, int);
-void cc_CRS_castData(void *, void *, int);
-void cz_CRS_castData(void *, void *, int);
-void zd_CRS_castData(void *, void *, int);
-void zs_CRS_castData(void *, void *, int);
-void zc_CRS_castData(void *, void *, int);
-void zz_CRS_castData(void *, void *, int);
-void d_CRS_valToStr(void *, char *, int);
-void s_CRS_valToStr(void *, char *, int);
-void c_CRS_valToStr(void *, char *, int);
-void z_CRS_valToStr(void *, char *, int);
+ghost_error_t dd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t ds_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t dc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t dz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t sd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t ss_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t sc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t sz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t cd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t cs_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t cc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t cz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t zd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t zs_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+
+#ifdef GHOST_HAVE_CUDA
+ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

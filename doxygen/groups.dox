@@ -1,0 +1,49 @@
+/** 
+ * @defgroup core Core functionality
+ * @brief GHOST's core functionality.
+ */
+
+/** 
+ * @defgroup types Data types
+ * @brief Basic data types and structures.
+ */
+
+/** 
+ * @defgroup stringification Object stringification
+ * @brief Create strings holding information on GHOST objects.
+ */
+
+
+/**
+ * @defgroup denseinit Dense matrix initialization
+ * @brief Functions to initialize dense matrices/vectors.
+ */
+
+/**
+ * @defgroup gputransfer GPU data transfer
+ * @brief Function to transfer data to/from GPUs
+ */
+
+/** 
+ * @defgroup locops Local math
+ * @brief Mathematical operations which act locally.
+ * 
+ * These operations are usually executed by function pointers which are part of the matrix or vector. 
+ */
+
+/** 
+ * @defgroup globops Global math
+ * @brief Mathematical operations which act globally.
+ *
+ * These operations usually call one or more local operations (cf. \ref locops) together with communication calls.
+ */
+
+/** 
+ * @defgroup machine Machine query
+ * @brief Query machine information.
+ */
+
+/**
+ * @defgroup task Task and thread management
+ * @brief Functionality related to tasks, queues, threads and managing processing units.
+ */

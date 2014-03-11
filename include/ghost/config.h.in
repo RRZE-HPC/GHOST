@@ -1,26 +1,26 @@
-#ifndef __GHOST_CONFIG_H__
-#define __GHOST_CONFIG_H__
-#cmakedefine GHOST_HAVE_MPI 1
-#cmakedefine GHOST_HAVE_OPENMP 1
-#cmakedefine GHOST_HAVE_CUDA 1
-#cmakedefine GHOST_HAVE_CUDA_PINNEDMEM 1
-#cmakedefine GHOST_HAVE_OPENCL 1
-#cmakedefine GHOST_HAVE_MKL 1
-#cmakedefine GHOST_HAVE_GSL 1
-#cmakedefine GHOST_HAVE_LIBSCI 1
-#cmakedefine GHOST_HAVE_MIC 1
-#cmakedefine GHOST_HAVE_AVX 1
-#cmakedefine GHOST_HAVE_SSE 1
-#cmakedefine GHOST_HAVE_INSTR_TIMING 1
-#cmakedefine GHOST_HAVE_INSTR_LIKWID 1
-#cmakedefine GHOST_HAVE_LONGIDX 1
-#cmakedefine GHOST_HAVE_BSWAP 1
+#ifndef GHOST_CONFIG_H
+#define GHOST_CONFIG_H
+#cmakedefine GHOST_HAVE_MPI
+#cmakedefine GHOST_HAVE_OPENMP
+#cmakedefine GHOST_HAVE_SCOTCH
+#cmakedefine GHOST_HAVE_CUDA
+#cmakedefine GHOST_HAVE_CUDA_PINNEDMEM
+#cmakedefine GHOST_HAVE_OPENCL
+#cmakedefine GHOST_HAVE_MKL
+#cmakedefine GHOST_HAVE_GSL
+#cmakedefine GHOST_HAVE_LIBSCI
+#cmakedefine GHOST_HAVE_MIC
+#cmakedefine GHOST_HAVE_AVX
+#cmakedefine GHOST_HAVE_SSE
+#cmakedefine GHOST_HAVE_INSTR_TIMING
+#cmakedefine GHOST_HAVE_INSTR_LIKWID
+#cmakedefine GHOST_HAVE_LONGIDX
 #define GHOST_NAME "${CMAKE_PROJECT_NAME}"
 #define GHOST_VERSION "${GHOST_VERSION}"
 #define GHOST_VERSION_MAJOR ${GHOST_VERSION_MAJOR}
 #define GHOST_VERSION_MINOR ${GHOST_VERSION_MINOR}
 #define GHOST_VERSION_REVISION ${GHOST_VERSION_REVISION}
-#define GHOST_OPENCL_KERNEL_DIR "${CMAKE_INSTALL_PREFIX}/lib/ghost"
-#define GHOST_HEADER_DIR "${CMAKE_INSTALL_PREFIX}/include"
 #endif
+
+
 

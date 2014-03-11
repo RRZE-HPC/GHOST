@@ -1,9 +1,12 @@
+/**
+ * @file complex.h
+ * @brief Header file of GHOSTS's complex number implementation.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_COMPLEX_H
 #define GHOST_COMPLEX_H
 
 #ifdef __cplusplus
-#include <cmath>
-#include <complex>
 
 template <typename T> 
 struct ghost_complex
@@ -14,16 +17,16 @@ struct ghost_complex
         ghost_complex(T a, T b) { re = a; im = b;}
         //ghost_complex(const std::complex<T> &a) : std::complex<T>(a) {re = a.real();}
         ghost_complex(const ghost_complex<float> &a) {re = a.re; im = a.im;}
-        operator T() const;
-        ghost_complex<T> operator-(const ghost_complex<T>&) const;
-        ghost_complex<T> operator+(const ghost_complex<T>&) const;
+        operator T();
+        ghost_complex<T> operator-(const ghost_complex<T>&);
+        ghost_complex<T> operator+(const ghost_complex<T>&);
         ghost_complex<T>& operator+=(const ghost_complex<T>&);
-        ghost_complex<T> operator*(const ghost_complex<T>&) const;
+        ghost_complex<T> operator*(const ghost_complex<T>&);
         ghost_complex<T>& operator*=(const ghost_complex<T>&);
 };
 
 template <typename T>
-ghost_complex<T>::operator T() const {
+ghost_complex<T>::operator T() {
     return re;
 }
 
@@ -40,17 +43,17 @@ ghost_complex<T>& ghost_complex<T>::operator *=(const ghost_complex<T>& c) {
 }
 
 template <typename T>
-ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) const {
+ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re + c.re, this->im + c.im);
 }
 
 template <typename T>
-ghost_complex<T> ghost_complex<T>::operator -(const ghost_complex<T>& c) const {
+ghost_complex<T> ghost_complex<T>::operator -(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re - c.re, this->im - c.im);
 }
 
 template <typename T>
-ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) const {
+ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re*c.re - this->im*c.im, this->re*c.im + this->im*c.re);
 }
 

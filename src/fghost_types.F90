@@ -71,12 +71,6 @@ TYPE(c_ptr) :: so
 
 INTEGER(c_int) :: isView
 
-! TODO
-#ifdef GHOST_HAVE_OPENCL
-!#error "not implemented in Fortran interface"
-!cl_mem CL_val_gpu;
-#endif
-        
 #ifdef GHOST_HAVE_CUDA
 !#error "not implemented in Fortran interface"
 !void * CU_val;
@@ -169,7 +163,6 @@ struct ghost_mat_t {
     char * (*formatName) (ghost_mat_t *);
     void (*fromBin)(ghost_mat_t *, char *matrixPath, ghost_context_t *ctx, int options);
     void (*fromMM)(ghost_mat_t *, char *matrixPath);
-    void (*CLupload)(ghost_mat_t *);
     void (*CUupload)(ghost_mat_t *);
     size_t (*byteSize)(ghost_mat_t *);
     void (*fromCRS)(ghost_mat_t *, void *);
@@ -177,9 +170,6 @@ struct ghost_mat_t {
     ghost_dummyfun_t *extraFun;
     // TODO MPI-IO
     ghost_kernel_t kernel;
-#ifdef GHOST_HAVE_OPENCL
-    cl_kernel clkernel;
-#endif
     void *so;
 
     ghost_midx_t *rowPerm; // may be NULL

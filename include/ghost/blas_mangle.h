@@ -1,7 +1,10 @@
-// This file is used to define how blas routines
-// are "de-mangled", i.e. how they are called in C.
-// This is machine dependent and should be fixed in
-// a general way in the ESSR (for instance by CMake).
+/**
+ * @file blas_mangle.h
+ * @brief Macros to "de-mangle" BLAS routines and includes and allow generic calls to them in the code.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_BLAS_MANGLE_H
+#define GHOST_BLAS_MANGLE_H
 
 #ifdef GHOST_HAVE_MKL
 #include <mkl.h>
@@ -16,15 +19,15 @@
 #include <cblas.h>
 #endif
 
-#if GHOST_HAVE_MKL
+#ifdef GHOST_HAVE_MKL
 #define BLAS_MANGLE(name,NAME) name
 #define BLAS_Complex8 MKL_Complex8
 #define BLAS_Complex16 MKL_Complex16 
-#elif GHOST_HAVE_GSL
+#elif defined(GHOST_HAVE_GSL)
 #define BLAS_MANGLE(name,NAME) cblas_##name
 #define BLAS_Complex8 gsl_complex_float
 #define BLAS_Complex16 gsl_complex
-#elif GHOST_HAVE_LIBSCI
+#elif defined(GHOST_HAVE_LIBSCI)
 #define BLAS_MANGLE(name,NAME) cblas_##name
 #define BLAS_Complex8 void
 #define BLAS_Complex16 void
@@ -109,4 +112,6 @@
 #define dgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(dgemm,DGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #define cgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(cgemm,CGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
 #define zgemm(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc) BLAS_MANGLE(zgemm,ZGEMM)(transa,transb,m,n,k,alpha,a,lda,b,ldb,beta,c,ldc)
+#endif
+
 #endif

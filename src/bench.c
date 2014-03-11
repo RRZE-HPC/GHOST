@@ -11,16 +11,19 @@ static void dummy(double *a) {
     }
 }
 
-int ghost_stream(int test, double *bw)
+ghost_error_t ghost_bench_stream(int test, double *bw)
 {
 
+    ghost_error_t ret = GHOST_SUCCESS;
     UNUSED(test);
 
     int i;
     double start;
 
-    double *a = (double *)ghost_malloc(N*sizeof(double));
-    double *b = (double *)ghost_malloc(N*sizeof(double));
+    double *a = NULL;
+    double *b = NULL;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&a,N*sizeof(double)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&b,N*sizeof(double)),err,ret);
 
 #pragma omp parallel for
     for (i=0; i<N; i++) {
@@ -28,20 +31,27 @@ int ghost_stream(int test, double *bw)
         b[i] = i;
     }
     
-    start = ghost_wctime();
+    start = ghost_timing_wc();
 #pragma omp parallel for
     for (i=0; i<N; i++) {
         a[i] = b[i];
     }
-    *bw = 2*STREAM_BYTES/(ghost_wctime()-start);
+    *bw = 2*STREAM_BYTES/(ghost_timing_wc()-start);
 
     dummy(a);
 
-    return GHOST_SUCCESS;
+    goto out;
+
+err:
+out:
+    free(a); a = NULL;
+    free(b); b = NULL;
+
+    return ret;
 }
 
 
-int ghost_pingpong(double *bw)
+ghost_error_t ghost_bench_pingpong(double *bw)
 {
 
     UNUSED(bw);
@@ -49,7 +59,7 @@ int ghost_pingpong(double *bw)
     return GHOST_SUCCESS;
 }
 
-int ghost_peakperformance(double *gf)
+ghost_error_t ghost_bench_peakperformance(double *gf)
 {
 
     UNUSED(gf);

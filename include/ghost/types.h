@@ -1,519 +1,169 @@
-#ifndef __GHOST_TYPES_H__
-#define __GHOST_TYPES_H__
+/**
+ * @file types.h
+ * @brief Header file for type definitions. 
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
+#ifndef GHOST_TYPES_H
+#define GHOST_TYPES_H
+
+#include "error.h"
 
 #ifdef GHOST_HAVE_MPI
-#ifdef __INTEL_COMPILER
-#pragma warning (disable : 869)
-#pragma warning (disable : 424)
-#endif
 #include <mpi.h>
 typedef MPI_Comm ghost_mpi_comm_t;
-#ifdef __INTEL_COMPILER
-#pragma warning (enable : 424)
-#pragma warning (enable : 869)
-#endif
+typedef MPI_Op ghost_mpi_op_t;
+typedef MPI_Datatype ghost_mpi_datatype_t;
 #else
 typedef int ghost_mpi_comm_t;
+typedef int ghost_mpi_op_t;
+typedef int ghost_mpi_datatype_t;
+#define MPI_COMM_NULL 0
+#define MPI_OP_NULL 0
+#define MPI_DATATYPE_NULL 0
 #define MPI_COMM_WORLD 0
-//typedef int MPI_Comm;
-//#define MPI_COMM_WORLD 0 // TODO unschoen
 #endif
 
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
-#ifdef GHOST_HAVE_OPENCL
-#include <CL/cl.h>
-#endif
+/**
+ * @brief Available primitive data types.
+ *
+ * The validity of a data type can be checked with ghost_datatypeValid().
+ */
+typedef enum {
+    /**
+     * @brief Single precision.
+     */
+    GHOST_DT_FLOAT = 1,
+    /**
+     * @brief Double precision.
+     */
+    GHOST_DT_DOUBLE = 2,
+    /**
+     * @brief Real numbers.
+     */
+    GHOST_DT_REAL = 4,
+    /**
+     * @brief Complex numbers.
+     */
+    GHOST_DT_COMPLEX = 8
+} ghost_datatype_t;
 
-#if GHOST_HAVE_LONGIDX
-typedef int64_t ghost_midx_t; // type for the index of the matrix
-typedef int64_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
-typedef int64_t ghost_vidx_t; // type for the index of the vector
+/**
+ * @brief Contiguous indices for data types.
+ *
+ * This is used, e.g., when template instantiations for different data types are stored in an array.
+ */
+typedef enum {
+    /**
+     * @brief Real float.
+     */
+    GHOST_DT_S_IDX = 0,
+    /**
+     * @brief Real double.
+     */
+    GHOST_DT_D_IDX = 1,
+    /**
+     * @brief Complex float.
+     */
+    GHOST_DT_C_IDX = 2,
+    /**
+     * @brief Complex double.
+     */
+    GHOST_DT_Z_IDX = 3,
+} ghost_datatype_idx_t;
+
+/**
+ * @brief Size of the largest data type (complex double).
+ */
+#define GHOST_DT_MAX_SIZE 16 
+
+/**
+ * @brief Macro to "register" a double data type in an application
+ *
+ * @param name An identifier.
+ *
+ * This macro enables easy switching of data types in applications.
+ * After calling the macros with identifier "mydata" a typedef "typedef mydata_t double;"
+ * and a variable "ghost_datatype_t mydata = GHOST_DT_DOUBLE|GHOST_DT_REAL;" will be present.
+ */
+#define GHOST_REGISTER_DT_D(name) \
+    typedef double name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
+
+/**
+ * @see GHOST_REGISTER_DT_D with float instead of double.
+ */
+#define GHOST_REGISTER_DT_S(name) \
+    typedef float name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
+
+/**
+ * @see GHOST_REGISTER_DT_D with float complex instead of double.
+ */
+#define GHOST_REGISTER_DT_C(name) \
+    typedef complex float name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
+
+/**
+ * @see GHOST_REGISTER_DT_D with double complex instead of double.
+ */
+#define GHOST_REGISTER_DT_Z(name) \
+    typedef complex double name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
+
+#ifdef GHOST_HAVE_LONGIDX
+/**
+ * @brief Type for row/column indices of matrices/vectors.
+ */
+typedef int64_t ghost_idx_t; 
+/**
+ * @brief Type for nonzero indices of matrix
+ */
+typedef int64_t ghost_nnz_t;
+/**
+ * @brief Type for indices used in BLAS calls
+ */
 typedef long long int ghost_blas_idx_t;
 
-#define ghost_mpi_dt_midx MPI_LONG_LONG
-#define ghost_mpi_dt_mnnz MPI_LONG_LONG
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_idx MPI_LONG_LONG
+/**
+ * @brief MPI data type for matrix nonzero indices
+ */
+#define ghost_mpi_dt_nnz MPI_LONG_LONG
 
-#ifdef GHOST_HAVE_OPENCL
-typedef cl_long ghost_cl_midx_t;
-typedef cl_long ghost_cl_mnnz_t;
-#endif
-
-#define PRmatNNZ PRId64
-#define PRmatIDX PRId64
-#define PRvecIDX PRId64
+/**
+ * @brief Macro to print matrix nonzero indices depending on index size
+ */
+#define PRNNZ PRId64
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRIDX PRId64
 
 #else
 
-typedef int32_t ghost_midx_t; // type for the index of the matrix
-typedef int32_t ghost_mnnz_t; // type for the number of nonzeros in the matrix
-typedef int32_t ghost_vidx_t; // type for the index of the vector
+typedef int32_t ghost_idx_t;
+typedef int32_t ghost_nnz_t; 
 typedef int ghost_blas_idx_t;
 
+#define ghost_mpi_dt_idx MPI_INT
+#define ghost_mpi_dt_nnz MPI_INT
 
-#define ghost_mpi_dt_midx MPI_INT
-#define ghost_mpi_dt_mnnz MPI_INT
-
-#ifdef GHOST_HAVE_OPENCL
-typedef cl_int ghost_cl_midx_t;
-typedef cl_int ghost_cl_mnnz_t;
-#endif
-
-#define PRmatNNZ PRId32
-#define PRmatIDX PRId32
-#define PRvecIDX PRId32
+#define PRNNZ PRId32
+#define PRIDX PRId32
 
 #endif
 
-typedef enum ghost_error_t {
-    GHOST_SUCCESS,
-    GHOST_ERR_INVALID_ARG,
-    GHOST_ERR_MPI,
-    GHOST_ERR_CUDA,
-    GHOST_ERR_UNKNOWN,
-    GHOST_ERR_INTERNAL,
-    GHOST_ERR_NOT_IMPLEMENTED,
-    GHOST_ERR_IO
-} ghost_error_t;
-
-typedef enum {GHOST_HYBRIDMODE_INVALID, GHOST_HYBRIDMODE_ONEPERNODE, GHOST_HYBRIDMODE_ONEPERNUMA, GHOST_HYBRIDMODE_ONEPERCORE} ghost_hybridmode_t;
-typedef enum {GHOST_TYPE_INVALID, GHOST_TYPE_COMPUTE, GHOST_TYPE_CUDAMGMT} ghost_type_t;
-
-typedef struct ghost_vec_t ghost_vec_t;
-typedef struct ghost_mat_t ghost_mat_t;
-typedef struct ghost_context_t ghost_context_t;
-//typedef struct ghost_comm_t ghost_comm_t;
-typedef struct ghost_mtraits_t ghost_mtraits_t;
-typedef struct ghost_vtraits_t ghost_vtraits_t;
-typedef struct ghost_acc_info_t ghost_acc_info_t;
-typedef struct ghost_matfile_header_t ghost_matfile_header_t;
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
-typedef void (*ghost_spmvkernel_t)(ghost_mat_t*, ghost_vec_t*, ghost_vec_t*, int);
-typedef void (*ghost_spmvsolver_t)(ghost_context_t *, ghost_vec_t*, ghost_mat_t *, ghost_vec_t*, int);
-typedef void (*ghost_spmFromRowFunc_t)(ghost_midx_t, ghost_midx_t *, ghost_midx_t *, void *);
 
-/**
- * @brief This struct represents a vector (dense matrix) datatype.  The
- * according functions are accessed via function pointers. The first argument of
- * each member function always has to be a pointer to the vector itself.
- */
-struct ghost_vec_t
-{
-    /**
-     * @brief The vector's traits.
-     */
-    ghost_vtraits_t *traits;
-    /**
-     * @brief The context in which the vector is living.
-     */
-    ghost_context_t *context;
-    /**
-     * @brief The values of the vector.
-     */
-    char** val;
-    /**
-     * @brief Indicates whether the vector is a view. A view is a vector whose
-     * #val pointer points to some data which is not allocated withing the
-     * vector.
-     */
-//    int isView;
-
-    /**
-     * @brief Performs <em>y := a*x + y</em> with scalar a
-     *
-     * @param y The in-/output vector
-     * @param x The input vector
-     * @param a Points to the scale factor.
-     */
-    void          (*axpy) (ghost_vec_t *y, ghost_vec_t *x, void *a);
-    /**
-     * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
-     *
-     * @param y The in-/output vector.
-     * @param x The input vector
-     * @param a Points to the scale factor a.
-     * @param b Points to the scale factor b.
-     */
-    void          (*axpby) (ghost_vec_t *y, ghost_vec_t *x, void *a, void *b);
-    /**
-     * @brief \deprecated
-     */
-    void          (*CLdownload) (ghost_vec_t *);
-    /**
-     * @brief Clones a given number of columns of a source vector at a given
-     * column offset.
-     *
-     * @param vec The source vector.
-     * @param ncols The number of columns to clone.
-     * @param coloffset The first column to clone.
-     *
-     * @return A clone of the source vector.
-     */
-    ghost_vec_t * (*clone) (ghost_vec_t *vec, ghost_vidx_t ncols, ghost_vidx_t
-            coloffset);
-    /**
-     * @brief Compresses a vector, i.e., make it non-scattered.
-     * If the vector is a view, it will no longer be one afterwards.
-     *
-     * @param vec The vector.
-     */
-    void          (*compress) (ghost_vec_t *vec);
-    /**
-     * @brief \deprecated
-     */
-    void          (*CLupload) (ghost_vec_t *);
-    /**
-     * @brief Collects vec from all MPI ranks and combines them into globalVec.
-     * The row permutation (if present) if vec's context is used.
-     *
-     * @param vec The distributed vector.
-     * @param globalVec The global vector.
-     */
-    void          (*collect) (ghost_vec_t *vec, ghost_vec_t *globalVec);
-    /**
-     * @brief \deprecated
-     */
-    void          (*CUdownload) (ghost_vec_t *);
-    /**
-     * @brief \deprecated
-     */
-    void          (*CUupload) (ghost_vec_t *);
-    /**
-     * @brief Destroys a vector, i.e., frees all its data structures.
-     *
-     * @param vec The vector
-     */
-    void          (*destroy) (ghost_vec_t *vec);
-    /**
-     * @brief Distributes a global vector into node-local vetors.
-     *
-     * @param vec The global vector.
-     * @param localVec The local vector.
-     */
-    void          (*distribute) (ghost_vec_t *vec, ghost_vec_t *localVec);
-    /**
-     * @brief Computes the dot product of two vectors and stores the result in
-     * res.
-     *
-     * @param a The first vector.
-     * @param b The second vector.
-     * @param res A pointer to where the result should be stored.
-     */
-    void          (*dotProduct) (ghost_vec_t *a, ghost_vec_t *b, void *res);
-    /**
-     * @brief Downloads an entire vector from a compute device. Does nothing if
-     * the vector is not present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*download) (ghost_vec_t *vec);
-    /**
-     * @brief Downloads only a vector's halo elements from a compute device.
-     * Does nothing if the vector is not present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*downloadHalo) (ghost_vec_t *vec);
-    /**
-     * @brief Downloads only a vector's local elements (i.e., without halo
-     * elements) from a compute device. Does nothing if the vector is not
-     * present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*downloadNonHalo) (ghost_vec_t *vec);
-    /**
-     * @brief Stores the entry of the vector at a given index (row i, column j)
-     * into entry.
-     *
-     * @param vec The vector.
-     * @param ghost_vidx_t i The row.
-     * @param ghost_vidx_t j The column.
-     * @param entry Where to store the entry.
-     */
-    void          (*entry) (ghost_vec_t *vec, ghost_vidx_t i, ghost_vidx_t j,
-            void *entry);
-    /**
-     * @brief Initializes a vector from a given function.
-     * Malloc's memory for the vector's values if this hasn't happened before.
-     *
-     * @param vec The vector.
-     * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
-     */
-    void          (*fromFunc) (ghost_vec_t *vec, void (*fp)(int,int,void *)); // TODO ghost_vidx_t
-    /**
-     * @brief Initializes a vector from another vector at a given column offset.
-     * Malloc's memory for the vector's values if this hasn't happened before.
-     *
-     * @param vec The vector.
-     * @param src The source vector.
-     * @param ghost_vidx_t The column offset in the source vector.
-     */
-    void          (*fromVec) (ghost_vec_t *vec, ghost_vec_t *src, ghost_vidx_t offset);
-    /**
-     * @brief Initializes a vector from a file.
-     * Malloc's memory for the vector's values if this hasn't happened before.
-     *
-     * @param vec The vector.
-     * @param filename Path to the file.
-     */
-    void          (*fromFile) (ghost_vec_t *vec, char *filename);
-    /**
-     * @brief Initiliazes a vector from random values.
-     *
-     * @param vec The vector.
-     */
-    void          (*fromRand) (ghost_vec_t *vec);
-    /**
-     * @brief Initializes a vector from a given scalar value.
-     *
-     * @param vec The vector.
-     * @param val A pointer to the value.
-     */
-    void          (*fromScalar) (ghost_vec_t *vec, void *val);
-    /**
-     * @brief Normalize a vector, i.e., scale it such that its 2-norm is one.
-     *
-     * @param vec The vector.
-     */
-    void          (*normalize) (ghost_vec_t *vec);
-    /**
-     * @brief Permute a vector with a given permutation.
-     *
-     * @param vec The vector.
-     * @param perm The permutation.
-     */
-    void          (*permute) (ghost_vec_t *vec, ghost_vidx_t *perm);
-    /**
-     * @brief Print a vector.
-     *
-     * @param vec The vector.
-     */
-    void          (*print) (ghost_vec_t *vec);
-    /**
-     * @brief Scale a vector with a given scalar.
-     *
-     * @param vec The vector.
-     * @param scale The scale factor.
-     */
-    void          (*scale) (ghost_vec_t *vec, void *scale);
-    /**
-     * @brief Swap two vectors.
-     *
-     * @param vec1 The first vector.
-     * @param vec2 The second vector.
-     */
-    void          (*swap) (ghost_vec_t *vec1, ghost_vec_t *vec2);
-    /**
-     * @brief Write a vector to a file.
-     *
-     * @param vec The vector.
-     * @param filename The path to the file.
-     */
-    void          (*toFile) (ghost_vec_t *vec, char *filename);
-    /**
-     * @brief Uploads an entire vector to a compute device. Does nothing if
-     * the vector is not present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*upload) (ghost_vec_t *vec);
-    /**
-     * @brief Uploads only a vector's halo elements to a compute device.
-     * Does nothing if the vector is not present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*uploadHalo) (ghost_vec_t *vec);
-    /**
-     * @brief Uploads only a vector's local elements (i.e., without halo
-     * elements) to a compute device. Does nothing if the vector is not
-     * present on the device.
-     *
-     * @param vec The vector.
-     */
-    void          (*uploadNonHalo) (ghost_vec_t *vec);
-    /**
-     * @brief View plain data in the vector.
-     * That means that the vector has no memory malloc'd but its data pointer only points to the memory provided.
-     *
-     * @param vec The vector.
-     * @param data The plain data.
-     * @param ghost_vidx_t nr The number of rows.
-     * @param ghost_vidx_t nc The number of columns.
-     * @param ghost_vidx_t roffs The row offset.
-     * @param ghost_vidx_t coffs The column offset.
-     * @param ghost_vidx_t lda The number of rows per column.
-     */
-    void          (*viewPlain) (ghost_vec_t *vec, void *data, ghost_vidx_t nr, ghost_vidx_t nc, ghost_vidx_t roffs, ghost_vidx_t coffs, ghost_vidx_t lda);
-
-    ghost_vec_t * (*viewScatteredVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t *coffs);
-
-
-    /**
-     * @brief Create a vector as a view of another vector.
-     *
-     * @param src The source vector.
-     * @param nc The nunber of columns to view.
-     * @param coffs The column offset.
-     *
-     * @return The new vector.
-     */
-    ghost_vec_t * (*viewVec) (ghost_vec_t *src, ghost_vidx_t nc, ghost_vidx_t coffs);
-    /**
-     * @brief Scale each column of a vector with a given scale factor.
-     *
-     * @param vec The vector.
-     * @param scale The scale factors.
-     */
-    void          (*vscale) (ghost_vec_t *, void *);
-    void          (*vaxpy) (ghost_vec_t *, ghost_vec_t *, void *);
-    void          (*vaxpby) (ghost_vec_t *, ghost_vec_t *, void *, void *);
-    void          (*zero) (ghost_vec_t *);
-
-#ifdef GHOST_HAVE_OPENCL
-    cl_mem * CL_val_gpu;
-#endif
-#ifdef GHOST_HAVE_CUDA
-    char * CU_val;
-#endif
-};
-
-struct ghost_vtraits_t
-{
-    ghost_midx_t nrows;
-    ghost_midx_t nrowshalo;
-    ghost_midx_t nrowspadded;
-    ghost_midx_t nvecs;
-    int flags;
-    int datatype;
-    void * aux;
-    void * localdot;
-};
-extern const ghost_vtraits_t GHOST_VTRAITS_INITIALIZER;
-
-struct ghost_mat_t
-{
-    ghost_mtraits_t *traits;
-    int symmetry;
-    ghost_mat_t *localPart;
-    ghost_mat_t *remotePart;
-    ghost_context_t *context;
-    char *name;
-    void *data;
-    ghost_spmvkernel_t spmv;
-
-    // access functions
-    void       (*destroy) (ghost_mat_t *);
-    void       (*printInfo) (ghost_mat_t *);
-    const char * (*stringify) (ghost_mat_t *, int);
-    void       (*print) (ghost_mat_t *);
-    ghost_mnnz_t  (*nnz) (ghost_mat_t *);
-    ghost_midx_t  (*nrows) (ghost_mat_t *);
-    ghost_midx_t  (*ncols) (ghost_mat_t *);
-    ghost_midx_t  (*rowLen) (ghost_mat_t *, ghost_midx_t);
-    char *     (*formatName) (ghost_mat_t *);
-    ghost_error_t       (*fromFile)(ghost_mat_t *, char *);
-    ghost_error_t       (*fromRowFunc)(ghost_mat_t *, ghost_midx_t maxrowlen, int base, ghost_spmFromRowFunc_t func, int);
-    ghost_error_t (*toFile)(ghost_mat_t *mat, char *path);
-    void       (*CLupload)(ghost_mat_t *);
-    void       (*CUupload)(ghost_mat_t *);
-    size_t     (*byteSize)(ghost_mat_t *);
-    void       (*fromCRS)(ghost_mat_t *, void *);
-    void       (*split)(ghost_mat_t *);
-#ifdef GHOST_HAVE_OPENCL
-    cl_kernel clkernel[4];
-#endif
-};
-
-struct ghost_mtraits_t
-{
-    int format;
-    int flags;
-    void * aux;
-    int nAux;
-    int datatype;
-    void * shift;
-    void * scale;
-    void * beta; // scale factor for AXPBY
-};
-extern const ghost_mtraits_t GHOST_MTRAITS_INITIALIZER;
-
-struct ghost_context_t
-{
-    ghost_spmvsolver_t *spmvsolvers;
-
-    // if the context is distributed by nnz, the row pointers are being read
-    // at context creation in order to create the distribution. once the matrix
-    // is being created, the row pointers are distributed
-    ghost_midx_t *rpt;
-
-   // ghost_comm_t *communicator;
-    ghost_midx_t gnrows;
-    ghost_midx_t gncols;
-    int flags;
-    double weight;
-
-    ghost_midx_t *rowPerm;    // may be NULL
-    ghost_midx_t *invRowPerm; // may be NULL
-
-    ghost_mpi_comm_t mpicomm;
-    
-    /**
-     * @brief Number of remote elements with unique colidx
-     */
-    ghost_midx_t halo_elements; // TODO rename nHaloElements
-    /**
-     * @brief Number of matrix elements for each rank
-     */
-    ghost_mnnz_t* lnEnts; // TODO rename nLclEnts
-    /**
-     * @brief Index of first element into the global matrix for each rank
-     */
-    ghost_mnnz_t* lfEnt; // TODO rename firstLclEnt
-    /**
-     * @brief Number of matrix rows for each rank
-     */
-    ghost_midx_t* lnrows; // TODO rename nLclRows
-    /**
-     * @brief Index of first matrix row for each rank
-     */
-    ghost_midx_t* lfRow; // TODO rename firstLclRow
-    /**
-     * @brief Number of wishes (= unique RHS elements to get) from each rank
-     */
-    ghost_mnnz_t * wishes; // TODO rename nWishes
-    /**
-     * @brief Column idx of wishes from each rank
-     */
-    ghost_midx_t ** wishlist; // TODO rename wishes
-    /**
-     * @brief Number of dues (= unique RHS elements from myself) to each rank
-     */
-    ghost_mnnz_t * dues; // TODO rename nDues
-    /**
-     * @brief Column indices of dues to each rank
-     */
-    ghost_midx_t ** duelist; // TODO rename dues
-    /**
-     * @brief First index to get RHS elements coming from each rank
-     */
-    ghost_midx_t* hput_pos; // TODO rename
-};
-
-/*struct ghost_comm_t
-{
-};*/
-
-struct ghost_acc_info_t
-{
-    int nDistinctDevices;
-    int *nDevices;
-    char **names;
-};
 
 struct ghost_mpi_c
 {
@@ -527,16 +177,37 @@ struct ghost_mpi_z
     double y;
 };
 
-struct ghost_matfile_header_t
-{
-    int32_t endianess;
-    int32_t version;
-    int32_t base;
-    int32_t symmetry;
-    int32_t datatype;
-    int64_t nrows;
-    int64_t ncols;
-    int64_t nnz;
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    /**
+     * @brief Check whether a given data type is valid. 
+     *
+     * @param datatype The data type.
+     *
+     * @return 1 if the data type is valid and 0 if it isn't.
+     *
+     * An data type is valid if exactly one of GHOST_DT_FLOAT and GHOST_DT_DOUBLE and 
+     * exactly one of GHOST_DT_REAL and GHOST_DT_COMPLEX is set.
+     */
+    bool ghost_datatype_valid(ghost_datatype_t datatype);
+    /**
+     * @brief Stringify a ghost_datatype_t.
+     *
+     * @param datatype The data type.
+     *
+     * @return A string representation of the data type. 
+     */
+    char * ghost_datatype_string(ghost_datatype_t datatype);
+    ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
+    ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
+    ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype);
+    ghost_error_t ghost_mpi_datatypes_create();
+    ghost_error_t ghost_mpi_datatypes_destroy();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
