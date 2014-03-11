@@ -247,6 +247,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix with col offset %"PRIDX,src->traits.nrows,nc,coffs);
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.nrows = nr;
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_idx_t v,r;

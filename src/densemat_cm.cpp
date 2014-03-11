@@ -199,24 +199,27 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
 {
     stringstream buffer;
 
-    ghost_idx_t i,v;
-    for (i=0; i<vec->traits.nrows; i++) {
-        for (v=0; v<vec->traits.ncols; v++) {
-            v_t val = 0.;
-            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-            {
+    ghost_idx_t i,v,r;
+    for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
+        if (hwloc_bitmap_isset(vec->mask,i)) {
+            for (v=0; v<vec->traits.ncols; v++) {
+                v_t val = 0.;
+                if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+                {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits.nrowspadded+i]),sizeof(v_t));
+                    ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits.nrowspadded+i]),sizeof(v_t));
 #endif
+                }
+                else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+                {
+                    val = *(v_t *)VECVAL(vec,vec->val,v,i);
+                }
+                buffer << val << "\t";
             }
-            else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
-            {
-                val = *(v_t *)VECVAL(vec,vec->val,v,i);
+            if (r<vec->traits.nrows-1) {
+                buffer << std::endl;
             }
-            buffer << val << "\t";
-        }
-        if (i<vec->traits.nrows-1) {
-            buffer << std::endl;
+            r++;
         }
     }
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
