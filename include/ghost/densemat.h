@@ -113,16 +113,18 @@ struct ghost_densemat_t
     ghost_error_t      (*axpby) (ghost_densemat_t *y, ghost_densemat_t *x, void *a, void *b);
     /**
      * @brief Clones a given number of columns of a source vector/matrix at a given
-     * column offset.
+     * column and row offset.
      *
      * @param vec The source vector/matrix.
      * @param dst Where to store the new vector.
-     * @param ncols The number of columns to clone.
-     * @param coloffset The first column to clone.
+     * @param nr The number of rows to clone.
+     * @param roffs The first row to clone.
+     * @param nc The number of columns to clone.
+     * @param coffs The first column to clone.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_idx_t ncols, ghost_idx_t coloffset);
+    ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
      * @brief Compresses a vector/matrix, i.e., make it non-scattered.
      * If the vector/matrix is a view, it will no longer be one afterwards.
@@ -228,16 +230,17 @@ struct ghost_densemat_t
     /**
      * @ingroup denseinit
      *
-     * @brief Initializes a vector/matrix from another vector/matrix at a given column offset.
+     * @brief Initializes a vector/matrix from another vector/matrix at a given column and row offset.
      * Malloc's memory for the vector/matrix's values if this hasn't happened before.
      *
-     * @param vec The vector/matrix.
-     * @param src The source vector/matrix.
-     * @param ghost_idx_t The column offset in the source vector/matrix.
+     * @param vec The source vector/matrix.
+     * @param dst Where to store the new vector.
+     * @param roffs The first row to clone.
+     * @param coffs The first column to clone.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_idx_t offset);
+    ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *dst, ghost_idx_t roffs, ghost_idx_t coffs);
     /**
      * @ingroup denseinit
      *
