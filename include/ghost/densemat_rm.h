@@ -14,13 +14,14 @@
 
 #define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
-#define ITER_COLS_BEGIN(vec,col,idx)\
+#define ITER_COLS_BEGIN(vec,col,colidx)\
+    colidx = 0;\
     for (col=0; col<vec->traits.ncolsorig; col++) {\
         if (hwloc_bitmap_isset(vec->mask,col)) {
 
 
-#define ITER_COLS_END(idx)\
-        idx++;\
+#define ITER_COLS_END(colidx)\
+            colidx++;\
         }\
     }
 
@@ -30,8 +31,8 @@
         ITER_COLS_BEGIN(vec,col,colidx)\
 
 #define ITER_END_RM(colidx)\
-    }\
-    ITER_COLS_END(colidx)
+        ITER_COLS_END(colidx)\
+    }
 
 
 

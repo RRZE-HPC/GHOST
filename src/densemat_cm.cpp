@@ -58,7 +58,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
     if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_idx_t i,v;
+    ghost_idx_t i,v,rowidx;
 
     int nthreads;
 #pragma omp parallel
@@ -75,9 +75,9 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
 #pragma omp parallel 
         {
             int tid = ghost_omp_threadnum();
-            ITER_ROWS_BEGIN(vec,i)
+            ITER_ROWS_BEGIN(vec,i,rowidx)
                 partsums[tid*16] += *(v_t *)VECVAL(vec2,vec2->val,v,i) * conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
-            ITER_ROWS_END
+            ITER_ROWS_END(rowidx)
         }
 
         for (i=0; i<nthreads; i++) sum += partsums[i*16];
@@ -127,13 +127,13 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t i,v,rowidx;
     v_t *s = (v_t *)scale;
 
     for (v=0; v<vec->traits.ncols; v++) {
-        ITER_ROWS_BEGIN(vec,i)
+        ITER_ROWS_BEGIN(vec,i,rowidx)
             *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
-        ITER_ROWS_END
+        ITER_ROWS_END(rowidx)
     }
     return GHOST_SUCCESS;
 }

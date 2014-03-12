@@ -568,10 +568,10 @@ static ghost_error_t vec_cm_fromScalar(ghost_densemat_t *vec, void *val)
     ghost_densemat_cm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRIDX" rows",vec->traits.nrows);
 
-    int row,col;
-    ITER_BEGIN_CM(vec,col,row)
+    int row,col,rowidx;
+    ITER_BEGIN_CM(vec,col,row,rowidx)
     memcpy(VECVAL(vec,vec->val,col,row),val,vec->elSize);
-    ITER_END_CM
+    ITER_END_CM(rowidx)
     vec->upload(vec);
 
     return GHOST_SUCCESS;
@@ -868,16 +868,12 @@ static ghost_error_t vec_cm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx
     GHOST_CALL_RETURN(ghost_densemat_cm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
-    int i,v;
+    ghost_idx_t row,col,rowidx;
 
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) { // vector is stored _at least_ at host
-        for (v=0; v<vec->traits.ncols; v++) {
-#pragma omp parallel for schedule(runtime) private(i)
-            for (i=0; i<vec->traits.nrows; i++) {
-                fp(offset+i,v,VECVAL(vec,vec->val,v,i));
-            }
-        }
-
+        ITER_BEGIN_CM(vec,col,row,rowidx)
+        fp(offset+rowidx,col,VECVAL(vec,vec->val,col,row));
+        ITER_END_CM(rowidx)
         vec->upload(vec);
     } else {
         ghost_densemat_t *hostVec;

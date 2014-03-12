@@ -15,20 +15,24 @@
 #define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
 #define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
 
-#define ITER_ROWS_BEGIN(vec,row)\
+#define ITER_ROWS_BEGIN(vec,row,rowidx)\
     _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec->traits.nrowsorig; row++) {\
         if (hwloc_bitmap_isset(vec->mask,row)) {
 
-#define ITER_ROWS_END }}
+#define ITER_ROWS_END(rowidx)\
+            rowidx++;\
+        }\
+    }
 
-#define ITER_BEGIN_CM(vec,col,row)\
-    ITER_ROWS_BEGIN(vec,row)\
+#define ITER_BEGIN_CM(vec,col,row,rowidx)\
+    rowidx = 0;\
+    ITER_ROWS_BEGIN(vec,row,rowidx)\
     for (col=0; col<vec->traits.ncols; col++) {
 
-#define ITER_END_CM\
+#define ITER_END_CM(rowidx)\
     }\
-    ITER_ROWS_END
+    ITER_ROWS_END(rowidx)
 
 #ifdef __cplusplus
 

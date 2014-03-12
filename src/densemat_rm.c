@@ -859,16 +859,12 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx
     GHOST_CALL_RETURN(ghost_densemat_rm_malloc(vec));
     DEBUG_LOG(1,"Filling vector via function");
 
-    int i,r;
+    ghost_idx_t col,row,colidx;
 
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) { // vector is stored _at least_ at host
-        for (r=0; r<vec->traits.nrows; r++) {
-#pragma omp parallel for schedule(runtime) private(i)
-            for (i=0; i<vec->traits.ncols; i++) {
-                fp(offset+r,i,VECVAL(vec,vec->val,r,i));
-            }
-        }
-
+        ITER_BEGIN_RM(vec,col,row,colidx)
+        fp(offset+row,colidx,VECVAL(vec,vec->val,row,col));
+        ITER_END_RM(colidx)
         vec->upload(vec);
     } else {
         ghost_densemat_t *hostVec;
