@@ -527,15 +527,22 @@ out:
 
 static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_idx_t r, ghost_idx_t c) 
 {
+    int i = 0;
+    int idx = hwloc_bitmap_first(vec->mask);
+    for (i=0; i<c; i++) {
+        idx = hwloc_bitmap_next(vec->mask,idx);
+    }
+
+
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
-        ghost_cu_download(val,&vec->cu_val[(c*vec->traits.nrowspadded+r)*vec->elSize],vec->elSize);
+        ghost_cu_download(val,&vec->cu_val[(r*vec->traits.ncolspadded+idx)*vec->elSize],vec->elSize);
 #endif
     }
     else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
     {
-        memcpy(val,VECVAL(vec,vec->val,c,r),vec->elSize);
+        memcpy(val,VECVAL(vec,vec->val,r,idx),vec->elSize);
     }
 
     return GHOST_SUCCESS;
