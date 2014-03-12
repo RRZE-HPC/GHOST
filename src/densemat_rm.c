@@ -54,7 +54,6 @@ static ghost_error_t vec_rm_fromRand(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val);
 static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path);
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path);
-static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec);
 static ghost_error_t ghost_densemat_rm_normalize( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
@@ -112,7 +111,6 @@ ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec)
     vec->fromVec = &vec_rm_fromVec;
     vec->fromFile = &vec_rm_fromFile;
     vec->toFile = &vec_rm_toFile;
-    vec->zero = &ghost_zeroVector;
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
     vec->normalize = &ghost_densemat_rm_normalize;
@@ -876,28 +874,6 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_idx
         GHOST_CALL_RETURN(vec->fromVec(vec,hostVec,0,0));
         hostVec->destroy(hostVec);
     }
-
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t ghost_zeroVector(ghost_densemat_t *vec) 
-{
-    DEBUG_LOG(1,"Zeroing vector");
-    ghost_idx_t v;
-
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-    {
-#ifdef GHOST_HAVE_CUDA
-        ghost_cu_memset(vec->cu_val,0,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize);
-#endif
-    }
-    if (vec->traits.flags & GHOST_DENSEMAT_HOST)
-    {
-        for (v=0; v<vec->traits.ncols; v++) 
-        {
-            memset(VECVAL(vec,vec->val,v,0),0,vec->traits.nrowspadded*vec->elSize);
-        }
-    } 
 
     return GHOST_SUCCESS;
 }

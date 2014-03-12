@@ -386,7 +386,6 @@ struct ghost_densemat_t
     ghost_error_t       (*vscale) (ghost_densemat_t *, void *);
     ghost_error_t       (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
     ghost_error_t       (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
-    ghost_error_t       (*zero) (ghost_densemat_t *);
 };
 
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
