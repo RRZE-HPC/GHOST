@@ -568,13 +568,10 @@ static ghost_error_t vec_cm_fromScalar(ghost_densemat_t *vec, void *val)
     ghost_densemat_cm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRIDX" rows",vec->traits.nrows);
 
-    int i,v;
-#pragma omp parallel for schedule(runtime) private(v)
-    for (i=0; i<vec->traits.nrows; i++) {
-        for (v=0; v<vec->traits.ncols; v++) {
-            memcpy(VECVAL(vec,vec->val,v,i),val,vec->elSize);
-        }
-    }
+    int row,col;
+    ITER_BEGIN_CM(vec,col,row)
+    memcpy(VECVAL(vec,vec->val,col,row),val,vec->elSize);
+    ITER_END_CM
     vec->upload(vec);
 
     return GHOST_SUCCESS;

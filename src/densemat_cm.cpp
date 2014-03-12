@@ -17,6 +17,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
+
 using namespace std;
 
 
@@ -47,6 +48,7 @@ out:
 
 }
 
+
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 { // the parallelization is done manually because reduction does not work with ghost_complex numbers
@@ -57,7 +59,6 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
     ghost_idx_t i,v;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
     int nthreads;
 #pragma omp parallel
@@ -74,12 +75,9 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
 #pragma omp parallel 
         {
             int tid = ghost_omp_threadnum();
-#pragma omp for schedule(runtime)
-            for (i=0; i<nr; i++) {
-                partsums[tid*16] += 
-                    *(v_t *)VECVAL(vec2,vec2->val,v,i)*
-                    conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
-            }
+            ITER_ROWS_BEGIN(vec,i)
+                partsums[tid*16] += *(v_t *)VECVAL(vec2,vec2->val,v,i) * conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
+            ITER_ROWS_END
         }
 
         for (i=0; i<nthreads; i++) sum += partsums[i*16];
@@ -133,10 +131,9 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
     v_t *s = (v_t *)scale;
 
     for (v=0; v<vec->traits.ncols; v++) {
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<vec->traits.nrows; i++) {
+        ITER_ROWS_BEGIN(vec,i)
             *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
-        }
+        ITER_ROWS_END
     }
     return GHOST_SUCCESS;
 }

@@ -17,6 +17,7 @@
 #include "ghost/locality.h"
 #include "ghost/log.h"
 
+
 using namespace std;
 
 
@@ -129,15 +130,15 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t i,v,c = 0;
     v_t *s = (v_t *)scale;
 
-    for (v=0; v<vec->traits.ncols; v++) {
+    ITER_COLS_BEGIN(vec,v,c)
 #pragma omp parallel for schedule(runtime) 
         for (i=0; i<vec->traits.nrows; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+            *(v_t *)VECVAL(vec,vec->val,i,v) *= s[c];
         }
-    }
+    ITER_COLS_END(c)
     return GHOST_SUCCESS;
 }
 
