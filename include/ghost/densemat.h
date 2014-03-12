@@ -358,7 +358,7 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 
-    ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t *coffs);
+    ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t *roffs,  ghost_idx_t nc, ghost_idx_t *coffs);
 
 
     /**

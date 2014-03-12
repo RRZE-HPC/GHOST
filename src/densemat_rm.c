@@ -63,7 +63,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
-static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
+static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_upload(ghost_densemat_t *vec);
@@ -269,12 +269,13 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
+static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_idx_t c,r,i;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
+    newTraits.nrows = nr;
 
     ghost_densemat_create(new,src->context,newTraits);
     
@@ -285,8 +286,8 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
             i++;
         }
     }
-    for (r=0; r<(*new)->traits.nrows; r++) {
-        (*new)->val[r] = VECVAL(src,src->val,r,0);
+    for (r=0; r<nr; r++) {
+        (*new)->val[r] = VECVAL(src,src->val,roffs[r],0);
     }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;

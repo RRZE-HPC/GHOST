@@ -198,6 +198,8 @@ template <typename v_t>
 static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t *vec)
 {
     stringstream buffer;
+    buffer.precision(6);
+    buffer.setf(ios::fixed, ios::floatfield);
 
     ghost_idx_t i,v,r;
     for (i=0,r=0; i<vec->traits.nrowsorig; i++) {

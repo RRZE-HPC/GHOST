@@ -63,7 +63,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_cm_entry(ghost_densemat_t *, void *, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
-static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
+static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec);
@@ -280,14 +280,22 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
+static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v;
+    ghost_idx_t v,r,i;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.nrows = nr;
 
     ghost_densemat_create(new,src->context,newTraits);
+    for (r=0,i=0; r<(*new)->traits.nrowsorig; r++) {
+        if (roffs[i] != r) {
+            hwloc_bitmap_clr((*new)->mask,r);
+        } else {
+            i++;
+        }
+    }
 
     for (v=0; v<nc; v++) {
         (*new)->val[v] = VECVAL(src,src->val,coffs[v],0);
