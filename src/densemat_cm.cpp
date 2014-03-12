@@ -93,34 +93,26 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t row,col,rowidx;
     v_t *s = (v_t *)scale;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<nr; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
-        }
-    }
+    ITER_BEGIN_CM(vec,col,row,rowidx)
+        *(v_t *)VECVAL(vec,vec->val,col,row) += *(v_t *)VECVAL(vec2,vec2->val,col,row) * s[col];
+    ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t row,col,rowidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<nr; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) = *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v] + 
-                *(v_t *)VECVAL(vec,vec->val,v,i) * b[v];
-        }
-    }
+    ITER_BEGIN_CM(vec,col,row,rowidx)
+        *(v_t *)VECVAL(vec,vec->val,col,row) = *(v_t *)VECVAL(vec2,vec2->val,col,row) * s[col] + 
+                *(v_t *)VECVAL(vec,vec->val,col,row) * b[col];
+    ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
 

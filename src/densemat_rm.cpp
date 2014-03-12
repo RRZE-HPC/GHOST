@@ -57,7 +57,7 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_idx_t i,v;
+    ghost_idx_t i,v,vidx;
     ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
     int nthreads;
@@ -68,7 +68,7 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     v_t *partsums;
     GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
+    ITER_COLS_BEGIN(vec,v,vidx)
         v_t sum = 0;
         for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
@@ -78,15 +78,15 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
 #pragma omp for schedule(runtime)
             for (i=0; i<nr; i++) {
                 partsums[tid*16] += 
-                    *(v_t *)VECVAL(vec2,vec2->val,v,i)*
-                    conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
+                    *(v_t *)VECVAL(vec2,vec2->val,i,v)*
+                    conjugate((v_t *)(VECVAL(vec,vec->val,i,v)));
             }
         }
 
         for (i=0; i<nthreads; i++) sum += partsums[i*16];
 
-        ((v_t *)res)[v] = sum;
-    }
+        ((v_t *)res)[vidx] = sum;
+    ITER_COLS_END(vidx)
 
     free(partsums);
     
@@ -96,34 +96,27 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t row,col,colidx;
     v_t *s = (v_t *)scale;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<nr; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) += *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v];
-        }
-    }
+    ITER_BEGIN_RM(vec,col,row,colidx)
+        *(v_t *)VECVAL(vec,vec->val,row,col) += *(v_t *)VECVAL(vec2,vec2->val,row,col) * s[colidx];
+    ITER_END_RM(colidx)
     return GHOST_SUCCESS;
 }
 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
-    ghost_idx_t i,v;
+    ghost_idx_t col,row,colidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
+    
+    ITER_BEGIN_RM(vec,col,row,colidx)
+        *(v_t *)VECVAL(vec,vec->val,row,col) = *(v_t *)VECVAL(vec2,vec2->val,row,col) * s[colidx] + 
+                *(v_t *)VECVAL(vec,vec->val,row,col) * b[colidx];
+    ITER_END_RM(colidx)
 
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<nr; i++) {
-            *(v_t *)VECVAL(vec,vec->val,v,i) = *(v_t *)VECVAL(vec2,vec2->val,v,i) * s[v] + 
-                *(v_t *)VECVAL(vec,vec->val,v,i) * b[v];
-        }
-    }
     return GHOST_SUCCESS;
 }
 
