@@ -335,22 +335,21 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
 ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    ghost_idx_t j,c,v;
+    ghost_idx_t j,c;
     ghost_nnz_t offs;
-    double *lval = NULL, *rval = NULL;
+    double *lval = NULL;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     __m256d dot1,dot2,dot3;
     double dots1 = 0, dots2 = 0, dots3 = 0;
-    __m256d val;
     __m256d rhs1;
     __m256d rhs2;
     __m256d rhs3;
     __m256d rhs4;
-    __m128d rhstmp;
-    __m256d shift, scale, beta;
+    UNUSED(argp);
+    //__m256d shift, scale, beta;
         
-    if (spmvmOptions & GHOST_SPMV_SCALE) {
+    /*if (spmvmOptions & GHOST_SPMV_SCALE) {
         scale = _mm256_broadcast_sd(va_arg(argp,double *));
     }
     if (spmvmOptions & GHOST_SPMV_AXPBY) {
@@ -361,9 +360,9 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, gh
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
         local_dot_product = va_arg(argp,double *);
-    }
+    }*/
    
-#pragma omp parallel private(c,j,val,offs,rhs1,rhs2,rhs3,rhs4,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
+#pragma omp parallel private(c,j,offs,rhs1,rhs2,rhs3,rhs4,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
     {
         __m256d tmp11,tmp21,tmp31,tmp41,tmp51,tmp61,tmp71,tmp81;
         __m256d tmp12,tmp22,tmp32,tmp42,tmp52,tmp62,tmp72,tmp82;
@@ -375,7 +374,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, gh
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded>>5; c++) 
         { // loop over chunks
-                lval = res->val[c*32];
+                lval = (double *)res->val[c*32];
                 
                 tmp11 = _mm256_setzero_pd(); // tmp = 0
                 tmp21 = _mm256_setzero_pd(); // tmp = 0
@@ -414,76 +413,76 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, gh
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
                 { // loop inside chunk
                     
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp11 = _mm256_add_pd(tmp11,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp12 = _mm256_add_pd(tmp12,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp13 = _mm256_add_pd(tmp13,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp14 = _mm256_add_pd(tmp14,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
 
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp21 = _mm256_add_pd(tmp21,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp22 = _mm256_add_pd(tmp22,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp23 = _mm256_add_pd(tmp23,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp24 = _mm256_add_pd(tmp24,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
 
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp31 = _mm256_add_pd(tmp31,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp32 = _mm256_add_pd(tmp32,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp33 = _mm256_add_pd(tmp33,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp34 = _mm256_add_pd(tmp34,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                     
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp41 = _mm256_add_pd(tmp41,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp42 = _mm256_add_pd(tmp42,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp43 = _mm256_add_pd(tmp43,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp44 = _mm256_add_pd(tmp44,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                    
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp51 = _mm256_add_pd(tmp51,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp52 = _mm256_add_pd(tmp52,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp53 = _mm256_add_pd(tmp53,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp54 = _mm256_add_pd(tmp54,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                    
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp61 = _mm256_add_pd(tmp61,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp62 = _mm256_add_pd(tmp62,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp63 = _mm256_add_pd(tmp63,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp64 = _mm256_add_pd(tmp64,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                     
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp71 = _mm256_add_pd(tmp71,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp72 = _mm256_add_pd(tmp72,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp73 = _mm256_add_pd(tmp73,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp74 = _mm256_add_pd(tmp74,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                     
-                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs1  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp81 = _mm256_add_pd(tmp81,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
-                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs2  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp82 = _mm256_add_pd(tmp82,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
-                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs3  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp83 = _mm256_add_pd(tmp83,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
-                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    rhs4  = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]); // load rhs
                     tmp84 = _mm256_add_pd(tmp84,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
                 }
 
@@ -631,9 +630,10 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, gh
 ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
+    UNUSED(argp);
     double *local_dot_product = NULL;
     double dots1 = 0, dots2 = 0, dots3 = 0;
-    __m256d shift, scale, beta;
+    //__m256d shift, scale, beta;
     const ghost_idx_t nsimdblocks = (invec->traits.ncols+3)/4;
     const int remainder = invec->traits.ncols%4;
    
@@ -643,8 +643,8 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, gho
         maskint[slot] = -1;
     }
     
-    __m256i mask = _mm256_loadu_si256(maskint);
-        
+    __m256i mask = _mm256_loadu_si256((__m256i *)maskint);
+   /*     
     if (spmvmOptions & GHOST_SPMV_SCALE) {
         scale = _mm256_broadcast_sd(va_arg(argp,double *));
     }
@@ -656,16 +656,15 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, gho
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
         local_dot_product = va_arg(argp,double *);
-    }
+    }*/
    
 #pragma omp parallel reduction (+:dots1,dots2,dots3)
     {
         __m256d dot1,dot2,dot3;
-        double *lval = NULL, *rval = NULL;
+        double *rval = NULL;
         ghost_idx_t j,c,v,i,k,x;
         ghost_nnz_t offs;
         __m256d tmp[8][4][nsimdblocks];
-        __m256d rhs;
         __m256d matval;
         dot1 = _mm256_setzero_pd();
         dot2 = _mm256_setzero_pd();
@@ -673,7 +672,6 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, gho
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded>>5; c++) 
         { // loop over chunks
-                lval = res->val[c*32];
                 for (k=0; k<8; k++) {
                     for (i=0; i<4; i++) {
                         for (j=0; j<nsimdblocks; j++) {
@@ -691,7 +689,6 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, gho
                             matval = _mm256_broadcast_sd(((double *)(SELL(mat)->val))+offs);
                             rval = (double *)(invec->val[SELL(mat)->col[offs]]);
                             for (x=0,v=0; x<invec->traits.ncols/4; x++,v+=4) {
-//                                rhs[i]  = ; // load rhs
                                 tmp[k][i][x] = _mm256_add_pd(tmp[k][i][x],_mm256_mul_pd(matval,_mm256_load_pd(&rval[v])));           // accumulate
                             }
                             if (remainder) {

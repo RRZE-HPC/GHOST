@@ -1099,6 +1099,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     }
 #endif
 #elif defined(GHOST_HAVE_AVX)
+    UNUSED(SELL_kernels_AVX_32_multivec4_rm);
     if (SELL(mat)->chunkHeight == 4) {
         kernel = SELL_kernels_AVX
             [matDtIdx]
