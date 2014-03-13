@@ -200,7 +200,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
         DEBUG_LOG(1,"No parent task in task mode spmv solver");
 
         int nIdleCores;
-        ghost_pumap_getNumberOfIdlePUs(&nIdleCores,GHOST_NUMANODE_ANY);
+        ghost_pumap_nidle(&nIdleCores,GHOST_NUMANODE_ANY);
         ghost_task_create(&compTask, nIdleCores-remoteExists, 0, &computeLocal, &cplargs, taskflags);
         ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
     }
