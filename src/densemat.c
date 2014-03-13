@@ -123,7 +123,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     }
     if (vec->traits.ncolspadded == 0) {
         DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
-        vec->traits.ncolspadded = PAD(vec->traits.ncols,GHOST_PAD_MAX); // TODO needed?
+        vec->traits.ncolspadded = vec->traits.ncols;
     }
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
