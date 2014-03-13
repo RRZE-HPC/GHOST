@@ -30,11 +30,11 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     ghost_idx_t v;
     int nthreads = 1;
 
-// TODO false sharing avoidance w/ hwloc
+    // TODO false sharing avoidance w/ hwloc
 
     v_t hlp1 = 0.;
     v_t shift = 0., scale = 1., beta = 1.;
-   
+
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
 
     if (options & GHOST_SPMV_DOT) {
@@ -42,7 +42,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 #pragma omp parallel 
         {
 #pragma omp single
-        nthreads = ghost_omp_nthread();
+            nthreads = ghost_omp_nthread();
         }
 
         // 3 -> 16: avoid false sharing
@@ -51,39 +51,90 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
             partsums[i] = 0.;
         }
     }
+    if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+#pragma omp parallel private (i, j, lhsv,v) shared (partsums)
+        {
+            v_t matrixval;
+            v_t * rhsrow;
+            ghost_idx_t c;
+            v_t tmp[rhs->traits.ncols];
+            int tid = ghost_omp_threadnum();
+#pragma omp for schedule(runtime) 
+            for (i=0; i<mat->nrows; i++) {
+                //for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
+                {
+                    lhsv = (v_t *)lhs->val[i];
+
+                    for (v=0; v<rhs->traits.ncols; v++) {
+                        tmp[v] = 0.;
+                    }
+                    for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+                        matrixval = ((v_t)(mval[j]));
+                        rhsrow = (v_t *)rhs->val[cr->col[j]];
+                        for (c=0; c<rhs->traits.ncols; c++) {
+                            tmp[c] += matrixval * rhsrow[c];
+                        }
+                    }
+
+                    for (v=0; v<rhs->traits.ncols; v++) {
+
+                        if (options & GHOST_SPMV_SHIFT) {
+                            tmp[v] = tmp[v]-shift*rhsv[i];
+                        }
+                        if (options & GHOST_SPMV_SCALE) {
+                            tmp[v] = tmp[v]*scale;
+                        }
+                        if (options & GHOST_SPMV_AXPY) {
+                            lhsv[v] += tmp[v];
+                        } else if (options & GHOST_SPMV_AXPBY) {
+                            lhsv[v] = beta*lhsv[v] + tmp[v];
+                        } else {
+                            lhsv[v] = tmp[v];
+                        }
+                        if (options & GHOST_SPMV_DOT) {
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[v])*lhsv[v];
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[v])*rhsv[v];
+                            partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[v])*rhsv[v];
+                        }
+                    }
+                }
+            }
+        }
+    } else {
 
 #pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
-    {
-        int tid = ghost_omp_threadnum();
+        {
+            int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
-        for (i=0; i<mat->nrows; i++){
-            for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
-            {
-                rhsv = (v_t *)rhs->val[v];
-                lhsv = (v_t *)lhs->val[v];
-                hlp1 = (v_t)0.0;
-                for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
-                    hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
-                }
+            for (i=0; i<mat->nrows; i++){
+                for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
+                {
+                    rhsv = (v_t *)rhs->val[v];
+                    lhsv = (v_t *)lhs->val[v];
+                    hlp1 = (v_t)0.0;
+                    for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
+                        hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
+                    }
 
-                if (options & GHOST_SPMV_SHIFT) {
-                    hlp1 = hlp1-shift*rhsv[i];
-                }
-                if (options & GHOST_SPMV_SCALE) {
-                    hlp1 = hlp1*scale;
-                }
-                if (options & GHOST_SPMV_AXPY) {
-                    lhsv[i] += (hlp1);
-                } else if (options & GHOST_SPMV_AXPBY) {
-                    lhsv[i] = beta*lhsv[i] + hlp1;
-                } else {
-                    lhsv[i] = (hlp1);
-                }
+                    if (options & GHOST_SPMV_SHIFT) {
+                        hlp1 = hlp1-shift*rhsv[i];
+                    }
+                    if (options & GHOST_SPMV_SCALE) {
+                        hlp1 = hlp1*scale;
+                    }
+                    if (options & GHOST_SPMV_AXPY) {
+                        lhsv[i] += (hlp1);
+                    } else if (options & GHOST_SPMV_AXPBY) {
+                        lhsv[i] = beta*lhsv[i] + hlp1;
+                    } else {
+                        lhsv[i] = (hlp1);
+                    }
 
-                if (options & GHOST_SPMV_DOT) {
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                    partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    if (options & GHOST_SPMV_DOT) {
+                        partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
+                        partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
+                        partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                    }
                 }
             }
         }
