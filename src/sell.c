@@ -43,9 +43,21 @@ static ghost_error_t (*SELL_kernels_AVX[4][4]) (ghost_sparsemat_t *, ghost_dense
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
-static ghost_error_t (*SELL_kernels_AVX_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+static ghost_error_t (*SELL_kernels_AVX_32_multivec_cm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_32_rich,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}};
+
+static ghost_error_t (*SELL_kernels_AVX_32_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_rich_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}};
+
+static ghost_error_t (*SELL_kernels_AVX_32_multivec4_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_rich_multivec4_rm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 #endif
@@ -1092,9 +1104,16 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
             [matDtIdx]
             [vecDtIdx];
     } else if (SELL(mat)->chunkHeight == 32) {
-        kernel = SELL_kernels_AVX_32
-            [matDtIdx]
-            [vecDtIdx];
+        if ((rhs->traits.ncols == 1) || (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR)) {
+            kernel = SELL_kernels_AVX_32_multivec_cm
+                [matDtIdx]
+                [vecDtIdx];
+        } else {
+            kernel = SELL_kernels_AVX_32_multivec_rm
+                [matDtIdx]
+                [vecDtIdx];
+        }
+
     }
 #elif defined(GHOST_HAVE_MIC)
 #if !(GHOST_HAVE_LONGIDX)
@@ -1118,7 +1137,9 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
         [vecDtIdx];
 #endif
 
-    if (kernel == NULL) {
+    if (kernel == NULL ||
+            rhs->traits.flags & GHOST_DENSEMAT_SCATTERED ||
+            !hwloc_bitmap_isfull(rhs->mask)) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
             [matDtIdx]
