@@ -332,6 +332,533 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     return GHOST_SUCCESS;
 }
 
+ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec4_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+#ifdef GHOST_HAVE_AVX
+    ghost_idx_t j,c,v;
+    ghost_nnz_t offs;
+    double *lval = NULL, *rval = NULL;
+    double *mval = (double *)SELL(mat)->val;
+    double *local_dot_product = NULL;
+    __m256d dot1,dot2,dot3;
+    double dots1 = 0, dots2 = 0, dots3 = 0;
+    __m256d val;
+    __m256d rhs1;
+    __m256d rhs2;
+    __m256d rhs3;
+    __m256d rhs4;
+    __m128d rhstmp;
+    __m256d shift, scale, beta;
+        
+    if (spmvmOptions & GHOST_SPMV_SCALE) {
+        scale = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_AXPBY) {
+        beta = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+        shift = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+        local_dot_product = va_arg(argp,double *);
+    }
+   
+#pragma omp parallel private(c,j,val,offs,rhs1,rhs2,rhs3,rhs4,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
+    {
+        __m256d tmp11,tmp21,tmp31,tmp41,tmp51,tmp61,tmp71,tmp81;
+        __m256d tmp12,tmp22,tmp32,tmp42,tmp52,tmp62,tmp72,tmp82;
+        __m256d tmp13,tmp23,tmp33,tmp43,tmp53,tmp63,tmp73,tmp83;
+        __m256d tmp14,tmp24,tmp34,tmp44,tmp54,tmp64,tmp74,tmp84;
+        dot1 = _mm256_setzero_pd();
+        dot2 = _mm256_setzero_pd();
+        dot3 = _mm256_setzero_pd();
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded>>5; c++) 
+        { // loop over chunks
+                lval = res->val[c*32];
+                
+                tmp11 = _mm256_setzero_pd(); // tmp = 0
+                tmp21 = _mm256_setzero_pd(); // tmp = 0
+                tmp31 = _mm256_setzero_pd(); // tmp = 0
+                tmp41 = _mm256_setzero_pd(); // tmp = 0
+                tmp51 = _mm256_setzero_pd(); // tmp = 0
+                tmp61 = _mm256_setzero_pd(); // tmp = 0
+                tmp71 = _mm256_setzero_pd(); // tmp = 0
+                tmp81 = _mm256_setzero_pd(); // tmp = 0
+                tmp12 = _mm256_setzero_pd(); // tmp = 0
+                tmp22 = _mm256_setzero_pd(); // tmp = 0
+                tmp32 = _mm256_setzero_pd(); // tmp = 0
+                tmp42 = _mm256_setzero_pd(); // tmp = 0
+                tmp52 = _mm256_setzero_pd(); // tmp = 0
+                tmp62 = _mm256_setzero_pd(); // tmp = 0
+                tmp72 = _mm256_setzero_pd(); // tmp = 0
+                tmp82 = _mm256_setzero_pd(); // tmp = 0
+                tmp13 = _mm256_setzero_pd(); // tmp = 0
+                tmp23 = _mm256_setzero_pd(); // tmp = 0
+                tmp33 = _mm256_setzero_pd(); // tmp = 0
+                tmp43 = _mm256_setzero_pd(); // tmp = 0
+                tmp53 = _mm256_setzero_pd(); // tmp = 0
+                tmp63 = _mm256_setzero_pd(); // tmp = 0
+                tmp73 = _mm256_setzero_pd(); // tmp = 0
+                tmp83 = _mm256_setzero_pd(); // tmp = 0
+                tmp14 = _mm256_setzero_pd(); // tmp = 0
+                tmp24 = _mm256_setzero_pd(); // tmp = 0
+                tmp34 = _mm256_setzero_pd(); // tmp = 0
+                tmp44 = _mm256_setzero_pd(); // tmp = 0
+                tmp54 = _mm256_setzero_pd(); // tmp = 0
+                tmp64 = _mm256_setzero_pd(); // tmp = 0
+                tmp74 = _mm256_setzero_pd(); // tmp = 0
+                tmp84 = _mm256_setzero_pd(); // tmp = 0
+                offs = SELL(mat)->chunkStart[c];
+
+                for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
+                { // loop inside chunk
+                    
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp11 = _mm256_add_pd(tmp11,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp12 = _mm256_add_pd(tmp12,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp13 = _mm256_add_pd(tmp13,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp14 = _mm256_add_pd(tmp14,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp21 = _mm256_add_pd(tmp21,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp22 = _mm256_add_pd(tmp22,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp23 = _mm256_add_pd(tmp23,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp24 = _mm256_add_pd(tmp24,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp31 = _mm256_add_pd(tmp31,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp32 = _mm256_add_pd(tmp32,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp33 = _mm256_add_pd(tmp33,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp34 = _mm256_add_pd(tmp34,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                    
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp41 = _mm256_add_pd(tmp41,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp42 = _mm256_add_pd(tmp42,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp43 = _mm256_add_pd(tmp43,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp44 = _mm256_add_pd(tmp44,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                   
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp51 = _mm256_add_pd(tmp51,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp52 = _mm256_add_pd(tmp52,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp53 = _mm256_add_pd(tmp53,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp54 = _mm256_add_pd(tmp54,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                   
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp61 = _mm256_add_pd(tmp61,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp62 = _mm256_add_pd(tmp62,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp63 = _mm256_add_pd(tmp63,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp64 = _mm256_add_pd(tmp64,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                    
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp71 = _mm256_add_pd(tmp71,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp72 = _mm256_add_pd(tmp72,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp73 = _mm256_add_pd(tmp73,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp74 = _mm256_add_pd(tmp74,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                    
+                    rhs1  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp81 = _mm256_add_pd(tmp81,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs1));           // accumulate
+                    rhs2  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp82 = _mm256_add_pd(tmp82,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs2));           // accumulate
+                    rhs3  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp83 = _mm256_add_pd(tmp83,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs3));           // accumulate
+                    rhs4  = _mm256_load_pd(invec->val[SELL(mat)->col[offs]]); // load rhs
+                    tmp84 = _mm256_add_pd(tmp84,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs4));           // accumulate
+                }
+
+                /*if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                    tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
+                    tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
+                    tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
+                    tmp4 = _mm256_sub_pd(tmp4,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+12])));
+                    tmp5 = _mm256_sub_pd(tmp5,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+16])));
+                    tmp6 = _mm256_sub_pd(tmp6,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+20])));
+                    tmp7 = _mm256_sub_pd(tmp7,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+24])));
+                    tmp8 = _mm256_sub_pd(tmp8,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+28])));
+                }
+                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                    tmp1 = _mm256_mul_pd(scale,tmp1);
+                    tmp2 = _mm256_mul_pd(scale,tmp2);
+                    tmp3 = _mm256_mul_pd(scale,tmp3);
+                    tmp4 = _mm256_mul_pd(scale,tmp4);
+                    tmp5 = _mm256_mul_pd(scale,tmp5);
+                    tmp6 = _mm256_mul_pd(scale,tmp6);
+                    tmp7 = _mm256_mul_pd(scale,tmp7);
+                    tmp8 = _mm256_mul_pd(scale,tmp8);
+                }*/
+                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                    _mm256_store_pd(&lval[0],_mm256_add_pd(tmp11,_mm256_load_pd(&lval[0])));
+                    _mm256_store_pd(&lval[4*1],_mm256_add_pd(tmp12,_mm256_load_pd(&lval[4*1])));
+                    _mm256_store_pd(&lval[4*2],_mm256_add_pd(tmp13,_mm256_load_pd(&lval[4*2])));
+                    _mm256_store_pd(&lval[4*3],_mm256_add_pd(tmp14,_mm256_load_pd(&lval[4*3])));
+                    _mm256_store_pd(&lval[4*4],_mm256_add_pd(tmp21,_mm256_load_pd(&lval[4*4])));
+                    _mm256_store_pd(&lval[4*5],_mm256_add_pd(tmp22,_mm256_load_pd(&lval[4*5])));
+                    _mm256_store_pd(&lval[4*6],_mm256_add_pd(tmp23,_mm256_load_pd(&lval[4*6])));
+                    _mm256_store_pd(&lval[4*7],_mm256_add_pd(tmp24,_mm256_load_pd(&lval[4*7])));
+                    _mm256_store_pd(&lval[4*8],_mm256_add_pd(tmp31,_mm256_load_pd(&lval[4*8])));
+                    _mm256_store_pd(&lval[4*9],_mm256_add_pd(tmp32,_mm256_load_pd(&lval[4*9])));
+                    _mm256_store_pd(&lval[4*10],_mm256_add_pd(tmp33,_mm256_load_pd(&lval[4*10])));
+                    _mm256_store_pd(&lval[4*11],_mm256_add_pd(tmp34,_mm256_load_pd(&lval[4*11])));
+                    _mm256_store_pd(&lval[4*12],_mm256_add_pd(tmp41,_mm256_load_pd(&lval[4*12])));
+                    _mm256_store_pd(&lval[4*13],_mm256_add_pd(tmp42,_mm256_load_pd(&lval[4*13])));
+                    _mm256_store_pd(&lval[4*14],_mm256_add_pd(tmp43,_mm256_load_pd(&lval[4*14])));
+                    _mm256_store_pd(&lval[4*15],_mm256_add_pd(tmp44,_mm256_load_pd(&lval[4*15])));
+                    _mm256_store_pd(&lval[4*16],_mm256_add_pd(tmp51,_mm256_load_pd(&lval[4*16])));
+                    _mm256_store_pd(&lval[4*17],_mm256_add_pd(tmp52,_mm256_load_pd(&lval[4*17])));
+                    _mm256_store_pd(&lval[4*18],_mm256_add_pd(tmp53,_mm256_load_pd(&lval[4*18])));
+                    _mm256_store_pd(&lval[4*19],_mm256_add_pd(tmp54,_mm256_load_pd(&lval[4*19])));
+                    _mm256_store_pd(&lval[4*20],_mm256_add_pd(tmp61,_mm256_load_pd(&lval[4*20])));
+                    _mm256_store_pd(&lval[4*21],_mm256_add_pd(tmp62,_mm256_load_pd(&lval[4*21])));
+                    _mm256_store_pd(&lval[4*22],_mm256_add_pd(tmp63,_mm256_load_pd(&lval[4*22])));
+                    _mm256_store_pd(&lval[4*23],_mm256_add_pd(tmp64,_mm256_load_pd(&lval[4*23])));
+                    _mm256_store_pd(&lval[4*24],_mm256_add_pd(tmp71,_mm256_load_pd(&lval[4*24])));
+                    _mm256_store_pd(&lval[4*25],_mm256_add_pd(tmp72,_mm256_load_pd(&lval[4*25])));
+                    _mm256_store_pd(&lval[4*26],_mm256_add_pd(tmp73,_mm256_load_pd(&lval[4*26])));
+                    _mm256_store_pd(&lval[4*27],_mm256_add_pd(tmp74,_mm256_load_pd(&lval[4*27])));
+                    _mm256_store_pd(&lval[4*28],_mm256_add_pd(tmp81,_mm256_load_pd(&lval[4*28])));
+                    _mm256_store_pd(&lval[4*29],_mm256_add_pd(tmp82,_mm256_load_pd(&lval[4*29])));
+                    _mm256_store_pd(&lval[4*30],_mm256_add_pd(tmp83,_mm256_load_pd(&lval[4*30])));
+                    _mm256_store_pd(&lval[4*31],_mm256_add_pd(tmp84,_mm256_load_pd(&lval[4*31])));
+                    
+                   /* _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*32+4])));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*32+8])));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_load_pd(&lval[c*32+12])));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_load_pd(&lval[c*32+16])));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[c*32+20])));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[c*32+24])));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[c*32+28])));*/
+                } /*else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                    _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32]))));
+                    _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+4]))));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+8]))));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+12]))));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+16]))));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+20]))));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+24]))));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+28]))));
+                } else {
+                    _mm256_stream_pd(&lval[c*32],tmp1);
+                    _mm256_stream_pd(&lval[c*32+4],tmp2);
+                    _mm256_stream_pd(&lval[c*32+8],tmp3);
+                    _mm256_stream_pd(&lval[c*32+12],tmp4);
+                    _mm256_stream_pd(&lval[c*32+16],tmp5);
+                    _mm256_stream_pd(&lval[c*32+20],tmp6);
+                    _mm256_stream_pd(&lval[c*32+24],tmp7);
+                    _mm256_stream_pd(&lval[c*32+28],tmp8);
+                }
+                if (spmvmOptions & GHOST_SPMV_DOT) {
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
+                    
+                }*/
+        }
+   
+        if (spmvmOptions & GHOST_SPMV_DOT) {
+            __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
+            __m128d sum12high = _mm256_extractf128_pd(sum12,1);
+            __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+
+            dots1 = ((double *)&res12)[0];
+            dots2 = ((double *)&res12)[1];
+            
+            sum12 = _mm256_hadd_pd(dot3,dot3);
+            sum12high = _mm256_extractf128_pd(sum12,1);
+            res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+            dots3 = ((double *)&res12)[0];
+        }
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+        local_dot_product[0] = dots1;
+        local_dot_product[1] = dots2;
+        local_dot_product[2] = dots3;
+    }
+    
+#else
+    UNUSED(mat);
+    UNUSED(res);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    UNUSED(argp);
+#endif
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t dd_SELL_kernel_AVX_32_rich_multivec_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+#ifdef GHOST_HAVE_AVX
+    double *local_dot_product = NULL;
+    double dots1 = 0, dots2 = 0, dots3 = 0;
+    __m256d shift, scale, beta;
+    const ghost_idx_t nsimdblocks = (invec->traits.ncols+3)/4;
+    const int remainder = invec->traits.ncols%4;
+   
+    int64_t maskint[4] = {0,0,0,0};
+    int slot;
+    for (slot = 0; slot<remainder; slot++) {
+        maskint[slot] = -1;
+    }
+    
+    __m256i mask = _mm256_loadu_si256(maskint);
+        
+    if (spmvmOptions & GHOST_SPMV_SCALE) {
+        scale = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_AXPBY) {
+        beta = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+        shift = _mm256_broadcast_sd(va_arg(argp,double *));
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+        local_dot_product = va_arg(argp,double *);
+    }
+   
+#pragma omp parallel reduction (+:dots1,dots2,dots3)
+    {
+        __m256d dot1,dot2,dot3;
+        double *lval = NULL, *rval = NULL;
+        ghost_idx_t j,c,v,i,k,x;
+        ghost_nnz_t offs;
+        __m256d tmp[8][4][nsimdblocks];
+        __m256d rhs;
+        __m256d matval;
+        dot1 = _mm256_setzero_pd();
+        dot2 = _mm256_setzero_pd();
+        dot3 = _mm256_setzero_pd();
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded>>5; c++) 
+        { // loop over chunks
+                lval = res->val[c*32];
+                for (k=0; k<8; k++) {
+                    for (i=0; i<4; i++) {
+                        for (j=0; j<nsimdblocks; j++) {
+                            tmp[k][i][j] = _mm256_setzero_pd();
+                        }
+                    }
+                }
+                
+                offs = SELL(mat)->chunkStart[c];
+
+                for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
+                { // loop inside chunk
+                    for (k=0; k<8; k++) { 
+                        for (i=0; i<4; i++) { 
+                            matval = _mm256_broadcast_sd(((double *)(SELL(mat)->val))+offs);
+                            rval = (double *)(invec->val[SELL(mat)->col[offs]]);
+                            for (x=0,v=0; x<invec->traits.ncols/4; x++,v+=4) {
+//                                rhs[i]  = ; // load rhs
+                                tmp[k][i][x] = _mm256_add_pd(tmp[k][i][x],_mm256_mul_pd(matval,_mm256_load_pd(&rval[v])));           // accumulate
+                            }
+                            if (remainder) {
+                                tmp[k][i][x] = _mm256_add_pd(tmp[k][i][x],_mm256_mul_pd(matval,_mm256_maskload_pd(&rval[v],mask)));           // accumulate
+                            }
+                            offs++;
+                        }
+                    }
+                }
+
+                /*if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                    tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
+                    tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
+                    tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
+                    tmp4 = _mm256_sub_pd(tmp4,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+12])));
+                    tmp5 = _mm256_sub_pd(tmp5,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+16])));
+                    tmp6 = _mm256_sub_pd(tmp6,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+20])));
+                    tmp7 = _mm256_sub_pd(tmp7,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+24])));
+                    tmp8 = _mm256_sub_pd(tmp8,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+28])));
+                }
+                if (spmvmOptions & GHOST_SPMV_SCALE) {
+                    tmp1 = _mm256_mul_pd(scale,tmp1);
+                    tmp2 = _mm256_mul_pd(scale,tmp2);
+                    tmp3 = _mm256_mul_pd(scale,tmp3);
+                    tmp4 = _mm256_mul_pd(scale,tmp4);
+                    tmp5 = _mm256_mul_pd(scale,tmp5);
+                    tmp6 = _mm256_mul_pd(scale,tmp6);
+                    tmp7 = _mm256_mul_pd(scale,tmp7);
+                    tmp8 = _mm256_mul_pd(scale,tmp8);
+                }*/
+                if (spmvmOptions & GHOST_SPMV_AXPY) {
+                    ghost_idx_t row = 0;
+                    for (k=0; k<8; k++) { 
+                        for (i=0; i<4; i++, row++) { 
+                            for (x=0,v=0; x<invec->traits.ncols/4; x++,v+=4) {
+                                _mm256_store_pd(((double *)(res->val[c*32+row]))+v,_mm256_add_pd(tmp[k][i][x],_mm256_load_pd(((double *)(res->val[c*32+row]))+v)));
+                            }
+                            if (remainder) {
+                                _mm256_maskstore_pd(((double *)(res->val[c*32+row]))+v,mask,_mm256_add_pd(tmp[k][i][x],_mm256_maskload_pd(((double *)(res->val[c*32+row]))+v,mask)));
+                            }
+                        }
+                    }
+                    /*for (v=0; v<invec->traits.ncols; v++) {
+                        _mm256_store_pd(&lval[i],_mm256_add_pd(tmp1[i],_mm256_load_pd(&lval[i])));
+                        _mm256_store_pd(&lval[i],_mm256_add_pd(tmp2[i],_mm256_load_pd(&lval[i])));
+                        _mm256_store_pd(&lval[i],_mm256_add_pd(tmp3[i],_mm256_load_pd(&lval[i])));
+                        _mm256_store_pd(&lval[i],_mm256_add_pd(tmp4[i],_mm256_load_pd(&lval[i])));
+                    }*/
+/*                    _mm256_store_pd(&lval[4*1],_mm256_add_pd(tmp12,_mm256_load_pd(&lval[4*1])));
+                    _mm256_store_pd(&lval[4*2],_mm256_add_pd(tmp13,_mm256_load_pd(&lval[4*2])));
+                    _mm256_store_pd(&lval[4*3],_mm256_add_pd(tmp14,_mm256_load_pd(&lval[4*3])));
+                    _mm256_store_pd(&lval[4*4],_mm256_add_pd(tmp21,_mm256_load_pd(&lval[4*4])));
+                    _mm256_store_pd(&lval[4*5],_mm256_add_pd(tmp22,_mm256_load_pd(&lval[4*5])));
+                    _mm256_store_pd(&lval[4*6],_mm256_add_pd(tmp23,_mm256_load_pd(&lval[4*6])));
+                    _mm256_store_pd(&lval[4*7],_mm256_add_pd(tmp24,_mm256_load_pd(&lval[4*7])));
+                    _mm256_store_pd(&lval[4*8],_mm256_add_pd(tmp31,_mm256_load_pd(&lval[4*8])));
+                    _mm256_store_pd(&lval[4*9],_mm256_add_pd(tmp32,_mm256_load_pd(&lval[4*9])));
+                    _mm256_store_pd(&lval[4*10],_mm256_add_pd(tmp33,_mm256_load_pd(&lval[4*10])));
+                    _mm256_store_pd(&lval[4*11],_mm256_add_pd(tmp34,_mm256_load_pd(&lval[4*11])));
+                    _mm256_store_pd(&lval[4*12],_mm256_add_pd(tmp41,_mm256_load_pd(&lval[4*12])));
+                    _mm256_store_pd(&lval[4*13],_mm256_add_pd(tmp42,_mm256_load_pd(&lval[4*13])));
+                    _mm256_store_pd(&lval[4*14],_mm256_add_pd(tmp43,_mm256_load_pd(&lval[4*14])));
+                    _mm256_store_pd(&lval[4*15],_mm256_add_pd(tmp44,_mm256_load_pd(&lval[4*15])));
+                    _mm256_store_pd(&lval[4*16],_mm256_add_pd(tmp51,_mm256_load_pd(&lval[4*16])));
+                    _mm256_store_pd(&lval[4*17],_mm256_add_pd(tmp52,_mm256_load_pd(&lval[4*17])));
+                    _mm256_store_pd(&lval[4*18],_mm256_add_pd(tmp53,_mm256_load_pd(&lval[4*18])));
+                    _mm256_store_pd(&lval[4*19],_mm256_add_pd(tmp54,_mm256_load_pd(&lval[4*19])));
+                    _mm256_store_pd(&lval[4*20],_mm256_add_pd(tmp61,_mm256_load_pd(&lval[4*20])));
+                    _mm256_store_pd(&lval[4*21],_mm256_add_pd(tmp62,_mm256_load_pd(&lval[4*21])));
+                    _mm256_store_pd(&lval[4*22],_mm256_add_pd(tmp63,_mm256_load_pd(&lval[4*22])));
+                    _mm256_store_pd(&lval[4*23],_mm256_add_pd(tmp64,_mm256_load_pd(&lval[4*23])));
+                    _mm256_store_pd(&lval[4*24],_mm256_add_pd(tmp71,_mm256_load_pd(&lval[4*24])));
+                    _mm256_store_pd(&lval[4*25],_mm256_add_pd(tmp72,_mm256_load_pd(&lval[4*25])));
+                    _mm256_store_pd(&lval[4*26],_mm256_add_pd(tmp73,_mm256_load_pd(&lval[4*26])));
+                    _mm256_store_pd(&lval[4*27],_mm256_add_pd(tmp74,_mm256_load_pd(&lval[4*27])));
+                    _mm256_store_pd(&lval[4*28],_mm256_add_pd(tmp81,_mm256_load_pd(&lval[4*28])));
+                    _mm256_store_pd(&lval[4*29],_mm256_add_pd(tmp82,_mm256_load_pd(&lval[4*29])));
+                    _mm256_store_pd(&lval[4*30],_mm256_add_pd(tmp83,_mm256_load_pd(&lval[4*30])));
+                    _mm256_store_pd(&lval[4*31],_mm256_add_pd(tmp84,_mm256_load_pd(&lval[4*31])));*/
+                    
+                   /* _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[c*32+4])));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[c*32+8])));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_load_pd(&lval[c*32+12])));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_load_pd(&lval[c*32+16])));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[c*32+20])));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[c*32+24])));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[c*32+28])));*/
+                } /*else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                    _mm256_store_pd(&lval[c*32],_mm256_add_pd(tmp1,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32]))));
+                    _mm256_store_pd(&lval[c*32+4],_mm256_add_pd(tmp2,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+4]))));
+                    _mm256_store_pd(&lval[c*32+8],_mm256_add_pd(tmp3,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+8]))));
+                    _mm256_store_pd(&lval[c*32+12],_mm256_add_pd(tmp4,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+12]))));
+                    _mm256_store_pd(&lval[c*32+16],_mm256_add_pd(tmp5,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+16]))));
+                    _mm256_store_pd(&lval[c*32+20],_mm256_add_pd(tmp6,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+20]))));
+                    _mm256_store_pd(&lval[c*32+24],_mm256_add_pd(tmp7,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+24]))));
+                    _mm256_store_pd(&lval[c*32+28],_mm256_add_pd(tmp8,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*32+28]))));
+                } else {
+                    _mm256_stream_pd(&lval[c*32],tmp1);
+                    _mm256_stream_pd(&lval[c*32+4],tmp2);
+                    _mm256_stream_pd(&lval[c*32+8],tmp3);
+                    _mm256_stream_pd(&lval[c*32+12],tmp4);
+                    _mm256_stream_pd(&lval[c*32+16],tmp5);
+                    _mm256_stream_pd(&lval[c*32+20],tmp6);
+                    _mm256_stream_pd(&lval[c*32+24],tmp7);
+                    _mm256_stream_pd(&lval[c*32+28],tmp8);
+                }
+                if (spmvmOptions & GHOST_SPMV_DOT) {
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
+                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
+                    
+                }*/
+        }
+   
+        if (spmvmOptions & GHOST_SPMV_DOT) {
+            __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
+            __m128d sum12high = _mm256_extractf128_pd(sum12,1);
+            __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+
+            dots1 = ((double *)&res12)[0];
+            dots2 = ((double *)&res12)[1];
+            
+            sum12 = _mm256_hadd_pd(dot3,dot3);
+            sum12high = _mm256_extractf128_pd(sum12,1);
+            res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+            dots3 = ((double *)&res12)[0];
+        }
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+        local_dot_product[0] = dots1;
+        local_dot_product[1] = dots2;
+        local_dot_product[2] = dots3;
+    }
+    
+#else
+    UNUSED(mat);
+    UNUSED(res);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    UNUSED(argp);
+#endif
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
     UNUSED(argp);
