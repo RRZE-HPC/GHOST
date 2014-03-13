@@ -135,9 +135,9 @@ ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec)
 #endif
 
     // TODO free val of vec only if scattered (but do not free val[0] of course!)
-    GHOST_CALL_GOTO(ghost_malloc((void **)&vec->val,vec->traits.nrows*sizeof(char *)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&vec->val,vec->traits.nrowspadded*sizeof(char *)),err,ret);
 
-    for (v=0; v<vec->traits.nrows; v++) {
+    for (v=0; v<vec->traits.nrowspadded; v++) {
         vec->val[v] = NULL;
     }
 
@@ -316,7 +316,7 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
             GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits.ncols*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
-            for (v=1; v<vec->traits.nrows; v++) {
+            for (v=1; v<vec->traits.nrowspadded; v++) {
                 vec->val[v] = vec->val[0]+v*vec->traits.ncols*vec->elSize;
             }
         }
