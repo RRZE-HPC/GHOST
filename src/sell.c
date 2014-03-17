@@ -51,7 +51,7 @@ static ghost_error_t (*SELL_kernels_AVX_32_multivec_cm[4][4]) (ghost_sparsemat_t
 
 static ghost_error_t (*SELL_kernels_AVX_32_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX_32_rich_multivec_rm,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_rich_multivecx_rm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 
