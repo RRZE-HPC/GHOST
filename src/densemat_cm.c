@@ -64,6 +64,7 @@ static ghost_error_t vec_cm_entry(ghost_densemat_t *, void *, ghost_idx_t, ghost
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
+static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs);
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec);
@@ -134,6 +135,7 @@ ghost_error_t ghost_densemat_cm_create(ghost_densemat_t *vec)
     vec->viewPlain = &vec_cm_viewPlain;
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
+    vec->viewCols = &vec_cm_viewCols;
 
     vec->upload = &vec_cm_upload;
     vec->download = &vec_cm_download;
@@ -277,6 +279,24 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     }
     vec->traits.flags |= GHOST_DENSEMAT_VIEW;
 
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
+{
+    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
+    ghost_idx_t v;
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc;
+
+    ghost_densemat_create(new,src->context,newTraits);
+
+    for (v=0; v<nc; v++) {
+        (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
+    }    
+
+    (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
+    (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;
     return GHOST_SUCCESS;
 }
 
