@@ -331,7 +331,31 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     } 
     else 
     {
-        for (i=0; i<x->traits.ncols; ++i) 
+
+#ifdef GHOST_HAVE_CUDA
+        ghost_idx_t lda;
+#endif
+        ghost_idx_t dima;
+        ghost_idx_t dimb;
+        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            dima = x->traits.nrows;
+            dimb = x->traits.ncols;
+#ifdef GHOST_HAVE_CUDA
+            lda = x->traits.ncolspadded;
+#endif
+        } else if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+            dima = x->traits.ncols;
+            dimb = x->traits.nrows;
+#ifdef GHOST_HAVE_CUDA
+            lda = x->traits.nrowspadded;
+#endif
+        } else {
+            ERROR_LOG("Invalid vector storage");
+            return GHOST_ERR_NOT_IMPLEMENTED;
+        }
+
+
+        for (i=0; i<dima; ++i) 
         {
             int copied = 0;
             void *val = NULL;
@@ -341,15 +365,14 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
 
-                GHOST_CALL_RETURN(ghost_malloc((void **)&val,x->traits.nrows*sizeofdt));
-                ghost_cu_download(val,&x->cu_val[(i*x->traits.nrowspadded)*sizeofdt],
-                        x->traits.nrows*sizeofdt);
+                GHOST_CALL_RETURN(ghost_malloc((void **)&val,dimb*sizeofdt));
+                ghost_cu_download(val, &x->cu_val[i*lda*sizeofdt], dimb*sizeofdt);
                 copied = 1;
 #endif
             }
             else if (x->traits.flags & GHOST_DENSEMAT_HOST)
             {
-                val = VECVAL(x,x->val,i,0);
+                val = x->val[i];
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
@@ -358,17 +381,17 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
 
             if (reduce == GHOST_GEMM_ALL_REDUCE) 
             {
-                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,x->traits.nrows,mpiDt,sumOp,v->context->mpicomm));
+                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm));
             } 
             else 
             {
                 if (myrank == reduce) 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,x->traits.nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm));
                 } 
                 else 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,x->traits.nrows,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm));
                 }
             }
             if (copied)
@@ -376,8 +399,7 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
-                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[(i*x->traits.nrowspadded)*sizeofdt],val,
-                        x->traits.nrows*sizeofdt));
+                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt));
                 free(val);
 #endif
             }

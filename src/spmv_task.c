@@ -39,8 +39,6 @@ typedef struct {
 
 static void *communicate(void *vargs)
 {
-//#pragma omp parallel
-//    INFO_LOG("comm t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
 
     GHOST_INSTR_START(spmv_task_communicate);
     ghost_error_t *ret = NULL;
@@ -55,13 +53,13 @@ static void *communicate(void *vargs)
     size_t recvMsgs = 0, sendMsgs = 0;
 #endif
 
-    for (from_PE=0; from_PE<args->nprocs; from_PE++){
+    if (args->rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        for (from_PE=0; from_PE<args->nprocs; from_PE++){
 #ifdef GHOST_HAVE_INSTR_TIMING
-            INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
+                INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
 #endif
-        if (args->context->wishes[from_PE]>0){
-            for (c=0; c<args->rhs->traits.ncols; c++) {
-                MPI_CALL_GOTO(MPI_Irecv(VECVAL(args->rhs,args->rhs->val,c,args->context->hput_pos[from_PE]), args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
+            if (args->context->wishes[from_PE]>0){
+                MPI_CALL_GOTO(MPI_Irecv(args->rhs->val[args->context->hput_pos[from_PE]], args->rhs->traits.ncols*args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #ifdef GHOST_HAVE_INSTR_TIMING
                 recvBytes += args->context->wishes[from_PE]*args->rhs->elSize;
@@ -69,12 +67,9 @@ static void *communicate(void *vargs)
 #endif
             }
         }
-    }
-    
-    for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
-        if (args->context->dues[to_PE]>0){
-            for (c=0; c<args->rhs->traits.ncols; c++) {
-                MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->elSize + to_PE*args->max_dues*args->rhs->elSize, args->context->dues[to_PE]*args->rhs->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
+        for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
+            if (args->context->dues[to_PE]>0){
+                MPI_CALL_GOTO(MPI_Isend( args->work + to_PE*args->max_dues*args->rhs->elSize*args->rhs->traits.ncols, args->context->dues[to_PE]*args->rhs->elSize*args->rhs->traits.ncols, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
 #ifdef GHOST_HAVE_INSTR_TIMING
                 sendBytes += args->context->dues[to_PE]*args->rhs->elSize;
@@ -82,8 +77,38 @@ static void *communicate(void *vargs)
 #endif
             }
         }
+
+        
+    } else if (args->rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        for (from_PE=0; from_PE<args->nprocs; from_PE++){
+#ifdef GHOST_HAVE_INSTR_TIMING
+                INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
+#endif
+            if (args->context->wishes[from_PE]>0){
+                for (c=0; c<args->rhs->traits.ncols; c++) {
+                    MPI_CALL_GOTO(MPI_Irecv(&args->rhs->val[c][args->context->hput_pos[from_PE]*args->rhs->elSize], args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
+                    args->msgcount++;
+#ifdef GHOST_HAVE_INSTR_TIMING
+                    recvBytes += args->context->wishes[from_PE]*args->rhs->elSize;
+                    recvMsgs++;
+#endif
+                }
+            }
+        }
+        
+        for (to_PE=0 ; to_PE<args->nprocs ; to_PE++){
+            if (args->context->dues[to_PE]>0){
+                for (c=0; c<args->rhs->traits.ncols; c++) {
+                    MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->elSize + to_PE*args->max_dues*args->rhs->elSize, args->context->dues[to_PE]*args->rhs->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
+                    args->msgcount++;
+#ifdef GHOST_HAVE_INSTR_TIMING
+                    sendBytes += args->context->dues[to_PE]*args->rhs->elSize;
+                    sendMsgs++;
+#endif
+                }
+            }
+        }
     }
-    
 
 
     MPI_CALL_GOTO(MPI_Waitall(args->msgcount, args->request, args->status),err,*ret);
@@ -178,13 +203,23 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     DEBUG_LOG(1,"In task mode spmv solver");
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, mat->context->mpicomm));
-    MPI_Request request[invec->traits.ncols*2*nprocs];
-    MPI_Status  status[invec->traits.ncols*2*nprocs];
+
+    int ncomm = 0;
+    if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        ncomm = 2*nprocs;
+    } else {
+        ncomm = 2*nprocs*invec->traits.ncols;
+    }
+
+    MPI_Request request[ncomm];
+    MPI_Status  status[ncomm];
 
     max_dues = 0;
-    for (i=0;i<nprocs;i++)
-        if (mat->context->dues[i]>max_dues) 
+    for (i=0;i<nprocs;i++) {
+        if (mat->context->dues[i]>max_dues) {
             max_dues = mat->context->dues[i];
+        }
+    }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,invec->traits.ncols*max_dues*nprocs * invec->elSize));
 
@@ -201,9 +236,9 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
         DEBUG_LOG(1,"No parent task in task mode spmv solver");
 
         int nIdleCores;
-        ghost_pumap_getNumberOfIdlePUs(&nIdleCores,GHOST_NUMANODE_ANY);
-        ghost_task_create(&compTask, nIdleCores-remoteExists, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
+        ghost_pumap_nidle(&nIdleCores,GHOST_NUMANODE_ANY);
+        ghost_task_create(&compTask, 2/*nIdleCores-remoteExists*/, 0, &computeLocal, &cplargs, taskflags);
+        ghost_task_create(&commTask, 2/*remoteExists*/, 0, &communicate, &cargs, taskflags);
     }
 
 
@@ -223,7 +258,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     cplargs.spmvOptions = localopts;
     va_copy(cplargs.argp,argp);
 
-    for (i=0;i<invec->traits.ncols*2*nprocs;i++) {
+    for (i=0;i<ncomm;i++) {
         request[i] = MPI_REQUEST_NULL;
     }
 
@@ -237,25 +272,46 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     GHOST_INSTR_STOP(spmv_task_prepare);
     GHOST_INSTR_START(spmv_task_assemblebuffer);
     invec->downloadNonHalo(invec);
-
-    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
-            (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
+    
+    if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
+                (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
 #pragma omp parallel private(to_PE,i,c)
-        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits.ncols; c++) {
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
                 for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->elSize);
+                    memcpy(work + (to_PE*max_dues+i)*invec->elSize*invec->traits.ncols,invec->val[mat->permutation->perm[mat->context->duelist[to_PE][i]]],invec->elSize*invec->traits.ncols);
+                }
+            }
+        } else {
+#pragma omp parallel private(to_PE,i)
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+#pragma omp for 
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + (to_PE*max_dues+i)*invec->elSize*invec->traits.ncols,invec->val[mat->context->duelist[to_PE][i]],invec->elSize*invec->traits.ncols);
                 }
             }
         }
-    } else {
+    } else if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
+                (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
 #pragma omp parallel private(to_PE,i,c)
-        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits.ncols; c++) {
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (c=0; c<invec->traits.ncols; c++) {
 #pragma omp for 
-                for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->elSize);
+                    for (i=0; i<mat->context->dues[to_PE]; i++){
+                        memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,&invec->val[c][mat->permutation->perm[mat->context->duelist[to_PE][i]]*invec->elSize],invec->elSize);
+                    }
+                }
+            }
+        } else {
+#pragma omp parallel private(to_PE,i,c)
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (c=0; c<invec->traits.ncols; c++) {
+#pragma omp for 
+                    for (i=0; i<mat->context->dues[to_PE]; i++){
+                        memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,&invec->val[c][mat->context->duelist[to_PE][i]*invec->elSize],invec->elSize);
+                    }
                 }
             }
         }

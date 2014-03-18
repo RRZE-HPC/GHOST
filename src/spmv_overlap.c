@@ -71,48 +71,102 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     for (i=0;i<invec->traits.ncols*2*nprocs;i++) {
         request[i] = MPI_REQUEST_NULL;
     }
-
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (mat->context->wishes[from_PE]>0){
-            for (c=0; c<invec->traits.ncols; c++) {
-                MPI_CALL_GOTO(MPI_Irecv(VECVAL(invec,invec->val,c,mat->context->hput_pos[from_PE]), mat->context->wishes[from_PE]*invec->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
+    if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+#ifdef GHOST_HAVE_INSTR_TIMING
+                INFO_LOG("from %d: %zu bytes",from_PE,mat->context->wishes[from_PE]*invec->elSize);
+#endif
+            if (mat->context->wishes[from_PE]>0){
+                MPI_CALL_GOTO(MPI_Irecv(invec->val[mat->context->hput_pos[from_PE]], invec->traits.ncols*mat->context->wishes[from_PE]*invec->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
+#ifdef GHOST_HAVE_INSTR_TIMING
+                recvBytes += mat->context->wishes[from_PE]*invec->elSize;
+                recvMsgs++;
+#endif
             }
         }
-    }
-
-    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
-            (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
-#pragma omp parallel private(to_PE,i,c)
-        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits.ncols; c++) {
-#pragma omp for 
-                for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->permutation->perm[mat->context->duelist[to_PE][i]]),invec->elSize);
+        
+    } else if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+#ifdef GHOST_HAVE_INSTR_TIMING
+                INFO_LOG("from %d: %zu bytes",from_PE,mat->context->wishes[from_PE]*invec->elSize);
+#endif
+            if (mat->context->wishes[from_PE]>0){
+                for (c=0; c<invec->traits.ncols; c++) {
+                    MPI_CALL_GOTO(MPI_Irecv(&invec->val[c][mat->context->hput_pos[from_PE]*invec->elSize], mat->context->wishes[from_PE]*invec->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
+                    msgcount++;
+#ifdef GHOST_HAVE_INSTR_TIMING
+                    recvBytes += mat->context->wishes[from_PE]*invec->elSize;
+                    recvMsgs++;
+#endif
                 }
             }
         }
-    } else {
+        
+    }
+
+    if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
+                (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
 #pragma omp parallel private(to_PE,i,c)
-        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-            for (c=0; c<invec->traits.ncols; c++) {
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
                 for (i=0; i<mat->context->dues[to_PE]; i++){
-                    memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,VECVAL(invec,invec->val,c,mat->context->duelist[to_PE][i]),invec->elSize);
+                    memcpy(work + (to_PE*max_dues+i)*invec->elSize*invec->traits.ncols,invec->val[mat->permutation->perm[mat->context->duelist[to_PE][i]]],invec->elSize*invec->traits.ncols);
+                }
+            }
+        } else {
+#pragma omp parallel private(to_PE,i)
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+#pragma omp for 
+                for (i=0; i<mat->context->dues[to_PE]; i++){
+                    memcpy(work + (to_PE*max_dues+i)*invec->elSize*invec->traits.ncols,invec->val[mat->context->duelist[to_PE][i]],invec->elSize*invec->traits.ncols);
+                }
+            }
+        }
+    } else if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && 
+                (mat->permutation->scope == GHOST_PERMUTATION_LOCAL)) {
+#pragma omp parallel private(to_PE,i,c)
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (c=0; c<invec->traits.ncols; c++) {
+#pragma omp for 
+                    for (i=0; i<mat->context->dues[to_PE]; i++){
+                        memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,&invec->val[c][mat->permutation->perm[mat->context->duelist[to_PE][i]]*invec->elSize],invec->elSize);
+                    }
+                }
+            }
+        } else {
+#pragma omp parallel private(to_PE,i,c)
+            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (c=0; c<invec->traits.ncols; c++) {
+#pragma omp for 
+                    for (i=0; i<mat->context->dues[to_PE]; i++){
+                        memcpy(work + c*nprocs*max_dues*invec->elSize + (to_PE*max_dues+i)*invec->elSize,&invec->val[c][mat->context->duelist[to_PE][i]*invec->elSize],invec->elSize);
+                    }
                 }
             }
         }
     }
     
-    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
-        if (mat->context->dues[to_PE]>0){
-            for (c=0; c<invec->traits.ncols; c++) {
-                MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*invec->elSize + to_PE*max_dues*invec->elSize, mat->context->dues[to_PE]*invec->elSize, MPI_CHAR, to_PE, me, mat->context->mpicomm, &request[msgcount]),err,ret);
+    if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            if (mat->context->dues[to_PE]>0){
+                MPI_CALL_GOTO(MPI_Isend( work + to_PE*max_dues*invec->elSize*invec->traits.ncols, mat->context->dues[to_PE]*invec->elSize*invec->traits.ncols, MPI_CHAR, to_PE, me, mat->context->mpicomm, &request[msgcount]),err,ret);
                 msgcount++;
             }
         }
+    } else if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+            if (mat->context->dues[to_PE]>0){
+                for (c=0; c<invec->traits.ncols; c++) {
+                    MPI_CALL_GOTO(MPI_Isend( work + c*nprocs*max_dues*invec->elSize + to_PE*max_dues*invec->elSize, mat->context->dues[to_PE]*invec->elSize, MPI_CHAR, to_PE, me, mat->context->mpicomm, &request[msgcount]),err,ret);
+                    msgcount++;
+                }
+            }
+        }
     }
-
+    
     GHOST_INSTR_START(spmv_overlap_local);
     GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts,argp),err,ret);
     GHOST_INSTR_STOP(spmv_overlap_local);
