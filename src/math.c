@@ -209,14 +209,13 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
 
     ghost_idx_t nrV,ncV,nrW,ncW,nrX,ncX;
     // TODO if rhs vector data will not be continous
-    if ((!strcmp(transpose,"N"))||(!strcmp(transpose,"n")))
-    {
+    if (((!strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) ||
+            ((strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_COLMAJOR))) {
+        nrV=v->traits.ncols; ncV=v->traits.nrows;
+    } else {
         nrV=v->traits.nrows; ncV=v->traits.ncols;
     }
-    else
-    {
-        nrV=v->traits.ncols; ncV=v->traits.nrows;
-    }
+
     nrW=w->traits.nrows; ncW=w->traits.ncols;
     nrX=x->traits.nrows; ncX=w->traits.ncols;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
@@ -235,9 +234,25 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     m = (ghost_blas_idx_t *)&nrV;
     k = (ghost_blas_idx_t *)&ncV;
     n = (ghost_blas_idx_t *)&ncW;
-    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)&(v->traits.nrowspadded);
-    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)&(w->traits.nrowspadded);
-    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)&(x->traits.nrowspadded);
+
+    ghost_blas_idx_t *ldv;
+    ghost_blas_idx_t *ldw;
+    ghost_blas_idx_t *ldx;
+    if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        ldv = (ghost_blas_idx_t *)&(v->traits.ncolspadded);
+    } else {
+        ldv = (ghost_blas_idx_t *)&(v->traits.nrowspadded);
+    }
+    if (w->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        ldw = (ghost_blas_idx_t *)&(w->traits.ncolspadded);
+    } else {
+        ldw = (ghost_blas_idx_t *)&(w->traits.nrowspadded);
+    }
+    if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        ldx = (ghost_blas_idx_t *)&(x->traits.ncolspadded);
+    } else {
+        ldx = (ghost_blas_idx_t *)&(x->traits.nrowspadded);
+    }
 
     
     //note: if no reduction is requested, none of the input vecs may have
@@ -269,27 +284,28 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     DEBUG_LOG(1,"Calling XGEMM with (%"PRIDX"x%"PRIDX") * (%"PRIDX"x%"PRIDX") = (%"PRIDX"x%"PRIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
     {
+        char *transb = w->traits.storage == GHOST_DENSEMAT_ROWMAJOR?"T":"N";
 
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                zgemm(transpose,"N", m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
+                zgemm(transpose,transb, m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
             } 
             else 
             {
-                cgemm(transpose,"N", m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
+                cgemm(transpose,transb, m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                dgemm(transpose,"N", m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
+                dgemm(transpose,transb, m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
             } 
             else 
             {
-                sgemm(transpose,"N", m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
+                sgemm(transpose,transb, m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
             }    
         }
     }
