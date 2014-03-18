@@ -15,7 +15,9 @@ typedef enum {
     GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
     GHOST_SPMV_DOT = 256,
-    GHOST_SPMV_NOT_REDUCE = 512
+    GHOST_SPMV_NOT_REDUCE = 512,
+    GHOST_SPMV_LOCAL = 1024,
+    GHOST_SPMV_REMOTE = 2048
 } ghost_spmv_flags_t;
 
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt){\
@@ -51,6 +53,13 @@ typedef enum {
             return GHOST_ERR_INVALID_ARG;\
         }\
         dot = arg;\
+    }\
+    if (options & GHOST_SPMV_REMOTE) {\
+        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_AXPBY);\
+        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_SHIFT);\
+        options = (ghost_spmv_flags_t)(options | GHOST_SPMV_AXPY);\
+    } else if (options & GHOST_SPMV_LOCAL) {\
+        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_DOT);\
     }\
 }\
 

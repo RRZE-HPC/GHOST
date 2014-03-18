@@ -11,6 +11,7 @@
 #include "ghost/math.h"
 #include "ghost/util.h"
 #include "ghost/crs.h"
+#include "ghost/machine.h"
 
 #include <sstream>
 #include <iostream>
@@ -30,13 +31,16 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     ghost_idx_t v;
     int nthreads = 1;
 
-    // TODO false sharing avoidance w/ hwloc
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    unsigned padding = clsize/sizeof(v_t);
 
     v_t hlp1 = 0.;
     v_t shift = 0., scale = 1., beta = 1.;
 
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
-
+    
+        
     if (options & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
@@ -45,9 +49,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
             nthreads = ghost_omp_nthread();
         }
 
-        // 3 -> 16: avoid false sharing
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*lhs->traits.ncols*nthreads*sizeof(v_t))); 
-        for (i=0; i<16*lhs->traits.ncols*nthreads; i++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t))); 
+        for (i=0; i<(3*lhs->traits.ncols+padding)*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
@@ -79,7 +82,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     for (v=0; v<rhs->traits.ncols; v++) {
 
                         if (options & GHOST_SPMV_SHIFT) {
-                            tmp[v] = tmp[v]-shift*rhsv[i];
+                            tmp[v] = tmp[v]-shift*rhsrow[v];
                         }
                         if (options & GHOST_SPMV_SCALE) {
                             tmp[v] = tmp[v]*scale;
@@ -92,9 +95,9 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                             lhsv[v] = tmp[v];
                         }
                         if (options & GHOST_SPMV_DOT) {
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[v])*lhsv[v];
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[v])*rhsv[v];
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[v])*rhsv[v];
+                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[v])*lhsv[v];
+                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[v])*rhsrow[v];
+                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsrow[v])*rhsrow[v];
                         }
                     }
                 }
@@ -131,9 +134,9 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     }
 
                     if (options & GHOST_SPMV_DOT) {
-                        partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
-                        partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
-                        partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
+                        partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[i])*lhsv[i];
+                        partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[i])*rhsv[i];
+                        partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[i])*rhsv[i];
                     }
                 }
             }
@@ -142,9 +145,9 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 2];
+                local_dot_product[v                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v  + 2*lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 2];
             }
         }
         free(partsums);

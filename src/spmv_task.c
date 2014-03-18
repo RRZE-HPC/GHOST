@@ -186,11 +186,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_SUM,mat->context->mpicomm));
    
     if (remoteExists) {
-        localopts &= ~GHOST_SPMV_DOT;
-
-        remoteopts &= ~GHOST_SPMV_AXPBY;
-        remoteopts &= ~GHOST_SPMV_SHIFT;
-        remoteopts |= GHOST_SPMV_AXPY;
+        localopts |= GHOST_SPMV_LOCAL;
+        remoteopts |= GHOST_SPMV_REMOTE;
     }
 
 

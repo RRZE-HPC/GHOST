@@ -33,16 +33,11 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
 
-    int localopts = flags;
-    localopts &= ~GHOST_SPMV_DOT;
+    int localopts = flags|GHOST_SPMV_LOCAL;
+    int remoteopts = flags|GHOST_SPMV_REMOTE;
 
     va_list remote_argp;
     va_copy(remote_argp,argp);
-    int remoteopts = flags;
-    remoteopts &= ~GHOST_SPMV_AXPBY;
-    remoteopts &= ~GHOST_SPMV_SHIFT;
-    remoteopts |= GHOST_SPMV_AXPY;
-
     int me; 
     int i, from_PE, to_PE;
     int msgcount;
