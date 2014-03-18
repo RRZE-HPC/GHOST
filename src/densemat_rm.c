@@ -63,6 +63,7 @@ static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t *
 static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_idx_t, ghost_idx_t);
 static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
 static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs);
+static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs);
 static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
 static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_upload(ghost_densemat_t *vec);
@@ -121,6 +122,7 @@ ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec)
     vec->viewVec = &vec_rm_view;
     vec->viewPlain = &vec_rm_viewPlain;
     vec->viewScatteredVec = &vec_rm_viewScatteredVec;
+    vec->viewScatteredCols = &vec_rm_viewScatteredCols;
 
     vec->upload = &vec_rm_upload;
     vec->download = &vec_rm_download;
@@ -286,6 +288,31 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     }
     for (r=0; r<nr; r++) {
         (*new)->val[r] = VECVAL(src,src->val,roffs[r],0);
+    }
+
+    (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
+    (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
+{
+    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
+    ghost_idx_t c,i,r;
+    ghost_densemat_traits_t newTraits = src->traits;
+    newTraits.ncols = nc; 
+
+    ghost_densemat_create(new,src->context,newTraits);
+    
+    for (c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
+        if (coffs[i] != c) {
+            hwloc_bitmap_clr((*new)->mask,c);
+        } else {
+            i++;
+        }
+    }
+    for (r=0; r<newTraits.nrows; r++) {
+        (*new)->val[r] = VECVAL(src,src->val,r,0);
     }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
