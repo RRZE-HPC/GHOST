@@ -169,7 +169,6 @@ ghost_error_t ghost_init(int argc, char **argv)
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERNUMA;
         } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
-            WARNING_LOG("One MPI process per core not supported");
         } else {
             ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
             WARNING_LOG("Invalid number of ranks on node");
@@ -264,6 +263,17 @@ ghost_error_t ghost_init(int argc, char **argv)
                     WARNING_LOG("More processes (%d) than NUMA nodes (%d)",numaNode,nnumanodes);
                     break;
                 }
+            }
+        }
+    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERCORE) {
+        for (i=0; i<nnoderanks; i++) {
+            if (localTypes[i] == GHOST_TYPE_WORK) {
+                hwloc_cpuset_t coreCpuset;
+                coreCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset;
+                if (i == noderank) {
+                    hwloc_bitmap_and(mycpuset,globcpuset,coreCpuset);
+                }
+                hwloc_bitmap_andnot(globcpuset,globcpuset,coreCpuset);
             }
         }
     }
