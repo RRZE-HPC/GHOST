@@ -170,16 +170,16 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else if (nnoderanks == hwloc_get_nbobjs_by_type(topology,HWLOC_OBJ_CORE)) {
             ghost_hybridmode = GHOST_HYBRIDMODE_ONEPERCORE;
         } else {
-            ghost_hybridmode = GHOST_HYBRIDMODE_INVALID;
-            WARNING_LOG("Invalid number of ranks on node");
-            // TODO handle this correctly
-            oversubscribed = 1;
+            ghost_hybridmode = GHOST_HYBRIDMODE_CUSTOM;
         }
     }
     GHOST_CALL_RETURN(ghost_hybridmode_set(ghost_hybridmode));
 
     int maxcore;
     ghost_machine_ncore(&maxcore, GHOST_NUMANODE_ANY);
+    
+    int maxpu;
+    ghost_machine_npu(&maxpu, GHOST_NUMANODE_ANY);
 
     hwloc_cpuset_t mycpuset = hwloc_bitmap_alloc();
     hwloc_cpuset_t globcpuset = hwloc_bitmap_alloc();
@@ -266,16 +266,50 @@ ghost_error_t ghost_init(int argc, char **argv)
             }
         }
     } else if (ghost_hybridmode == GHOST_HYBRIDMODE_ONEPERCORE) {
-        for (i=0; i<nnoderanks; i++) {
-            if (localTypes[i] == GHOST_TYPE_WORK) {
-                hwloc_cpuset_t coreCpuset;
-                coreCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset;
-                if (i == noderank) {
-                    hwloc_bitmap_and(mycpuset,globcpuset,coreCpuset);
+        if (nnoderanks > maxcore) {
+            oversubscribed = 1;
+            WARNING_LOG("More processes (%d) than cores available (%d)",nnoderanks,maxcore);
+        } else {
+            for (i=0; i<nnoderanks; i++) {
+                if (localTypes[i] == GHOST_TYPE_WORK) {
+                    hwloc_cpuset_t coreCpuset;
+                    coreCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset;
+                    if (i == noderank) {
+                        hwloc_bitmap_and(mycpuset,globcpuset,coreCpuset);
+                    }
+                    hwloc_bitmap_andnot(globcpuset,globcpuset,coreCpuset);
                 }
-                hwloc_bitmap_andnot(globcpuset,globcpuset,coreCpuset);
             }
         }
+    } else if (ghost_hybridmode == GHOST_HYBRIDMODE_CUSTOM) {
+        if (nnoderanks > maxpu) {
+            oversubscribed = 1;
+            WARNING_LOG("More processes (%d) than PUs available (%d)",nnoderanks,maxpu);
+        } else {
+            int pusperrank = maxpu/nnoderanks;
+
+            for (i=0; i<nnoderanks-1; i++) { // the last rank will get the remaining PUs
+                if (localTypes[i] == GHOST_TYPE_WORK) {
+                    hwloc_cpuset_t puCpuset;
+                    int pu;
+                    for (pu=0; pu<pusperrank; pu++) {
+                        puCpuset = hwloc_get_obj_by_type(topology,HWLOC_OBJ_PU,i*pusperrank+pu)->cpuset;
+                        if (i == noderank) {
+                            hwloc_bitmap_t bak = hwloc_bitmap_dup(mycpuset);
+                            hwloc_bitmap_and(mycpuset,globcpuset,puCpuset);
+                            hwloc_bitmap_or(mycpuset,mycpuset,bak);
+                            hwloc_bitmap_free(bak);
+                        }
+                        hwloc_bitmap_andnot(globcpuset,globcpuset,puCpuset);
+                    }
+                }
+            }
+            if (localTypes[i] == GHOST_TYPE_WORK && i == noderank) {
+                hwloc_bitmap_copy(mycpuset,globcpuset);
+            }
+            hwloc_bitmap_andnot(globcpuset,globcpuset,globcpuset);
+        }
+
     }
 
     if (oversubscribed) {
