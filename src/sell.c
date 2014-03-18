@@ -168,11 +168,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     SELL(mat)->rowLen = NULL;
     SELL(mat)->rowLenPadded = NULL;
     SELL(mat)->chunkStart = NULL;
-    SELL(mat)->maxRowLen = 0;
-    SELL(mat)->nMaxRows = 0;
-    SELL(mat)->variance = 0.;
-    SELL(mat)->deviation = 0.;
-    SELL(mat)->cv = 0.;
     SELL(mat)->beta = 0;
     SELL(mat)->cumat = NULL;
 
@@ -210,12 +205,8 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_idx_t *perm, gh
 }
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str)
 {
-    ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
     ghost_line_string(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
     ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_line_string(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
-    ghost_line_string(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
-    ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
     ghost_line_string(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
 }
 
@@ -443,7 +434,6 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
     }
 
-    SELL(mat)->maxRowLen = maxRowLen; 
     mat->nEnts = nEnts;
     mat->nnz = nnz;
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
@@ -524,12 +514,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         free(tmpcol); tmpcol = NULL;
     }
 
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    ghost_sparsemat_registerrow_finalize(mat);
 
     if (ret != GHOST_SUCCESS) {
         goto err;
@@ -570,11 +555,6 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    SELL(mat)->maxRowLen = 0;
-    SELL(mat)->nMaxRows = 0;
-    SELL(mat)->variance = 0.;
-    SELL(mat)->deviation = 0.;
-    SELL(mat)->cv = 0.;
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
@@ -862,7 +842,6 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t maxRowLenInChunk = 0;
     ghost_idx_t minRowLenInChunk = INT_MAX;
 
-    SELL(mat)->maxRowLen = 0;
     SELL(mat)->chunkStart[0] = 0;    
 
     DEBUG_LOG(1,"Extracting row lenghts");
@@ -881,7 +860,6 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
 
 
-        SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,maxRowLenInChunk);
         SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
         SELL(mat)->chunkMin[chunk] = minRowLenInChunk;
         SELL(mat)->chunkLenPadded[chunk] = PAD(maxRowLenInChunk,SELL(mat)->T);
@@ -941,12 +919,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
 
     }
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    ghost_sparsemat_registerrow_finalize(mat);
 
     mat->split(mat);
 

@@ -55,6 +55,11 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
+    (*mat)->maxRowLen = 0;
+    (*mat)->nMaxRows = 0;
+    (*mat)->variance = 0.;
+    (*mat)->deviation = 0.;
+    (*mat)->cv = 0.;
     (*mat)->nrows = context->lnrows[me];
     (*mat)->nrowsPadded = (*mat)->nrows;
     (*mat)->ncols = context->gncols;
@@ -109,26 +114,6 @@ ghost_error_t ghost_sparsemat_sortrow(ghost_idx_t *col, char *val, size_t valSiz
                 memcpy(&val[c*stride*valSize],&val[(c+1)*stride*valSize],valSize);
                 memcpy(&val[(c+1)*stride*valSize],&swpval,valSize);
             }
-        }
-    }
-
-    return GHOST_SUCCESS;
-}
-
-ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
-{
-    ghost_idx_t c, col;
-
-    for (c=0; c<rowlen; c++) {
-        col = cols[c*stride];
-        if (col < row) {
-            mat->lowerBandwidth = MAX(mat->lowerBandwidth, row-col);
-            mat->nzDist[mat->context->gnrows-1-(row-col)]++;
-        } else if (col > row) {
-            mat->upperBandwidth = MAX(mat->upperBandwidth, col-row);
-            mat->nzDist[mat->context->gnrows-1+col-row]++;
-        } else {
-            mat->nzDist[mat->context->gnrows-1]++;
         }
     }
 
@@ -802,6 +787,10 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
         ghost_line_string(str,"Permuted column indices",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_PERMUTE_COLS?"No":"Yes");
         ghost_line_string(str,"Ascending columns in row",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_NOT_SORT_COLS?"No":"Yes");
     }
+    ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",mat->maxRowLen,mat->nMaxRows);
+    ghost_line_string(str,"Row length variance",NULL,"%f",mat->variance);
+    ghost_line_string(str,"Row length standard deviation",NULL,"%f",mat->deviation);
+    ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",mat->cv);
 
     mat->auxString(mat,str);
     ghost_footer_string(str);

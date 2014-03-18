@@ -208,6 +208,11 @@ struct ghost_sparsemat_t
     ghost_idx_t lowerBandwidth;
     ghost_idx_t upperBandwidth;
     ghost_idx_t bandwidth;
+    ghost_idx_t maxRowLen;
+    ghost_idx_t nMaxRows;
+    double variance; // row length variance
+    double deviation; // row lenght standard deviation
+    double cv; // row lenght coefficient of variation
     /**
      * @brief Array of length nrows with nzDist[i] = number nonzeros with distance i from diagonal
      */
@@ -369,6 +374,7 @@ extern "C" {
     ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
     ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
     ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
+    ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat);
 
 #ifdef __cplusplus
 } extern "C"

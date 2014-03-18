@@ -55,6 +55,7 @@ set (SOURCES
 		src/sell.c 
 		src/sell.cpp
 		src/sparsemat.c
+		src/sparsemat.cpp
         src/spmv_overlap.c 
 		src/spmv_nompi.c 
         src/spmv_task.c

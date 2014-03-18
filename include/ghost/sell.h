@@ -46,17 +46,12 @@ typedef struct
     ghost_idx_t *col;
     ghost_nnz_t *chunkStart;
     double beta; // chunk occupancy
-    double variance; // row length variance
-    double deviation; // row lenght standard deviation
-    double cv; // row lenght coefficient of variation
     int T; // number of threads per row (if applicable)
     ghost_idx_t *chunkMin; // for version with remainder loop
     ghost_idx_t *chunkLen; // for version with remainder loop
     ghost_idx_t *chunkLenPadded; // for version with remainder loop
     ghost_idx_t *rowLen;   // for version with remainder loop
     ghost_idx_t *rowLenPadded; // for SELL-T 
-    ghost_idx_t maxRowLen;
-    ghost_idx_t nMaxRows;
     ghost_idx_t chunkHeight;
     
     ghost_cu_sell_t *cumat;
