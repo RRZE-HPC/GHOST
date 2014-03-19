@@ -132,7 +132,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         ghost_mpi_op_sum(&op,res->traits.datatype);
         ghost_mpi_datatype(&dt,res->traits.datatype);
 
-        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3, dt, op, mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3*invec->traits.ncols, dt, op, mat->context->mpicomm));
         GHOST_INSTR_STOP(spmv_dot_reduce);
     }
 #endif
