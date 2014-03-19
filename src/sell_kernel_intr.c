@@ -99,14 +99,13 @@ ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *mat, ghost_densemat_t* res, 
 ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    ghost_idx_t j,c,v;
+    ghost_idx_t j,c,v,i;
     ghost_nnz_t offs;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
+    double *partsums = NULL;
     __m256d tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8;
-    __m256d dot1,dot2,dot3;
-    double dots1 = 0, dots2 = 0, dots3 = 0;
     __m256d val;
     __m256d rhs;
     __m128d rhstmp;
@@ -119,12 +118,33 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     shift = _mm256_broadcast_sd(&sshift);
     beta = _mm256_broadcast_sd(&sbeta);
 
+    int nthreads = 1;
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    unsigned padding = clsize/sizeof(double);
+    if (spmvmOptions & GHOST_SPMV_DOT) {
 
-#pragma omp parallel private(v,c,j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
+#pragma omp parallel 
+        {
+#pragma omp single
+            nthreads = ghost_omp_nthread();
+        }
+
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
+        for (i=0; i<(3*invec->traits.ncols+padding)*nthreads; i++) {
+            partsums[i] = 0.;
+        }
+    }
+
+#pragma omp parallel private(v,c,j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp) shared(partsums)
     {
-        dot1 = _mm256_setzero_pd();
-        dot2 = _mm256_setzero_pd();
-        dot3 = _mm256_setzero_pd();
+        int tid = ghost_omp_threadnum();
+        __m256d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];
+        for (v=0; v<invec->traits.ncols; v++) {
+            dot1[v] = _mm256_setzero_pd();
+            dot2[v] = _mm256_setzero_pd();
+            dot3[v] = _mm256_setzero_pd();
+        }
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded>>5; c++) 
         { // loop over chunks
@@ -268,55 +288,66 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                     _mm256_stream_pd(&lval[c*32+28],tmp8);
                 }
                 if (spmvmOptions & GHOST_SPMV_DOT) {
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
-                    dot1 = _mm256_add_pd(dot1,_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
 
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
-                    dot2 = _mm256_add_pd(dot2,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&lval[c*32])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&lval[c*32+4])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&lval[c*32+8])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&lval[c*32+12])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&lval[c*32+16])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&lval[c*32+20])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&lval[c*32+24])));
+                    dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&lval[c*32+28])));
 
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
-                    dot3 = _mm256_add_pd(dot3,_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32]),_mm256_load_pd(&rval[c*32])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4]),_mm256_load_pd(&rval[c*32+4])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+8]),_mm256_load_pd(&rval[c*32+8])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+12]),_mm256_load_pd(&rval[c*32+12])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+16]),_mm256_load_pd(&rval[c*32+16])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+20]),_mm256_load_pd(&rval[c*32+20])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+24]),_mm256_load_pd(&rval[c*32+24])));
+                    dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+28]),_mm256_load_pd(&rval[c*32+28])));
 
                 }
             }
         }
 
         if (spmvmOptions & GHOST_SPMV_DOT) {
-            __m256d sum12 = _mm256_hadd_pd(dot1,dot2);
-            __m128d sum12high = _mm256_extractf128_pd(sum12,1);
-            __m128d res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+            __m256d sum12;
+            __m128d sum12high;
+            __m128d res12;
+            for (v=0; v<invec->traits.ncols; v++) {
 
-            dots1 = ((double *)&res12)[0];
-            dots2 = ((double *)&res12)[1];
+                sum12 = _mm256_hadd_pd(dot1[v],dot2[v]);
+                sum12high = _mm256_extractf128_pd(sum12,1);
+                res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
 
-            sum12 = _mm256_hadd_pd(dot3,dot3);
-            sum12high = _mm256_extractf128_pd(sum12,1);
-            res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
-            dots3 = ((double *)&res12)[0];
+                partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += ((double *)&res12)[0];
+                partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += ((double *)&res12)[1];
+
+                sum12 = _mm256_hadd_pd(dot3[v],dot3[v]);
+                sum12high = _mm256_extractf128_pd(sum12,1);
+                res12 = _mm_add_pd(sum12high, _mm256_castpd256_pd128(sum12));
+                partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += ((double *)&res12)[0];
+            }
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
-        local_dot_product[0] = dots1;
-        local_dot_product[1] = dots2;
-        local_dot_product[2] = dots3;
+        for (v=0; v<invec->traits.ncols; v++) {
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[v                       ] += partsums[(padding+3*invec->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v  +   invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v  + 2*invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*v + 2];
+            }
+        }
+        free(partsums);
     }
 
 #else
