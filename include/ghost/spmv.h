@@ -54,12 +54,12 @@ typedef enum {
         }\
         dot = arg;\
     }\
-    if (options & GHOST_SPMV_REMOTE) {\
-        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_AXPBY);\
-        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_SHIFT);\
-        options = (ghost_spmv_flags_t)(options | GHOST_SPMV_AXPY);\
-    } else if (options & GHOST_SPMV_LOCAL) {\
-        options = (ghost_spmv_flags_t)(options & ~GHOST_SPMV_DOT);\
+    if (flags & GHOST_SPMV_REMOTE) {\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_AXPBY);\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_SHIFT);\
+        flags = (ghost_spmv_flags_t)(flags | GHOST_SPMV_AXPY);\
+    } else if (flags & GHOST_SPMV_LOCAL) {\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT);\
     }\
 }\
 
