@@ -2,7 +2,7 @@
 #undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/util.h"
-#include "ghost/densemat.h"
+#include "ghost/densemat_cm.h"
 #include "ghost/log.h"
 #include "ghost/timing.h"
 
@@ -90,7 +90,7 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_idx_t nrows, ghos
     }
 }
 
-extern "C" ghost_error_t ghost_vec_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {
     void *d_a;
     size_t sizeofdt;
@@ -128,7 +128,7 @@ extern "C" ghost_error_t ghost_vec_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat
     return GHOST_SUCCESS;
 }
     
-extern "C" ghost_error_t ghost_vec_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
+extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
 {
     void *d_a;
     void *d_b;
@@ -176,7 +176,7 @@ extern "C" ghost_error_t ghost_vec_cu_vaxpby(ghost_densemat_t *v1, ghost_densema
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_dotprod(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *res)
+extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
     if (vec->traits.datatype != vec2->traits.datatype)
     {
@@ -223,7 +223,7 @@ extern "C" ghost_error_t ghost_vec_cu_dotprod(ghost_densemat_t *vec, ghost_dense
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *a)
 {
     if (vec->traits.datatype != vec2->traits.datatype)
     {
@@ -269,7 +269,7 @@ extern "C" ghost_error_t ghost_vec_cu_axpy(ghost_densemat_t *vec, ghost_densemat
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_axpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
+extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
 {
     if (v1->traits.datatype != v2->traits.datatype)
     {
@@ -310,7 +310,7 @@ extern "C" ghost_error_t ghost_vec_cu_axpby(ghost_densemat_t *v1, ghost_densemat
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_scale(ghost_densemat_t *vec, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void *a)
 {
     cublasHandle_t ghost_cublas_handle;
     GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
@@ -348,7 +348,7 @@ extern "C" ghost_error_t ghost_vec_cu_scale(ghost_densemat_t *vec, void *a)
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_vscale(ghost_densemat_t *vec, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void *a)
 {
     void *d_a;
     size_t sizeofdt;
@@ -389,9 +389,9 @@ extern "C" ghost_error_t ghost_vec_cu_vscale(ghost_densemat_t *vec, void *a)
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_fromScalar(ghost_densemat_t *vec, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, void *a)
 {
-    ghost_vec_malloc(vec);
+    ghost_densemat_cm_malloc(vec);
     if (vec->traits.datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits.datatype & GHOST_DT_DOUBLE)
@@ -426,12 +426,12 @@ extern "C" ghost_error_t ghost_vec_cu_fromScalar(ghost_densemat_t *vec, void *a)
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t ghost_vec_cu_fromRand(ghost_densemat_t *vec)
+extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 {
     long pid = getpid();
     double time;
     ghost_timing_wcmilli(&time);
-    ghost_vec_malloc(vec);
+    ghost_densemat_cm_malloc(vec);
     curandGenerator_t gen;
     CURAND_CALL_RETURN(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(time),clock(),pid)));
