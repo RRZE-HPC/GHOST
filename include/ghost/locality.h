@@ -27,7 +27,7 @@ typedef enum {
 } ghost_hybridmode_t;
 
 #define GHOST_HWCONFIG_INVALID -1
-#define GHOST_HWCONFIG_INITIALIZER (ghost_hwconfig_t) {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID}
+#define GHOST_HWCONFIG_INITIALIZER {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID}
 
 #ifdef __cplusplus
 extern "C" {
