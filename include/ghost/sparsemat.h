@@ -166,13 +166,13 @@ struct ghost_sparsemat_traits_t
  * @brief Initialize sparse matrix traits with default values.
  */
 #define GHOST_SPARSEMAT_TRAITS_INITIALIZER {\
-    .flags = GHOST_SPARSEMAT_DEFAULT,\
-    .aux = NULL,\
-    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL),\
-    .sortScope = 1,\
     .format = GHOST_SPARSEMAT_CRS,\
+    .flags = GHOST_SPARSEMAT_DEFAULT,\
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
-    .scotchStrat = GHOST_SCOTCH_STRAT_DEFAULT\
+    .aux = NULL,\
+    .scotchStrat = GHOST_SCOTCH_STRAT_DEFAULT,\
+    .sortScope = 1,\
+    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL)\
 };
 
 /**
