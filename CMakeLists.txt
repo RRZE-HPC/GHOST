@@ -108,7 +108,7 @@ add_custom_command(
         COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && cat ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c | ${CMAKE_SOURCE_DIR}/bin/ghost_pp > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c
         )
 
-add_custom_target(generate_pp DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c)
+add_custom_target(preprocess DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c)
 
 
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
@@ -169,7 +169,7 @@ else ()
     set(LIBTYPE "SHARED")
     add_library(ghost SHARED ${SOURCES})
 endif()
-add_dependencies(ghost generate_pp)
+add_dependencies(ghost preprocess)
 
 
 if (USE_CUDA)
