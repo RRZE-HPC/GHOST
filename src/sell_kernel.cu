@@ -202,9 +202,9 @@ extern __shared__ char shared[];
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
-        lhs->dot(lhs,lhs,&localdot[0]);\
-        lhs->dot(lhs,rhs,&localdot[1]);\
-        lhs->dot(rhs,rhs,&localdot[2]);\
+        lhs->dot(lhs,&localdot[0],lhs);\
+        lhs->dot(lhs,&localdot[1],rhs);\
+        lhs->dot(rhs,&localdot[2],rhs);\
         GHOST_INSTR_STOP(spmv_cuda_dot)\
     }\
     return ret;\
