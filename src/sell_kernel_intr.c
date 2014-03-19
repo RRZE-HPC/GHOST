@@ -338,6 +338,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
 #ifdef GHOST_HAVE_AVX
     ghost_idx_t j,c;
     ghost_nnz_t offs;
+    int maskidx;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     __m256d dot1,dot2,dot3;
@@ -345,11 +346,13 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
     __m256d rhs;
 
     const int64_t mask1int[4] = {-1,0,0,0};
-    __m256i mask1 = _mm256_loadu_si256((__m256i *)mask1int);
+//    __m256i mask1 = _mm256_loadu_si256((__m256i *)mask1int);
     const int64_t mask2int[4] = {-1,-1,0,0};
-    __m256i mask2 = _mm256_loadu_si256((__m256i *)mask2int);
+//    __m256i mask2 = _mm256_loadu_si256((__m256i *)mask2int);
     const int64_t mask3int[4] = {-1,-1,-1,0};
-    __m256i mask3 = _mm256_loadu_si256((__m256i *)mask3int);
+//    __m256i mask3 = _mm256_loadu_si256((__m256i *)mask3int);
+
+    __m256i mask[3] = {_mm256_loadu_si256((__m256i *)mask3int), _mm256_loadu_si256((__m256i *)mask2int), _mm256_loadu_si256((__m256i *)mask1int)};
     UNUSED(argp);
     
     double shift = 0., scale = 1., beta = 1.;
@@ -579,153 +582,156 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                 donecols += 4; 
                 remainder -= 4;
             }
-            while (remainder>=3) { // this should be done only once
-                offs = SELL(mat)->chunkStart[c];
-                tmp11 = _mm256_setzero_pd(); // tmp = 0
-                tmp21 = _mm256_setzero_pd(); // tmp = 0
-                tmp31 = _mm256_setzero_pd(); // tmp = 0
-                tmp41 = _mm256_setzero_pd(); // tmp = 0
-                tmp51 = _mm256_setzero_pd(); // tmp = 0
-                tmp61 = _mm256_setzero_pd(); // tmp = 0
-                tmp71 = _mm256_setzero_pd(); // tmp = 0
-                tmp81 = _mm256_setzero_pd(); // tmp = 0
-                tmp12 = _mm256_setzero_pd(); // tmp = 0
-                tmp22 = _mm256_setzero_pd(); // tmp = 0
-                tmp32 = _mm256_setzero_pd(); // tmp = 0
-                tmp42 = _mm256_setzero_pd(); // tmp = 0
-                tmp52 = _mm256_setzero_pd(); // tmp = 0
-                tmp62 = _mm256_setzero_pd(); // tmp = 0
-                tmp72 = _mm256_setzero_pd(); // tmp = 0
-                tmp82 = _mm256_setzero_pd(); // tmp = 0
-                tmp13 = _mm256_setzero_pd(); // tmp = 0
-                tmp23 = _mm256_setzero_pd(); // tmp = 0
-                tmp33 = _mm256_setzero_pd(); // tmp = 0
-                tmp43 = _mm256_setzero_pd(); // tmp = 0
-                tmp53 = _mm256_setzero_pd(); // tmp = 0
-                tmp63 = _mm256_setzero_pd(); // tmp = 0
-                tmp73 = _mm256_setzero_pd(); // tmp = 0
-                tmp83 = _mm256_setzero_pd(); // tmp = 0
-                tmp14 = _mm256_setzero_pd(); // tmp = 0
-                tmp24 = _mm256_setzero_pd(); // tmp = 0
-                tmp34 = _mm256_setzero_pd(); // tmp = 0
-                tmp44 = _mm256_setzero_pd(); // tmp = 0
-                tmp54 = _mm256_setzero_pd(); // tmp = 0
-                tmp64 = _mm256_setzero_pd(); // tmp = 0
-                tmp74 = _mm256_setzero_pd(); // tmp = 0
-                tmp84 = _mm256_setzero_pd(); // tmp = 0
-                for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
-                { // loop inside chunk
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp11 = _mm256_add_pd(tmp11,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp12 = _mm256_add_pd(tmp12,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp13 = _mm256_add_pd(tmp13,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp14 = _mm256_add_pd(tmp14,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+            for (maskidx = 0; maskidx < 3; maskidx++) {
+                int maskwidth = 4-maskidx-1;
+                while (remainder>=maskwidth) { // this should be done only once
+                    offs = SELL(mat)->chunkStart[c];
+                    tmp11 = _mm256_setzero_pd(); // tmp = 0
+                    tmp21 = _mm256_setzero_pd(); // tmp = 0
+                    tmp31 = _mm256_setzero_pd(); // tmp = 0
+                    tmp41 = _mm256_setzero_pd(); // tmp = 0
+                    tmp51 = _mm256_setzero_pd(); // tmp = 0
+                    tmp61 = _mm256_setzero_pd(); // tmp = 0
+                    tmp71 = _mm256_setzero_pd(); // tmp = 0
+                    tmp81 = _mm256_setzero_pd(); // tmp = 0
+                    tmp12 = _mm256_setzero_pd(); // tmp = 0
+                    tmp22 = _mm256_setzero_pd(); // tmp = 0
+                    tmp32 = _mm256_setzero_pd(); // tmp = 0
+                    tmp42 = _mm256_setzero_pd(); // tmp = 0
+                    tmp52 = _mm256_setzero_pd(); // tmp = 0
+                    tmp62 = _mm256_setzero_pd(); // tmp = 0
+                    tmp72 = _mm256_setzero_pd(); // tmp = 0
+                    tmp82 = _mm256_setzero_pd(); // tmp = 0
+                    tmp13 = _mm256_setzero_pd(); // tmp = 0
+                    tmp23 = _mm256_setzero_pd(); // tmp = 0
+                    tmp33 = _mm256_setzero_pd(); // tmp = 0
+                    tmp43 = _mm256_setzero_pd(); // tmp = 0
+                    tmp53 = _mm256_setzero_pd(); // tmp = 0
+                    tmp63 = _mm256_setzero_pd(); // tmp = 0
+                    tmp73 = _mm256_setzero_pd(); // tmp = 0
+                    tmp83 = _mm256_setzero_pd(); // tmp = 0
+                    tmp14 = _mm256_setzero_pd(); // tmp = 0
+                    tmp24 = _mm256_setzero_pd(); // tmp = 0
+                    tmp34 = _mm256_setzero_pd(); // tmp = 0
+                    tmp44 = _mm256_setzero_pd(); // tmp = 0
+                    tmp54 = _mm256_setzero_pd(); // tmp = 0
+                    tmp64 = _mm256_setzero_pd(); // tmp = 0
+                    tmp74 = _mm256_setzero_pd(); // tmp = 0
+                    tmp84 = _mm256_setzero_pd(); // tmp = 0
+                    for (j=0; j<SELL(mat)->chunkLen[c]; j++) 
+                    { // loop inside chunk
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp11 = _mm256_add_pd(tmp11,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp12 = _mm256_add_pd(tmp12,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp13 = _mm256_add_pd(tmp13,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp14 = _mm256_add_pd(tmp14,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp21 = _mm256_add_pd(tmp21,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp22 = _mm256_add_pd(tmp22,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp23 = _mm256_add_pd(tmp23,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp24 = _mm256_add_pd(tmp24,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp21 = _mm256_add_pd(tmp21,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp22 = _mm256_add_pd(tmp22,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp23 = _mm256_add_pd(tmp23,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp24 = _mm256_add_pd(tmp24,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp31 = _mm256_add_pd(tmp31,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp32 = _mm256_add_pd(tmp32,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp33 = _mm256_add_pd(tmp33,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp34 = _mm256_add_pd(tmp34,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp31 = _mm256_add_pd(tmp31,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp32 = _mm256_add_pd(tmp32,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp33 = _mm256_add_pd(tmp33,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp34 = _mm256_add_pd(tmp34,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp41 = _mm256_add_pd(tmp41,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp42 = _mm256_add_pd(tmp42,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp43 = _mm256_add_pd(tmp43,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp44 = _mm256_add_pd(tmp44,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp41 = _mm256_add_pd(tmp41,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp42 = _mm256_add_pd(tmp42,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp43 = _mm256_add_pd(tmp43,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp44 = _mm256_add_pd(tmp44,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp51 = _mm256_add_pd(tmp51,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp52 = _mm256_add_pd(tmp52,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp53 = _mm256_add_pd(tmp53,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp54 = _mm256_add_pd(tmp54,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp51 = _mm256_add_pd(tmp51,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp52 = _mm256_add_pd(tmp52,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp53 = _mm256_add_pd(tmp53,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp54 = _mm256_add_pd(tmp54,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp61 = _mm256_add_pd(tmp61,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp62 = _mm256_add_pd(tmp62,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp63 = _mm256_add_pd(tmp63,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp64 = _mm256_add_pd(tmp64,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp61 = _mm256_add_pd(tmp61,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp62 = _mm256_add_pd(tmp62,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp63 = _mm256_add_pd(tmp63,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp64 = _mm256_add_pd(tmp64,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp71 = _mm256_add_pd(tmp71,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp72 = _mm256_add_pd(tmp72,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp73 = _mm256_add_pd(tmp73,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp74 = _mm256_add_pd(tmp74,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp71 = _mm256_add_pd(tmp71,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp72 = _mm256_add_pd(tmp72,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp73 = _mm256_add_pd(tmp73,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp74 = _mm256_add_pd(tmp74,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
 
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp81 = _mm256_add_pd(tmp81,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp82 = _mm256_add_pd(tmp82,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp83 = _mm256_add_pd(tmp83,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
-                    rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask3); // maskload rhs
-                    tmp84 = _mm256_add_pd(tmp84,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp81 = _mm256_add_pd(tmp81,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp82 = _mm256_add_pd(tmp82,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp83 = _mm256_add_pd(tmp83,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                        rhs  = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]],mask[maskidx]); // maskload rhs
+                        tmp84 = _mm256_add_pd(tmp84,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));           // accumulate
+                    }
+
+                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*0+donecols],mask[maskidx],_mm256_add_pd(tmp11,_mm256_maskload_pd(&lval[invec->traits.ncols*0+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*1+donecols],mask[maskidx],_mm256_add_pd(tmp12,_mm256_maskload_pd(&lval[invec->traits.ncols*1+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*2+donecols],mask[maskidx],_mm256_add_pd(tmp13,_mm256_maskload_pd(&lval[invec->traits.ncols*2+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*3+donecols],mask[maskidx],_mm256_add_pd(tmp14,_mm256_maskload_pd(&lval[invec->traits.ncols*3+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*4+donecols],mask[maskidx],_mm256_add_pd(tmp21,_mm256_maskload_pd(&lval[invec->traits.ncols*4+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*5+donecols],mask[maskidx],_mm256_add_pd(tmp22,_mm256_maskload_pd(&lval[invec->traits.ncols*5+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*6+donecols],mask[maskidx],_mm256_add_pd(tmp23,_mm256_maskload_pd(&lval[invec->traits.ncols*6+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*7+donecols],mask[maskidx],_mm256_add_pd(tmp24,_mm256_maskload_pd(&lval[invec->traits.ncols*7+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*8+donecols],mask[maskidx],_mm256_add_pd(tmp31,_mm256_maskload_pd(&lval[invec->traits.ncols*8+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*9+donecols],mask[maskidx],_mm256_add_pd(tmp32,_mm256_maskload_pd(&lval[invec->traits.ncols*9+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*10+donecols],mask[maskidx],_mm256_add_pd(tmp33,_mm256_maskload_pd(&lval[invec->traits.ncols*10+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*11+donecols],mask[maskidx],_mm256_add_pd(tmp34,_mm256_maskload_pd(&lval[invec->traits.ncols*11+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*12+donecols],mask[maskidx],_mm256_add_pd(tmp41,_mm256_maskload_pd(&lval[invec->traits.ncols*12+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*13+donecols],mask[maskidx],_mm256_add_pd(tmp42,_mm256_maskload_pd(&lval[invec->traits.ncols*13+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*14+donecols],mask[maskidx],_mm256_add_pd(tmp43,_mm256_maskload_pd(&lval[invec->traits.ncols*14+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*15+donecols],mask[maskidx],_mm256_add_pd(tmp44,_mm256_maskload_pd(&lval[invec->traits.ncols*15+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*16+donecols],mask[maskidx],_mm256_add_pd(tmp51,_mm256_maskload_pd(&lval[invec->traits.ncols*16+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*17+donecols],mask[maskidx],_mm256_add_pd(tmp52,_mm256_maskload_pd(&lval[invec->traits.ncols*17+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*18+donecols],mask[maskidx],_mm256_add_pd(tmp53,_mm256_maskload_pd(&lval[invec->traits.ncols*18+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*19+donecols],mask[maskidx],_mm256_add_pd(tmp54,_mm256_maskload_pd(&lval[invec->traits.ncols*19+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*20+donecols],mask[maskidx],_mm256_add_pd(tmp61,_mm256_maskload_pd(&lval[invec->traits.ncols*20+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*21+donecols],mask[maskidx],_mm256_add_pd(tmp62,_mm256_maskload_pd(&lval[invec->traits.ncols*21+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*22+donecols],mask[maskidx],_mm256_add_pd(tmp63,_mm256_maskload_pd(&lval[invec->traits.ncols*22+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*23+donecols],mask[maskidx],_mm256_add_pd(tmp64,_mm256_maskload_pd(&lval[invec->traits.ncols*23+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*24+donecols],mask[maskidx],_mm256_add_pd(tmp71,_mm256_maskload_pd(&lval[invec->traits.ncols*24+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*25+donecols],mask[maskidx],_mm256_add_pd(tmp72,_mm256_maskload_pd(&lval[invec->traits.ncols*25+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*26+donecols],mask[maskidx],_mm256_add_pd(tmp73,_mm256_maskload_pd(&lval[invec->traits.ncols*26+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*27+donecols],mask[maskidx],_mm256_add_pd(tmp74,_mm256_maskload_pd(&lval[invec->traits.ncols*27+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*28+donecols],mask[maskidx],_mm256_add_pd(tmp81,_mm256_maskload_pd(&lval[invec->traits.ncols*28+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*29+donecols],mask[maskidx],_mm256_add_pd(tmp82,_mm256_maskload_pd(&lval[invec->traits.ncols*29+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*30+donecols],mask[maskidx],_mm256_add_pd(tmp83,_mm256_maskload_pd(&lval[invec->traits.ncols*30+donecols],mask[maskidx])));
+                        _mm256_maskstore_pd(&lval[invec->traits.ncols*31+donecols],mask[maskidx],_mm256_add_pd(tmp84,_mm256_maskload_pd(&lval[invec->traits.ncols*31+donecols],mask[maskidx])));
+                    }
+                    remainder -= maskwidth;
+                    donecols += maskwidth;
                 }
-
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*0+donecols],mask3,_mm256_add_pd(tmp11,_mm256_maskload_pd(&lval[invec->traits.ncols*0+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*1+donecols],mask3,_mm256_add_pd(tmp12,_mm256_maskload_pd(&lval[invec->traits.ncols*1+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*2+donecols],mask3,_mm256_add_pd(tmp13,_mm256_maskload_pd(&lval[invec->traits.ncols*2+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*3+donecols],mask3,_mm256_add_pd(tmp14,_mm256_maskload_pd(&lval[invec->traits.ncols*3+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*4+donecols],mask3,_mm256_add_pd(tmp21,_mm256_maskload_pd(&lval[invec->traits.ncols*4+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*5+donecols],mask3,_mm256_add_pd(tmp22,_mm256_maskload_pd(&lval[invec->traits.ncols*5+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*6+donecols],mask3,_mm256_add_pd(tmp23,_mm256_maskload_pd(&lval[invec->traits.ncols*6+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*7+donecols],mask3,_mm256_add_pd(tmp24,_mm256_maskload_pd(&lval[invec->traits.ncols*7+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*8+donecols],mask3,_mm256_add_pd(tmp31,_mm256_maskload_pd(&lval[invec->traits.ncols*8+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*9+donecols],mask3,_mm256_add_pd(tmp32,_mm256_maskload_pd(&lval[invec->traits.ncols*9+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*10+donecols],mask3,_mm256_add_pd(tmp33,_mm256_maskload_pd(&lval[invec->traits.ncols*10+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*11+donecols],mask3,_mm256_add_pd(tmp34,_mm256_maskload_pd(&lval[invec->traits.ncols*11+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*12+donecols],mask3,_mm256_add_pd(tmp41,_mm256_maskload_pd(&lval[invec->traits.ncols*12+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*13+donecols],mask3,_mm256_add_pd(tmp42,_mm256_maskload_pd(&lval[invec->traits.ncols*13+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*14+donecols],mask3,_mm256_add_pd(tmp43,_mm256_maskload_pd(&lval[invec->traits.ncols*14+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*15+donecols],mask3,_mm256_add_pd(tmp44,_mm256_maskload_pd(&lval[invec->traits.ncols*15+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*16+donecols],mask3,_mm256_add_pd(tmp51,_mm256_maskload_pd(&lval[invec->traits.ncols*16+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*17+donecols],mask3,_mm256_add_pd(tmp52,_mm256_maskload_pd(&lval[invec->traits.ncols*17+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*18+donecols],mask3,_mm256_add_pd(tmp53,_mm256_maskload_pd(&lval[invec->traits.ncols*18+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*19+donecols],mask3,_mm256_add_pd(tmp54,_mm256_maskload_pd(&lval[invec->traits.ncols*19+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*20+donecols],mask3,_mm256_add_pd(tmp61,_mm256_maskload_pd(&lval[invec->traits.ncols*20+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*21+donecols],mask3,_mm256_add_pd(tmp62,_mm256_maskload_pd(&lval[invec->traits.ncols*21+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*22+donecols],mask3,_mm256_add_pd(tmp63,_mm256_maskload_pd(&lval[invec->traits.ncols*22+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*23+donecols],mask3,_mm256_add_pd(tmp64,_mm256_maskload_pd(&lval[invec->traits.ncols*23+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*24+donecols],mask3,_mm256_add_pd(tmp71,_mm256_maskload_pd(&lval[invec->traits.ncols*24+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*25+donecols],mask3,_mm256_add_pd(tmp72,_mm256_maskload_pd(&lval[invec->traits.ncols*25+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*26+donecols],mask3,_mm256_add_pd(tmp73,_mm256_maskload_pd(&lval[invec->traits.ncols*26+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*27+donecols],mask3,_mm256_add_pd(tmp74,_mm256_maskload_pd(&lval[invec->traits.ncols*27+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*28+donecols],mask3,_mm256_add_pd(tmp81,_mm256_maskload_pd(&lval[invec->traits.ncols*28+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*29+donecols],mask3,_mm256_add_pd(tmp82,_mm256_maskload_pd(&lval[invec->traits.ncols*29+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*30+donecols],mask3,_mm256_add_pd(tmp83,_mm256_maskload_pd(&lval[invec->traits.ncols*30+donecols],mask3)));
-                    _mm256_maskstore_pd(&lval[invec->traits.ncols*31+donecols],mask3,_mm256_add_pd(tmp84,_mm256_maskload_pd(&lval[invec->traits.ncols*31+donecols],mask3)));
-                }
-                remainder-=3;
-                donecols+=3;
             }
-            
+/*            
             while (remainder>=2) { // this should be at most once
                 offs = SELL(mat)->chunkStart[c];
                 tmp11 = _mm256_setzero_pd(); // tmp = 0
@@ -1019,7 +1025,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                 }
                 remainder--;
                 donecols++;
-            }
+            }*/
             //GHOST_INSTR_STOP(chunkloop)
 
             /*if (spmvmOptions & GHOST_SPMV_SHIFT) {
