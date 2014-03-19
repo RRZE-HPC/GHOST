@@ -351,6 +351,11 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
     const int64_t mask3int[4] = {-1,-1,-1,0};
     __m256i mask3 = _mm256_loadu_si256((__m256i *)mask3int);
     UNUSED(argp);
+    
+    double shift = 0., scale = 1., beta = 1.;
+
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,scale,beta,shift,local_dot_product,double);
+    
     //__m256d shift, scale, beta;
 
     /*if (spmvmOptions & GHOST_SPMV_SCALE) {
@@ -532,6 +537,44 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                     _mm256_store_pd(&lval[invec->traits.ncols*29+donecols],_mm256_add_pd(tmp82,_mm256_load_pd(&lval[invec->traits.ncols*29+donecols])));
                     _mm256_store_pd(&lval[invec->traits.ncols*30+donecols],_mm256_add_pd(tmp83,_mm256_load_pd(&lval[invec->traits.ncols*30+donecols])));
                     _mm256_store_pd(&lval[invec->traits.ncols*31+donecols],_mm256_add_pd(tmp84,_mm256_load_pd(&lval[invec->traits.ncols*31+donecols])));
+                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+
+                } else {
+                    _mm256_store_pd(&lval[invec->traits.ncols*0+donecols],tmp11);
+                    _mm256_store_pd(&lval[invec->traits.ncols*1+donecols],tmp12);
+                    _mm256_store_pd(&lval[invec->traits.ncols*2+donecols],tmp13);
+                    _mm256_store_pd(&lval[invec->traits.ncols*3+donecols],tmp14);
+                    _mm256_store_pd(&lval[invec->traits.ncols*4+donecols],tmp21);
+                    _mm256_store_pd(&lval[invec->traits.ncols*5+donecols],tmp22);
+                    _mm256_store_pd(&lval[invec->traits.ncols*6+donecols],tmp23);
+                    _mm256_store_pd(&lval[invec->traits.ncols*7+donecols],tmp24);
+                    _mm256_store_pd(&lval[invec->traits.ncols*8+donecols],tmp31);
+                    _mm256_store_pd(&lval[invec->traits.ncols*9+donecols],tmp32);
+                    _mm256_store_pd(&lval[invec->traits.ncols*10+donecols],tmp33);
+                    _mm256_store_pd(&lval[invec->traits.ncols*11+donecols],tmp34);
+                    _mm256_store_pd(&lval[invec->traits.ncols*12+donecols],tmp41);
+                    _mm256_store_pd(&lval[invec->traits.ncols*13+donecols],tmp42);
+                    _mm256_store_pd(&lval[invec->traits.ncols*14+donecols],tmp43);
+                    _mm256_store_pd(&lval[invec->traits.ncols*15+donecols],tmp44);
+                    _mm256_store_pd(&lval[invec->traits.ncols*16+donecols],tmp51);
+                    _mm256_store_pd(&lval[invec->traits.ncols*17+donecols],tmp52);
+                    _mm256_store_pd(&lval[invec->traits.ncols*18+donecols],tmp53);
+                    _mm256_store_pd(&lval[invec->traits.ncols*19+donecols],tmp54);
+                    _mm256_store_pd(&lval[invec->traits.ncols*20+donecols],tmp61);
+                    _mm256_store_pd(&lval[invec->traits.ncols*21+donecols],tmp62);
+                    _mm256_store_pd(&lval[invec->traits.ncols*22+donecols],tmp63);
+                    _mm256_store_pd(&lval[invec->traits.ncols*23+donecols],tmp64);
+                    _mm256_store_pd(&lval[invec->traits.ncols*24+donecols],tmp71);
+                    _mm256_store_pd(&lval[invec->traits.ncols*25+donecols],tmp72);
+                    _mm256_store_pd(&lval[invec->traits.ncols*26+donecols],tmp73);
+                    _mm256_store_pd(&lval[invec->traits.ncols*27+donecols],tmp74);
+                    _mm256_store_pd(&lval[invec->traits.ncols*28+donecols],tmp81);
+                    _mm256_store_pd(&lval[invec->traits.ncols*29+donecols],tmp82);
+                    _mm256_store_pd(&lval[invec->traits.ncols*30+donecols],tmp83);
+                    _mm256_store_pd(&lval[invec->traits.ncols*31+donecols],tmp84);
+
+
+
                 }
                 donecols += 4; 
                 remainder -= 4;
