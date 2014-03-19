@@ -110,20 +110,14 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     __m256d val;
     __m256d rhs;
     __m128d rhstmp;
+    
+    double sshift = 0., sscale = 1., sbeta = 1.;
     __m256d shift, scale, beta;
 
-    if (spmvmOptions & GHOST_SPMV_SCALE) {
-        scale = _mm256_broadcast_sd(va_arg(argp,double *));
-    }
-    if (spmvmOptions & GHOST_SPMV_AXPBY) {
-        beta = _mm256_broadcast_sd(va_arg(argp,double *));
-    }
-    if (spmvmOptions & GHOST_SPMV_SHIFT) {
-        shift = _mm256_broadcast_sd(va_arg(argp,double *));
-    }
-    if (spmvmOptions & GHOST_SPMV_DOT) {
-        local_dot_product = va_arg(argp,double *);
-    }
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
+    scale = _mm256_broadcast_sd(&sscale);
+    shift = _mm256_broadcast_sd(&sshift);
+    beta = _mm256_broadcast_sd(&sbeta);
 
 
 #pragma omp parallel private(v,c,j,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,val,offs,rhs,rhstmp,dot1,dot2,dot3) reduction (+:dots1,dots2,dots3)
