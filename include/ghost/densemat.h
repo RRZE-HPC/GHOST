@@ -400,13 +400,16 @@ struct ghost_densemat_t
 };
 
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
+    .nrows = 0,\
+    .nrowsorig = 0,\
+    .nrowshalo = 0,\
+    .nrowspadded = 0,\
+    .ncols = 1,\
+    .ncolsorig = 1,\
+    .ncolspadded = 1,\
     .flags = GHOST_DENSEMAT_DEFAULT,\
     .storage = GHOST_DENSEMAT_COLMAJOR,\
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
-    .nrows = 0,\
-    .nrowshalo = 0,\
-    .nrowspadded = 0,\
-    .ncols = 1\
 };
 
 
