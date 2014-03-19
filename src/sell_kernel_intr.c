@@ -505,78 +505,12 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                 }
 
                 if (spmvmOptions & GHOST_SPMV_AXPY) {
-                    _mm256_store_pd(&lval[invec->traits.ncols*0+donecols],_mm256_add_pd(tmp0,_mm256_load_pd(&lval[invec->traits.ncols*0+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*1+donecols],_mm256_add_pd(tmp1,_mm256_load_pd(&lval[invec->traits.ncols*1+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*2+donecols],_mm256_add_pd(tmp2,_mm256_load_pd(&lval[invec->traits.ncols*2+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*3+donecols],_mm256_add_pd(tmp3,_mm256_load_pd(&lval[invec->traits.ncols*3+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*4+donecols],_mm256_add_pd(tmp4,_mm256_load_pd(&lval[invec->traits.ncols*4+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*5+donecols],_mm256_add_pd(tmp5,_mm256_load_pd(&lval[invec->traits.ncols*5+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*6+donecols],_mm256_add_pd(tmp6,_mm256_load_pd(&lval[invec->traits.ncols*6+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*7+donecols],_mm256_add_pd(tmp7,_mm256_load_pd(&lval[invec->traits.ncols*7+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*8+donecols],_mm256_add_pd(tmp8,_mm256_load_pd(&lval[invec->traits.ncols*8+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*9+donecols],_mm256_add_pd(tmp9,_mm256_load_pd(&lval[invec->traits.ncols*9+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*10+donecols],_mm256_add_pd(tmp10,_mm256_load_pd(&lval[invec->traits.ncols*10+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*11+donecols],_mm256_add_pd(tmp11,_mm256_load_pd(&lval[invec->traits.ncols*11+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*12+donecols],_mm256_add_pd(tmp12,_mm256_load_pd(&lval[invec->traits.ncols*12+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*13+donecols],_mm256_add_pd(tmp13,_mm256_load_pd(&lval[invec->traits.ncols*13+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*14+donecols],_mm256_add_pd(tmp14,_mm256_load_pd(&lval[invec->traits.ncols*14+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*15+donecols],_mm256_add_pd(tmp15,_mm256_load_pd(&lval[invec->traits.ncols*15+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*16+donecols],_mm256_add_pd(tmp16,_mm256_load_pd(&lval[invec->traits.ncols*16+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*17+donecols],_mm256_add_pd(tmp17,_mm256_load_pd(&lval[invec->traits.ncols*17+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*18+donecols],_mm256_add_pd(tmp18,_mm256_load_pd(&lval[invec->traits.ncols*18+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*19+donecols],_mm256_add_pd(tmp19,_mm256_load_pd(&lval[invec->traits.ncols*19+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*20+donecols],_mm256_add_pd(tmp20,_mm256_load_pd(&lval[invec->traits.ncols*20+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*21+donecols],_mm256_add_pd(tmp21,_mm256_load_pd(&lval[invec->traits.ncols*21+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*22+donecols],_mm256_add_pd(tmp22,_mm256_load_pd(&lval[invec->traits.ncols*22+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*23+donecols],_mm256_add_pd(tmp23,_mm256_load_pd(&lval[invec->traits.ncols*23+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*24+donecols],_mm256_add_pd(tmp24,_mm256_load_pd(&lval[invec->traits.ncols*24+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*25+donecols],_mm256_add_pd(tmp25,_mm256_load_pd(&lval[invec->traits.ncols*25+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*26+donecols],_mm256_add_pd(tmp26,_mm256_load_pd(&lval[invec->traits.ncols*26+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*27+donecols],_mm256_add_pd(tmp27,_mm256_load_pd(&lval[invec->traits.ncols*27+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*28+donecols],_mm256_add_pd(tmp28,_mm256_load_pd(&lval[invec->traits.ncols*28+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*29+donecols],_mm256_add_pd(tmp29,_mm256_load_pd(&lval[invec->traits.ncols*29+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*30+donecols],_mm256_add_pd(tmp30,_mm256_load_pd(&lval[invec->traits.ncols*30+donecols])));
-                    _mm256_store_pd(&lval[invec->traits.ncols*31+donecols],_mm256_add_pd(tmp31,_mm256_load_pd(&lval[invec->traits.ncols*31+donecols])));
+                    #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncols*@+donecols],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[invec->traits.ncols*@+donecols])));#32
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
 
                 } else {
 #define TMP(prefix,suffix)
-//                    re_pd(&lval[invec->traits.ncols*0+donecols],tmp0);
-                    _mm256_store_pd(&lval[invec->traits.ncols*0+donecols],tmp0);
-                    _mm256_store_pd(&lval[invec->traits.ncols*1+donecols],tmp1);
-                    _mm256_store_pd(&lval[invec->traits.ncols*2+donecols],tmp2);
-                    _mm256_store_pd(&lval[invec->traits.ncols*3+donecols],tmp3);
-                    _mm256_store_pd(&lval[invec->traits.ncols*4+donecols],tmp4);
-                    _mm256_store_pd(&lval[invec->traits.ncols*5+donecols],tmp5);
-                    _mm256_store_pd(&lval[invec->traits.ncols*6+donecols],tmp6);
-                    _mm256_store_pd(&lval[invec->traits.ncols*7+donecols],tmp7);
-                    _mm256_store_pd(&lval[invec->traits.ncols*8+donecols],tmp8);
-                    _mm256_store_pd(&lval[invec->traits.ncols*9+donecols],tmp9);
-                    _mm256_store_pd(&lval[invec->traits.ncols*10+donecols],tmp10);
-                    _mm256_store_pd(&lval[invec->traits.ncols*11+donecols],tmp11);
-                    _mm256_store_pd(&lval[invec->traits.ncols*12+donecols],tmp12);
-                    _mm256_store_pd(&lval[invec->traits.ncols*13+donecols],tmp13);
-                    _mm256_store_pd(&lval[invec->traits.ncols*14+donecols],tmp14);
-                    _mm256_store_pd(&lval[invec->traits.ncols*15+donecols],tmp15);
-                    _mm256_store_pd(&lval[invec->traits.ncols*16+donecols],tmp16);
-                    _mm256_store_pd(&lval[invec->traits.ncols*17+donecols],tmp17);
-                    _mm256_store_pd(&lval[invec->traits.ncols*18+donecols],tmp18);
-                    _mm256_store_pd(&lval[invec->traits.ncols*19+donecols],tmp19);
-                    _mm256_store_pd(&lval[invec->traits.ncols*20+donecols],tmp20);
-                    _mm256_store_pd(&lval[invec->traits.ncols*21+donecols],tmp21);
-                    _mm256_store_pd(&lval[invec->traits.ncols*22+donecols],tmp22);
-                    _mm256_store_pd(&lval[invec->traits.ncols*23+donecols],tmp23);
-                    _mm256_store_pd(&lval[invec->traits.ncols*24+donecols],tmp24);
-                    _mm256_store_pd(&lval[invec->traits.ncols*25+donecols],tmp25);
-                    _mm256_store_pd(&lval[invec->traits.ncols*26+donecols],tmp26);
-                    _mm256_store_pd(&lval[invec->traits.ncols*27+donecols],tmp27);
-                    _mm256_store_pd(&lval[invec->traits.ncols*28+donecols],tmp28);
-                    _mm256_store_pd(&lval[invec->traits.ncols*29+donecols],tmp29);
-                    _mm256_store_pd(&lval[invec->traits.ncols*30+donecols],tmp30);
-                    _mm256_store_pd(&lval[invec->traits.ncols*31+donecols],tmp31);
-
-
-
+                    #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncols*@+donecols],tmp@);#32
                 }
                 donecols += 4; 
                 remainder -= 4;

@@ -102,8 +102,17 @@ set (HEADERS
 		include/ghost/util.h
 	)
 
+add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c 
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp 
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && cat ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c | ${CMAKE_SOURCE_DIR}/bin/ghost_pp > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c
+        )
+
+add_custom_target(generate_pp DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c)
+
+
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
-    set (SOURCES ${SOURCES} src/sell_kernel_intr.c)
+    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_intr.c)
 else()
     set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
     add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
@@ -160,6 +169,7 @@ else ()
     set(LIBTYPE "SHARED")
     add_library(ghost SHARED ${SOURCES})
 endif()
+add_dependencies(ghost generate_pp)
 
 
 if (USE_CUDA)
@@ -423,7 +433,6 @@ else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
     endif()
 endif()
-
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
