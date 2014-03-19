@@ -83,7 +83,11 @@ ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec)
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
-        vec->dot = &ghost_densemat_rm_cu_dotprod;
+        ERROR_LOG("Row-major CUDA densemat not implemented!");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+
+       /* vec->dot = &ghost_densemat_rm_cu_dotprod;
         vec->vaxpy = &ghost_densemat_rm_cu_vaxpy;
         vec->vaxpby = &ghost_densemat_rm_cu_vaxpby;
         vec->axpy = &ghost_densemat_rm_cu_axpy;
@@ -91,7 +95,7 @@ ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec)
         vec->scale = &ghost_densemat_rm_cu_scale;
         vec->vscale = &ghost_densemat_rm_cu_vscale;
         vec->fromScalar = &ghost_densemat_rm_cu_fromScalar;
-        vec->fromRand = &ghost_densemat_rm_cu_fromRand;
+        vec->fromRand = &ghost_densemat_rm_cu_fromRand;*/
 #endif
     }
     else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
