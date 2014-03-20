@@ -7,6 +7,7 @@
 #define GHOST_H
 
 #include "ghost/config.h"
+#include <hwloc.h>
 #include "ghost/types.h"
 #include "ghost/core.h"
 #include "ghost/sparsemat.h"
