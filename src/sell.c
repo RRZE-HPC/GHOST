@@ -1062,15 +1062,17 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
 
 #ifdef GHOST_HAVE_SSE
+    UNUSED(SELL_kernels_SSE);
+    /*
 #if !(GHOST_HAVE_LONGIDX)
     if (!((options & GHOST_SPMV_AXPBY) ||
-                (options & GHOST_SPMV_APPLY_SCALE) ||
-                (options & GHOST_SPMV_APPLY_SHIFT))) {
+                (options & GHOST_SPMV_SCALE) ||
+                (options & GHOST_SPMV_SHIFT))) {
         kernel = SELL_kernels_SSE
             [matDtIdx]
             [vecDtIdx];
     }
-#endif
+#endif*/
 #elif defined(GHOST_HAVE_AVX)
     UNUSED(SELL_kernels_AVX_32_multivec4_rm);
     if (SELL(mat)->chunkHeight == 4) {
