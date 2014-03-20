@@ -79,6 +79,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                         }
                     }
 
+                    rhsrow = (v_t *)rhs->val[i];
                     for (v=0; v<rhs->traits.ncols; v++) {
 
                         if (options & GHOST_SPMV_SHIFT) {
