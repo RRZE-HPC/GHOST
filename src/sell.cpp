@@ -82,7 +82,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     }
     if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
 
-#pragma omp parallel private(c,j,i,v) shared(partsums)
+#pragma omp parallel private(c,j,col,i,v) shared(partsums)
         {
             v_t tmp[chunkHeight][rhs->traits.ncols];
             v_t **lhsv = NULL;
@@ -93,58 +93,55 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 #pragma omp for schedule(runtime) 
             for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
             { // loop over chunks
-                for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
-                {
 //                    rhsv = (v_t *)rhs->val[v];
-                    lhsv = (v_t **)&(lhs->val[c*chunkHeight]);
+                lhsv = (v_t **)&(lhs->val[c*chunkHeight]);
 
-                    for (i=0; i<chunkHeight; i++) {
-                        for (col=0; col<rhs->traits.ncols; col++) {
-                            tmp[i][col] = (v_t)0;
-                        }
+                for (i=0; i<chunkHeight; i++) {
+                    for (col=0; col<rhs->traits.ncols; col++) {
+                        tmp[i][col] = (v_t)0;
                     }
-
-                    for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
-                    { // loop inside chunk
-                        for (i=0; i<chunkHeight; i++) {
-                            // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
-                            matrixval = (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]);
-                            rhsrow = (v_t *)rhs->val[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
-
-                            for (col=0; col<rhs->traits.ncols; col++) {
-                                tmp[i][col] +=  matrixval * rhsrow[col]; 
-                            }
-                        }
-                    }
-                    
-                    for (i=0; i<chunkHeight; i++) {
-                        rhsrow = (v_t *)rhs->val[c*chunkHeight+i];
-                        if (c*chunkHeight+i < mat->nrows) {
-                            for (col=0; col<rhs->traits.ncols; col++) {
-                                if (options & GHOST_SPMV_SHIFT) {
-                                    tmp[i][col] = tmp[i][col]-shift*rhsrow[col];
-                                }
-                                if (options & GHOST_SPMV_SCALE) {
-                                    tmp[i][col] = tmp[i][col]*scale;
-                                }
-                                if (options & GHOST_SPMV_AXPY) {
-                                    lhsv[i][col] += tmp[i][col];
-                                } else if (options & GHOST_SPMV_AXPBY) {
-                                    lhsv[i][col] = beta*lhsv[i][col] + tmp[i][col];
-                                } else {
-                                    lhsv[i][col] = tmp[i][col];
-                                }
-
-                                if (options & GHOST_SPMV_DOT) {
-                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+0] += conjugate(&lhsv[i][col])*lhsv[i][col];
-                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+1] += conjugate(&lhsv[i][col])*rhsrow[col];
-                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+2] += conjugate(&rhsrow[col])*rhsrow[col];
-                                }
-                            }
-                        }
-                    }
-
                 }
+
+                for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+                { // loop inside chunk
+                    for (i=0; i<chunkHeight; i++) {
+                        // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
+                        matrixval = (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]);
+                        rhsrow = (v_t *)rhs->val[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+
+                        for (col=0; col<rhs->traits.ncols; col++) {
+                            tmp[i][col] +=  matrixval * rhsrow[col]; 
+                        }
+                    }
+                }
+                
+                for (i=0; i<chunkHeight; i++) {
+                    rhsrow = (v_t *)rhs->val[c*chunkHeight+i];
+                    if (c*chunkHeight+i < mat->nrows) {
+                        for (col=0; col<rhs->traits.ncols; col++) {
+                            if (options & GHOST_SPMV_SHIFT) {
+                                tmp[i][col] = tmp[i][col]-shift*rhsrow[col];
+                            }
+                            if (options & GHOST_SPMV_SCALE) {
+                                tmp[i][col] = tmp[i][col]*scale;
+                            }
+                            if (options & GHOST_SPMV_AXPY) {
+                                lhsv[i][col] += tmp[i][col];
+                            } else if (options & GHOST_SPMV_AXPBY) {
+                                lhsv[i][col] = beta*lhsv[i][col] + tmp[i][col];
+                            } else {
+                                lhsv[i][col] = tmp[i][col];
+                            }
+
+                            if (options & GHOST_SPMV_DOT) {
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+0] += conjugate(&lhsv[i][col])*lhsv[i][col];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+1] += conjugate(&lhsv[i][col])*rhsrow[col];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+2] += conjugate(&rhsrow[col])*rhsrow[col];
+                            }
+                        }
+                    }
+                }
+
             }
         }
     } else {
@@ -193,7 +190,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                             if (options & GHOST_SPMV_DOT) {
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
                             }
                         }
 
@@ -205,6 +202,9 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     }
     if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   lhs->traits.ncols] = 0.;
+            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 0];
                 local_dot_product[v  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 1];
@@ -287,6 +287,9 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     }
     if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   lhs->traits.ncols] = 0.;
+            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
                 local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
