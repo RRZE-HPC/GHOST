@@ -145,6 +145,9 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     }
     if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   lhs->traits.ncols] = 0.;
+            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 0];
                 local_dot_product[v  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 1];
