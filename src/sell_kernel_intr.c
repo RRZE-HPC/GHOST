@@ -10,8 +10,7 @@
 
 ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * invec, ghost_spmv_flags_t options,va_list argp)
 {
-    UNUSED(argp);
-#ifdef GHOST_HAVE_SSE
+#if 0/*GHOST_HAVE_SSE*/
     ghost_idx_t c,j;
     ghost_nnz_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -45,6 +44,7 @@ ghost_error_t dd_SELL_kernel_SSE (ghost_sparsemat_t *mat, ghost_densemat_t * lhs
     UNUSED(lhs);
     UNUSED(invec);
     UNUSED(options);
+    UNUSED(argp);
 #endif
     return GHOST_SUCCESS;
 }
