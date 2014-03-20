@@ -425,7 +425,7 @@ else()
         if (AVX_FOUND)
             set(GHOST_HAVE_AVX 1)
         endif()
-        if (SSE_FOUND)
+        if (SSE2_FOUND OR SSE3_FOUND OR SSE4_1_FOUND OR SSE4_2_FOUND OR SSE4a_FOUND)
             set(GHOST_HAVE_SSE 1)
         endif()
 
