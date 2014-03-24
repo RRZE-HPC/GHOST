@@ -8,6 +8,8 @@
 #include "ghost/log.h"
 #include "ghost/error.h"
 #include "ghost/util.h"
+#include "ghost/math.h"
+
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>
@@ -15,7 +17,7 @@
 
 #include "ghost/cu_complex.h"
 
-#define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
+#define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/ceil((double)(SELL_CUDA_THREADSPERBLOCK/((double)SELL(mat)->T*(double)rhs->traits.ncols))))
 //#define SELLT_STRIDE_ONE
 
 extern __shared__ char shared[];
@@ -180,7 +182,12 @@ extern __shared__ char shared[];
             SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
             /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
         } else {\
-            SELL_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK,rhs->traits.ncols*rhs->elSize*SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
+            int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+            if (blockheight*rhs->traits.ncols > 1024) {\
+                WARNING_LOG("Too many threads! (FIXME)");\
+            }\
+            dim3 block(blockheight,rhs->traits.ncols);\
+            SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
             /*SELL_kernel_CU_ELLPACK_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);*/\
             /*SWITCH_BOOLS(SELL_kernel_CU_ELLPACK_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
         }\
@@ -198,7 +205,12 @@ extern __shared__ char shared[];
             SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
             /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
         } else {\
-            SELL_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK,rhs->traits.ncols*rhs->elSize*SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
+            int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+            if (blockheight*rhs->traits.ncols > 1024) {\
+                WARNING_LOG("Too many threads! (FIXME)");\
+            }\
+            dim3 block(blockheight,rhs->traits.ncols);\
+            SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,scale,beta,(dt2 *)cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_DOT);\
             /*SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
         }\
     }\
@@ -291,60 +303,51 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
             tid = threadIdx.x%C;
         }
         int j;
-        v_t *tmp = ((v_t *)shared)+ncols*threadIdx.x;
-        m_t matval;
+        v_t tmp;
         
-        int c;
-        for (c=0; c<ncols; c++) {
-            zero<v_t>(tmp[c]);
-        }
+        zero<v_t>(tmp);
 
         for (j=0; j<rowlen[i]; j++) {
-            matval = val[cs+tid+j*C];
-            for (c=0; c<ncols; c++) {
-                tmp[c] = axpy<v_t,m_t>(tmp[c], rhs[rhs_lda*c+col[cs + tid + j*C]], matval);
-            }
+            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*threadIdx.y+col[cs + tid + j*C]], val[cs+tid+j*C]);
         }
 
-        for (c=0; c<ncols; c++) {
-            if (!do_shift) {
-                if (!do_scale) {
-                    if (do_axpy) {
-                        lhs[lhs_lda*c+i] = axpy<v_t,float>(lhs[lhs_lda*c+i],tmp[c],1.f);
-                    } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),tmp[c],1.f);
-                    } else {
-                        lhs[i] = tmp[c];
-                    }
+        if (!do_shift) {
+            if (!do_scale) {
+                if (do_axpy) {
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
+                } else if (do_axpby) {
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),tmp,1.f);
                 } else {
-                    if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,tmp[c]),1.f);
-                    } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,tmp[c]),1.f);
-                    } else {
-                        lhs[i] = scale<v_t>(alpha,tmp[c]);
-                    }
+                    lhs[i] = tmp;
                 }
             } else {
-                if (!do_scale) {
-                    if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                    } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                    } else {
-                        lhs[i] = axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f));
-                    }
+                if (do_axpy) {
+                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,tmp),1.f);
+                } else if (do_axpby) {
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,tmp),1.f);
                 } else {
-                    if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                    } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                    } else {
-                        lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp[c],rhs[i],scale2<v_t,float>(shift,-1.f)));
-                    }
+                    lhs[i] = scale<v_t>(alpha,tmp);
                 }
-                
             }
+        } else {
+            if (!do_scale) {
+                if (do_axpy) {
+                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
+                } else if (do_axpby) {
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
+                } else {
+                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
+                }
+            } else {
+                if (do_axpy) {
+                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
+                } else if (do_axpby) {
+                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
+                } else {
+                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
+                }
+            }
+            
         }
 
     }
