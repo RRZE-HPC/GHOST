@@ -80,6 +80,13 @@ struct ghost_densemat_t
      * @brief Size (in bytes) of one matrix element.
      */
     size_t elSize;
+    
+    /**
+     * @brief The leading dimension of the densemat.
+     *
+     * Points to ncolspadded if the densemat has row-major storage and nrowspadded if it has col-major storage.
+     */
+    ghost_idx_t *stride;
 
     hwloc_bitmap_t mask;
 

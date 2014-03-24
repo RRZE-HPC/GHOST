@@ -54,8 +54,10 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         ghost_densemat_rm_create(*vec);
+        (*vec)->stride = &(*vec)->traits.ncolspadded;
     } else {
         ghost_densemat_cm_create(*vec);
+        (*vec)->stride = &(*vec)->traits.nrowspadded;
     }
 
     goto out;
