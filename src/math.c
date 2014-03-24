@@ -22,7 +22,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
 
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
-    vec->dot(vec,vec2,res);
+    vec->dot(vec,res,vec2);
 #ifdef GHOST_HAVE_MPI
     GHOST_INSTR_START(dot_reduce)
     ghost_mpi_op_t sumOp;
