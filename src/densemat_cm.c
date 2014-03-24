@@ -564,7 +564,7 @@ static ghost_error_t vec_cm_dotprod(ghost_densemat_t *vec, void *res, ghost_dens
     GHOST_INSTR_START(dot);
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    ret = ghost_densemat_cm_dotprod_funcs[dtIdx](vec,vec2,res);
+    ret = ghost_densemat_cm_dotprod_funcs[dtIdx](vec,res,vec2);
     GHOST_INSTR_STOP(dot);
  
     goto out;
