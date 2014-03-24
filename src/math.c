@@ -471,8 +471,15 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
         *flags |= GHOST_SPMV_MODE_NOMPI;
 #endif
         DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_mode_string(*flags));
+    } else {
+#ifndef GHOST_HAVE_MPI
+        if ((*flags & GHOST_SPMV_MODES_MPI)) {
+            WARNING_LOG("Forcing non-MPI SpMV!");
+            *flags &= ~(GHOST_SPMV_MODES_MPI);
+            *flags |= GHOST_SPMV_MODE_NOMPI;
+        }
+#endif
     }
-
 }
 
 ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype)
