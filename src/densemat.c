@@ -77,11 +77,12 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
                 vec->traits.nrows = 0;
             } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
             {
-                if (vec->traits.flags & GHOST_DENSEMAT_LHS) {
-                    vec->traits.nrows = vec->context->gnrows;
-                } else if (vec->traits.flags & GHOST_DENSEMAT_RHS) {
+                if (vec->traits.flags & GHOST_DENSEMAT_RHS) {
                     vec->traits.nrows = vec->context->gncols;
+                } else {
+                    vec->traits.nrows = vec->context->gnrows;
                 }
+
             } 
             else 
             {
