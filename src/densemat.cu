@@ -180,7 +180,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
 {
     if (vec->traits.datatype != vec2->traits.datatype)
     {
-        ERROR_LOG("Cannot DOT vectors with different data types");
+        ERROR_LOG("Cannot DOT vectors with different data types (%s and %s)",ghost_datatype_string(vec->traits.datatype),ghost_datatype_string(vec2->traits.datatype));
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     size_t sizeofdt;
