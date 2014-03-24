@@ -235,25 +235,9 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     k = (ghost_blas_idx_t *)&ncV;
     n = (ghost_blas_idx_t *)&ncW;
 
-    ghost_blas_idx_t *ldv;
-    ghost_blas_idx_t *ldw;
-    ghost_blas_idx_t *ldx;
-    if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        ldv = (ghost_blas_idx_t *)&(v->traits.ncolspadded);
-    } else {
-        ldv = (ghost_blas_idx_t *)&(v->traits.nrowspadded);
-    }
-    if (w->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        ldw = (ghost_blas_idx_t *)&(w->traits.ncolspadded);
-    } else {
-        ldw = (ghost_blas_idx_t *)&(w->traits.nrowspadded);
-    }
-    if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        ldx = (ghost_blas_idx_t *)&(x->traits.ncolspadded);
-    } else {
-        ldx = (ghost_blas_idx_t *)&(x->traits.nrowspadded);
-    }
-
+    ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)v->stride;
+    ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)w->stride;
+    ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)x->stride;
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v
@@ -349,22 +333,16 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     {
 
 #ifdef GHOST_HAVE_CUDA
-        ghost_idx_t lda;
+        ghost_idx_t lda = *x->stride;
 #endif
         ghost_idx_t dima;
         ghost_idx_t dimb;
         if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             dima = x->traits.nrows;
             dimb = x->traits.ncols;
-#ifdef GHOST_HAVE_CUDA
-            lda = x->traits.ncolspadded;
-#endif
         } else if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
             dima = x->traits.ncols;
             dimb = x->traits.nrows;
-#ifdef GHOST_HAVE_CUDA
-            lda = x->traits.nrowspadded;
-#endif
         } else {
             ERROR_LOG("Invalid vector storage");
             return GHOST_ERR_NOT_IMPLEMENTED;
