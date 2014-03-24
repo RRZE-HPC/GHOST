@@ -146,6 +146,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix
      */
     void                (*destroy) (ghost_densemat_t *vec);
+ 
     /**
      * @brief Distributes a global vector/matrix into node-local vetors.
      *
@@ -401,6 +402,7 @@ struct ghost_densemat_t
     .ncols = 1\
 };
 
+
 #ifdef __cplusplus
 
 extern "C" {
@@ -418,6 +420,8 @@ extern "C" {
      * @return GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits);
+    
+    ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr);
 
 #ifdef __cplusplus
 }

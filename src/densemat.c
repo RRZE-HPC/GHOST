@@ -138,3 +138,30 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     return GHOST_SUCCESS; 
 }
 
+ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
+{
+    if (!ptr) {
+        ERROR_LOG("NULL pointer");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (vec->traits.nrows < 1) {
+        ERROR_LOG("No rows");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (vec->traits.ncols < 1) {
+        ERROR_LOG("No columns");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    if (hwloc_bitmap_iszero(vec->mask)) {
+        ERROR_LOG("Everything masked out");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    *ptr = &vec->val[0][hwloc_bitmap_first(vec->mask)*vec->elSize];
+
+    return GHOST_SUCCESS;
+
+
+}
