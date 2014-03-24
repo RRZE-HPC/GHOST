@@ -32,13 +32,12 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t ro
 
 ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
 {
-    ghost_error_t ret = GHOST_SUCCESS;
     double avgRowlen = mat->nnz*1.0/(double)mat->nrows;
 
 #ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
@@ -55,11 +54,6 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
 
     mat->nMaxRows = rowlengths[mat][mat->maxRowLen];
     
-    goto out;
-err:
-
-out:
-    return ret;
-
+    return GHOST_SUCCESS;
 }
 
