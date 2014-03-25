@@ -110,12 +110,12 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
     __m256d rhs;
     __m128d rhstmp;
     
-    double sshift = 0., sscale = 1., sbeta = 1.;
+    double sscale = 1., sbeta = 1.;
+    double *sshift = NULL;
     __m256d shift, scale, beta;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
     scale = _mm256_broadcast_sd(&sscale);
-    shift = _mm256_broadcast_sd(&sshift);
     beta = _mm256_broadcast_sd(&sbeta);
 
     int nthreads = 1;
@@ -239,7 +239,12 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *mat, ghost_densemat_
                     tmp8    = _mm256_add_pd(tmp8,_mm256_mul_pd(val,rhs));           // accumulate
                 }
 
-                if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                        shift = _mm256_broadcast_sd(&sshift[0]);
+                    } else {
+                        shift = _mm256_broadcast_sd(&sshift[v]);
+                    }
                     tmp1 = _mm256_sub_pd(tmp1,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32])));
                     tmp2 = _mm256_sub_pd(tmp2,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4])));
                     tmp3 = _mm256_sub_pd(tmp3,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+8])));
@@ -383,12 +388,12 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
     __m256i mask[3] = {_mm256_loadu_si256((__m256i *)mask3int), _mm256_loadu_si256((__m256i *)mask2int), _mm256_loadu_si256((__m256i *)mask1int)};
     UNUSED(argp);
     
-    double sshift = 0., sscale = 1., sbeta = 1.;
+    double sscale = 1., sbeta = 1.;
+    double *sshift = NULL;
     __m256d shift, scale, beta;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
     scale = _mm256_broadcast_sd(&sscale);
-    shift = _mm256_broadcast_sd(&sshift);
     beta = _mm256_broadcast_sd(&sbeta);
     
     if (spmvmOptions & GHOST_SPMV_DOT) {
@@ -429,7 +434,12 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                     #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#32
                 }
               
-                if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                        shift = _mm256_broadcast_sd(&sshift[0]);
+                    } else {
+                        shift = _mm256_load_pd(&sshift[donecols]);
+                    }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd((double *)invec->val[c*32+@]+donecols)));#32
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
@@ -463,8 +473,15 @@ ghost_error_t dd_SELL_kernel_AVX_32_rich_multivecx_rm(ghost_sparsemat_t *mat, gh
                         #GHOST_UNROLL#rhs = _mm256_maskload_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols,mask[maskidx]);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#32
                     }
                     
-                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                    if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
+                        if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                            shift = _mm256_broadcast_sd(&sshift[0]);
+                        } else {
+                            shift = _mm256_maskload_pd(&sshift[donecols],mask[maskidx]);
+                        }
                         #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_maskload_pd((double *)invec->val[c*32+@]+donecols,mask[maskidx])));#32
+                    }
+                    if (spmvmOptions & GHOST_SPMV_SHIFT) {
                     }
                     if (spmvmOptions & GHOST_SPMV_SCALE) {
                         #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#32

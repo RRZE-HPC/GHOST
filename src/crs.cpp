@@ -36,7 +36,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     unsigned padding = clsize/sizeof(v_t);
 
     v_t hlp1 = 0.;
-    v_t shift = 0., scale = 1., beta = 1.;
+    v_t scale = 1., beta = 1.;
+    v_t *shift = NULL;
 
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
     
@@ -83,7 +84,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     for (v=0; v<rhs->traits.ncols; v++) {
 
                         if (options & GHOST_SPMV_SHIFT) {
-                            tmp[v] = tmp[v]-shift*rhsrow[v];
+                            tmp[v] = tmp[v]-shift[0]*rhsrow[v];
+                        }
+                        if (options & GHOST_SPMV_VSHIFT) {
+                            tmp[v] = tmp[v]-shift[v]*rhsrow[v];
                         }
                         if (options & GHOST_SPMV_SCALE) {
                             tmp[v] = tmp[v]*scale;
@@ -121,7 +125,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     }
 
                     if (options & GHOST_SPMV_SHIFT) {
-                        hlp1 = hlp1-shift*rhsv[i];
+                        hlp1 = hlp1-shift[0]*rhsv[i];
+                    }
+                    if (options & GHOST_SPMV_VSHIFT) {
+                        hlp1 = hlp1-shift[v]*rhsv[i];
                     }
                     if (options & GHOST_SPMV_SCALE) {
                         hlp1 = hlp1*scale;

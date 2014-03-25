@@ -17,6 +17,7 @@ typedef enum {
     GHOST_SPMV_MODE_OVERLAP = 8,
     GHOST_SPMV_MODE_TASK = 16,
     GHOST_SPMV_SHIFT = 32,
+    GHOST_SPMV_VSHIFT = 4096,
     GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
     GHOST_SPMV_DOT = 256,
@@ -43,13 +44,13 @@ typedef enum {
         }\
         beta = *arg;\
     }\
-    if (flags & GHOST_SPMV_SHIFT) {\
+    if (flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {\
         arg = va_arg(argp,dt *);\
         if (!arg) {\
             ERROR_LOG("Shift argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        gamma = *arg;\
+        gamma = arg;\
     }\
     if (flags & GHOST_SPMV_DOT) {\
         arg = va_arg(argp,dt *);\

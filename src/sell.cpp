@@ -68,7 +68,8 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     ghost_machine_cacheline_size(&clsize);
     unsigned padding = clsize/sizeof(v_t);
 
-    v_t shift = 0., scale = 1., beta = 1.;
+    v_t scale = 1., beta = 1.;
+    v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
 
     if (options & GHOST_SPMV_DOT) {
@@ -120,7 +121,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                     if (c*chunkHeight+i < mat->nrows) {
                         for (col=0; col<rhs->traits.ncols; col++) {
                             if (options & GHOST_SPMV_SHIFT) {
-                                tmp[i][col] = tmp[i][col]-shift*rhsrow[col];
+                                tmp[i][col] = tmp[i][col]-shift[0]*rhsrow[col];
+                            }
+                            if (options & GHOST_SPMV_VSHIFT) {
+                                tmp[i][col] = tmp[i][col]-shift[col]*rhsrow[col];
                             }
                             if (options & GHOST_SPMV_SCALE) {
                                 tmp[i][col] = tmp[i][col]*scale;
@@ -174,7 +178,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                     for (i=0; i<chunkHeight; i++) {
                         if (c*chunkHeight+i < mat->nrows) {
                             if (options & GHOST_SPMV_SHIFT) {
-                                tmp[i] = tmp[i]-shift*rhsv[c*chunkHeight+i];
+                                tmp[i] = tmp[i]-shift[0]*rhsv[c*chunkHeight+i];
+                            }
+                            if (options & GHOST_SPMV_VSHIFT) {
+                                tmp[i] = tmp[i]-shift[v]*rhsv[c*chunkHeight+i];
                             }
                             if (options & GHOST_SPMV_SCALE) {
                                 tmp[i] = tmp[i]*scale;
@@ -231,7 +238,8 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
 
-    v_t shift = 0., scale = 1., beta = 1.;
+    v_t scale = 1., beta = 1.;
+    v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
 
     if (options & GHOST_SPMV_DOT) {
@@ -265,7 +273,10 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                 }
 
                 if (options & GHOST_SPMV_SHIFT) {
-                    tmp = tmp-shift*rhsv[i];
+                    tmp = tmp-shift[0]*rhsv[i];
+                }
+                if (options & GHOST_SPMV_VSHIFT) {
+                    tmp = tmp-shift[v]*rhsv[i];
                 }
                 if (options & GHOST_SPMV_SCALE) {
                     tmp = tmp*scale;
