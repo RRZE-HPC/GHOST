@@ -49,6 +49,7 @@ Once the Makefile is present you can type
 Documentation
 =============
 
-For general documentation see the [Wiki](https://bitbucket.org/essex/ghost/wiki) pages on Bitbucket.
-For API documentation switch to the build/ directory or your checked out code and type `make doc`.
-You can now open build/doc/html/index.html with a web browser.
+See the [Wiki](https://bitbucket.org/essex/ghost/wiki) pages on Bitbucket and the [Doxygen](https://grid.rrze.uni-erlangen.de/~unrza317) pages.
+
+To create your own Doxygen documentation switch to the `build/` directory or your checked out code and type `make doc`.
+You can now open `doc/html/index.html` with a web browser.
