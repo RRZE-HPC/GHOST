@@ -78,15 +78,15 @@ extern "C" {
      * If required  by the operation, \f$\alpha\f$ , \f$\beta\f$, \f$\gamma\f$, and \a dot have 
      * to be given in the correct order as pointers to variables of the same type as the vector's data.
      *
-     * Application of the scaling factor \f$\alpha\f$ can be switched on by setting ::GHOST_SPMV_APPLY_SCALE in the flags.
+     * Application of the scaling factor \f$\alpha\f$ can be switched on by setting ::GHOST_SPMV_SCALE in the flags.
      * Otherwise, \f$\alpha=1\f$.
      *
-     * The scaling factor \f$\beta\f$ can be enabled by setting GHOST_SPMV_AXPBY in the flags.
-     * The flag ::GHOST_SPMV_AXPY sets \f$\beta\f$ to a fixed value of 1.
+     * The scaling factor \f$\beta\f$ can be enabled by setting ::GHOST_SPMV_AXPBY in the flags.
+     * The flag ::GHOST_SPMV_AXPY sets \f$\beta\f$ to a fixed value of 1 which is a very common case.
      * 
-     * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_APPLY_SHIFT.
+     * \f$\gamma\f$ will be evaluated if the flags contain ::GHOST_SPMV_SHIFT.
      *
-     * In case ::GHOST_SPMV_COMPUTE_LOCAL_DOTPRODUCT is set, \a dot has to point to a memory destination of the size
+     * In case ::GHOST_SPMV_DOT is set, \a dot has to point to a memory destination of the size
      * of three vector values.
      *
      * \warning If there is something wrong with the variadic arguments, i.e., if (following from the flags) more arguments are expected than present, random errors may occur. In order to avoid this, passing NULL as the last argument is a good practice.

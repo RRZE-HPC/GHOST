@@ -43,15 +43,11 @@ extern "C" {
 #endif
 
     /**
-     * @ingroup types
+     * @brief Set the function pointers of a row-major densemat.
      *
-     * @brief Create a dense matrix/vector. 
+     * @param[inout] vec The dense matrix.
      *
-     * @param vec Where to store the matrix.
-     * @param ctx The context the matrix lives in or NULL.
-     * @param traits The matrix traits.
-     *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);

@@ -167,7 +167,7 @@ extern "C" {
      * @param arg The arguments to the task's function
      * @param flags The task's flags
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_task_create(ghost_task_t **task, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags);
     ghost_error_t ghost_task_enqueue(ghost_task_t *);
@@ -176,9 +176,9 @@ extern "C" {
      *
      * @param t The task to wait for
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_wait(ghost_task_t *);
+    ghost_error_t ghost_task_wait(ghost_task_t *t);
     /**
      * @brief Test the task's current state
      *
@@ -187,33 +187,37 @@ extern "C" {
      * @return  The state of the task
      */
     ghost_task_state_t ghost_task_test(ghost_task_t *);
+    /**
+     * @brief Destroy a task.
+     *
+     * @param[inout] t The task to be destroyed
+     */
     void ghost_task_destroy(ghost_task_t *); 
     /**
-     * @brief Free a task's resources.
+     * @brief Unpin a task's threads.
      *
-     * @param t The task to be destroyed
+     * @param[inout] t The task.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_task_unpin(ghost_task_t *task);
-
     /**
      * @brief Return a string representing the task's state
      *
-     * @param state The task to test
+     * @param[in] state The task state
      *
      * @return The state string
      */
     char *ghost_task_state_string(ghost_task_state_t state);
-
     /**
-     * @brief Print a task and all relevant informatio to stdout.
+     * @brief Stringify a task
      *
-     * @param t The task
+     * @param[out] str Where to store the string.
+     * @param[in] t The task
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_task_print(char **str, ghost_task_t *t); 
+    ghost_error_t ghost_task_string(char **str, ghost_task_t *t); 
 
     ghost_error_t ghost_task_cur(ghost_task_t **task);
 #ifdef __cplusplus

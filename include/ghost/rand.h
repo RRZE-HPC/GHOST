@@ -1,3 +1,8 @@
+/**
+ * @file rand.h
+ * @brief Functions for handling random number generation states.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_RAND_H
 #define GHOST_RAND_H
 
@@ -26,6 +31,9 @@ extern "C" {
      * This assumes that there at most as many OpenMP threads as there are PUs.
      */
     ghost_error_t ghost_rand_create();
+    /**
+     * @brief Destroy the random states.
+     */
     void ghost_rand_destroy();
 
 #ifdef __cplusplus

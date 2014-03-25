@@ -465,7 +465,24 @@ add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/c
 
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
-	configure_file(${CMAKE_SOURCE_DIR}/doxygen/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
-	add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} COMMENT "Generating API documentation with Doxygen" VERBATIM)
+	configure_file(${CMAKE_SOURCE_DIR}/doxygen/mainpage.md.in ${CMAKE_BINARY_DIR}/doxygen/mainpage.md @ONLY)
+	configure_file(${CMAKE_SOURCE_DIR}/doxygen/Doxyfile.in ${CMAKE_BINARY_DIR}/doxygen/Doxyfile @ONLY)
+    set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
+    mark_as_advanced(DOC_INSTALL_PREFIX)
+    if (EXISTS ${DOC_INSTALL_PREFIX})
+        add_custom_command(
+                OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
+                DEPENDS ${SOURCES} ${HEADERS}  
+                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
+                )
+    else ()
+        add_custom_command(
+                OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
+                DEPENDS ${SOURCES} ${HEADERS} 
+                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile
+                )
+    endif()
+
+    add_custom_target(doc DEPENDS ${CMAKE_BINARY_DIR}/doc/html/index.html)
 endif()
 

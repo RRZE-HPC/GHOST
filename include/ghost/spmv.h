@@ -1,3 +1,8 @@
+/**
+ * @file spmv.h
+ * @brief Types, constants and macros for SpMV.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_SPMV_H
 #define GHOST_SPMV_H
 

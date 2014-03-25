@@ -1,6 +1,6 @@
 /**
- * @file bincrs.h
- * @brief Macros for binary dense matrix files.
+ * @file bindensemat.h
+ * @brief Constant defintions for binary dense matrix files.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
 #ifndef GHOST_BINDENSEMAT_H

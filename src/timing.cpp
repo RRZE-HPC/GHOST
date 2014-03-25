@@ -11,6 +11,9 @@
 
 using namespace std;
 
+/**
+ * @brief Region timing accumulator
+ */
 typedef struct
 {
     /**
@@ -82,7 +85,7 @@ void ghost_timing_region_destroy(ghost_timing_region_t * ri)
 }
 
 
-ghost_error_t ghost_timing_summaryString(char **str)
+ghost_error_t ghost_timing_summarystring(char **str)
 {
     stringstream buffer;
     map<string,ghost_timing_region_accu_t>::iterator iter;

@@ -1,0 +1,43 @@
+@CMAKE_PROJECT_NAME@ @GHOST_VERSION@ API documentation  {#mainpage}
+======================================================
+
+This Doxygen documentation has been created with the following settings:
+
+Feature                | Enabled                   |
+---------------------- | ------------------------- |
+64-bit indices         | @GHOST_HAVE_LONGIDX@      |
+CUDA                   | @GHOST_HAVE_CUDA@         |
+Timing instrumentation | @GHOST_HAVE_INSTR_TIMING@ |
+Likwid instrumentation | @GHOST_HAVE_INSTR_LIKWID@ |
+
+Minimal code example
+--------------------
+
+The following code example performs a sparse matrix-vector multiplication with a diagonal matrix.
+
+
+~~~{.c}
+int main() 
+{
+    ghost_sparsemat_t *A;
+    ghost_densemat_t *y, *x;
+    double zero = 0.;
+    
+    ghost_sparsemat_traits_t mtraits = GHOST_SPARSEMAT_TRAITS_INITIALIZER;
+    ghost_densemat_traits_t vtraits = GHOST_DENSEMAT_TRAITS_INITIALIZER;
+    ghost_spmv_flags_t spmvflags = GHOST_SPMV_DEFAULT; // we want to perform y = A*x
+
+    ghost_sparsemat_create(&A, &mtraits, 1);
+    ghost_densemat_create(&x, vtraits);
+    ghost_densemat_create(&y, vtraits);
+
+    x->fromRand(x);
+    y->fromScalar(z,&zero);
+
+    ghost_spmv(y,A,x,spmvflags);
+
+
+    return 0;
+}
+~~~
+

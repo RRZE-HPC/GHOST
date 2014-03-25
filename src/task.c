@@ -44,7 +44,7 @@ ghost_error_t ghost_task_unpin(ghost_task_t *task)
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_task_print(char **str, ghost_task_t *t) 
+ghost_error_t ghost_task_string(char **str, ghost_task_t *t) 
 {
     GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
     memset(*str,'\0',1);

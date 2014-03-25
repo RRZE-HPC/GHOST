@@ -1,3 +1,8 @@
+/**
+ * @file perm.h
+ * @brief Types for handling permutations.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_PERM_H
 #define GHOST_PERM_H
 

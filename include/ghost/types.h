@@ -165,12 +165,18 @@ typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
 
 
+/**
+ * @brief A float complex number (used for MPI).
+ */
 struct ghost_mpi_c
 {
     float x;
     float y;
 };
 
+/**
+ * @brief A double complex number (used for MPI).
+ */
 struct ghost_mpi_z
 {
     double x;
