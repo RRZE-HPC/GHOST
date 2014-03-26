@@ -403,6 +403,7 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRIDX,coffs);
     ghost_idx_t r;
+    coffs += hwloc_bitmap_first(vec2->mask);
 
     for (r=0; r<vec->traits.nrows; r++) {
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
