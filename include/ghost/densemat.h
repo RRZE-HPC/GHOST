@@ -82,7 +82,7 @@ struct ghost_densemat_t
     size_t elSize;
     
     /**
-     * @brief The leading dimension of the densemat.
+     * @brief The leading dimensions of the densemat.
      *
      * Points to ncolspadded if the densemat has row-major storage and nrowspadded if it has col-major storage.
      */

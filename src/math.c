@@ -157,7 +157,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     return ret;
 }
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce) 
+ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce) 
 {
 #ifdef GHOST_HAVE_LONGIDX
 #ifndef GHOST_HAVE_MKL
@@ -209,18 +209,23 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
 
     ghost_idx_t nrV,ncV,nrW,ncW,nrX,ncX;
     // TODO if rhs vector data will not be continous
-    if (((!strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) ||
-            ((strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_COLMAJOR))) {
+    //if (((!strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) ||
+    //        ((strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_COLMAJOR))) {
+    if (strncasecmp(transv,"N",1)) {
         nrV=v->traits.ncols; ncV=v->traits.nrows;
     } else {
         nrV=v->traits.nrows; ncV=v->traits.ncols;
     }
+    if (strncasecmp(transw,"N",1)) {
+        nrW=w->traits.ncols; ncW=w->traits.nrows;
+    } else {
+        nrW=w->traits.nrows; ncW=w->traits.ncols;
+    }
 
-    nrW=w->traits.nrows; ncW=w->traits.ncols;
     nrX=x->traits.nrows; ncX=w->traits.ncols;
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        ERROR_LOG("GEMM with incompatible vectors!");
-        return GHOST_ERR_INVALID_ARG;
+        ERROR_LOG("GEMM with incompatible vectors: %dx%d * %dx%d = %dx%d",nrV,ncV,nrW,ncW,nrX,ncX);
+       // return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits.datatype != w->traits.datatype) {
         ERROR_LOG("GEMM with vectors of different datatype does not work");
@@ -268,28 +273,26 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densem
     DEBUG_LOG(1,"Calling XGEMM with (%"PRIDX"x%"PRIDX") * (%"PRIDX"x%"PRIDX") = (%"PRIDX"x%"PRIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
     {
-        char *transb = w->traits.storage == GHOST_DENSEMAT_ROWMAJOR?"T":"N";
-
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                zgemm(transpose,transb, m,n, k, (BLAS_Complex16 *)alpha, (BLAS_Complex16 *)v->val[0], ldv, (BLAS_Complex16 *)w->val[0], ldw, (BLAS_Complex16 *)mybeta, (BLAS_Complex16 *)x->val[0], ldx);
+                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, v->val[0], ldv, w->val[0], ldw, mybeta, x->val[0], ldx);
             } 
             else 
             {
-                cgemm(transpose,transb, m,n, k, (BLAS_Complex8 *)alpha, (BLAS_Complex8 *)v->val[0], ldv, (BLAS_Complex8 *)w->val[0], ldw, (BLAS_Complex8 *)mybeta, (BLAS_Complex8 *)x->val[0], ldx);
+                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, v->val[0], ldv, w->val[0], ldw, mybeta, x->val[0], ldx);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                dgemm(transpose,transb, m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
+                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
             } 
             else 
             {
-                sgemm(transpose,transb, m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
+                sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
             }    
         }
     }

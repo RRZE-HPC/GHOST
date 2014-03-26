@@ -100,15 +100,16 @@ extern "C" {
      *
      * @param x
      * @param v
+     * @param transv
      * @param w
-     * @param transpose
+     * @param transw
      * @param alpha
      * @param beta
      * @param reduce
      *
      * @return 
      */
-    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  ghost_densemat_t *w, char * transpose, void *alpha, void *beta, int reduce); 
+    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce); 
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
