@@ -29,6 +29,11 @@
 #endif
 
 #ifdef GHOST_HAVE_SSE
+static ghost_error_t (*SELL_kernels_SSE_32_multivec_cm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_32_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}};
 static ghost_error_t (*SELL_kernels_SSE_32_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_SSE_32_multivec_rm,NULL,NULL},
@@ -1053,9 +1058,9 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #ifdef GHOST_HAVE_SSE
     if (SELL(mat)->chunkHeight == 32) {
         if ((rhs->traits.ncols == 1) || (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR)) {
-            kernel = NULL;/*SELL_kernels_SSE_32_multivec_cm
+            kernel = SELL_kernels_SSE_32_multivec_cm
                 [matDtIdx]
-                [vecDtIdx];*/
+                [vecDtIdx];
         } else {
             kernel = SELL_kernels_SSE_32_multivec_rm
                 [matDtIdx]
