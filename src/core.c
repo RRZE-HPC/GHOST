@@ -22,7 +22,23 @@
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
 
+char * ghost_type_string(ghost_type_t t)
+{
 
+    switch (t) {
+        case GHOST_TYPE_CUDA: 
+            return "CUDA";
+            break;
+        case GHOST_TYPE_WORK:
+            return "WORK";
+            break;
+        case GHOST_TYPE_INVALID:
+            return "INVALID";
+            break;
+        default:
+            return "Unknown";
+    }
+}
 
 ghost_error_t ghost_type_set(ghost_type_t t)
 {
@@ -120,15 +136,14 @@ ghost_error_t ghost_init(int argc, char **argv)
         char *envtype = getenv("GHOST_TYPE");
         if (envtype) {
             if (!strncasecmp(envtype,"CUDA",4)) {
-                INFO_LOG("Setting GHOST type to CUDA due to environment variable.");
-                ghost_type_set(GHOST_TYPE_CUDA);
+                ghost_type = GHOST_TYPE_CUDA;
             } else if (!strncasecmp(envtype,"WORK",4)) {
                 INFO_LOG("Setting GHOST type to WORK due to environment variable.");
-                ghost_type_set(GHOST_TYPE_WORK);
+                ghost_type = GHOST_TYPE_WORK;
             }
+            INFO_LOG("Setting GHOST type to %s due to environment variable.",ghost_type_string(ghost_type));
         }
     }
-    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
     if (ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
@@ -138,6 +153,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else {
             ghost_type = GHOST_TYPE_WORK;
         }
+        INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
     } 
 
 #ifndef GHOST_HAVE_CUDA
