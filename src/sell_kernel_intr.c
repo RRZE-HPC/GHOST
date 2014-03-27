@@ -420,9 +420,6 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
     if (spmvmOptions & GHOST_SPMV_DOT) {
         for (v=0; v<invec->traits.ncols; v++) {
             local_dot_product[v                       ] = 0.; 
-                if (v==0) {
-                INFO_LOG("dot0 += %f [pad %d, len+1 %f]",partsums[(padding+3*invec->traits.ncols)*i + 3*v + 0],res->traits.nrowspadded,((double *)res->val[0])[res->traits.nrows]);
-                }
             local_dot_product[v  +   invec->traits.ncols] = 0.;
             local_dot_product[v  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
