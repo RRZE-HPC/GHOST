@@ -63,6 +63,7 @@ typedef enum {
     if (flags & GHOST_SPMV_REMOTE) {\
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_AXPBY);\
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_SHIFT);\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_VSHIFT);\
         flags = (ghost_spmv_flags_t)(flags | GHOST_SPMV_AXPY);\
     } else if (flags & GHOST_SPMV_LOCAL) {\
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT);\
