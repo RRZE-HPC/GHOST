@@ -245,7 +245,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_densemat_t *vecclone;
     ghost_densemat_t *vec2clone;
 
-    WARNING_LOG("Cloning (and compressing) vectors before dotproduct");
+    INFO_LOG("Cloning (and compressing) vectors before dotproduct");
     vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
     vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
   

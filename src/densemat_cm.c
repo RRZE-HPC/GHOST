@@ -80,17 +80,6 @@ ghost_error_t ghost_densemat_cm_create(ghost_densemat_t *vec)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t v;
 
-    if (!(vec->traits.flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
-    { // no placement specified
-        DEBUG_LOG(2,"Setting vector placement");
-        vec->traits.flags |= GHOST_DENSEMAT_HOST;
-        ghost_type_t ghost_type;
-        GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
-        if (ghost_type == GHOST_TYPE_CUDA) {
-            vec->traits.flags |= GHOST_DENSEMAT_DEVICE;
-        }
-    }
-
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
@@ -284,7 +273,8 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
                 //WARNING_LOG("clr %d",v);
             }
         }
-    } else {
+    } 
+    if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<(*new)->traits.ncols; v++) {
             (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
         }
@@ -317,9 +307,20 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
 
     ghost_densemat_create(new,src->context,newTraits);
 
-    for (v=0; v<nc; v++) {
-        (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
-    }    
+    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        (*new)->cu_val = src->cu_val;
+        for (v=0; v<src->traits.ncolsorig; v++) {
+            if (v<coffs || (v >= coffs+nc)) {
+                hwloc_bitmap_clr((*new)->cumask,v);
+                //WARNING_LOG("clr %d",v);
+            }
+        }
+    } 
+    if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
+        for (v=0; v<(*new)->traits.ncols; v++) {
+            (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
+        }
+    }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
     (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;
@@ -329,15 +330,27 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v;
+    ghost_idx_t v,c;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
 
     ghost_densemat_create(new,src->context,newTraits);
 
-    for (v=0; v<nc; v++) {
-        (*new)->val[v] = VECVAL(src,src->val,coffs[v],0);
-    }    
+    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        (*new)->cu_val = src->cu_val;
+        for (c=0,v=0; c<(*new)->traits.ncolsorig; c++) {
+            if (coffs[v] != c) {
+                hwloc_bitmap_clr((*new)->cumask,c);
+            } else {
+                v++;
+            }
+        }
+    } 
+    if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
+        for (v=0; v<nc; v++) {
+            (*new)->val[v] = VECVAL(src,src->val,coffs[v],0);
+        }    
+    }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
     (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;

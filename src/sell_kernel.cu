@@ -229,13 +229,12 @@ extern __shared__ char shared[];
     GHOST_INSTR_STOP(spmv_cuda)\
     if (flags & GHOST_SPMV_DOT) {\
         GHOST_INSTR_START(spmv_cuda_dot)\
-        GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,sizeof(dt2)*rhs->traits.ncols*3));\
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
         lhs->dot(lhs,&localdot[0],lhs);\
-        lhs->dot(lhs,&localdot[1],rhs);\
-        lhs->dot(rhs,&localdot[2],rhs);\
+        lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);\
+        lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);\
         GHOST_INSTR_STOP(spmv_cuda_dot)\
     }\
     return ret;\

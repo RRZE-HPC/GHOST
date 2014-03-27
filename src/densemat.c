@@ -46,11 +46,12 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     if (!((*vec)->traits.flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting vector placement");
-        (*vec)->traits.flags |= GHOST_DENSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDA) {
             (*vec)->traits.flags |= GHOST_DENSEMAT_DEVICE;
+        } else {
+            (*vec)->traits.flags |= GHOST_DENSEMAT_HOST;
         }
     }
 
