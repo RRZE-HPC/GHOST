@@ -220,7 +220,7 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncols*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[invec->traits.ncols*@+donecols]),beta)));#32
                 } else {
-                    #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncols*@+donecols],tmp@);#32
+                    #GHOST_UNROLL#_mm_stream_pd(&lval[invec->traits.ncols*@+donecols],tmp@);#32
                 }
                 if (spmvmOptions & GHOST_SPMV_DOT) {
                     for (col = donecols; col<donecols+2; col++) {
@@ -525,7 +525,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncols*@+donecols],_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&lval[invec->traits.ncols*@+donecols]),beta)));#32
                 } else {
-                    #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncols*@+donecols],tmp@);#32
+                    #GHOST_UNROLL#_mm256_stream_pd(&lval[invec->traits.ncols*@+donecols],tmp@);#32
                 }
                 if (spmvmOptions & GHOST_SPMV_DOT) {
                     for (col = donecols; col<donecols+4; col++) {
