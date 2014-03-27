@@ -241,7 +241,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
             if (i == noderank) {
-                ghost_cu_init(cudaDevice);
+                ghost_cu_init(cudaDevice%ncudadevs);
             }
             cudaDevice++;
         }
