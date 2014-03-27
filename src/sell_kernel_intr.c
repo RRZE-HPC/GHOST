@@ -363,7 +363,6 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
                     if (spmvmOptions & GHOST_SPMV_SHIFT) {
                         shift = _mm256_broadcast_sd(&sshift[0]);
                     } else {
-                        printf("vscale v %d %f\n",v,sshift[v]);
                         shift = _mm256_broadcast_sd(&sshift[v]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4*@])));#8
