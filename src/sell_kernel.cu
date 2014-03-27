@@ -232,6 +232,7 @@ extern __shared__ char shared[];
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
+        memset(localdot,0,rhs->traits.ncols*3*sizeof(dt2));\
         lhs->dot(lhs,&localdot[0],lhs);\
         lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);\
         lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);\
