@@ -260,9 +260,25 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         }
     }
 
-    for (v=0; v<(*new)->traits.ncols; v++) {
-        (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
+    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        (*new)->cu_val = src->cu_val;
+        for (v=0; v<src->traits.ncolsorig; v++) {
+            if (v<coffs || (v >= coffs+nc)) {
+                hwloc_bitmap_clr((*new)->cumask,v);
+                //WARNING_LOG("clr %d",v);
+            }
+        }
+    } else {
+        for (v=0; v<(*new)->traits.ncols; v++) {
+            (*new)->val[v] = VECVAL(src,src->val,coffs+v,0);
+        }
     }
+    char *colbitmap, *rowbitmap;
+    hwloc_bitmap_list_asprintf(&colbitmap,(*new)->cumask);
+    hwloc_bitmap_list_asprintf(&rowbitmap,(*new)->mask);
+
+    //INFO_LOG("cols: %s",colbitmap);
+    //INFO_LOG("rows: %s",rowbitmap);
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
     return GHOST_SUCCESS;
@@ -400,6 +416,10 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRIDX,coffs);
     ghost_idx_t v;
     roffs += hwloc_bitmap_first(vec2->mask);
+            
+    if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        coffs += hwloc_bitmap_first(vec2->cumask);
+    }
 
     for (v=0; v<vec->traits.ncols; v++) {
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
@@ -1170,6 +1190,7 @@ static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t *
 {
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolsorig = nc;
     newTraits.nrows = nr;
     newTraits.nrowsorig = nr;
     ghost_densemat_create(new,src->context,newTraits);

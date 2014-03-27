@@ -88,7 +88,14 @@ struct ghost_densemat_t
      */
     ghost_idx_t *stride;
 
+    /**
+     * @brief Mask out elements in the leading dimension
+     */
     hwloc_bitmap_t mask;
+    /**
+     * @brief Mask out elements in the non-leading dimension (only for CUDA)
+     */
+    hwloc_bitmap_t cumask;
 
 #ifdef GHOST_HAVE_CUDA
     /**
@@ -432,6 +439,7 @@ extern "C" {
     ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits);
     
     ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr);
+    ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len, char *charfield);
 
 #ifdef __cplusplus
 }

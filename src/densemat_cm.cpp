@@ -190,27 +190,41 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
     buffer.precision(6);
     buffer.setf(ios::fixed, ios::floatfield);
 
-    ghost_idx_t i,v,r;
-    for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-        if (hwloc_bitmap_isset(vec->mask,i)) {
-            for (v=0; v<vec->traits.ncols; v++) {
-                v_t val = 0.;
-                if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-                {
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                    ghost_cu_download(&val,&(((v_t *)vec->cu_val)[v*vec->traits.nrowspadded+i]),sizeof(v_t));
+        ghost_idx_t i,v,r,j;
+        for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
+            if (hwloc_bitmap_isset(vec->mask,i)) {
+                for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
+                    if (hwloc_bitmap_isset(vec->cumask,j)) {
+                        v_t val = 0.;
+                        //INFO_LOG("dl col %d row %d idx %d cu_val %p",j,i,j*vec->traits.nrowspadded+i,vec->cu_val);
+                        ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t));
+                        buffer << val << "\t";
+                        v++;
+                    }
+                }
+                if (r<vec->traits.nrows-1) {
+                    buffer << std::endl;
+                }
+                r++;
+            }
+        }
 #endif
-                }
-                else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
-                {
+    } else {
+        ghost_idx_t i,v,r;
+        for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
+            if (hwloc_bitmap_isset(vec->mask,i)) {
+                for (v=0; v<vec->traits.ncols; v++) {
+                    v_t val = 0.;
                     val = *(v_t *)VECVAL(vec,vec->val,v,i);
+                    buffer << val << "\t";
                 }
-                buffer << val << "\t";
+                if (r<vec->traits.nrows-1) {
+                    buffer << std::endl;
+                }
+                r++;
             }
-            if (r<vec->traits.nrows-1) {
-                buffer << std::endl;
-            }
-            r++;
         }
     }
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));

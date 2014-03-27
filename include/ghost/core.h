@@ -63,6 +63,7 @@ extern "C" {
     ghost_error_t ghost_finalize();
     ghost_error_t ghost_type_set(ghost_type_t t);
     ghost_error_t ghost_type_get(ghost_type_t *t);
+    char * ghost_type_string(ghost_type_t t);
     
     /**
      * @ingroup stringification
