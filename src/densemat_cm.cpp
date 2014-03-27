@@ -198,8 +198,8 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
                 for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
                     if (hwloc_bitmap_isset(vec->cumask,j)) {
                         v_t val = 0.;
-                        //INFO_LOG("dl col %d row %d idx %d cu_val %p",j,i,j*vec->traits.nrowspadded+i,vec->cu_val);
-                        ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t));
+                        //INFO_LOG("dl col %d row %d idx %d cu_val %p val %p",j,i,j*vec->traits.nrowspadded+i,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),&val);
+                        GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t)));
                         buffer << val << "\t";
                         v++;
                     }

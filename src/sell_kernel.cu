@@ -226,10 +226,10 @@ extern __shared__ char shared[];
         }\
     }\
     cudaDeviceSynchronize();\
-    GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,sizeof(dt2)*rhs->traits.ncols*3));\
     GHOST_INSTR_STOP(spmv_cuda)\
     if (flags & GHOST_SPMV_DOT) {\
         GHOST_INSTR_START(spmv_cuda_dot)\
+        GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,sizeof(dt2)*rhs->traits.ncols*3));\
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
@@ -328,35 +328,35 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
                 if (do_axpy) {
                     lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),tmp,1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),tmp,1.f);
                 } else {
-                    lhs[i] = tmp;
+                    lhs[lhs_lda*threadIdx.y+i] = tmp;
                 }
             } else {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,tmp),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],scale<v_t>(alpha,tmp),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,tmp),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),scale<v_t>(alpha,tmp),1.f);
                 } else {
-                    lhs[i] = scale<v_t>(alpha,tmp);
+                    lhs[lhs_lda*threadIdx.y+i] = scale<v_t>(alpha,tmp);
                 }
             }
         } else {
             if (!do_scale) {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)),1.f);
                 } else {
-                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f));
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f));
                 }
             } else {
                 if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f))),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f))),1.f);
                 } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f))),1.f);
+                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f))),1.f);
                 } else {
-                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)));
+                    lhs[lhs_lda*threadIdx.y+i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)));
                 }
             }
             

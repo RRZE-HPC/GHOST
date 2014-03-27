@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 #include "ghost/cu_complex.h"
 
 
@@ -92,13 +91,15 @@ template<typename T>
 __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int c;
 
     for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
         if (rowmask[idx]) {
             ghost_idx_t v;
-            for (v=0; v<ncols; v++) {
+            for (c=0,v=0; v<ncols; v++) {
                 if (colmask[v]) {
-                    vec[v*nrowspadded+idx] = scale<T>(a[v],vec[v*nrowspadded+idx]);
+                    vec[v*nrowspadded+idx] = scale<T>(a[c],vec[v*nrowspadded+idx]);
+                    c++;
                 }
             }
         }
@@ -241,14 +242,21 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     }
     size_t sizeofdt;
     ghost_datatype_size(&sizeofdt,vec->traits.datatype);
-   
+    ghost_densemat_t *vecclone;
+    ghost_densemat_t *vec2clone;
+
+    WARNING_LOG("Cloning (and compressing) vectors before dotproduct");
+    vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+    vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+  
+     
     cublasHandle_t ghost_cublas_handle;
     GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
     ghost_idx_t v;
-    for (v=0; v<vec->traits.ncols; v++)
+    for (v=0; v<vecclone->traits.ncols; v++)
     {
-        char *v1 = &((char *)(vec->cu_val))[v*vec->traits.nrowspadded*sizeofdt];
-        char *v2 = &((char *)(vec2->cu_val))[v*vec->traits.nrowspadded*sizeofdt];
+        char *v1 = &((char *)(vecclone->cu_val))[v*vecclone->traits.nrowspadded*sizeofdt];
+        char *v2 = &((char *)(vec2clone->cu_val))[v*vec2clone->traits.nrowspadded*sizeofdt];
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
