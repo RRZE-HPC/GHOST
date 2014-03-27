@@ -17,6 +17,8 @@
 #include <likwid.h>
 #endif
 
+#include <strings.h>
+
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
 
@@ -112,6 +114,20 @@ ghost_error_t ghost_init(int argc, char **argv)
 #endif
 
     ghost_type_t ghost_type;
+    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
+    
+    if (ghost_type == GHOST_TYPE_INVALID) {
+        char *envtype = getenv("GHOST_TYPE");
+        if (envtype) {
+            if (!strncasecmp(envtype,"CUDA",4)) {
+                INFO_LOG("Setting GHOST type to CUDA due to environment variable.");
+                ghost_type_set(GHOST_TYPE_CUDA);
+            } else if (!strncasecmp(envtype,"WORK",4)) {
+                INFO_LOG("Setting GHOST type to WORK due to environment variable.");
+                ghost_type_set(GHOST_TYPE_WORK);
+            }
+        }
+    }
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
     if (ghost_type == GHOST_TYPE_INVALID) {
