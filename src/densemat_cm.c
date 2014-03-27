@@ -266,6 +266,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     }
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
         (*new)->cu_val = src->cu_val;
         for (v=0; v<src->traits.ncolsorig; v++) {
             if (v<coffs || (v >= coffs+nc)) {
@@ -273,6 +274,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
                 //WARNING_LOG("clr %d",v);
             }
         }
+#endif
     } 
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<(*new)->traits.ncols; v++) {
@@ -308,6 +310,7 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     ghost_densemat_create(new,src->context,newTraits);
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
         (*new)->cu_val = src->cu_val;
         for (v=0; v<src->traits.ncolsorig; v++) {
             if (v<coffs || (v >= coffs+nc)) {
@@ -315,6 +318,7 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
                 //WARNING_LOG("clr %d",v);
             }
         }
+#endif
     } 
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<(*new)->traits.ncols; v++) {
@@ -330,13 +334,15 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v,c;
+    ghost_idx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
 
     ghost_densemat_create(new,src->context,newTraits);
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        ghost_idx_t c;
         (*new)->cu_val = src->cu_val;
         for (c=0,v=0; c<(*new)->traits.ncolsorig; c++) {
             if (coffs[v] != c) {
@@ -345,6 +351,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
                 v++;
             }
         }
+#endif
     } 
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<nc; v++) {
@@ -361,7 +368,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v,r,i,c;
+    ghost_idx_t v,r,i;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
@@ -377,6 +384,8 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
 
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        ghost_idx_t c;
         (*new)->cu_val = src->cu_val;
         for (c=0,v=0; c<(*new)->traits.ncolsorig; c++) {
             if (coffs[v] != c) {
@@ -385,6 +394,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
                 v++;
             }
         }
+#endif
     } 
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<nc; v++) {
@@ -1275,6 +1285,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
         }
     }
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
         ghost_idx_t v,i,r,j;
 
         char *cu_val;
@@ -1297,7 +1308,7 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
             ghost_cu_free(vec->cu_val);
         }
         vec->cu_val = cu_val;
-        
+#endif 
     }
 
     hwloc_bitmap_fill(vec->mask);
