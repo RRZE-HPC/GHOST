@@ -323,45 +323,22 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
             tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*threadIdx.y+col[cs + tid + j*C]], val[cs+tid+j*C]);
         }
 
-        if (!do_shift) {
-            if (!do_scale) {
-                if (do_axpy) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
-                } else if (do_axpby) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),tmp,1.f);
-                } else {
-                    lhs[lhs_lda*threadIdx.y+i] = tmp;
-                }
-            } else {
-                if (do_axpy) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],scale<v_t>(alpha,tmp),1.f);
-                } else if (do_axpby) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),scale<v_t>(alpha,tmp),1.f);
-                } else {
-                    lhs[lhs_lda*threadIdx.y+i] = scale<v_t>(alpha,tmp);
-                }
-            }
-        } else {
-            if (!do_scale) {
-                if (do_axpy) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)),1.f);
-                } else if (do_axpby) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)),1.f);
-                } else {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f));
-                }
-            } else {
-                if (do_axpy) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f))),1.f);
-                } else if (do_axpby) {
-                    lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f))),1.f);
-                } else {
-                    lhs[lhs_lda*threadIdx.y+i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f)));
-                }
-            }
-            
+        if (do_shift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f));
         }
-
+        if (do_vshift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[threadIdx.y],-1.f));
+        }
+        if (do_scale) {
+            tmp = scale<v_t>(alpha,tmp);
+        }
+        if (do_axpy) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
+        } else if (do_axpby) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),tmp,1.f);
+        } else {
+            lhs[lhs_lda*threadIdx.y+i] = tmp;
+        }
     }
 }
 
