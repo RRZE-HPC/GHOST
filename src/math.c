@@ -296,7 +296,7 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
             }    
         }
     }
-    else if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
+    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
