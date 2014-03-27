@@ -1,5 +1,4 @@
 #include "ghost/config.h"
-#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/sell.h"
 #include "ghost/util.h"
@@ -92,9 +91,18 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
                     #GHOST_UNROLL#_mm_stream_pd(&lval[c*32+2*@],tmp@);#16
                 }
                 if (spmvmOptions & GHOST_SPMV_DOT) {
-                    #GHOST_UNROLL#dot1[v] = _mm_add_pd(dot1[v],_mm_mul_pd(_mm_load_pd(&lval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
-                    #GHOST_UNROLL#dot2[v] = _mm_add_pd(dot2[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
-                    #GHOST_UNROLL#dot3[v] = _mm_add_pd(dot3[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&rval[c*32+2*@])));#16
+                    if ((c+1)*32 <= mat->nrows) {
+                        #GHOST_UNROLL#dot1[v] = _mm_add_pd(dot1[v],_mm_mul_pd(_mm_load_pd(&lval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
+                        #GHOST_UNROLL#dot2[v] = _mm_add_pd(dot2[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
+                        #GHOST_UNROLL#dot3[v] = _mm_add_pd(dot3[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&rval[c*32+2*@])));#16
+                    } else {
+                        ghost_idx_t rem;
+                        for (rem=0; rem<mat->nrows-c*32; rem++) {
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += lval[c*32+rem]*lval[c*32+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += lval[c*32+rem]*rval[c*32+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += rval[c*32+rem]*rval[c*32+rem];
+                        }
+                    }
                 }
             }
         }
@@ -355,6 +363,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
                     if (spmvmOptions & GHOST_SPMV_SHIFT) {
                         shift = _mm256_broadcast_sd(&sshift[0]);
                     } else {
+                        printf("vscale v %d %f\n",v,sshift[v]);
                         shift = _mm256_broadcast_sd(&sshift[v]);
                     }
                     #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd(&rval[c*32+4*@])));#8
@@ -369,10 +378,21 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
                 } else {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[c*32+4*@],tmp@);#8
                 }
+
                 if (spmvmOptions & GHOST_SPMV_DOT) {
-                    #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4*@]),_mm256_load_pd(&lval[c*32+4*@])));#8
-                    #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4*@]),_mm256_load_pd(&lval[c*32+4*@])));#8
-                    #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4*@]),_mm256_load_pd(&rval[c*32+4*@])));#8
+                    if ((c+1)*32 <= mat->nrows) {
+                        #GHOST_UNROLL#dot1[v] = _mm256_add_pd(dot1[v],_mm256_mul_pd(_mm256_load_pd(&lval[c*32+4*@]),_mm256_load_pd(&lval[c*32+4*@])));#8
+                        #GHOST_UNROLL#dot2[v] = _mm256_add_pd(dot2[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4*@]),_mm256_load_pd(&lval[c*32+4*@])));#8
+                        #GHOST_UNROLL#dot3[v] = _mm256_add_pd(dot3[v],_mm256_mul_pd(_mm256_load_pd(&rval[c*32+4*@]),_mm256_load_pd(&rval[c*32+4*@])));#8
+                    } else {
+                        ghost_idx_t rem;
+                        for (rem=0; rem<mat->nrows-c*32; rem++) {
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += lval[c*32+rem]*lval[c*32+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += lval[c*32+rem]*rval[c*32+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += rval[c*32+rem]*rval[c*32+rem];
+                        }
+                    }
+
                 }
             }
         }
@@ -400,6 +420,9 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
     if (spmvmOptions & GHOST_SPMV_DOT) {
         for (v=0; v<invec->traits.ncols; v++) {
             local_dot_product[v                       ] = 0.; 
+                if (v==0) {
+                INFO_LOG("dot0 += %f [pad %d, len+1 %f]",partsums[(padding+3*invec->traits.ncols)*i + 3*v + 0],res->traits.nrowspadded,((double *)res->val[0])[res->traits.nrows]);
+                }
             local_dot_product[v  +   invec->traits.ncols] = 0.;
             local_dot_product[v  + 2*invec->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
