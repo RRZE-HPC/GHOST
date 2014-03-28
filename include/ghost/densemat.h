@@ -26,26 +26,66 @@ typedef enum {
 } 
 ghost_densemat_flags_t;
 
-typedef enum {
+/**
+ * @brief Densemat storage orders
+ */
+typedef enum 
+{
+    /**
+     * @brief Row-major storage (as in C).
+     */
     GHOST_DENSEMAT_ROWMAJOR,
+    /**
+     * @brief Column-major storage (as in Fortran).
+     */
     GHOST_DENSEMAT_COLMAJOR
 }
 ghost_densemat_storage_t;
 
+/**
+ * @brief Traits of the densemat.
+ */
 typedef struct
 {
+    /**
+     * @brief The number of rows.
+     */
     ghost_idx_t nrows;
+    /**
+     * @brief The number of rows of the densemat which is viewed by this densemat.
+     */
     ghost_idx_t nrowsorig;
+    /**
+     * @brief The number of rows including halo elements.
+     */
     ghost_idx_t nrowshalo;
+    /**
+     * @brief The padded number of rows (may differ from nrows for col-major densemats).
+     */
     ghost_idx_t nrowspadded;
+    /**
+     * @brief The number of columns.
+     */
     ghost_idx_t ncols;
     /**
-     * @brief Relevant if the densemat is a view.
+     * @brief The number of columns of the densemat which is viewed by this densemat.
      */
     ghost_idx_t ncolsorig;
+    /**
+     * @brief The padded number of columns (may differ from ncols for row-major densemats).
+     */
     ghost_idx_t ncolspadded;
+    /**
+     * @brief Property flags.
+     */
     ghost_densemat_flags_t flags;
+    /**
+     * @brief The storage order.
+     */
     ghost_densemat_storage_t storage;
+    /**
+     * @brief The data type.
+     */
     ghost_datatype_t datatype;
 }
 ghost_densemat_traits_t;
@@ -392,7 +432,7 @@ struct ghost_densemat_t
      * @param nc The nunber of columns to view.
      * @param coffs The column offset.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
@@ -406,6 +446,9 @@ struct ghost_densemat_t
     ghost_error_t       (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 };
 
+/**
+ * @brief Initializer for densemat traits.
+ */
 #define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
     .nrows = 0,\
     .nrowsorig = 0,\
@@ -438,7 +481,24 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits);
     
+    /**
+     * @brief Get the location of the first viewed data element.
+     *
+     * @param vec The densemat.
+     * @param ptr Where to store the pointer.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr);
+    /**
+     * @brief Create an array of chars (0 or 1) of the densemat mask.
+     *
+     * @param mask The mask.
+     * @param len Length of the mask.
+     * @param charfield Location of the char array.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len, char *charfield);
 
 #ifdef __cplusplus
