@@ -16,7 +16,7 @@ extern "C" {
      *
      * @param s Where to store the state.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * The random state is determined from the calling OpenMP thread index.
      * OpenMP do not have to be pinned in order to return correct random seeds.
@@ -35,6 +35,17 @@ extern "C" {
      * @brief Destroy the random states.
      */
     void ghost_rand_destroy();
+    /**
+     * @brief Set the random seeds to a scalar.
+     *
+     * @param seed The seed.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * This sets the random seed to the same value for each thread and results in a predictable sequence of random numbers.
+     * This is only sensible for testing purposes.
+     */
+    ghost_error_t ghost_rand_set1(unsigned int seed);
 
 #ifdef __cplusplus
 }
