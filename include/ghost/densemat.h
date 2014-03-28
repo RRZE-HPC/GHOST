@@ -42,6 +42,7 @@ typedef enum
 }
 ghost_densemat_storage_t;
 
+
 /**
  * @brief Traits of the densemat.
  */
@@ -288,14 +289,14 @@ struct ghost_densemat_t
      * @brief Initializes a vector/matrix from another vector/matrix at a given column and row offset.
      * Malloc's memory for the vector/matrix's values if this hasn't happened before.
      *
-     * @param vec The source vector/matrix.
-     * @param dst Where to store the new vector.
+     * @param vec The vector/matrix.
+     * @param src The source.
      * @param roffs The first row to clone.
      * @param coffs The first column to clone.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *dst, ghost_idx_t roffs, ghost_idx_t coffs);
+    ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_idx_t roffs, ghost_idx_t coffs);
     /**
      * @ingroup denseinit
      *
