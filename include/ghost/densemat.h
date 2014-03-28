@@ -135,7 +135,7 @@ struct ghost_densemat_t
     /**
      * @brief Mask out elements in the non-leading dimension (only for CUDA)
      */
-    hwloc_bitmap_t cumask;
+    hwloc_bitmap_t trmask;
 
 #ifdef GHOST_HAVE_CUDA
     /**
