@@ -38,8 +38,8 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     hwloc_bitmap_fill((*vec)->mask);
     hwloc_bitmap_fill((*vec)->cumask);
 
-    getNrowsFromContext((*vec));
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
+    getNrowsFromContext((*vec));
 
     DEBUG_LOG(1,"Initializing vector");
 
@@ -128,7 +128,16 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     }
     if (vec->traits.ncolspadded == 0) {
         DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
-        vec->traits.ncolspadded = vec->traits.ncols;
+        ghost_idx_t padding = 0;
+#ifdef GHOST_HAVE_MIC
+        padding = 64; // 64 byte padding
+#elif defined(GHOST_HAVE_AVX)
+        padding = 32; // 32 byte padding
+#elif defined (GHOST_HAVE_SSE)
+        padding = 16; // 16 byte padding
+#endif
+        padding /= vec->elSize;
+        vec->traits.ncolspadded = PAD(vec->traits.ncols,padding); // 16: float values on MIC
     }
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
