@@ -29,13 +29,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
-    (*vec)->mask = hwloc_bitmap_alloc();
+    (*vec)->ldmask = hwloc_bitmap_alloc();
     (*vec)->trmask = hwloc_bitmap_alloc();
-    if (!(*vec)->mask) {
+    if (!(*vec)->ldmask) {
         ERROR_LOG("Could not create dense matrix mask!");
         goto err;
     }
-    hwloc_bitmap_fill((*vec)->mask);
+    hwloc_bitmap_fill((*vec)->ldmask);
     hwloc_bitmap_fill((*vec)->trmask);
 
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
@@ -167,12 +167,12 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (hwloc_bitmap_iszero(vec->mask)) {
+    if (hwloc_bitmap_iszero(vec->ldmask)) {
         ERROR_LOG("Everything masked out");
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *ptr = &vec->val[0][hwloc_bitmap_first(vec->mask)*vec->elSize];
+    *ptr = &vec->val[0][hwloc_bitmap_first(vec->ldmask)*vec->elSize];
 
     return GHOST_SUCCESS;
 

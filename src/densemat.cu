@@ -143,7 +143,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(v1->mask,v1->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,v1->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,v1->traits.nrowsorig));
@@ -195,7 +195,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(v1->mask,v1->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,v1->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,v1->traits.nrowsorig));
@@ -303,7 +303,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(vec->trmask,vec->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(vec->mask,vec->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(vec->ldmask,vec->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,vec->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,vec->traits.nrowsorig));
@@ -397,7 +397,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(v1->mask,v1->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,v1->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,v1->traits.nrowsorig));
@@ -445,7 +445,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void 
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(vec->trmask,vec->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(vec->mask,vec->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(vec->ldmask,vec->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,vec->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,vec->traits.nrowsorig));
@@ -499,7 +499,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(vec->trmask,vec->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(vec->mask,vec->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(vec->ldmask,vec->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,vec->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,vec->traits.nrowsorig));
@@ -548,7 +548,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig));
 
     ghost_densemat_mask2charfield(vec->trmask,vec->traits.ncolsorig,colfield);
-    ghost_densemat_mask2charfield(vec->mask,vec->traits.nrowsorig,rowfield);
+    ghost_densemat_mask2charfield(vec->ldmask,vec->traits.nrowsorig,rowfield);
 
     GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,vec->traits.ncolsorig));
     GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,vec->traits.nrowsorig));

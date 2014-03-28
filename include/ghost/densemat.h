@@ -131,7 +131,7 @@ struct ghost_densemat_t
     /**
      * @brief Mask out elements in the leading dimension
      */
-    hwloc_bitmap_t mask;
+    hwloc_bitmap_t ldmask;
     /**
      * @brief Mask out elements in the non-leading dimension (only for CUDA)
      */
@@ -493,8 +493,8 @@ extern "C" {
     /**
      * @brief Create an array of chars (0 or 1) of the densemat mask.
      *
-     * @param mask The mask.
-     * @param len Length of the mask.
+     * @param mask The ldmask.
+     * @param len Length of the ldmask.
      * @param charfield Location of the char array.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.

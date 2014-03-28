@@ -77,7 +77,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                             matrixval = ((v_t)(mval[j]));
                             rhsrow = (v_t *)rhs->val[cr->col[j]];
                             for (colidx=0, v=0; v<rhs->traits.ncolsorig; v++) {
-                                if (hwloc_bitmap_isset(rhs->mask,v)) {
+                                if (hwloc_bitmap_isset(rhs->ldmask,v)) {
                                     tmp[colidx] += matrixval * rhsrow[v];
                                     colidx++;
                                 }
@@ -95,7 +95,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 
                     rhsrow = (v_t *)rhs->val[i];
                     for (colidx=0, v=0; v<lhs->traits.ncolsorig; v++) {
-                        if (hwloc_bitmap_isset(lhs->mask,v)) {
+                        if (hwloc_bitmap_isset(lhs->ldmask,v)) {
                             if (options & GHOST_SPMV_SHIFT) {
                                 tmp[colidx] = tmp[colidx]-shift[0]*rhsrow[v];
                             }

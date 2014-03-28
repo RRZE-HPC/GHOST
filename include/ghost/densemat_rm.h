@@ -17,7 +17,7 @@
 #define ITER_COLS_BEGIN(vec,col,colidx)\
     colidx = 0;\
     for (col=0; col<vec->traits.ncolsorig; col++) {\
-        if (hwloc_bitmap_isset(vec->mask,col)) {
+        if (hwloc_bitmap_isset(vec->ldmask,col)) {
 
 
 #define ITER_COLS_END(colidx)\

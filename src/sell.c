@@ -1101,7 +1101,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
     if (kernel == NULL ||
             rhs->traits.flags & GHOST_DENSEMAT_SCATTERED ||
-            !hwloc_bitmap_isfull(rhs->mask)) {
+            !hwloc_bitmap_isfull(rhs->ldmask)) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
             [matDtIdx]

@@ -249,7 +249,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     
     for (c=0; c<src->traits.ncolsorig; c++) {
         if (c<coffs || (c >= coffs+nc)) {
-            hwloc_bitmap_clr((*new)->mask,c);
+            hwloc_bitmap_clr((*new)->ldmask,c);
         }
     }
 
@@ -287,7 +287,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     
     for (c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
         if (coffs[i] != c) {
-            hwloc_bitmap_clr((*new)->mask,c);
+            hwloc_bitmap_clr((*new)->ldmask,c);
         } else {
             i++;
         }
@@ -312,7 +312,7 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     
     for (c=0; c<src->traits.ncolsorig; c++) {
         if (c<coffs || (c >= coffs+nc)) {
-            hwloc_bitmap_clr((*new)->mask,c);
+            hwloc_bitmap_clr((*new)->ldmask,c);
         }
     }
     
@@ -336,7 +336,7 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
     
     for (c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
         if (coffs[i] != c) {
-            hwloc_bitmap_clr((*new)->mask,c);
+            hwloc_bitmap_clr((*new)->ldmask,c);
         } else {
             i++;
         }
@@ -403,7 +403,7 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRIDX,coffs);
     ghost_idx_t r;
-    coffs += hwloc_bitmap_first(vec2->mask);
+    coffs += hwloc_bitmap_first(vec2->ldmask);
 
     for (r=0; r<vec->traits.nrows; r++) {
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
@@ -582,9 +582,9 @@ out:
 static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_idx_t r, ghost_idx_t c) 
 {
     int i = 0;
-    int idx = hwloc_bitmap_first(vec->mask);
+    int idx = hwloc_bitmap_first(vec->ldmask);
     for (i=0; i<c; i++) {
-        idx = hwloc_bitmap_next(vec->mask,idx);
+        idx = hwloc_bitmap_next(vec->ldmask,idx);
     }
 
 
@@ -1083,7 +1083,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         }
         free(vec->val);
         free(vec);
-        hwloc_bitmap_free(vec->mask);
+        hwloc_bitmap_free(vec->ldmask);
         // TODO free traits ???
     }
 }
@@ -1215,7 +1215,7 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
     {
         for (v=0,c=0; v<vec->traits.ncolsorig; v++)
         {
-            if (hwloc_bitmap_isset(vec->mask,v)) {
+            if (hwloc_bitmap_isset(vec->ldmask,v)) {
                 memcpy(&val[(r*vec->traits.ncolspadded+c)*vec->elSize],
                         VECVAL(vec,vec->val,r,v),vec->elSize);
                 c++;
@@ -1228,7 +1228,7 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
         }
         vec->val[r] = &val[(r*vec->traits.ncolspadded)*vec->elSize];
     }
-    hwloc_bitmap_fill(vec->mask);
+    hwloc_bitmap_fill(vec->ldmask);
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
     vec->traits.flags &= ~GHOST_DENSEMAT_SCATTERED;

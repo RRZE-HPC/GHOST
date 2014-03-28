@@ -18,7 +18,7 @@
 #define ITER_ROWS_BEGIN(vec,row,rowidx)\
     _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec->traits.nrowsorig; row++) {\
-        if (hwloc_bitmap_isset(vec->mask,row)) {
+        if (hwloc_bitmap_isset(vec->ldmask,row)) {
 
 #define ITER_ROWS_END(rowidx)\
             rowidx++;\

@@ -111,7 +111,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                         rhsrow = (v_t *)rhs->val[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
 
                         for (colidx=0, col=0; col<rhs->traits.ncolsorig; col++) {
-                            if (hwloc_bitmap_isset(rhs->mask,col)) {
+                            if (hwloc_bitmap_isset(rhs->ldmask,col)) {
                                 tmp[i][colidx] +=  matrixval * rhsrow[col];
                                 colidx++;
                             } 
@@ -123,7 +123,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                     rhsrow = (v_t *)rhs->val[c*chunkHeight+i];
                     if (c*chunkHeight+i < mat->nrows) {
                         for (colidx = 0, col=0; col<lhs->traits.ncolsorig; col++) {
-                            if (hwloc_bitmap_isset(lhs->mask,col)) {
+                            if (hwloc_bitmap_isset(lhs->ldmask,col)) {
                                 if (options & GHOST_SPMV_SHIFT) {
                                     tmp[i][colidx] = tmp[i][colidx]-shift[0]*rhsrow[col];
                                 }

@@ -194,7 +194,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
 #ifdef GHOST_HAVE_CUDA
         ghost_idx_t i,v,r,j;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (hwloc_bitmap_isset(vec->mask,i)) {
+            if (hwloc_bitmap_isset(vec->ldmask,i)) {
                 for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
                     if (hwloc_bitmap_isset(vec->trmask,j)) {
                         v_t val = 0.;
@@ -214,7 +214,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
     } else {
         ghost_idx_t i,v,r;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (hwloc_bitmap_isset(vec->mask,i)) {
+            if (hwloc_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {
                     v_t val = 0.;
                     val = *(v_t *)VECVAL(vec,vec->val,v,i);
