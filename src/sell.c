@@ -1069,7 +1069,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     }
 #endif
 #ifdef GHOST_HAVE_AVX
-    if (SELL(mat)->chunkHeight == 32) {
+    if (SELL(mat)->chunkHeight == 32 && !(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         if ((rhs->traits.ncols == 1) || (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR)) {
             kernel =  SELL_kernels_AVX_32_multivec_cm
                 [matDtIdx]
