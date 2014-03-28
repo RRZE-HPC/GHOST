@@ -60,7 +60,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         {
             v_t matrixval;
             v_t * rhsrow;
-            ghost_idx_t c;
+            ghost_idx_t colidx;
             v_t tmp[rhs->traits.ncols];
             int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
@@ -75,34 +75,39 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
                         matrixval = ((v_t)(mval[j]));
                         rhsrow = (v_t *)rhs->val[cr->col[j]];
-                        for (c=0; c<rhs->traits.ncols; c++) {
-                            tmp[c] += matrixval * rhsrow[c];
+                        for (colidx=0, v=0; v<rhs->traits.ncolsorig; v++) {
+                            if (hwloc_bitmap_isset(rhs->mask,v)) {
+                                tmp[v] += matrixval * rhsrow[v];
+                                colidx++;
+                            }
                         }
                     }
 
                     rhsrow = (v_t *)rhs->val[i];
-                    for (v=0; v<rhs->traits.ncols; v++) {
-
-                        if (options & GHOST_SPMV_SHIFT) {
-                            tmp[v] = tmp[v]-shift[0]*rhsrow[v];
-                        }
-                        if (options & GHOST_SPMV_VSHIFT) {
-                            tmp[v] = tmp[v]-shift[v]*rhsrow[v];
-                        }
-                        if (options & GHOST_SPMV_SCALE) {
-                            tmp[v] = tmp[v]*scale;
-                        }
-                        if (options & GHOST_SPMV_AXPY) {
-                            lhsv[v] += tmp[v];
-                        } else if (options & GHOST_SPMV_AXPBY) {
-                            lhsv[v] = beta*lhsv[v] + tmp[v];
-                        } else {
-                            lhsv[v] = tmp[v];
-                        }
-                        if (options & GHOST_SPMV_DOT) {
-                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[v])*lhsv[v];
-                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[v])*rhsrow[v];
-                            partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsrow[v])*rhsrow[v];
+                    for (colidx=0, v=0; v<lhs->traits.ncolsorig; v++) {
+                        if (hwloc_bitmap_isset(lhs->mask,v)) {
+                            if (options & GHOST_SPMV_SHIFT) {
+                                tmp[v] = tmp[v]-shift[0]*rhsrow[v];
+                            }
+                            if (options & GHOST_SPMV_VSHIFT) {
+                                tmp[v] = tmp[v]-shift[v]*rhsrow[v];
+                            }
+                            if (options & GHOST_SPMV_SCALE) {
+                                tmp[v] = tmp[v]*scale;
+                            }
+                            if (options & GHOST_SPMV_AXPY) {
+                                lhsv[v] += tmp[v];
+                            } else if (options & GHOST_SPMV_AXPBY) {
+                                lhsv[v] = beta*lhsv[v] + tmp[v];
+                            } else {
+                                lhsv[v] = tmp[v];
+                            }
+                            if (options & GHOST_SPMV_DOT) {
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[v])*lhsv[v];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[v])*rhsrow[v];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsrow[v])*rhsrow[v];
+                            }
+                            colidx++;
                         }
                     }
                 }
