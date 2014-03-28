@@ -411,7 +411,7 @@ struct ghost_densemat_t
     .nrowsorig = 0,\
     .nrowshalo = 0,\
     .nrowspadded = 0,\
-    .ncols = 0,\
+    .ncols = 1,\
     .ncolsorig = 0,\
     .ncolspadded = 0,\
     .flags = GHOST_DENSEMAT_DEFAULT,\
