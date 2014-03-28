@@ -38,8 +38,8 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     hwloc_bitmap_fill((*vec)->mask);
     hwloc_bitmap_fill((*vec)->cumask);
 
-    getNrowsFromContext((*vec));
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
+    getNrowsFromContext((*vec));
 
     DEBUG_LOG(1,"Initializing vector");
 
