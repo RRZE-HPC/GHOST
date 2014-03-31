@@ -901,7 +901,7 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path)
         return GHOST_ERR_IO;
     }
 
-    if (datatype != vec->traits.datatype) {
+    if (datatype != (int)vec->traits.datatype) {
         ERROR_LOG("The data types don't match! Cast-while-read is not yet implemented for vectors.");
         return GHOST_ERR_IO;
     }

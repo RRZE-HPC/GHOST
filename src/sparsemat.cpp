@@ -1,12 +1,13 @@
+#include <map>
+#include <cmath>
+
 #include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"
 
-#include <map>
-#include <cmath>
-
-static std::map<ghost_sparsemat_t *,std::map<ghost_idx_t, ghost_idx_t> > rowlengths;
+using namespace std;
+static map<ghost_sparsemat_t *,map<ghost_idx_t, ghost_idx_t> > rowlengths;
 
 ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
 {
@@ -45,7 +46,7 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     
     mat->variance = 0.;
     mat->deviation = 0.;
-    for (std::map<ghost_idx_t,ghost_idx_t>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
+    for (map<ghost_idx_t,ghost_idx_t>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
         mat->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
     mat->variance /= mat->nrows;

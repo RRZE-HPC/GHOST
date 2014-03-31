@@ -30,7 +30,7 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
     int nthreads = 1;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(double);
+    int padding = (int)clsize/sizeof(double);
     if (spmvmOptions & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
@@ -156,7 +156,7 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(double);
+    int padding = (int)clsize/sizeof(double);
 
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -318,7 +318,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
     int nthreads = 1;
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(double);
+    int padding = (int)clsize/sizeof(double);
     if (spmvmOptions & GHOST_SPMV_DOT) {
 
 #pragma omp parallel 
@@ -453,7 +453,7 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(double);
+    int padding = (int)clsize/sizeof(double);
 
     UNUSED(argp);
     

@@ -244,7 +244,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
         return GHOST_ERR_IO;
     }
 
-    if (datatype == header.datatype) {
+    if ((int)datatype == header.datatype) {
         if (swapReq) {
             uint8_t *tmpval;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmpval,nEnts*valSize));
