@@ -327,7 +327,6 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     }
 
     (*new)->traits.flags |= GHOST_DENSEMAT_VIEW;
-    (*new)->traits.flags |= GHOST_DENSEMAT_SCATTERED;
     return GHOST_SUCCESS;
 }
 
