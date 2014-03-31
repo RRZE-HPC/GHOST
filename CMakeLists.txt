@@ -486,7 +486,7 @@ if (DOXYGEN_FOUND)
     else ()
         add_custom_command(
                 OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
-                DEPENDS ${SOURCES} ${HEADERS} 
+                DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
                 COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && cp ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${CMAKE_BINARY_DIR}/doc/html 
                 )
     endif()
