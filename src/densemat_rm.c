@@ -411,14 +411,14 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,r,0),CUVECVAL(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                ghost_cu_memcpy(CUVECVAL(vec,vec->cu_val,r,hwloc_bitmap_first(vec->ldmask)),CUVECVAL(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
 
 #endif
             }
             else
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,r,0),VECVAL(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                ghost_cu_upload(CUVECVAL(vec,vec->cu_val,r,hwloc_bitmap_first(vec->ldmask)),VECVAL(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
 #endif
             }
         }
@@ -427,12 +427,12 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(VECVAL(vec,vec->val,r,0),CUVECVAL(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                ghost_cu_download(VECVAL(vec,vec->val,r,hwloc_bitmap_first(vec->ldmask)),CUVECVAL(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
 #endif
             }
             else
             {
-                memcpy(VECVAL(vec,vec->val,r,0),VECVAL(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                memcpy(VECVAL(vec,vec->val,r,hwloc_bitmap_first(vec->ldmask)),VECVAL(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
             }
         }
 
