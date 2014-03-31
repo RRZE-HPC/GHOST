@@ -442,6 +442,16 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     ghost_idx_t *rpt_loopless = NULL;
     ghost_nnz_t nnz = 0;
     int me, nprocs;
+#ifdef GHOST_HAVE_MPI
+    SCOTCH_Dgraph * dgraph = NULL;
+    SCOTCH_Strat * strat = NULL;
+    SCOTCH_Dordering *dorder = NULL;
+#else 
+    SCOTCH_Graph * graph = NULL;
+    SCOTCH_Strat * strat = NULL;
+    SCOTCH_Ordering *order = NULL;
+#endif
+
     if (mat->permutation) {
         WARNING_LOG("Existing permutations will be overwritten!");
     }
@@ -502,10 +512,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     mat->permutation->len = mat->context->gnrows;
 
 #ifdef GHOST_HAVE_MPI
-    SCOTCH_Dgraph * dgraph = NULL;
-    SCOTCH_Strat * strat = NULL;
-    SCOTCH_Dordering *dorder = NULL;
-
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
         ERROR_LOG("Could not alloc SCOTCH graph");
@@ -545,10 +551,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 
 #else
 
-    SCOTCH_Graph * graph = NULL;
-    SCOTCH_Strat * strat = NULL;
-    SCOTCH_Ordering *order = NULL;
-    
     ghost_malloc((void **)&col_loopless,nnz*sizeof(ghost_idx_t));
     ghost_malloc((void **)&rpt_loopless,(mat->nrows+1)*sizeof(ghost_nnz_t));
     rpt_loopless[0] = 0;

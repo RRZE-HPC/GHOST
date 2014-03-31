@@ -1,7 +1,7 @@
 #include "ghost/config.h"
 #include "ghost/types.h"
-#include "ghost/sparsemat.h"
 #include "ghost/util.h"
+#include "ghost/sparsemat.h"
 
 #include <map>
 #include <cmath>

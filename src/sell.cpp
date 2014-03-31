@@ -66,7 +66,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(v_t);
+    int padding = (int) clsize/sizeof(v_t);
 
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
@@ -85,7 +85,11 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
 
 #pragma omp parallel private(c,j,col,colidx,i,v) shared(partsums)
         {
-            v_t tmp[chunkHeight][rhs->traits.ncols];
+            v_t **tmp;
+            ghost_malloc((void **)&tmp,sizeof(v_t *)*chunkHeight);
+            for (i=0; i<chunkHeight; i++) {
+                ghost_malloc((void **)&tmp[i],sizeof(v_t)*rhs->traits.ncols);
+            }
             v_t **lhsv = NULL;
             int tid = ghost_omp_threadnum();
             v_t * rhsrow;

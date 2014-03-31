@@ -33,7 +33,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
 
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
-    unsigned padding = clsize/sizeof(v_t);
+    int padding = (int)clsize/sizeof(v_t);
 
     v_t hlp1 = 0.;
     v_t scale = 1., beta = 1.;
@@ -61,7 +61,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
             v_t matrixval;
             v_t * rhsrow;
             ghost_idx_t colidx;
-            v_t tmp[rhs->traits.ncols];
+            v_t *tmp;
+            ghost_malloc((void **)&tmp,rhs->traits.ncols*sizeof(v_t));
             int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime) 
             for (i=0; i<mat->nrows; i++) {
@@ -122,6 +123,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     }
                 }
             }
+            free(tmp);
         }
     } else {
 

@@ -58,7 +58,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
     if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_idx_t i,v,rowidx;
+    ghost_idx_t i,v,rowidx = 0;
 
     int nthreads;
 #pragma omp parallel
@@ -119,7 +119,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t i,v,rowidx;
+    ghost_idx_t i,v,rowidx = 0;
     v_t *s = (v_t *)scale;
 
     for (v=0; v<vec->traits.ncols; v++) {
