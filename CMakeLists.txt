@@ -472,8 +472,9 @@ if (DOXYGEN_FOUND)
     if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
                 OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
-                DEPENDS ${SOURCES} ${HEADERS}  
-                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
+                DEPENDS ${SOURCES} ${HEADERS} ${CMAKE_SOURCE_DIR}/doxygen/mainpage.md.in 
+                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && rsync -a ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${DOC_INSTALL_PREFIX}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
                 )
     else ()
         add_custom_command(
