@@ -87,8 +87,9 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
         {
             v_t **tmp;
             ghost_malloc((void **)&tmp,sizeof(v_t *)*chunkHeight);
-            for (i=0; i<chunkHeight; i++) {
-                ghost_malloc((void **)&tmp[i],sizeof(v_t)*rhs->traits.ncols);
+            ghost_malloc((void **)&tmp[0],sizeof(v_t)*chunkHeight*rhs->traits.ncols);
+            for (i=1; i<chunkHeight; i++) {
+                tmp[i] = tmp[i-1] + rhs->traits.ncols;
             }
             v_t **lhsv = NULL;
             int tid = ghost_omp_threadnum();
