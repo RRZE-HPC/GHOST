@@ -91,6 +91,8 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *, ghost_dense
 ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_4_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_4_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 #ifdef GHOST_HAVE_CUDA
