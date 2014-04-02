@@ -102,16 +102,28 @@ set (HEADERS
 		include/ghost/util.h
 	)
 
-add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
-        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl 
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
-        )
+set (TO_PREPROCESS
+        src/sell_kernel_avx.c
+        src/sell_kernel_sse.c
+        src/sell_kernel_mic.c
+    )
 
-add_custom_target(preprocess DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
+set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
+set (PP_DIR ${CMAKE_BINARY_DIR}/src_pp)
 
+foreach (TO_PP_FILE ${TO_PREPROCESS})
+    set(TO_PP_FILE ${CMAKE_SOURCE_DIR}/${TO_PP_FILE})
+    get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
+    set(PP_FILE ${PP_DIR}/${TO_PP_FILENAME})
+    add_custom_command(
+            OUTPUT ${PP_FILE}
+            DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
+            COMMAND mkdir -p ${PP_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
+            )
+    list(APPEND PP_FILES ${PP_FILE})
+endforeach()
+
+add_custom_target(preprocess DEPENDS ${PP_FILES})
 
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
     set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
