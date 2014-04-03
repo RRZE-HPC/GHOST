@@ -597,6 +597,15 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
     double *partsums = NULL;
     __m256d rhs;
     int nthreads = 1, i;
+    int axpy = spmvmOptions & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
+    int simdblocks = PAD(invec->traits.ncols,4);
+    int tmpwidth;
+
+    if (!axpy) {
+        tmpwidth = simdblocks;
+    } else {
+        tmpwidth = 1;
+    }
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -628,8 +637,9 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
 
 #pragma omp parallel private(c,j,offs,rhs,col) shared (partsums)
     {
+        int t;
         int tid = ghost_omp_threadnum();
-        #GHOST_UNROLL#__m256d tmp@;#32
+        #GHOST_UNROLL#__m256d tmp@[tmpwidth];#32
 
         ghost_idx_t donecols;
 
@@ -639,13 +649,26 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
             double *lval = (double *)res->val[c*32];
             double *rval = (double *)invec->val[c*32];
 
-            for (donecols = 0; donecols < PAD(invec->traits.ncols,4); donecols+=4) {
-                #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#32
-                offs = SELL(mat)->chunkStart[c];
-
-                for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#32
+            if (!axpy) {
+                for (t=0; t<tmpwidth; t++) {
+                    #GHOST_UNROLL#tmp@[t] = _mm256_setzero_pd();#32
                 }
+            }
+
+            for (donecols = 0, t = 0; donecols < simdblocks; donecols+=4, t++) {
+                offs = SELL(mat)->chunkStart[c];
+                if (axpy) {
+                    #GHOST_UNROLL#tmp@[0] = _mm256_setzero_pd();#32
+                    for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+                        #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@[0] = _mm256_add_pd(tmp@[0],_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#32
+                    }
+                } else {
+                    for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+                        #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@[t] = _mm256_add_pd(tmp@[t],_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs++]),rhs));#32
+                    }
+                }
+
+
               
                 if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
                     if (spmvmOptions & GHOST_SPMV_SHIFT) {
@@ -653,26 +676,40 @@ ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
                     } else {
                         shift = _mm256_load_pd(&sshift[donecols]);
                     }
-                    #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(shift,_mm256_load_pd((double *)invec->val[c*32+@]+donecols)));#32
+                    if (axpy) {
+                        #GHOST_UNROLL#tmp@[0] = _mm256_sub_pd(tmp@[0],_mm256_mul_pd(shift,_mm256_load_pd((double *)invec->val[c*32+@]+donecols)));#32
+                    } else {
+                        #GHOST_UNROLL#tmp@[t] = _mm256_sub_pd(tmp@[t],_mm256_mul_pd(shift,_mm256_load_pd((double *)invec->val[c*32+@]+donecols)));#32
+                    }
+
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
-                    #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#32
-                }
-                if (spmvmOptions & GHOST_SPMV_AXPY) {
-                    #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#32
-                } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                    #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#32
-                } else {
-                    #GHOST_UNROLL#_mm256_stream_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#32
-                }
-                if (spmvmOptions & GHOST_SPMV_DOT) {
-                    for (col = donecols; col<donecols+4; col++) {
-                        #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#32
-                        #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
-                        #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
+                    if (axpy) {
+                        #GHOST_UNROLL#tmp@[0] = _mm256_mul_pd(scale,tmp@[0]);#32
+                    } else {
+                        #GHOST_UNROLL#tmp@[t] = _mm256_mul_pd(scale,tmp@[t]);#32
                     }
                 }
+                if (axpy) {
+                    if (spmvmOptions & GHOST_SPMV_AXPY) {
+                        #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@[0],_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#32
+                    } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                        #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm256_add_pd(tmp@[0],_mm256_mul_pd(_mm256_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#32
+                    }
+                    if (spmvmOptions & GHOST_SPMV_DOT) {
+                        for (col = donecols; col<donecols+4; col++) {
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#32
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
+                        }
+                    }
+                } 
             }
+            if (!axpy) { 
+            #GHOST_UNROLL#for (donecols = 0, t = 0; donecols < simdblocks; donecols+=4, t++) {_mm256_stream_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@[t]);}#32
+                }
+
+                // TODO if non-AXPY cxompute DOT from tmp instead of lval
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
