@@ -104,17 +104,17 @@ set (HEADERS
 
 add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
-        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp 
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk 
         COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c
-#        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && cat ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c | ${CMAKE_SOURCE_DIR}/bin/ghost_pp > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c
-#        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && cat ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c | ${CMAKE_SOURCE_DIR}/bin/ghost_pp > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
         )
 
-add_custom_target(preprocess DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c)# ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
+add_custom_target(preprocess DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
 
 
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
-    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c)# ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
+    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
 else()
     set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
     add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
