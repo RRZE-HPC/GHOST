@@ -7,7 +7,8 @@
 #include "ghost/omp.h"
 #include <immintrin.h>
 
-ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+#GHOST_FUNC_BEGIN#4,32
+ghost_error_t dd_SELL_kernel_SSE_$_multivec_cm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_SSE
     ghost_idx_t j,c,v,i;
@@ -47,7 +48,7 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
 
 #pragma omp parallel private(v,c,j,val,offs,rhs) shared(partsums)
     {
-        __m128d tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15;
+        #GHOST_UNROLL#__m128d tmp@;#$/2
         int tid = ghost_omp_threadnum();
         __m128d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];
         for (v=0; v<invec->traits.ncols; v++) {
@@ -56,20 +57,20 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
             dot3[v] = _mm_setzero_pd();
         }
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded>>5; c++) 
+        for (c=0; c<mat->nrowsPadded/$; c++) 
         { // loop over chunks
 
             for (v=0; v<invec->traits.ncols; v++)
             {
-                #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#16
+                #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#$/2
                 lval = (double *)res->val[v];
                 rval = (double *)invec->val[v];
                 offs = SELL(mat)->chunkStart[c];
 
-                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])>>5; j++) 
+                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/$; j++) 
                 { // loop inside chunk
 
-                    #GHOST_UNROLL#val = _mm_load_pd(&mval[offs]);rhs = _mm_loadl_pd(rhs,&rval[(SELL(mat)->col[offs++])]);rhs = _mm_loadh_pd(rhs,&rval[(SELL(mat)->col[offs++])]);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(val,rhs));#16
+                    #GHOST_UNROLL#val = _mm_load_pd(&mval[offs]);rhs = _mm_loadl_pd(rhs,&rval[(SELL(mat)->col[offs++])]);rhs = _mm_loadh_pd(rhs,&rval[(SELL(mat)->col[offs++])]);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(val,rhs));#$/2
                 }
 
                 if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -78,29 +79,29 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
                     } else {
                         shift = _mm_load1_pd(&sshift[v]);
                     }
-                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd(&rval[c*32+2*@])));#16
+                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd(&rval[c*$+2*@])));#$/2
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
-                    #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#16
+                    #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#$/2
                 }
                 if (spmvmOptions & GHOST_SPMV_AXPY) {
-                    #GHOST_UNROLL#_mm_store_pd(&lval[c*32+2*@],_mm_add_pd(tmp@,_mm_load_pd(&lval[c*32+2*@])));#16
+                    #GHOST_UNROLL#_mm_store_pd(&lval[c*$+2*@],_mm_add_pd(tmp@,_mm_load_pd(&lval[c*$+2*@])));#$/2
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                    #GHOST_UNROLL#_mm_store_pd(&lval[c*32+2*@],_mm_add_pd(tmp@,_mm_mul_pd(beta,_mm_load_pd(&lval[c*32+2*@]))));#16
+                    #GHOST_UNROLL#_mm_store_pd(&lval[c*$+2*@],_mm_add_pd(tmp@,_mm_mul_pd(beta,_mm_load_pd(&lval[c*$+2*@]))));#$/2
                 } else {
-                    #GHOST_UNROLL#_mm_stream_pd(&lval[c*32+2*@],tmp@);#16
+                    #GHOST_UNROLL#_mm_stream_pd(&lval[c*$+2*@],tmp@);#$/2
                 }
                 if (spmvmOptions & GHOST_SPMV_DOT) {
-                    if ((c+1)*32 <= mat->nrows) {
-                        #GHOST_UNROLL#dot1[v] = _mm_add_pd(dot1[v],_mm_mul_pd(_mm_load_pd(&lval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
-                        #GHOST_UNROLL#dot2[v] = _mm_add_pd(dot2[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&lval[c*32+2*@])));#16
-                        #GHOST_UNROLL#dot3[v] = _mm_add_pd(dot3[v],_mm_mul_pd(_mm_load_pd(&rval[c*32+2*@]),_mm_load_pd(&rval[c*32+2*@])));#16
+                    if ((c+1)*$ <= mat->nrows) {
+                        #GHOST_UNROLL#dot1[v] = _mm_add_pd(dot1[v],_mm_mul_pd(_mm_load_pd(&lval[c*$+2*@]),_mm_load_pd(&lval[c*$+2*@])));#$/2
+                        #GHOST_UNROLL#dot2[v] = _mm_add_pd(dot2[v],_mm_mul_pd(_mm_load_pd(&rval[c*$+2*@]),_mm_load_pd(&lval[c*$+2*@])));#$/2
+                        #GHOST_UNROLL#dot3[v] = _mm_add_pd(dot3[v],_mm_mul_pd(_mm_load_pd(&rval[c*$+2*@]),_mm_load_pd(&rval[c*$+2*@])));#$/2
                     } else {
                         ghost_idx_t rem;
-                        for (rem=0; rem<mat->nrows-c*32; rem++) {
-                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += lval[c*32+rem]*lval[c*32+rem];
-                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += lval[c*32+rem]*rval[c*32+rem];
-                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += rval[c*32+rem]*rval[c*32+rem];
+                        for (rem=0; rem<mat->nrows-c*$; rem++) {
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += lval[c*$+rem]*lval[c*$+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += lval[c*$+rem]*rval[c*$+rem];
+                            partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += rval[c*$+rem]*rval[c*$+rem];
                         }
                     }
                 }
@@ -143,8 +144,10 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *mat, ghost_de
 #endif
     return GHOST_SUCCESS;
 }
+#GHOST_FUNC_END
 
-ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+#GHOST_FUNC_BEGIN#4,32
+ghost_error_t dd_SELL_kernel_SSE_$_multivec_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_SSE
     ghost_idx_t j,c,col;
@@ -186,26 +189,26 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
 #pragma omp parallel private(c,j,offs,rhs,col) shared (partsums)
     {
         int tid = ghost_omp_threadnum();
-        #GHOST_UNROLL#__m128d tmp@;#32
+        #GHOST_UNROLL#__m128d tmp@;#$
         double *tmpresult = NULL;
         if (!axpy) {
-            ghost_malloc((void **)&tmpresult,sizeof(double)*32*ncolspadded);
+            ghost_malloc((void **)&tmpresult,sizeof(double)*$*ncolspadded);
         }
 
         ghost_idx_t donecols;
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded>>5; c++) 
+        for (c=0; c<mat->nrowsPadded/$; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c*32];
-            double *rval = (double *)invec->val[c*32];
+            double *lval = (double *)res->val[c*$];
+            double *rval = (double *)invec->val[c*$];
 
             for (donecols = 0; donecols < ncolspadded; donecols+=2) {
-                #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#32
+                #GHOST_UNROLL#tmp@ = _mm_setzero_pd();#$
                 offs = SELL(mat)->chunkStart[c];
 
                 for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
-                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#32
+                    #GHOST_UNROLL#rhs = _mm_load_pd((double *)invec->val[SELL(mat)->col[offs]]+donecols);tmp@ = _mm_add_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&mval[offs++]),rhs));#$
                 }
               
                 if (spmvmOptions & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {
@@ -214,31 +217,31 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
                     } else {
                         shift = _mm_load_pd(&sshift[donecols]);
                     }
-                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd((double *)invec->val[c*32+@]+donecols)));#32
+                    #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(shift,_mm_load_pd((double *)invec->val[c*$+@]+donecols)));#$
                 }
                 if (spmvmOptions & GHOST_SPMV_SCALE) {
-                    #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#32
+                    #GHOST_UNROLL#tmp@ = _mm_mul_pd(scale,tmp@);#$
                 }
                 if (axpy) {
                     if (spmvmOptions & GHOST_SPMV_AXPY) {
-                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#32
+                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols])));#$
                     } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
-                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#32
+                        #GHOST_UNROLL#_mm_store_pd(&lval[invec->traits.ncolspadded*@+donecols],_mm_add_pd(tmp@,_mm_mul_pd(_mm_load_pd(&lval[invec->traits.ncolspadded*@+donecols]),beta)));#$
                     }                 if (spmvmOptions & GHOST_SPMV_DOT) {
                         for (col = donecols; col<donecols+2; col++) {
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#32
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#32
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#$
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#$
+                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#$
                         }
                     }
                 } else {
-                    #GHOST_UNROLL#_mm_store_pd(&tmpresult[@*ncolspadded+donecols],tmp@);#32
+                    #GHOST_UNROLL#_mm_store_pd(&tmpresult[@*ncolspadded+donecols],tmp@);#$
                     // TODO if non-AXPY cxompute DOT from tmp instead of lval
                 }
 
             }
             if (!axpy) {
-                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#32
+                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=2) {tmp@ = _mm_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#$
             }
         }
     }
@@ -265,3 +268,4 @@ ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *mat, ghost_de
 #endif
     return GHOST_SUCCESS;
 }
+#GHOST_FUNC_END
