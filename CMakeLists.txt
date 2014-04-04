@@ -104,10 +104,10 @@ set (HEADERS
 
 add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
-        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk 
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c
-        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_func.awk ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c | awk -f ${CMAKE_SOURCE_DIR}/bin/ghost_pp_unroll.awk > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl 
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_avx.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_sse.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src_pp && perl ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl ${CMAKE_SOURCE_DIR}/src/sell_kernel_mic.c  > ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c
         )
 
 add_custom_target(preprocess DEPENDS ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
