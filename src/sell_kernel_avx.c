@@ -68,7 +68,7 @@ ghost_error_t dd_SELL_kernel_AVX_$_multivec_cm(ghost_sparsemat_t *mat, ghost_den
                 rval = (double *)invec->val[v];
                 offs = SELL(mat)->chunkStart[c];
 
-                for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])/$; j++) 
+                for (j=0; j<SELL(mat)->chunkLenPadded[c]; j++) 
                 { // loop inside chunk
 
                     #GHOST_UNROLL#val    = _mm256_load_pd(&mval[offs]);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,0);rhstmp = _mm_loadl_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhstmp = _mm_loadh_pd(rhstmp,&rval[(SELL(mat)->col[offs++])]);rhs    = _mm256_insertf128_pd(rhs,rhstmp,1);tmp@    = _mm256_add_pd(tmp@,_mm256_mul_pd(val,rhs));#$/4
