@@ -34,5 +34,4 @@ ghost_config.h
 tags
 *stdout*
 *stderr*
-types_c.taghl
-types_fortran.taghl
+*.taghl
