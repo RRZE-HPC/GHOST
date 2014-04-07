@@ -10,6 +10,7 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
 #include "ghost/bindensemat.h"
+#include "ghost/densemat_cm.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -73,6 +74,7 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_downloadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_downloadNonHalo(ghost_densemat_t *vec);
+static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec);
 ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
@@ -110,6 +112,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
         vec->fromRand = &vec_rm_fromRand;
     }
 
+    vec->memtranspose = &vec_rm_memtranspose;
     vec->compress = &vec_rm_compress;
     vec->string = &vec_rm_print;
     vec->fromFunc = &vec_rm_fromFunc;
@@ -142,6 +145,36 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
 #endif
 
     return ret;
+}
+
+static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
+{
+    ghost_idx_t col,row;
+    
+    char *rowptr[vec->traits.nrows];
+
+    for (row=0; row<vec->traits.nrows; row++) {
+        rowptr[row] = vec->val[row];
+    }
+    
+
+    vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
+    ghost_densemat_cm_setfuncs(vec);
+    char *oldval = vec->val[0];
+    vec->val = NULL; 
+
+    ghost_densemat_cm_malloc(vec);
+
+    for (row=0; row<vec->traits.nrows; row++) {
+        for (col=0; col<vec->traits.ncols; col++) {
+            memcpy(&vec->val[col][row*vec->elSize],rowptr[row]+col*vec->elSize,vec->elSize);
+        }
+    }
+
+    free(oldval);
+    return GHOST_SUCCESS; 
+
+
 }
 
 static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)

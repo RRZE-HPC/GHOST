@@ -145,7 +145,6 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
 {
-    INFO_LOG("memtranspose");
     ghost_idx_t col,row;
     
     char *colptr[vec->traits.ncols];
