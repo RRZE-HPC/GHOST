@@ -279,14 +279,28 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     newTraits.flags |= GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
+    hwloc_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_densemat_cm_malloc(*new);
-    ghost_idx_t v,r;
+    ghost_idx_t v,r,viewedrow;
+
+    char *bm;
+    hwloc_bitmap_list_asprintf(&bm,src->ldmask);
+    WARNING_LOG("%s %p",bm,src->ldmask);
+
+    //roffs += hwloc_bitmap_first((*new)->ldmask);
     
-    for (r=0; r<src->traits.nrowsorig; r++) {
-        if (r<roffs || (r >= roffs+nr)) {
+    for (viewedrow=0, r=0; r<src->traits.nrowsorig; r++) {
+        INFO_LOG("to view: %d..%d, current viewed row: %d, bitmap[%d] %d",roffs,roffs+nr-1,viewedrow,r,hwloc_bitmap_isset(src->ldmask,r));
+        if (viewedrow<roffs || (viewedrow >= roffs+nr)) {
+            INFO_LOG("clr");
             hwloc_bitmap_clr((*new)->ldmask,r);
         }
+        if (hwloc_bitmap_isset(src->ldmask,r)) {
+            viewedrow++;
+        }
     }
+    hwloc_bitmap_list_asprintf(&bm,(*new)->ldmask);
+    WARNING_LOG("%s %p",bm,(*new)->ldmask);
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA

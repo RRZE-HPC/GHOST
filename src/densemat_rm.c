@@ -267,12 +267,16 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     newTraits.flags |= GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
+    hwloc_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_densemat_rm_malloc(*new);
-    ghost_idx_t r,c;
+    ghost_idx_t r,c,viewedcol;
     
-    for (c=0; c<src->traits.ncolsorig; c++) {
-        if (c<coffs || (c >= coffs+nc)) {
+    for (viewedcol=0, c=0; c<src->traits.ncolsorig; c++) {
+        if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
             hwloc_bitmap_clr((*new)->ldmask,c);
+        }
+        if (hwloc_bitmap_isset(src->ldmask,c)) {
+            viewedcol++;
         }
     }
 
