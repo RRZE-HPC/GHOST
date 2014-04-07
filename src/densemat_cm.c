@@ -1154,11 +1154,11 @@ static void ghost_freeVector( ghost_densemat_t* vec )
               }*/
             if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
                 for (v=0; v<vec->traits.ncols; v++) {
-                    free(vec->val[v]);
+                    free(vec->val[v]); vec->val[v] = NULL
                 }
             }
             else {
-                free(vec->val[0]);
+                free(vec->val[0]); vec->val[0] = NULL;
             }
 #else
             //note: a 'scattered' vector (one with non-constant stride) is
@@ -1167,11 +1167,11 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             //      the user has built his own funny vector in memory.
             if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
                 for (v=0; v<vec->traits.ncols; v++) {
-                    free(vec->val[v]);
+                    free(vec->val[v]); vec->val[v] = NULL;
                 }
             }
             else {
-                free(vec->val[0]);
+                free(vec->val[0]); vec->val[0] = NULL;
             }
 #endif
 #ifdef GHOST_HAVE_CUDA
@@ -1180,9 +1180,10 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             }
 #endif
         }
-        free(vec->val);
+        free(vec->val); vec->val = NULL;
         free(vec);
-        // TODO free traits ???
+        hwloc_bitmap_free(vec->ldmask);
+        hwloc_bitmap_free(vec->trmask);
     }
 }
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir) 
