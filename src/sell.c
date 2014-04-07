@@ -12,6 +12,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
@@ -29,42 +30,117 @@
 #endif
 
 #ifdef GHOST_HAVE_SSE
-static ghost_error_t (*SELL_kernels_SSE_32_multivec_cm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
+static ghost_error_t (*SELL_kernels_SSE_multivec_cm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_1_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_2_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_4_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_8_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_16_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_SSE_32_multivec_cm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-static ghost_error_t (*SELL_kernels_SSE_32_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+};
+static ghost_error_t (*SELL_kernels_SSE_multivec_rm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_1_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_2_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_4_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_8_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_SSE_16_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_SSE_32_multivec_rm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
+    {NULL,NULL,NULL,NULL}},
+};
 #endif
 
 #ifdef GHOST_HAVE_AVX
-static ghost_error_t (*SELL_kernels_AVX_32_multivec_cm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX_32_multivec_cm,NULL,NULL},
+static ghost_error_t (*SELL_kernels_AVX_multivec_cm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_1_multivec_cm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_AVX_32_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX_32_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_2_multivec_cm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_AVX_4_multivec_cm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_4_multivec_cm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_AVX_4_multivec_rm[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_8_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_16_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_multivec_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+};
+static ghost_error_t (*SELL_kernels_AVX_multivec_rm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_1_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_2_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_4_multivec_rm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_8_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_16_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_32_multivec_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+};
 #endif
 
 #ifdef GHOST_HAVE_MIC
@@ -1039,6 +1115,12 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
 }
 
+static int ld(int i) 
+{
+    return (int)log2((double)i);
+}
+
+
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
@@ -1068,45 +1150,35 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
 
 #ifdef GHOST_HAVE_SSE
-    if (SELL(mat)->chunkHeight == 32) {
-        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            kernel = SELL_kernels_SSE_32_multivec_cm
-                [matDtIdx]
-                [vecDtIdx];
-        } else {
-            kernel = SELL_kernels_SSE_32_multivec_rm
-                [matDtIdx]
-                [vecDtIdx];
-        }
+    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        kernel = SELL_kernels_SSE_multivec_cm
+            [ld(SELL(mat)->chunkHeight)]
+            [matDtIdx]
+            [vecDtIdx];
+    } else {
+        kernel = SELL_kernels_SSE_multivec_rm
+            [ld(SELL(mat)->chunkHeight)]
+            [matDtIdx]
+            [vecDtIdx];
     }
 #endif
 #ifdef GHOST_HAVE_AVX
-    if (!(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        if (SELL(mat)->chunkHeight == 32) { 
-            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-                kernel =  SELL_kernels_AVX_32_multivec_cm
-                    [matDtIdx]
-                    [vecDtIdx];
-            } else {
-                if (rhs->traits.ncols > 2) { // ncols=2: SSE
-                    kernel = SELL_kernels_AVX_32_multivec_rm
-                        [matDtIdx]
-                        [vecDtIdx];
-                }
-            }
-        } else if (SELL(mat)->chunkHeight == 4) {
-            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-                kernel =  SELL_kernels_AVX_4_multivec_cm
-                    [matDtIdx]
-                    [vecDtIdx];
-            } else {
-                if (rhs->traits.ncols > 2) { // ncols=2: SSE
-                    kernel = SELL_kernels_AVX_4_multivec_rm
-                        [matDtIdx]
-                        [vecDtIdx];
-                }
-            }
-        }
+    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        kernel = SELL_kernels_AVX_multivec_cm
+            [ld(SELL(mat)->chunkHeight)]
+            [matDtIdx]
+            [vecDtIdx];
+    } else {
+        kernel = SELL_kernels_AVX_multivec_rm
+            [ld(SELL(mat)->chunkHeight)]
+            [matDtIdx]
+            [vecDtIdx];
+    }
+    if (rhs->traits.ncols <= 2) { // ncols=2: SSE
+        kernel = SELL_kernels_SSE_multivec_rm
+            [ld(SELL(mat)->chunkHeight)]
+            [matDtIdx]
+            [vecDtIdx];
     }
 #endif
 #ifdef GHOST_HAVE_MIC
