@@ -167,7 +167,6 @@ ghost_error_t dd_SELL_kernel_AVX_$_multivec_rm(ghost_sparsemat_t *mat, ghost_den
     double *partsums = NULL;
     __m256d rhs;
     int nthreads = 1, i;
-    int axpy = spmvmOptions & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
     int ncolspadded = PAD(invec->traits.ncols,4);
     
     unsigned clsize;
@@ -183,6 +182,7 @@ ghost_error_t dd_SELL_kernel_AVX_$_multivec_rm(ghost_sparsemat_t *mat, ghost_den
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
+    int axpy = spmvmOptions & (GHOST_SPMV_AXPY | GHOST_SPMV_AXPBY);
     
     if (spmvmOptions & GHOST_SPMV_DOT) {
 
