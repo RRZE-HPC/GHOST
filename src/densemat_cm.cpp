@@ -76,7 +76,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
         {
             int tid = ghost_omp_threadnum();
             ITER_ROWS_BEGIN(vec,i,rowidx)
-                partsums[tid*16] += *(v_t *)VECVAL(vec2,vec2->val,v,i) * conjugate((v_t *)(VECVAL(vec,vec->val,v,i)));
+                partsums[tid*16] += *(v_t *)VECVAL_CM(vec2,vec2->val,v,i) * conjugate((v_t *)(VECVAL_CM(vec,vec->val,v,i)));
             ITER_ROWS_END(rowidx)
         }
 
@@ -97,7 +97,7 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     v_t *s = (v_t *)scale;
 
     ITER_BEGIN_CM(vec,col,row,rowidx)
-        *(v_t *)VECVAL(vec,vec->val,col,row) += *(v_t *)VECVAL(vec2,vec2->val,col,row) * s[col];
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row) * s[col];
     ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
@@ -110,8 +110,8 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *b = (v_t *)b_;
 
     ITER_BEGIN_CM(vec,col,row,rowidx)
-        *(v_t *)VECVAL(vec,vec->val,col,row) = *(v_t *)VECVAL(vec2,vec2->val,col,row) * s[col] + 
-                *(v_t *)VECVAL(vec,vec->val,col,row) * b[col];
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row) * s[col] + 
+                *(v_t *)VECVAL_CM(vec,vec->val,col,row) * b[col];
     ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
@@ -124,7 +124,7 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
 
     for (v=0; v<vec->traits.ncols; v++) {
         ITER_ROWS_BEGIN(vec,i,rowidx)
-            *(v_t *)VECVAL(vec,vec->val,v,i) *= s[v];
+            *(v_t *)VECVAL_CM(vec,vec->val,v,i) *= s[v];
         ITER_ROWS_END(rowidx)
     }
     return GHOST_SUCCESS;
@@ -173,7 +173,7 @@ static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
 #pragma omp for schedule(runtime)
             for (i=0; i<vec->traits.nrows; i++) 
             {
-                my_rand(state,(v_t *)VECVAL(vec,vec->val,v,i));
+                my_rand(state,(v_t *)VECVAL_CM(vec,vec->val,v,i));
             }
         }
     }
@@ -217,7 +217,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
             if (hwloc_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {
                     v_t val = 0.;
-                    val = *(v_t *)VECVAL(vec,vec->val,v,i);
+                    val = *(v_t *)VECVAL_CM(vec,vec->val,v,i);
                     buffer << val << "\t";
                 }
                 if (r<vec->traits.nrows-1) {

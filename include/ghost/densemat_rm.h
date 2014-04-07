@@ -12,8 +12,8 @@
 #include "perm.h"
 #include "densemat.h"
 
-#define VECVAL(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
-#define CUVECVAL(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
+#define VECVAL_RM(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
+#define CUVECVAL_RM(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
 #define ITER_COLS_BEGIN(vec,col,colidx)\
     colidx = 0;\
     for (col=0; col<vec->traits.ncolsorig; col++) {\
@@ -49,7 +49,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_rm_create(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);
     ghost_error_t d_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec); 
     ghost_error_t s_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec); 

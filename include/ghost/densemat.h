@@ -331,6 +331,14 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
+     * @brief Change the memory layout between row-/col-major.
+     *
+     * @param vec The vector/matrix.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t       (*memtranspose) (ghost_densemat_t *vec);
+    /**
      * @brief Normalize a vector/matrix, i.e., scale it such that its 2-norm is one.
      *
      * @param vec The vector/matrix.
