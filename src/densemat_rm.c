@@ -331,7 +331,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
 static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t c,r;
+    ghost_idx_t r,c,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
     newTraits.flags |= GHOST_DENSEMAT_VIEW;
@@ -339,9 +339,12 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     ghost_densemat_create(new,src->context,newTraits);
     ghost_densemat_rm_malloc(*new);
     
-    for (c=0; c<src->traits.ncolsorig; c++) {
-        if (c<coffs || (c >= coffs+nc)) {
+    for (viewedcol=0, c=0; c<src->traits.ncolsorig; c++) {
+        if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
             hwloc_bitmap_clr((*new)->ldmask,c);
+        }
+        if (hwloc_bitmap_isset(src->ldmask,c)) {
+            viewedcol++;
         }
     }
     
