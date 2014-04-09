@@ -172,7 +172,7 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
     }
 
     if (hwloc_bitmap_iszero(vec->ldmask)) {
-        ERROR_LOG("Everything masked out");
+        ERROR_LOG("Everything masked out. This is a zero-view.");
         return GHOST_ERR_INVALID_ARG;
     }
 
