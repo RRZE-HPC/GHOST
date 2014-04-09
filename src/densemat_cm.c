@@ -308,7 +308,6 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         for (v=0; v<src->traits.ncolsorig; v++) {
             if (v<coffs || (v >= coffs+nc)) {
                 hwloc_bitmap_clr((*new)->trmask,v);
-                //WARNING_LOG("clr %d",v);
             }
         }
 #endif
@@ -406,7 +405,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_idx_t v,r,i;
+    ghost_idx_t v,r,i,viewedrow;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
@@ -414,9 +413,13 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     newTraits.flags |= GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
+    hwloc_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_densemat_cm_malloc(*new);
-    for (r=0,i=0; r<(*new)->traits.nrowsorig; r++) {
-        if (roffs[i] != r) {
+    for (viewedrow=-1,r=0,i=0; r<(*new)->traits.nrowsorig; r++) {
+        if (hwloc_bitmap_isset(src->ldmask,r)) {
+            viewedrow++;
+        }
+        if (roffs[i] != viewedrow) {
             hwloc_bitmap_clr((*new)->ldmask,r);
         } else {
             i++;
@@ -440,6 +443,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<nc; v++) {
             (*new)->val[v] = VECVAL_CM(src,src->val,coffs[v],0);
+            INFO_LOG("val[%d] = %d = %p",v,coffs[v],(*new)->val[v]);
         }    
     }
     return GHOST_SUCCESS;
