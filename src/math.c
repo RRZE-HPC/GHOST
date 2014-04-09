@@ -248,6 +248,13 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
     ghost_blas_idx_t *ldv = (ghost_blas_idx_t *)v->stride;
     ghost_blas_idx_t *ldw = (ghost_blas_idx_t *)w->stride;
     ghost_blas_idx_t *ldx = (ghost_blas_idx_t *)x->stride;
+
+    void *vdata = NULL;
+    void *wdata = NULL;
+    void *xdata = NULL;
+    GHOST_CALL_RETURN(ghost_densemat_valptr(v,&vdata));
+    GHOST_CALL_RETURN(ghost_densemat_valptr(w,&wdata));
+    GHOST_CALL_RETURN(ghost_densemat_valptr(x,&xdata));
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v
@@ -282,22 +289,22 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, v->val[0], ldv, w->val[0], ldw, mybeta, x->val[0], ldx);
+                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
             } 
             else 
             {
-                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, v->val[0], ldv, w->val[0], ldw, mybeta, x->val[0], ldx);
+                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, (double *)v->val[0], ldv, (double *)w->val[0], ldw, (double *)mybeta, (double *)x->val[0], ldx);
+                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
             } 
             else 
             {
-                sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, (float *)v->val[0], ldv, (float *)w->val[0], ldw, (float *)mybeta, (float *)x->val[0], ldx);
+                sgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
             }    
         }
     }
