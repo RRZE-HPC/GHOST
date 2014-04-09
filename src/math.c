@@ -166,6 +166,11 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
 #endif
 #endif
     GHOST_INSTR_START(gemm)
+
+    if (v->traits.storage != w->traits.storage || x->traits.storage != v->traits.storage) {
+        ERROR_LOG("Cannot multiple densemats with different storage!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
