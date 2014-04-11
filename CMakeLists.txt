@@ -109,18 +109,28 @@ set (TO_PREPROCESS
     )
 
 set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
-set (PP_DIR ${CMAKE_BINARY_DIR}/src_pp)
+set (PP_HEADER_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_extractfunc.pl)
+set (PP_SRC_DIR ${CMAKE_BINARY_DIR}/src_pp/)
+set (PP_INC_DIR ${CMAKE_BINARY_DIR}/ghost/)
 
 foreach (TO_PP_FILE ${TO_PREPROCESS})
     set(TO_PP_FILE ${CMAKE_SOURCE_DIR}/${TO_PP_FILE})
     get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
-    set(PP_FILE ${PP_DIR}/${TO_PP_FILENAME})
+    get_filename_component(TO_PP_FILENAME_WE ${TO_PP_FILE} NAME_WE)
+    set(PP_FILE ${PP_SRC_DIR}/${TO_PP_FILENAME})
+    set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.h)
     add_custom_command(
             OUTPUT ${PP_FILE}
             DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
-            COMMAND mkdir -p ${PP_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
+            COMMAND mkdir -p ${PP_SRC_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
             )
-    list(APPEND PP_FILES ${PP_FILE})
+    add_custom_command(
+            OUTPUT ${PP_HEADER}
+            DEPENDS ${PP_FILE} ${PP_SCRIPT} ${PP_HEADER_SCRIPT} 
+            COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${PP_FILE} > ${PP_HEADER}
+            )
+    list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER})
+    list(APPEND HEADERS ${PP_HEADER})
 endforeach()
 
 add_custom_target(preprocess DEPENDS ${PP_FILES})
