@@ -93,6 +93,22 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
+    if (vec->traits.storage != vec2->traits.storage) {
+        ERROR_LOG("Cannot VAXPY densemats with different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (vec->traits.ncols != vec2->traits.ncols) {
+        ERROR_LOG("Cannot VAXPY densemats with different number of columns");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (vec->traits.nrows != vec2->traits.nrows) {
+        ERROR_LOG("Cannot VAXPY densemats with different number of rows");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
+        ERROR_LOG("VAXPY of densemats with different masks not implemented");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
     ghost_idx_t row,col,rowidx;
     v_t *s = (v_t *)scale;
 
@@ -105,6 +121,22 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
+    if (vec->traits.storage != vec2->traits.storage) {
+        ERROR_LOG("Cannot VAXPBY densemats with different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (vec->traits.ncols != vec2->traits.ncols) {
+        ERROR_LOG("Cannot VAXPBY densemats with different number of columns");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (vec->traits.nrows != vec2->traits.nrows) {
+        ERROR_LOG("Cannot VAXPBY densemats with different number of rows");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
+        ERROR_LOG("VAXPBY of densemats with different masks not implemented");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
     ghost_idx_t row,col,rowidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
