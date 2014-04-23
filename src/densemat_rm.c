@@ -149,32 +149,43 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
 
 static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
 {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ERROR_LOG("Cannot memtranspose scattered densemat views!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        ERROR_LOG("Memtranspose of densemat views currently broken");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+
     ghost_idx_t col,row;
     
-    char *rowptr[vec->traits.nrows];
-
-    for (row=0; row<vec->traits.nrows; row++) {
-        rowptr[row] = vec->val[row];
-    }
-    
-
     vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
     ghost_densemat_cm_setfuncs(vec);
     char *oldval = vec->val[0];
-    vec->val = NULL; 
+    free(vec->val); 
+    vec->val = NULL;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.ncolspadded*sizeof(char *)));
+    vec->val[0] = oldval;
+    for (col=1; col<vec->traits.ncolspadded; col++) {
+        vec->val[col] = vec->val[0]+vec->traits.nrowspadded*col*vec->elSize;
+    }
 
-    ghost_densemat_cm_malloc(vec);
+    char *tmp;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded));
+    memcpy(tmp,vec->val[0],vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded);
 
     for (row=0; row<vec->traits.nrows; row++) {
         for (col=0; col<vec->traits.ncols; col++) {
-            memcpy(&vec->val[col][row*vec->elSize],rowptr[row]+col*vec->elSize,vec->elSize);
+            memcpy(vec->val[0]+col*vec->traits.nrowspadded*vec->elSize+row*vec->elSize,
+                    tmp+vec->traits.ncolspadded*row*vec->elSize+col*vec->elSize,
+                    vec->elSize);
         }
     }
 
-    free(oldval);
+    free(tmp);
+
     return GHOST_SUCCESS; 
-
-
 }
 
 static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
@@ -375,9 +386,9 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
    
     char *bm;
     hwloc_bitmap_list_asprintf(&bm,src->ldmask);
-    WARNING_LOG("src->ldmask: %s",bm);
+//    WARNING_LOG("src->ldmask: %s",bm);
     for (viewedcol=-1, c=0, i=0; c<src->traits.ncolsorig; c++) {
-        INFO_LOG("c %d viewedcol %d i %d coffs[i] %d isset[c] %d",c,viewedcol,i,coffs[i],hwloc_bitmap_isset(src->ldmask,c));
+//        INFO_LOG("c %d viewedcol %d i %d coffs[i] %d isset[c] %d",c,viewedcol,i,coffs[i],hwloc_bitmap_isset(src->ldmask,c));
         if (hwloc_bitmap_isset(src->ldmask,c)) {
             viewedcol++;
         }

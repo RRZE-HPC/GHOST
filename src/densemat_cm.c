@@ -145,32 +145,43 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
 {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ERROR_LOG("Cannot memtranspose scattered densemat views!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        ERROR_LOG("Memtranspose of densemat views currently broken");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+
     ghost_idx_t col,row;
     
-    char *colptr[vec->traits.ncols];
-
-    for (col=0; col<vec->traits.ncols; col++) {
-        colptr[col] = vec->val[col];
-    }
-    
-
     vec->traits.storage = GHOST_DENSEMAT_ROWMAJOR;
     ghost_densemat_rm_setfuncs(vec);
     char *oldval = vec->val[0];
-    vec->val = NULL; 
+    free(vec->val); 
+    vec->val = NULL;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.nrowspadded*sizeof(char *)));
+    vec->val[0] = oldval;
+    for (row=1; row<vec->traits.nrowspadded; row++) {
+        vec->val[row] = vec->val[0]+vec->traits.ncolspadded*row*vec->elSize;
+    }
 
-    ghost_densemat_rm_malloc(vec);
+    char *tmp;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded));
+    memcpy(tmp,vec->val[0],vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded);
 
-    for (row=0; row<vec->traits.nrows; row++) {
-        for (col=0; col<vec->traits.ncols; col++) {
-            memcpy(&vec->val[row][col*vec->elSize],colptr[col]+row*vec->elSize,vec->elSize);
+    for (col=0; col<vec->traits.ncols; col++) {
+        for (row=0; row<vec->traits.nrows; row++) {
+            memcpy(vec->val[0]+row*vec->traits.ncolspadded*vec->elSize+col*vec->elSize,
+                    tmp+vec->traits.nrowspadded*col*vec->elSize+row*vec->elSize,
+                    vec->elSize);
         }
     }
 
-    free(oldval);
+    free(tmp);
+
     return GHOST_SUCCESS; 
-
-
 }
 
 static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
