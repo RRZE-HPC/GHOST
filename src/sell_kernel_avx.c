@@ -7,7 +7,7 @@
 #include "ghost/omp.h"
 #include <immintrin.h>
 
-#GHOST_FUNC_BEGIN#CHUNKHEIGHT=1,2,4,8,16,32
+#GHOST_FUNC_BEGIN#CHUNKHEIGHT=1,2,4,8,16,32,64,128
 ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX

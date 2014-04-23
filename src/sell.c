@@ -111,7 +111,7 @@ static ghost_error_t (*dd_SELL_kernels_SSE_multivec_rm[4][5]) (ghost_sparsemat_t
 
 #ifdef GHOST_HAVE_AVX
 #include "ghost/sell_kernel_avx.h"
-static ghost_error_t (*SELL_kernels_AVX_multivec_x_cm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+static ghost_error_t (*SELL_kernels_AVX_multivec_x_cm[8][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {
     {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_1_multivec_x_cm,NULL,NULL},
@@ -135,6 +135,14 @@ static ghost_error_t (*SELL_kernels_AVX_multivec_x_cm[6][4][4]) (ghost_sparsemat
     {NULL,NULL,NULL,NULL}},
     {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_AVX_32_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_64_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_AVX_128_multivec_x_cm,NULL,NULL},
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}},
 };
@@ -1236,6 +1244,11 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
                 kernel = dd_SELL_kernels_AVX_multivec_rm
                     [ld(SELL(mat)->chunkHeight)]
                     [rhs->traits.ncolspadded/4-1];
+            } else {
+                kernel = SELL_kernels_AVX_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
             }
         }
     }
