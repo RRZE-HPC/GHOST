@@ -170,7 +170,7 @@ struct ghost_sparsemat_traits_t
     .flags = GHOST_SPARSEMAT_DEFAULT,\
     .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
     .aux = NULL,\
-    .scotchStrat = GHOST_SCOTCH_STRAT_DEFAULT,\
+    .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,\
     .sortScope = 1,\
     .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL)\
 };

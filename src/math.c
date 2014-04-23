@@ -157,7 +157,8 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     return ret;
 }
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce) 
+ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v_in,  char * transv_in, 
+ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce) 
 {
 #ifdef GHOST_HAVE_LONGIDX
 #ifndef GHOST_HAVE_MKL
@@ -167,10 +168,50 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
 #endif
     GHOST_INSTR_START(gemm)
 
-    if (v->traits.storage != w->traits.storage || x->traits.storage != v->traits.storage) {
-        ERROR_LOG("Cannot multiple densemats with different storage!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
+    char transv[1], transw[1];
+    
+    transv[0]=transv_in[0];
+    transw[0]=transw_in[0];
+    
+    ghost_densemat_t *v = v_in;
+    ghost_densemat_t *w = w_in;
+
+    // we support the special cases V*W and V'*W with V row-major and W col-major or vice 
+    // versa. If the result X has different storage layout than V, we use the 
+    // memtranspose function afterwards if X is complex.
+    if (v->traits.storage != w->traits.storage)
+    {
+        DEBUG_LOG(1,"gemm with different storage layout for V and W...");
+        if (strncasecmp(transw,"N",0)) 
+        {
+            ERROR_LOG("GEMM with different storage layouts for V and W only implemented " 
+                      "for transw='N'!");
+            return GHOST_ERR_NOT_IMPLEMENTED;
+        }
+        // w has transposed mem-layout and "no transpose" is requested for w, cheat
+        // cblas_xgemm into doing the right thing:
+        transw[0]='T';
     }
+    // if the result should be transposed swap the transv and transw if possible.
+    int needMemTransposeX=0;
+    if (x->traits.storage != v->traits.storage)
+    {
+        DEBUG_LOG(1,"gemm with different storage layout for V and X...");
+        if (strncasecmp(transv,"C",0))
+        {
+            // compute x=v'w and transpose afterwards
+            needMemTransposeX=1;
+        }
+        else
+        {
+            // compute x' = w'*v instead of v'*w
+            v=w_in;
+            w=v_in;
+        }
+    }
+
+    // scattered vectors are copied together, if this occurs the user should rethink his or 
+    // her data layout.
     if (v->traits.flags & GHOST_DENSEMAT_SCATTERED)
     {
         WARNING_LOG("The vector v is scattered. It will be cloned to a compressed "
@@ -213,21 +254,28 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
     }
 
     ghost_idx_t nrV,ncV,nrW,ncW,nrX,ncX;
-    // TODO if rhs vector data will not be continous
-    //if (((!strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_ROWMAJOR)) ||
-    //        ((strncasecmp(transpose,"N",1) && v->traits.storage == GHOST_DENSEMAT_COLMAJOR))) {
-    if (strncasecmp(transv,"N",1)) {
+
+    if (strncasecmp(transv_in,"N",1)) {
         nrV=v->traits.ncols; ncV=v->traits.nrows;
     } else {
         nrV=v->traits.nrows; ncV=v->traits.ncols;
     }
-    if (strncasecmp(transw,"N",1)) {
+    if (strncasecmp(transw_in,"N",1)) {
         nrW=w->traits.ncols; ncW=w->traits.nrows;
     } else {
         nrW=w->traits.nrows; ncW=w->traits.ncols;
     }
 
-    nrX=x->traits.nrows; ncX=w->traits.ncols;
+    if (x->traits.storage!=v->traits.storage)
+    {
+        ncX=x->traits.nrows; 
+        nrX=w->traits.ncols;
+    }
+    else
+    {
+        nrX=x->traits.nrows; 
+        ncX=w->traits.ncols;
+    }
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         ERROR_LOG("GEMM with incompatible vectors: %dx%d * %dx%d = %dx%d",nrV,ncV,nrW,ncW,nrX,ncX);
        // return GHOST_ERR_INVALID_ARG;
@@ -418,6 +466,15 @@ ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v,  char * trans
 #else
     UNUSED(reduce);
 #endif
+
+    // in the case v^w for complex vectors we can't handle different storage layout of X
+    // in xgemm directly so we need to explicitly transpose the result in memory
+    if (needMemTransposeX!=0)
+    {
+        WARNING_LOG("gemm-result explicitly memtransposed, which presently means memory is"
+        " reallocated!");
+        GHOST_CALL_RETURN(x->memtranspose(x));
+    }
 
     GHOST_INSTR_STOP(gemm)
     return GHOST_SUCCESS;
