@@ -197,17 +197,12 @@ static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
 
 #pragma omp parallel
     {
-    ghost_idx_t i,v;
+    ghost_idx_t col,row,rowidx;
     unsigned int *state;
     ghost_rand_get(&state);
-        for (v=0; v<vec->traits.ncols; v++) 
-        {
-#pragma omp for schedule(runtime)
-            for (i=0; i<vec->traits.nrows; i++) 
-            {
-                my_rand(state,(v_t *)VECVAL_CM(vec,vec->val,v,i));
-            }
-        }
+    ITER_BEGIN_CM(vec,col,row,rowidx)
+    my_rand(state,(v_t *)VECVAL_CM(vec,vec->val,col,row));
+    ITER_END_CM(rowidx)
     }
     vec->upload(vec);
 
