@@ -105,16 +105,13 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
         ERROR_LOG("Cannot VAXPY densemats with different number of rows");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
-        ERROR_LOG("VAXPY of densemats with different masks not implemented");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    ghost_idx_t row,col,rowidx;
+    ghost_idx_t row1,row2,col,rowidx;
     v_t *s = (v_t *)scale;
+    
+    ITER2_BEGIN_CM(vec,vec2,row1,row2,col,rowidx)
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[rowidx];
+    ITER2_END_CM(rowidx)
 
-    ITER_BEGIN_CM(vec,col,row,rowidx)
-        *(v_t *)VECVAL_CM(vec,vec->val,col,row) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row) * s[col];
-    ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
 
@@ -133,18 +130,15 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
         ERROR_LOG("Cannot VAXPBY densemats with different number of rows");
         return GHOST_ERR_INVALID_ARG;
     }
-    if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
-        ERROR_LOG("VAXPBY of densemats with different masks not implemented");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    ghost_idx_t row,col,rowidx;
+    ghost_idx_t row1,row2,col,rowidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
+    
+    ITER2_BEGIN_CM(vec,vec2,row1,row2,col,rowidx)
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[rowidx] +
+            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) * b[rowidx];
+    ITER2_END_CM(rowidx)
 
-    ITER_BEGIN_CM(vec,col,row,rowidx)
-        *(v_t *)VECVAL_CM(vec,vec->val,col,row) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row) * s[col] + 
-                *(v_t *)VECVAL_CM(vec,vec->val,col,row) * b[col];
-    ITER_END_CM(rowidx)
     return GHOST_SUCCESS;
 }
 

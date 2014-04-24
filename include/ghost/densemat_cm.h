@@ -34,6 +34,28 @@
     }\
     ITER_ROWS_END(rowidx)
 
+
+
+#define ITER2_ROWS_BEGIN(vec1,vec2,row1,row2,rowidx)\
+    row2 = hwloc_bitmap_next(vec2->ldmask,-1);\
+    _Pragma("omp parallel for schedule(runtime)")\
+    for (row1=0; row1<vec1->traits.nrowsorig; row1++) {\
+        if (hwloc_bitmap_isset(vec1->ldmask,row1)) {\
+
+#define ITER2_ROWS_END(rowidx)\
+            row2 = hwloc_bitmap_next(vec2->ldmask,row2);\
+            rowidx++;\
+        }\
+    }
+
+#define ITER2_BEGIN_CM(vec1,vec2,col,row1,row2,rowidx)\
+    rowidx = 0;\
+    ITER2_ROWS_BEGIN(vec1,vec2,row1,row2,rowidx)\
+    for (col=0; col<vec->traits.ncols; col++) {
+
+#define ITER2_END_CM(rowidx)\
+    }\
+    ITER2_ROWS_END(rowidx)
 #ifdef __cplusplus
 
 extern "C" {
