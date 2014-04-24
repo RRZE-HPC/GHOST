@@ -109,7 +109,12 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
         return GHOST_ERR_INVALID_ARG;
     }
     if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
-        ERROR_LOG("VAXPY of densemats with different masks not implemented");
+        char *vec1mask, *vec2mask;
+        hwloc_bitmap_list_asprintf(&vec1mask,vec->ldmask);
+        hwloc_bitmap_list_asprintf(&vec2mask,vec2->ldmask);
+        ERROR_LOG("VAXPY of densemats with different masks not implemented: %s != %s",vec1mask,vec2mask);
+        free(vec1mask);
+        free(vec2mask);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -138,7 +143,12 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
     if (!hwloc_bitmap_isequal(vec->ldmask,vec2->ldmask)) {
-        ERROR_LOG("VAXPBY of densemats with different masks not implemented");
+        char *vec1mask, *vec2mask;
+        hwloc_bitmap_list_asprintf(&vec1mask,vec->ldmask);
+        hwloc_bitmap_list_asprintf(&vec2mask,vec2->ldmask);
+        ERROR_LOG("VAXPBY of densemats with different masks not implemented: %s != %s",vec1mask,vec2mask);
+        free(vec1mask);
+        free(vec2mask);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -204,17 +214,12 @@ static ghost_error_t ghost_densemat_rm_fromRand_tmpl(ghost_densemat_t *vec)
 
 #pragma omp parallel
     {
-    ghost_idx_t i,r;
+    ghost_idx_t col,row,colidx;
     unsigned int *state;
     ghost_rand_get(&state);
-        for (r=0; r<vec->traits.nrows; r++) 
-        {
-#pragma omp for schedule(runtime)
-            for (i=0; i<vec->traits.ncols; i++) 
-            {
-                my_rand(state,(v_t *)VECVAL_RM(vec,vec->val,r,i));
-            }
-        }
+    ITER_BEGIN_RM_INPAR(vec,col,row,colidx)
+    my_rand(state,(v_t *)VECVAL_RM(vec,vec->val,row,col));
+    ITER_END_RM(colidx)
     }
     vec->upload(vec);
 

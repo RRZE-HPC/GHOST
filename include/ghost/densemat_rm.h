@@ -25,10 +25,14 @@
         }\
     }
 
-#define ITER_BEGIN_RM(vec,col,row,colidx)\
-    _Pragma("omp parallel for schedule(runtime) private(col,colidx)")\
+#define ITER_BEGIN_RM_INPAR(vec,col,row,colidx)\
+    _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec->traits.nrows; row++) {\
         ITER_COLS_BEGIN(vec,col,colidx)\
+
+#define ITER_BEGIN_RM(vec,col,row,colidx)\
+    _Pragma("omp parallel private(col,colidx)")\
+    ITER_BEGIN_RM_INPAR(vec,col,row,colidx)\
 
 #define ITER_END_RM(colidx)\
         ITER_COLS_END(colidx)\
