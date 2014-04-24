@@ -283,7 +283,7 @@ static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs)
 {
-    INFO_LOG("Viewing a %"PRIDX"x%"PRIDX" densemat from a %"PRIDX"x%"PRIDX" densemat with offset %"PRIDX"x%"PRIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
+    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" densemat from a %"PRIDX"x%"PRIDX" densemat with offset %"PRIDX"x%"PRIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
@@ -294,24 +294,24 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_densemat_cm_malloc(*new);
     ghost_idx_t v,r,viewedrow;
 
-    char *bm;
-    hwloc_bitmap_list_asprintf(&bm,src->ldmask);
-    WARNING_LOG("%s %p",bm,src->ldmask);
+    //char *bm;
+    //hwloc_bitmap_list_asprintf(&bm,src->ldmask);
+    //WARNING_LOG("%s %p",bm,src->ldmask);
 
     //roffs += hwloc_bitmap_first((*new)->ldmask);
     
     for (viewedrow=0, r=0; r<src->traits.nrowsorig; r++) {
-        INFO_LOG("to view: %d..%d, current viewed row: %d, bitmap[%d] %d",roffs,roffs+nr-1,viewedrow,r,hwloc_bitmap_isset(src->ldmask,r));
+        //INFO_LOG("to view: %d..%d, current viewed row: %d, bitmap[%d] %d",roffs,roffs+nr-1,viewedrow,r,hwloc_bitmap_isset(src->ldmask,r));
         if (viewedrow<roffs || (viewedrow >= roffs+nr)) {
-            INFO_LOG("clr");
+            //INFO_LOG("clr");
             hwloc_bitmap_clr((*new)->ldmask,r);
         }
         if (hwloc_bitmap_isset(src->ldmask,r)) {
             viewedrow++;
         }
     }
-    hwloc_bitmap_list_asprintf(&bm,(*new)->ldmask);
-    WARNING_LOG("%s %p",bm,(*new)->ldmask);
+    //hwloc_bitmap_list_asprintf(&bm,(*new)->ldmask);
+    //WARNING_LOG("%s %p",bm,(*new)->ldmask);
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
@@ -328,9 +328,9 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
             (*new)->val[v] = VECVAL_CM(src,src->val,coffs+v,0);
         }
     }
-    char *newstr;
-    (*new)->string(*new,&newstr);
-    printf("\n\n\n%s\n\n\n",newstr);
+    //char *newstr;
+    //(*new)->string(*new,&newstr);
+    //printf("\n\n\n%s\n\n\n",newstr);
 
     return GHOST_SUCCESS;
 }
