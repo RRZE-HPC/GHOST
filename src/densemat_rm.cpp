@@ -110,7 +110,6 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     }
     ghost_idx_t col1,col2,row,colidx;
     v_t *s = (v_t *)scale;
-    v_t *b = (v_t *)b_;
     
     ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
         *(v_t *)VECVAL_RM(vec,vec->val,row,col1) += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx];
