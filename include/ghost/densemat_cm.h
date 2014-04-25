@@ -36,6 +36,8 @@
 
 
 
+/*
+   No-OpenMP variant. TODO: check whether the below variant is really faster than this one.
 #define ITER2_ROWS_BEGIN(vec1,vec2,row1,row2,rowidx)\
     row1 = -1;\
     row2 = -1;\
@@ -44,6 +46,19 @@
         row2 = hwloc_bitmap_next(vec2->ldmask,row2);\
 
 #define ITER2_ROWS_END(rowidx)\
+    }*/
+
+#define ITER2_ROWS_BEGIN(vec1,vec2,row1,row2,rowidx)\
+    row2 = hwloc_bitmap_next(vec2->ldmask,-1);\
+    _Pragma("omp for schedule(runtime)")\
+    for (row1=0; row1<vec->traits.nrowsorig; row1++) {\
+        if (hwloc_bitmap_isset(vec->ldmask,row1)) {
+
+#define ITER2_ROWS_END(rowidx)\
+        _Pragma("omp critical")\
+        row2 = hwloc_bitmap_next(vec2->ldmask,row2);\
+        rowidx++;\
+        }\
     }
 
 #define ITER2_BEGIN_CM(vec1,vec2,col,row1,row2,rowidx)\
