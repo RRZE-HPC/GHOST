@@ -343,6 +343,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     return GHOST_SUCCESS;
 }
 
+
 static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
@@ -371,8 +372,25 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     return GHOST_SUCCESS;
 }
 
+static int array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc)
+{
+    ghost_idx_t i;
+
+    for (i=1; i<nc; i++) {
+        if (coffs[i] <= coffs[i-1]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
+    if (!array_strictly_ascending(coffs,nc)) {
+        ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_idx_t c,i,r,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
