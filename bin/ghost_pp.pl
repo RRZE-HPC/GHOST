@@ -2,92 +2,70 @@
 
 use strict;
 use warnings;
-use List::Permutor;
 
 my $function;
-my %variants;
+my %vrs; # all variants, array of hashes
+my @prs; # sorted parameters
+my @idx; # index into vrs
+my @assignments;
 
-#my %list = (
-#        "a"=>(1,2),
-#        "b"=>(3,4),
-#        "c"=>(5,6),
-#        "d"=>(7,8));
-#permute(\%list);
 
-sub create_permutations {
-    my $npar = $_[0];
-    my $permutor = List::Permutor->new(@{$_[1]});
-    my @vars;
-    while (my @permutation = $permutor->peek()) {
-        my @firsttags = @permutation[0..$npar-1];
-        for (@firsttags) {
-            $_ =~ s/=[\d]+//g;
+sub create_assignments {
+    if ($idx[$_[0]] == $#{$vrs{$prs[$_[0]]}}) { # this value is max: set to 0 and go to next value
+        if ($_[0] < $#prs) { # there is a next value
+            create_assignments($_[0]+1);
+        } else { #iteration is finished
+            my @mapping;
+            for (my $i=0; $i < scalar @prs; $i++) {
+                push (@mapping,$prs[$i]);
+                push (@mapping,${$vrs{$prs[$i]}}[$idx[$i]]);
+            }
+            push (@assignments,\@mapping);
+            return;
         }
-
-        my @uniquefirsttags = uniq(@firsttags);
-        my $nuniquefirsttags = $#uniquefirsttags+1;
-        if ($nuniquefirsttags == $npar) {
-            my @firsttags = @permutation[0..$npar-1];
-            @firsttags = sort @firsttags;
-            push(@vars, join(',',@firsttags))
+    } else { # increment this value
+        my @mapping;
+        for (my $i=0; $i < scalar @prs; $i++) {
+            push (@mapping,$prs[$i]);
+            push (@mapping,${$vrs{$prs[$i]}}[$idx[$i]]);
         }
-        @permutation = $permutor->next();
+        push (@assignments,\@mapping);
+        $idx[$_[0]]++;
+        for (my $i=0; $i < $_[0]; $i++) {
+            $idx[$i] = 0;
+        }
+        
+        create_assignments(0);
     }
-
-    @vars = uniq(@vars);
-    for (@vars) {
-#        print $_."\n";
-    }
-
-    return @vars;
 }
-
-sub uniq {
-    return keys %{{map{$_ => 1} @_ }};
-}
-
+    
 while (<>) {
     if (/#GHOST_FUNC_BEGIN/../#GHOST_FUNC_END/) {
         if (/#GHOST_FUNC_BEGIN/) {
             $function = "";
-            undef %variants;
+            undef %vrs;
+            undef @assignments;
+
             my @parameters = split /#/,$_;
             for (@parameters[2..$#parameters]) {
                 my @parinfo = split /=/,$_;
                 my @varlist = split /,/,$parinfo[1];
-#                print $parinfo[0]."=";
                 foreach my $var (@varlist) {
                     chomp($var);
-                    push(@{$variants{$parinfo[0]}},$var);
-#                    print $var." ";
+                    push(@{$vrs{$parinfo[0]}},$var);
                 }
-#                print "\n";
+                $idx[(scalar keys %vrs)-1] = 0;
             }
-# @variants = split /[,#]/,$_; 
+            @prs = sort keys %vrs;
+            create_assignments(0);
             next;
         } elsif (not /#GHOST_FUNC_END/) {
             $function = $function.$_;
         } else {
-            my @parlist;
-            foreach my $tag (keys %variants) {
-                foreach my $var (@{$variants{$tag}}) {
-# print ">>> ".$tag." -> ".$var."\n";
-                    push (@parlist,$tag."=".$var);
-                }
-            }
-# my $permutor = List::Permutor->new(
-
-#            print "call w/ @parlist\n";
-            my @actualvariants = create_permutations(scalar keys %variants,\@parlist);
-            
-            foreach my $actualvariant (@actualvariants) {
+            foreach my $assignment (@assignments) {
                 my $f = $function;
-                my @varlist = split /,/,$actualvariant;
-                foreach my $actualparameter (@varlist) {
-                    my $tag = (split /=/,$actualparameter)[0];
-                    my $subst = (split /=/,$actualparameter)[1];
-#                    print ">>> ".$tag." --- ".$subst."\n";
-                    $f =~ s/$tag/$subst/g;
+                for (my $i = 0; $i < (scalar @$assignment)/2; $i++) {
+                    $f =~ s/@$assignment[2*$i]/@$assignment[2*$i+1]/g;
                 }
                 $f =~ s/([\d]+)\*([\d]+)\/([\d]+)/$1 * $2 \/ $3/ge; # evaulate a*b/c
                 $f =~ s/([\d]+)\/([\d]+)/$1 \/ $2/ge; # evaulate a/b
@@ -97,12 +75,6 @@ while (<>) {
                     } 
                     print $_;
                 }
-#                $f =~ s/\$\/([\d]+)/$_ \/ $1/ge; # div
-#                $f =~ s/([\d]+)\*\$/$1 * $_/ge; # mul
-#                $f =~ s/\$\*([\d]+)/$_ * $1/ge; # mul
-#                $f =~ s/([\d]+)\/([\d]+)/$1 \/ $2/ge; # div
-#                $f =~ s/([\d]+)\*([\d]+)/$1 * $2/ge; # mul
-#                    $f =~ s/CHUNKHEIGHT/$ch/g;
                 print("\n");
             } 
             next;
@@ -114,20 +86,6 @@ while (<>) {
         print $_;
     } 
 }
-
-#sub permute {
-#    my @list = sort keys %{$_[0]};
-#    my $len = $#list+1;
-#print "len ".$len."\n";
-#    if ($len == 1) {
-#        print "LENGTH ONE $list[0]\n";
-#        print $list[0]." ";
-#    } else {
-#        print "$list[0] ";
-#        delete $list{(sort keys %{$_[0]})[0]};
-#        permute(\%list);
-#    }
-#}
 
 sub unroll {
     my $spaces =  (split /#/,$_[0])[0];
