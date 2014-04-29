@@ -403,13 +403,16 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_idx_t c;
+        ghost_idx_t c,i,viewedcol;
         (*new)->cu_val = src->cu_val;
-        for (c=0,v=0; c<(*new)->traits.ncolsorig; c++) {
-            if (coffs[v] != c) {
+        for (viewedcol=-1, c=0, i=0; c<src->traits.ncolsorig; c++) {
+            if (hwloc_bitmap_isset(src->trmask,c)) {
+                viewedcol++;
+            }
+            if (coffs[i] != viewedcol) {
                 hwloc_bitmap_clr((*new)->trmask,c);
             } else {
-                v++;
+                i++;
             }
         }
 #endif
