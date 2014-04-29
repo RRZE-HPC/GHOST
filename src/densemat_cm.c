@@ -383,6 +383,14 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
 
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t *coffs)
 {
+#ifdef GHOST_HAVE_CUDA
+    if (src->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        if (!array_strictly_ascending(coffs,nc)) {
+            ERROR_LOG("Can only view sctrictly ascending scattered columns for row-major densemats!");
+            return GHOST_ERR_INVALID_ARG;
+        }
+    }
+#endif
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_idx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
