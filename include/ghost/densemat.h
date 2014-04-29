@@ -510,6 +510,8 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len, char *charfield);
 
+    bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc);
+
 #ifdef __cplusplus
 }
 #endif

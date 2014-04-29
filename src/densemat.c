@@ -195,3 +195,16 @@ ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len
 
     return GHOST_SUCCESS;
 }
+
+bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc)
+{
+    ghost_idx_t i;
+
+    for (i=1; i<nc; i++) {
+        if (coffs[i] <= coffs[i-1]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
