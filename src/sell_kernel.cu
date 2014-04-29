@@ -172,56 +172,85 @@ extern __shared__ char shared[];
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
     GHOST_INSTR_START(spmv_cuda)\
-    if (rhs->traits.ncols > 1) {\
+    if (rhs->traits.flags & (GHOST_DENSEMAT_VIEW | GHOST_DENSEMAT_SCATTERED)) {\
+        if (!hwloc_bitmap_isfull(rhs->ldmask)) {\
+            ERROR_LOG("CUDA SpMV with masked out rows not yet implemented");\
+            return GHOST_ERR_NOT_IMPLEMENTED;\
+        }\
+        if (!hwloc_bitmap_isequal(rhs->trmask,lhs->trmask) || !hwloc_bitmap_isequal(rhs->ldmask,lhs->ldmask)) {\
+            ERROR_LOG("CUDA SpMV with differently masked densemats not yet implemented");\
+            return GHOST_ERR_NOT_IMPLEMENTED;\
+        }\
+        char colfield[rhs->traits.ncolsorig];\
+        char rowfield[rhs->traits.nrowsorig];\
+        char *cucolfield, *curowfield;\
+        ghost_densemat_mask2charfield(rhs->trmask,rhs->traits.ncolsorig,colfield);\
+        ghost_densemat_mask2charfield(rhs->ldmask,rhs->traits.nrowsorig,rowfield);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cucolfield,rhs->traits.ncolsorig));\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,rhs->traits.nrowsorig));\
+        GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,rhs->traits.ncolsorig));\
+        GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,rhs->traits.nrowsorig));\
         if (SELL(mat)->T > 1) {\
-            WARNING_LOG("SELL-T kernel for multiple vectors nor implemented, falling back to SELL-1!");\
+            WARNING_LOG("SELL-T kernel for multiple vectors not implemented, falling back to SELL-1!");\
         }\
         int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
         if (blockheight*rhs->traits.ncols > 1024) {\
             WARNING_LOG("Too many threads! (FIXME)");\
         }\
         dim3 block(blockheight,rhs->traits.ncols);\
-        SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+        SELL_kernel_scattered_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,rhs->traits.nrowsorig,mat->nrowsPadded,rhs->traits.ncolsorig,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cucolfield,curowfield,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
     } else {\
-        if (SELL(mat)->chunkHeight == mat->nrowsPadded) {\
+        if (rhs->traits.ncols > 1) {\
             if (SELL(mat)->T > 1) {\
-                INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
-                size_t reqSmem;\
-                ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
-                reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
-                struct cudaDeviceProp prop;\
-                CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
-                if (prop.sharedMemPerBlock < reqSmem) {\
-                    WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
-                }\
-                dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
-                SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
-                /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
-            } else {\
-                SELL_kernel_CU_ELLPACK_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
-                /*SWITCH_BOOLS(SELL_kernel_CU_ELLPACK_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
+                WARNING_LOG("SELL-T kernel for multiple vectors nor implemented, falling back to SELL-1!");\
             }\
-        }else{\
-            if (SELL(mat)->T > 1) {\
-                size_t reqSmem;\
-                ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
-                reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
-                struct cudaDeviceProp prop;\
-                CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
-                if (prop.sharedMemPerBlock < reqSmem) {\
-                    WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+            int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+            if (blockheight*rhs->traits.ncols > 1024) {\
+                WARNING_LOG("Too many threads! (FIXME)");\
+            }\
+            dim3 block(blockheight,rhs->traits.ncols);\
+            SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+        } else {\
+            if (SELL(mat)->chunkHeight == mat->nrowsPadded) {\
+                if (SELL(mat)->T > 1) {\
+                    INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
+                    size_t reqSmem;\
+                    ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
+                    reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
+                    struct cudaDeviceProp prop;\
+                    CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
+                    if (prop.sharedMemPerBlock < reqSmem) {\
+                        WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+                    }\
+                    dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+                    SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
+                } else {\
+                    SELL_kernel_CU_ELLPACK_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELL_kernel_CU_ELLPACK_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
                 }\
-                dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
-                SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
-                /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
-            } else {\
-                int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
-                if (blockheight*rhs->traits.ncols > 1024) {\
-                    WARNING_LOG("Too many threads! (FIXME)");\
+            }else{\
+                if (SELL(mat)->T > 1) {\
+                    size_t reqSmem;\
+                    ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
+                    reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
+                    struct cudaDeviceProp prop;\
+                    CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
+                    if (prop.sharedMemPerBlock < reqSmem) {\
+                        WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+                    }\
+                    dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+                    SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
+                } else {\
+                    int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+                    if (blockheight*rhs->traits.ncols > 1024) {\
+                        WARNING_LOG("Too many threads! (FIXME)");\
+                    }\
+                    dim3 block(blockheight,rhs->traits.ncols);\
+                    SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
                 }\
-                dim3 block(blockheight,rhs->traits.ncols);\
-                SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
-                /*SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
             }\
         }\
     }\
@@ -276,6 +305,60 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int
         }
     }
 }
+    
+    template<typename m_t, typename v_t>  
+__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+{
+    UNUSED(T);
+    int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+    if (i<nrowsorig) {
+        int c = 0;
+        int set = 0;
+        for (c=0; c<ncolsorig; c++) {
+            if (colmask[c]) {
+                if (set == threadIdx.y) {
+                    break;
+                }
+                set++;
+            }
+        }
+        int cs, tid;
+        if (C == blockDim.x) {
+            cs = chunkstart[blockIdx.x];
+            tid = threadIdx.x;
+        } else {
+            cs = chunkstart[i/C];
+            tid = threadIdx.x%C;
+        }
+        int j;
+        v_t tmp;
+        
+        zero<v_t>(tmp);
+
+        for (j=0; j<rowlen[i]; j++) {
+            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*c+col[cs + tid + j*C]], val[cs+tid+j*C]);
+        }
+
+        if (do_shift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*c+i],scale2<v_t,float>(shift[0],-1.f));
+        }
+        if (do_vshift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*c+i],scale2<v_t,float>(shift[c],-1.f));
+        }
+        if (do_scale) {
+            tmp = scale<v_t>(alpha,tmp);
+        }
+        if (do_axpy) {
+            lhs[lhs_lda*c+i] = axpy<v_t,float>(lhs[lhs_lda*c+i],tmp,1.f);
+        } else if (do_axpby) {
+            lhs[lhs_lda*c+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*c+i],beta),tmp,1.f);
+        } else {
+            lhs[lhs_lda*c+i] = tmp;
+        }
+    }
+}
+
 
     template<typename m_t, typename v_t>  
 __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
