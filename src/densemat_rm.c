@@ -85,8 +85,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     {
 #ifdef GHOST_HAVE_CUDA
         ERROR_LOG("Row-major CUDA densemat not implemented!");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
+        return GHOST_ERR_NOT_IMPLEMENTED;
 
        /* vec->dot = &ghost_densemat_rm_cu_dotprod;
         vec->vaxpy = &ghost_densemat_rm_cu_vaxpy;
