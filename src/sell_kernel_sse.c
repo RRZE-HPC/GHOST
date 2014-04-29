@@ -266,7 +266,7 @@ ghost_error_t dd_SELL_kernel_SSE_CHUNKHEIGHT_multivec_x_rm(ghost_sparsemat_t *ma
     UNUSED(mat);
     UNUSED(res);
     UNUSED(invec);
-    NUSED(spmvmOptions);
+    UNUSED(spmvmOptions);
     UNUSED(argp);
 #endif
     return GHOST_SUCCESS;
