@@ -97,6 +97,8 @@ sub unroll {
     for (my $i=0; $i<$unrollsize; $i++) {
         my $modcodeline = $codeline;
         $modcodeline =~ s/@/$i/g;
+        $modcodeline =~ s/([\d]+)\*([\d]+)\+([\d]+)/$1 * $2 + $3/ge; # evaulate a*b+c
+        $modcodeline =~ s/([\d]+)\*([\d]+)/$1 * $2/ge; # evaulate a*b
         $_[0] = $_[0].$spaces.$modcodeline."\n";
     }
 }
