@@ -106,7 +106,6 @@ ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
                             partsums[((padding+3*invec->traits.ncols)*tid)+3*v+2] += rval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
                         }
                     }
-
                 }
             }
         }

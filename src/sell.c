@@ -1275,21 +1275,17 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
 #ifdef GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
-    if (!((options & GHOST_SPMV_AXPBY) ||
-                (options & GHOST_SPMV_SCALE) ||
-                (options & GHOST_SPMV_SHIFT))) {
-        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            kernel = SELL_kernels_MIC_multivec_x_cm
-                [ld(SELL(mat)->chunkHeight/16)]
-                [matDtIdx]
-                [vecDtIdx];
-        }
+    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        kernel = SELL_kernels_MIC_multivec_x_cm
+            [ld(SELL(mat)->chunkHeight/16)]
+            [matDtIdx]
+            [vecDtIdx];
     }
 #endif
 #endif
 
     if (kernel == NULL ||
-            rhs->traits.flags & GHOST_DENSEMAT_SCATTERED ||
+            (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
             !hwloc_bitmap_isfull(rhs->ldmask)) {
         //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
         kernel = SELL_kernels_plain
