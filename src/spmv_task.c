@@ -48,20 +48,20 @@ static void *communicate(void *vargs)
     int to_PE, from_PE;
     ghost_idx_t c;
     commArgs *args = (commArgs *)vargs;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
     size_t recvBytes = 0, sendBytes = 0;
     size_t recvMsgs = 0, sendMsgs = 0;
 #endif
 
     if (args->rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         for (from_PE=0; from_PE<args->nprocs; from_PE++){
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
 #endif
             if (args->context->wishes[from_PE]>0){
                 MPI_CALL_GOTO(MPI_Irecv(args->rhs->val[args->context->hput_pos[from_PE]], args->rhs->traits.ncols*args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 recvBytes += args->context->wishes[from_PE]*args->rhs->elSize;
                 recvMsgs++;
 #endif
@@ -71,7 +71,7 @@ static void *communicate(void *vargs)
             if (args->context->dues[to_PE]>0){
                 MPI_CALL_GOTO(MPI_Isend( args->work + to_PE*args->max_dues*args->rhs->elSize*args->rhs->traits.ncols, args->context->dues[to_PE]*args->rhs->elSize*args->rhs->traits.ncols, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                 args->msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 sendBytes += args->context->dues[to_PE]*args->rhs->elSize;
                 sendMsgs++;
 #endif
@@ -81,14 +81,14 @@ static void *communicate(void *vargs)
         
     } else if (args->rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         for (from_PE=0; from_PE<args->nprocs; from_PE++){
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 INFO_LOG("from %d: %zu bytes",from_PE,args->context->wishes[from_PE]*args->rhs->elSize);
 #endif
             if (args->context->wishes[from_PE]>0){
                 for (c=0; c<args->rhs->traits.ncols; c++) {
                     MPI_CALL_GOTO(MPI_Irecv(&args->rhs->val[c][args->context->hput_pos[from_PE]*args->rhs->elSize], args->context->wishes[from_PE]*args->rhs->elSize,MPI_CHAR, from_PE, from_PE, args->context->mpicomm,&args->request[args->msgcount]),err,*ret);
                     args->msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                     recvBytes += args->context->wishes[from_PE]*args->rhs->elSize;
                     recvMsgs++;
 #endif
@@ -101,7 +101,7 @@ static void *communicate(void *vargs)
                 for (c=0; c<args->rhs->traits.ncols; c++) {
                     MPI_CALL_GOTO(MPI_Isend( args->work + c*args->nprocs*args->max_dues*args->rhs->elSize + to_PE*args->max_dues*args->rhs->elSize, args->context->dues[to_PE]*args->rhs->elSize, MPI_CHAR, to_PE, args->me, args->context->mpicomm, &args->request[args->msgcount]),err,*ret);
                     args->msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                     sendBytes += args->context->dues[to_PE]*args->rhs->elSize;
                     sendMsgs++;
 #endif
@@ -116,7 +116,7 @@ static void *communicate(void *vargs)
     
     GHOST_INSTR_STOP(spmv_task_communicate);
 
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
     INFO_LOG("sendbytes: %zu",sendBytes);
     INFO_LOG("recvbytes: %zu",recvBytes);
     INFO_LOG("sendmsgs : %zu",sendMsgs);

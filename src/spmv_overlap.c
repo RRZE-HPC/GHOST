@@ -68,13 +68,13 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     }
     if (invec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         for (from_PE=0; from_PE<nprocs; from_PE++){
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 INFO_LOG("from %d: %zu bytes",from_PE,mat->context->wishes[from_PE]*invec->elSize);
 #endif
             if (mat->context->wishes[from_PE]>0){
                 MPI_CALL_GOTO(MPI_Irecv(invec->val[mat->context->hput_pos[from_PE]], invec->traits.ncols*mat->context->wishes[from_PE]*invec->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
                 msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 recvBytes += mat->context->wishes[from_PE]*invec->elSize;
                 recvMsgs++;
 #endif
@@ -83,14 +83,14 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
         
     } else if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         for (from_PE=0; from_PE<nprocs; from_PE++){
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                 INFO_LOG("from %d: %zu bytes",from_PE,mat->context->wishes[from_PE]*invec->elSize);
 #endif
             if (mat->context->wishes[from_PE]>0){
                 for (c=0; c<invec->traits.ncols; c++) {
                     MPI_CALL_GOTO(MPI_Irecv(&invec->val[c][mat->context->hput_pos[from_PE]*invec->elSize], mat->context->wishes[from_PE]*invec->elSize,MPI_CHAR, from_PE, from_PE, mat->context->mpicomm,&request[msgcount]),err,ret);
                     msgcount++;
-#ifdef GHOST_HAVE_INSTR_TIMING
+#ifdef GHOST_HAVE_INSTR_DATA
                     recvBytes += mat->context->wishes[from_PE]*invec->elSize;
                     recvMsgs++;
 #endif
