@@ -245,6 +245,26 @@ static ghost_error_t (*SELL_kernels_MIC_multivec_x_rm[6][4][4]) (ghost_sparsemat
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}},
 };
+static ghost_error_t (*dd_SELL_kernels_MIC_multivec_rm[6][3]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {&dd_SELL_kernel_MIC_1_multivec_8_rm,
+        &dd_SELL_kernel_MIC_1_multivec_16_rm,
+        &dd_SELL_kernel_MIC_1_multivec_24_rm},
+    {&dd_SELL_kernel_MIC_2_multivec_8_rm,
+        &dd_SELL_kernel_MIC_2_multivec_16_rm,
+        &dd_SELL_kernel_MIC_2_multivec_24_rm},
+    {&dd_SELL_kernel_MIC_4_multivec_8_rm,
+        &dd_SELL_kernel_MIC_4_multivec_16_rm,
+        &dd_SELL_kernel_MIC_4_multivec_24_rm},
+    {&dd_SELL_kernel_MIC_8_multivec_8_rm,
+        &dd_SELL_kernel_MIC_8_multivec_16_rm,
+        &dd_SELL_kernel_MIC_8_multivec_24_rm},
+    {&dd_SELL_kernel_MIC_16_multivec_8_rm,
+        &dd_SELL_kernel_MIC_16_multivec_16_rm,
+        &dd_SELL_kernel_MIC_16_multivec_24_rm},
+    {&dd_SELL_kernel_MIC_32_multivec_8_rm,
+        &dd_SELL_kernel_MIC_32_multivec_16_rm,
+        &dd_SELL_kernel_MIC_32_multivec_24_rm}};
 static ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
@@ -1302,16 +1322,31 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
 #ifdef GHOST_HAVE_MIC
 #if !(GHOST_HAVE_LONGIDX)
-    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        kernel = SELL_kernels_MIC_multivec_x_cm
-            [ld(SELL(mat)->chunkHeight/16)]
-            [matDtIdx]
-            [vecDtIdx];
-    } else {
-        kernel = SELL_kernels_MIC_multivec_x_rm
-            [ld(SELL(mat)->chunkHeight)]
-            [matDtIdx]
-            [vecDtIdx];
+    if (rhs->traits.ncols > 4) {
+        if (rhs->traits.ncols > 24) {
+            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                kernel = SELL_kernels_MIC_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight/16)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            } else {
+                kernel = SELL_kernels_MIC_multivec_x_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        } else {
+            if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                kernel = dd_SELL_kernels_MIC_multivec_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [rhs->traits.ncolspadded/8-1];
+            } else {
+                kernel = SELL_kernels_MIC_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight/16)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        }
     }
 #endif
 #endif

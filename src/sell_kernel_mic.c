@@ -265,6 +265,116 @@ ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_x_rm(ghost_sparsemat_t *ma
 }
 #GHOST_FUNC_END
 
+#GHOST_FUNC_BEGIN#NVECS=8,16,24#CHUNKHEIGHT=1,2,4,8,16,32
+ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_NVECS_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+{
+#ifdef GHOST_HAVE_MIC
+    INFO_LOG("in row-mjaor MIC kernel w nvecs %d chunkheight %d",NVECS,CHUNKHEIGHT);
+    double *mval = (double *)SELL(mat)->val;
+    double *local_dot_product = NULL;
+    double *partsums = NULL;
+    int nthreads = 1, i;
+    
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int padding = (int)clsize/sizeof(double);
+
+    UNUSED(argp);
+    
+    double sscale = 1., sbeta = 1.;
+    double *sshift = NULL;
+    __m512d scale, beta;
+
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
+    scale = _mm512_set1_pd(sscale);
+    beta = _mm512_set1_pd(sbeta);
+    
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+
+#pragma omp parallel 
+        {
+#pragma omp single
+            nthreads = ghost_omp_nthread();
+        }
+
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
+        ghost_idx_t col;
+        for (col=0; col<(3*invec->traits.ncols+padding)*nthreads; col++) {
+            partsums[col] = 0.;
+        }
+    }
+
+#pragma omp parallel shared (partsums)
+    {
+        ghost_idx_t j,c,col;
+        ghost_nnz_t offs;
+        __m512d rhs;
+        int tid = ghost_omp_threadnum();
+        #GHOST_UNROLL#__m512d tmp@;#CHUNKHEIGHT*NVECS/8
+
+#pragma omp for schedule(runtime)
+        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+        { // loop over chunks
+            double *lval = (double *)res->val[c*CHUNKHEIGHT];
+            double *rval = (double *)invec->val[c*CHUNKHEIGHT];
+
+            #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT*NVECS/8
+            offs = SELL(mat)->chunkStart[c];
+
+            for (j=0; j<SELL(mat)->chunkLen[c]; j++) { // loop inside chunk
+                
+                #GHOST_UNROLL#rhs = _mm512_load_pd((double *)invec->val[SELL(mat)->col[offs]]+(@%(NVECS/8))*8);tmp@ = _mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_set1_pd(mval[offs]),rhs));if(!((@+1)%(NVECS/8)))offs++;#CHUNKHEIGHT*NVECS/8
+            }
+            if (spmvmOptions & GHOST_SPMV_SHIFT) {
+                #GHOST_UNROLL#tmp@ = _mm512_sub_pd(tmp@,_mm512_mul_pd(_mm512_set1_pd(sshift[0]),_mm512_load_pd(rval+@*8)));#CHUNKHEIGHT*NVECS/8
+            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+                #GHOST_UNROLL#tmp@ = _mm512_sub_pd(tmp@,_mm512_mul_pd(_mm512_load_pd(&sshift[(@%(NVECS/8))*8]),_mm512_load_pd(rval+@*8)));#CHUNKHEIGHT*NVECS/8
+            }
+            if (spmvmOptions & GHOST_SPMV_SCALE) {
+                #GHOST_UNROLL#tmp@ = _mm512_mul_pd(scale,tmp@);#CHUNKHEIGHT*NVECS/8
+            }
+            if (spmvmOptions & GHOST_SPMV_AXPY) {
+                #GHOST_UNROLL#_mm512_store_pd(lval+@*8,_mm512_add_pd(tmp@,_mm512_load_pd(lval+@*8)));#CHUNKHEIGHT*NVECS/8
+            } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
+                #GHOST_UNROLL#_mm512_store_pd(lval+@*8,_mm512_add_pd(tmp@,_mm512_mul_pd(_mm512_load_pd(lval+@*8),beta)));#CHUNKHEIGHT*NVECS/8
+            } else {
+                #GHOST_UNROLL#_mm512_storenrngo_pd(lval+@*8,tmp@);#CHUNKHEIGHT*NVECS/8
+            }
+            if (spmvmOptions & GHOST_SPMV_DOT) {
+                for (col = 0; col<invec->traits.ncols; col++) {
+                    #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                    #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                    #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                }
+            }
+        }
+    }
+    if (spmvmOptions & GHOST_SPMV_DOT) {
+        ghost_idx_t col;
+        for (col=0; col<invec->traits.ncols; col++) {
+            local_dot_product[col                       ] = 0.; 
+            local_dot_product[col  +   invec->traits.ncols] = 0.;
+            local_dot_product[col  + 2*invec->traits.ncols] = 0.;
+            for (i=0; i<nthreads; i++) {
+                local_dot_product[col                         ] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 0];
+                local_dot_product[col  +   invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 1];
+                local_dot_product[col  + 2*invec->traits.ncols] += partsums[(padding+3*invec->traits.ncols)*i + 3*col + 2];
+            }
+        }
+        free(partsums);
+    }
+
+#else
+    UNUSED(mat);
+    UNUSED(res);
+    UNUSED(invec);
+    UNUSED(spmvmOptions);
+    UNUSED(argp);
+#endif
+    return GHOST_SUCCESS;
+}
+#GHOST_FUNC_END
+
 //ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 /*{
     UNUSED(argp);
