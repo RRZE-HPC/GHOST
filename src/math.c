@@ -277,7 +277,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         ncX=w->traits.ncols;
     }
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        ERROR_LOG("GEMM with incompatible vectors: %dx%d * %dx%d = %dx%d",nrV,ncV,nrW,ncW,nrX,ncX);
+        ERROR_LOG("GEMM with incompatible vectors: %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX" = %"PRIDX"x%"PRIDX,nrV,ncV,nrW,ncW,nrX,ncX);
        // return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits.datatype != w->traits.datatype) {
