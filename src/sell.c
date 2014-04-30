@@ -218,6 +218,33 @@ static ghost_error_t (*SELL_kernels_MIC_multivec_x_cm[8][4][4]) (ghost_sparsemat
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}},
 };
+static ghost_error_t (*SELL_kernels_MIC_multivec_x_rm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_1_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_2_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_4_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_8_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_16_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_32_multivec_x_rm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+};
 static ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
@@ -1278,6 +1305,11 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         kernel = SELL_kernels_MIC_multivec_x_cm
             [ld(SELL(mat)->chunkHeight/16)]
+            [matDtIdx]
+            [vecDtIdx];
+    } else {
+        kernel = SELL_kernels_MIC_multivec_x_rm
+            [ld(SELL(mat)->chunkHeight)]
             [matDtIdx]
             [vecDtIdx];
     }
