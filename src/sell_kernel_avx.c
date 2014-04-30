@@ -346,8 +346,7 @@ ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_NVECS_rm(ghost_sparsemat_t
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#CHUNKHEIGHT*NVECS/4
-            }
-            if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshift[(@%(NVECS/4))*4]),_mm256_load_pd(rval+@*4)));#CHUNKHEIGHT*NVECS/4
             }
             if (spmvmOptions & GHOST_SPMV_SCALE) {

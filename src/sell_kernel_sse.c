@@ -335,8 +335,7 @@ ghost_error_t dd_SELL_kernel_SSE_CHUNKHEIGHT_multivec_NVECS_rm(ghost_sparsemat_t
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load1_pd(&sshift[0]),_mm_load_pd(rval+@*2)));#CHUNKHEIGHT*NVECS/2
-            }
-            if (spmvmOptions & GHOST_SPMV_VSHIFT) {
+            } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm_sub_pd(tmp@,_mm_mul_pd(_mm_load_pd(&sshift[(@%(NVECS/2))*2]),_mm_load_pd(rval+@*2)));#CHUNKHEIGHT*NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SCALE) {
