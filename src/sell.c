@@ -198,6 +198,26 @@ static ghost_error_t (*dd_SELL_kernels_AVX_multivec_rm[4][5]) (ghost_sparsemat_t
 #endif
 
 #ifdef GHOST_HAVE_MIC
+#include "ghost/sell_kernel_mic.h"
+static ghost_error_t (*SELL_kernels_MIC_multivec_x_cm[8][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+{
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_16_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_32_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_64_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+    {{NULL,NULL,NULL,NULL},
+    {NULL,&dd_SELL_kernel_MIC_128_multivec_x_cm,NULL,NULL},
+    {NULL,NULL,NULL,NULL},
+    {NULL,NULL,NULL,NULL}},
+};
 static ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {{NULL,NULL,NULL,NULL},
     {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
@@ -1258,12 +1278,9 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     if (!((options & GHOST_SPMV_AXPBY) ||
                 (options & GHOST_SPMV_SCALE) ||
                 (options & GHOST_SPMV_SHIFT))) {
-        if (SELL(mat)->chunkHeight == 16) {
-            kernel = SELL_kernels_MIC_16
-                [matDtIdx]
-                [vecDtIdx];
-        } else if (SELL(mat)->chunkHeight == 32) {
-            kernel = SELL_kernels_MIC_32
+        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+            kernel = SELL_kernels_MIC_multivec_x_cm
+                [ld(SELL(mat)->chunkHeight/16)]
                 [matDtIdx]
                 [vecDtIdx];
         }
