@@ -17,12 +17,18 @@ ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t ro
         col = cols[c*stride];
         if (col < row) {
             mat->lowerBandwidth = MAX(mat->lowerBandwidth, row-col);
+#ifdef GHOST_GATHER_GLOBAL_INFO
             mat->nzDist[mat->context->gnrows-1-(row-col)]++;
+#endif
         } else if (col > row) {
             mat->upperBandwidth = MAX(mat->upperBandwidth, col-row);
+#ifdef GHOST_GATHER_GLOBAL_INFO
             mat->nzDist[mat->context->gnrows-1+col-row]++;
+#endif
         } else {
+#ifdef GHOST_GATHER_GLOBAL_INFO
             mat->nzDist[mat->context->gnrows-1]++;
+#endif
         }
     }
 
@@ -38,7 +44,9 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
+#ifdef GHOST_GATHER_GLOBAL_INFO
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
+#endif
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 

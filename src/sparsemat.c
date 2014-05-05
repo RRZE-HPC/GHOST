@@ -9,6 +9,7 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
+#include "ghost/instr.h"
 
 #include <libgen.h>
 #ifdef GHOST_HAVE_SCOTCH
@@ -72,7 +73,9 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
         (*mat)->traits->sortScope = (*mat)->nrows;
     }
 
+#ifdef GHOST_GATHER_GLOBAL_INFO
     GHOST_CALL_GOTO(ghost_malloc((void **)&((*mat)->nzDist),sizeof(ghost_nnz_t)*(2*context->gnrows-1)),err,ret);
+#endif
     GHOST_CALL_GOTO(ghost_datatype_size(&(*mat)->elSize,(*mat)->traits->datatype),err,ret);
 
     switch (traits->format) {
@@ -129,7 +132,9 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_spar
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     
+#ifdef GHOST_GATHER_GLOBAL_INFO
     memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
+#endif
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
     
@@ -208,7 +213,9 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
+#ifdef GHOST_GATHER_GLOBAL_INFO
     memset(mat->nzDist,0,sizeof(ghost_nnz_t)*(2*mat->context->gnrows-1));
+#endif
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
     mat->name = basename(matrixPath);
@@ -434,6 +441,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
+    GHOST_INSTR_START(Scotch)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t *rpt = NULL, *col = NULL, i, c;
     ghost_sorting_t *rowSort = NULL;
@@ -668,6 +676,7 @@ out:
     SCOTCH_graphExit(graph);
     SCOTCH_stratExit(strat);
 #endif
+    GHOST_INSTR_STOP(Scotch)
     
     
     return ret;

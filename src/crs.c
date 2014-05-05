@@ -178,12 +178,18 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
             col_perm[j] = col;
             if (col < globrow) {
                 mat->lowerBandwidth = MAX(mat->lowerBandwidth, globrow-col);
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1-(globrow-col)]++;
+#endif
             } else if (col > globrow) {
                 mat->upperBandwidth = MAX(mat->upperBandwidth, col-globrow);
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1+col-globrow]++;
+#endif
             } else {
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1]++;
+#endif
             }
         } 
         ghost_idx_t n;
@@ -206,7 +212,9 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+#ifdef GHOST_GATHER_GLOBAL_INFO
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+#endif
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
