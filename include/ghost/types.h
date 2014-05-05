@@ -124,10 +124,16 @@ typedef int64_t ghost_idx_t;
  * @brief Type for nonzero indices of matrix
  */
 typedef int64_t ghost_nnz_t;
+#ifdef GHOST_HAVE_MKL
 /**
  * @brief Type for indices used in BLAS calls
  */
 typedef long long int ghost_blas_idx_t;
+#define PRBLASIDX PRId64
+#else
+typedef int ghost_blas_idx_t;
+#define PRBLASIDX PRId32
+#endif
 
 /**
  * @brief MPI data type for matrix row/column indices

@@ -162,8 +162,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 {
 #ifdef GHOST_HAVE_LONGIDX
 #ifndef GHOST_HAVE_MKL
-    ERROR_LOG("GEMM with LONGIDX only working for MKL!");
-    return GHOST_ERR_NOT_IMPLEMENTED;
+    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
 #endif
 #endif
     GHOST_INSTR_START(gemm)
@@ -330,7 +329,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     {
         mybeta = &zero;
     }
-    DEBUG_LOG(1,"Calling XGEMM with (%"PRIDX"x%"PRIDX") * (%"PRIDX"x%"PRIDX") = (%"PRIDX"x%"PRIDX")",*m,*k,*k,*n,*m,*n);
+    DEBUG_LOG(1,"Calling XGEMM with (%"PRBLASIDX"x%"PRBLASIDX") * (%"PRBLASIDX"x%"PRBLASIDX") = (%"PRBLASIDX"x%"PRBLASIDX")",*m,*k,*k,*n,*m,*n);
     if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
     {
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
