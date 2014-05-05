@@ -158,6 +158,7 @@ typedef int ghost_blas_idx_t;
 typedef int32_t ghost_idx_t;
 typedef int32_t ghost_nnz_t; 
 typedef int ghost_blas_idx_t;
+#define PRBLASIDX PRId32
 
 #define ghost_mpi_dt_idx MPI_INT
 #define ghost_mpi_dt_nnz MPI_INT
