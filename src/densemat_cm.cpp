@@ -109,7 +109,7 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     v_t *s = (v_t *)scale;
     
     ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[rowidx];
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
     ITER2_END_CM(rowidx)
 
     return GHOST_SUCCESS;
@@ -135,8 +135,8 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *b = (v_t *)b_;
     
     ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[rowidx] +
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) * b[rowidx];
+        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col] +
+            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) * b[col];
     ITER2_END_CM(rowidx)
 
     return GHOST_SUCCESS;
