@@ -173,28 +173,76 @@ static ghost_error_t (*SELL_kernels_AVX_multivec_x_rm[6][4][4]) (ghost_sparsemat
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}},
 };
-static ghost_error_t (*dd_SELL_kernels_AVX_multivec_rm[4][5]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
+static ghost_error_t (*dd_SELL_kernels_AVX_multivec_rm[4][16]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
 {
     {&dd_SELL_kernel_AVX_1_multivec_4_rm,
         &dd_SELL_kernel_AVX_1_multivec_8_rm,
         &dd_SELL_kernel_AVX_1_multivec_12_rm,
         &dd_SELL_kernel_AVX_1_multivec_16_rm,
-        &dd_SELL_kernel_AVX_1_multivec_20_rm},
+        &dd_SELL_kernel_AVX_1_multivec_20_rm,
+        &dd_SELL_kernel_AVX_1_multivec_24_rm,
+        &dd_SELL_kernel_AVX_1_multivec_28_rm,
+        &dd_SELL_kernel_AVX_1_multivec_32_rm,
+        &dd_SELL_kernel_AVX_1_multivec_36_rm,
+        &dd_SELL_kernel_AVX_1_multivec_40_rm,
+        &dd_SELL_kernel_AVX_1_multivec_44_rm,
+        &dd_SELL_kernel_AVX_1_multivec_48_rm,
+        &dd_SELL_kernel_AVX_1_multivec_52_rm,
+        &dd_SELL_kernel_AVX_1_multivec_56_rm,
+        &dd_SELL_kernel_AVX_1_multivec_60_rm,
+        &dd_SELL_kernel_AVX_1_multivec_64_rm,
+    },
     {&dd_SELL_kernel_AVX_2_multivec_4_rm,
         &dd_SELL_kernel_AVX_2_multivec_8_rm,
         &dd_SELL_kernel_AVX_2_multivec_12_rm,
         &dd_SELL_kernel_AVX_2_multivec_16_rm,
-        &dd_SELL_kernel_AVX_2_multivec_20_rm},
+        &dd_SELL_kernel_AVX_2_multivec_20_rm,
+        &dd_SELL_kernel_AVX_2_multivec_24_rm,
+        &dd_SELL_kernel_AVX_2_multivec_28_rm,
+        &dd_SELL_kernel_AVX_2_multivec_32_rm,
+        &dd_SELL_kernel_AVX_2_multivec_36_rm,
+        &dd_SELL_kernel_AVX_2_multivec_40_rm,
+        &dd_SELL_kernel_AVX_2_multivec_44_rm,
+        &dd_SELL_kernel_AVX_2_multivec_48_rm,
+        &dd_SELL_kernel_AVX_2_multivec_52_rm,
+        &dd_SELL_kernel_AVX_2_multivec_56_rm,
+        &dd_SELL_kernel_AVX_2_multivec_60_rm,
+        &dd_SELL_kernel_AVX_2_multivec_64_rm,
+    },
     {&dd_SELL_kernel_AVX_4_multivec_4_rm,
         &dd_SELL_kernel_AVX_4_multivec_8_rm,
         &dd_SELL_kernel_AVX_4_multivec_12_rm,
         &dd_SELL_kernel_AVX_4_multivec_16_rm,
-        &dd_SELL_kernel_AVX_4_multivec_20_rm},
+        &dd_SELL_kernel_AVX_4_multivec_20_rm,
+        &dd_SELL_kernel_AVX_4_multivec_24_rm,
+        &dd_SELL_kernel_AVX_4_multivec_28_rm,
+        &dd_SELL_kernel_AVX_4_multivec_32_rm,
+        &dd_SELL_kernel_AVX_4_multivec_36_rm,
+        &dd_SELL_kernel_AVX_4_multivec_40_rm,
+        &dd_SELL_kernel_AVX_4_multivec_44_rm,
+        &dd_SELL_kernel_AVX_4_multivec_48_rm,
+        &dd_SELL_kernel_AVX_4_multivec_52_rm,
+        &dd_SELL_kernel_AVX_4_multivec_56_rm,
+        &dd_SELL_kernel_AVX_4_multivec_60_rm,
+        &dd_SELL_kernel_AVX_4_multivec_64_rm,
+    },
     {&dd_SELL_kernel_AVX_8_multivec_4_rm,
         &dd_SELL_kernel_AVX_8_multivec_8_rm,
         &dd_SELL_kernel_AVX_8_multivec_12_rm,
         &dd_SELL_kernel_AVX_8_multivec_16_rm,
-        &dd_SELL_kernel_AVX_8_multivec_20_rm}};
+        &dd_SELL_kernel_AVX_8_multivec_20_rm,
+        &dd_SELL_kernel_AVX_8_multivec_24_rm,
+        &dd_SELL_kernel_AVX_8_multivec_28_rm,
+        &dd_SELL_kernel_AVX_8_multivec_32_rm,
+        &dd_SELL_kernel_AVX_8_multivec_36_rm,
+        &dd_SELL_kernel_AVX_8_multivec_40_rm,
+        &dd_SELL_kernel_AVX_8_multivec_44_rm,
+        &dd_SELL_kernel_AVX_8_multivec_48_rm,
+        &dd_SELL_kernel_AVX_8_multivec_52_rm,
+        &dd_SELL_kernel_AVX_8_multivec_56_rm,
+        &dd_SELL_kernel_AVX_8_multivec_60_rm,
+        &dd_SELL_kernel_AVX_8_multivec_64_rm,
+    }};
 #endif
 
 #ifdef GHOST_HAVE_MIC
@@ -1294,7 +1342,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
 #ifdef GHOST_HAVE_AVX
     if (rhs->traits.ncols != 2) {
-        if (rhs->traits.ncols > 20) {
+        if (rhs->traits.ncols > 64) {
             if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
                 kernel = SELL_kernels_AVX_multivec_x_cm
                     [ld(SELL(mat)->chunkHeight)]
