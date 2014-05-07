@@ -245,9 +245,18 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_densemat_t *vecclone;
     ghost_densemat_t *vec2clone;
 
-    INFO_LOG("Cloning (and compressing) vectors before dotproduct");
-    vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
-    vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+    } else {
+        vecclone = vec;
+    }
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+    } else {
+        vec2clone = vec2;
+    }
   
      
     cublasHandle_t ghost_cublas_handle;
@@ -283,6 +292,14 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
                             (const float *)v1,1,(const float *)v2,1,&((float *)res)[v]));
             }
         }
+    }
+
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        vecclone->destroy(vecclone);
+    }
+    
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        vec2clone->destroy(vec2clone);
     }
     return GHOST_SUCCESS;
 }
