@@ -664,7 +664,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
         vec->axpby(vec,onevec,fminusahalf,fone);
     }
 
-    onvec->destroy(onevec);
+    onevec->destroy(onevec);
 
     return GHOST_SUCCESS;
 }
