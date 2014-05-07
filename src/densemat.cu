@@ -606,6 +606,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 {
+    ghost_densemat_t *onevec;
     long pid = getpid();
     double time;
     ghost_timing_wcmilli(&time);
@@ -613,6 +614,15 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
     curandGenerator_t gen;
     CURAND_CALL_RETURN(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(time),clock(),pid)));
+
+    vec->clone(vec,&onevec,vec->traits.nrows,0,vec->traits.ncols,0);
+    double one[] = {1.,1.};
+    onevec->fromScalar(onevec,one);
+
+    one[1] = 0.;
+    float fone[] = {1.,0.};
+    double minusahalf[] = {-0.5,0.};
+    float fminusahalf[] = {-0.5,0.};
 
     ghost_idx_t v;
     for (v=0; v<vec->traits.ncols; v++)
@@ -648,6 +658,13 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
             }
         }
     }
+    if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+        vec->axpby(vec,onevec,minusahalf,one);
+    } else {
+        vec->axpby(vec,onevec,fminusahalf,fone);
+    }
+
+    onvec->destroy(onevec);
 
     return GHOST_SUCCESS;
 }
