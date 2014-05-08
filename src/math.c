@@ -192,20 +192,25 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         transw[0]='T';
     }
     // if the result should be transposed swap the transv and transw if possible.
-    int needMemTransposeX=0;
+    int needMemTransposeX=0; // compute X.' and transpose back afterwards
+    int swapDimsX=0; /* formally compute X' because X has different storage layout, but no 
+                        need to transpose back */
     if (x->traits.storage != v->traits.storage)
     {
         DEBUG_LOG(1,"gemm with different storage layout for V and X...");
         if (strncasecmp(transv,"C",0))
         {
             // compute x=v'w and transpose afterwards
+            DEBUG_LOG(1,"case a: post-memtranspose of X needed.");
             needMemTransposeX=1;
         }
         else
         {
+            DEBUG_LOG(1,"case b: fool gemm to compute transp(X)=W'V instead.");
             // compute x' = w'*v instead of v'*w
             v=w_in;
             w=v_in;
+            swapDimsX=1;
         }
     }
 
@@ -265,15 +270,15 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         nrW=w->traits.nrows; ncW=w->traits.ncols;
     }
 
-    if (x->traits.storage!=v->traits.storage)
+    if (swapDimsX)
     {
-        ncX=x->traits.nrows; 
-        nrX=w->traits.ncols;
+        nrX=x->traits.ncols;
+        ncX=x->traits.nrows;
     }
     else
     {
-        nrX=x->traits.nrows; 
-        ncX=w->traits.ncols;
+        nrX=x->traits.nrows;
+        ncX=x->traits.ncols;
     }
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         ERROR_LOG("GEMM with incompatible vectors: %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX" = %"PRIDX"x%"PRIDX,nrV,ncV,nrW,ncW,nrX,ncX);
