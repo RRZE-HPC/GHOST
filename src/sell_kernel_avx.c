@@ -11,15 +11,11 @@
 ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    ghost_idx_t j,c,v,i;
-    ghost_nnz_t offs;
+    ghost_idx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
-    __m256d val;
-    __m256d rhs;
-    __m128d rhstmp;
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -47,8 +43,13 @@ ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
         }
     }
 
-#pragma omp parallel private(v,c,j,val,offs,rhs,rhstmp) shared(partsums)
+#pragma omp parallel shared(partsums)
     {
+        ghost_idx_t j,c,v;
+        ghost_nnz_t offs;
+        __m256d val;
+        __m256d rhs;
+        __m128d rhstmp;
         #GHOST_UNROLL#__m256d tmp@;#CHUNKHEIGHT/4
         int tid = ghost_omp_threadnum();
         __m256d dot1[invec->traits.ncols],dot2[invec->traits.ncols],dot3[invec->traits.ncols];
@@ -57,12 +58,13 @@ ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
             dot2[v] = _mm256_setzero_pd();
             dot3[v] = _mm256_setzero_pd();
         }
-#pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
-        { // loop over chunks
 
-            for (v=0; v<invec->traits.ncols; v++)
-            {
+        for (v=0; v<invec->traits.ncols; v++)
+        {
+#pragma omp for schedule(runtime)
+            for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
+            { // loop over chunks
+
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT/4
                 lval = (double *)res->val[v];
                 rval = (double *)invec->val[v];
@@ -131,6 +133,7 @@ ghost_error_t dd_SELL_kernel_AVX_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
+        ghost_idx_t v;
         for (v=0; v<invec->traits.ncols; v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   invec->traits.ncols] = 0.;

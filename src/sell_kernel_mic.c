@@ -58,9 +58,9 @@ ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
             dot2[v] = _mm512_setzero_pd();
             dot3[v] = _mm512_setzero_pd();
         }
+        for (v=0; v<invec->traits.ncols; v++) {
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) {
-            for (v=0; v<invec->traits.ncols; v++) {
+            for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) {
                 #GHOST_UNROLL#tmp@ = _mm512_setzero_pd();#CHUNKHEIGHT/8
                 double *lval = (double *)res->val[v];
                 double *rval = (double *)invec->val[v];
