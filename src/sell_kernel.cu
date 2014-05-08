@@ -267,6 +267,8 @@ extern __shared__ char shared[];
         lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);\
         GHOST_INSTR_STOP(spmv_cuda_dot)\
     }\
+    GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));\
+    GHOST_CALL_RETURN(ghost_cu_free(cu_shift));\
     return ret;\
 }
 

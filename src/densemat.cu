@@ -245,9 +245,18 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_densemat_t *vecclone;
     ghost_densemat_t *vec2clone;
 
-    INFO_LOG("Cloning (and compressing) vectors before dotproduct");
-    vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
-    vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+    } else {
+        vecclone = vec;
+    }
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+    } else {
+        vec2clone = vec2;
+    }
   
      
     cublasHandle_t ghost_cublas_handle;
@@ -283,6 +292,14 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
                             (const float *)v1,1,(const float *)v2,1,&((float *)res)[v]));
             }
         }
+    }
+
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        vecclone->destroy(vecclone);
+    }
+    
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        vec2clone->destroy(vec2clone);
     }
     return GHOST_SUCCESS;
 }
@@ -589,6 +606,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 {
+    ghost_densemat_t *onevec;
     long pid = getpid();
     double time;
     ghost_timing_wcmilli(&time);
@@ -596,6 +614,15 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
     curandGenerator_t gen;
     CURAND_CALL_RETURN(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CALL_RETURN(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(time),clock(),pid)));
+
+    vec->clone(vec,&onevec,vec->traits.nrows,0,vec->traits.ncols,0);
+    double one[] = {1.,1.};
+    onevec->fromScalar(onevec,one);
+
+    one[1] = 0.;
+    float fone[] = {1.,0.};
+    double minusahalf[] = {-0.5,0.};
+    float fminusahalf[] = {-0.5,0.};
 
     ghost_idx_t v;
     for (v=0; v<vec->traits.ncols; v++)
@@ -631,6 +658,13 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
             }
         }
     }
+    if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+        vec->axpby(vec,onevec,minusahalf,one);
+    } else {
+        vec->axpby(vec,onevec,fminusahalf,fone);
+    }
+
+    onevec->destroy(onevec);
 
     return GHOST_SUCCESS;
 }
