@@ -6,6 +6,8 @@
 #ifndef GHOST_SPMV_H
 #define GHOST_SPMV_H
 
+#include "ghost/densemat.h"
+
 /**
  * @brief Flags to be passed to sparse matrix-vector multiplication.
  */
@@ -84,5 +86,18 @@ typedef enum {
 #define GHOST_SPMV_MODES_ALL      (GHOST_SPMV_MODES_FULL | GHOST_SPMV_MODES_SPLIT)
 
 #define GHOST_SPMV_MODES_MPI (GHOST_SPMV_MODE_VECTOR | GHOST_SPMV_MODES_SPLIT)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled);
+ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation);
+ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec);
+    
+
+#ifdef __cplusplus
+} extern "C"
+#endif
 
 #endif
