@@ -168,19 +168,12 @@ ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* ma
     GHOST_INSTR_STOP(spmv_vector_waitall)
     if (invec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         for (from_PE=0; from_PE<nprocs; from_PE++){
-        WARNING_LOG("i 0..%d c 0..%d",mat->context->wishes[from_PE],invec->traits.ncols);
             for (i=0; i<mat->context->wishes[from_PE]; i++){
                 for (c=0; c<invec->traits.ncols; c++) {
                     memcpy(&invec->val[c][(mat->context->hput_pos[from_PE]+i)*invec->elSize],&tmprecv[from_PE][(i*invec->traits.ncols+c)*invec->elSize],invec->elSize);
-                    if (i==0 && c==0) {
-                        WARNING_LOG("foo %f",((double *)tmprecv[0])[0]);
-                    }
                 }
             }
         }
-        INFO_LOG("recvd[0,1] = %f %f",((double *)invec->val[0])[mat->context->hput_pos[0]],((double *)invec->val[1])[mat->context->hput_pos[0]]);
-    } else {
-        INFO_LOG("recvd[0,1] = %f %f",((double *)invec->val[mat->context->hput_pos[0]])[0],((double *)invec->val[mat->context->hput_pos[0]])[1]);
     }
 
 
