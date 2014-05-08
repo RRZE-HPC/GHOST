@@ -1395,7 +1395,13 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
                     [ld(SELL(mat)->chunkHeight)]
                     [rhs->traits.ncols/4];
             }
+        } else {
+            kernel = SELL_kernels_SSE_multivec_x_cm
+                [ld(SELL(mat)->chunkHeight)]
+                [matDtIdx]
+                [vecDtIdx];
         }
+
     }
 #endif
 #ifdef GHOST_HAVE_AVX
