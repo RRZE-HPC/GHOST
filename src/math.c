@@ -24,18 +24,20 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
 {
     vec->dot(vec,res,vec2);
 #ifdef GHOST_HAVE_MPI
-    GHOST_INSTR_START(dot_reduce)
-    ghost_mpi_op_t sumOp;
-    ghost_mpi_datatype_t mpiDt;
-    ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
-    ghost_mpi_datatype(&mpiDt,vec->traits.datatype);
-    int v;
-    if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL)) {
-        for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-            MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
+    if (vec->context) {
+        GHOST_INSTR_START(dot_reduce)
+        ghost_mpi_op_t sumOp;
+        ghost_mpi_datatype_t mpiDt;
+        ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
+        ghost_mpi_datatype(&mpiDt,vec->traits.datatype);
+        int v;
+        if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL)) {
+            for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
+                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
+            }
         }
+        GHOST_INSTR_STOP(dot_reduce)
     }
-    GHOST_INSTR_STOP(dot_reduce)
 #endif
 
     return GHOST_SUCCESS;
