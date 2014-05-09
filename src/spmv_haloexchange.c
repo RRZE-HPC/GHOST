@@ -27,6 +27,10 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     int i, to_PE;
     ghost_idx_t c;
+
+    if (nprocs == 1) {
+        return GHOST_SUCCESS;
+    }
     
     for (i=0;i<nprocs;i++) {
         if (vec->context->dues[i]>max_dues) {
