@@ -160,14 +160,133 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
 ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     ghost_error_t ret = GHOST_SUCCESS;
+    if (!v->context) {
+        ERROR_LOG("v needs to be distributed");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (x->context) {
+        ERROR_LOG("x needs to be redundant");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (!w->context) {
+        ERROR_LOG("w needs to be distributed");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
+        ERROR_LOG("w needs to be present in row-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
+        ERROR_LOG("v needs to be present in row-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (x->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
+        ERROR_LOG("x needs to be present in col-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
+        ERROR_LOG("Currently only double data supported");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+    if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
+        ERROR_LOG("Mixed datatypes not supported");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    ghost_idx_t k = w->traits.ncols;
+
+    if (k != 4 && k != 8) {
+        ERROR_LOG("Currently only k=4,8");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+    
+    int myrank=0;
+
+    GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
+
+    ghost_idx_t n = v->traits.nrows;
+    ghost_idx_t m = v->traits.ncols;
+    
+    double *vval, *wval, *xval;
+    ghost_idx_t ldv, ldw, ldx;
+
+    ldv = *v->stride;
+    ldw = *w->stride;
+    ldx = *x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+    
+    double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
+    
+    // make sure that the initial x only gets added up once
+    if (myrank) {
+        dbeta = 0.;
+    }
+
+    ghost_idx_t i;
+    ghost_idx_t j;
+   
+    switch(k) {
+        case 4:
+#pragma omp parallel for private(i) schedule(runtime)
+            for (j=0; j<m; j++) {
+                xval[0*ldx+j] = dbeta*xval[0*ldx+j];
+                xval[1*ldx+j] = dbeta*xval[1*ldx+j];
+                xval[2*ldx+j] = dbeta*xval[2*ldx+j];
+                xval[3*ldx+j] = dbeta*xval[3*ldx+j];
+                for (i=0; i<n; i++) {
+                    xval[0*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                    xval[1*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                    xval[2*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                    xval[3*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                }
+            }
+            break;
+        case 8:
+#pragma omp parallel for private(i) schedule(runtime)
+            for (j=0; j<m; j++) {
+                xval[0*ldx+j] = dbeta*xval[0*ldx+j];
+                xval[1*ldx+j] = dbeta*xval[1*ldx+j];
+                xval[2*ldx+j] = dbeta*xval[2*ldx+j];
+                xval[3*ldx+j] = dbeta*xval[3*ldx+j];
+                xval[4*ldx+j] = dbeta*xval[4*ldx+j];
+                xval[5*ldx+j] = dbeta*xval[5*ldx+j];
+                xval[6*ldx+j] = dbeta*xval[6*ldx+j];
+                xval[7*ldx+j] = dbeta*xval[7*ldx+j];
+                for (i=0; i<n; i++) {
+                    xval[0*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                    xval[1*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                    xval[2*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                    xval[3*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    xval[4*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
+                    xval[5*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
+                    xval[6*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
+                    xval[7*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
+                }
+            }
+            break;
+    }
+
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*k,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+#endif
     
     goto out;
 err:
 
 out:
     return ret;
-
-
 }
 
 ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha)
@@ -209,6 +328,11 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         ret = GHOST_ERR_NOT_IMPLEMENTED;
         goto err;
     }
+    if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
+        ERROR_LOG("Mixed datatypes not supported");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
 
     ghost_idx_t k = w->traits.ncols;
 
@@ -247,6 +371,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
                     xval[i*ldx+3] += dalpha*vval[i*ldv+j]*wval[3*ldw+j];
                 }
             }
+            break;
         case 8:
 #pragma omp parallel for private(j)
             for (i=0; i<n; i++) {
@@ -261,6 +386,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
                     xval[i*ldx+7] += dalpha*vval[i*ldv+j]*wval[7*ldw+j];
                 }
             }
+            break;
     }    
 
 
