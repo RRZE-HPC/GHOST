@@ -5,6 +5,9 @@
 #include "ghost/sparsemat.h"
 #include "ghost/context.h"
 #include "ghost/locality.h"
+#include "ghost/densemat_cm.h"
+
+#define DL_WHOLE
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -41,7 +44,9 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*max_dues*nprocs * vec->elSize));
     
     GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
+#ifdef DL_WHOLE
     vec->downloadNonHalo(vec);
+#endif
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
 #pragma omp parallel private(to_PE,i,c)
@@ -67,7 +72,14 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
                     for (c=0; c<vec->traits.ncols; c++) {
-                        memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+#ifndef DL_WHOLE
+                        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                            ghost_cu_download(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,permutation->perm[vec->context->duelist[to_PE][i]]),vec->elSize);
+                        } else 
+#endif
+                        {
+                            memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                        }
                     }
                 }
             }
@@ -77,7 +89,14 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
                     for (c=0; c<vec->traits.ncols; c++) {
-                        memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+#ifndef DL_WHOLE
+                        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                            ghost_cu_download(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,vec->context->duelist[to_PE][i]),vec->elSize);
+                        } else 
+#endif
+                        {
+                            memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                        }
                     }
                 }
             }
