@@ -276,7 +276,7 @@ ghost_error_t dd_SELL_kernel_SSE_CHUNKHEIGHT_multivec_x_rm(ghost_sparsemat_t *ma
 }
 #GHOST_FUNC_END
 
-#GHOST_FUNC_BEGIN#NVECS=2,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64#CHUNKHEIGHT=1,2,4,8
+#GHOST_FUNC_BEGIN#NVECS=2,4,8,12,16,32,64#CHUNKHEIGHT=1,2,4,8,16,32
 ghost_error_t dd_SELL_kernel_SSE_CHUNKHEIGHT_multivec_NVECS_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_SSE
