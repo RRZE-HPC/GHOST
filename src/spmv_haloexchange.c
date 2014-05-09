@@ -11,11 +11,11 @@
 
 
 static int msgcount;
-static MPI_Request *request;
-static MPI_Status  *status;
-static char **tmprecv;
-static char *tmprecv_mem;
-static char *work;
+static MPI_Request *request = NULL;
+static MPI_Status  *status = NULL;
+static char **tmprecv = NULL;
+static char *tmprecv_mem = NULL;
+static char *work = NULL;
 static ghost_nnz_t max_dues;
 #endif
 
