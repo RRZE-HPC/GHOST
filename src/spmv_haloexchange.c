@@ -152,15 +152,15 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     char *recv;
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            recv = vec->val[vec->context->hput_pos[from_PE]];
-        } else {
-            recv = tmprecv[from_PE];
-        }
+        if (vec->context->wishes[from_PE]>0){
+            if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                recv = vec->val[vec->context->hput_pos[from_PE]];
+            } else {
+                recv = tmprecv[from_PE];
+            }
 #ifdef GHOST_HAVE_INSTR_DATA
             INFO_LOG("from %d: %zu bytes",from_PE,vec->context->wishes[from_PE]*vec->elSize);
 #endif
-        if (vec->context->wishes[from_PE]>0){
             MPI_CALL_GOTO(MPI_Irecv(recv, vec->traits.ncols*vec->elSize*vec->context->wishes[from_PE],MPI_CHAR, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
             msgcount++;
 #ifdef GHOST_HAVE_INSTR_DATA
