@@ -352,7 +352,7 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" contiguous dense matrix",src->traits.nrows,nc);
     ghost_idx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
