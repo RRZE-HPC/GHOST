@@ -157,6 +157,121 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     return ret;
 }
 
+ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+    
+    goto out;
+err:
+
+out:
+    return ret;
+
+
+}
+
+ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha)
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    if (!v->context) {
+        ERROR_LOG("v needs to be distributed");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (!x->context) {
+        ERROR_LOG("v needs to be distributed");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (w->context) {
+        ERROR_LOG("w needs to be redundant");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
+        ERROR_LOG("w needs to be present in col-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (x->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
+        ERROR_LOG("x needs to be present in row-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
+        ERROR_LOG("v needs to be present in row-major storage");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+    if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
+        ERROR_LOG("Currently only double data supported");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+
+    ghost_idx_t k = w->traits.ncols;
+
+    if (k != 4 && k != 8) {
+        ERROR_LOG("Currently only k=4,8");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+
+    ghost_idx_t n = v->traits.nrows;
+    ghost_idx_t m = v->traits.ncols;
+
+    double *vval, *wval, *xval;
+    ghost_idx_t ldv, ldw, ldx;
+
+    ldv = *v->stride;
+    ldw = *w->stride;
+    ldx = *x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double dalpha = *(double *)alpha;
+    ghost_idx_t i;
+    ghost_idx_t j;
+    
+    switch(k) {
+        case 4:
+#pragma omp parallel for private(j)
+            for (i=0; i<n; i++) {
+                for (j=0; j<m; j++) {
+                    xval[i*ldx+0] += dalpha*vval[i*ldv+j]*wval[0*ldw+j];
+                    xval[i*ldx+1] += dalpha*vval[i*ldv+j]*wval[1*ldw+j];
+                    xval[i*ldx+2] += dalpha*vval[i*ldv+j]*wval[2*ldw+j];
+                    xval[i*ldx+3] += dalpha*vval[i*ldv+j]*wval[3*ldw+j];
+                }
+            }
+        case 8:
+#pragma omp parallel for private(j)
+            for (i=0; i<n; i++) {
+                for (j=0; j<m; j++) {
+                    xval[i*ldx+0] += dalpha*vval[i*ldv+j]*wval[0*ldw+j];
+                    xval[i*ldx+1] += dalpha*vval[i*ldv+j]*wval[1*ldw+j];
+                    xval[i*ldx+2] += dalpha*vval[i*ldv+j]*wval[2*ldw+j];
+                    xval[i*ldx+3] += dalpha*vval[i*ldv+j]*wval[3*ldw+j];
+                    xval[i*ldx+4] += dalpha*vval[i*ldv+j]*wval[4*ldw+j];
+                    xval[i*ldx+5] += dalpha*vval[i*ldv+j]*wval[5*ldw+j];
+                    xval[i*ldx+6] += dalpha*vval[i*ldv+j]*wval[6*ldw+j];
+                    xval[i*ldx+7] += dalpha*vval[i*ldv+j]*wval[7*ldw+j];
+                }
+            }
+    }    
+
+
+    goto out;
+err:
+
+out:
+    return ret;
+}
+
+
 ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v_in,  char * transv_in, 
 ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce) 
 {
