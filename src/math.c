@@ -217,7 +217,7 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     ghost_idx_t n = v->traits.nrows;
     ghost_idx_t m = v->traits.ncols;
     
-    double *vval, *wval, *xval;
+    double * restrict vval, * restrict wval, * restrict xval;
     ghost_idx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -236,46 +236,57 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         dbeta = 0.;
     }
 
-    ghost_idx_t i;
-    ghost_idx_t j;
+    ghost_idx_t i,j;
    
     switch(k) {
         case 4:
-#pragma omp parallel for private(i) schedule(runtime)
             for (j=0; j<m; j++) {
-                xval[0*ldx+j] = dbeta*xval[0*ldx+j];
-                xval[1*ldx+j] = dbeta*xval[1*ldx+j];
-                xval[2*ldx+j] = dbeta*xval[2*ldx+j];
-                xval[3*ldx+j] = dbeta*xval[3*ldx+j];
+                double tmp0 = dbeta*xval[0*ldx+j];
+                double tmp1 = dbeta*xval[1*ldx+j];
+                double tmp2 = dbeta*xval[2*ldx+j];
+                double tmp3 = dbeta*xval[3*ldx+j];
+#pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3)
                 for (i=0; i<n; i++) {
-                    xval[0*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
-                    xval[1*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
-                    xval[2*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
-                    xval[3*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                    tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                    tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                    tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
                 }
+                xval[0*ldx+j] = tmp0;
+                xval[1*ldx+j] = tmp1;
+                xval[2*ldx+j] = tmp2;
+                xval[3*ldx+j] = tmp3;
             }
             break;
         case 8:
-#pragma omp parallel for private(i) schedule(runtime)
             for (j=0; j<m; j++) {
-                xval[0*ldx+j] = dbeta*xval[0*ldx+j];
-                xval[1*ldx+j] = dbeta*xval[1*ldx+j];
-                xval[2*ldx+j] = dbeta*xval[2*ldx+j];
-                xval[3*ldx+j] = dbeta*xval[3*ldx+j];
-                xval[4*ldx+j] = dbeta*xval[4*ldx+j];
-                xval[5*ldx+j] = dbeta*xval[5*ldx+j];
-                xval[6*ldx+j] = dbeta*xval[6*ldx+j];
-                xval[7*ldx+j] = dbeta*xval[7*ldx+j];
+                double tmp0 = dbeta*xval[0*ldx+j];
+                double tmp1 = dbeta*xval[1*ldx+j];
+                double tmp2 = dbeta*xval[2*ldx+j];
+                double tmp3 = dbeta*xval[3*ldx+j];
+                double tmp4 = dbeta*xval[4*ldx+j];
+                double tmp5 = dbeta*xval[5*ldx+j];
+                double tmp6 = dbeta*xval[6*ldx+j];
+                double tmp7 = dbeta*xval[7*ldx+j];
+#pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7)
                 for (i=0; i<n; i++) {
-                    xval[0*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
-                    xval[1*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
-                    xval[2*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
-                    xval[3*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
-                    xval[4*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
-                    xval[5*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
-                    xval[6*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
-                    xval[7*ldx+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
+                    tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                    tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                    tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                    tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    tmp4 += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
+                    tmp5 += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
+                    tmp6 += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
+                    tmp7 += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
                 }
+                xval[0*ldx+j] = tmp0;
+                xval[1*ldx+j] = tmp1;
+                xval[2*ldx+j] = tmp2;
+                xval[3*ldx+j] = tmp3;
+                xval[4*ldx+j] = tmp4;
+                xval[5*ldx+j] = tmp5;
+                xval[6*ldx+j] = tmp6;
+                xval[7*ldx+j] = tmp7;
             }
             break;
     }
@@ -294,6 +305,7 @@ out:
 ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha)
 {
     ghost_error_t ret = GHOST_SUCCESS;
+
 
     if (!v->context) {
         ERROR_LOG("v needs to be distributed");
@@ -346,8 +358,10 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 
     ghost_idx_t n = v->traits.nrows;
     ghost_idx_t m = v->traits.ncols;
+    
+    INFO_LOG("In TSMM with %"PRIDX"x%"PRIDX" <- %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX,n,k,n,m,m,k);
 
-    double *vval, *wval, *xval;
+    double * restrict vval, * restrict wval, * restrict xval;
     ghost_idx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -359,33 +373,34 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     ghost_densemat_valptr(x,(void **)&xval);
 
     double dalpha = *(double *)alpha;
-    ghost_idx_t i;
-    ghost_idx_t j;
+    ghost_idx_t i,j,s;
     
     switch(k) {
         case 4:
-#pragma omp parallel for private(j)
+#pragma omp parallel for private(j,s) schedule(runtime)
             for (i=0; i<n; i++) {
                 for (j=0; j<m; j++) {
-                    xval[i*ldx+0] += dalpha*vval[i*ldv+j]*wval[0*ldw+j];
-                    xval[i*ldx+1] += dalpha*vval[i*ldv+j]*wval[1*ldw+j];
-                    xval[i*ldx+2] += dalpha*vval[i*ldv+j]*wval[2*ldw+j];
-                    xval[i*ldx+3] += dalpha*vval[i*ldv+j]*wval[3*ldw+j];
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                    for (s=0; s<4; s++) {
+                        xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                    }
                 }
             }
             break;
         case 8:
-#pragma omp parallel for private(j)
+#pragma omp parallel for private(j,s) schedule(runtime)
             for (i=0; i<n; i++) {
                 for (j=0; j<m; j++) {
-                    xval[i*ldx+0] += dalpha*vval[i*ldv+j]*wval[0*ldw+j];
-                    xval[i*ldx+1] += dalpha*vval[i*ldv+j]*wval[1*ldw+j];
-                    xval[i*ldx+2] += dalpha*vval[i*ldv+j]*wval[2*ldw+j];
-                    xval[i*ldx+3] += dalpha*vval[i*ldv+j]*wval[3*ldw+j];
-                    xval[i*ldx+4] += dalpha*vval[i*ldv+j]*wval[4*ldw+j];
-                    xval[i*ldx+5] += dalpha*vval[i*ldv+j]*wval[5*ldw+j];
-                    xval[i*ldx+6] += dalpha*vval[i*ldv+j]*wval[6*ldw+j];
-                    xval[i*ldx+7] += dalpha*vval[i*ldv+j]*wval[7*ldw+j];
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                    for (s=0; s<8; s++) {
+                        xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                    }
                 }
             }
             break;
