@@ -147,7 +147,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
         }
     }
    
-    if (assembled) { 
+    if (!assembled) { 
         GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(vec,permutation),err,ret);
     }
     
