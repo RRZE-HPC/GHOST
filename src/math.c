@@ -167,11 +167,6 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
-    if (x->context) {
-        ERROR_LOG("x needs to be redundant");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
     if (!w->context) {
         ERROR_LOG("w needs to be distributed");
         ret = GHOST_ERR_INVALID_ARG;
@@ -313,12 +308,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         goto err;
     }
     if (!x->context) {
-        ERROR_LOG("v needs to be distributed");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (w->context) {
-        ERROR_LOG("w needs to be redundant");
+        ERROR_LOG("x needs to be distributed");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
