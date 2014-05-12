@@ -139,7 +139,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *));
     
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        tmprecv[from_PE] = &tmprecv_mem[vec->traits.ncols*vec->elSize*max_wishes];
+        tmprecv[from_PE] = &tmprecv_mem[from_PE*vec->traits.ncols*vec->elSize*max_wishes];
     }
 
     
