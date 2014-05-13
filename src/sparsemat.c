@@ -441,7 +441,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
-    GHOST_INSTR_START(Scotch)
+    GHOST_INSTR_START(scotch)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_idx_t *rpt = NULL, *col = NULL, i, c;
     ghost_sorting_t *rowSort = NULL;
@@ -474,6 +474,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
     
+    GHOST_INSTR_START(scotch_readin)
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
@@ -487,30 +488,49 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 
     } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
         ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
-        ghost_idx_t *dummycol;
-        char *dummyval;
-        GHOST_CALL_GOTO(ghost_malloc((void **)&dummycol,src->maxrowlen*sizeof(ghost_idx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
+        char * tmpval = NULL;
+        ghost_idx_t * tmpcol = NULL;
+        //ghost_idx_t *dummycol;
+        //char *dummyval;
+        //GHOST_CALL_GOTO(ghost_malloc((void **)&dummycol,src->maxrowlen*sizeof(ghost_idx_t)),err,ret);
+        //GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
 
         ghost_idx_t rowlen;
         rpt[0] = 0;
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-            src->func(mat->context->lfRow[me]+i,&rowlen,dummycol,dummyval);
-            rpt[i+1] = rpt[i]+rowlen;
-            nnz += rowlen;
+#pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
+        {
+            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t));
+            
+#pragma omp for
+            for (i=0; i<mat->context->lnrows[me]; i++) {
+                src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
+                nnz += rowlen;
+            }
+            free(tmpval); tmpval = NULL;
+            free(tmpcol); tmpcol = NULL;
         }
         GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
         
-        nnz = 0;
-        for (i=0; i<mat->context->lnrows[me]; i++) {
-            src->func(mat->context->lfRow[me]+i,&rowlen,&col[nnz],dummyval);
-            nnz += rowlen;
+#pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
+        {
+            ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
+            ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t));
+#pragma omp for ordered
+            for (i=0; i<mat->context->lnrows[me]; i++) {
+#pragma omp ordered
+                {
+                    src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval);
+                    rpt[i+1] = rpt[i] + rowlen;
+                }
+            }
+            free(tmpval); tmpval = NULL;
+            free(tmpcol); tmpcol = NULL;
         }
-
-        free(dummyval);
-        free(dummycol);
             
     }
+    GHOST_INSTR_STOP(scotch_readin)
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
@@ -610,6 +630,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #endif
     
     if (mat->traits->sortScope > 1) {
+        GHOST_INSTR_START(post-permutation with sorting)
         ghost_idx_t nrows = mat->context->gnrows;
         ghost_idx_t scope = mat->traits->sortScope;
         
@@ -652,6 +673,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             (mat->permutation->invPerm)[i] =rowSort[i].row;
             (mat->permutation->perm)[rowSort[i].row] = i;
         }
+        GHOST_INSTR_STOP(post-permutation with sorting)
     }
     goto out;
 err:
@@ -676,7 +698,7 @@ out:
     SCOTCH_graphExit(graph);
     SCOTCH_stratExit(strat);
 #endif
-    GHOST_INSTR_STOP(Scotch)
+    GHOST_INSTR_STOP(scotch)
     
     
     return ret;
