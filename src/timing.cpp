@@ -112,8 +112,9 @@ ghost_error_t ghost_timing_summarystring(char **str)
     buffer << setw(maxCallsLen+3) << "Calls | ";
     buffer << "   t_min | ";
     buffer << "   t_max | ";
-    buffer << "   t_avg" << endl;
-    buffer << string(maxRegionLen+maxCallsLen+3+3*11,'-') << endl;
+    buffer << "   t_avg | ";
+    buffer << "   t_tot" << endl;
+    buffer << string(maxRegionLen+maxCallsLen+3+4*11,'-') << endl;
 
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
@@ -121,7 +122,8 @@ ghost_error_t ghost_timing_summarystring(char **str)
             right << setw(maxCallsLen) << iter->second.times.size() << " | " <<
             *min_element(iter->second.times.begin(),iter->second.times.end()) << " | " <<
             *max_element(iter->second.times.begin(),iter->second.times.end()) << " | " <<
-            accumulate(iter->second.times.begin(),iter->second.times.end(),0.)/iter->second.times.size() << endl;
+            accumulate(iter->second.times.begin(),iter->second.times.end(),0.)/iter->second.times.size()  << " | " <<
+            accumulate(iter->second.times.begin(),iter->second.times.end(),0.) << endl;
     }
 
 
