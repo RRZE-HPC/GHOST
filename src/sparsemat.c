@@ -478,6 +478,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
+#pragma omp parallel for
         for (i=1;i<mat->context->lnrows[me]+1;i++) {
             rpt[i] -= rpt[0];
         }
@@ -490,10 +491,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         ghost_sparsemat_src_rowfunc_t *src = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
         char * tmpval = NULL;
         ghost_idx_t * tmpcol = NULL;
-        //ghost_idx_t *dummycol;
-        //char *dummyval;
-        //GHOST_CALL_GOTO(ghost_malloc((void **)&dummycol,src->maxrowlen*sizeof(ghost_idx_t)),err,ret);
-        //GHOST_CALL_GOTO(ghost_malloc((void **)&dummyval,src->maxrowlen*mat->elSize),err,ret);
 
         ghost_idx_t rowlen;
         rpt[0] = 0;
