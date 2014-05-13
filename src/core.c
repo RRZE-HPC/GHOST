@@ -363,10 +363,11 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_foreach_end();
 
     // delete excess cores
-    for (i=hwconfig.ncore; i<maxcore; i++) {
-        hwloc_bitmap_andnot(mycpuset,mycpuset,hwloc_get_obj_by_type(topology,HWLOC_OBJ_CORE,i)->cpuset);
+    hwloc_obj_t core_to_delete = hwloc_get_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,hwconfig.ncore);
+    while (core_to_delete) {
+        hwloc_bitmap_andnot(mycpuset,mycpuset,core_to_delete->cpuset);
+        core_to_delete = hwloc_get_next_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,core_to_delete);
     }
-
 
     void *(*threadFunc)(void *);
 
