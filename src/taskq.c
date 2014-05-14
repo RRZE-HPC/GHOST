@@ -70,7 +70,7 @@ static pthread_cond_t anyTaskFinishedCond;
  */
 static pthread_mutex_t anyTaskFinishedMutex;
 
-
+static int nrunning = 0;
 
 static void * thread_main(void *arg);
 
@@ -377,6 +377,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
             pthread_mutex_lock(&newTaskMutex);
             pthread_mutex_lock(&globalMutex);
             myTask = taskq_findDeleteAndPinTask(taskq);
+            nrunning++;
             pthread_mutex_unlock(&globalMutex);
 
             if (myTask  == NULL) // no suiting task found
@@ -385,6 +386,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
                 pthread_cond_wait(&newTaskCond,&newTaskMutex);
                 pthread_mutex_unlock(&newTaskMutex);
                 sem_post(&taskSem);
+                nrunning--;
                 continue;
             }
             pthread_mutex_unlock(&newTaskMutex);
@@ -414,6 +416,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 
             pthread_mutex_lock(&globalMutex);
             ghost_task_unpin(myTask);
+            nrunning--;
             pthread_mutex_unlock(&globalMutex);
 
             //    kmp_set_blocktime(200);
