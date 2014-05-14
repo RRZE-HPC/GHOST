@@ -377,7 +377,15 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
             pthread_mutex_lock(&newTaskMutex);
             pthread_mutex_lock(&globalMutex);
             myTask = taskq_findDeleteAndPinTask(taskq);
-            nrunning++;
+            if (myTask) {
+                nrunning++;
+            }
+            // resize thread pool
+            if (nrunning == ghost_thpool->nThreads) {
+                void *(*threadFunc)(void *);
+                ghost_taskq_startroutine(&threadFunc);
+                ghost_thpool_create(ghost_thpool->nThreads*2,threadFunc);
+            }
             pthread_mutex_unlock(&globalMutex);
 
             if (myTask  == NULL) // no suiting task found
@@ -386,7 +394,6 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
                 pthread_cond_wait(&newTaskCond,&newTaskMutex);
                 pthread_mutex_unlock(&newTaskMutex);
                 sem_post(&taskSem);
-                nrunning--;
                 continue;
             }
             pthread_mutex_unlock(&newTaskMutex);

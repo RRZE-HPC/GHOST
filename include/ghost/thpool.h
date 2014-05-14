@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
     /**
-     * @brief Creates a thread pool.
+     * @brief Creates or resizes a thread pool.
      *
      * @param nThreads The number of threads in the thread pool.
      * @param func The start routine for each thread.
@@ -50,7 +50,8 @@ extern "C" {
      *
      * In GHOST, the start routine works on a task queue.
      * In a usual scenario one would like to have one shepherd thread for each processing unit.
-     * This assures that N tasks can run at the same time if each one occupies on processing unit. 
+     * This assures that N tasks can run at the same time if each one occupies on processing unit.
+     * If this function is called a second, third etc. time, the size of the thread pool will be resized to the given nThreads. 
      */
     ghost_error_t ghost_thpool_create(int nThreads, void *(*func)(void *));
     /**
