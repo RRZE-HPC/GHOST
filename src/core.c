@@ -373,7 +373,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     ghost_taskq_create();
     ghost_taskq_startroutine(&threadFunc);
-    ghost_thpool_create(hwloc_bitmap_weight(mycpuset),threadFunc);
+    ghost_thpool_create(hwloc_bitmap_weight(mycpuset)+1,threadFunc);
     ghost_pumap_create(mycpuset);
 
     ghost_rand_create();
