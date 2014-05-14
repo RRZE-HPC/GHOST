@@ -82,10 +82,10 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
                 vec->traits.nrows = 0;
             } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
             {
-                if (vec->traits.flags & GHOST_DENSEMAT_RHS) {
-                    vec->traits.nrows = vec->context->gncols;
-                } else {
+                if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
                     vec->traits.nrows = vec->context->gnrows;
+                } else {
+                    vec->traits.nrows = vec->context->gncols;
                 }
 
             } 
@@ -106,7 +106,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
             } 
             else 
             {
-                if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL) && vec->traits.flags & GHOST_DENSEMAT_RHS) {
+                if (!(vec->traits.flags & GHOST_DENSEMAT_GLOBAL) && !(vec->traits.flags & GHOST_DENSEMAT_NO_HALO)) {
                     if (vec->context->halo_elements == -1) {
                         ERROR_LOG("You have to make sure to read in the matrix _before_ creating the right hand side vector in a distributed context! This is because we have to know the number of halo elements of the vector.");
                         return GHOST_ERR_UNKNOWN;

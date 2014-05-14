@@ -15,8 +15,7 @@
 
 typedef enum {
     GHOST_DENSEMAT_DEFAULT   = 0,
-    GHOST_DENSEMAT_RHS       = 1,
-    GHOST_DENSEMAT_LHS       = 2,
+    GHOST_DENSEMAT_NO_HALO   = 1,
     GHOST_DENSEMAT_HOST      = 4,
     GHOST_DENSEMAT_DEVICE    = 8,
     GHOST_DENSEMAT_GLOBAL    = 16,
