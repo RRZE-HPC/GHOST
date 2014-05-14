@@ -168,6 +168,8 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         if (curTask->flags & GHOST_TASK_NOT_PIN) {
             taskq_deleteTask(q,curTask);    
             ghost_omp_nthread_set(curTask->nThreads);
+#pragma omp parallel
+            ghost_thread_unpin();
             return curTask;
         }
 
