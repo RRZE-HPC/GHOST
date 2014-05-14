@@ -506,8 +506,8 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     ghost_crs_t *fullCR = CR(mat);
     ghost_crs_t *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
-    int j;
-    int i;
+    ghost_idx_t j;
+    ghost_idx_t i;
     int me;
 
     ghost_nnz_t lnEnts_l, lnEnts_r;
@@ -598,12 +598,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
         IF_DEBUG(3){
             for (i=0; i<mat->context->lnrows[me]+1; i++)
-                DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%d local=%"PRIDX" remote=%"PRIDX, 
+                DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%"PRIDX" local=%"PRIDX" remote=%"PRIDX, 
                         me, i, localCR->rpt[i], remoteCR->rpt[i]);
             for (i=0; i<localCR->rpt[mat->context->lnrows[me]]; i++)
-                DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%d]=%"PRIDX, me, i, localCR->col[i]);
+                DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRIDX"]=%"PRIDX, me, i, localCR->col[i]);
             for (i=0; i<remoteCR->rpt[mat->context->lnrows[me]]; i++)
-                DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%d]=%"PRIDX, me, i, remoteCR->col[i]);
+                DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRIDX"]=%"PRIDX, me, i, remoteCR->col[i]);
         }
     }
 
