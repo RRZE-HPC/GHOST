@@ -101,6 +101,14 @@ typedef struct ghost_task_t {
      * @brief The arguments to the task's function. (user-defined)
      */
     void *arg;
+    /**
+     * @brief A list of tasks which have to be finished before this task can start. (user-defined)
+     */
+    struct ghost_task_t ** depends;
+    /**
+     * @brief The number of dependencies. (user-defined)
+     */
+    int ndepends;
 
     // set by the library
     /**

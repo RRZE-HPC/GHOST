@@ -154,6 +154,14 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
     while(curTask != NULL)
     {
+        int d;
+        for (d=0; d<curTask->ndepends; d++) {
+            if (curTask->depends[d]->state != GHOST_TASK_FINISHED) {
+                curTask = curTask->next;
+                continue;
+            }
+        }
+
         if (curTask->flags & GHOST_TASK_NOT_PIN) {
             taskq_deleteTask(q,curTask);    
             ghost_omp_nthread_set(curTask->nThreads);

@@ -180,6 +180,8 @@ ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*
     (*t)->func = func;
     (*t)->arg = arg;
     (*t)->flags = flags;
+    (*t)->depends = depends;
+    (*t)->ndepends = ndepends;
 
 //    GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->cores,sizeof(int)*(*t)->nThreads),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*t)->finishedCond,sizeof(pthread_cond_t)),err,ret);
