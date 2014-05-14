@@ -89,7 +89,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                             matrixval = ((v_t)(mval[j]));
                             rhsrow = (v_t *)rhs->val[cr->col[j]];
                             for (v=0; v<rhs->traits.ncols; v++) {
-                                tmp[v] += matrixval * rhsrow[v];
+                                tmp[v] += matrixval * rhsrow[hwloc_bitmap_first(rhs->ldmask)+v];
                             }
                         }
                     }
