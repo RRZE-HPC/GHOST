@@ -157,9 +157,12 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         int d;
         for (d=0; d<curTask->ndepends; d++) {
             if (curTask->depends[d]->state != GHOST_TASK_FINISHED) {
-                curTask = curTask->next;
-                continue;
+                break;
             }
+        }
+        if (d<curTask->ndepends) {
+            curTask = curTask->next;
+            continue;
         }
 
         if (curTask->flags & GHOST_TASK_NOT_PIN) {
