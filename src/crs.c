@@ -9,6 +9,7 @@
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
 #include "ghost/log.h"
+#include "ghost/instr.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -307,26 +308,23 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     }
 
     ghost_nnz_t nEnts = 0;
+    int funcret = 0;
 
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+    GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts) reduction (+:funcret)
     {
-        int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for ordered
-        for( i = 0; i < mat->nrows; i++ ) {
+        for(i = 0; i < mat->nrows; i++) {
             if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                    funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
+                    funcret += src->func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
                 } else {
-                    funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
+                    funcret += src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
                 }
             } else {
-                funcret = src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-            }
-            if (funcret) {
-                ERROR_LOG("Matrix construction function returned error");
-                ret = GHOST_ERR_UNKNOWN;
+                funcret += src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
             }
             nEnts += rowlen;
 #pragma omp ordered
@@ -335,9 +333,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
+    if (funcret) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
+    }
     if (ret != GHOST_SUCCESS){
         goto err;
     }
+    GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
 
     mat->nnz = CR(mat)->rpt[mat->nrows];
     mat->nEnts = mat->nnz;
@@ -353,7 +356,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         }
     }
 
-#pragma omp parallel private(i,j,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+    GHOST_INSTR_START(crs_fromrowfunc_readcolval)
+#pragma omp parallel private(i,j,rowlen,tmpcol)
     {
         int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
@@ -405,6 +409,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         }
     }
     ghost_sparsemat_registerrow_finalize(mat);
+    GHOST_INSTR_STOP(crs_fromrowfunc_readcolval)
 
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
