@@ -537,6 +537,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     mat->permutation->len = mat->context->gnrows;
 
 #ifdef GHOST_HAVE_MPI
+    GHOST_INSTR_START(scotch_createperm)
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
         ERROR_LOG("Could not alloc SCOTCH graph");
@@ -563,8 +564,10 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->permutation->perm+mat->context->lfRow[me]),err,ret);
+    GHOST_INSTR_STOP(scotch_createperm)
     
 
+    GHOST_INSTR_START(scotch_combineperm)
     // combine permutation vectors
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
 
@@ -572,6 +575,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     for (i=0; i<mat->context->gnrows; i++) {
         mat->permutation->invPerm[mat->permutation->perm[i]] = i;
     }
+    GHOST_INSTR_STOP(scotch_combineperm)
     
 
 #else
