@@ -152,7 +152,7 @@ void ghost_task_destroy(ghost_task_t *t)
     free(t); t = NULL;
 }
 
-ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags)
+ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends)
 {
     ghost_error_t ret = GHOST_SUCCESS;
 

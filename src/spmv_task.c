@@ -112,8 +112,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {
         DEBUG_LOG(1,"using the parent's cores for the task mode spmv solver");
-        ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags);
+        ghost_task_create(&compTask, parent->nThreads - remoteExists, 0, &computeLocal, &cplargs, taskflags, NULL, 0);
+        ghost_task_create(&commTask, remoteExists, 0, &communicate, &cargs, taskflags, NULL, 0);
 
 
     } else {
@@ -121,8 +121,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
 
         int nIdleCores;
         ghost_pumap_nidle(&nIdleCores,GHOST_NUMANODE_ANY);
-        ghost_task_create(&compTask, 2/*nIdleCores-remoteExists*/, 0, &computeLocal, &cplargs, taskflags);
-        ghost_task_create(&commTask, 2/*remoteExists*/, 0, &communicate, &cargs, taskflags);
+        ghost_task_create(&compTask, 2/*nIdleCores-remoteExists*/, 0, &computeLocal, &cplargs, taskflags, NULL, 0);
+        ghost_task_create(&commTask, 2/*remoteExists*/, 0, &communicate, &cargs, taskflags, NULL, 0);
     }
 
     cargs.rhs = invec;
