@@ -20,8 +20,8 @@ ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
     int oldthreads = 0; 
 
     if (!ghost_thpool) {
-        ghost_thpool->nThreads = nThreads;
         GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
+        ghost_thpool->nThreads = nThreads;
         GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
         GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->sem,sizeof(sem_t)));
 
