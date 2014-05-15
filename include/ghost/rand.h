@@ -32,6 +32,16 @@ extern "C" {
      */
     ghost_error_t ghost_rand_create();
     /**
+     * @brief Create a fix seed for each PU of the machine.
+     *
+     * @param global_seed The seed.
+     *
+     * @return 
+     *
+     * This assumes that there at most as many OpenMP threads as there are PUs.
+     */
+    ghost_error_t ghost_rand_seed(unsigned int global_seed);
+    /**
      * @brief Destroy the random states.
      */
     void ghost_rand_destroy();

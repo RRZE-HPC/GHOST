@@ -46,6 +46,42 @@ out:
     return ret;
 }
 
+ghost_error_t ghost_rand_seed(unsigned int global_seed)
+{
+    ghost_error_t ret = GHOST_SUCCESS;
+    int i;
+    int rank;
+
+    GHOST_CALL_GOTO(ghost_machine_npu(&nrand, GHOST_NUMANODE_ANY),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&rank, MPI_COMM_WORLD),err,ret);
+
+    if (!ghost_rand_states) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&ghost_rand_states,nrand*sizeof(unsigned int)),err,ret);
+    }
+
+    for (i=0; i<nrand; i++) {
+        //double dtime;
+        //GHOST_CALL_GOTO(ghost_timing_wcmilli(&dtime),err,ret);
+        //int time = (int)(((int64_t)(dtime)) & 0xFFFFFFLL);
+
+        unsigned int seed=(unsigned int)ghost_hash(
+                //time,
+                global_seed,
+                rank,
+                i);
+        ghost_rand_states[i] = seed;
+    }
+
+    goto out;
+err:
+    ERROR_LOG("Free rand states");
+    free(ghost_rand_states);
+
+out:
+
+    return ret;
+}
+
 ghost_error_t ghost_rand_get(unsigned int **s)
 {
     if (!s) {
