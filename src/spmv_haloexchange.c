@@ -24,6 +24,7 @@ static ghost_nnz_t max_dues;
 
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
 {
+#ifdef GHOST_HAVE_MPI
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     max_dues = 0;
@@ -108,6 +109,11 @@ err:
 
 out:
     return ret;
+#else
+    UNUSED(vec);
+    UNUSED(permutation);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
 }
 
 ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled)
@@ -188,6 +194,9 @@ err:
 out:
     return ret;
 #else
+    UNUSED(vec);
+    UNUSED(permutation);
+    UNUSED(assembled);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 } 
