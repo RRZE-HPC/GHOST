@@ -392,9 +392,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                 }
             } else {
                 funcret = src->func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-//                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-//                     INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
-//                 }
+                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                    if (CR(mat)->col[j] >= mat->context->gncols) {
+                        ERROR_LOG("col idx too large! %"PRIDX" >= %"PRIDX" (row %"PRIDX" el %"PRIDX"/%"PRIDX" (%"PRIDX"))",CR(mat)->col[j],mat->context->gncols,i,j-CR(mat)->rpt[i],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],rowlen);
+                        ret = GHOST_ERR_UNKNOWN;
+                        break;
+                    }
+                     //INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
+                 }
             }
             if (funcret) {
                 ERROR_LOG("Matrix construction function returned error");
@@ -407,6 +412,9 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 #pragma omp critical
             GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
+    }
+    if (ret != GHOST_SUCCESS){
+        goto err;
     }
     ghost_sparsemat_registerrow_finalize(mat);
     GHOST_INSTR_STOP(crs_fromrowfunc_readcolval)
@@ -511,7 +519,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     int me;
 
     ghost_nnz_t lnEnts_l, lnEnts_r;
-    int current_l, current_r;
+    ghost_nnz_t current_l, current_r;
 
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
