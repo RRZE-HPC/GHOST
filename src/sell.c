@@ -360,6 +360,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_permute(ghost_sparsemat_t *, ghost_idx_t *, ghost_idx_t *);
 static ghost_error_t SELL_upload(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *);
+static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
 static void SELL_free(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
@@ -394,6 +395,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
 
     mat->upload = &SELL_upload;
     mat->fromFile = &SELL_fromBin;
+    mat->toFile = &SELL_toBinCRS;
     mat->fromRowFunc = &SELL_fromRowFunc;
     mat->auxString = &SELL_printInfo;
     mat->formatName = &SELL_formatName;
@@ -1065,6 +1067,15 @@ out:
     return ret;
 }
 
+static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath)
+{
+    UNUSED(mat);
+    UNUSED(matrixPath);
+
+    ERROR_LOG("SELL matrix to binary CRS file not implemented");
+    return GHOST_ERR_NOT_IMPLEMENTED;
+}
+
 static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Creating SELL matrix from binary file");
@@ -1285,6 +1296,16 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
 
     free(mat->data);
+    free(mat->col_orig);
+        
+    if (mat->localPart) {
+        SELL_free(mat->localPart);
+    }
+
+    if (mat->remotePart) {
+        SELL_free(mat->remotePart);
+    }
+
     free(mat);
 
 }

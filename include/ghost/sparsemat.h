@@ -135,7 +135,8 @@ typedef enum {
     /**
      * @brief Reduce the matrix bandwidth with PT-Scotch
      */
-    GHOST_SPARSEMAT_SCOTCHIFY = 128
+    GHOST_SPARSEMAT_SCOTCHIFY = 128,
+    GHOST_SPARSEMAT_SAVE_ORIG_COLS = 256
 } ghost_sparsemat_flags_t;
 
 
@@ -200,6 +201,8 @@ struct ghost_sparsemat_t
     ghost_permutation_t *permutation;
     //ghost_idx_t *rowPerm;
     //ghost_idx_t *invRowPerm;
+
+    ghost_idx_t *col_orig;
     
     ghost_idx_t nrows;
     ghost_idx_t ncols;
@@ -373,6 +376,7 @@ extern "C" {
      */
     ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
     ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
+    ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path);
     ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
     ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat);
 

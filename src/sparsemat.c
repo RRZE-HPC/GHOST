@@ -34,6 +34,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->localPart = NULL;
     (*mat)->remotePart = NULL;
     (*mat)->name = "Sparse matrix";
+    (*mat)->col_orig = NULL;
     (*mat)->data = NULL;
     (*mat)->nzDist = NULL;
     (*mat)->fromFile = NULL;
@@ -828,6 +829,76 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
 
     mat->auxString(mat,str);
     ghost_footer_string(str);
+
+    return GHOST_SUCCESS;
+
+}
+
+ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
+{
+    ghost_idx_t mnrows,mncols,mnnz;
+    GHOST_CALL_RETURN(ghost_sparsemat_nrows(&mnrows,mat));
+    mncols = mnrows;
+    GHOST_CALL_RETURN(ghost_sparsemat_nnz(&mnnz,mat));
+    
+    int32_t endianess = ghost_machine_bigendian();
+    int32_t version = 1;
+    int32_t base = 0;
+    int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;
+    int32_t datatype = mat->traits->datatype;
+    int64_t nrows = (int64_t)mnrows;
+    int64_t ncols = (int64_t)mncols;
+    int64_t nnz = (int64_t)mnnz;
+
+    size_t ret;
+    FILE *filed;
+
+    if ((filed = fopen64(path, "w")) == NULL){
+        ERROR_LOG("Could not open binary CRS file %s: %s",path,strerror(errno));
+        return GHOST_ERR_IO;
+    }
+
+    if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&base,sizeof(base),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&symmetry,sizeof(symmetry),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    if ((ret = fwrite(&nnz,sizeof(nnz),1,filed)) != 1) {
+        ERROR_LOG("fwrite failed: %zu",ret);
+        fclose(filed);
+        return GHOST_ERR_IO;
+    }
+    fclose(filed);
 
     return GHOST_SUCCESS;
 
