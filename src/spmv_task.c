@@ -94,7 +94,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ghost_spmv_flags_t remoteopts = spmvOptions;
 
     int remoteExists = mat->remotePart->nnz > 0;
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_SUM,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {
         localopts |= GHOST_SPMV_LOCAL;
