@@ -147,11 +147,13 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     }
     acc_wishes = wishptr[nprocs];
     
-    ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes);
-    ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *));
-    
-    for (from_PE=0; from_PE<nprocs; from_PE++){
-        tmprecv[from_PE] = &tmprecv_mem[wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *)),err,ret);
+        
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            tmprecv[from_PE] = &tmprecv_mem[wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+        }
     }
 
     
