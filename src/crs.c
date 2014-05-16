@@ -392,14 +392,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                 }
             } else {
                 funcret = src->func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                 /*for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                     if (CR(mat)->col[j] >= mat->context->gncols) {
                         ERROR_LOG("col idx too large! %"PRIDX" >= %"PRIDX" (row %"PRIDX" el %"PRIDX"/%"PRIDX" (%"PRIDX"))",CR(mat)->col[j],mat->context->gncols,i,j-CR(mat)->rpt[i],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],rowlen);
                         ret = GHOST_ERR_UNKNOWN;
                         break;
                     }
                      //INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
-                 }
+                 }*/
             }
             if (funcret) {
                 ERROR_LOG("Matrix construction function returned error");
