@@ -20,6 +20,10 @@ static char **tmprecv = NULL;
 static char *tmprecv_mem = NULL;
 static char *work = NULL;
 static ghost_idx_t *dueptr = NULL;
+static ghost_idx_t *wishptr = NULL;
+static ghost_nnz_t acc_dues = 0;
+static ghost_nnz_t acc_wishes = 0;
+
 //static ghost_nnz_t max_dues;
 #endif
 
@@ -32,23 +36,18 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     int i, to_PE;
     ghost_idx_t c;
-    ghost_idx_t acc_dues;
 
     if (nprocs == 1) {
         return GHOST_SUCCESS;
     }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_idx_t)));
-    dueptr[0] = 0;
     
+    dueptr[0] = 0;
     for (i=0;i<nprocs;i++) {
-        /*if (vec->context->dues[i]>max_dues) {
-            max_dues = vec->context->dues[i];
-        }*/
         dueptr[i+1] = dueptr[i]+vec->context->dues[i];
     }
     acc_dues = dueptr[nprocs];
-    
     
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*acc_dues*vec->elSize));
     
@@ -131,7 +130,6 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int me; 
     int i, from_PE, to_PE;
     //ghost_nnz_t max_wishes;
-    ghost_nnz_t acc_wishes = 0;
     ghost_idx_t *wishptr;
     ghost_error_t ret = GHOST_SUCCESS;
     
@@ -143,15 +141,12 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*2*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_idx_t)),err,ret);
 
-    //max_wishes = 0;
     wishptr[0] = 0;
     for (i=0;i<nprocs;i++) {
         wishptr[i+1] = wishptr[i]+vec->context->wishes[i];
-        /*if (vec->context->wishes[i]>max_wishes) {
-            max_wishes = vec->context->wishes[i];
-        }*/
     }
     acc_wishes = wishptr[nprocs];
+    
     ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes);
     ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *));
     
@@ -203,7 +198,6 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 err:
 
 out:
-    free(wishptr); wishptr = NULL;
     return ret;
 #else
     UNUSED(vec);
@@ -245,6 +239,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     free(request); request = NULL;
     free(status); status = NULL;
     free(dueptr); dueptr = NULL;
+    free(wishptr); wishptr = NULL;
 
 
     goto out;
