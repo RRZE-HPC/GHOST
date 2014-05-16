@@ -138,10 +138,8 @@ ghost_error_t ghost_init(int argc, char **argv)
             if (!strncasecmp(envtype,"CUDA",4)) {
                 ghost_type = GHOST_TYPE_CUDA;
             } else if (!strncasecmp(envtype,"WORK",4)) {
-                INFO_LOG("Setting GHOST type to WORK due to environment variable.");
                 ghost_type = GHOST_TYPE_WORK;
             }
-            INFO_LOG("Setting GHOST type to %s due to environment variable.",ghost_type_string(ghost_type));
         }
     }
 
@@ -153,7 +151,9 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else {
             ghost_type = GHOST_TYPE_WORK;
         }
-        INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
+        if (ncudadevs) {
+            INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
+        }
     } 
 
 #ifndef GHOST_HAVE_CUDA
