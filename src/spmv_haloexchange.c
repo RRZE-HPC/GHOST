@@ -19,7 +19,8 @@ static MPI_Status  *status = NULL;
 static char **tmprecv = NULL;
 static char *tmprecv_mem = NULL;
 static char *work = NULL;
-static ghost_nnz_t max_dues;
+static ghost_idx_t *dueptr = NULL;
+//static ghost_nnz_t max_dues;
 #endif
 
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
@@ -27,22 +28,29 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_MPI
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
-    max_dues = 0;
+    //max_dues = 0;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     int i, to_PE;
     ghost_idx_t c;
+    ghost_idx_t acc_dues;
 
     if (nprocs == 1) {
         return GHOST_SUCCESS;
     }
+
+    GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_idx_t)));
+    dueptr[0] = 0;
     
     for (i=0;i<nprocs;i++) {
-        if (vec->context->dues[i]>max_dues) {
+        /*if (vec->context->dues[i]>max_dues) {
             max_dues = vec->context->dues[i];
-        }
+        }*/
+        dueptr[i+1] = dueptr[i]+vec->context->dues[i];
     }
+    acc_dues = dueptr[nprocs];
     
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*max_dues*nprocs * vec->elSize));
+    
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*acc_dues*vec->elSize));
     
     GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
 #ifdef DL_WHOLE
@@ -54,7 +62,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
             for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
-                    memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
+                    memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
                 }
             }
         } else {
@@ -62,7 +70,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
             for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
-                    memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols,vec->val[vec->context->duelist[to_PE][i]],vec->elSize*vec->traits.ncols);
+                    memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[vec->context->duelist[to_PE][i]],vec->elSize*vec->traits.ncols);
                 }
             }
         }
@@ -75,11 +83,11 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                     for (c=0; c<vec->traits.ncols; c++) {
 #ifndef DL_WHOLE
                         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                            ghost_cu_download(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,permutation->perm[vec->context->duelist[to_PE][i]]),vec->elSize);
+                            ghost_cu_download(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,permutation->perm[vec->context->duelist[to_PE][i]]),vec->elSize);
                         } else 
 #endif
                         {
-                            memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
                         }
                     }
                 }
@@ -92,11 +100,11 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                     for (c=0; c<vec->traits.ncols; c++) {
 #ifndef DL_WHOLE
                         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                            ghost_cu_download(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,vec->context->duelist[to_PE][i]),vec->elSize);
+                            ghost_cu_download(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,vec->context->duelist[to_PE][i]),vec->elSize);
                         } else 
 #endif
                         {
-                            memcpy(work + (to_PE*max_dues+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
                         }
                     }
                 }
@@ -122,7 +130,9 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int nprocs;
     int me; 
     int i, from_PE, to_PE;
-    ghost_nnz_t max_wishes;
+    //ghost_nnz_t max_wishes;
+    ghost_nnz_t acc_wishes = 0;
+    ghost_idx_t *wishptr;
     ghost_error_t ret = GHOST_SUCCESS;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
@@ -131,21 +141,22 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     msgcount = 0;
     GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*2*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*2*nprocs),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_idx_t)),err,ret);
 
-    max_wishes = 0;
+    //max_wishes = 0;
+    wishptr[0] = 0;
     for (i=0;i<nprocs;i++) {
-        if (vec->context->dues[i]>max_dues) {
-            max_dues = vec->context->dues[i];
-        }
-        if (vec->context->wishes[i]>max_wishes) {
+        wishptr[i+1] = wishptr[i]+vec->context->wishes[i];
+        /*if (vec->context->wishes[i]>max_wishes) {
             max_wishes = vec->context->wishes[i];
-        }
+        }*/
     }
-    ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*max_wishes*nprocs);
+    acc_wishes = wishptr[nprocs];
+    ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes);
     ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *));
     
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        tmprecv[from_PE] = &tmprecv_mem[from_PE*vec->traits.ncols*vec->elSize*max_wishes];
+        tmprecv[from_PE] = &tmprecv_mem[wishptr[from_PE]*vec->traits.ncols*vec->elSize];
     }
 
     
@@ -182,7 +193,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (vec->context->dues[to_PE]>0){
-            MPI_CALL_GOTO(MPI_Isend( work + to_PE*max_dues*vec->elSize*vec->traits.ncols, vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols, MPI_CHAR, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Isend( work + dueptr[to_PE]*vec->elSize*vec->traits.ncols, vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols, MPI_CHAR, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
             msgcount++;
         }
     ;}
@@ -192,6 +203,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 err:
 
 out:
+    free(wishptr); wishptr = NULL;
     return ret;
 #else
     UNUSED(vec);
@@ -232,6 +244,8 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     free(tmprecv); tmprecv = NULL;
     free(request); request = NULL;
     free(status); status = NULL;
+    free(dueptr); dueptr = NULL;
+
 
     goto out;
 err:
