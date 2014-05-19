@@ -82,6 +82,7 @@ set (HEADERS
 		include/ghost/densemat_cm.h
 		include/ghost/densemat_rm.h
 		include/ghost/error.h
+		include/ghost/helper.h
         include/ghost/instr.h
 		include/ghost/locality.h	
         include/ghost/log.h
