@@ -161,6 +161,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
 
 ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
+    GHOST_INSTR_START(tsmttsm)
     ghost_error_t ret = GHOST_SUCCESS;
     if (!v->context) {
         ERROR_LOG("v needs to be distributed");
@@ -294,11 +295,13 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 err:
 
 out:
+    GHOST_INSTR_STOP(tsmttsm)
     return ret;
 }
 
 ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha)
 {
+    GHOST_INSTR_START(tsmm)
     ghost_error_t ret = GHOST_SUCCESS;
 
 
@@ -401,6 +404,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 err:
 
 out:
+    GHOST_INSTR_STOP(tsmm)
     return ret;
 }
 
