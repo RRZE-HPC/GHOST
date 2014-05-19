@@ -353,7 +353,16 @@ ghost_error_t ghost_init(int argc, char **argv)
     unsigned int cpu;
     hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
 
+    // delete excess cores
+    hwloc_obj_t core_to_delete = hwloc_get_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,hwconfig.ncore);
+    while (core_to_delete) {
+        hwloc_bitmap_andnot(mycpuset,mycpuset,core_to_delete->cpuset);
+        core_to_delete = hwloc_get_next_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,core_to_delete);
+    }
+
     // delete excess SMT threads
+    // this has to be done _after_ deleting excess cores because 
+    // hwloc_get_obj_inside_cpuset_by_type() needs to find full cores in the CPU set
     hwloc_bitmap_foreach_begin(cpu,backup);
     obj = hwloc_get_pu_obj_by_os_index(topology,cpu);
 
@@ -361,13 +370,6 @@ ghost_error_t ghost_init(int argc, char **argv)
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
     hwloc_bitmap_foreach_end();
-
-    // delete excess cores
-    hwloc_obj_t core_to_delete = hwloc_get_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,hwconfig.ncore);
-    while (core_to_delete) {
-        hwloc_bitmap_andnot(mycpuset,mycpuset,core_to_delete->cpuset);
-        core_to_delete = hwloc_get_next_obj_inside_cpuset_by_type(topology,mycpuset,HWLOC_OBJ_CORE,core_to_delete);
-    }
 
     void *(*threadFunc)(void *);
 
