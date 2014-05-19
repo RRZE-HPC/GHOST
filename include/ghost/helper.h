@@ -35,3 +35,5 @@ int main(int argc, char** argv) {\
     ghost_finalize();\
     return EXIT_SUCCESS;\
 }
+
+#endif
