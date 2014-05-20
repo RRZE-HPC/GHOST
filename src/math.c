@@ -183,11 +183,11 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
-    if (x->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
+    /*if (x->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
         ERROR_LOG("x needs to be present in col-major storage");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
-    }
+    }*/
     if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
         ERROR_LOG("Currently only double data supported");
         ret = GHOST_ERR_NOT_IMPLEMENTED;
@@ -234,58 +234,114 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
 
     ghost_idx_t i,j;
    
-    switch(k) {
-        case 4:
-            for (j=0; j<m; j++) {
-                double tmp0 = dbeta*xval[0*ldx+j];
-                double tmp1 = dbeta*xval[1*ldx+j];
-                double tmp2 = dbeta*xval[2*ldx+j];
-                double tmp3 = dbeta*xval[3*ldx+j];
+    if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        switch(k) {
+            case 4:
+                for (j=0; j<m; j++) {
+                    double tmp0 = dbeta*xval[0*ldx+j];
+                    double tmp1 = dbeta*xval[1*ldx+j];
+                    double tmp2 = dbeta*xval[2*ldx+j];
+                    double tmp3 = dbeta*xval[3*ldx+j];
 #pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3)
-                for (i=0; i<n; i++) {
-                    tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
-                    tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
-                    tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
-                    tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    for (i=0; i<n; i++) {
+                        tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                        tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                        tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                        tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    }
+                    xval[0*ldx+j] = tmp0;
+                    xval[1*ldx+j] = tmp1;
+                    xval[2*ldx+j] = tmp2;
+                    xval[3*ldx+j] = tmp3;
                 }
-                xval[0*ldx+j] = tmp0;
-                xval[1*ldx+j] = tmp1;
-                xval[2*ldx+j] = tmp2;
-                xval[3*ldx+j] = tmp3;
-            }
-            break;
-        case 8:
-            for (j=0; j<m; j++) {
-                double tmp0 = dbeta*xval[0*ldx+j];
-                double tmp1 = dbeta*xval[1*ldx+j];
-                double tmp2 = dbeta*xval[2*ldx+j];
-                double tmp3 = dbeta*xval[3*ldx+j];
-                double tmp4 = dbeta*xval[4*ldx+j];
-                double tmp5 = dbeta*xval[5*ldx+j];
-                double tmp6 = dbeta*xval[6*ldx+j];
-                double tmp7 = dbeta*xval[7*ldx+j];
+                break;
+            case 8:
+                for (j=0; j<m; j++) {
+                    double tmp0 = dbeta*xval[0*ldx+j];
+                    double tmp1 = dbeta*xval[1*ldx+j];
+                    double tmp2 = dbeta*xval[2*ldx+j];
+                    double tmp3 = dbeta*xval[3*ldx+j];
+                    double tmp4 = dbeta*xval[4*ldx+j];
+                    double tmp5 = dbeta*xval[5*ldx+j];
+                    double tmp6 = dbeta*xval[6*ldx+j];
+                    double tmp7 = dbeta*xval[7*ldx+j];
 #pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7)
-                for (i=0; i<n; i++) {
-                    tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
-                    tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
-                    tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
-                    tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
-                    tmp4 += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
-                    tmp5 += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
-                    tmp6 += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
-                    tmp7 += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
+                    for (i=0; i<n; i++) {
+                        tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                        tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                        tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                        tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                        tmp4 += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
+                        tmp5 += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
+                        tmp6 += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
+                        tmp7 += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
+                    }
+                    xval[0*ldx+j] = tmp0;
+                    xval[1*ldx+j] = tmp1;
+                    xval[2*ldx+j] = tmp2;
+                    xval[3*ldx+j] = tmp3;
+                    xval[4*ldx+j] = tmp4;
+                    xval[5*ldx+j] = tmp5;
+                    xval[6*ldx+j] = tmp6;
+                    xval[7*ldx+j] = tmp7;
                 }
-                xval[0*ldx+j] = tmp0;
-                xval[1*ldx+j] = tmp1;
-                xval[2*ldx+j] = tmp2;
-                xval[3*ldx+j] = tmp3;
-                xval[4*ldx+j] = tmp4;
-                xval[5*ldx+j] = tmp5;
-                xval[6*ldx+j] = tmp6;
-                xval[7*ldx+j] = tmp7;
-            }
-            break;
+                break;
+        }
+    } else {
+        switch(k) {
+            case 4:
+                for (j=0; j<m; j++) {
+                    double tmp0 = dbeta*xval[j*ldx+0];
+                    double tmp1 = dbeta*xval[j*ldx+1];
+                    double tmp2 = dbeta*xval[j*ldx+2];
+                    double tmp3 = dbeta*xval[j*ldx+3];
+#pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3)
+                    for (i=0; i<n; i++) {
+                        tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                        tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                        tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                        tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                    }
+                    xval[j*ldx+0] = tmp0;
+                    xval[j*ldx+1] = tmp1;
+                    xval[j*ldx+2] = tmp2;
+                    xval[j*ldx+3] = tmp3;
+                }
+                break;
+            case 8:
+                for (j=0; j<m; j++) {
+                    double tmp0 = dbeta*xval[j*ldx+0];
+                    double tmp1 = dbeta*xval[j*ldx+1];
+                    double tmp2 = dbeta*xval[j*ldx+2];
+                    double tmp3 = dbeta*xval[j*ldx+3];
+                    double tmp4 = dbeta*xval[j*ldx+4];
+                    double tmp5 = dbeta*xval[j*ldx+5];
+                    double tmp6 = dbeta*xval[j*ldx+6];
+                    double tmp7 = dbeta*xval[j*ldx+7];
+#pragma omp parallel for schedule(runtime) reduction(+:tmp0,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7)
+                    for (i=0; i<n; i++) {
+                        tmp0 += dalpha*vval[i*ldv+j]*wval[i*ldw+0];
+                        tmp1 += dalpha*vval[i*ldv+j]*wval[i*ldw+1];
+                        tmp2 += dalpha*vval[i*ldv+j]*wval[i*ldw+2];
+                        tmp3 += dalpha*vval[i*ldv+j]*wval[i*ldw+3];
+                        tmp4 += dalpha*vval[i*ldv+j]*wval[i*ldw+4];
+                        tmp5 += dalpha*vval[i*ldv+j]*wval[i*ldw+5];
+                        tmp6 += dalpha*vval[i*ldv+j]*wval[i*ldw+6];
+                        tmp7 += dalpha*vval[i*ldv+j]*wval[i*ldw+7];
+                    }
+                    xval[j*ldx+0] = tmp0;
+                    xval[j*ldx+1] = tmp1;
+                    xval[j*ldx+2] = tmp2;
+                    xval[j*ldx+3] = tmp3;
+                    xval[j*ldx+4] = tmp4;
+                    xval[j*ldx+5] = tmp5;
+                    xval[j*ldx+6] = tmp6;
+                    xval[j*ldx+7] = tmp7;
+                }
+                break;
+        }
     }
+
 
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*k,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
