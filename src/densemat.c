@@ -32,6 +32,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     (*vec)->ldmask = hwloc_bitmap_alloc();
     (*vec)->trmask = hwloc_bitmap_alloc();
     (*vec)->val = NULL;
+    (*vec)->viewing = NULL;
     if (!(*vec)->ldmask) {
         ERROR_LOG("Could not create dense matrix mask!");
         goto err;

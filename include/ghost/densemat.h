@@ -137,6 +137,12 @@ struct ghost_densemat_t
      */
     hwloc_bitmap_t trmask;
 
+    /**
+     * @brief The base pointer of the data which viewed or NULL if not a view.
+     */
+    struct ghost_densemat_t *viewing;
+    ghost_idx_t viewing_col;
+    ghost_idx_t viewing_row;
 #ifdef GHOST_HAVE_CUDA
     /**
      * @brief The values of the vector/matrix on the CUDA device.

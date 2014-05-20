@@ -152,37 +152,85 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
         ERROR_LOG("Cannot memtranspose scattered densemat views!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
-        ERROR_LOG("Memtranspose of densemat views currently broken");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
 
     ghost_idx_t col,row;
-    
-    vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
-    ghost_densemat_cm_setfuncs(vec);
-    char *oldval = vec->val[0];
-    free(vec->val); 
-    vec->val = NULL;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.ncolspadded*sizeof(char *)));
-    vec->val[0] = oldval;
-    for (col=1; col<vec->traits.ncolspadded; col++) {
-        vec->val[col] = vec->val[0]+vec->traits.nrowspadded*col*vec->elSize;
-    }
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        INFO_LOG("Memtranspose of a view. The densemat will loose its view property.");
+        char *oldval;
+        ghost_densemat_valptr(vec,(void **)&oldval);
+        
+        vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
+        vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
+        hwloc_bitmap_fill(vec->ldmask);
+        vec->traits.ncolsorig = vec->traits.ncols;
+        vec->traits.nrowsorig = vec->traits.nrows;
+        ghost_densemat_cm_setfuncs(vec);
+        
+        free(vec->val); vec->val = NULL; 
+        ghost_densemat_cm_malloc(vec);
+        for (row=0; row<vec->traits.nrows; row++) {
+            for (col=0; col<vec->traits.ncols; col++) {
+                memcpy(vec->val[0]+col*vec->traits.nrowspadded*vec->elSize+row*vec->elSize,
+                        oldval+vec->traits.ncolspadded*row*vec->elSize+col*vec->elSize,
+                        vec->elSize);
+            }
+        }
 
-    char *tmp;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded));
-    memcpy(tmp,vec->val[0],vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded);
+    } else {
+        vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
+        ghost_densemat_cm_setfuncs(vec);
+        if (vec->viewing) {
+            INFO_LOG("In-place back-transpose. The densemat will regain its view property.");
+            vec->traits.flags |= GHOST_DENSEMAT_VIEW;
+            vec->traits.ncolsorig = vec->viewing->traits.ncols;
+            vec->traits.nrowsorig = vec->viewing->traits.nrows;
+            
+            if (vec->viewing_row) {
+                hwloc_bitmap_clr_range(vec->ldmask,0,vec->viewing_row-1);
+                hwloc_bitmap_clr_range(vec->ldmask,vec->traits.nrows+vec->viewing_row,-1);
+            }
 
-    for (row=0; row<vec->traits.nrows; row++) {
-        for (col=0; col<vec->traits.ncols; col++) {
-            memcpy(vec->val[0]+col*vec->traits.nrowspadded*vec->elSize+row*vec->elSize,
-                    tmp+vec->traits.ncolspadded*row*vec->elSize+col*vec->elSize,
-                    vec->elSize);
+            for (row=0; row<vec->traits.nrows; row++) {
+                for (col=0; col<vec->traits.ncols; col++) {
+                    memcpy(&vec->viewing->val[vec->viewing_col+col][(vec->viewing_row+row)*vec->elSize],
+                            vec->val[0]+vec->traits.ncolspadded*row*vec->elSize+col*vec->elSize,
+                            vec->elSize);
+                }
+            }
+            vec->val = NULL;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.ncolspadded*sizeof(char *)));
+            vec->val[0] = vec->viewing->val[vec->viewing_col];
+            for (col=1; col<vec->traits.ncolspadded; col++) {
+                vec->val[col] = vec->val[0]+vec->viewing->traits.nrowspadded*col*vec->elSize;
+            }
+
+            
+        } else {
+
+            char *oldval = vec->val[0];
+            free(vec->val); 
+            vec->val = NULL;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.ncolspadded*sizeof(char *)));
+            vec->val[0] = oldval;
+            for (col=1; col<vec->traits.ncolspadded; col++) {
+                vec->val[col] = vec->val[0]+vec->traits.nrowspadded*col*vec->elSize;
+            }
+
+            char *tmp;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded));
+            memcpy(tmp,vec->val[0],vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded);
+
+            for (row=0; row<vec->traits.nrows; row++) {
+                for (col=0; col<vec->traits.ncols; col++) {
+                    memcpy(vec->val[0]+col*vec->traits.nrowspadded*vec->elSize+row*vec->elSize,
+                            tmp+vec->traits.ncolspadded*row*vec->elSize+col*vec->elSize,
+                            vec->elSize);
+                }
+            }
+
+            free(tmp);
         }
     }
-
-    free(tmp);
 
     return GHOST_SUCCESS; 
 }
@@ -294,6 +342,9 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         (*new)->val[r] = VECVAL_RM(src,src->val,roffs+r,0);
     }
 
+    (*new)->viewing = src;
+    (*new)->viewing_col = coffs;
+    (*new)->viewing_row = roffs;
     return GHOST_SUCCESS;
 }
 
@@ -339,6 +390,10 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
         (*new)->val[r] = VECVAL_RM(src,src->val,roffs[r],0);
     }
 
+    (*new)->viewing = src;
+    (*new)->viewing_col = -1;
+    (*new)->viewing_row = -1;
+
     return GHOST_SUCCESS;
 }
 
@@ -368,6 +423,9 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
         (*new)->val[r] = VECVAL_RM(src,src->val,r,0);
     }
 
+    (*new)->viewing = src;
+    (*new)->viewing_col = coffs;
+    (*new)->viewing_row = 0;
     return GHOST_SUCCESS;
 }
 
@@ -407,6 +465,9 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
         (*new)->val[r] = VECVAL_RM(src,src->val,r,0);
     }
 
+    (*new)->viewing = src;
+    (*new)->viewing_col = -1;
+    (*new)->viewing_row = -1;
     return GHOST_SUCCESS;
 }
 
@@ -1302,9 +1363,12 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
         vec->val[r] = &val[(r*vec->traits.ncolspadded)*vec->elSize];
     }
     hwloc_bitmap_fill(vec->ldmask);
+    hwloc_bitmap_fill(vec->trmask);
     vec->traits.ncolsorig = vec->traits.ncols;
+    vec->traits.nrowsorig = vec->traits.nrows;
     vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
     vec->traits.flags &= ~GHOST_DENSEMAT_SCATTERED;
+    vec->viewing = NULL;
 
     return GHOST_SUCCESS;
 }
