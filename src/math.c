@@ -372,12 +372,12 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         case 4:
 #pragma omp parallel for private(j,s) schedule(runtime)
             for (i=0; i<n; i++) {
-                for (j=0; j<m; j++) {
+                for (s=0; s<4; s++) {
 #pragma simd
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-                    for (s=0; s<4; s++) {
+                    for (j=0; j<m; j++) {
                         xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                     }
                 }
