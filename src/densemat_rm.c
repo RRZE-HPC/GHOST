@@ -187,8 +187,8 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
             
             if (vec->viewing_row) {
                 hwloc_bitmap_clr_range(vec->ldmask,0,vec->viewing_row-1);
-                hwloc_bitmap_clr_range(vec->ldmask,vec->traits.nrows+vec->viewing_row,-1);
             }
+            hwloc_bitmap_clr_range(vec->ldmask,vec->traits.nrows+vec->viewing_row,-1);
 
             for (row=0; row<vec->traits.nrows; row++) {
                 for (col=0; col<vec->traits.ncols; col++) {
