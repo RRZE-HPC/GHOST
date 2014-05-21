@@ -25,12 +25,12 @@ option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
 set(BLAS "MKL" CACHE STRING "BLAS library to be used (required). Valid values: MKL, GSL, LIBSCI")
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
-set(VERBOSITY 0 CACHE STRING "Level of verbosity information. Valid values: 0 (print only warnings and errors), 1, 2, 3 (increasing level of verbosity)")
+set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation. Valid values: TIMING, LIKWID")
 
 find_package(PkgConfig)
 
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DDEBUG=${VERBOSITY})
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DVERBOSITY=${VERBOSITY})
 
 set (SOURCES
         src/bincrs.c
@@ -141,7 +141,7 @@ if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compi
     set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
 else()
     set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
-    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DDEBUG=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
+    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DVERBOSITY=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
     set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
 endif()
 
