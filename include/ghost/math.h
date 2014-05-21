@@ -12,6 +12,8 @@
 #include "sparsemat.h"
 #include "densemat.h"
 #include "error.h"
+#include "tsmm.h"
+#include "tsmttsm.h"
 
 #include <stdarg.h>
 
@@ -127,7 +129,7 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
+    //ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
     /**
      * @brief 
      *
@@ -147,7 +149,7 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
+    //ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
