@@ -23,6 +23,8 @@ option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 1)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_LONGIDX "Enable 64-bit indices for matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
+set(CFG_BLOCKVECTOR_SIZES "2,4,8,12,16" CACHE STRING "The block vector sizes for which generated kernels are being created")
+set(CFG_SELL_CHUNKHEIGHTS "1,2,4,8,16,32" CACHE STRING "The SELL chunk heights for which generated kernels are being created")
 set(BLAS "MKL" CACHE STRING "BLAS library to be used (required). Valid values: MKL, GSL, LIBSCI")
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
@@ -30,7 +32,9 @@ set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation. Valid values: TIMI
 
 find_package(PkgConfig)
 
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DVERBOSITY=${VERBOSITY})
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
+
+set(GHOST_VERBOSITY ${VERBOSITY})
 
 set (SOURCES
         src/bincrs.c
@@ -54,6 +58,7 @@ set (SOURCES
         src/rand.c
 		src/sell.c 
 		src/sell.cpp
+        src/sellspmv_kernelmap.cpp
 		src/sparsemat.c
 		src/sparsemat.cpp
         src/spmv_haloexchange.c
@@ -66,6 +71,10 @@ set (SOURCES
         src/thpool.c
         src/timing.c
         src/timing.cpp
+        src/tsmm.c
+        src/tsmm_kernelmap.cpp
+        src/tsmttsm.c
+        src/tsmttsm_kernelmap.cpp
         src/types.c
 		src/util.c 
 	)
@@ -100,27 +109,49 @@ set (HEADERS
 		include/ghost/taskq.h
         include/ghost/thpool.h
         include/ghost/timing.h
+        include/ghost/tsmm.h
+        include/ghost/tsmttsm.h
 		include/ghost/types.h
 		include/ghost/util.h
 	)
 
+configure_file (
+	${PROJECT_SOURCE_DIR}/src/sell_kernel_sse.c.in
+	${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
+)
+configure_file (
+	${PROJECT_SOURCE_DIR}/src/sell_kernel_avx.c.in
+	${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+)
+configure_file (
+	${PROJECT_SOURCE_DIR}/src/tsmm.c.in
+	${PROJECT_BINARY_DIR}/src/tsmm.c
+)
+configure_file (
+	${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
+	${PROJECT_BINARY_DIR}/src/tsmttsm.c
+)
+
 set (TO_PREPROCESS
-        src/sell_kernel_avx.c
-        src/sell_kernel_sse.c
-        src/sell_kernel_mic.c
+        ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+        ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
+#src/sell_kernel_mic.c
+        ${PROJECT_BINARY_DIR}/src/tsmm.c
+        ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 
 set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
 set (PP_HEADER_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_extractfunc.pl)
+set (PP_KERNELMAP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_mapfunc.pl)
 set (PP_SRC_DIR ${CMAKE_BINARY_DIR}/src_pp/)
 set (PP_INC_DIR ${CMAKE_BINARY_DIR}/ghost/)
 
 foreach (TO_PP_FILE ${TO_PREPROCESS})
-    set(TO_PP_FILE ${CMAKE_SOURCE_DIR}/${TO_PP_FILE})
     get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
     get_filename_component(TO_PP_FILENAME_WE ${TO_PP_FILE} NAME_WE)
     set(PP_FILE ${PP_SRC_DIR}/${TO_PP_FILENAME})
-    set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.h)
+    set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}_gen.h)
+    set(PP_KERNELMAP ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.def)
     add_custom_command(
             OUTPUT ${PP_FILE}
             DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
@@ -128,22 +159,29 @@ foreach (TO_PP_FILE ${TO_PREPROCESS})
             )
     add_custom_command(
             OUTPUT ${PP_HEADER}
-            DEPENDS ${PP_FILE} ${PP_SCRIPT} ${PP_HEADER_SCRIPT} 
+            DEPENDS ${PP_FILE} ${PP_HEADER_SCRIPT} 
             COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${PP_FILE} > ${PP_HEADER}
             )
-    list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER})
+    add_custom_command(
+            OUTPUT ${PP_KERNELMAP}
+            DEPENDS ${PP_HEADER} ${PP_KERNELMAP_SCRIPT} 
+            COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${PP_HEADER} > ${PP_KERNELMAP}
+            )
+    list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER} ${PP_KERNELMAP})
     list(APPEND HEADERS ${PP_HEADER})
 endforeach()
 
+set (SOURCES ${SOURCES} ${PP_FILES})
+
 add_custom_target(preprocess DEPENDS ${PP_FILES})
 
-if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
-    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
-else()
-    set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
-    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DVERBOSITY=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
-    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
-endif()
+#if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
+#    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
+#else()
+#    set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
+#    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DVERBOSITY=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
+#    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
+#endif()
 
 if (USE_CUDA)
 	find_package(CUDA)

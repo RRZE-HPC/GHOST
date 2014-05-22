@@ -119,24 +119,6 @@ extern "C" {
      * @param v
      * @param w
      * @param alpha
-     *
-     * x = alpha*v*w
-     * v is NxM, distributed, row-major
-     * w is MxK, redundant, col-mjaor
-     * x is NxK, distributed, row-major
-     * M<<N
-     * K=4,8,...
-     *
-     * @return 
-     */
-    //ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
-    /**
-     * @brief 
-     *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
      * @param beta
      *
      * x = alpha*v^T*w + beta*x

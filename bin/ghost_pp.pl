@@ -67,8 +67,9 @@ while (<>) {
                 for (my $i = 0; $i < (scalar @$assignment)/2; $i++) {
                     $f =~ s/@$assignment[2*$i]/@$assignment[2*$i+1]/g;
                 }
-                $f =~ s/([\d]+)\*([\d]+)\/([\d]+)/$1 * $2 \/ $3/ge; # evaulate a*b/c
-                $f =~ s/([\d]+)\/([\d]+)/$1 \/ $2/ge; # evaulate a/b
+                $f =~ s/([\d]+)\*([\d]+)\/([\d]+)/int($1 * $2 \/ $3)/ge; # evaulate a*b/c
+                $f =~ s/([\d]+)\/([\d]+)/int($1 \/ $2)/ge; # evaulate a/b
+                $f =~ s/([\d]+)-([\d]+)/$1 - $2/ge; # evaulate a-b
                 for (split /^/,$f) {
                     if ($_ =~ /#GHOST_UNROLL/) {
                         unroll($_);

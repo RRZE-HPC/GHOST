@@ -11,6 +11,9 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
+#include "ghost/sell.h"
+#include "ghost/tsmm.h"
+#include "ghost/tsmttsm.h"
 
 #include <hwloc.h>
 #ifdef GHOST_HAVE_INSTR_LIKWID
@@ -382,6 +385,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
 
+    ghost_sellspmv_kernelmap_generate();
+    ghost_tsmm_kernelmap_generate();
+    ghost_tsmttsm_kernelmap_generate();
     return GHOST_SUCCESS;
 }
 

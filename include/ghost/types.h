@@ -52,6 +52,13 @@ typedef enum {
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
 
+typedef enum {
+    GHOST_IMPLEMENTATION_AVX,
+    GHOST_IMPLEMENTATION_SSE,
+    GHOST_IMPLEMENTATION_MIC,
+    GHOST_IMPLEMENTATION_PLAIN
+} ghost_implementation_t;
+
 /**
  * @brief Contiguous indices for data types.
  *
@@ -214,6 +221,7 @@ extern "C" {
      */
     char * ghost_datatype_string(ghost_datatype_t datatype);
     ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
+    ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx);
     ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
     ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype);
     ghost_error_t ghost_mpi_datatypes_create();

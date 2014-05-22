@@ -28,7 +28,7 @@
 #if defined(VSX)
 #include <altivec.h>
 #endif
-
+/*
 #ifdef GHOST_HAVE_SSE
 #include "ghost/sell_kernel_sse.h"
 static ghost_error_t (*SELL_kernels_SSE_multivec_x_cm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
@@ -329,12 +329,7 @@ static ghost_error_t (*SELL_kernels_MIC_32[4][4]) (ghost_sparsemat_t *, ghost_de
     {NULL,NULL,NULL,NULL},
     {NULL,NULL,NULL,NULL}};
 #endif
-
-static ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{&ss_SELL_kernel_plain,&sd_SELL_kernel_plain,&sc_SELL_kernel_plain,&sz_SELL_kernel_plain},
-    {&ds_SELL_kernel_plain,&dd_SELL_kernel_plain,&dc_SELL_kernel_plain,&dz_SELL_kernel_plain},
-    {&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
-    {&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
+*/
 
 #ifdef GHOST_HAVE_CUDA
 static ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
@@ -1343,7 +1338,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
     GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
-
+/*
 #ifdef GHOST_HAVE_SSE
     if (rhs->traits.ncols > 64 || ((rhs->traits.ncols) >= 16 && (rhs->traits.ncols % 16))) {
         if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
@@ -1445,16 +1440,18 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
         }
     }
 #endif
-#endif
+#endif*/
 
-    if (kernel == NULL ||
+    ghost_sellspmv_parameters_t par = {.impl = GHOST_IMPLEMENTATION_AVX, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
+    kernel = ghost_sellspmv_kernel(par);
+    /*if (kernel == NULL ||
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
             !hwloc_bitmap_isfull(rhs->ldmask)) {
-        //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
+        INFO_LOG("Fallback to plain C version!");
         kernel = SELL_kernels_plain
             [matDtIdx]
             [vecDtIdx];
-    }
+    }*/
 
     return kernel(mat,lhs,rhs,options,argp);
 
