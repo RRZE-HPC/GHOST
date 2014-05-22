@@ -251,6 +251,7 @@ out:
     return ret;
 
 #else
+    UNUSED(vec);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }
