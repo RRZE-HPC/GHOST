@@ -105,13 +105,21 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
         ERROR_LOG("Cannot VAXPY densemats with different number of rows");
         return GHOST_ERR_INVALID_ARG;
     }
-    ghost_idx_t row1,row2,col,rowidx;
+    //ghost_idx_t row1,row2,col,rowidx;
     v_t *s = (v_t *)scale;
     
-    ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-        *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
-    ITER2_END_CM(rowidx)
+    //ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
+    //    *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
+    //ITER2_END_CM(rowidx)
 
+    ghost_idx_t i,v,rowidx = 0;
+
+    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
+            ITER_ROWS_BEGIN(vec,i,rowidx)
+              *(v_t *)VECVAL_CM(vec,vec->val,v,i) += *(v_t *)VECVAL_CM(vec2,vec2->val,v,i) * s[v];
+            ITER_ROWS_END(rowidx)
+    }
+    
     return GHOST_SUCCESS;
 }
 
