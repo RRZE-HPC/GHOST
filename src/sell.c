@@ -1305,10 +1305,10 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
 }
 
-static int ld(int i) 
+/*static int ld(int i) 
 {
     return (int)log2((double)i);
-}
+}*/
 
 
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
