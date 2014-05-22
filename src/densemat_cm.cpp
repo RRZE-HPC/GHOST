@@ -182,7 +182,7 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
     } else {
         ITER_COMPACT_BEGIN_CM(vec,col,row,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
-        ITER_COMPACT_END_CM(rowidx)
+        ITER_COMPACT_END_CM()
     }
 
     return GHOST_SUCCESS;

@@ -38,12 +38,10 @@
     }\
 
 #define ITER_COMPACT_ROWS_BEGIN(vec,row,rowidx)\
-    rowidx = 0;\
-    row = 0;\
     int offs = hwloc_bitmap_first(vec->ldmask);\
     _Pragma("omp for schedule(runtime)")\
-    for (rowidx=0; rowidx<vec->traits.nrows; rowidx++) {\
-        row = offs+rowidx;\
+    for (row=offs; row<vec->traits.nrows+offs; row++) {\
+        rowidx = row-offs;\
 
 #define ITER_COMPACT_ROWS_END()\
     }
@@ -54,7 +52,7 @@
         {\
             ITER_COMPACT_ROWS_BEGIN(vec,row,rowidx)
 
-#define ITER_COMPACT_END_CM(rowidx)\
+#define ITER_COMPACT_END_CM()\
             ITER_COMPACT_ROWS_END()\
         }\
     }\
