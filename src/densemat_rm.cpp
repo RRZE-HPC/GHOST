@@ -146,10 +146,18 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
     
-    ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
-        *(v_t *)VECVAL_RM(vec,vec->val,row,col1) = *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx] + 
+    if (!hwloc_bitmap_isfull(vec->ldmask) || !hwloc_bitmap_isfull(vec2->ldmask)) {
+        WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
+        ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
+            *(v_t *)VECVAL_RM(vec,vec->val,row,col1) = *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx] + 
                 *(v_t *)VECVAL_RM(vec,vec->val,row,col1) * b[colidx];
-    ITER2_END_RM(colidx)
+        ITER2_END_RM(colidx)
+    } else {
+        ITER2_COMPACT_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
+            *(v_t *)VECVAL_RM(vec,vec->val,row,col1) = *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx] + 
+                *(v_t *)VECVAL_RM(vec,vec->val,row,col1) * b[colidx];
+        ITER2_COMPACT_END_RM()
+    }
 
     return GHOST_SUCCESS;
 }
