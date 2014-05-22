@@ -68,25 +68,46 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     v_t *partsums;
     GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
-    ITER_COLS_BEGIN(vec,v,vidx)
-        v_t sum = 0;
-        for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
+    if (!hwloc_bitmap_isfull(vec->ldmask) || !hwloc_bitmap_isfull(vec2->ldmask)) {
+        ITER_COLS_BEGIN(vec,v,vidx)
+            v_t sum = 0;
+            for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
 
 #pragma omp parallel 
-        {
-            int tid = ghost_omp_threadnum();
+            {
+                int tid = ghost_omp_threadnum();
 #pragma omp for schedule(runtime)
-            for (i=0; i<nr; i++) {
-                partsums[tid*16] += 
-                    *(v_t *)VECVAL_RM(vec2,vec2->val,i,v)*
-                    conjugate((v_t *)(VECVAL_RM(vec,vec->val,i,v)));
+                for (i=0; i<nr; i++) {
+                    partsums[tid*16] += 
+                        *(v_t *)VECVAL_RM(vec2,vec2->val,i,v)*
+                        conjugate((v_t *)(VECVAL_RM(vec,vec->val,i,v)));
+                }
             }
-        }
 
-        for (i=0; i<nthreads; i++) sum += partsums[i*16];
+            for (i=0; i<nthreads; i++) sum += partsums[i*16];
 
-        ((v_t *)res)[vidx] = sum;
-    ITER_COLS_END(vidx)
+            ((v_t *)res)[vidx] = sum;
+        ITER_COLS_END(vidx)
+    } else {
+            v_t sum = 0;
+#pragma omp parallel 
+            {
+                int tid = ghost_omp_threadnum();
+                ghost_idx_t col1,col2,row,colidx;
+                ITER2_COMPACT_BEGIN_RM_INPAR(vec,vec2,col1,col2,row,colidx)
+                    partsums[tid*16] += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col1)*
+                        conjugate((v_t *)(VECVAL_RM(vec,vec->val,row,col2)));
+
+                ITER2_COMPACT_END_RM()
+
+                for (i=0; i<nthreads; i++) sum += partsums[i*16];
+
+                ((v_t *)res)[colidx] = sum;
+
+
+            }
+    }
+        
 
     free(partsums);
     

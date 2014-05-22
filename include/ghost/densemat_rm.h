@@ -104,6 +104,9 @@
         ITER2_COMPACT_COLS_END()\
     }
 
+#define ITER2_COMPACT_END_RM_INPAR()
+
+
 
 #ifdef __cplusplus
 
