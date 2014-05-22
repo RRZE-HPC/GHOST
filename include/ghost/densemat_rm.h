@@ -39,6 +39,21 @@
         ITER_COLS_END(colidx)\
     }
 
+#define ITER_COMPACT_BEGIN_RM(vec,col,row,colidx)\
+    int offs = hwloc_bitmap_first(vec->ldmask);\
+    _Pragma("omp parallel private(col,colidx)")\
+        {\
+        _Pragma("omp for schedule(runtime)")\
+        for (row=0; row<vec->traits.nrows; row++) {\
+            colidx = 0;\
+            for (col=offs; col<offs+vec->traits.ncols; col++, colidx++) {
+
+#define ITER_COMPACT_END_RM()\
+            }\
+        }\
+    }
+
+
 
 #define ITER2_COLS_BEGIN(vec1,vec2,col1,col2,colidx)\
     colidx = 0;\

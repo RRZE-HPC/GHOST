@@ -149,15 +149,19 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t i,v,c = 0;
+    ghost_idx_t i,v,c = 0,col,row,colidx;
     v_t *s = (v_t *)scale;
 
-    ITER_COLS_BEGIN(vec,v,c)
-#pragma omp parallel for schedule(runtime) 
-        for (i=0; i<vec->traits.nrows; i++) {
-            *(v_t *)VECVAL_RM(vec,vec->val,i,v) *= s[c];
-        }
-    ITER_COLS_END(c)
+    if (!hwloc_bitmap_isfull(vec->ldmask)) {
+        ITER_BEGIN_RM(vec,col,row,colidx)
+                *(v_t *)VECVAL_RM(vec,vec->val,row,col) *= s[colidx];
+        ITER_END_RM(colidx)
+    } else {
+        ITER_COMPACT_BEGIN_RM(vec,col,row,colidx)
+                *(v_t *)VECVAL_RM(vec,vec->val,row,col) *= s[colidx];
+        ITER_COMPACT_END_RM()
+    }
+
     return GHOST_SUCCESS;
 }
 
