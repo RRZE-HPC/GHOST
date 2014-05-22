@@ -77,7 +77,9 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
             ghost_idx_t row1,row2,rowidx = 0;
             int tid = ghost_omp_threadnum();
             if (!hwloc_bitmap_isfull(vec->ldmask) || !hwloc_bitmap_isfull(vec2->ldmask)) {
-                WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
+                if (tid==0 && v==0) {
+                    WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
+                }
                 ITER2_ROWS_BEGIN(vec,vec2,row1,row2,rowidx)
                     partsums[tid*16] += *(v_t *)VECVAL_CM(vec2,vec2->val,v,row2) * conjugate((v_t *)(VECVAL_CM(vec,vec->val,v,row1)));
                 ITER2_ROWS_END(rowidx)
