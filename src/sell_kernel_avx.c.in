@@ -11,7 +11,11 @@
 ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
-    INFO_LOG("in CM kernel");
+    static int printed = 0;
+    if (!printed) {
+        INFO_LOG("in CM kernel");
+        printed = 1;
+    }
     ghost_idx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
