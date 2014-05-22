@@ -81,6 +81,29 @@
         ITER2_COLS_END(colidx)\
     }
 
+#define ITER2_COMPACT_COLS_BEGIN(vec1,vec2,col1,col2,colidx)\
+    colidx = 0;\
+    col1 = 0;\
+    col2 = 0;\
+    for (colidx=0, col1=hwloc_bitmap_first(vec1->ldmask), col2=hwloc_bitmap_first(vec2->ldmask); colidx<vec1->traits.ncols; colidx++, col1++, col2++) {\
+
+
+#define ITER2_COMPACT_COLS_END()\
+    }
+
+#define ITER2_COMPACT_BEGIN_RM_INPAR(vec1,vec2,col1,col2,row,colidx)\
+    _Pragma("omp for schedule(runtime)")\
+    for (row=0; row<vec->traits.nrows; row++) {\
+        ITER2_COMPACT_COLS_BEGIN(vec1,vec2,col1,col2,colidx)\
+
+#define ITER2_COMPACT_BEGIN_RM(vec1,vec2,col1,col2,row,colidx)\
+    _Pragma("omp parallel private(col1,col2,colidx)")\
+    ITER2_COMPACT_BEGIN_RM_INPAR(vec1,vec2,col1,col2,row,colidx)\
+
+#define ITER2_COMPACT_END_RM()\
+        ITER2_COMPACT_COLS_END()\
+    }
+
 
 #ifdef __cplusplus
 

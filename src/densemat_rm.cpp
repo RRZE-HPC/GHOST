@@ -111,9 +111,17 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     ghost_idx_t col1,col2,row,colidx;
     v_t *s = (v_t *)scale;
     
-    ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
-        *(v_t *)VECVAL_RM(vec,vec->val,row,col1) += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx];
-    ITER2_END_RM(colidx)
+    if (!hwloc_bitmap_isfull(vec->ldmask) || !hwloc_bitmap_isfull(vec2->ldmask)) {
+        WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
+        ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
+            *(v_t *)VECVAL_RM(vec,vec->val,row,col1) += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx];
+        ITER2_END_RM(colidx)
+    } else {
+        ITER2_COMPACT_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
+            *(v_t *)VECVAL_RM(vec,vec->val,row,col1) += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx];
+        ITER2_COMPACT_END_RM()
+    }
+
 
     return GHOST_SUCCESS;
 }
@@ -149,10 +157,11 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t i,v,c = 0,col,row,colidx;
+    ghost_idx_t col,row,colidx;
     v_t *s = (v_t *)scale;
 
     if (!hwloc_bitmap_isfull(vec->ldmask)) {
+        WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
         ITER_BEGIN_RM(vec,col,row,colidx)
                 *(v_t *)VECVAL_RM(vec,vec->val,row,col) *= s[colidx];
         ITER_END_RM(colidx)
