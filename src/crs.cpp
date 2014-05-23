@@ -194,7 +194,17 @@ template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *ma
         if (dense) {
             for (col=0, j=CR(mat)->rpt[i]; col<mat->ncols; col++) {
                 if (j<CR(mat)->rpt[i+1] && (CR(mat)->col[j] == col)) { // there is an entry at col
-                    buffer << val[j] << "\t";
+                    if (mat->traits->datatype & GHOST_DT_COMPLEX) {
+                        if (mat->traits->datatype & GHOST_DT_DOUBLE) {
+                            double *dval = &((double *)CR(mat)->val)[j];
+                            buffer << "(" << *dval << ", " << *(dval+1) << ")\t";
+                        } else {
+                            float *fval = &((float *)CR(mat)->val)[j];
+                            buffer << "(" << *fval << ", " << *(fval+1) << ")\t";
+                        }
+                    } else {
+                        buffer << val[j] << "\t";
+                    }
                     j++;
                 } else {
                     buffer << ".\t";
