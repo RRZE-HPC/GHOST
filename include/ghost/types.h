@@ -27,6 +27,7 @@ typedef int ghost_mpi_datatype_t;
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <complex.h>
 
 /**
  * @brief Available primitive data types.
