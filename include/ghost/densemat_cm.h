@@ -26,6 +26,14 @@
         }\
     }
 
+#define ITER_BEGIN_CM_INPAR(vec,col,row,rowidx)\
+    for (col=0; col<vec->traits.ncols; col++) {\
+        ITER_ROWS_BEGIN(vec,row,rowidx)
+
+#define ITER_END_CM_INPAR(rowidx)\
+        ITER_ROWS_END(rowidx)\
+    }\
+
 #define ITER_BEGIN_CM(vec,col,row,rowidx)\
     for (col=0; col<vec->traits.ncols; col++) {\
         _Pragma("omp parallel private(row,rowidx)")\
