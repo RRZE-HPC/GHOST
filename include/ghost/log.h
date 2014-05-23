@@ -69,7 +69,7 @@
 
 #define DEBUG_LOG(level,...) {if(GHOST_VERBOSITY > level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
 #define INFO_LOG(...) {if(GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__) }}
-#define WARNING_LOG(...) {if(GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__) }}
+#define WARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__); __printed=1; }}
 #define ERROR_LOG(...) {if(GHOST_VERBOSITY) { LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__) }}
 
 #endif
