@@ -625,7 +625,7 @@ template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *m
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
                     if ((j < SELL(mat)->rowLen[row]) && (SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col)) { // there is an entry at col
-                        buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
+                         buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
                         j++;
                     } else {
                         buffer << ".\t";
