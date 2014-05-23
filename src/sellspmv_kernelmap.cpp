@@ -42,30 +42,20 @@ void ghost_sellspmv_kernelmap_generate() {
 
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p)
 {
-    static int printed = 0;
 
     if (p.impl == GHOST_IMPLEMENTATION_AVX && p.blocksz == 2) {
-        if (!printed) {
-            INFO_LOG("Chose SSE over AVX for blocksz=2");
-            printed = 1;
-        }
+        INFO_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
     sellspmv_kernel kernel = ghost_sellspmv_kernels[p];
 
     if (!kernel) {
-        if (!printed) {
-            INFO_LOG("Try kernel with arbitrary blocksz");
-            printed = 1;
-        }
+        INFO_LOG("Try kernel with arbitrary blocksz");
         p.blocksz = -1;
     }
     kernel = ghost_sellspmv_kernels[p];
     if (!kernel) {
-        if (!printed) {
-            INFO_LOG("Try plain C kernel");
-            printed = 1;
-        }
+        INFO_LOG("Try plain C kernel");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
         p.storage = GHOST_DENSEMAT_STORAGE_ANY;
         p.chunkheight = -1;
