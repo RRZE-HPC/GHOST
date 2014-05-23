@@ -11,7 +11,7 @@
 ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
     UNUSED(argp);
-#ifdef GHOST_HAVE_MIC
+#if defined(GHOST_HAVE_MIC) && CHUNKHEIGHT>=8
     INFO_LOG("in MIC kernel with chunkheight %d",CHUNKHEIGHT);
     ghost_idx_t c,j,v,i;
     ghost_nnz_t offs;
@@ -138,7 +138,7 @@ ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_x_cm(ghost_sparsemat_t *ma
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t dd_SELL_kernel_MIC_CHUNKHEIGHT_multivec_x_rm(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
-#ifdef GHOST_HAVE_MIC
+#if defined(GHOST_HAVE_MIC) && CHUNKHEIGHT>=8
     INFO_LOG("rm MIC kernel with ch %d",CHUNKHEIGHT);
     ghost_idx_t j,c,col;
     ghost_nnz_t offs;
