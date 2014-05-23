@@ -16,6 +16,7 @@
 #include "ghost/math.h"
 #include "ghost/locality.h"
 #include "ghost/log.h"
+#include "ghost/machine.h"
 
 
 using namespace std;
@@ -65,10 +66,11 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
 #pragma omp single
     nthreads = ghost_omp_nthread();
 
-    v_t *partsums;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
 
     if (!hwloc_bitmap_isfull(vec->ldmask) || !hwloc_bitmap_isfull(vec2->ldmask)) {
+        WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
+        v_t *partsums;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
         ITER_COLS_BEGIN(vec,v,vidx)
             v_t sum = 0;
             for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
@@ -84,32 +86,42 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
                 }
             }
 
-            for (i=0; i<nthreads; i++) sum += partsums[i*16];
-
+            for (i=0; i<nthreads; i++) {
+                sum += partsums[i*16];
+            }
             ((v_t *)res)[vidx] = sum;
         ITER_COLS_END(vidx)
+        free(partsums);
     } else {
-            v_t sum = 0;
+        unsigned clsize;
+        ghost_machine_cacheline_size(&clsize);
+        int padding = (int)clsize/sizeof(v_t);
+        v_t *partsums;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t)));
+        memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
+
 #pragma omp parallel 
-            {
-                int tid = ghost_omp_threadnum();
-                ghost_idx_t col1,col2,row,colidx;
-                ITER2_COMPACT_BEGIN_RM_INPAR(vec,vec2,col1,col2,row,colidx)
-                    partsums[tid*16] += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col1)*
-                        conjugate((v_t *)(VECVAL_RM(vec,vec->val,row,col2)));
+        {
+            int tid = ghost_omp_threadnum();
+            ghost_idx_t col1,col2,row,colidx;
+            ITER2_COMPACT_BEGIN_RM_INPAR(vec,vec2,col1,col2,row,colidx)
+                partsums[(padding+vec->traits.ncols)*tid+colidx] += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2)*
+                    conjugate((v_t *)(VECVAL_RM(vec,vec->val,row,col1)));
 
-                ITER2_COMPACT_END_RM()
+            ITER2_COMPACT_END_RM()
 
-                for (i=0; i<nthreads; i++) sum += partsums[i*16];
+        }
+        ghost_idx_t col;
+        for (col=0; col<vec->traits.ncols; col++) {
+            ((v_t *)res)[col] = 0.;
 
-                ((v_t *)res)[colidx] = sum;
-
-
+            for (i=0; i<nthreads; i++) {
+                ((v_t *)res)[col] += partsums[i*(vec->traits.ncols+padding)+col];
             }
-    }
-        
+        }
 
-    free(partsums);
+        free(partsums);
+    }
     
     return GHOST_SUCCESS;
 }
