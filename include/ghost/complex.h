@@ -8,6 +8,8 @@
 
 #ifdef __cplusplus
 
+#include <ostream>
+
 template <typename T> 
 struct ghost_complex
 {
