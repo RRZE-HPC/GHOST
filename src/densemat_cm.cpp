@@ -274,8 +274,8 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
                             val = (double *)VECVAL_CM(vec,vec->val,v,i);
                             buffer << "(" << *val << ", " << *(val+1) << ")\t";
                         } else {
-                            double *val;
-                            val = (double *)VECVAL_CM(vec,vec->val,v,i);
+                            float *val;
+                            val = (float *)VECVAL_CM(vec,vec->val,v,i);
                             buffer << "(" << *val << ", " << *(val+1) << ")\t";
                         }
                     } else {
