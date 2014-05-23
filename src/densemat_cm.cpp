@@ -226,15 +226,14 @@ static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
     ghost_idx_t col,row,rowidx;
     unsigned int *state;
     ghost_rand_get(&state);
-    ITER_BEGIN_CM(vec,col,row,rowidx)
+    ITER_BEGIN_CM_INPAR(vec,col,row,rowidx)
     my_rand(state,(v_t *)VECVAL_CM(vec,vec->val,col,row));
-    ITER_END_CM(rowidx)
+    ITER_END_CM_INPAR(rowidx)
     }
     vec->upload(vec);
 
     return GHOST_SUCCESS;
 }
-
 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t *vec)
@@ -269,9 +268,21 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
             if (hwloc_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {
-                    v_t val = 0.;
-                    val = *(v_t *)VECVAL_CM(vec,vec->val,v,i);
-                    buffer << val << "\t";
+                    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+                        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                            double *val;
+                            val = (double *)VECVAL_CM(vec,vec->val,v,i);
+                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
+                        } else {
+                            double *val;
+                            val = (double *)VECVAL_CM(vec,vec->val,v,i);
+                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
+                        }
+                    } else {
+                        v_t val = *(v_t *)VECVAL_CM(vec,vec->val,v,i);
+                        buffer << val << "\t";
+                    }
+
                 }
                 if (r<vec->traits.nrows-1) {
                     buffer << std::endl;
