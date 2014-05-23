@@ -124,6 +124,10 @@ configure_file (
 	${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
 )
 configure_file (
+	${PROJECT_SOURCE_DIR}/src/sell_kernel_mic.c.in
+	${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
+)
+configure_file (
 	${PROJECT_SOURCE_DIR}/src/tsmm.c.in
 	${PROJECT_BINARY_DIR}/src/tsmm.c
 )
@@ -135,7 +139,7 @@ configure_file (
 set (TO_PREPROCESS
         ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
         ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
-#src/sell_kernel_mic.c
+        ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
         ${PROJECT_BINARY_DIR}/src/tsmm.c
         ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )

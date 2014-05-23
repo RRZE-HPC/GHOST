@@ -18,98 +18,9 @@
 #include <omp.h>
 #endif
 
-#ifdef GHOST_HAVE_CUDA
-//#include "private/sell_cukernel.h"
-#endif
-
-#if defined(SSE) || defined(AVX) || defined(MIC)
-#include <immintrin.h>
-#endif
 #if defined(VSX)
 #include <altivec.h>
 #endif
-/*
-#ifdef GHOST_HAVE_MIC
-#include "ghost/sell_kernel_mic.h"
-static ghost_error_t (*SELL_kernels_MIC_multivec_x_cm[8][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_16_multivec_x_cm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_32_multivec_x_cm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_64_multivec_x_cm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_128_multivec_x_cm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-};
-static ghost_error_t (*SELL_kernels_MIC_multivec_x_rm[6][4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_1_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_2_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_4_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_8_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_16_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-    {{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_32_multivec_x_rm,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}},
-};
-static ghost_error_t (*dd_SELL_kernels_MIC_multivec_rm[6][3]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{
-    {&dd_SELL_kernel_MIC_1_multivec_8_rm,
-        &dd_SELL_kernel_MIC_1_multivec_16_rm,
-        &dd_SELL_kernel_MIC_1_multivec_24_rm},
-    {&dd_SELL_kernel_MIC_2_multivec_8_rm,
-        &dd_SELL_kernel_MIC_2_multivec_16_rm,
-        &dd_SELL_kernel_MIC_2_multivec_24_rm},
-    {&dd_SELL_kernel_MIC_4_multivec_8_rm,
-        &dd_SELL_kernel_MIC_4_multivec_16_rm,
-        &dd_SELL_kernel_MIC_4_multivec_24_rm},
-    {&dd_SELL_kernel_MIC_8_multivec_8_rm,
-        &dd_SELL_kernel_MIC_8_multivec_16_rm,
-        &dd_SELL_kernel_MIC_8_multivec_24_rm},
-    {&dd_SELL_kernel_MIC_16_multivec_8_rm,
-        &dd_SELL_kernel_MIC_16_multivec_16_rm,
-        &dd_SELL_kernel_MIC_16_multivec_24_rm},
-    {&dd_SELL_kernel_MIC_32_multivec_8_rm,
-        &dd_SELL_kernel_MIC_32_multivec_16_rm,
-        &dd_SELL_kernel_MIC_32_multivec_24_rm}};
-static ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_MIC_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_32,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-#endif
-*/
 
 #ifdef GHOST_HAVE_CUDA
 static ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
