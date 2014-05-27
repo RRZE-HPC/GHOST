@@ -107,6 +107,10 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
                 }
             }
         }
+#ifdef GHOST_HAVE_MPI
+        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*BLOCKSZ,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+#endif
+    
     } else {
         ghost_idx_t k;
         for (j=0; j<m; j++) {
@@ -134,13 +138,12 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
                 }
             }
         }
+#ifdef GHOST_HAVE_MPI
+        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+#endif
 
     }
    
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*BLOCKSZ,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
-#endif
-    
     goto out;
 err:
 
