@@ -81,27 +81,60 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
     ghost_idx_t i,j;
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+        ghost_idx_t k;
         for (j=0; j<m; j++) {
-#GHOST_UNROLL#double tmp@ = dbeta*xval[@*ldx+j];#BLOCKSZ
-#pragma omp parallel for schedule(runtime) reduction(+:\
-        #GHOST_UNROLL#tmp@,\#BLOCKSZ-1
-        tmpBLOCKSZ-1)
-            for (i=0; i<n; i++) {
-                #GHOST_UNROLL#tmp@ += dalpha*vval[i*ldv+j]*wval[i*ldw+@];#BLOCKSZ
+            for (k=0; k<BLOCKSZ; k++) {
+                xval[k*ldx+j] = dbeta*xval[k*ldx+j];
             }
-            #GHOST_UNROLL#xval[@*ldx+j] = tmp@;#BLOCKSZ
+        }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[m*BLOCKSZ];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+                for (j=0; j<m; j++) {
+                    for (k=0; k<BLOCKSZ; k++) {
+                        x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            for (j=0; j<m; j++) {
+                for (k=0; k<BLOCKSZ; k++) {
+                    xval[k*ldx+j] += x_priv[j*BLOCKSZ+k];
+                }
+            }
         }
     } else {
+        ghost_idx_t k;
         for (j=0; j<m; j++) {
-#GHOST_UNROLL#double tmp@ = dbeta*xval[j*ldx+@];#BLOCKSZ
-#pragma omp parallel for schedule(runtime) reduction(+:\
-        #GHOST_UNROLL#tmp@,\#BLOCKSZ-1
-        tmpBLOCKSZ-1)
-            for (i=0; i<n; i++) {
-                #GHOST_UNROLL#tmp@ += dalpha*vval[i*ldv+j]*wval[i*ldw+@];#BLOCKSZ
+            for (k=0; k<BLOCKSZ; k++) {
+                xval[j*ldx+k] = dbeta*xval[j*ldx+k];
             }
-            #GHOST_UNROLL#xval[j*ldx+@] = tmp@;#BLOCKSZ
         }
+#pragma omp parallel private(j,k)
+        {
+            double x_priv[m*BLOCKSZ];
+            memset(x_priv,0,sizeof(x_priv));
+#pragma omp for schedule(runtime)
+            for (i=0; i<n; i++) {
+                for (j=0; j<m; j++) {
+                    for (k=0; k<BLOCKSZ; k++) {
+                        x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+
+            }
+#pragma omp critical
+            for (j=0; j<m; j++) {
+                for (k=0; k<BLOCKSZ; k++) {
+                    xval[j*ldx+k] += x_priv[j*BLOCKSZ+k];
+                }
+            }
+        }
+
     }
    
 #ifdef GHOST_HAVE_MPI
