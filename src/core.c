@@ -64,6 +64,14 @@ ghost_error_t ghost_type_get(ghost_type_t *t)
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
+    static int initialized = 0;
+
+    if (initialized) {
+        return GHOST_SUCCESS;
+    } else {
+        initialized=1;
+    }
+
 #ifdef GHOST_HAVE_MPI
     int req, prov;
 
