@@ -1133,7 +1133,22 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
 #endif*/
 
-    ghost_sellspmv_parameters_t par = {.impl = GHOST_IMPLEMENTATION_AVX, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
+    ghost_implementation_t impl;
+    if (!hwloc_bitmap_isfull(rhs->ldmask)) {
+        impl = GHOST_IMPLEMENTATION_PLAIN;
+    } else {
+#ifdef GHOST_HAVE_SSE
+        impl = GHOST_IMPLEMENTATION_SSE;
+#endif
+#ifdef GHOST_HAVE_AVX
+        impl = GHOST_IMPLEMENTATION_AVX;
+#endif
+#ifdef GHOST_HAVE_MIC
+        impl = GHOST_IMPLEMENTATION_MIC;
+#endif
+    }
+
+    ghost_sellspmv_parameters_t par = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
     kernel = ghost_sellspmv_kernel(par);
     /*if (kernel == NULL ||
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
