@@ -43,7 +43,7 @@ void ghost_sellspmv_kernelmap_generate() {
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p)
 {
 
-    if (p.impl == GHOST_IMPLEMENTATION_AVX && p.blocksz <= 2) {
+    if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz <= 2) {
         INFO_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
