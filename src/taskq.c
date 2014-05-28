@@ -367,7 +367,6 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
             {
                 pthread_mutex_unlock(&globalMutex);
                 DEBUG_LOG(2,"Thread %d: Not executing any further tasks",(int)pthread_self());
-                sem_post(&taskSem); // wake up another thread
                 break;
             }
             pthread_mutex_unlock(&globalMutex);
@@ -523,10 +522,16 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
         killed = 1;
         pthread_mutex_unlock(&globalMutex);
 
-        DEBUG_LOG(1,"Wake up all threads");    
-        if (sem_post(&taskSem)){
-            WARNING_LOG("Error in sem_post: %s",strerror(errno));
-            return GHOST_ERR_UNKNOWN;
+        DEBUG_LOG(1,"Wake up all threads");
+        int t;
+        ghost_thpool_t *thpool;
+        ghost_thpool_get(&thpool);
+
+        for (t=0; t<thpool->nThreads; t++) {    
+            if (sem_post(&taskSem)){
+                WARNING_LOG("Error in sem_post: %s",strerror(errno));
+                return GHOST_ERR_UNKNOWN;
+            }
         }
 
         if (taskq) {
