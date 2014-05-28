@@ -167,11 +167,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    static int printed = 0;
-    if (!printed) {
-        INFO_LOG("in RM kernel");
-        printed = 1;
-    }
+    INFO_LOG("in RM kernel with %d vecs",invec->traits.ncols);
     ghost_idx_t j,c,col;
     ghost_nnz_t offs;
     double *mval = (double *)SELL(mat)->val;
