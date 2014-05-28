@@ -393,6 +393,13 @@ ghost_error_t ghost_init(int argc, char **argv)
 
 ghost_error_t ghost_finalize()
 {
+    static int finalized = 0;
+
+    if (finalized) {
+        return GHOST_SUCCESS;
+    } else {
+        finalized = 1;
+    }
 
 
     ghost_rand_destroy();
