@@ -41,11 +41,24 @@ while (<>) {
             print "};\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
-        } elsif ($funcname eq "ghost_tsmm" or $funcname eq "ghost_tsmttsm") {
+        } elsif ($funcname eq "ghost_tsmttsm") {
             print "{\n";
             print $funcname."_parameters_t pars = {";
             print ".dt = ".$datatypes{$funcpars[0]}.", ";
             print ".blocksz = ".$funcpars[1];
+            print "};\n";
+            print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
+            print "}\n";
+        } elsif ($funcname eq "ghost_tsmm") {
+            print "{\n";
+            print $funcname."_parameters_t pars = {";
+            print ".dt = ".$datatypes{$funcpars[0]}.", ";
+            print ".blocksz1 = ".$funcpars[1].", ";
+            if ($funcpars[2] eq "x") {
+                print ".blocksz2= -1";
+            } else {
+                print ".blocksz2= ".$funcpars[2];
+            }
             print "};\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";

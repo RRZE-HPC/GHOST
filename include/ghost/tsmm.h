@@ -13,7 +13,8 @@
 typedef struct
 {
     ghost_datatype_t dt;
-    int blocksz;
+    int blocksz1;
+    int blocksz2;
 } ghost_tsmm_parameters_t;
 
 typedef ghost_error_t (*tsmm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *);
