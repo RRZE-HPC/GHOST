@@ -43,6 +43,11 @@ void ghost_sellspmv_kernelmap_generate() {
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p)
 {
 
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1) {
+        INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
+        p.storage = GHOST_DENSEMAT_COLMAJOR;
+    }
+
     if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz <= 2) {
         INFO_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
