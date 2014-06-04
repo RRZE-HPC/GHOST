@@ -53,7 +53,9 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     
     GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
 #ifdef DL_WHOLE
+    GHOST_INSTR_START(spmv_haloexchange_download)
     vec->downloadNonHalo(vec);
+    GHOST_INSTR_STOP(spmv_haloexchange_download)
 #endif
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
