@@ -56,13 +56,17 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*acc_dues*vec->elSize));
     
     GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
+#ifdef GHOST_HAVE_CUDA
 #ifdef DL_WHOLE
     GHOST_INSTR_START(spmv_haloexchange_download)
     vec->downloadNonHalo(vec);
     GHOST_INSTR_STOP(spmv_haloexchange_download)
 #else
     void *cu_work;
-    ghost_cu_malloc(&cu_work,vec->traits.ncols*acc_dues*vec->elSize);
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        ghost_cu_malloc(&cu_work,vec->traits.ncols*acc_dues*vec->elSize);
+    }
+#endif
 #endif
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
@@ -89,9 +93,11 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
                     for (c=0; c<vec->traits.ncols; c++) {
+#ifdef GHOST_HAVE_CUDA
                         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                             cudaMemcpy(cu_work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,permutation->perm[vec->context->duelist[to_PE][i]]),vec->elSize,cudaMemcpyDeviceToDevice);
                         } else
+#endif
                         {
                             memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
                         }
@@ -104,9 +110,11 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #pragma omp for 
                 for (i=0; i<vec->context->dues[to_PE]; i++){
                     for (c=0; c<vec->traits.ncols; c++) {
+#ifdef GHOST_HAVE_CUDA
                         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                             cudaMemcpy(cu_work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,CUVECVAL_CM(vec,vec->cu_val,c,vec->context->duelist[to_PE][i]),vec->elSize,cudaMemcpyDeviceToDevice);
-                        } else 
+                        } else
+#endif 
                         {
                             memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
                         }
@@ -114,11 +122,12 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                 }
             }
         }
-
+#ifdef GHOST_HAVE_CUDA
 #ifndef DL_WHOLE
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
             ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
         }
+#endif
 #endif
     }
     GHOST_INSTR_STOP(spmv_haloexchange_assemblebuffers)
