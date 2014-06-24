@@ -8,13 +8,9 @@
 
 #ifdef GHOST_HAVE_MKL
 #include <mkl_cblas.h>
-#endif
-
-#ifdef GHOST_HAVE_GSL
+#elif defined(GHOST_HAVE_GSL)
 #include <gsl_cblas.h>
-#endif
-
-#ifdef GHOST_HAVE_LIBSCI
+#else
 #include <cblas.h>
 #endif
 
