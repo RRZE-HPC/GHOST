@@ -34,7 +34,13 @@ void ghost_sellspmv_kernelmap_generate() {
             ghost_datatype_t mdt_t, vdt_t;
             ghost_idx2datatype(&mdt_t,(ghost_datatype_idx_t)mdt);
             ghost_idx2datatype(&vdt_t,(ghost_datatype_idx_t)vdt);
-            ghost_sellspmv_parameters_t p = {.mdt = mdt_t, .vdt = vdt_t, .blocksz = -1, .storage = GHOST_DENSEMAT_STORAGE_ANY, .impl = GHOST_IMPLEMENTATION_PLAIN, .chunkheight = -1};
+            ghost_sellspmv_parameters_t p;
+            p.mdt = mdt_t;
+            p.vdt = vdt_t;
+            p.blocksz = -1;
+            p.storage = GHOST_DENSEMAT_STORAGE_ANY;
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+            p.chunkheight = -1;
             ghost_sellspmv_kernels[p] =  SELL_kernels_plain[mdt][vdt];
         }
     }

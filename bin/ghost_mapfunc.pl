@@ -27,39 +27,36 @@ while (<>) {
         
         if ($funcname eq "ghost_sellspmv") {
             print "{\n";
-            print $funcname."_parameters_t pars = {";
-            print ".impl = ".$implementations{$funcpars[0]}.", ";
-            print ".mdt = ".$datatypes{$funcpars[1]}.", ";
-            print ".vdt = ".$datatypes{$funcpars[2]}.", ";
-            print ".storage = ".$storages{$funcpars[3]}.", ";
-            print ".chunkheight = ".$funcpars[4].", ";
+            print $funcname."_parameters_t pars;\n";
+            print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
+            print "pars.mdt = ".$datatypes{$funcpars[1]}.";\n";
+            print "pars.vdt = ".$datatypes{$funcpars[2]}.";\n";
+            print "pars.storage = ".$storages{$funcpars[3]}.";\n";
+            print "pars.chunkheight = ".$funcpars[4].";\n";
             if ($funcpars[5] eq "x") {
-                print ".blocksz = -1";
+                print "pars.blocksz = -1;\n";
             } else {
-                print ".blocksz = ".$funcpars[5];
+                print "pars.blocksz = ".$funcpars[5].";\n";
             }
-            print "};\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         } elsif ($funcname eq "ghost_tsmttsm") {
             print "{\n";
-            print $funcname."_parameters_t pars = {";
-            print ".dt = ".$datatypes{$funcpars[0]}.", ";
-            print ".blocksz = ".$funcpars[1];
-            print "};\n";
+            print $funcname."_parameters_t pars;\n";
+            print "pars.dt = ".$datatypes{$funcpars[0]}.";\n";
+            print "pars.blocksz = ".$funcpars[1].";\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {
             print "{\n";
-            print $funcname."_parameters_t pars = {";
-            print ".dt = ".$datatypes{$funcpars[0]}.", ";
-            print ".blocksz1 = ".$funcpars[1].", ";
+            print $funcname."_parameters_t pars;\n";
+            print "pars.dt = ".$datatypes{$funcpars[0]}.";\n";
+            print "pars.blocksz1 = ".$funcpars[1].";\n";
             if ($funcpars[2] eq "x") {
-                print ".blocksz2= -1";
+                print "pars.blocksz2= -1;\n";
             } else {
-                print ".blocksz2= ".$funcpars[2];
+                print "pars.blocksz2= ".$funcpars[2].";\n";
             }
-            print "};\n";
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         }
