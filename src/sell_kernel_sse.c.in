@@ -382,6 +382,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+    return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
     return GHOST_SUCCESS;
 }
