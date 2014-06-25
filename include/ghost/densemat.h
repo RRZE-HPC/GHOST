@@ -477,6 +477,7 @@ struct ghost_densemat_t
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
 };
 
+#define GHOST_BITMAP_COMPACT(bm) (hwloc_bitmap_isfull(bm) || ((hwloc_bitmap_last(bm)-hwloc_bitmap_first(bm)) == hwloc_bitmap_weight(bm)))
 
 #ifdef __cplusplus
 
