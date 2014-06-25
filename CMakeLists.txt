@@ -186,6 +186,11 @@ add_custom_target(preprocess DEPENDS ${PP_FILES})
 #    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
 #endif()
 
+if (NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type specified. Setting it to Release.")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+endif()
+
 if (USE_CUDA)
 	find_package(CUDA)
     if (CUDA_FOUND)
