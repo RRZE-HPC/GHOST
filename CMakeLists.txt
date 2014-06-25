@@ -452,7 +452,7 @@ if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
 	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 endif()
 
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
+include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
 # msg 193 complains about commented out lines in config.h
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -h c99 -h msglevel_3 -h nomessage=193")
