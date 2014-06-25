@@ -130,17 +130,19 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     }
     if (vec->traits.ncolspadded == 0) {
         DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
-        ghost_idx_t padding = 0;
+        ghost_idx_t padding = vec->elSize;
+        if (vec->traits.ncols > 1) {
 #ifdef GHOST_HAVE_MIC
-        padding = 64; // 64 byte padding
+            padding = 64; // 64 byte padding
 #elif defined(GHOST_HAVE_AVX)
-        padding = 32; // 32 byte padding
-        if (vec->traits.ncols <= 2) {
-            padding = 16; // SSE in this case: only 16 byte alignment required
-        }
+            padding = 32; // 32 byte padding
+            if (vec->traits.ncols <= 2) {
+                padding = 16; // SSE in this case: only 16 byte alignment required
+            }
 #elif defined (GHOST_HAVE_SSE)
-        padding = 16; // 16 byte padding
+            padding = 16; // 16 byte padding
 #endif
+        }
         padding /= vec->elSize;
         vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
     }
