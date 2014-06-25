@@ -1149,7 +1149,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     }
 
     ghost_sellspmv_parameters_t par = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
-    kernel = ghost_sellspmv_kernel(par);
+    kernel = ghost_sellspmv_kernel(par,lhs,rhs);
     /*if (kernel == NULL ||
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
             !hwloc_bitmap_isfull(rhs->ldmask)) {

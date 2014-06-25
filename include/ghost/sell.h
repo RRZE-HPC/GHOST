@@ -83,7 +83,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 template <typename> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *, ghost_sparsemat_t *);
 extern "C" {
 #endif
-sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p);
+sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs);
 void ghost_sellspmv_kernelmap_generate(void);
 ghost_error_t dd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t ds_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);

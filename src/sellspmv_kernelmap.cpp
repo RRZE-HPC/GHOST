@@ -46,10 +46,10 @@ void ghost_sellspmv_kernelmap_generate() {
     }
 }
 
-sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p)
+sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs)
 {
 
-    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1) {
+    if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && rhs->traits.ncolsorig == 1 && lhs->traits.ncolsorig== 1) {
         INFO_LOG("Chose col-major kernel for row-major densemat with 1 column");
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
