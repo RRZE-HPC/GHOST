@@ -416,7 +416,7 @@ elseif (${CBLAS_H} STREQUAL "gsl_cblas.h")
     set (BLAS_LIBRARIES ${GSL_LIBRARIES})
 else () #generic BLAS
     set (BLAS_LIBRARIES "")
-	message(WARNING "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
+	message(STATUS "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
 endif()
 
 set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
