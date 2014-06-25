@@ -419,13 +419,25 @@ else () #generic BLAS
 	message(WARNING "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
 endif()
 
+set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
 set(LIBHWLOC LIBHWLOC-NOTFOUND) 
 
-if (PKGCONFIG_FOUND AND NOT DEFINED HWLOC_INCLUDE_DIR)
-	find_package(HWLOC REQUIRED QUIET)
+if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
+    message(STATUS "Try to find hwloc via pkg-config")
+	find_package(HWLOC REQUIRED)
     find_library(LIBHWLOC hwloc)
-else()
-	set(HWLOC_INCLUDE_DIR "" CACHE PATH "Location of hwloc.h")
+endif()
+
+# find hwloc.h in default header locations
+if (NOT HWLOC_INCLUDE_DIR)
+    find_path(HWLOC_INCLUDE_DIR hwloc.h)
+endif()
+
+if (NOT HWLOC_INCLUDE_DIR)
+    message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
+endif()
+    
+if (NOT LIBHWLOC)
     get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
     find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
 endif()
