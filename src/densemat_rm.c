@@ -387,7 +387,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
             i++;
         }
     }
-    for (r=0; r<newTraits.nrowspadded; r++) {
+    for (r=0; r<newTraits.nrows; r++) {
         (*new)->val[r] = VECVAL_RM(src,src->val,roffs[r],0);
     }
 
