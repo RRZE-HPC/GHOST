@@ -1134,7 +1134,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif*/
 
     ghost_implementation_t impl;
-    if (!hwloc_bitmap_isfull(rhs->ldmask)) {
+    if (!GHOST_BITMAP_COMPACT(rhs->ldmask)) {
         impl = GHOST_IMPLEMENTATION_PLAIN;
     } else {
 #ifdef GHOST_HAVE_SSE

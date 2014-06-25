@@ -37,8 +37,6 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         ERROR_LOG("Could not create dense matrix mask!");
         goto err;
     }
-    hwloc_bitmap_fill((*vec)->ldmask);
-    hwloc_bitmap_fill((*vec)->trmask);
 
     GHOST_CALL_GOTO(ghost_datatype_size(&(*vec)->elSize,(*vec)->traits.datatype),err,ret);
     getNrowsFromContext((*vec));
@@ -57,9 +55,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+        hwloc_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.ncols);
+        hwloc_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.nrows);
         ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.ncolspadded;
     } else {
+        hwloc_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.nrows);
+        hwloc_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.ncols);
         ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.nrowspadded;
     }

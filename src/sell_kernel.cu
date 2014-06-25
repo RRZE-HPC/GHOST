@@ -173,7 +173,7 @@ extern __shared__ char shared[];
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
     GHOST_INSTR_START(spmv_cuda)\
     if (rhs->traits.flags & (GHOST_DENSEMAT_VIEW | GHOST_DENSEMAT_SCATTERED)) {\
-        if (!hwloc_bitmap_isfull(rhs->ldmask)) {\
+        if (!HWLOC_BITMAP_COMPACT(rhs->ldmask)) {\
             ERROR_LOG("CUDA SpMV with masked out rows not yet implemented");\
             return GHOST_ERR_NOT_IMPLEMENTED;\
         }\
