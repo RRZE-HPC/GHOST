@@ -338,7 +338,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         }
     }
 
-    for (r=0; r<(*new)->traits.nrows; r++) {
+    for (r=0; r<(*new)->traits.nrowspadded; r++) {
         (*new)->val[r] = VECVAL_RM(src,src->val,roffs+r,0);
     }
 
@@ -350,11 +350,12 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
 static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda)
 {
+    WARNING_LOG("Possibly broken!");
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix from plain data with offset %"PRIDX"x%"PRIDX,nr,nc,roffs,coffs);
 
     ghost_idx_t v;
 
-    for (v=0; v<vec->traits.ncols; v++) {
+    for (v=0; v<vec->traits.nrowspadded; v++) {
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
     }
     vec->traits.flags |= GHOST_DENSEMAT_VIEW;
@@ -386,7 +387,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
             i++;
         }
     }
-    for (r=0; r<nr; r++) {
+    for (r=0; r<newTraits.nrowspadded; r++) {
         (*new)->val[r] = VECVAL_RM(src,src->val,roffs[r],0);
     }
 
@@ -419,7 +420,7 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
         }
     }
     
-    for (r=0; r<newTraits.nrows; r++) {
+    for (r=0; r<newTraits.nrowspadded; r++) {
         (*new)->val[r] = VECVAL_RM(src,src->val,r,0);
     }
 
@@ -461,7 +462,7 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
             i++;
         }
     }
-    for (r=0; r<newTraits.nrows; r++) {
+    for (r=0; r<newTraits.nrowspadded; r++) {
         (*new)->val[r] = VECVAL_RM(src,src->val,r,0);
     }
 
