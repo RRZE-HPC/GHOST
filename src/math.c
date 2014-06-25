@@ -183,7 +183,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     if (v->traits.storage != w->traits.storage)
     {
         DEBUG_LOG(1,"gemm with different storage layout for V and W...");
-        if (strncasecmp(transw,"N",0)) 
+        if (strncasecmp(transw,"N",1)) 
         {
             ERROR_LOG("GEMM with different storage layouts for V and W only implemented " 
                       "for transw='N'!");
@@ -200,7 +200,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     if (x->traits.storage != v->traits.storage)
     {
         DEBUG_LOG(1,"gemm with different storage layout for V and X...");
-        if (strncasecmp(transv,"C",0))
+        if (strncasecmp(transv,"C",1) && strncasecmp(transv,"T",1))
         {
             // compute x=v'w and transpose afterwards
             DEBUG_LOG(1,"case a: post-memtranspose of X needed.");
