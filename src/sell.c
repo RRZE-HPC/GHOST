@@ -1133,10 +1133,9 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 #endif
 #endif*/
 
-    ghost_implementation_t impl;
-    if (!GHOST_BITMAP_COMPACT(rhs->ldmask)) {
-        impl = GHOST_IMPLEMENTATION_PLAIN;
-    } else {
+    ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
+    
+    if (GHOST_BITMAP_COMPACT(rhs->ldmask)) {
 #ifdef GHOST_HAVE_SSE
         impl = GHOST_IMPLEMENTATION_SSE;
 #endif
