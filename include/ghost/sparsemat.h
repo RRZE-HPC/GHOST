@@ -217,7 +217,7 @@ struct ghost_sparsemat_t
     double deviation; // row lenght standard deviation
     double cv; // row lenght coefficient of variation
     /**
-     * @brief Array of length nrows with nzDist[i] = number nonzeros with distance i from diagonal
+     * @brief Array of length (2*nrows-1) with nzDist[i] = number nonzeros with distance i from diagonal
      */
     ghost_nnz_t *nzDist;
     ghost_nnz_t nEnts;
