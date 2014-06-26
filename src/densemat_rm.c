@@ -161,7 +161,7 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
         
         vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
         vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
-        ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncols);
+        ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncols-1);
         vec->traits.ncolsorig = vec->traits.ncols;
         vec->traits.nrowsorig = vec->traits.nrows;
         ghost_densemat_cm_setfuncs(vec);
@@ -1363,8 +1363,8 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
         }
         vec->val[r] = &val[(r*vec->traits.ncolspadded)*vec->elSize];
     }
-    ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncols);
-    ghost_bitmap_set_range(vec->trmask,0,vec->traits.nrows);
+    ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncols-1);
+    ghost_bitmap_set_range(vec->trmask,0,vec->traits.nrows-1);
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
     vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
