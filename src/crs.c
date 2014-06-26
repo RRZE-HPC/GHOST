@@ -311,13 +311,13 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     int funcret = 0;
 
     GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts) reduction (+:funcret)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts,funcret) 
     {
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for ordered
         for(i = 0; i < mat->nrows; i++) {
-            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                     funcret += src->func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
                 } else {
@@ -367,7 +367,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     
 #pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
-            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                         funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);

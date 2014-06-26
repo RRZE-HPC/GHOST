@@ -336,7 +336,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     ghost_idx_t row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
-                        if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                             if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                                 funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             } else {
@@ -412,7 +412,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                 row = chunk*SELL(mat)->chunkHeight+i;
 
                 if (row < mat->nrows) {
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                             funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         } else {
@@ -429,7 +429,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
                     memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
                             SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
                         } else { // local permutation: distinction between global and local entries
