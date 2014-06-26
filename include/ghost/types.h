@@ -28,6 +28,10 @@ typedef int ghost_mpi_datatype_t;
 #include <stdbool.h>
 #include <sys/types.h>
 
+#ifndef __cplusplus
+#include <complex.h>
+#endif
+
 /**
  * @brief Available primitive data types.
  *
@@ -51,6 +55,13 @@ typedef enum {
      */
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
+
+typedef enum {
+    GHOST_IMPLEMENTATION_AVX,
+    GHOST_IMPLEMENTATION_SSE,
+    GHOST_IMPLEMENTATION_MIC,
+    GHOST_IMPLEMENTATION_PLAIN
+} ghost_implementation_t;
 
 /**
  * @brief Contiguous indices for data types.
@@ -124,10 +135,16 @@ typedef int64_t ghost_idx_t;
  * @brief Type for nonzero indices of matrix
  */
 typedef int64_t ghost_nnz_t;
+#ifdef GHOST_HAVE_MKL
 /**
  * @brief Type for indices used in BLAS calls
  */
 typedef long long int ghost_blas_idx_t;
+#define PRBLASIDX PRId64
+#else
+typedef int ghost_blas_idx_t;
+#define PRBLASIDX PRId32
+#endif
 
 /**
  * @brief MPI data type for matrix row/column indices
@@ -152,6 +169,7 @@ typedef long long int ghost_blas_idx_t;
 typedef int32_t ghost_idx_t;
 typedef int32_t ghost_nnz_t; 
 typedef int ghost_blas_idx_t;
+#define PRBLASIDX PRId32
 
 #define ghost_mpi_dt_idx MPI_INT
 #define ghost_mpi_dt_nnz MPI_INT
@@ -165,12 +183,18 @@ typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
 
 
+/**
+ * @brief A float complex number (used for MPI).
+ */
 struct ghost_mpi_c
 {
     float x;
     float y;
 };
 
+/**
+ * @brief A double complex number (used for MPI).
+ */
 struct ghost_mpi_z
 {
     double x;
@@ -201,6 +225,7 @@ extern "C" {
      */
     char * ghost_datatype_string(ghost_datatype_t datatype);
     ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t datatype);
+    ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx);
     ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype);
     ghost_error_t ghost_mpi_datatype(ghost_mpi_datatype_t *dt, ghost_datatype_t datatype);
     ghost_error_t ghost_mpi_datatypes_create();

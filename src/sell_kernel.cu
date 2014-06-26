@@ -8,6 +8,8 @@
 #include "ghost/log.h"
 #include "ghost/error.h"
 #include "ghost/util.h"
+#include "ghost/math.h"
+
 #include <cuComplex.h>
 #include <stdio.h>
 #include <cuda_runtime.h>
@@ -15,7 +17,7 @@
 
 #include "ghost/cu_complex.h"
 
-#define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/(double)(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T)) 
+#define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/ceil((double)(SELL_CUDA_THREADSPERBLOCK/((double)SELL(mat)->T*(double)rhs->traits.ncols))))
 //#define SELLT_STRIDE_ONE
 
 extern __shared__ char shared[];
@@ -158,41 +160,98 @@ extern __shared__ char shared[];
     int cu_device;\
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
     static int infoprinted=0;\
-    void *cu_localdot = NULL;\
+    dt2 *cu_localdot = NULL;\
+    dt2 *cu_shift = NULL;\
     dt2 *localdot = NULL;\
+    dt2 *shift, scale, beta;\
+    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2);\
+    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3));\
+    size_t shiftsize = sizeof(dt2)*(flags & GHOST_SPMV_SHIFT?1:(flags & GHOST_SPMV_VSHIFT?rhs->traits.ncols:0));\
+    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));\
+    GHOST_CALL_RETURN(ghost_cu_upload(cu_shift,shift,shiftsize));\
     if ((SELL(mat)->T > 128) || (SELL(mat)->T == 0) || (SELL(mat)->T & (SELL(mat)->T-1)))\
     WARNING_LOG("Invalid T: %d (must be power of two and T <= 128)",SELL(mat)->T);\
     GHOST_INSTR_START(spmv_cuda)\
-    if (SELL(mat)->chunkHeight == mat->nrowsPadded) {\
-        if (SELL(mat)->T > 1) {\
-            INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
-            size_t reqSmem;\
-            ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
-            reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
-            struct cudaDeviceProp prop;\
-            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
-            if (prop.sharedMemPerBlock < reqSmem) {\
-                WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
-            }\
-            dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
-            SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)\
-        } else {\
-            SWITCH_BOOLS(SELL_kernel_CU_ELLPACK_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)\
+    if (rhs->traits.flags & (GHOST_DENSEMAT_VIEW | GHOST_DENSEMAT_SCATTERED)) {\
+        if (!HWLOC_BITMAP_COMPACT(rhs->ldmask)) {\
+            ERROR_LOG("CUDA SpMV with masked out rows not yet implemented");\
+            return GHOST_ERR_NOT_IMPLEMENTED;\
         }\
-    }else{\
+        if (!ghost_bitmap_isequal(rhs->trmask,lhs->trmask) || !ghost_bitmap_isequal(rhs->ldmask,lhs->ldmask)) {\
+            ERROR_LOG("CUDA SpMV with differently masked densemats not yet implemented");\
+            return GHOST_ERR_NOT_IMPLEMENTED;\
+        }\
+        char colfield[rhs->traits.ncolsorig];\
+        char rowfield[rhs->traits.nrowsorig];\
+        char *cucolfield, *curowfield;\
+        ghost_densemat_mask2charfield(rhs->trmask,rhs->traits.ncolsorig,colfield);\
+        ghost_densemat_mask2charfield(rhs->ldmask,rhs->traits.nrowsorig,rowfield);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cucolfield,rhs->traits.ncolsorig));\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&curowfield,rhs->traits.nrowsorig));\
+        GHOST_CALL_RETURN(ghost_cu_upload(cucolfield,colfield,rhs->traits.ncolsorig));\
+        GHOST_CALL_RETURN(ghost_cu_upload(curowfield,rowfield,rhs->traits.nrowsorig));\
         if (SELL(mat)->T > 1) {\
-            size_t reqSmem;\
-            ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
-            reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
-            struct cudaDeviceProp prop;\
-            CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
-            if (prop.sharedMemPerBlock < reqSmem) {\
-                WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+            WARNING_LOG("SELL-T kernel for multiple vectors not implemented, falling back to SELL-1!");\
+        }\
+        int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+        if (blockheight*rhs->traits.ncols > 1024) {\
+            WARNING_LOG("Too many threads! (FIXME)");\
+        }\
+        dim3 block(blockheight,rhs->traits.ncols);\
+        SELL_kernel_scattered_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,rhs->traits.nrowsorig,mat->nrowsPadded,rhs->traits.ncolsorig,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cucolfield,curowfield,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+    } else {\
+        if (rhs->traits.ncols > 1) {\
+            if (SELL(mat)->T > 1) {\
+                WARNING_LOG("SELL-T kernel for multiple vectors nor implemented, falling back to SELL-1!");\
             }\
-            dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
-            SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)\
+            int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+            if (blockheight*rhs->traits.ncols > 1024) {\
+                WARNING_LOG("Too many threads! (FIXME)");\
+            }\
+            dim3 block(blockheight,rhs->traits.ncols);\
+            SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
         } else {\
-            SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)\
+            if (SELL(mat)->chunkHeight == mat->nrowsPadded) {\
+                if (SELL(mat)->T > 1) {\
+                    INFO_LOG("ELLPACK-T kernel not available. Switching to SELL-T kernel although we have only one chunk. Performance may suffer.");\
+                    size_t reqSmem;\
+                    ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
+                    reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
+                    struct cudaDeviceProp prop;\
+                    CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
+                    if (prop.sharedMemPerBlock < reqSmem) {\
+                        WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+                    }\
+                    dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+                    SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
+                } else {\
+                    SELL_kernel_CU_ELLPACK_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELL_kernel_CU_ELLPACK_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
+                }\
+            }else{\
+                if (SELL(mat)->T > 1) {\
+                    size_t reqSmem;\
+                    ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
+                    reqSmem *= SELL_CUDA_THREADSPERBLOCK;\
+                    struct cudaDeviceProp prop;\
+                    CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
+                    if (prop.sharedMemPerBlock < reqSmem) {\
+                        WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+                    }\
+                    dim3 block(SELL_CUDA_THREADSPERBLOCK/SELL(mat)->T,SELL(mat)->T);\
+                    SELLT_kernel_CU_tmpl<dt1,dt2><<<SELL_CUDA_NBLOCKS,block,reqSmem>>>((dt2 *)lhs->cu_val,(dt2 *)rhs->cu_val,flags,mat->nrows,mat->nrowsPadded,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELLT_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,block,reqSmem)*/\
+                } else {\
+                    int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
+                    if (blockheight*rhs->traits.ncols > 1024) {\
+                        WARNING_LOG("Too many threads! (FIXME)");\
+                    }\
+                    dim3 block(blockheight,rhs->traits.ncols);\
+                    SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);\
+                    /*SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)*/\
+                }\
+            }\
         }\
     }\
     cudaDeviceSynchronize();\
@@ -202,16 +261,19 @@ extern __shared__ char shared[];
         if (!infoprinted)\
             INFO_LOG("Not doing the local dot product on-the-fly!");\
         infoprinted=1;\
-        lhs->dot(lhs,lhs,&localdot[0]);\
-        lhs->dot(lhs,rhs,&localdot[1]);\
-        lhs->dot(rhs,rhs,&localdot[2]);\
+        memset(localdot,0,rhs->traits.ncols*3*sizeof(dt2));\
+        lhs->dot(lhs,&localdot[0],lhs);\
+        lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);\
+        lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);\
         GHOST_INSTR_STOP(spmv_cuda_dot)\
     }\
+    GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));\
+    GHOST_CALL_RETURN(ghost_cu_free(cu_shift));\
     return ret;\
 }
 
-    template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+    template<typename m_t, typename v_t>
+__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(C);
     UNUSED(T);
@@ -228,48 +290,80 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags
         }
         
         if (do_shift) {
-            if (do_scale) {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                } else {
-                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
-                }
-            } else {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                } else {
-                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
-                }
-            }
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f));
+        }
+        if (do_vshift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[threadIdx.y],-1.f));
+        }
+        if (do_scale) {
+            tmp = scale<v_t>(alpha,tmp);
+        }
+        if (do_axpy) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
+        } else if (do_axpby) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),tmp,1.f);
         } else {
-            if (do_scale) {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,tmp),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,tmp),1.f);
-                } else {
-                    lhs[i] = scale<v_t>(alpha,tmp);
+            lhs[lhs_lda*threadIdx.y+i] = tmp;
+        }
+    }
+}
+    
+    template<typename m_t, typename v_t>  
+__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+{
+    UNUSED(T);
+    int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+    if (i<nrowsorig) {
+        int c = 0;
+        int set = 0;
+        for (c=0; c<ncolsorig; c++) {
+            if (colmask[c]) {
+                if (set == threadIdx.y) {
+                    break;
                 }
-            } else {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],tmp,1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),tmp,1.f);
-                } else {
-                    lhs[i] = tmp;
-                }
+                set++;
             }
-            
+        }
+        int cs, tid;
+        if (C == blockDim.x) {
+            cs = chunkstart[blockIdx.x];
+            tid = threadIdx.x;
+        } else {
+            cs = chunkstart[i/C];
+            tid = threadIdx.x%C;
+        }
+        int j;
+        v_t tmp;
+        
+        zero<v_t>(tmp);
+
+        for (j=0; j<rowlen[i]; j++) {
+            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*c+col[cs + tid + j*C]], val[cs+tid+j*C]);
+        }
+
+        if (do_shift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*c+i],scale2<v_t,float>(shift[0],-1.f));
+        }
+        if (do_vshift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*c+i],scale2<v_t,float>(shift[c],-1.f));
+        }
+        if (do_scale) {
+            tmp = scale<v_t>(alpha,tmp);
+        }
+        if (do_axpy) {
+            lhs[lhs_lda*c+i] = axpy<v_t,float>(lhs[lhs_lda*c+i],tmp,1.f);
+        } else if (do_axpby) {
+            lhs[lhs_lda*c+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*c+i],beta),tmp,1.f);
+        } else {
+            lhs[lhs_lda*c+i] = tmp;
         }
     }
 }
 
-    template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+
+    template<typename m_t, typename v_t>  
+__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -285,56 +379,34 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags
         }
         int j;
         v_t tmp;
+        
         zero<v_t>(tmp);
 
         for (j=0; j<rowlen[i]; j++) {
-            tmp = axpy<v_t,m_t>(tmp, rhs[col[cs + tid + j*C]], val[cs + tid + j*C]);
+            tmp = axpy<v_t,m_t>(tmp, rhs[rhs_lda*threadIdx.y+col[cs + tid + j*C]], val[cs+tid+j*C]);
         }
 
         if (do_shift) {
-            if (do_scale) {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
-                } else {
-                    lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
-                }
-            } else {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
-                } else {
-                    lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
-                }
-            }
-        } else {
-            if (do_scale) {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,tmp),1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,tmp),1.f);
-                } else {
-                    lhs[i] = scale<v_t>(alpha,tmp);
-                }
-            } else {
-                if (do_axpy) {
-                    lhs[i] = axpy<v_t,float>(lhs[i],tmp,1.f);
-                } else if (do_axpby) {
-                    lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),tmp,1.f);
-                } else {
-                    lhs[i] = tmp;
-                }
-            }
-            
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[0],-1.f));
         }
-
+        if (do_vshift) {
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*threadIdx.y+i],scale2<v_t,float>(shift[threadIdx.y],-1.f));
+        }
+        if (do_scale) {
+            tmp = scale<v_t>(alpha,tmp);
+        }
+        if (do_axpy) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(lhs[lhs_lda*threadIdx.y+i],tmp,1.f);
+        } else if (do_axpby) {
+            lhs[lhs_lda*threadIdx.y+i] = axpy<v_t,float>(scale<v_t>(lhs[lhs_lda*threadIdx.y+i],beta),tmp,1.f);
+        } else {
+            lhs[lhs_lda*threadIdx.y+i] = tmp;
+        }
     }
 }
 
-    template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_idx_t nrows, ghost_idx_t nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, ghost_idx_t C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+    template<typename m_t, typename v_t>
+__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_idx_t nrows, ghost_idx_t nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, ghost_idx_t C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
 
@@ -407,19 +479,19 @@ __global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flag
             if (do_shift) {
                 if (do_scale) {
                     if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
+                        lhs[i] = axpy<v_t,float>(lhs[i],scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f))),1.f);
                     } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f))),1.f);
+                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f))),1.f);
                     } else {
-                        lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)));
+                        lhs[i] = scale<v_t>(alpha,axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)));
                     }
                 } else {
                     if (do_axpy) {
-                        lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
+                        lhs[i] = axpy<v_t,float>(lhs[i],axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)),1.f);
                     } else if (do_axpby) {
-                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f)),1.f);
+                        lhs[i] = axpy<v_t,float>(scale<v_t>(lhs[i],beta),axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f)),1.f);
                     } else {
-                        lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift,-1.f));
+                        lhs[i] = axpy<v_t,v_t>(tmp,rhs[i],scale2<v_t,float>(shift[0],-1.f));
                     }
                 }
             } else {

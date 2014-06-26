@@ -9,6 +9,7 @@
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
 #include "ghost/log.h"
+#include "ghost/instr.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -178,12 +179,18 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
             col_perm[j] = col;
             if (col < globrow) {
                 mat->lowerBandwidth = MAX(mat->lowerBandwidth, globrow-col);
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1-(globrow-col)]++;
+#endif
             } else if (col > globrow) {
                 mat->upperBandwidth = MAX(mat->upperBandwidth, col-globrow);
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1+col-globrow]++;
+#endif
             } else {
+#ifdef GHOST_GATHER_GLOBAL_INFO
                 mat->nzDist[mat->context->gnrows-1]++;
+#endif
             }
         } 
         ghost_idx_t n;
@@ -206,7 +213,9 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
+#ifdef GHOST_GATHER_GLOBAL_INFO
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
+#endif
 #endif
     mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
@@ -299,26 +308,23 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     }
 
     ghost_nnz_t nEnts = 0;
+    int funcret = 0;
 
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+    GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts,funcret) 
     {
-        int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
 #pragma omp for ordered
-        for( i = 0; i < mat->nrows; i++ ) {
-            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+        for(i = 0; i < mat->nrows; i++) {
+            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                    funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
+                    funcret += src->func(mat->permutation->invPerm[mat->context->lfRow[me]+i],&rowlen,tmpcol,tmpval);
                 } else {
-                    funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
+                    funcret += src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,tmpcol,tmpval);
                 }
             } else {
-                funcret = src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
-            }
-            if (funcret) {
-                ERROR_LOG("Matrix construction function returned error");
-                ret = GHOST_ERR_UNKNOWN;
+                funcret += src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
             }
             nEnts += rowlen;
 #pragma omp ordered
@@ -327,9 +333,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
     }
+    if (funcret) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
+    }
     if (ret != GHOST_SUCCESS){
         goto err;
     }
+    GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
 
     mat->nnz = CR(mat)->rpt[mat->nrows];
     mat->nEnts = mat->nnz;
@@ -345,7 +356,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         }
     }
 
-#pragma omp parallel private(i,j,rowlen,tmpval,tmpcol) reduction (+:nEnts)
+    int funcerrs = 0;
+
+    GHOST_INSTR_START(crs_fromrowfunc_readcolval)
+#pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
     {
         int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
@@ -353,7 +367,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     
 #pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
-            if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+            if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                 if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                         funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[i],&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
@@ -380,28 +394,34 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                 }
             } else {
                 funcret = src->func(mat->context->lfRow[me]+i,&rowlen,&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
-//                 for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-//                     INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
-//                 }
+                 /*for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
+                    if (CR(mat)->col[j] >= mat->context->gncols) {
+                        ERROR_LOG("col idx too large! %"PRIDX" >= %"PRIDX" (row %"PRIDX" el %"PRIDX"/%"PRIDX" (%"PRIDX"))",CR(mat)->col[j],mat->context->gncols,i,j-CR(mat)->rpt[i],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],rowlen);
+                        ret = GHOST_ERR_UNKNOWN;
+                        break;
+                    }
+                     //INFO_LOG("%d/%d: %f|%d",i,j,((double *)(CR(mat)->val))[j],CR(mat)->col[j]);
+                 }*/
             }
             if (funcret) {
-                ERROR_LOG("Matrix construction function returned error");
-                ret = GHOST_ERR_UNKNOWN;
+                funcerrs++;
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
                 GHOST_CALL(ghost_sparsemat_sortrow(&CR(mat)->col[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize],mat->elSize,CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
             }
+#pragma omp critical
             GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
     }
+    if (funcerrs) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+    ghost_sparsemat_registerrow_finalize(mat);
+    GHOST_INSTR_STOP(crs_fromrowfunc_readcolval)
 
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
 
     if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
 #ifdef GHOST_HAVE_MPI
@@ -497,15 +517,19 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     ghost_crs_t *fullCR = CR(mat);
     ghost_crs_t *localCR = NULL, *remoteCR = NULL;
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
-    int j;
-    int i;
+    ghost_idx_t j;
+    ghost_idx_t i;
     int me;
 
     ghost_nnz_t lnEnts_l, lnEnts_r;
-    int current_l, current_r;
+    ghost_nnz_t current_l, current_r;
 
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
+    if (mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->col_orig,sizeof(ghost_idx_t)*mat->nnz),err,ret);
+        memcpy(mat->col_orig, fullCR->col, mat->nnz*sizeof(ghost_idx_t));
+    }
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
         GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,fullCR->col),err,ret);
@@ -589,12 +613,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
         IF_DEBUG(3){
             for (i=0; i<mat->context->lnrows[me]+1; i++)
-                DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%d local=%"PRIDX" remote=%"PRIDX, 
+                DEBUG_LOG(3,"--Row_ptrs-- PE %d: i=%"PRIDX" local=%"PRIDX" remote=%"PRIDX, 
                         me, i, localCR->rpt[i], remoteCR->rpt[i]);
             for (i=0; i<localCR->rpt[mat->context->lnrows[me]]; i++)
-                DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%d]=%"PRIDX, me, i, localCR->col[i]);
+                DEBUG_LOG(3,"-- local -- PE%d: localCR->col[%"PRIDX"]=%"PRIDX, me, i, localCR->col[i]);
             for (i=0; i<remoteCR->rpt[mat->context->lnrows[me]]; i++)
-                DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%d]=%"PRIDX, me, i, remoteCR->col[i]);
+                DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRIDX"]=%"PRIDX, me, i, remoteCR->col[i]);
         }
     }
 
@@ -666,13 +690,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
         GHOST_CALL_GOTO(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),err,ret);
     }
-
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    ghost_sparsemat_registerrow_finalize(mat);
 
 #ifdef GHOST_HAVE_MPI
     DEBUG_LOG(1,"Split matrix");
@@ -695,73 +713,125 @@ out:
 
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
+    DEBUG_LOG(1,"Writing CRS matrix to file %s",matrixPath);
+    GHOST_CALL_RETURN(ghost_sparsemat_tofile_header(mat,matrixPath));
+   
+#ifdef GHOST_HAVE_MPI
+    int me, nrank;
     ghost_idx_t i;
-    ghost_nnz_t j;
-    INFO_LOG("Writing sparse matrix to file %s",matrixPath);
+    GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
+    GHOST_CALL_RETURN(ghost_nrank(&nrank, mat->context->mpicomm));
+    MPI_File fileh;
+    MPI_Status status;
+    MPI_CALL_RETURN(MPI_File_open(mat->context->mpicomm,matrixPath,MPI_MODE_WRONLY|MPI_MODE_CREATE,MPI_INFO_NULL,&fileh));
+    
+    MPI_CALL_RETURN(MPI_File_set_view(fileh, GHOST_BINCRS_SIZE_HEADER + mat->context->lfRow[me]*GHOST_BINCRS_SIZE_RPT_EL,MPI_LONG_LONG,MPI_LONG_LONG,"native",MPI_INFO_NULL)); 
 
-    ghost_idx_t mnrows,mncols,mnnz;
-    GHOST_CALL_RETURN(ghost_sparsemat_nrows(&mnrows,mat));
-    mncols = mnrows;
-    GHOST_CALL_RETURN(ghost_sparsemat_nnz(&mnnz,mat));
+#ifdef GHOST_HAVE_LONGIDX
+
+    ghost_idx_t *rpt_w_offs = NULL;
+    size_t to_write = mat->nrows;
+    if (me > 0) { // adjust rpt
+        GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_w_offs,(mat->nrows+1)*sizeof(ghost_idx_t)));
+        for (i=0; i<mat->nrows+1; i++) {
+            rpt_w_offs[i] = CR(mat)->rpt[i]+mat->context->lfEnt[me];
+        }
+    } else {
+        rpt_w_offs = CR(mat)->rpt;
+    }
+
+    if (me == nrank-1) { // last process writes n+1st element
+       to_write++;
+    } 
+    MPI_CALL_RETURN(MPI_File_write(fileh,rpt_w_offs,to_write,MPI_LONG_LONG,&status));
+    
+    if (me > 0) {
+        free(rpt_w_offs); rpt_w_offs = NULL;
+    }
+  
+    ghost_idx_t *col;
+
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+       WARNING_LOG("The original column indices of the matrix have not been saved! The output will probably be corrupted");
+       col = CR(mat)->col;
+    } else {
+       col = mat->col_orig;
+    }
+
+    MPI_CALL_RETURN(MPI_File_set_view(fileh, GHOST_BINCRS_SIZE_HEADER + (mat->context->gnrows+1)*GHOST_BINCRS_SIZE_RPT_EL + mat->context->lfEnt[me] * GHOST_BINCRS_SIZE_COL_EL, MPI_LONG_LONG, MPI_LONG_LONG, "native",MPI_INFO_NULL)); 
+    MPI_CALL_RETURN(MPI_File_write(fileh,col,mat->context->lnEnts[me],MPI_LONG_LONG,&status));
+
+#else // GHOST_HAVE_LONGIDX
+
+    int64_t *rpt_cast_w_offs = NULL;
+    size_t to_write = mat->nrows;
+    GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_cast_w_offs,(mat->nrows+1)*sizeof(int64_t)));
+    for (i=0; i<mat->nrows+1; i++) {
+        rpt_cast_w_offs[i] = CR(mat)->rpt[i]+mat->context->lfEnt[me];
+    }
+
+    if (me == nrank-1) { // last process writes n+1st element
+       to_write++;
+    } 
+    MPI_CALL_RETURN(MPI_File_write(fileh,rpt_cast_w_offs,to_write,MPI_LONG_LONG,&status));
+
+    free(rpt_cast_w_offs);
+    
+    ghost_idx_t *col;
+    int64_t *col_cast;
+    
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+       WARNING_LOG("The original column indices of the matrix have not been saved! The output will probably be corrupted");
+       col = CR(mat)->col;
+    } else {
+       col = mat->col_orig;
+    }
+    
+    GHOST_CALL_RETURN(ghost_malloc((void **)&col_cast,(mat->context->lnEnts[me])*sizeof(int64_t)));
+    
+    for (i=0; i<mat->context->lnEnts[me]; i++) {
+        col_cast[i] = (int64_t)col[i];
+    }
+
+    MPI_CALL_RETURN(MPI_File_set_view(fileh, GHOST_BINCRS_SIZE_HEADER + (mat->context->gnrows+1)*GHOST_BINCRS_SIZE_RPT_EL + mat->context->lfEnt[me] * GHOST_BINCRS_SIZE_COL_EL, MPI_LONG_LONG, MPI_LONG_LONG, "native",MPI_INFO_NULL)); 
+    MPI_CALL_RETURN(MPI_File_write(fileh,col_cast,mat->context->lnEnts[me],MPI_LONG_LONG,&status));
+
+#endif // GHOST_HAVE_LONGIDX
+
+    ghost_nnz_t nnz;
+    ghost_sparsemat_nnz(&nnz,mat);
+    size_t sizeofEl;
+    ghost_datatype_size(&sizeofEl,mat->traits->datatype);
+    ghost_mpi_datatype_t mpiDT;
+    ghost_mpi_datatype(&mpiDT,mat->traits->datatype);
+
+    MPI_CALL_RETURN(MPI_File_set_view(fileh, GHOST_BINCRS_SIZE_HEADER + (mat->context->gnrows+1)*GHOST_BINCRS_SIZE_RPT_EL + nnz*GHOST_BINCRS_SIZE_COL_EL + mat->context->lfEnt[me]*sizeofEl, mpiDT, mpiDT,"native",MPI_INFO_NULL)); 
+    MPI_CALL_RETURN(MPI_File_write(fileh,CR(mat)->val,mat->context->lnEnts[me],mpiDT,&status));
+    
+    MPI_CALL_RETURN(MPI_File_close(&fileh));
+
+#else // GHOST_HAVE_MPI 
     size_t ret;
-
-    int32_t endianess = ghost_machine_bigendian();
-    int32_t version = 1;
-    int32_t base = 0;
-    int32_t symmetry = GHOST_BINCRS_SYMM_GENERAL;
-    int32_t datatype = mat->traits->datatype;
-    int64_t nrows = (int64_t)mnrows;
-    int64_t ncols = (int64_t)mncols;
-    int64_t nnz = (int64_t)mnnz;
-
     FILE *filed;
 
-    if ((filed = fopen64(matrixPath, "w")) == NULL){
+    if ((filed = fopen64(matrixPath, "a")) == NULL){
         ERROR_LOG("Could not open binary CRS file %s: %s",matrixPath,strerror(errno));
         return GHOST_ERR_IO;
     }
-
-    if ((ret = fwrite(&endianess,sizeof(endianess),1,filed)) != 1) {
+#ifdef GHOST_HAVE_LONGIDX
+    if ((ret = fwrite(CR(mat)->rpt,8,mat->nrows+1,filed)) != mat->nrows+1) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
-    if ((ret = fwrite(&version,sizeof(version),1,filed)) != 1) {
+    if ((ret = fwrite(CR(mat)->col,8,mat->nnz,filed)) != mat->nnz) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
-    if ((ret = fwrite(&base,sizeof(base),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-    if ((ret = fwrite(&symmetry,sizeof(symmetry),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-    if ((ret = fwrite(&datatype,sizeof(datatype),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-    if ((ret = fwrite(&nrows,sizeof(nrows),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-    if ((ret = fwrite(&ncols,sizeof(ncols),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-    if ((ret = fwrite(&nnz,sizeof(nnz),1,filed)) != 1) {
-        ERROR_LOG("fwrite failed: %zu",ret);
-        fclose(filed);
-        return GHOST_ERR_IO;
-    }
-
+#else
+    ghost_idx_t i;
+    ghost_nnz_t j;
     int64_t rpt,col;
 
     for (i = 0; i < mat->nrows+1; i++) {
@@ -784,13 +854,16 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
             }
         }
     }
-    if ((ret = fwrite(CR(mat)->val,mat->elSize,nnz,filed)) != nnz) {
+
+#endif
+    if ((ret = fwrite(CR(mat)->val,mat->elSize,mat->nnz,filed)) != mat->nnz) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;
     }
 
     fclose(filed);
+#endif
 
     return GHOST_SUCCESS;
 
@@ -805,12 +878,15 @@ static void CRS_free(ghost_sparsemat_t * mat)
         free(CR(mat)->val);
 
         free(mat->data);
+        free(mat->col_orig);
 
-        if (mat->localPart)
+        if (mat->localPart) {
             CRS_free(mat->localPart);
+        }
 
-        if (mat->remotePart)
+        if (mat->remotePart) {
             CRS_free(mat->remotePart);
+        }
 
         free(mat);
         DEBUG_LOG(1,"CRS matrix freed successfully");

@@ -26,7 +26,7 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#define IF_DEBUG(level) if(DEBUG >= level)
+#define IF_DEBUG(level) if(GHOST_VERBOSITY > level)
 #define FILE_BASENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 /* taken from http://stackoverflow.com/a/11172679 */
@@ -71,9 +71,11 @@
 #endif
 
 
-#define DEBUG_LOG(level,...) {if(DEBUG >= level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
-#define INFO_LOG(...) LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__)
-#define WARNING_LOG(...) LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__)
-#define ERROR_LOG(...) LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__)
+#define DEBUG_LOG(level,...) {if(GHOST_VERBOSITY > level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
+#define INFO_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__); __printed=1; }}
+#define WARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { WARNING_LOG_ALWAYS(__VA_ARGS__); __printed=1; }}
+#define ERROR_LOG(...) {if(GHOST_VERBOSITY) { LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__) }}
+
+#define WARNING_LOG_ALWAYS(...) {if(GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__) }}
 
 #endif

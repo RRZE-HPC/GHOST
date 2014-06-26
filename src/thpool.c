@@ -17,38 +17,36 @@ static ghost_thpool_t *ghost_thpool = NULL;
 ghost_error_t ghost_thpool_create(int nThreads, void *(func)(void *))
 {
     int t;
-    int totalThreads;
+    int oldthreads = 0; 
 
-    if (ghost_thpool) {
-        ERROR_LOG("The thread pool has already been initialized.");
-        return GHOST_ERR_UNKNOWN;
+    if (!ghost_thpool) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
+        ghost_thpool->nThreads = nThreads;
+        GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->sem,sizeof(sem_t)));
+
+        pthread_key_create(&ghost_thread_key,NULL);
+
+        DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
+    } else {
+        DEBUG_LOG(1,"Resizing the thread pool");
+       
+        oldthreads = ghost_thpool->nThreads; 
+        ghost_thpool->nThreads = nThreads;
+        sem_init(ghost_thpool->sem, 0, 0);
+
+        ghost_thpool->threads = realloc(ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t));
+        
     }
-
-    totalThreads = nThreads;
-
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool,sizeof(ghost_thpool_t)));
-    ghost_thpool->nThreads = nThreads;
-//    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->PUs,totalThreads*sizeof(hwloc_obj_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->threads,ghost_thpool->nThreads*sizeof(pthread_t)));
-    GHOST_CALL_RETURN(ghost_malloc((void **)&ghost_thpool->sem,sizeof(sem_t)));
-    ghost_thpool->nThreads = totalThreads;
+        
     sem_init(ghost_thpool->sem, 0, 0);
-
-    pthread_key_create(&ghost_thread_key,NULL);
-
-    //ghost_thpool->cpuset = hwloc_bitmap_alloc();
-    //hwloc_bitmap_copy(ghost_thpool->cpuset,cpuset);
-    //ghost_thpool->busy = hwloc_bitmap_alloc();
-
-
-    //    WARNING_LOG("Creating %d threads for the thread pool",ghost_thpool->nThreads);
-    for (t=0; t<ghost_thpool->nThreads; t++){
+    for (t=oldthreads; t<ghost_thpool->nThreads; t++){
         pthread_create(&(ghost_thpool->threads[t]), NULL, func, (void *)(intptr_t)t);
     }
-    for (t=0; t<ghost_thpool->nThreads; t++){
+    for (t=oldthreads; t<ghost_thpool->nThreads; t++){
         sem_wait(ghost_thpool->sem);
     }
-    DEBUG_LOG(1,"All threads are initialized and waiting for tasks");
+
 
     return GHOST_SUCCESS;
 }

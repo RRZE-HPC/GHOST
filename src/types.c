@@ -61,7 +61,7 @@ ghost_error_t ghost_mpi_datatypes_destroy()
 ghost_error_t ghost_datatype_size(size_t *size, ghost_datatype_t datatype)
 {
     if (!ghost_datatype_valid(datatype)) {
-        ERROR_LOG("Invalid data type");
+        ERROR_LOG("Invalid data type %d",datatype);
         return GHOST_ERR_INVALID_ARG;
     }
 
@@ -145,3 +145,26 @@ ghost_error_t ghost_datatype_idx(ghost_datatype_idx_t *idx, ghost_datatype_t dat
 
     return GHOST_SUCCESS;
 }
+
+ghost_error_t ghost_idx2datatype(ghost_datatype_t *datatype, ghost_datatype_idx_t idx)
+{
+    switch(idx) {
+        case 0: 
+            *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT);
+            break;
+        case 1: 
+            *datatype = (ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_DOUBLE);
+            break;
+        case 2: 
+            *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT);
+            break;
+        case 3: 
+            *datatype = (ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
+            break;
+        default:
+            ERROR_LOG("Invalid datatype index!");
+            return GHOST_ERR_INVALID_ARG;
+    }
+    return GHOST_SUCCESS;
+}
+    

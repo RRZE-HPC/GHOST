@@ -95,7 +95,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_summaryString(char **str);
+    ghost_error_t ghost_timing_summarystring(char **str);
     /**
      * @brief Obtain timing info about a specific region.
      *

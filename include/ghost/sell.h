@@ -46,23 +46,31 @@ typedef struct
     ghost_idx_t *col;
     ghost_nnz_t *chunkStart;
     double beta; // chunk occupancy
-    double variance; // row length variance
-    double deviation; // row lenght standard deviation
-    double cv; // row lenght coefficient of variation
     int T; // number of threads per row (if applicable)
     ghost_idx_t *chunkMin; // for version with remainder loop
     ghost_idx_t *chunkLen; // for version with remainder loop
     ghost_idx_t *chunkLenPadded; // for version with remainder loop
     ghost_idx_t *rowLen;   // for version with remainder loop
     ghost_idx_t *rowLenPadded; // for SELL-T 
-    ghost_idx_t maxRowLen;
-    ghost_idx_t nMaxRows;
     ghost_idx_t chunkHeight;
     
     ghost_cu_sell_t *cumat;
 }
 ghost_sell_t;
 
+
+typedef struct 
+{
+    ghost_implementation_t impl;
+    ghost_datatype_t mdt;
+    ghost_datatype_t vdt;
+    int blocksz;
+    int chunkheight;
+    ghost_densemat_storage_t storage;
+
+}
+ghost_sellspmv_parameters_t;
+typedef ghost_error_t (*sellspmv_kernel)(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 
 #define SELL(mat) ((ghost_sell_t *)(mat->data))
 
@@ -75,6 +83,8 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 template <typename> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *, ghost_sparsemat_t *);
 extern "C" {
 #endif
+sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs);
+void ghost_sellspmv_kernelmap_generate(void);
 ghost_error_t dd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t ds_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
@@ -92,10 +102,33 @@ ghost_error_t zs_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghos
 ghost_error_t zc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t zz_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 
-ghost_error_t dd_SELL_kernel_SSE(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_32(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_32_rich(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_16_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_16_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_8_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_8_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_4_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_4_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_2_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_2_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_1_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_SSE_1_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_16_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_16_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_8_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_8_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_4_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_4_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_2_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_2_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_1_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_1_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_16_multivec_4_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_16_multivec_8_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t dd_SELL_kernel_AVX_8_multivec_8_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 #ifdef GHOST_HAVE_CUDA

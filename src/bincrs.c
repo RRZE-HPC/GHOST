@@ -54,7 +54,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, g
     if (swapReq) {
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
-        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
@@ -63,7 +63,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, g
         }
         free(tmp);
     } else {
-        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
@@ -79,7 +79,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, g
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,header.nnz*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != header.nnz){
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != (size_t)(header.nnz)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -88,7 +88,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, g
             }
             free(tmp);
         } else {
-            if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != header.nnz){
+            if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != (size_t)(header.nnz)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -204,7 +204,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
     if (swapReq) {
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
-        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
@@ -213,7 +213,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
         }
         free(tmp);
     } else {
-        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+        if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
@@ -244,7 +244,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
         return GHOST_ERR_IO;
     }
 
-    if (datatype == header.datatype) {
+    if ((int)datatype == header.datatype) {
         if (swapReq) {
             uint8_t *tmpval;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmpval,nEnts*valSize));
@@ -401,7 +401,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, g
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -410,7 +410,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, g
             }
             free(tmp);
         } else {
-            if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != header.nrows+1){
+            if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }

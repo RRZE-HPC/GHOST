@@ -254,7 +254,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
 
                 (*context)->lfRow[0]  = 0;
                 (*context)->lfEnt[0] = 0;
-                int j = 1;
+                ghost_nnz_t j = 1;
 
                 for (row=0;row<(*context)->gnrows;row++){
                     if ((*context)->rpt[row] >= j*target_nnz){
@@ -384,7 +384,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
     ghost_nnz_t i;
     ghost_nnz_t max_loc_elements, thisentry;
     ghost_nnz_t *present_values = NULL;
-    ghost_nnz_t acc_dues;
+    ghost_nnz_t acc_dues = 0;
     ghost_nnz_t *tmp_transfers = NULL;
     ghost_nnz_t acc_wishes;
 
@@ -591,7 +591,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
      */
 
     for (; i<nprocs; i++) { // iterate i=me,..,nprocs,0,..,me-1
-        int t = 0;
+        ghost_idx_t t = 0;
         if (meHandled && (i == me)) continue;
 
         if (i != me){ 

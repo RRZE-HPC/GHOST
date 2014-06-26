@@ -248,8 +248,8 @@ ghost_error_t ghost_machine_string(char **str)
 #endif
 
 
-    int nphyscores;
-    int ncores;
+    int nphyscores = 1;
+    int ncores = 1;
     ghost_machine_ncore(&nphyscores,GHOST_NUMANODE_ANY);
     ghost_machine_npu(&ncores,GHOST_NUMANODE_ANY);
 
@@ -279,8 +279,8 @@ ghost_error_t ghost_machine_string(char **str)
     char omp_sched_str[] = "N/A";
 #endif
 
-    uint64_t cacheSize;
-    unsigned int cacheline_size;
+    uint64_t cacheSize = 0;
+    unsigned int cacheline_size = 0;
     ghost_machine_outercache_size(&cacheSize);
     ghost_machine_cacheline_size(&cacheline_size);
 

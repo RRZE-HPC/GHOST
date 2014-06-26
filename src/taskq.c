@@ -70,7 +70,7 @@ static pthread_cond_t anyTaskFinishedCond;
  */
 static pthread_mutex_t anyTaskFinishedMutex;
 
-
+static int nrunning = 0;
 
 static void * thread_main(void *arg);
 
@@ -154,9 +154,22 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
 
     while(curTask != NULL)
     {
+        int d;
+        for (d=0; d<curTask->ndepends; d++) {
+            if (curTask->depends[d]->state != GHOST_TASK_FINISHED) {
+                break;
+            }
+        }
+        if (d<curTask->ndepends) {
+            curTask = curTask->next;
+            continue;
+        }
+
         if (curTask->flags & GHOST_TASK_NOT_PIN) {
             taskq_deleteTask(q,curTask);    
             ghost_omp_nthread_set(curTask->nThreads);
+#pragma omp parallel
+            ghost_thread_unpin();
             return curTask;
         }
 
@@ -366,6 +379,15 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
             pthread_mutex_lock(&newTaskMutex);
             pthread_mutex_lock(&globalMutex);
             myTask = taskq_findDeleteAndPinTask(taskq);
+            if (myTask) {
+                nrunning++;
+            }
+            // resize thread pool
+            if (nrunning == ghost_thpool->nThreads) {
+                void *(*threadFunc)(void *);
+                ghost_taskq_startroutine(&threadFunc);
+                ghost_thpool_create(ghost_thpool->nThreads*2,threadFunc);
+            }
             pthread_mutex_unlock(&globalMutex);
 
             if (myTask  == NULL) // no suiting task found
@@ -403,6 +425,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 
             pthread_mutex_lock(&globalMutex);
             ghost_task_unpin(myTask);
+            nrunning--;
             pthread_mutex_unlock(&globalMutex);
 
             //    kmp_set_blocktime(200);

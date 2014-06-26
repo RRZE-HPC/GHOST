@@ -25,119 +25,212 @@
     switch(ch) { \
         case 1: \
                 return SELL_kernel_plain_tmpl< dt1, dt2, 1 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 2: \
                 return SELL_kernel_plain_tmpl< dt1, dt2, 2 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 4: \
                 return SELL_kernel_plain_tmpl< dt1, dt2, 4 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 8: \
                 return SELL_kernel_plain_tmpl< dt1, dt2, 8 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 16: \
                  return SELL_kernel_plain_tmpl< dt1, dt2, 16 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 32: \
                  return SELL_kernel_plain_tmpl< dt1, dt2, 32 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 64: \
                  return SELL_kernel_plain_tmpl< dt1, dt2, 64 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         case 256: \
                   return SELL_kernel_plain_tmpl< dt1, dt2, 256 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
         default: \
                  return SELL_kernel_plain_ELLPACK_tmpl< dt1, dt2 >(mat,lhs,rhs,options,argp); \
-                break; \
+        break; \
     }
 
 using namespace std;
 
-template<typename m_t, typename v_t, int chunkHeight> 
+    template<typename m_t, typename v_t, int chunkHeight> 
 ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *rhsv = NULL;
-    v_t *lhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_idx_t i,j,c;
+    ghost_idx_t i,j,c,col,colidx;
     ghost_idx_t v;
     int nthreads = 1;
-    v_t tmp[chunkHeight];
-    
-    v_t shift = 0., scale = 1., beta = 1.;
+
+    unsigned clsize;
+    ghost_machine_cacheline_size(&clsize);
+    int padding = (int) clsize/sizeof(v_t);
+
+    v_t scale = 1., beta = 1.;
+    v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
-    
+
     if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
         nthreads = ghost_omp_nthread();
 
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
-
-        for (i=0; i<16*lhs->traits.ncols*nthreads; i++) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t))); 
+        for (i=0; i<(3*lhs->traits.ncols+padding)*nthreads; i++) {
             partsums[i] = 0.;
         }
     }
+    if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
 
-#pragma omp parallel private(c,j,tmp,i,v)
-    {
-        int tid = ghost_omp_threadnum();
+#pragma omp parallel private(c,j,col,colidx,i,v) shared(partsums)
+        {
+            v_t **tmp;
+            ghost_malloc((void **)&tmp,sizeof(v_t *)*chunkHeight);
+            ghost_malloc((void **)&tmp[0],sizeof(v_t)*chunkHeight*rhs->traits.ncols);
+            for (i=1; i<chunkHeight; i++) {
+                tmp[i] = tmp[i-1] + rhs->traits.ncols;
+            }
+            v_t **lhsv = NULL;
+            int tid = ghost_omp_threadnum();
+            v_t * rhsrow;
+            v_t matrixval;
 
 #pragma omp for schedule(runtime) 
-        for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
-        { // loop over chunks
-            for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
-            {
-                rhsv = (v_t *)rhs->val[v];
-                lhsv = (v_t *)lhs->val[v];
+            for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
+            { // loop over chunks
+//                    rhsv = (v_t *)rhs->val[v];
+                lhsv = (v_t **)&(lhs->val[c*chunkHeight]);
 
                 for (i=0; i<chunkHeight; i++) {
-                    tmp[i] = (v_t)0;
+                    for (col=0; col<rhs->traits.ncols; col++) {
+                        tmp[i][col] = (v_t)0;
+                    }
                 }
 
                 for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
                 { // loop inside chunk
                     for (i=0; i<chunkHeight; i++) {
-                   // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
-                        tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
-                            rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+                        // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
+                        matrixval = (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]);
+                        rhsrow = (v_t *)rhs->val[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+
+                        for (colidx=0, col=0; col<rhs->traits.ncolsorig; col++) {
+                            if (ghost_bitmap_isset(rhs->ldmask,col)) {
+                                tmp[i][colidx] +=  matrixval * rhsrow[col];
+                                colidx++;
+                            } 
+                        }
                     }
                 }
+                
                 for (i=0; i<chunkHeight; i++) {
+                    rhsrow = (v_t *)rhs->val[c*chunkHeight+i];
                     if (c*chunkHeight+i < mat->nrows) {
-                        if (options & GHOST_SPMV_SHIFT) {
-                            tmp[i] = tmp[i]-shift*rhsv[c*chunkHeight+i];
-                        }
-                        if (options & GHOST_SPMV_SCALE) {
-                            tmp[i] = tmp[i]*scale;
-                        }
-                        if (options & GHOST_SPMV_AXPY) {
-                            lhsv[c*chunkHeight+i] += tmp[i];
-                        } else if (options & GHOST_SPMV_AXPBY) {
-                            lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i];
-                        } else {
-                            lhsv[c*chunkHeight+i] = tmp[i];
-                        }
-                    
-                        if (options & GHOST_SPMV_DOT) {
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                            partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
-                        }
-                   }
+                        for (colidx = 0, col=0; col<lhs->traits.ncolsorig; col++) {
+                            if (ghost_bitmap_isset(lhs->ldmask,col)) {
+                                if ((options & GHOST_SPMV_SHIFT) && shift) {
+                                    tmp[i][colidx] = tmp[i][colidx]-shift[0]*rhsrow[col];
+                                }
+                                if ((options & GHOST_SPMV_VSHIFT) && shift) {
+                                    tmp[i][colidx] = tmp[i][colidx]-shift[colidx]*rhsrow[col];
+                                }
+                                if (options & GHOST_SPMV_SCALE) {
+                                    tmp[i][colidx] = tmp[i][colidx]*scale;
+                                }
+                                if (options & GHOST_SPMV_AXPY) {
+                                    lhsv[i][col] += tmp[i][colidx];
+                                } else if (options & GHOST_SPMV_AXPBY) {
+                                    lhsv[i][col] = beta*lhsv[i][col] + tmp[i][colidx];
+                                } else {
+                                    lhsv[i][col] = tmp[i][colidx];
+                                }
 
+                                if (options & GHOST_SPMV_DOT) {
+                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+0] += conjugate(&lhsv[i][col])*lhsv[i][col];
+                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+1] += conjugate(&lhsv[i][col])*rhsrow[col];
+                                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+2] += conjugate(&rhsrow[col])*rhsrow[col];
+                                }
+                                colidx++;
+                            }
+                        }
+                    }
                 }
 
             }
         }
+    } else {
+#pragma omp parallel private(c,j,i,v) shared(partsums)
+        {
+            v_t tmp[chunkHeight];
+            v_t *lhsv = NULL;
+            int tid = ghost_omp_threadnum();
+
+#pragma omp for schedule(runtime) 
+            for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
+            { // loop over chunks
+                for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++)
+                {
+                    rhsv = (v_t *)rhs->val[v];
+                    lhsv = (v_t *)lhs->val[v];
+
+                    for (i=0; i<chunkHeight; i++) {
+                        tmp[i] = (v_t)0;
+                    }
+
+                    for (j=0; j<(sell->chunkStart[c+1]-sell->chunkStart[c])/chunkHeight; j++) 
+                    { // loop inside chunk
+                        for (i=0; i<chunkHeight; i++) {
+                            // INFO_LOG("%d: %f * %f",i,(v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]), rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]]);
+                            tmp[i] += (v_t)(((m_t*)(sell->val))[sell->chunkStart[c]+j*chunkHeight+i]) * 
+                                rhsv[sell->col[sell->chunkStart[c]+j*chunkHeight+i]];
+                        }
+                    }
+                    for (i=0; i<chunkHeight; i++) {
+                        if (c*chunkHeight+i < mat->nrows) {
+                            if ((options & GHOST_SPMV_SHIFT) && shift) {
+                                tmp[i] = tmp[i]-shift[0]*rhsv[c*chunkHeight+i];
+                            }
+                            if ((options & GHOST_SPMV_VSHIFT) && shift) {
+                                tmp[i] = tmp[i]-shift[v]*rhsv[c*chunkHeight+i];
+                            }
+                            if (options & GHOST_SPMV_SCALE) {
+                                tmp[i] = tmp[i]*scale;
+                            }
+                            if (options & GHOST_SPMV_AXPY) {
+                                lhsv[c*chunkHeight+i] += tmp[i];
+                            } else if (options & GHOST_SPMV_AXPBY) {
+                                lhsv[c*chunkHeight+i] = beta*lhsv[c*chunkHeight+i] + tmp[i];
+                            } else {
+                                lhsv[c*chunkHeight+i] = tmp[i];
+                            }
+
+                            if (options & GHOST_SPMV_DOT) {
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                                partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
+                            }
+                        }
+
+                    }
+
+                }
+            }
+        }
     }
     if (options & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   lhs->traits.ncols] = 0.;
+            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
-                local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
-                local_dot_product[v + 2*lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 2];
+                local_dot_product[v                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 0];
+                local_dot_product[v  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 1];
+                local_dot_product[v  + 2*lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 2];
             }
         }
         free(partsums);
@@ -159,10 +252,11 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     v_t tmp;
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
-    
-    v_t shift = 0., scale = 1., beta = 1.;
+
+    v_t scale = 1., beta = 1.;
+    v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
-    
+
     if (options & GHOST_SPMV_DOT) {
 #pragma omp parallel
         nthreads = ghost_omp_nthread();
@@ -189,12 +283,15 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
 
                 for (j=0; j<sell->rowLen[i]; j++) 
                 {
-    //                INFO_LOG("%d: %f * %f",i,(v_t)sellv[mat->nrowsPadded*j+i], rhsv[sell->col[mat->nrowsPadded*j+i]]);
+                    //                INFO_LOG("%d: %f * %f",i,(v_t)sellv[mat->nrowsPadded*j+i], rhsv[sell->col[mat->nrowsPadded*j+i]]);
                     tmp += (v_t)sellv[mat->nrowsPadded*j+i] * rhsv[sell->col[mat->nrowsPadded*j+i]];
                 }
-                
-                if (options & GHOST_SPMV_SHIFT) {
-                    tmp = tmp-shift*rhsv[i];
+
+                if ((options & GHOST_SPMV_SHIFT) && shift) {
+                    tmp = tmp-shift[0]*rhsv[i];
+                }
+                if ((options & GHOST_SPMV_VSHIFT) && shift) {
+                    tmp = tmp-shift[v]*rhsv[i];
                 }
                 if (options & GHOST_SPMV_SCALE) {
                     tmp = tmp*scale;
@@ -216,6 +313,9 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     }
     if (options & GHOST_SPMV_DOT) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
+            local_dot_product[v                       ] = 0.; 
+            local_dot_product[v  +   lhs->traits.ncols] = 0.;
+            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(v+i*lhs->traits.ncols)*16 + 0];
                 local_dot_product[v +   lhs->traits.ncols] += partsums[(v+i*lhs->traits.ncols)*16 + 1];
@@ -228,11 +328,11 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     return GHOST_SUCCESS;
 }
 /*
-static int compareNZEPerRow( const void* a, const void* b ) 
-{
-    return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
-}
-*/
+   static int compareNZEPerRow( const void* a, const void* b ) 
+   {
+   return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
+   }
+ */
 template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
 {
     UNUSED(mat);
@@ -250,7 +350,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     ghost_sorting_t* rowSort = NULL;
     //mat->data = (ghost_sell_t *)ghost_malloc(sizeof(ghost_sell_t));
     mat->nnz = crsmat->nnz;
-    
+
     ghost_idx_t chunkMin = crsmat->ncols;
     ghost_idx_t chunkLen = 0;
     ghost_idx_t chunkLenPadded = 0;
@@ -272,34 +372,34 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     SELL(mat)->maxRowLen = 0;
 
     SELL(mat)->beta = 0.;
-   /* mat->nrows = cr->nrows;
-    mat->nEnts = 0;
+    /* mat->nrows = cr->nrows;
+       mat->nEnts = 0;
 
-    if (mat->traits->aux == NULL) {
-        SELL(mat)->scope = 1;
-        SELL(mat)->T = 1;
-        SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
-        mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
-    } else {
-        SELL(mat)->scope = *(int *)(mat->traits->aux);
-        if (SELL(mat)->scope == GHOST_SELL_SORT_GLOBALLY) {
-            SELL(mat)->scope = cr->nrows;
-        }
+       if (mat->traits->aux == NULL) {
+       SELL(mat)->scope = 1;
+       SELL(mat)->T = 1;
+       SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+       mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
+       } else {
+       SELL(mat)->scope = *(int *)(mat->traits->aux);
+       if (SELL(mat)->scope == GHOST_SELL_SORT_GLOBALLY) {
+       SELL(mat)->scope = cr->nrows;
+       }
 
-        if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
-            SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
-            mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
-        } else {
-            if (((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
-                mat->nrowsPadded = PAD(mat->nrows,GHOST_PAD_MAX); // TODO padding anpassen an architektur
-                SELL(mat)->chunkHeight = mat->nrowsPadded;
-            } else {
-                SELL(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
-                mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
-            }
-        }
-        SELL(mat)->T = ((int *)(mat->traits->aux))[2];
-    }*/
+       if (mat->traits->nAux == 1 || ((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_AUTO) {
+       SELL(mat)->chunkHeight = ghost_selectSellChunkHeight(mat->traits->datatype);
+       mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
+       } else {
+       if (((int *)(mat->traits->aux))[1] == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
+       mat->nrowsPadded = PAD(mat->nrows,GHOST_PAD_MAX); // TODO padding anpassen an architektur
+       SELL(mat)->chunkHeight = mat->nrowsPadded;
+       } else {
+       SELL(mat)->chunkHeight = ((int *)(mat->traits->aux))[1];
+       mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
+       }
+       }
+       SELL(mat)->T = ((int *)(mat->traits->aux))[2];
+       }*/
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
@@ -371,11 +471,11 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
         } else {
             SELL(mat)->rowLen[i] = 0;
         }
-        
+
         nnz += SELL(mat)->rowLen[i];
-        
+
         rowlengths[SELL(mat)->rowLen[i]]++;
-        
+
         SELL(mat)->rowLenPadded[i] = PAD(SELL(mat)->rowLen[i],SELL(mat)->T);
 
         chunkMin = SELL(mat)->rowLen[i]<chunkMin?SELL(mat)->rowLenPadded[i]:chunkMin;
@@ -449,8 +549,8 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
         { 
             for (j=0; j<SELL(mat)->chunkLenPadded[0]; j++) 
             {
-                    ((m_t *)(SELL(mat)->val))[mat->nrowsPadded*j+i] = (m_t)0.;
-                    SELL(mat)->col[mat->nrowsPadded*j+i] = 0;
+                ((m_t *)(SELL(mat)->val))[mat->nrowsPadded*j+i] = (m_t)0.;
+                SELL(mat)->col[mat->nrowsPadded*j+i] = 0;
             }
         }
     }
@@ -472,9 +572,9 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[(mat->permutation->invPerm)[row]]+j];
                         if (!(flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS)) {
                             SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = (mat->permutation->perm)[cr->col[cr->rpt[(mat->permutation->invPerm)[row]]+j]];
-                         } else {
+                        } else {
                             SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[(mat->permutation->invPerm)[row]]+j];
-                         }
+                        }
                     } else {
                         ((m_t *)(SELL(mat)->val))[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = ((m_t *)(cr->val))[cr->rpt[row]+j];
                         SELL(mat)->col[SELL(mat)->chunkStart[c]+j*SELL(mat)->chunkHeight+i] = cr->col[cr->rpt[row]+j];
@@ -511,7 +611,7 @@ err:
 
 out:
     free(rowSort); rowSort = NULL;
-    
+
     return ret;
 #endif
 }
@@ -529,7 +629,7 @@ template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *m
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
                     if ((j < SELL(mat)->rowLen[row]) && (SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col)) { // there is an entry at col
-                        buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
+                         buffer << val[rowOffs+j*SELL(mat)->chunkHeight] << "\t";
                         j++;
                     } else {
                         buffer << ".\t";

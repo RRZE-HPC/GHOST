@@ -8,6 +8,8 @@
 
 #ifdef __cplusplus
 
+#include <ostream>
+
 template <typename T> 
 struct ghost_complex
 {
@@ -56,6 +58,14 @@ template <typename T>
 ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re*c.re - this->im*c.im, this->re*c.im + this->im*c.re);
 }
+
+template <typename T>
+std::ostream& operator <<(std::ostream& o, const ghost_complex<T>& c) {
+    o << "(" << c.re << ", " << c.im << ")";
+    return o;
+}
+
+
 
 
 #endif

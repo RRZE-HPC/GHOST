@@ -12,63 +12,15 @@
 #include <libgen.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
 
-#ifdef GHOST_HAVE_CUDA
-//#include "private/sell_cukernel.h"
-#endif
-
-#if defined(SSE) || defined(AVX) || defined(MIC)
-#include <immintrin.h>
-#endif
 #if defined(VSX)
 #include <altivec.h>
 #endif
-
-#ifdef GHOST_HAVE_SSE
-static ghost_error_t (*SELL_kernels_SSE[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_SSE,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-#endif
-
-#ifdef GHOST_HAVE_AVX
-static ghost_error_t (*SELL_kernels_AVX[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_AVX_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_AVX_32_rich,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-#endif
-
-#ifdef GHOST_HAVE_MIC
-static ghost_error_t (*SELL_kernels_MIC_16[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_16,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-
-static ghost_error_t (*SELL_kernels_MIC_32[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{NULL,NULL,NULL,NULL},
-    {NULL,&dd_SELL_kernel_MIC_32,NULL,NULL},
-    {NULL,NULL,NULL,NULL},
-    {NULL,NULL,NULL,NULL}};
-#endif
-
-static ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{&ss_SELL_kernel_plain,&sd_SELL_kernel_plain,&sc_SELL_kernel_plain,&sz_SELL_kernel_plain},
-    {&ds_SELL_kernel_plain,&dd_SELL_kernel_plain,&dc_SELL_kernel_plain,&dz_SELL_kernel_plain},
-    {&cs_SELL_kernel_plain,&cd_SELL_kernel_plain,&cc_SELL_kernel_plain,&cz_SELL_kernel_plain},
-    {&zs_SELL_kernel_plain,&zd_SELL_kernel_plain,&zc_SELL_kernel_plain,&zz_SELL_kernel_plain}};
 
 #ifdef GHOST_HAVE_CUDA
 static ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
@@ -94,6 +46,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_permute(ghost_sparsemat_t *, ghost_idx_t *, ghost_idx_t *);
 static ghost_error_t SELL_upload(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *);
+static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
 static void SELL_free(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
@@ -128,6 +81,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
 
     mat->upload = &SELL_upload;
     mat->fromFile = &SELL_fromBin;
+    mat->toFile = &SELL_toBinCRS;
     mat->fromRowFunc = &SELL_fromRowFunc;
     mat->auxString = &SELL_printInfo;
     mat->formatName = &SELL_formatName;
@@ -156,11 +110,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     SELL(mat)->rowLen = NULL;
     SELL(mat)->rowLenPadded = NULL;
     SELL(mat)->chunkStart = NULL;
-    SELL(mat)->maxRowLen = 0;
-    SELL(mat)->nMaxRows = 0;
-    SELL(mat)->variance = 0.;
-    SELL(mat)->deviation = 0.;
-    SELL(mat)->cv = 0.;
     SELL(mat)->beta = 0;
     SELL(mat)->cumat = NULL;
 
@@ -198,12 +147,8 @@ static ghost_error_t SELL_permute(ghost_sparsemat_t *mat , ghost_idx_t *perm, gh
 }
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str)
 {
-    ghost_line_string(str,"Max row length (# rows)",NULL,"%d (%d)",SELL(mat)->maxRowLen,SELL(mat)->nMaxRows);
     ghost_line_string(str,"Chunk height (C)",NULL,"%d",SELL(mat)->chunkHeight);
     ghost_line_string(str,"Chunk occupancy (beta)",NULL,"%f",SELL(mat)->beta);
-    ghost_line_string(str,"Row length variance",NULL,"%f",SELL(mat)->variance);
-    ghost_line_string(str,"Row length standard deviation",NULL,"%f",SELL(mat)->deviation);
-    ghost_line_string(str,"Row length coefficient of variation",NULL,"%f",SELL(mat)->cv);
     ghost_line_string(str,"Threads per row (T)",NULL,"%d",SELL(mat)->T);
 }
 
@@ -377,7 +322,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         }
     } else {
 */
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz) 
+    int funcerrs = 0;
+
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz,funcerrs) 
         {
             int funcret = 0;
             maxRowLenInChunk = 0; 
@@ -389,7 +336,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     ghost_idx_t row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
-                        if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                             if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                                 funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             } else {
@@ -399,8 +346,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                             funcret = src->func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
                         }
                         if (funcret) {
-                            ERROR_LOG("Matrix construction function returned error");
-                            ret = GHOST_ERR_UNKNOWN;
+                            funcerrs++;
                         }
                     } else {
                         SELL(mat)->rowLen[row] = 0;
@@ -422,7 +368,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
             free(tmpval); tmpval = NULL;
             free(tmpcol); tmpcol = NULL;
         }
-        if (ret != GHOST_SUCCESS) {
+        if (funcerrs) {
+            ERROR_LOG("Matrix construction function returned error");
+            ret = GHOST_ERR_UNKNOWN;
             goto err;
         }
  //   }
@@ -431,7 +379,6 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
     }
 
-    SELL(mat)->maxRowLen = maxRowLen; 
     mat->nEnts = nEnts;
     mat->nnz = nnz;
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
@@ -451,6 +398,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     }
 
 
+
 #pragma omp parallel private(i,col,row,tmpval,tmpcol)
     {
         int funcret = 0;
@@ -464,7 +412,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                 row = chunk*SELL(mat)->chunkHeight+i;
 
                 if (row < mat->nrows) {
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
                             funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         } else {
@@ -481,7 +429,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
                     memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
-                    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
                             SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
                         } else { // local permutation: distinction between global and local entries
@@ -503,6 +451,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     // sort rows by ascending column indices
                     ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
+#pragma omp critical
                 ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
             }
             memset(tmpval,0,mat->elSize*src->maxrowlen*SELL(mat)->chunkHeight);
@@ -512,12 +461,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         free(tmpcol); tmpcol = NULL;
     }
 
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    ghost_sparsemat_registerrow_finalize(mat);
 
     if (ret != GHOST_SUCCESS) {
         goto err;
@@ -558,11 +502,6 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    SELL(mat)->maxRowLen = 0;
-    SELL(mat)->nMaxRows = 0;
-    SELL(mat)->variance = 0.;
-    SELL(mat)->deviation = 0.;
-    SELL(mat)->cv = 0.;
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
@@ -817,6 +756,15 @@ out:
     return ret;
 }
 
+static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath)
+{
+    UNUSED(mat);
+    UNUSED(matrixPath);
+
+    ERROR_LOG("SELL matrix to binary CRS file not implemented");
+    return GHOST_ERR_NOT_IMPLEMENTED;
+}
+
 static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 {
     DEBUG_LOG(1,"Creating SELL matrix from binary file");
@@ -850,7 +798,6 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t maxRowLenInChunk = 0;
     ghost_idx_t minRowLenInChunk = INT_MAX;
 
-    SELL(mat)->maxRowLen = 0;
     SELL(mat)->chunkStart[0] = 0;    
 
     DEBUG_LOG(1,"Extracting row lenghts");
@@ -869,7 +816,6 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
 
 
-        SELL(mat)->maxRowLen = MAX(SELL(mat)->maxRowLen,maxRowLenInChunk);
         SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
         SELL(mat)->chunkMin[chunk] = minRowLenInChunk;
         SELL(mat)->chunkLenPadded[chunk] = PAD(maxRowLenInChunk,SELL(mat)->T);
@@ -929,12 +875,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
         }
 
     }
-#ifdef GHOST_HAVE_MPI
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm),err,ret);
-#endif
-    mat->bandwidth = mat->lowerBandwidth+mat->upperBandwidth+1;
+    ghost_sparsemat_registerrow_finalize(mat);
 
     mat->split(mat);
 
@@ -1044,9 +985,25 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
 
     free(mat->data);
+    free(mat->col_orig);
+        
+    if (mat->localPart) {
+        SELL_free(mat->localPart);
+    }
+
+    if (mat->remotePart) {
+        SELL_free(mat->remotePart);
+    }
+
     free(mat);
 
 }
+
+/*static int ld(int i) 
+{
+    return (int)log2((double)i);
+}*/
+
 
 static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
@@ -1075,55 +1032,132 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
     GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
-
+/*
 #ifdef GHOST_HAVE_SSE
-#if !(GHOST_HAVE_LONGIDX)
-    if (!((options & GHOST_SPMV_AXPBY) ||
-                (options & GHOST_SPMV_APPLY_SCALE) ||
-                (options & GHOST_SPMV_APPLY_SHIFT))) {
-        kernel = SELL_kernels_SSE
-            [matDtIdx]
-            [vecDtIdx];
-    }
-#endif
-#elif defined(GHOST_HAVE_AVX)
-    if (SELL(mat)->chunkHeight == 4) {
-        kernel = SELL_kernels_AVX
-            [matDtIdx]
-            [vecDtIdx];
-    } else if (SELL(mat)->chunkHeight == 32) {
-        kernel = SELL_kernels_AVX_32
-            [matDtIdx]
-            [vecDtIdx];
-    }
-#elif defined(GHOST_HAVE_MIC)
-#if !(GHOST_HAVE_LONGIDX)
-    if (!((options & GHOST_SPMV_AXPBY) ||
-                (options & GHOST_SPMV_SCALE) ||
-                (options & GHOST_SPMV_SHIFT))) {
-        if (SELL(mat)->chunkHeight == 16) {
-            kernel = SELL_kernels_MIC_16
+    if (rhs->traits.ncols > 64 || ((rhs->traits.ncols) >= 16 && (rhs->traits.ncols % 16))) {
+        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+            kernel = SELL_kernels_SSE_multivec_x_cm
+                [ld(SELL(mat)->chunkHeight)]
                 [matDtIdx]
                 [vecDtIdx];
-        } else if (SELL(mat)->chunkHeight == 32) {
-            kernel = SELL_kernels_MIC_32
+        } else {
+            kernel = SELL_kernels_SSE_multivec_x_rm
+                [ld(SELL(mat)->chunkHeight)]
                 [matDtIdx]
                 [vecDtIdx];
         }
+    } else {
+        if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            if (rhs->traits.ncols == 2) {
+                kernel = dd_SELL_kernels_SSE_multivec_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [0];
+            } else if (rhs->traits.ncols <= 16) {
+                kernel = dd_SELL_kernels_SSE_multivec_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [rhs->traits.ncols/4];
+            } else {
+                kernel = dd_SELL_kernels_SSE_multivec_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [rhs->traits.ncols/16+3];
+            }
+
+        } else {
+            kernel = SELL_kernels_SSE_multivec_x_cm
+                [ld(SELL(mat)->chunkHeight)]
+                [matDtIdx]
+                [vecDtIdx];
+        }
+
     }
 #endif
-#else
-    kernel = SELL_kernels_plain
-        [matDtIdx]
-        [vecDtIdx];
+#ifdef GHOST_HAVE_AVX
+    if (rhs->traits.ncols != 2) {
+        if (rhs->traits.ncols > 64 || ((rhs->traits.ncols) >= 16 && (rhs->traits.ncols % 16))) {
+            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                kernel = SELL_kernels_AVX_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            } else {
+                kernel = SELL_kernels_AVX_multivec_x_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        } else {
+            if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                if (rhs->traits.ncols <= 16) {
+                    kernel = dd_SELL_kernels_AVX_multivec_rm
+                        [ld(SELL(mat)->chunkHeight)]
+                        [rhs->traits.ncolspadded/4-1];
+                } else {
+                    kernel = dd_SELL_kernels_AVX_multivec_rm
+                        [ld(SELL(mat)->chunkHeight)]
+                        [rhs->traits.ncolspadded/16+2];
+                }
+            } else {
+                kernel = SELL_kernels_AVX_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        }
+    }
 #endif
+#ifdef GHOST_HAVE_MIC
+#if !(GHOST_HAVE_LONGIDX)
+    if (rhs->traits.ncols > 4) {
+        if (rhs->traits.ncols > 24) {
+            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                kernel = SELL_kernels_MIC_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight/16)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            } else {
+                kernel = SELL_kernels_MIC_multivec_x_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        } else {
+            if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+                kernel = dd_SELL_kernels_MIC_multivec_rm
+                    [ld(SELL(mat)->chunkHeight)]
+                    [rhs->traits.ncolspadded/8-1];
+            } else {
+                kernel = SELL_kernels_MIC_multivec_x_cm
+                    [ld(SELL(mat)->chunkHeight/16)]
+                    [matDtIdx]
+                    [vecDtIdx];
+            }
+        }
+    }
+#endif
+#endif*/
 
-    if (kernel == NULL) {
-        //WARNING_LOG("Selected kernel cannot be found. Falling back to plain C version!");
+    ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
+    
+    if (ghost_bitmap_iscompact(rhs->ldmask)) {
+#ifdef GHOST_HAVE_MIC
+        impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_HAVE_AVX)
+        impl = GHOST_IMPLEMENTATION_AVX;
+#elif defined(GHOST_HAVE_SSE)
+        impl = GHOST_IMPLEMENTATION_SSE;
+#endif
+    }
+
+    ghost_sellspmv_parameters_t par = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
+    kernel = ghost_sellspmv_kernel(par,lhs,rhs);
+    /*if (kernel == NULL ||
+            (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
+            !ghost_bitmap_isfull(rhs->ldmask)) {
+        INFO_LOG("Fallback to plain C version!");
         kernel = SELL_kernels_plain
             [matDtIdx]
             [vecDtIdx];
-    }
+    }*/
 
     return kernel(mat,lhs,rhs,options,argp);
 
