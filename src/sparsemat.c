@@ -806,7 +806,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_line_string(str,"Full   matrix size","MB","%u",mat->byteSize(mat)/(1024*1024));
     
     ghost_line_string(str,"Permuted",NULL,"%s",mat->traits->flags&GHOST_SPARSEMAT_PERMUTE?"Yes":"No");
-    if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
+    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_line_string(str,"Permutation strategy",NULL,"Scotch%s",mat->traits->sortScope>1?"+Sorting":"");
             ghost_line_string(str,"Scotch ordering strategy",NULL,"%s",mat->traits->scotchStrat);
