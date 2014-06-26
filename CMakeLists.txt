@@ -593,7 +593,11 @@ if (DOXYGEN_FOUND)
         add_custom_command(
                 OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
                 DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES}
-                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && cp ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${CMAKE_BINARY_DIR}/doc/html && rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && rsync -a ${DOC_INSTALL_PREFIX}
+                COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && 
+                    cp ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${CMAKE_BINARY_DIR}/doc/html && 
+                    rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
+                    find ${DOC_INSTALL_PREFIX} -type d -exec chmod 755 {} + &&
+                    find ${DOC_INSTALL_PREFIX} -type f -exec chmod 644 {} +
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
                 )
     else ()
