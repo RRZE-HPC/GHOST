@@ -129,10 +129,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                     if (c*chunkHeight+i < mat->nrows) {
                         for (colidx = 0, col=0; col<lhs->traits.ncolsorig; col++) {
                             if (hwloc_bitmap_isset(lhs->ldmask,col)) {
-                                if (options & GHOST_SPMV_SHIFT) {
+                                if ((options & GHOST_SPMV_SHIFT) && shift) {
                                     tmp[i][colidx] = tmp[i][colidx]-shift[0]*rhsrow[col];
                                 }
-                                if (options & GHOST_SPMV_VSHIFT) {
+                                if ((options & GHOST_SPMV_VSHIFT) && shift) {
                                     tmp[i][colidx] = tmp[i][colidx]-shift[colidx]*rhsrow[col];
                                 }
                                 if (options & GHOST_SPMV_SCALE) {
@@ -188,10 +188,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                     }
                     for (i=0; i<chunkHeight; i++) {
                         if (c*chunkHeight+i < mat->nrows) {
-                            if (options & GHOST_SPMV_SHIFT) {
+                            if ((options & GHOST_SPMV_SHIFT) && shift) {
                                 tmp[i] = tmp[i]-shift[0]*rhsv[c*chunkHeight+i];
                             }
-                            if (options & GHOST_SPMV_VSHIFT) {
+                            if ((options & GHOST_SPMV_VSHIFT) && shift) {
                                 tmp[i] = tmp[i]-shift[v]*rhsv[c*chunkHeight+i];
                             }
                             if (options & GHOST_SPMV_SCALE) {
@@ -219,6 +219,10 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
         }
     }
     if (options & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   lhs->traits.ncols] = 0.;
@@ -283,10 +287,10 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                     tmp += (v_t)sellv[mat->nrowsPadded*j+i] * rhsv[sell->col[mat->nrowsPadded*j+i]];
                 }
 
-                if (options & GHOST_SPMV_SHIFT) {
+                if ((options & GHOST_SPMV_SHIFT) && shift) {
                     tmp = tmp-shift[0]*rhsv[i];
                 }
-                if (options & GHOST_SPMV_VSHIFT) {
+                if ((options & GHOST_SPMV_VSHIFT) && shift) {
                     tmp = tmp-shift[v]*rhsv[i];
                 }
                 if (options & GHOST_SPMV_SCALE) {

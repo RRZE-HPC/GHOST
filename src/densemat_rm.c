@@ -1216,9 +1216,9 @@ static void ghost_freeVector( ghost_densemat_t* vec )
 #endif
         }
         free(vec->val); vec->val = NULL;
-        free(vec);
         hwloc_bitmap_free(vec->ldmask);
         hwloc_bitmap_free(vec->trmask);
+        free(vec);
         // TODO free traits ???
     }
 }

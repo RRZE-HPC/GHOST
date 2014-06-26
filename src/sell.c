@@ -322,7 +322,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         }
     } else {
 */
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz) 
+    int funcerrs = 0;
+
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz,funcerrs) 
         {
             int funcret = 0;
             maxRowLenInChunk = 0; 
@@ -344,8 +346,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                             funcret = src->func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
                         }
                         if (funcret) {
-                            ERROR_LOG("Matrix construction function returned error");
-                            ret = GHOST_ERR_UNKNOWN;
+                            funcerrs++;
                         }
                     } else {
                         SELL(mat)->rowLen[row] = 0;
@@ -367,7 +368,9 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
             free(tmpval); tmpval = NULL;
             free(tmpcol); tmpcol = NULL;
         }
-        if (ret != GHOST_SUCCESS) {
+        if (funcerrs) {
+            ERROR_LOG("Matrix construction function returned error");
+            ret = GHOST_ERR_UNKNOWN;
             goto err;
         }
  //   }
@@ -1136,14 +1139,12 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
     
     if (GHOST_BITMAP_COMPACT(rhs->ldmask)) {
-#ifdef GHOST_HAVE_SSE
-        impl = GHOST_IMPLEMENTATION_SSE;
-#endif
-#ifdef GHOST_HAVE_AVX
-        impl = GHOST_IMPLEMENTATION_AVX;
-#endif
 #ifdef GHOST_HAVE_MIC
         impl = GHOST_IMPLEMENTATION_MIC;
+#elif defined(GHOST_HAVE_AVX)
+        impl = GHOST_IMPLEMENTATION_AVX;
+#elif defined(GHOST_HAVE_SSE)
+        impl = GHOST_IMPLEMENTATION_SSE;
 #endif
     }
 

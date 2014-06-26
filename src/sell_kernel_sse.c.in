@@ -124,6 +124,10 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         ghost_idx_t v;
         for (v=0; v<invec->traits.ncols; v++) {
             local_dot_product[v                       ] = 0.; 
@@ -253,6 +257,10 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 
             local_dot_product[col  +   invec->traits.ncols] = 0.;
@@ -362,6 +370,10 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         ghost_idx_t col;
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 

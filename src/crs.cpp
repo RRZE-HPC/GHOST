@@ -97,10 +97,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                     rhsrow = (v_t *)rhs->val[i];
                     for (colidx=0, v=0; v<lhs->traits.ncolsorig; v++) {
                         if (hwloc_bitmap_isset(lhs->ldmask,v)) {
-                            if (options & GHOST_SPMV_SHIFT) {
+                            if ((options & GHOST_SPMV_SHIFT) && shift) {
                                 tmp[colidx] = tmp[colidx]-shift[0]*rhsrow[v];
                             }
-                            if (options & GHOST_SPMV_VSHIFT) {
+                            if ((options & GHOST_SPMV_VSHIFT) && shift) {
                                 tmp[colidx] = tmp[colidx]-shift[v]*rhsrow[v];
                             }
                             if (options & GHOST_SPMV_SCALE) {
@@ -141,10 +141,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                         hlp1 += ((v_t)(mval[j])) * rhsv[cr->col[j]];
                     }
 
-                    if (options & GHOST_SPMV_SHIFT) {
+                    if ((options & GHOST_SPMV_SHIFT) && shift) {
                         hlp1 = hlp1-shift[0]*rhsv[i];
                     }
-                    if (options & GHOST_SPMV_VSHIFT) {
+                    if ((options & GHOST_SPMV_VSHIFT) && shift) {
                         hlp1 = hlp1-shift[v]*rhsv[i];
                     }
                     if (options & GHOST_SPMV_SCALE) {
@@ -168,6 +168,10 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
         }
     }
     if (options & GHOST_SPMV_DOT) {
+        if (!local_dot_product) {
+            WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
+            return GHOST_SUCCESS;
+        }
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   lhs->traits.ncols] = 0.;

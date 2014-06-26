@@ -116,7 +116,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 
     if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT)) {
         GHOST_INSTR_START(spmv_dot_reduce);
-        void *dot;
+        void *dot = NULL;
         if (*flags & GHOST_SPMV_SCALE) {
             dot = va_arg(argp_backup,void *);
         }

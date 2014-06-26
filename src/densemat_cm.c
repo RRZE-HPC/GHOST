@@ -1287,9 +1287,9 @@ static void ghost_freeVector( ghost_densemat_t* vec )
 #endif
         }
         free(vec->val); vec->val = NULL;
-        free(vec);
         hwloc_bitmap_free(vec->ldmask);
         hwloc_bitmap_free(vec->trmask);
+        free(vec);
     }
 }
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir) 

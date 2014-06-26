@@ -356,8 +356,10 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         }
     }
 
+    int funcerrs = 0;
+
     GHOST_INSTR_START(crs_fromrowfunc_readcolval)
-#pragma omp parallel private(i,j,rowlen,tmpcol)
+#pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
     {
         int funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
@@ -402,8 +404,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                  }*/
             }
             if (funcret) {
-                ERROR_LOG("Matrix construction function returned error");
-                ret = GHOST_ERR_UNKNOWN;
+                funcerrs++;
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
@@ -413,7 +414,9 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
             GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
     }
-    if (ret != GHOST_SUCCESS){
+    if (funcerrs) {
+        ERROR_LOG("Matrix construction function returned error");
+        ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
     ghost_sparsemat_registerrow_finalize(mat);
