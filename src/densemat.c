@@ -81,9 +81,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     if (vec->context != NULL) {
         if (vec->traits.nrows == 0) {
             DEBUG_LOG(2,"nrows for vector not given. determining it from the context");
-            if (vec->traits.flags & GHOST_DENSEMAT_DUMMY) {
-                vec->traits.nrows = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
+            if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
             {
                 if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
                     vec->traits.nrows = vec->context->gnrows;
@@ -101,9 +99,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         }
         if (vec->traits.nrowshalo == 0) {
             DEBUG_LOG(2,"nrowshalo for vector not given. determining it from the context");
-            if (vec->traits.flags & GHOST_DENSEMAT_DUMMY) {
-                vec->traits.nrowshalo = 0;
-            } else if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
+            if ((vec->context->flags & GHOST_CONTEXT_REDUNDANT) || (vec->traits.flags & GHOST_DENSEMAT_GLOBAL))
             {
                 vec->traits.nrowshalo = vec->traits.nrows;
             } 

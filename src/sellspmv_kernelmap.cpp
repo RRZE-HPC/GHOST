@@ -38,7 +38,7 @@ void ghost_sellspmv_kernelmap_generate() {
             p.mdt = mdt_t;
             p.vdt = vdt_t;
             p.blocksz = -1;
-            p.storage = GHOST_DENSEMAT_STORAGE_ANY;
+            p.storage = (ghost_densemat_storage_t)-1;
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
             p.chunkheight = -1;
             ghost_sellspmv_kernels[p] =  SELL_kernels_plain[mdt][vdt];
@@ -68,7 +68,7 @@ sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_dense
     if (!kernel) {
         INFO_LOG("Try plain C kernel");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        p.storage = GHOST_DENSEMAT_STORAGE_ANY;
+        p.storage = (ghost_densemat_storage_t)-1;
         p.chunkheight = -1;
     }
     kernel = ghost_sellspmv_kernels[p];

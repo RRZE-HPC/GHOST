@@ -12,15 +12,36 @@
 #include "perm.h"
 #include "bitmap.h"
 
+/**
+ * @brief Flags to configure a densemat.
+ */
 typedef enum {
     GHOST_DENSEMAT_DEFAULT   = 0,
+    /**
+     * @brief Do not reserve space for halo elements.
+     * This is applicable, e.g., if the densemat will never be an input (RHS) densemat to a SpMV.
+     */
     GHOST_DENSEMAT_NO_HALO   = 1,
+    /**
+     * @brief Store densemat on host.
+     */
     GHOST_DENSEMAT_HOST      = 4,
+    /**
+     * @brief Store densemat on device (accelerator).
+     */
     GHOST_DENSEMAT_DEVICE    = 8,
+    /**
+     * @brief The densemat should not be distributed among the processes in the context.
+     */
     GHOST_DENSEMAT_GLOBAL    = 16,
-    GHOST_DENSEMAT_DUMMY     = 32,
-    GHOST_DENSEMAT_VIEW      = 64,
-    GHOST_DENSEMAT_SCATTERED = 128
+    /**
+     * @brief The densemat is a view of another densemat.
+     */
+    GHOST_DENSEMAT_VIEW      = 32,
+    /**
+     * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not consecutive in memory.
+     */
+    GHOST_DENSEMAT_SCATTERED = 64
 } 
 ghost_densemat_flags_t;
 
@@ -37,7 +58,6 @@ typedef enum
      * @brief Column-major storage (as in Fortran).
      */
     GHOST_DENSEMAT_COLMAJOR,
-    GHOST_DENSEMAT_STORAGE_ANY
 }
 ghost_densemat_storage_t;
 
@@ -138,10 +158,16 @@ struct ghost_densemat_t
     ghost_bitmap_t trmask;
 
     /**
-     * @brief The base pointer of the data which viewed or NULL if not a view.
+     * @brief The densemat which is being viewed or NULL if not a view.
      */
     struct ghost_densemat_t *viewing;
+    /**
+     * @brief The column of the densemat which is being viewed as the my column.
+     */
     ghost_idx_t viewing_col;
+    /**
+     * @brief The row of the densemat which is being viewed as the my row.
+     */
     ghost_idx_t viewing_row;
 #ifdef GHOST_HAVE_CUDA
     /**
@@ -182,7 +208,7 @@ struct ghost_densemat_t
      * @param nc The number of columns to clone.
      * @param coffs The first column to clone.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
@@ -223,7 +249,7 @@ struct ghost_densemat_t
      * @param res Where to store the result.
      * @param b The second vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * For the global operation see ghost_dot().
      *
@@ -238,7 +264,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*download) (ghost_densemat_t *vec);
     /**
@@ -249,7 +275,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*downloadHalo) (ghost_densemat_t *vec);
     /**
@@ -261,7 +287,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*downloadNonHalo) (ghost_densemat_t *vec);
     /**
@@ -273,7 +299,7 @@ struct ghost_densemat_t
      * @param ghost_idx_t i The row.
      * @param ghost_idx_t j The column.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*entry) (ghost_densemat_t *vec, void *entry, ghost_idx_t i, ghost_idx_t j);
     /**
@@ -285,7 +311,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param fp The function pointer. The function takes three arguments: The row index, the column index and a pointer to where to store the value at this position.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*fromFunc) (ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *));
     /**
@@ -299,7 +325,7 @@ struct ghost_densemat_t
      * @param roffs The first row to clone.
      * @param coffs The first column to clone.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_idx_t roffs, ghost_idx_t coffs);
     /**
@@ -311,7 +337,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param filename Path to the file.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*fromFile) (ghost_densemat_t *vec, char *filename);
     /**
@@ -321,7 +347,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*fromRand) (ghost_densemat_t *vec);
     /**
@@ -332,7 +358,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param val A pointer to the value.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
@@ -348,7 +374,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*normalize) (ghost_densemat_t *vec);
     /**
@@ -358,7 +384,7 @@ struct ghost_densemat_t
      * @param perm The permutation.
      * @param dir The permutation direction.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_permutation_t *perm, ghost_permutation_direction_t dir);
     /**
@@ -367,7 +393,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param str Where to store the string.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*string) (ghost_densemat_t *vec, char **str);
     /**
@@ -376,7 +402,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param scale The scale factor.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*scale) (ghost_densemat_t *vec, void *scale);
     /**
@@ -385,7 +411,7 @@ struct ghost_densemat_t
      * @param vec The vector/matrix.
      * @param filename The path to the file.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t       (*toFile) (ghost_densemat_t *vec, char *filename);
     /**
@@ -422,20 +448,46 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param data The plain data.
-     * @param ghost_idx_t nr The number of rows.
-     * @param ghost_idx_t nc The number of columns.
      * @param ghost_idx_t roffs The row offset.
      * @param ghost_idx_t coffs The column offset.
-     * @param ghost_idx_t lda The number of rows per column.
+     * @param ghost_idx_t lda The leading dimension.
      */
-    ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t nr, ghost_idx_t nc, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
-
+    ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
+    /**
+     * @brief Create a vector/matrix as a scattered view of another vector/matrix.
+     *
+     * @param src The source vector/matrix.
+     * @param nr The nunber of rows to view.
+     * @param roffs The row offsets.
+     * @param dst Where to store the new vector.
+     * @param nc The nunber of columns to view.
+     * @param coffs The column offsets.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t *roffs,  ghost_idx_t nc, ghost_idx_t *coffs);
-    
+    /**
+     * @brief Create a densemat as a view of a scattered block of columns of another densemat.
+     *
+     * @param src The source densemat. 
+     * @param dst Where to store the new densemat view.
+     * @param nc The number of columns.
+     * @param coffs The column index of each viewed column in the source densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t  (*viewScatteredCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t *coffs);
+    /**
+     * @brief Create a densemat as a view of a dense block of columns of another densemat.
+     *
+     * @param src The source densemat. 
+     * @param dst Where to store the new densemat view.
+     * @param nc The number of columns.
+     * @param coffs The column offset in the source densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t  (*viewCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t coffs);
-
-
     /**
      * @brief Create a vector/matrix as a view of another vector/matrix.
      *
@@ -450,13 +502,34 @@ struct ghost_densemat_t
      */
     ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
-     * @brief Scale each column of a vector/matrix with a given scale factor.
+     * @ingroup globops
+     * 
+     * @brief Scale each column of a vector/matrix with a separate scale factor.
      *
      * @param vec The vector/matrix.
-     * @param scale The scale factors.
+     * @param scale The scale factors. Length must be the same as the number of densemat columns.
      */
     ghost_error_t       (*vscale) (ghost_densemat_t *, void *);
+    /** 
+     * @ingroup globops
+     *
+     * @brief Performs <em>y := a_i*x + y</em> with separate scalars a_i for each column
+     *
+     * @param y The in-/output vector/matrix
+     * @param x The input vector/matrix
+     * @param a The scale factors. Length must be the same as the number of densemat columns.
+     */
     ghost_error_t       (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
+    /**
+     * @ingroup globops
+     *
+     * @brief Performs <em>y := a_i*x + b_i*y</em> with separate scalars a_i and b_i
+     *
+     * @param y The in-/output vector/matrix.
+     * @param x The input vector/matrix
+     * @param a The scale factors a. Length must be the same as the number of densemat columns.
+     * @param b The scale factors b. Length must be the same as the number of densemat columns.
+     */
     ghost_error_t       (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 };
 
@@ -491,7 +564,7 @@ extern "C" {
      * @param ctx The context the matrix lives in or NULL.
      * @param traits The matrix traits.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits);
     

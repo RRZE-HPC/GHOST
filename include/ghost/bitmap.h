@@ -8,6 +8,9 @@
 
 #include <hwloc/bitmap.h>
 
+/**
+ * @brief ghost_bitmap_t is just an alias for hwloc_bitmap_t
+ */
 typedef hwloc_bitmap_t ghost_bitmap_t;
 
 #define ghost_bitmap_set_range(bitmap,start,end) hwloc_bitmap_set_range(bitmap,start,end)
