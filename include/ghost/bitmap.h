@@ -27,6 +27,6 @@ typedef hwloc_bitmap_t ghost_bitmap_t;
 #define ghost_bitmap_isequal(bitmap1,bitmap2) hwloc_bitmap_isequal(bitmap1,bitmap2)
 #define ghost_bitmap_last(bitmap) hwloc_bitmap_last(bitmap)
 #define ghost_bitmap_weight(bitmap) hwloc_bitmap_weight(bitmap)
-#define ghost_bitmap_iscompact(bitmap) ((ghost_bitmap_last(bitmap)-ghost_bitmap_first(bitmap)) == ghost_bitmap_weight(bitmap))
+#define ghost_bitmap_iscompact(bitmap) ((ghost_bitmap_last(bitmap)-ghost_bitmap_first(bitmap)+1) == ghost_bitmap_weight(bitmap))
 
 #endif
