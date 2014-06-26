@@ -32,6 +32,9 @@ set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation. Valid values: TIMI
 find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
+if (USE_LONGIDX)
+    set(GHOST_HAVE_LONGIDX 1)
+endif()
 
 set(GHOST_VERBOSITY ${VERBOSITY})
 
