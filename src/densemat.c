@@ -55,13 +55,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.ncols);
-        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.nrows);
+        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.ncols-1);
+        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.nrows-1);
         ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.ncolspadded;
     } else {
-        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.nrows);
-        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.ncols);
+        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.nrows-1);
+        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.ncols-1);
         ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.nrowspadded;
     }
