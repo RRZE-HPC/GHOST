@@ -177,7 +177,7 @@ struct ghost_densemat_t
 #endif
 
     /** 
-     * @ingroup globops
+     * @ingroup locops
      *
      * @brief Performs <em>y := a*x + y</em> with scalar a
      *
@@ -187,7 +187,7 @@ struct ghost_densemat_t
      */
     ghost_error_t      (*axpy) (ghost_densemat_t *y, ghost_densemat_t *x, void *a);
     /**
-     * @ingroup globops
+     * @ingroup locops
      *
      * @brief Performs <em>y := a*x + b*y</em> with scalar a and b
      *
@@ -397,6 +397,8 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*string) (ghost_densemat_t *vec, char **str);
     /**
+     * @ingroup locops
+     *
      * @brief Scale a vector/matrix with a given scalar.
      *
      * @param vec The vector/matrix.
@@ -502,7 +504,7 @@ struct ghost_densemat_t
      */
     ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
     /**
-     * @ingroup globops
+     * @ingroup locops
      * 
      * @brief Scale each column of a vector/matrix with a separate scale factor.
      *
@@ -511,7 +513,7 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*vscale) (ghost_densemat_t *, void *);
     /** 
-     * @ingroup globops
+     * @ingroup locops
      *
      * @brief Performs <em>y := a_i*x + y</em> with separate scalars a_i for each column
      *
@@ -521,7 +523,7 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*vaxpy) (ghost_densemat_t *, ghost_densemat_t *, void *);
     /**
-     * @ingroup globops
+     * @ingroup locops
      *
      * @brief Performs <em>y := a_i*x + b_i*y</em> with separate scalars a_i and b_i
      *
@@ -578,7 +580,7 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr);
     /**
-     * @brief Create an array of chars (0 or 1) of the densemat mask.
+     * @brief Create an array of chars ('0' or '1') of the densemat mask.
      *
      * @param mask The ldmask.
      * @param len Length of the ldmask.
@@ -586,8 +588,16 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len, char *charfield);
+    ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_idx_t len, char *charfield);
 
+    /**
+     * @brief Check if an array consists of strictly ascending numbers.
+     *
+     * @param coffs The numbers.
+     * @param nc Length of the array.
+     *
+     * @return True if each number is greater than the previous one, false otherwise.
+     */
     bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc);
 
 #ifdef __cplusplus
