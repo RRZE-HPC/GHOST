@@ -286,12 +286,6 @@ endif()
 
 
 
-if (USE_LONGIDX)
-	set(GHOST_HAVE_LONGIDX 1)
-    if (${BLAS} STREQUAL "MKL")
-		add_definitions(-DMKL_ILP64)
-	endif()
-endif()
 
 if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
 	if (${INSTRUMENTATION} STREQUAL "TIMING")
@@ -390,6 +384,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
     find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
     
     if (USE_LONGIDX)
+		add_definitions(-DMKL_ILP64)
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_ilp64 ${MKL_LIBDIR})
     else()
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_lp64 ${MKL_LIBDIR})
