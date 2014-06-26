@@ -6,12 +6,11 @@
 #ifndef GHOST_DENSEMAT_H
 #define GHOST_DENSEMAT_H
 
-#include <hwloc/bitmap.h>
-
 #include "config.h"
 #include "types.h"
 #include "context.h"
 #include "perm.h"
+#include "bitmap.h"
 
 typedef enum {
     GHOST_DENSEMAT_DEFAULT   = 0,
@@ -132,11 +131,11 @@ struct ghost_densemat_t
     /**
      * @brief Mask out elements in the leading dimension
      */
-    hwloc_bitmap_t ldmask;
+    ghost_bitmap_t ldmask;
     /**
      * @brief Mask out elements in the non-leading dimension (only for CUDA)
      */
-    hwloc_bitmap_t trmask;
+    ghost_bitmap_t trmask;
 
     /**
      * @brief The base pointer of the data which viewed or NULL if not a view.
@@ -477,7 +476,6 @@ struct ghost_densemat_t
     .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
 };
 
-#define GHOST_BITMAP_COMPACT(bm) ((hwloc_bitmap_last(bm)-hwloc_bitmap_first(bm)) == hwloc_bitmap_weight(bm))
 
 #ifdef __cplusplus
 

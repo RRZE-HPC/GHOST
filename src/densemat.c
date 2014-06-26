@@ -29,8 +29,8 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
     (*vec)->traits = traits;
-    (*vec)->ldmask = hwloc_bitmap_alloc();
-    (*vec)->trmask = hwloc_bitmap_alloc();
+    (*vec)->ldmask = ghost_bitmap_alloc();
+    (*vec)->trmask = ghost_bitmap_alloc();
     (*vec)->val = NULL;
     (*vec)->viewing = NULL;
     if (!(*vec)->ldmask) {
@@ -55,13 +55,13 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     }
 
     if ((*vec)->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-        hwloc_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.ncols);
-        hwloc_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.nrows);
+        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.ncols);
+        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.nrows);
         ghost_densemat_rm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.ncolspadded;
     } else {
-        hwloc_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.nrows);
-        hwloc_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.ncols);
+        ghost_bitmap_set_range((*vec)->ldmask,0,(*vec)->traits.nrows);
+        ghost_bitmap_set_range((*vec)->trmask,0,(*vec)->traits.ncols);
         ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.nrowspadded;
     }
@@ -176,24 +176,24 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (hwloc_bitmap_iszero(vec->ldmask)) {
+    if (ghost_bitmap_iszero(vec->ldmask)) {
         ERROR_LOG("Everything masked out. This is a zero-view.");
         return GHOST_ERR_INVALID_ARG;
     }
 
-    *ptr = &vec->val[0][hwloc_bitmap_first(vec->ldmask)*vec->elSize];
+    *ptr = &vec->val[0][ghost_bitmap_first(vec->ldmask)*vec->elSize];
 
     return GHOST_SUCCESS;
 
 
 }
 
-ghost_error_t ghost_densemat_mask2charfield(hwloc_bitmap_t mask, ghost_idx_t len, char *charfield)
+ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_idx_t len, char *charfield)
 {
     unsigned int i;
     memset(charfield,0,len);
     for (i=0; i<(unsigned int)len; i++) {
-        if(hwloc_bitmap_isset(mask,i)) {
+        if(ghost_bitmap_isset(mask,i)) {
             charfield[i] = 1;
         }
     }

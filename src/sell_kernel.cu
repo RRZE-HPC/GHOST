@@ -177,7 +177,7 @@ extern __shared__ char shared[];
             ERROR_LOG("CUDA SpMV with masked out rows not yet implemented");\
             return GHOST_ERR_NOT_IMPLEMENTED;\
         }\
-        if (!hwloc_bitmap_isequal(rhs->trmask,lhs->trmask) || !hwloc_bitmap_isequal(rhs->ldmask,lhs->ldmask)) {\
+        if (!ghost_bitmap_isequal(rhs->trmask,lhs->trmask) || !ghost_bitmap_isequal(rhs->ldmask,lhs->ldmask)) {\
             ERROR_LOG("CUDA SpMV with differently masked densemats not yet implemented");\
             return GHOST_ERR_NOT_IMPLEMENTED;\
         }\

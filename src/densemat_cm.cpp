@@ -76,7 +76,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
         {
             ghost_idx_t row1,row2,rowidx = 0;
             int tid = ghost_omp_threadnum();
-            if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+            if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
                 if (tid==0 && v==0) {
                     WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
                 }
@@ -118,7 +118,7 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     v_t *s = (v_t *)scale;
 
     ghost_idx_t row1,row2,col,rowidx = 0;
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
         ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
@@ -152,7 +152,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
 
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow VAXPBY operation because some rows are masked out!");
         ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col] +
@@ -174,7 +174,7 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
     ghost_idx_t row,col,rowidx = 0;
     v_t *s = (v_t *)scale;
 
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask)) {
         WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
         ITER_BEGIN_CM(vec,col,row,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
@@ -246,9 +246,9 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
 #ifdef GHOST_HAVE_CUDA
         ghost_idx_t i,v,r,j;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (hwloc_bitmap_isset(vec->ldmask,i)) {
+            if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
-                    if (hwloc_bitmap_isset(vec->trmask,j)) {
+                    if (ghost_bitmap_isset(vec->trmask,j)) {
                         v_t val = 0.;
                         //INFO_LOG("dl col %d row %d idx %d cu_val %p val %p",j,i,j*vec->traits.nrowspadded+i,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),&val);
                         GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t)));
@@ -266,7 +266,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
     } else {
         ghost_idx_t i,v,r;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (hwloc_bitmap_isset(vec->ldmask,i)) {
+            if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {
                     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
                         if (vec->traits.datatype & GHOST_DT_DOUBLE) {

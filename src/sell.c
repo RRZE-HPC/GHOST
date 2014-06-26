@@ -1138,7 +1138,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
     ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
     
-    if (GHOST_BITMAP_COMPACT(rhs->ldmask)) {
+    if (ghost_bitmap_iscompact(rhs->ldmask)) {
 #ifdef GHOST_HAVE_MIC
         impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX)
@@ -1152,7 +1152,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     kernel = ghost_sellspmv_kernel(par,lhs,rhs);
     /*if (kernel == NULL ||
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
-            !hwloc_bitmap_isfull(rhs->ldmask)) {
+            !ghost_bitmap_isfull(rhs->ldmask)) {
         INFO_LOG("Fallback to plain C version!");
         kernel = SELL_kernels_plain
             [matDtIdx]

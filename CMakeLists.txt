@@ -81,6 +81,7 @@ set (SOURCES
 set (HEADERS
         include/ghost/bincrs.h
         include/ghost/bindensemat.h
+        include/ghost/bitmap.h
 		include/ghost/blas_mangle.h
 		include/ghost/complex.h
 		include/ghost/context.h

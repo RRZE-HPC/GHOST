@@ -67,7 +67,7 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     nthreads = ghost_omp_nthread();
 
 
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
         v_t *partsums;
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
@@ -144,7 +144,7 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     ghost_idx_t col1,col2,row,colidx;
     v_t *s = (v_t *)scale;
     
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
         ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
             *(v_t *)VECVAL_RM(vec,vec->val,row,col1) += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx];
@@ -179,7 +179,7 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
     
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask) || !GHOST_BITMAP_COMPACT(vec2->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow VAXPBY operation because some rows are masked out!");
         ITER2_BEGIN_RM(vec,vec2,col1,col2,row,colidx)
             *(v_t *)VECVAL_RM(vec,vec->val,row,col1) = *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2) * s[colidx] + 
@@ -201,7 +201,7 @@ static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *
     ghost_idx_t col,row,colidx;
     v_t *s = (v_t *)scale;
 
-    if (!GHOST_BITMAP_COMPACT(vec->ldmask)) {
+    if (!ghost_bitmap_iscompact(vec->ldmask)) {
         WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
         ITER_BEGIN_RM(vec,col,row,colidx)
                 *(v_t *)VECVAL_RM(vec,vec->val,row,col) *= s[colidx];
@@ -273,7 +273,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     ghost_idx_t i,r;
     for (r=0; r<vec->traits.nrows; r++) {
         for (i=0; i<vec->traits.ncolsorig; i++) {
-            if (hwloc_bitmap_isset(vec->ldmask,i)) {
+            if (ghost_bitmap_isset(vec->ldmask,i)) {
                 v_t val = 0.;
                 if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
                 {
