@@ -904,7 +904,7 @@ ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
 
 }
 
-bool ghost_sparsemat_symmetry_valid(int symmetry)
+bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry)
 {
     if ((symmetry & GHOST_SPARSEMAT_SYMM_GENERAL) &&
             (symmetry & ~GHOST_SPARSEMAT_SYMM_GENERAL))
@@ -917,7 +917,7 @@ bool ghost_sparsemat_symmetry_valid(int symmetry)
     return 1;
 }
 
-char * ghost_sparsemat_symmetry_string(int symmetry)
+char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
 {
     if (symmetry & GHOST_SPARSEMAT_SYMM_GENERAL)
         return "General";
