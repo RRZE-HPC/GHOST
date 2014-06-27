@@ -343,30 +343,19 @@ set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.
     
 # firstly, try to find a Cblas header in the default locations
 if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find MKL")
-    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h)
+    message(STATUS "Try to find MKL in default paths and via MKLROOT")
+    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h ENV{MKLROOT}/include)
 endif()
 if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find GSL")
-    find_path(CBLAS_INCLUDE_DIR gsl_cblas.h)
+    #Have to search GSL with find_package because it will not be found by find_path
+    message(STATUS "Try to find GSL in default paths and via find_package")
+    find_package(GSL)
+    find_path(CBLAS_INCLUDE_DIR gsl_cblas.h ${GSL_INCLUDE_DIRS}/gsl)
 endif()
 if (NOT CBLAS_INCLUDE_DIR)
     message(STATUS "Try to find default Cblas")
     find_path(CBLAS_INCLUDE_DIR cblas.h)
 endif()
-
-# now, if no Cblas header is found, try to find selected Cblas implementations with find_package
-if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find MKL via MKLROOT")
-    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h ENV{MKLROOT}/include)
-endif()
-if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find GSL with find_package")
-	find_package(GSL)
-    find_path(CBLAS_INCLUDE_DIR gsl_cblas.h ${GSL_INCLUDE_DIRS}/gsl)
-endif()
-
-
 
 if (NOT CBLAS_INCLUDE_DIR)
     message(FATAL_ERROR "CBLAS_INCLUDE_DIR not set!")
