@@ -1032,110 +1032,6 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
     GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
     GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
 
-/*
-#ifdef GHOST_HAVE_SSE
-    if (rhs->traits.ncols > 64 || ((rhs->traits.ncols) >= 16 && (rhs->traits.ncols % 16))) {
-        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-            kernel = SELL_kernels_SSE_multivec_x_cm
-                [ld(SELL(mat)->chunkHeight)]
-                [matDtIdx]
-                [vecDtIdx];
-        } else {
-            kernel = SELL_kernels_SSE_multivec_x_rm
-                [ld(SELL(mat)->chunkHeight)]
-                [matDtIdx]
-                [vecDtIdx];
-        }
-    } else {
-        if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-            if (rhs->traits.ncols == 2) {
-                kernel = dd_SELL_kernels_SSE_multivec_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [0];
-            } else if (rhs->traits.ncols <= 16) {
-                kernel = dd_SELL_kernels_SSE_multivec_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [rhs->traits.ncols/4];
-            } else {
-                kernel = dd_SELL_kernels_SSE_multivec_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [rhs->traits.ncols/16+3];
-            }
-
-        } else {
-            kernel = SELL_kernels_SSE_multivec_x_cm
-                [ld(SELL(mat)->chunkHeight)]
-                [matDtIdx]
-                [vecDtIdx];
-        }
-
-    }
-#endif
-#ifdef GHOST_HAVE_AVX
-    if (rhs->traits.ncols != 2) {
-        if (rhs->traits.ncols > 64 || ((rhs->traits.ncols) >= 16 && (rhs->traits.ncols % 16))) {
-            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-                kernel = SELL_kernels_AVX_multivec_x_cm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            } else {
-                kernel = SELL_kernels_AVX_multivec_x_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            }
-        } else {
-            if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-                if (rhs->traits.ncols <= 16) {
-                    kernel = dd_SELL_kernels_AVX_multivec_rm
-                        [ld(SELL(mat)->chunkHeight)]
-                        [rhs->traits.ncolspadded/4-1];
-                } else {
-                    kernel = dd_SELL_kernels_AVX_multivec_rm
-                        [ld(SELL(mat)->chunkHeight)]
-                        [rhs->traits.ncolspadded/16+2];
-                }
-            } else {
-                kernel = SELL_kernels_AVX_multivec_x_cm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            }
-        }
-    }
-#endif
-#ifdef GHOST_HAVE_MIC
-#if !(GHOST_HAVE_LONGIDX)
-    if (rhs->traits.ncols > 4) {
-        if (rhs->traits.ncols > 24) {
-            if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-                kernel = SELL_kernels_MIC_multivec_x_cm
-                    [ld(SELL(mat)->chunkHeight/16)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            } else {
-                kernel = SELL_kernels_MIC_multivec_x_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            }
-        } else {
-            if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-                kernel = dd_SELL_kernels_MIC_multivec_rm
-                    [ld(SELL(mat)->chunkHeight)]
-                    [rhs->traits.ncolspadded/8-1];
-            } else {
-                kernel = SELL_kernels_MIC_multivec_x_cm
-                    [ld(SELL(mat)->chunkHeight/16)]
-                    [matDtIdx]
-                    [vecDtIdx];
-            }
-        }
-    }
-#endif
-#endif*/
-
     ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
     
     if (ghost_bitmap_iscompact(rhs->ldmask)) {
@@ -1150,14 +1046,6 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
     ghost_sellspmv_parameters_t par = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
     kernel = ghost_sellspmv_kernel(par,lhs,rhs);
-    /*if (kernel == NULL ||
-            (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED && rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) ||
-            !ghost_bitmap_isfull(rhs->ldmask)) {
-        INFO_LOG("Fallback to plain C version!");
-        kernel = SELL_kernels_plain
-            [matDtIdx]
-            [vecDtIdx];
-    }*/
 
     return kernel(mat,lhs,rhs,options,argp);
 

@@ -47,3 +47,8 @@
  * @defgroup task Task and thread management
  * @brief Functionality related to tasks, queues, threads and managing processing units.
  */
+
+/**
+ * @defgroup io I/O of vector and matrix data
+ * @brief Functionality related to reading and writing vector and matrix files.
+ */

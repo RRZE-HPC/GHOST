@@ -350,34 +350,134 @@ extern "C" {
      *
      * @brief Create a sparse matrix. 
      *
-     * @param mat Where to store the matrix
-     * @param ctx The context the matrix lives in.
-     * @param traits The matrix traits. They can be specified for the full matrix, the local and the remote part.
-     * @param nTraits The number of traits. 
+     * @param[out] mat Where to store the matrix
+     * @param[in] ctx The context the matrix lives in.
+     * @param[in] traits The matrix traits. They can be specified for the full matrix, the local and the remote part.
+     * @param[in] nTraits The number of traits. 
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t **mat, ghost_context_t *ctx, ghost_sparsemat_traits_t *traits, int nTraits);
+    /**
+     * @ingroup stringification
+     *
+     * @brief Create a string holding information about the sparsemat
+     *
+     * @param[out] str Where to store the string.
+     * @param[in] matrix The sparse matrix.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *matrix);
+    /**
+     * @brief Obtain the global number of nonzero elements of a sparse matrix.
+     *
+     * @param[out] nnz Where to store the result.
+     * @param[in] mat The sparse matrix.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_nnz(ghost_nnz_t *nnz, ghost_sparsemat_t *mat);
+    /**
+     * @brief Obtain the global number of rows of a sparse matrix.
+     
+     * @param[out] nnz Where to store the result.
+     * @param[in] mat The sparse matrix.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
-    char * ghost_sparsemat_symmetry_string(int symmetry);
-    bool ghost_sparsemat_symmetry_valid(int symmetry);
+    /**
+     * @ingroup stringification
+     *
+     * @brief Convert the matrix' symmetry information to a string.
+     *
+     * @param[in] symmetry The symmetry information.
+     *
+     * @return A string holding the symmetry information.
+     */
+    char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry);
+    /**
+     * @brief Check if the symmetry information of a sparse matrix is valid.
+     *
+     * @param[in] symmetry The symmetry information.
+     *
+     * @return True if it is valid, false otherwise.
+     */
+    bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry);
+    /**
+     * @brief Create a matrix permutation based on (PT-)SCOTCH
+     *
+     * @param[inout] mat The sparse matrix.
+     * @param[in] matrixSource The matrix source. This will be casted depending on \p srcType.
+     * @param[in] srcType Type of the matrix source.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
     ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope);
     ghost_error_t ghost_sparsemat_sortrow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride);
     /**
      * @brief Common function for matrix creation from a file.
      *
-     * @param mat
-     * @param matrixPath
+     * This function does work which is independent of the storage format and it should be called 
+     * at the beginning of a sparse matrix' fromFile function.
+     * This function also reads the row pointer from the file and stores it into the parameter rpt.
      *
-     * @return 
+     * @param[in] mat The sparse matrix.
+     * @param[in] matrixPath The matrix file path.
+     * @param[out] rpt Where to store the row pointer information which may be needed afterwards.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
+    /**
+     * @brief Common function for matrix creation from a function.
+     *
+     * This function does work which is independent of the storage format and it should be called 
+     * at the beginning of a sparse matrix' fromFunc function.
+     *
+     * @param[in] mat The sparse matrix.
+     * @param[in] src The matrix source function.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
+    /**
+     * @ingroup io
+     *
+     * @brief Write the sparse matrix header to a binary CRS file.
+     *
+     * @param[in] mat The sparse matrix.
+     * @param[in] path Path of the matrix file.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path);
+    /**
+     * @brief Store matrix information like bandwidth and nonzero distribution for a given matrix row.
+     *
+     * This function should be called at matrix creation for each row.
+     *
+     * @param[out] mat The matrix.
+     * @param[in] row The row index.
+     * @param[in] col The column indices of the row.
+     * @param[in] rowlen The length of the row.
+     * @param[in] stride The stride for the parameter col.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
+    /**
+     * @brief Finalize the storing of matrix information like bandwidth and nonzero distribution.
+     *
+     * This function should be after matrix creation.
+     * It finalizes the processing of information obtained in ghost_sparsemat_registerrow.
+     *
+     * @param[out] mat The matrix.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat);
 
 #ifdef __cplusplus
