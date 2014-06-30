@@ -29,14 +29,15 @@ ghost_timing_region_accu_t;
 
 static map<string,ghost_timing_region_accu_t> timings;
 
-void ghost_timing_tick(char *tag) 
+void ghost_timing_tick(const char *tag) 
 {
-    double start;
+    double start = 0.;
     ghost_timing_wc(&start);
+  
     timings[tag].start = start;
 }
 
-void ghost_timing_tock(char *tag) 
+void ghost_timing_tock(const char *tag) 
 {
     double end;
     ghost_timing_wc(&end);

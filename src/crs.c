@@ -413,6 +413,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 #pragma omp critical
             GHOST_CALL(ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+i,&CR(mat)->col[CR(mat)->rpt[i]],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],1),ret);
         }
+        free(tmpcol);
     }
     if (funcerrs) {
         ERROR_LOG("Matrix construction function returned error");

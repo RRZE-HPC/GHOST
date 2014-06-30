@@ -150,7 +150,6 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int me; 
     int i, from_PE, to_PE;
     //ghost_nnz_t max_wishes;
-    ghost_idx_t *wishptr;
     ghost_error_t ret = GHOST_SUCCESS;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);

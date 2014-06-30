@@ -223,8 +223,8 @@ template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *ma
             buffer << endl;
         }
     }
-    GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
-    strcpy(*str,buffer.str().c_str());
+
+    *str = strdup(buffer.str().c_str());
 
     return GHOST_SUCCESS;
 }

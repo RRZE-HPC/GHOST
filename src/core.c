@@ -362,6 +362,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     // delete PUs from cpuset according to hwconfig
     hwloc_obj_t obj;
     unsigned int cpu;
+
+    // we probably need this because we would manipulate the CPU set which we are iterating otherwise
     hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
 
     // delete excess cores
@@ -381,6 +383,8 @@ ghost_error_t ghost_init(int argc, char **argv)
         hwloc_bitmap_clr(mycpuset,obj->os_index);
     } 
     hwloc_bitmap_foreach_end();
+
+    hwloc_bitmap_free(backup);
 
     void *(*threadFunc)(void *);
 

@@ -12,13 +12,13 @@
 #include "timing.h"
 
 #define GHOST_INSTR_START(tag) {\
-    char region[256];\
+    char region[256] = "";\
     snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     ghost_timing_tick(region);\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256];\
+    char region[256] = "";\
     snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
     ghost_timing_tock(region);\
 }\

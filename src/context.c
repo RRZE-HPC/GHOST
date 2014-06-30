@@ -372,6 +372,31 @@ ghost_error_t ghost_context_string(char **str, ghost_context_t *context)
 void ghost_context_destroy(ghost_context_t *context)
 {
     DEBUG_LOG(1,"Freeing context");
+    
+    if (context) {
+        int nranks, i;
+        ghost_nrank(&nranks, context->mpicomm);
+
+        for(i=0; i<nranks; i++) {
+            if (context->wishlist) {
+                free(context->wishlist[i]);
+            }
+            if (context->duelist) {
+                free(context->duelist[i]);
+            }
+        }
+
+        free(context->wishlist);
+        free(context->duelist);
+        free(context->wishes);
+        free(context->dues);
+        free(context->hput_pos);
+        free(context->lfRow);
+        free(context->lnrows);
+        free(context->lnEnts);
+        free(context->lfEnt);
+    }
+
     free(context);
     DEBUG_LOG(1,"Context freed successfully");
 }

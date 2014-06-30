@@ -81,13 +81,13 @@ extern "C" {
      *
      * @param tag The region tag.
      */
-    void ghost_timing_tick(char *tag);
+    void ghost_timing_tick(const char *tag);
     /**
      * @brief Save the runtime for a region using the start time from ghost_timing_tick().
      *
      * @param tag The region tag.
      */
-    void ghost_timing_tock(char *tag);
+    void ghost_timing_tock(const char *tag);
     /**
      * @brief Summarize all timed regions into a string.
      *
