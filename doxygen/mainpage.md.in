@@ -79,6 +79,7 @@ int main(int argc, char **argv)
     A->destroy(A);
     x->destroy(x);
     y->destroy(y);
+    ghost_context_destroy(ctx);
 
     ghost_finalize();
 
