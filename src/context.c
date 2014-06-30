@@ -374,18 +374,12 @@ void ghost_context_destroy(ghost_context_t *context)
     DEBUG_LOG(1,"Freeing context");
     
     if (context) {
-        int nranks, i;
-        ghost_nrank(&nranks, context->mpicomm);
-
-        for(i=0; i<nranks; i++) {
-            if (context->wishlist) {
-                free(context->wishlist[i]);
-            }
-            if (context->duelist) {
-                free(context->duelist[i]);
-            }
+        if (context->wishlist) {
+            free(context->wishlist[0]);
         }
-
+        if (context->duelist) {
+            free(context->duelist[0]);
+        }
         free(context->wishlist);
         free(context->duelist);
         free(context->wishes);
