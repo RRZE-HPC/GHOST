@@ -45,10 +45,6 @@ ghost_error_t ghost_cu_init(int dev)
 
 ghost_error_t ghost_cu_malloc(void **mem, size_t bytesize)
 {
-    if (bytesize == 0) {
-        return GHOST_SUCCESS;
-    }
-
     CUDA_CALL_RETURN(cudaMalloc(mem,bytesize));
 
     return GHOST_SUCCESS;
