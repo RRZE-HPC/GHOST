@@ -983,10 +983,8 @@ static void SELL_free(ghost_sparsemat_t *mat)
         free(SELL(mat)->rowLenPadded);
     }
 
-
-    free(mat->data);
-    free(mat->col_orig);
-        
+    ghost_sparsemat_destroy_common(mat);
+         
     if (mat->localPart) {
         SELL_free(mat->localPart);
     }

@@ -878,8 +878,7 @@ static void CRS_free(ghost_sparsemat_t * mat)
         free(CR(mat)->col);
         free(CR(mat)->val);
 
-        free(mat->data);
-        free(mat->col_orig);
+        ghost_sparsemat_destroy_common(mat);
 
         if (mat->localPart) {
             CRS_free(mat->localPart);
