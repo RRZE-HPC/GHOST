@@ -480,6 +480,13 @@ extern "C" {
      */
     ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat);
 
+    /**
+     * @brief Common (independent of the storage formats) destruction of matrix data.
+     *
+     * @param[inout] mat The matrix.
+     */
+    void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat);
+
 #ifdef __cplusplus
 } extern "C"
 #endif

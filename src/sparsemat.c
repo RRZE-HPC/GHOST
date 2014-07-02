@@ -949,5 +949,18 @@ char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
     return "Invalid";
 }
 
+void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
+{
+    if (mat->permutation) {
+        free(mat->permutation->perm); mat->permutation->perm = NULL;
+        free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+#ifdef GHOST_HAVE_CUDA
+        free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+#endif
+    }
+    free(mat->permutation); mat->permutation = NULL;
+    free(mat->data); mat->data = NULL;
+    free(mat->col_orig); mat->col_orig = NULL;
+}
 
 
