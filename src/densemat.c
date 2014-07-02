@@ -209,3 +209,18 @@ bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc)
     return 1;
 }
 
+ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec)
+{
+#ifndef GHOST_HAVE_MPI
+    UNUSED(vec);
+    *uniform = true;
+#else
+    int nprocs;
+    int allstorages = (int)vec->traits.storage;
+    GHOST_CALL_RETURN(ghost_nrank(&nprocs, vec->context->mpicomm));
+    
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&allstorages,1,MPI_INT,MPI_SUM,vec->context->mpicomm));
+    *uniform = ((int)vec->traits.storage * nprocs == allstorages);
+#endif
+    return GHOST_SUCCESS;;
+}

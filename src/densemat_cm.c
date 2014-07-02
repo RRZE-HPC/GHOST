@@ -1148,6 +1148,13 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
     int nprocs;
     GHOST_CALL_RETURN(ghost_rank(&me, nodeVec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, nodeVec->context->mpicomm));
+    
+    bool uniformstorage;
+    GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec));
+    if (!uniformstorage) {
+        ERROR_LOG("Cannot collect vectors of different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
     ghost_idx_t c;
 #ifdef GHOST_HAVE_MPI
@@ -1206,6 +1213,12 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, vec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits.datatype));
 
+    bool uniformstorage;
+    GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec));
+    if (!uniformstorage) {
+        ERROR_LOG("Cannot collect vectors of different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
 //    if (vec->context != NULL)
 //        vec->permute(vec,vec->context->invRowPerm); 
 
@@ -1317,6 +1330,13 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
         return GHOST_ERR_INVALID_ARG;
     }
 
+    if ((vec->traits.storage & GHOST_DENSEMAT_DEVICE) && !(vec->traits.storage & GHOST_DENSEMAT_HOST)) {
+        ERROR_LOG("Permutation of pure device vectors not yet implemented!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+    
+    vec->downloadNonHalo(vec);
+
     if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits.nrows != permutation->len) {
         traits = vec->traits;
         traits.nrows = vec->context->gnrows;
@@ -1372,9 +1392,12 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
     }
     
     if (permutation->scope == GHOST_PERMUTATION_GLOBAL && vec->traits.nrows != permutation->len) {
+        INFO_LOG("Re-distributing globally permuted vector");
         permvec->distribute(permvec,vec);
         permvec->destroy(permvec);
     }
+
+    vec->uploadNonHalo(vec);
 
     return GHOST_SUCCESS;
 }

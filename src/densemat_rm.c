@@ -1077,6 +1077,13 @@ static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densema
     int nprocs;
     GHOST_CALL_RETURN(ghost_rank(&me, nodeVec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, nodeVec->context->mpicomm));
+    
+    bool uniformstorage;
+    GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec));
+    if (!uniformstorage) {
+        ERROR_LOG("Cannot collect vectors of different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
     ghost_idx_t c;
 #ifdef GHOST_HAVE_MPI
@@ -1134,6 +1141,13 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
     GHOST_CALL_RETURN(ghost_rank(&me, vec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, vec->context->mpicomm));
     GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits.datatype));
+    
+    bool uniformstorage;
+    GHOST_CALL_RETURN(ghost_densemat_uniformstorage(&uniformstorage,vec));
+    if (!uniformstorage) {
+        ERROR_LOG("Cannot collect vectors of different storage order");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
 //    if (vec->context != NULL)
 //        vec->permute(vec,vec->context->invRowPerm); 

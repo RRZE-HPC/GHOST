@@ -600,6 +600,17 @@ extern "C" {
      */
     bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc);
 
+    /**
+     * @brief Check if a densemat has the same storage order on all processes.
+     *
+     * @param uniform Where to store the result of the check.
+     * @param vec The densemat.
+     *
+     * @return True if the storage is the same everywhere, false otherwise. 
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec);
+
 #ifdef __cplusplus
 }
 #endif
