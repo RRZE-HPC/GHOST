@@ -93,7 +93,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
         }
     } else if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
-#if defined(GHOST_HAVE_CUDA) && !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
+#ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
                 ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,permutation->cu_perm);
@@ -109,20 +109,21 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                 }
 #endif
             }
-#else
-            ghost_idx_t c;
+#endif
+            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                ghost_idx_t c;
 #pragma omp parallel private(to_PE,i,c)
-            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                for (i=0; i<vec->context->dues[to_PE]; i++){
-                    for (c=0; c<vec->traits.ncols; c++) {
-                        memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                    for (i=0; i<vec->context->dues[to_PE]; i++){
+                        for (c=0; c<vec->traits.ncols; c++) {
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                        }
                     }
                 }
             }
-#endif
         } else {
-#if defined(GHOST_HAVE_CUDA) && !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
+#ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
                 ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,NULL);
@@ -139,18 +140,19 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                 }
 #endif
             }
-#else
-            ghost_idx_t c;
+#endif
+            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                ghost_idx_t c;
 #pragma omp parallel private(to_PE,i,c)
-            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                for (i=0; i<vec->context->dues[to_PE]; i++){
-                    for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                    for (i=0; i<vec->context->dues[to_PE]; i++){
+                        for (c=0; c<vec->traits.ncols; c++) {
+                                memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                        }
                     }
                 }
             }
-#endif 
         }
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
