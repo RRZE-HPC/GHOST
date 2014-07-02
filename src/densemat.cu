@@ -146,7 +146,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
     
 
     int nrank, proc;
-    dim3 block(THREADSPERBLOCK/vec->traits.ncols,vec->traits.ncols);
+    dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols,1);
     ghost_context_t *ctx = vec->context;
     
     ghost_nrank(&nrank,ctx->mpicomm); 
@@ -156,9 +156,15 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
+                if (ctx->dues[proc]) {
+                    cu_communicationassembly_kernel<cuDoubleComplex><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                }
             } 
             else 
             {
+                if (ctx->dues[proc]) {
+                    cu_communicationassembly_kernel<cuFloatComplex><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                }
             }
         }
         else
@@ -166,11 +172,14 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<double><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK*vec->traits.ncols),block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                    cu_communicationassembly_kernel<double><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
                 }
             } 
             else 
             {
+                if (ctx->dues[proc]) {
+                    cu_communicationassembly_kernel<float><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                }
             }
         }
     }
