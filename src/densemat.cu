@@ -5,6 +5,7 @@
 #include "ghost/densemat_cm.h"
 #include "ghost/log.h"
 #include "ghost/timing.h"
+#include "ghost/locality.h"
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -122,6 +123,65 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_idx_t nrows, char
         }
     }
 }
+
+template<typename T>  
+__global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_idx_t offs, ghost_idx_t *duelist, ghost_idx_t ncols, ghost_idx_t ndues, ghost_idx_t nrowspadded, ghost_idx_t *perm)
+{
+    int due = blockIdx.x*blockDim.x+threadIdx.x;
+    int col = threadIdx.y;
+
+    if (perm) {
+        for (;due < ndues; due+=gridDim.x*blockDim.x) {
+            work[(offs+due)*ncols+col] = vec[col*nrowspadded+perm[duelist[due]]];
+        }
+    } else {
+        for (;due < ndues; due+=gridDim.x*blockDim.x) {
+            work[(offs+due)*ncols+col] = vec[col*nrowspadded+duelist[due]];
+        }
+    }
+}
+
+extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work, ghost_idx_t *dueptr, ghost_densemat_t *vec, ghost_idx_t *perm)
+{
+    
+
+    int nrank, proc;
+    dim3 block(THREADSPERBLOCK/vec->traits.ncols,vec->traits.ncols);
+    ghost_context_t *ctx = vec->context;
+    
+    ghost_nrank(&nrank,ctx->mpicomm); 
+            
+    for (proc=0 ; proc<nrank ; proc++){
+        if (vec->traits.datatype & GHOST_DT_COMPLEX)
+        {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE)
+            {
+            } 
+            else 
+            {
+            }
+        }
+        else
+        {
+            if (vec->traits.datatype & GHOST_DT_DOUBLE)
+            {
+                if (ctx->dues[proc]) {
+                    cu_communicationassembly_kernel<double><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK*vec->traits.ncols),block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                }
+            } 
+            else 
+            {
+            }
+        }
+    }
+
+    cudaDeviceSynchronize();
+
+
+    return GHOST_SUCCESS;
+
+}
+
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {

@@ -113,6 +113,10 @@ struct ghost_context_t
      */
     ghost_idx_t ** duelist; // TODO rename dues
     /**
+     * @brief Column indices of dues to each rank (CUDA)
+     */
+    ghost_idx_t ** cu_duelist; // TODO rename dues
+    /**
      * @brief First index to get RHS elements coming from each rank
      */
     ghost_idx_t* hput_pos; // TODO rename

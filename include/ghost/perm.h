@@ -34,6 +34,9 @@ typedef struct
      * NULL if no permutation applied to the matrix.
      */
     ghost_idx_t *invPerm;
+
+    ghost_idx_t *cu_perm;
+
     ghost_permutation_scope_t scope;
     ghost_idx_t len;
 }

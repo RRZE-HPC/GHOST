@@ -371,6 +371,10 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*nrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*nrows),err,ret);
+#ifdef GHOST_HAVE_CUDA
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->permutation->cu_perm,sizeof(ghost_idx_t)*nrows),err,ret);
+#endif
+
     mat->permutation->len = nrows;
 
     memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*nrows);
@@ -421,6 +425,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
         (mat->permutation->perm)[rowSort[i].row] = i;
     }
 
+    ghost_cu_upload(mat->permutation->cu_perm,mat->permutation->perm,mat->permutation->len*sizeof(ghost_idx_t));
     goto out;
 err:
 out:
@@ -532,6 +537,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
+#ifdef GHOST_HAVE_CUDA
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->permutation->cu_perm,sizeof(ghost_idx_t)*nrows),err,ret);
+#endif
     memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
     memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
     mat->permutation->scope = GHOST_PERMUTATION_GLOBAL;
@@ -677,6 +685,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
         GHOST_INSTR_STOP(post-permutation with sorting)
     }
+#ifdef GHOST_HAVE_CUDA
+    ghost_cu_upload(mat->permutation->cu_perm,mat->permutation->perm,mat->permutation->len*sizeof(ghost_idx_t));
+#endif
     goto out;
 err:
     ERROR_LOG("Deleting permutations");

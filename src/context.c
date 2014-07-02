@@ -38,6 +38,9 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->duelist,nranks*sizeof(ghost_idx_t *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_nnz_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_nnz_t)),err,ret); 
+#ifdef GHOST_HAVE_CUDA
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->cu_duelist,nranks*sizeof(ghost_idx_t *)),err,ret);
+#endif
 
     for (i=0; i<nranks; i++){
         (*context)->wishes[i] = 0;
@@ -674,6 +677,11 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishl_mem,size_wish),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&duel_mem,size_dues),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->hput_pos,size_nptr),err,ret); 
+    
+#ifdef GHOST_HAVE_CUDA
+    void *cu_duel_mem;
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cu_duel_mem,size_dues),err,ret);
+#endif
 
     acc_dues = 0;
     acc_wishes = 0;
@@ -682,6 +690,9 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
     for (i=0; i<nprocs; i++){
 
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
+#ifdef GHOST_HAVE_CUDA
+        ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
+#endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
         ctx->hput_pos[i]   = ctx->lnrows[me]+acc_wishes;
 
@@ -714,6 +725,11 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
 
     MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
 #endif
+
+#ifdef GHOST_HAVE_CUDA
+    GHOST_CALL_GOTO(ghost_cu_upload(cu_duel_mem,duel_mem,size_dues),err,ret);
+#endif
+
 
     goto out;
 
