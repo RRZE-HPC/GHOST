@@ -1293,10 +1293,10 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
                 return GHOST_ERR_UNKNOWN;
             }
 
-            memcpy(&tmp[vec->elSize*perm[i]],VECVAL_RM(permvec,permvec->val,c,i),permvec->elSize);
+            memcpy(&tmp[vec->elSize*perm[i]],VECVAL_RM(permvec,permvec->val,i,c),permvec->elSize);
         }
         for(i=0; i < len; ++i) {
-            memcpy(VECVAL_RM(permvec,permvec->val,c,i),&tmp[permvec->elSize*i],permvec->elSize);
+            memcpy(VECVAL_RM(permvec,permvec->val,i,c),&tmp[permvec->elSize*i],permvec->elSize);
         }
         free(tmp);
     }
