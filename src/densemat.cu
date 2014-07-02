@@ -239,6 +239,11 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_
             cu_vaxpy_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>((float *)v1->cu_val, (float *)v2->cu_val,(float *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
         }
     }
+    
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    GHOST_CALL_RETURN(ghost_cu_free(d_a));
+
     return GHOST_SUCCESS;
 }
     
@@ -298,6 +303,10 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
                  v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
         }
     }
+
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    GHOST_CALL_RETURN(ghost_cu_free(d_a));
 
     return GHOST_SUCCESS;
 }
@@ -465,6 +474,10 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
                         (float *)vec->cu_val,1));
         }
     }*/
+    
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+
     return GHOST_SUCCESS;
 }
 
@@ -518,6 +531,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
         }
     }
 
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+
     return GHOST_SUCCESS;
 }
 
@@ -566,6 +582,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void 
                     vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
         }
     }
+
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
 
     return GHOST_SUCCESS;
 }
@@ -621,6 +640,10 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
         }
     }
 
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    GHOST_CALL_RETURN(ghost_cu_free(d_a));
+
     return GHOST_SUCCESS;
 }
 
@@ -669,6 +692,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
                     vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
         }
     }
+    
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
 
     return GHOST_SUCCESS;
 }

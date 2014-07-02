@@ -383,6 +383,11 @@ void ghost_context_destroy(ghost_context_t *context)
         if (context->duelist) {
             free(context->duelist[0]);
         }
+#ifdef GHOST_HAVE_CUDA
+        if (context->cu_duelist) {
+            ghost_cu_free(context->cu_duelist[0]);
+        }
+#endif
         free(context->wishlist);
         free(context->duelist);
         free(context->wishes);

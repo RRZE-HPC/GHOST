@@ -426,8 +426,18 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
 
     ghost_cu_upload(mat->permutation->cu_perm,mat->permutation->perm,mat->permutation->len*sizeof(ghost_idx_t));
+    
     goto out;
+
 err:
+    ERROR_LOG("Deleting permutations");
+    free(mat->permutation->perm); mat->permutation->perm = NULL;
+    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+#ifdef GHOST_HAVE_CUDA
+    ghost_cu_free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+#endif
+    free(mat->permutation); mat->permutation = NULL;
+
 out:
 
     free(rpt);
@@ -693,6 +703,9 @@ err:
     ERROR_LOG("Deleting permutations");
     free(mat->permutation->perm); mat->permutation->perm = NULL;
     free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+#ifdef GHOST_HAVE_CUDA
+    ghost_cu_free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+#endif
     free(mat->permutation); mat->permutation = NULL;
 
 out:

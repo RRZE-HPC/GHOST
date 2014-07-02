@@ -507,6 +507,9 @@ err:
     mat->nnz = 0;
     free(mat->permutation->perm); mat->permutation->perm = NULL;
     free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+#ifdef GHOST_HAVE_CUDA
+    free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+#endif
 
 out:
     free(rowSort); rowSort = NULL;
@@ -901,6 +904,9 @@ err:
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
     free(mat->permutation->perm); mat->permutation->perm = NULL;
     free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+#ifdef GHOST_HAVE_CUDA
+    free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+#endif
 
 out:
     free(tmpcol); tmpcol = NULL;
