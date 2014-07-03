@@ -28,6 +28,7 @@ set(CFG_SELL_CHUNKHEIGHTS "1,2,4,8,16,32" CACHE STRING "The SELL chunk heights f
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation. Valid values: TIMING, LIKWID")
+option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 1)
 option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled for large-scale runs)" 0)
 
 find_package(PkgConfig)
@@ -35,6 +36,10 @@ find_package(PkgConfig)
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
 if (USE_LONGIDX)
     set(GHOST_HAVE_LONGIDX 1)
+endif()
+
+if (TRACK_DATATRANSFERS)
+    set(GHOST_HAVE_TRACK_DATATRANSFERS 1)
 endif()
 
 if (GATHER_GLOBAL_INFO)
@@ -49,7 +54,8 @@ set (SOURCES
 		src/context.c
         src/core.c
 		src/crs.c 
-		src/crs.cpp 
+		src/crs.cpp
+        src/datatransfers.cpp 
         src/densemat.c
 		src/densemat_cm.c 
 		src/densemat_rm.c 
