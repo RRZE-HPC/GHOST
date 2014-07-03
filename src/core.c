@@ -21,6 +21,10 @@
 #include <likwid.h>
 #endif
 
+#ifdef GHOST_HAVE_CUDA
+#include <cuda_runtime.h>
+#endif
+
 #include <strings.h>
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
