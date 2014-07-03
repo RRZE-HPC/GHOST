@@ -635,3 +635,43 @@ char * ghost_spmv_mode_string(ghost_spmv_flags_t flags)
 
 }
 
+int ghost_spmv_perf(double *perf, double time, void *varg)
+{
+    ghost_spmv_perf_args_t *arg = (ghost_spmv_perf_args_t *)varg;
+
+    ghost_idx_t ncol = arg->rhs->traits.ncols;
+    int flops;
+    ghost_nnz_t nnz;
+    ghost_nnz_t nrow;
+    int flopsPerEntry;
+
+    ghost_sparsemat_nnz(&nnz,arg->mat);
+    ghost_sparsemat_nrows(&nrow,arg->mat);
+    ghost_spmv_nflops(&flopsPerEntry,arg->mat->traits->datatype,arg->mat->traits->datatype);
+
+    flops = flopsPerEntry*nnz*ncol;
+
+    if (arg->flags & GHOST_SPMV_AXPY) {
+        flops += nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_AXPBY) {
+        flops += 2*nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_SHIFT) {
+        flops += 2*nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_VSHIFT) {
+        flops += 2*nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_SCALE) {
+        flops += nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_DOT) {
+        flops += 6*nrow*ncol;
+    }
+
+    *perf = flops/time/1.e9;
+
+    return 0;
+
+}

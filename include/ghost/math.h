@@ -20,6 +20,14 @@
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
+typedef struct {
+    ghost_sparsemat_t *mat;
+    ghost_densemat_t *rhs;
+    ghost_spmv_flags_t flags;
+}
+ghost_spmv_perf_args_t;
+#define GHOST_SPMV_PERF_UNIT "GF/s"
+#define GHOST_SPMV_PERF_TAG "spmv"
 
 typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
 
@@ -138,6 +146,8 @@ extern "C" {
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
     char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
+
+    int ghost_spmv_perf(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"
