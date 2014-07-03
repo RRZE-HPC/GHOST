@@ -76,6 +76,8 @@ extern "C" {
      */
     ghost_error_t ghost_string(char **str);
 
+    ghost_error_t ghost_barrier();
+
 #ifdef __cplusplus
 }
 #endif

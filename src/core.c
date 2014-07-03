@@ -14,6 +14,7 @@
 #include "ghost/sell.h"
 #include "ghost/tsmm.h"
 #include "ghost/tsmttsm.h"
+#include "ghost/instr.h"
 
 #include <hwloc.h>
 #ifdef GHOST_HAVE_INSTR_LIKWID
@@ -490,3 +491,16 @@ ghost_error_t ghost_string(char **str)
 
 }
 
+ghost_error_t ghost_barrier()
+{
+    GHOST_INSTR_START(barrier);
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
+#endif
+#ifdef GHOST_HAVE_CUDA
+    CUDA_CALL_RETURN(ghost_cu_barrier());
+#endif
+    GHOST_INSTR_STOP(barrier);
+
+    return GHOST_SUCCESS;
+}
