@@ -424,8 +424,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
         (mat->permutation->invPerm)[i] = rowSort[i].row;
         (mat->permutation->perm)[rowSort[i].row] = i;
     }
-
+#ifdef GHOST_HAVE_CUDA
     ghost_cu_upload(mat->permutation->cu_perm,mat->permutation->perm,mat->permutation->len*sizeof(ghost_idx_t));
+#endif
     
     goto out;
 
