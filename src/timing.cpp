@@ -164,20 +164,24 @@ ghost_error_t ghost_timing_summarystring(char **str)
         ghost_timing_region_destroy(region);
     }
 
-    buffer << endl << endl << left << setw(maxRegionLen+4) << "Region" << right << " | ";
-    buffer << setw(maxCallsLen+3) << "Calls | ";
-    buffer << "   P_max | ";
-    buffer << "   P_min | ";
-    buffer << "   P_avg | ";
-    buffer << "P_skip10" << endl;;
-    buffer << string(maxRegionLen+maxCallsLen+7+4*11,'-') << endl;
-
+    int printed = 0;
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
         ghost_compute_performance_func_t pf = iter->second.perfFunc;
         if (!pf) {
             continue;
         }
+        if (!printed) {
+            buffer << endl << endl << left << setw(maxRegionLen+4) << "Region" << right << " | ";
+            buffer << setw(maxCallsLen+3) << "Calls | ";
+            buffer << "   P_max | ";
+            buffer << "   P_min | ";
+            buffer << "   P_avg | ";
+            buffer << "P_skip10" << endl;;
+            buffer << string(maxRegionLen+maxCallsLen+7+4*11,'-') << endl;
+        }
+        printed = 1;
+
         ghost_timing_region_t *region;
         ghost_timing_region_create(&region,iter->first.c_str());
         
