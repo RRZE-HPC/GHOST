@@ -969,7 +969,7 @@ void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
         free(mat->permutation->perm); mat->permutation->perm = NULL;
         free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
 #ifdef GHOST_HAVE_CUDA
-        free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+        ghost_cu_free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
 #endif
     }
     free(mat->permutation); mat->permutation = NULL;
