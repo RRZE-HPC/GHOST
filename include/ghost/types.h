@@ -126,11 +126,53 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
     typedef complex double name ## _t; \
 ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
 
-#ifdef GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_GLOB_LONGIDX
+
 /**
- * @brief Type for row/column indices of matrices/vectors.
+ * @brief Type for global indices.
  */
-typedef int64_t ghost_idx_t; 
+typedef int64_t ghost_gidx_t; 
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_gidx MPI_LONG_LONG
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRGIDX PRId64
+
+#else
+
+/**
+ * @brief Type for global indices.
+ */
+typedef int34_t ghost_gidx_t; 
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_gidx MPI_LONG
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRGIDX PRId32
+
+#endif
+
+#ifdef GHOST_HAVE_LOC_LONGIDX
+
+/**
+ * @brief Type for local indices.
+ */
+typedef int64_t ghost_lidx_t; 
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_lidx MPI_LONG_LONG
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRLIDX PRId64
+
 #ifdef GHOST_HAVE_MKL
 /**
  * @brief Type for indices used in BLAS calls
@@ -142,37 +184,28 @@ typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 #endif
 
-/**
- * @brief MPI data type for matrix row/column indices
- */
-#define ghost_mpi_dt_idx MPI_LONG_LONG
-/**
- * @brief MPI data type for matrix nonzero indices
- */
-#define ghost_mpi_dt_nnz MPI_LONG_LONG
-
-/**
- * @brief Macro to print matrix nonzero indices depending on index size
- */
-#define PRNNZ PRId64
-/**
- * @brief Macro to print matrix/vector row/column indices depending on index size
- */
-#define PRIDX PRId64
+#define PRLIDX PRId64
 
 #else
 
-typedef int32_t ghost_idx_t;
+typedef int32_t ghost_lidx_t;
+#define ghost_mpi_dt_lidx MPI_INT
 typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 
-#define ghost_mpi_dt_idx MPI_INT
-#define ghost_mpi_dt_nnz MPI_INT
-
-#define PRNNZ PRId32
-#define PRIDX PRId32
+#define PRLIDX PRId32
 
 #endif
+
+
+/**
+ * @brief For backward compatibility.
+ */
+typedef ghost_gidx_t ghost_idx_t;
+#define PRIDX PRGIDX
+#define ghost_mpi_dt_idx ghost_mpi_dt_gidx
+
+
 
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;

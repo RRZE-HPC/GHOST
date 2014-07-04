@@ -35,8 +35,11 @@ option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled fo
 find_package(PkgConfig)
 
 add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE)
-if (USE_LONGIDX)
-    set(GHOST_HAVE_LONGIDX 1)
+if (USE_LOC_LONGIDX)
+    set(GHOST_HAVE_LOC_LONGIDX 1)
+endif()
+if (USE_GLOB_LONGIDX)
+    set(GHOST_HAVE_GLOB_LONGIDX 1)
 endif()
 
 if (TRACK_DATATRANSFERS)
@@ -387,7 +390,7 @@ if (${CBLAS_H} STREQUAL "mkl_cblas.h")
 	
     find_library(LIBMKL_CORE mkl_core ${MKL_LIBDIR})
     
-    if (USE_LONGIDX)
+    if (USE_LOC_LONGIDX)
 		add_definitions(-DMKL_ILP64)
         find_library(LIBMKL_INTEL_XLP64 mkl_intel_ilp64 ${MKL_LIBDIR})
     else()
