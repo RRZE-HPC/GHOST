@@ -28,15 +28,14 @@ static MPI_Status  *status = NULL;
 static char **tmprecv = NULL;
 static char *tmprecv_mem = NULL;
 static char *work = NULL;
-static ghost_idx_t *dueptr = NULL;
-static ghost_idx_t *wishptr = NULL;
-static ghost_idx_t acc_dues = 0;
-static ghost_idx_t acc_wishes = 0;
+static ghost_lidx_t *dueptr = NULL;
+static ghost_lidx_t *wishptr = NULL;
+static ghost_lidx_t acc_dues = 0;
+static ghost_lidx_t acc_wishes = 0;
 #ifdef GHOST_HAVE_CUDA || !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
 static void *cu_work;
 #endif
 
-//static ghost_idx_t max_dues;
 #endif
 
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
@@ -52,7 +51,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
         return GHOST_SUCCESS;
     }
 
-    GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_idx_t)));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
     
     dueptr[0] = 0;
     for (i=0;i<nprocs;i++) {
@@ -113,7 +112,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
             }
 #endif
             if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
-                ghost_idx_t c;
+                ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
@@ -130,7 +129,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
                 ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,NULL);
 #elif defined(CUDA_COMMUNICATION_ASSEMBLY_MEMCPY)
-                ghost_idx_t c;
+                ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++) {
 #pragma omp for 
@@ -144,7 +143,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
             }
 #else
             if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
-                ghost_idx_t c;
+                ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
@@ -187,7 +186,6 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int nprocs;
     int me; 
     int i, from_PE, to_PE;
-    //ghost_idx_t max_wishes;
     ghost_error_t ret = GHOST_SUCCESS;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
@@ -196,7 +194,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     msgcount = 0;
     GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*2*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*2*nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_idx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_lidx_t)),err,ret);
 
     wishptr[0] = 0;
     for (i=0;i<nprocs;i++) {
@@ -272,7 +270,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     int i, from_PE;
-    ghost_idx_t c;
+    ghost_gidx_t c;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
