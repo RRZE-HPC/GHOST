@@ -51,7 +51,7 @@ struct ghost_context_t
      * at context creation in order to create the distribution. once the matrix
      * is being created, the row pointers are distributed
      */
-    ghost_idx_t *rpt;
+    ghost_gidx_t *rpt;
     /**
      * @brief The global number of rows
      */
@@ -83,39 +83,39 @@ struct ghost_context_t
     /**
      * @brief Number of matrix elements for each rank
      */
-    ghost_idx_t* lnEnts; // TODO rename nLclEnts
+    ghost_lidx_t* lnEnts; // TODO rename nLclEnts
     /**
      * @brief Index of first element into the global matrix for each rank
      */
-    ghost_idx_t* lfEnt; // TODO rename firstLclEnt
+    ghost_gidx_t* lfEnt; // TODO rename firstLclEnt
     /**
      * @brief Number of matrix rows for each rank
      */
-    ghost_idx_t* lnrows; // TODO rename nLclRows
+    ghost_lidx_t* lnrows; // TODO rename nLclRows
     /**
      * @brief Index of first matrix row for each rank
      */
-    ghost_idx_t* lfRow; // TODO rename firstLclRow
+    ghost_gidx_t* lfRow; // TODO rename firstLclRow
     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_idx_t * wishes; // TODO rename nWishes
+    ghost_lidx_t * wishes; // TODO rename nWishes
     /**
      * @brief Column idx of wishes from each rank
      */
-    ghost_idx_t ** wishlist; // TODO rename wishes
+    ghost_lidx_t ** wishlist; // TODO rename wishes
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_idx_t * dues; // TODO rename nDues
+    ghost_lidx_t * dues; // TODO rename nDues
     /**
      * @brief Column indices of dues to each rank
      */
-    ghost_idx_t ** duelist; // TODO rename dues
+    ghost_lidx_t ** duelist; // TODO rename dues
     /**
      * @brief Column indices of dues to each rank (CUDA)
      */
-    ghost_idx_t ** cu_duelist; // TODO rename dues
+    ghost_lidx_t ** cu_duelist; // TODO rename dues
     /**
      * @brief First index to get RHS elements coming from each rank
      */
@@ -205,7 +205,7 @@ extern "C" {
      * The following fields of ghost_context_t are being filled in this function:
      * wishes, wishlist, dues, duelist, hput_pos.
      */
-    ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col);
+    ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col);
     
     /**
      * @brief Get the name of the work distribution scheme.

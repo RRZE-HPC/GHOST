@@ -226,7 +226,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                 }
                 if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
                     //GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
-                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read_glob((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
                 } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
@@ -238,7 +238,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,(*context)->gncols*GHOST_DT_MAX_SIZE),err,ret);
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,(*context)->gncols*sizeof(ghost_idx_t)),err,ret);
                     (*context)->rpt[0] = 0;
-                    ghost_idx_t rowlen;
+                    ghost_lidx_t rowlen;
                     for(row = 0; row < (*context)->gnrows; row++) {
                         func(row,&rowlen,tmpcol,tmpval);
                         (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
@@ -403,7 +403,7 @@ void ghost_context_destroy(ghost_context_t *context)
     DEBUG_LOG(1,"Context freed successfully");
 }
 
-ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
+ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_orig, ghost_lidx_t *col)
 {
 
     ghost_error_t ret = GHOST_SUCCESS;
@@ -430,8 +430,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
 
     ghost_idx_t *comm_remotePE = NULL;
     ghost_idx_t *comm_remoteEl = NULL;
-    ghost_idx_t *wishl_mem  = NULL;
-    ghost_idx_t *duel_mem   = NULL;
+    ghost_lidx_t *wishl_mem  = NULL;
+    ghost_lidx_t *duel_mem   = NULL;
     ghost_idx_t acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_col;
@@ -494,10 +494,10 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
     
     for (i=0;i<ctx->lnEnts[me];i++){
         for (j=nprocs-1;j>=0; j--){
-            if (ctx->lfRow[j]<col[i]+1) {
+            if (ctx->lfRow[j]<col_orig[i]+1) {
                 comm_remotePE[i] = j;
                 wishlist_counts[j]++;
-                comm_remoteEl[i] = col[i] -ctx->lfRow[j];
+                comm_remoteEl[i] = col_orig[i] -ctx->lfRow[j];
                 break;
             }
         }
@@ -647,7 +647,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
 
             for (;t<ctx->lnEnts[me];t++) {
                 if (comm_remotePE[t] == i) { // local element for rank i
-                    col[t] =  pseudocol[myrevcol[col[t]-ctx->lfRow[i]]];
+                    col[t] =  pseudocol[myrevcol[col_orig[t]-ctx->lfRow[i]]];
                 }
             }
             free(myrevcol); myrevcol = NULL;

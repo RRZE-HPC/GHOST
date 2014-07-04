@@ -34,7 +34,7 @@ typedef enum {
 
 typedef struct 
 {
-    ghost_idx_t row, nEntsInRow;
+    ghost_lidx_t row, nEntsInRow;
 } 
 ghost_sorting_t;
 
@@ -63,7 +63,7 @@ typedef enum {
 
     
 
-typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_idx_t, ghost_idx_t *, ghost_idx_t *, void *);
+typedef int (*ghost_sparsemat_fromRowFunc_t)(ghost_gidx_t, ghost_lidx_t *, ghost_gidx_t *, void *);
 typedef struct ghost_sparsemat_traits_t ghost_sparsemat_traits_t;
 typedef struct ghost_sparsemat_t ghost_sparsemat_t;
 
@@ -80,7 +80,7 @@ typedef enum {
 typedef struct 
 {
     ghost_sparsemat_fromRowFunc_t func;
-    ghost_idx_t maxrowlen;
+    ghost_lidx_t maxrowlen;
     int base;
     ghost_sparsemat_fromRowFunc_flags_t flags;
 } ghost_sparsemat_src_rowfunc_t;
@@ -202,25 +202,33 @@ struct ghost_sparsemat_t
     //ghost_idx_t *rowPerm;
     //ghost_idx_t *invRowPerm;
 
-    ghost_idx_t *col_orig;
+    ghost_gidx_t *col_orig;
+
+    /**
+     * @brief Indicates whether the matrix' col indices have already been compressed.
+     *
+     * If true, the col indices are of ghost_lidx_t.
+     * If false, the col indices are of ghost_gidx_t.
+     */
+    bool colsCompressed;
     
-    ghost_idx_t nrows;
-    ghost_idx_t ncols;
-    ghost_idx_t nrowsPadded;
-    ghost_idx_t nnz;
-    ghost_idx_t lowerBandwidth;
-    ghost_idx_t upperBandwidth;
-    ghost_idx_t bandwidth;
-    ghost_idx_t maxRowLen;
-    ghost_idx_t nMaxRows;
+    ghost_lidx_t nrows;
+    ghost_gidx_t ncols;
+    ghost_lidx_t nrowsPadded;
+    ghost_lidx_t nnz;
+    ghost_gidx_t lowerBandwidth;
+    ghost_gidx_t upperBandwidth;
+    ghost_gidx_t bandwidth;
+    ghost_gidx_t maxRowLen;
+    ghost_gidx_t nMaxRows;
     double variance; // row length variance
     double deviation; // row lenght standard deviation
     double cv; // row lenght coefficient of variation
     /**
      * @brief Array of length (2*nrows-1) with nzDist[i] = number nonzeros with distance i from diagonal
      */
-    ghost_idx_t *nzDist;
-    ghost_idx_t nEnts;
+    ghost_gidx_t *nzDist;
+    ghost_lidx_t nEnts;
 
     /**
      * @brief Permute the matrix rows and column indices (if set in mat->traits->flags) with the given permutation.
@@ -416,7 +424,7 @@ extern "C" {
      */
     ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
     ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope);
-    ghost_error_t ghost_sparsemat_sortrow(ghost_idx_t *col, char *val, size_t valSize, ghost_idx_t rowlen, ghost_idx_t stride);
+    ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSize, ghost_lidx_t rowlen, ghost_lidx_t stride);
     /**
      * @brief Common function for matrix creation from a file.
      *
@@ -430,7 +438,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_idx_t **rpt);
+    ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matrixPath, ghost_lidx_t **rpt) ;
     /**
      * @brief Common function for matrix creation from a function.
      *

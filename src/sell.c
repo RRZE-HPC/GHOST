@@ -384,14 +384,14 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_idx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&mat->col_orig,sizeof(ghost_idx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 
 
 #pragma omp parallel for schedule(runtime) private (i,j)
     for (chunk = 0; chunk < nChunks; chunk++) {
         for (j=0; j<SELL(mat)->chunkLenPadded[chunk]; j++) {
             for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = 0;
+                mat->col_orig[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = 0;
                 memset(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i)],0,mat->elSize);
             }
         }
@@ -435,24 +435,24 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                         } else { // local permutation: distinction between global and local entries
                             if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                                 if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
-                                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
+                                    mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                                 } else {
-                                    SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                    mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                 }
                             } else { // remote entry: copy without permutation
-                                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
+                                mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                             }
                         }
                     } else {
-                        SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
+                        mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                     }
                 }
                 if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                     // sort rows by ascending column indices
-                    ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                    ghost_sparsemat_sortrow(&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
                 }
 #pragma omp critical
-                ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
             }
             memset(tmpval,0,mat->elSize*src->maxrowlen*SELL(mat)->chunkHeight);
             memset(tmpcol,0,sizeof(ghost_idx_t)*src->maxrowlen*SELL(mat)->chunkHeight);
@@ -495,7 +495,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     goto out;
 err:
     free(SELL(mat)->val); SELL(mat)->val = NULL;
-    free(SELL(mat)->col); SELL(mat)->col = NULL;
+    free(mat->col_orig); mat->col_orig = NULL;
     free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
     free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
     free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
@@ -531,8 +531,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     ghost_sell_t *fullSELL = SELL(mat);
     ghost_sell_t *localSELL = NULL, *remoteSELL = NULL;
     DEBUG_LOG(1,"Splitting the SELL matrix into a local and remote part");
-    ghost_idx_t j;
-    ghost_idx_t i;
+    ghost_gidx_t i,j;
     int me;
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
 
@@ -544,7 +543,14 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     ghost_idx_t idx, row;
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        ghost_context_comm_init(mat->context,fullSELL->col);
+        WARNING_LOG("This does not have to be present twice in all cases!");
+        GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_gidx_t)*mat->nEnts),err,ret);
+        GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
+        mat->colsCompressed = true;
+    } else {
+        for (i=0; i<mat->nEnts; i++) {
+            SELL(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
+        }
     }
 
     ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
@@ -778,7 +784,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     GHOST_CALL_RETURN(ghost_nrank(&nprocs, mat->context->mpicomm));
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
 
-    ghost_idx_t *rpt = NULL;
+    ghost_lidx_t *rpt = NULL;
     ghost_idx_t *tmpcol = NULL;
     char *tmpval = NULL;
 
@@ -837,10 +843,10 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_idx,mat->context->lnEnts,1,ghost_mpi_dt_idx,mat->context->mpicomm),err,ret);
 #endif
 
-    DEBUG_LOG(1,"SELL matrix has %"PRIDX" (padded to %"PRIDX") rows, %"PRIDX" cols and %"PRIDX" nonzeros and %"PRIDX" entries",mat->nrows,mat->nrowsPadded,mat->ncols,mat->nnz,mat->context->lnEnts[me]);
+    DEBUG_LOG(1,"SELL matrix has %"PRLIDX" (padded to %"PRLIDX") rows, %"PRGIDX" cols and %"PRLIDX" nonzeros and %"PRLIDX" entries",mat->nrows,mat->nrowsPadded,mat->ncols,mat->nnz,mat->nEnts);
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_idx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&mat->col_orig,sizeof(ghost_idx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime) private (i,j)
     for (chunk = 0; chunk < nChunks; chunk++) {
@@ -867,14 +873,14 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
             curRowCols = &tmpcol[rpt[row]];
             curRowVals = &tmpval[rpt[row]*mat->elSize];
             for (col=0; col<SELL(mat)->rowLen[row]; col++) {
-                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = curRowCols[col];
+                mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = curRowCols[col];
                 memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&curRowVals[col*mat->elSize],mat->elSize);
             }
             if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_SORT_COLS)) {
                 // sort rows by ascending column indices
-                ghost_sparsemat_sortrow(&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+                ghost_sparsemat_sortrow(&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],&SELL(mat)->val[(SELL(mat)->chunkStart[chunk]+i)*mat->elSize],mat->elSize,SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
             }
-            ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&SELL(mat)->col[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
+            ghost_sparsemat_registerrow(mat,mat->context->lfRow[me]+row,&mat->col_orig[SELL(mat)->chunkStart[chunk]+i],SELL(mat)->rowLen[row],SELL(mat)->chunkHeight);
         }
 
     }
@@ -895,7 +901,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 
 err:
     free(SELL(mat)->val); SELL(mat)->val = NULL;
-    free(SELL(mat)->col); SELL(mat)->col = NULL;
+    free(mat->col_orig); mat->col_orig = NULL;
     free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
     free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
     free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;

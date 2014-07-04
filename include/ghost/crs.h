@@ -15,8 +15,8 @@
  */
 typedef struct 
 {
-    ghost_idx_t  *rpt;
-    ghost_idx_t  *col;
+    ghost_lidx_t  *rpt;
+    ghost_lidx_t  *col;
     char *val;
 } 
 ghost_crs_t;

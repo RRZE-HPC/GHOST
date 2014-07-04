@@ -182,7 +182,6 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
             vec->traits.nrowsorig = vec->viewing->traits.nrows;
             char *str;
             ghost_bitmap_list_asprintf(&str,vec->ldmask);
-            WARNING_LOG("%s %d",str,vec->viewing_col);
             if (vec->viewing_col) {
                 ghost_bitmap_clr_range(vec->ldmask,0,vec->viewing_col-1);
             }

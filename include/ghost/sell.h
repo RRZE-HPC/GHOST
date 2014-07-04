@@ -16,11 +16,11 @@
 typedef struct 
 {
     char * val;
-    ghost_idx_t * col;
-    ghost_idx_t * rowLen;
-    ghost_idx_t * rowLenPadded;
-    ghost_idx_t * chunkStart;
-    ghost_idx_t * chunkLen;
+    ghost_lidx_t * col;
+    ghost_lidx_t * rowLen;
+    ghost_lidx_t * rowLenPadded;
+    ghost_lidx_t * chunkStart;
+    ghost_lidx_t * chunkLen;
 /*    ghost_idx_t nrows;
     ghost_idx_t nrowsPadded;
     int T; // number of threads per row (if applicable)
@@ -43,16 +43,16 @@ ghost_sell_aux_t;
 typedef struct 
 {
     char *val;
-    ghost_idx_t *col;
-    ghost_idx_t *chunkStart;
+    ghost_lidx_t *col;
+    ghost_lidx_t *chunkStart;
     double beta; // chunk occupancy
     int T; // number of threads per row (if applicable)
-    ghost_idx_t *chunkMin; // for version with remainder loop
-    ghost_idx_t *chunkLen; // for version with remainder loop
-    ghost_idx_t *chunkLenPadded; // for version with remainder loop
-    ghost_idx_t *rowLen;   // for version with remainder loop
-    ghost_idx_t *rowLenPadded; // for SELL-T 
-    ghost_idx_t chunkHeight;
+    ghost_lidx_t *chunkMin; // for version with remainder loop
+    ghost_lidx_t *chunkLen; // for version with remainder loop
+    ghost_lidx_t *chunkLenPadded; // for version with remainder loop
+    ghost_lidx_t *rowLen;   // for version with remainder loop
+    ghost_lidx_t *rowLenPadded; // for SELL-T 
+    ghost_lidx_t chunkHeight;
     
     ghost_cu_sell_t *cumat;
 }
