@@ -237,7 +237,7 @@ struct ghost_sparsemat_t
      * @param perm The permutation vector.
      * @param invPerm The inverse permutation vector.
      */
-    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_idx_t *perm, ghost_idx_t *invPerm);
+    ghost_error_t (*permute) (ghost_sparsemat_t *mat, ghost_lidx_t *perm, ghost_lidx_t *invPerm);
     /**
      * @brief Calculate y = gamma * (A - I*alpha) * x + beta * y.
      *
@@ -286,7 +286,7 @@ struct ghost_sparsemat_t
      *
      * @return The length of the row or zero if the row index is out of bounds. 
      */
-    ghost_idx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_idx_t row);
+    ghost_lidx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_lidx_t row);
     /**
      * @brief Return the name of the storage format.
      *

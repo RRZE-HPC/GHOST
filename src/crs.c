@@ -36,10 +36,10 @@ static ghost_error_t (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, char **, in
 static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
-static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghost_idx_t *invPerm);
+static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, ghost_lidx_t *invPerm);
 static void CRS_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * CRS_formatName(ghost_sparsemat_t *mat);
-static ghost_idx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_idx_t i);
+static ghost_lidx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i);
 static size_t CRS_byteSize (ghost_sparsemat_t *mat);
 static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 static void CRS_free(ghost_sparsemat_t * mat);
@@ -115,7 +115,7 @@ static ghost_error_t CRS_upload(ghost_sparsemat_t *mat)
     return GHOST_ERR_NOT_IMPLEMENTED;
 }
 
-static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghost_idx_t *invPerm)
+static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, ghost_lidx_t *invPerm)
 {
 #if 0
     if (perm == NULL) {
@@ -269,7 +269,7 @@ static const char * CRS_formatName(ghost_sparsemat_t *mat)
     return "CRS";
 }
 
-static ghost_idx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_idx_t i)
+static ghost_lidx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i)
 {
     if (mat && i<mat->nrows) {
         return CR(mat)->rpt[i+1] - CR(mat)->rpt[i];
@@ -284,8 +284,8 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
         return 0;
     }
 
-    return (size_t)((mat->nrows+1)*sizeof(ghost_idx_t) + 
-            mat->nEnts*(sizeof(ghost_idx_t)+mat->elSize));
+    return (size_t)((mat->nrows+1)*sizeof(ghost_lidx_t) + 
+            mat->nEnts*(sizeof(ghost_lidx_t)+mat->elSize));
 }
 
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src)
@@ -293,7 +293,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     ghost_error_t ret = GHOST_SUCCESS;
 
     char * tmpval = NULL;
-    ghost_idx_t * tmpcol = NULL;
+    ghost_gidx_t * tmpcol = NULL;
 
     int nprocs = 1;
     int me;
@@ -306,7 +306,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
     mat->nEnts = 0;
 
 #pragma omp parallel for schedule(runtime)
@@ -314,14 +314,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         CR(mat)->rpt[i] = 0;
     }
 
-    ghost_idx_t nEnts = 0;
+    ghost_lidx_t nEnts = 0;
     int funcret = 0;
 
     GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
 #pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts,funcret) 
     {
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
 #pragma omp for ordered
         for(i = 0; i < mat->nrows; i++) {
             if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
@@ -358,7 +358,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < mat->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            CR(mat)->col[j] = 0;
+            mat->col_orig[j] = 0;
             memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
         }
     }
@@ -369,8 +369,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 #pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
     {
         int funcret = 0;
-        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_idx_t)),ret);
-        memset(tmpcol,0,sizeof(ghost_idx_t)*src->maxrowlen);
+        GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
+        memset(tmpcol,0,sizeof(ghost_gidx_t)*src->maxrowlen);
     
 #pragma omp for schedule(runtime)
         for( i = 0; i < mat->nrows; i++ ) {
@@ -436,10 +436,6 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
         mat->context->lnEnts[me] = mat->nEnts;
 
-        ghost_idx_t nents;
-        nents = mat->context->lnEnts[me];
-        MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_idx,mat->context->lnEnts,1,ghost_mpi_dt_idx,mat->context->mpicomm),err,ret);
-
         for (i=0; i<nprocs; i++) {
             mat->context->lfEnt[i] = 0;
         } 
@@ -470,7 +466,7 @@ static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsm
     DEBUG_LOG(1,"Creating CRS matrix from CRS matrix");
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
-    ghost_idx_t i,j;
+    ghost_gidx_t i,j;
 
 
     //    mat->data = (ghost_crs_t *)ghost_malloc(sizeof(ghost_crs_t));
@@ -482,8 +478,8 @@ static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsm
     CR(mat)->col = NULL;
     CR(mat)->val = NULL;
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(crsmat->nrows+1)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),crsmat->nEnts*sizeof(ghost_idx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(crsmat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),crsmat->nEnts*sizeof(ghost_lidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),crsmat->nEnts*mat->elSize),err,ret);
 
 #pragma omp parallel for schedule(runtime)
@@ -528,8 +524,8 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     ghost_gidx_t j,i;
     int me;
 
-    ghost_idx_t lnEnts_l, lnEnts_r;
-    ghost_idx_t current_l, current_r;
+    ghost_lidx_t lnEnts_l, lnEnts_r;
+    ghost_lidx_t current_l, current_r;
 
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
@@ -559,7 +555,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
         lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;
 
-        DEBUG_LOG(1,"PE%d: Rows=%"PRLIDX"\t Ents=%"PRIDX"(l),%"PRIDX"(r),%"PRLIDX"(g)\t pdim=%"PRIDX, 
+        DEBUG_LOG(1,"PE%d: Rows=%"PRLIDX"\t Ents=%"PRLIDX"(l),%"PRLIDX"(r),%"PRLIDX"(g)\t pdim=%"PRIDX, 
                 me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
         ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
@@ -570,12 +566,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         remoteCR = mat->remotePart->data;
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->val),lnEnts_l*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->col),lnEnts_l*sizeof(ghost_idx_t)),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_idx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->col),lnEnts_l*sizeof(ghost_lidx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(localCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_lidx_t)),err,ret); 
 
         GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->val),lnEnts_r*mat->elSize),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->col),lnEnts_r*sizeof(ghost_idx_t)),err,ret); 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_idx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->col),lnEnts_r*sizeof(ghost_lidx_t)),err,ret); 
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(remoteCR->rpt),(mat->context->lnrows[me]+1)*sizeof(ghost_lidx_t)),err,ret); 
 
         mat->localPart->nrows = mat->context->lnrows[me];
         mat->localPart->nEnts = lnEnts_l;
@@ -676,7 +672,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     DEBUG_LOG(1,"Reading CRS matrix from file");
     ghost_error_t ret = GHOST_SUCCESS;
 
-    ghost_idx_t i, j;
+    ghost_gidx_t i, j;
     int me;
     
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
@@ -732,7 +728,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
    
 #ifdef GHOST_HAVE_MPI
     int me, nrank;
-    ghost_idx_t i;
+    ghost_gidx_t i;
     GHOST_CALL_RETURN(ghost_rank(&me, mat->context->mpicomm));
     GHOST_CALL_RETURN(ghost_nrank(&nrank, mat->context->mpicomm));
     MPI_File fileh;
@@ -746,7 +742,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_gidx_t *rpt_w_offs = NULL;
     size_t to_write = mat->nrows;
     if (me > 0) { // adjust rpt
-        GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_w_offs,(mat->nrows+1)*sizeof(ghost_idx_t)));
+        GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_w_offs,(mat->nrows+1)*sizeof(ghost_gidx_t)));
         for (i=0; i<mat->nrows+1; i++) {
             rpt_w_offs[i] = CR(mat)->rpt[i]+mat->context->lfEnt[me];
         }
@@ -812,7 +808,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
 
 #endif // GHOST_HAVE_LONGIDX
 
-    ghost_idx_t nnz;
+    ghost_gidx_t nnz;
     ghost_sparsemat_nnz(&nnz,mat);
     size_t sizeofEl;
     ghost_datatype_size(&sizeofEl,mat->traits->datatype);
@@ -844,8 +840,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
         return GHOST_ERR_IO;
     }
 #else
-    ghost_idx_t i;
-    ghost_idx_t j;
+    ghost_gidx_t i,j;
     int64_t rpt,col;
 
     for (i = 0; i < mat->nrows+1; i++) {
