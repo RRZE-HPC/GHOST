@@ -30,13 +30,13 @@ static char *tmprecv_mem = NULL;
 static char *work = NULL;
 static ghost_idx_t *dueptr = NULL;
 static ghost_idx_t *wishptr = NULL;
-static ghost_nnz_t acc_dues = 0;
-static ghost_nnz_t acc_wishes = 0;
+static ghost_idx_t acc_dues = 0;
+static ghost_idx_t acc_wishes = 0;
 #ifdef GHOST_HAVE_CUDA || !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
 static void *cu_work;
 #endif
 
-//static ghost_nnz_t max_dues;
+//static ghost_idx_t max_dues;
 #endif
 
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
@@ -187,7 +187,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int nprocs;
     int me; 
     int i, from_PE, to_PE;
-    //ghost_nnz_t max_wishes;
+    //ghost_idx_t max_wishes;
     ghost_error_t ret = GHOST_SUCCESS;
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);

@@ -47,7 +47,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #pragma omp parallel shared(partsums)
     {
         ghost_idx_t j,c,v;
-        ghost_nnz_t offs;
+        ghost_idx_t offs;
         __m128d val;
         __m128d rhs;
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT/2
@@ -159,7 +159,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #ifdef GHOST_HAVE_SSE
     INFO_LOG("in RM kernel with %d vecs",invec->traits.ncols);
     ghost_idx_t j,c,col;
-    ghost_nnz_t offs;
+    ghost_idx_t offs;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -327,7 +327,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 #pragma omp parallel shared (partsums)
     {
         ghost_idx_t j,c,col;
-        ghost_nnz_t offs;
+        ghost_idx_t offs;
         __m128d rhs;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT*NVECS/2

@@ -34,13 +34,13 @@ static void (*ghost_castarray_funcs[4][4]) (void *, void *, int) =
     {&zs_ghost_castarray,&zd_ghost_castarray,&zc_ghost_castarray,&zz_ghost_castarray}};
 
 
-ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
+ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed)
 {
     ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
-    ghost_nnz_t i,j,e;
+    ghost_idx_t i,j,e;
 
     GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
     swapReq = SWAPREQ(header);
@@ -164,7 +164,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, g
 }
 
 
-ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols)
+ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, int keepCols)
 {
     FILE *filed;
 
@@ -180,13 +180,13 @@ ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nn
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
+ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, FILE *filed)
 {
     ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
-    ghost_nnz_t i,j,e;
+    ghost_idx_t i,j,e;
     size_t sizeofdt;
     GHOST_CALL_RETURN(ghost_datatype_size(&sizeofdt,datatype));
     GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
@@ -364,7 +364,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
+ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm)
 {
     FILE *filed;
 
@@ -380,13 +380,13 @@ ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed)
+ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, FILE *filed)
 {
     ghost_bincrs_header_t header;
     size_t ret;
     int swapReq;
     off64_t offs;
-    ghost_nnz_t i;
+    ghost_idx_t i;
 
     GHOST_CALL_RETURN(ghost_bincrs_header_read(&header,matrixPath));
     swapReq = SWAPREQ(header);
@@ -456,7 +456,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, g
     DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
     int64_t *tmp;
     GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
-    if ((ghost_nnz_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
+    if ((ghost_idx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
         ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
         return GHOST_ERR_IO;
     }
@@ -477,7 +477,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, g
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bincrs_rpt_read(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm)
+ghost_error_t ghost_bincrs_rpt_read(ghost_idx_t *rpt, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm)
 {
     FILE *filed;
 

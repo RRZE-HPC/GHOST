@@ -132,8 +132,8 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_idx_t *perm, ghos
     int me;
 
 
-    ghost_nnz_t *rpt_perm = NULL;
-    ghost_nnz_t *col_perm = NULL;
+    ghost_idx_t *rpt_perm = NULL;
+    ghost_idx_t *col_perm = NULL;
     char *val_perm = NULL;
 
     GHOST_CALL_GOTO(ghost_rank(&me, MPI_COMM_WORLD),err,ret);
@@ -277,7 +277,7 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
         return 0;
     }
 
-    return (size_t)((mat->nrows+1)*sizeof(ghost_nnz_t) + 
+    return (size_t)((mat->nrows+1)*sizeof(ghost_idx_t) + 
             mat->nEnts*(sizeof(ghost_idx_t)+mat->elSize));
 }
 
@@ -307,7 +307,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         CR(mat)->rpt[i] = 0;
     }
 
-    ghost_nnz_t nEnts = 0;
+    ghost_idx_t nEnts = 0;
     int funcret = 0;
 
     GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
@@ -429,7 +429,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
         mat->context->lnEnts[me] = mat->nEnts;
 
-        ghost_nnz_t nents;
+        ghost_idx_t nents;
         nents = mat->context->lnEnts[me];
         MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_nnz,mat->context->lnEnts,1,ghost_mpi_dt_nnz,mat->context->mpicomm),err,ret);
 
@@ -522,8 +522,8 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     ghost_idx_t i;
     int me;
 
-    ghost_nnz_t lnEnts_l, lnEnts_r;
-    ghost_nnz_t current_l, current_r;
+    ghost_idx_t lnEnts_l, lnEnts_r;
+    ghost_idx_t current_l, current_r;
 
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
@@ -799,7 +799,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
 
 #endif // GHOST_HAVE_LONGIDX
 
-    ghost_nnz_t nnz;
+    ghost_idx_t nnz;
     ghost_sparsemat_nnz(&nnz,mat);
     size_t sizeofEl;
     ghost_datatype_size(&sizeofEl,mat->traits->datatype);
@@ -832,7 +832,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
     }
 #else
     ghost_idx_t i;
-    ghost_nnz_t j;
+    ghost_idx_t j;
     int64_t rpt,col;
 
     for (i = 0; i < mat->nrows+1; i++) {

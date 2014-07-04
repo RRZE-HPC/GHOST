@@ -3,7 +3,7 @@
 
 template<typename m_t, typename f_t> void ghost_castarray_tmpl(void *out, void *in, int nEnts)
 {
-    ghost_nnz_t i;
+    ghost_idx_t i;
     m_t *md = (m_t *)out;
     f_t *fd = (f_t *)in;
 

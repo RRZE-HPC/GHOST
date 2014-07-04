@@ -131,10 +131,6 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
  * @brief Type for row/column indices of matrices/vectors.
  */
 typedef int64_t ghost_idx_t; 
-/**
- * @brief Type for nonzero indices of matrix
- */
-typedef int64_t ghost_nnz_t;
 #ifdef GHOST_HAVE_MKL
 /**
  * @brief Type for indices used in BLAS calls
@@ -167,7 +163,6 @@ typedef int ghost_blas_idx_t;
 #else
 
 typedef int32_t ghost_idx_t;
-typedef int32_t ghost_nnz_t; 
 typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 

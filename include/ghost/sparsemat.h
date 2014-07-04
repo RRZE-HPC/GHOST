@@ -207,7 +207,7 @@ struct ghost_sparsemat_t
     ghost_idx_t nrows;
     ghost_idx_t ncols;
     ghost_idx_t nrowsPadded;
-    ghost_nnz_t nnz;
+    ghost_idx_t nnz;
     ghost_idx_t lowerBandwidth;
     ghost_idx_t upperBandwidth;
     ghost_idx_t bandwidth;
@@ -219,8 +219,8 @@ struct ghost_sparsemat_t
     /**
      * @brief Array of length (2*nrows-1) with nzDist[i] = number nonzeros with distance i from diagonal
      */
-    ghost_nnz_t *nzDist;
-    ghost_nnz_t nEnts;
+    ghost_idx_t *nzDist;
+    ghost_idx_t nEnts;
 
     /**
      * @brief Permute the matrix rows and column indices (if set in mat->traits->flags) with the given permutation.
@@ -377,7 +377,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sparsemat_nnz(ghost_nnz_t *nnz, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_sparsemat_nnz(ghost_idx_t *nnz, ghost_sparsemat_t *mat);
     /**
      * @brief Obtain the global number of rows of a sparse matrix.
      

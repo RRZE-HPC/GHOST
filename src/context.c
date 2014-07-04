@@ -36,8 +36,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishlist,nranks*sizeof(ghost_idx_t *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->duelist,nranks*sizeof(ghost_idx_t *)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_nnz_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_nnz_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_idx_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_idx_t)),err,ret); 
 #ifdef GHOST_HAVE_CUDA
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->cu_duelist,nranks*sizeof(ghost_idx_t *)),err,ret);
 #endif
@@ -95,8 +95,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
     }
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnEnts, nranks*sizeof(ghost_nnz_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lfEnt, nranks*sizeof(ghost_nnz_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnEnts, nranks*sizeof(ghost_idx_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lfEnt, nranks*sizeof(ghost_idx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lnrows, nranks*sizeof(ghost_idx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->lfRow, nranks*sizeof(ghost_idx_t)),err,ret);
 
@@ -138,11 +138,11 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
             }
             (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
                     
-            GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_nnz_t)),err,ret);
+            GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,((*context)->lnrows[me]+1) * sizeof(ghost_idx_t)),err,ret);
             GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me]+1, NULL),err,ret);
 
 
-            ghost_nnz_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
+            ghost_idx_t nnz = rpt[(*context)->lnrows[me]]-rpt[0];
                 
             GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_idx_t)),err,ret);
             GHOST_CALL_GOTO(ghost_readCol(col, matrixPath, (*context)->lfRow[me], (*context)->lnrows[me], NULL,NULL),err,ret);
@@ -209,7 +209,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
 
         if ((*context)->flags & GHOST_CONTEXT_DIST_NZ)
         { // read rpt and fill lfrow, lnrows, lfent, lnents
-            ghost_nnz_t gnnz;
+            ghost_idx_t gnnz;
             if (!matrixSource) {
                 ERROR_LOG("If distribution by nnz a matrix source has to be given!");
                 ret = GHOST_ERR_INVALID_ARG;
@@ -219,7 +219,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
 
 
             if (me == 0) {
-                GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rpt,sizeof(ghost_nnz_t)*((*context)->gnrows+1)),err,ret);
+                GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->rpt,sizeof(ghost_idx_t)*((*context)->gnrows+1)),err,ret);
 #pragma omp parallel for schedule(runtime)
                 for( row = 0; row < (*context)->gnrows+1; row++ ) {
                     (*context)->rpt[row] = 0;
@@ -252,12 +252,12 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows
                 }
 
                 gnnz = (*context)->rpt[(*context)->gnrows];
-                ghost_nnz_t target_nnz;
+                ghost_idx_t target_nnz;
                 target_nnz = (gnnz/nranks)+1; /* sonst bleiben welche uebrig! */
 
                 (*context)->lfRow[0]  = 0;
                 (*context)->lfEnt[0] = 0;
-                ghost_nnz_t j = 1;
+                ghost_idx_t j = 1;
 
                 for (row=0;row<(*context)->gnrows;row++){
                     if ((*context)->rpt[row] >= j*target_nnz){
@@ -407,17 +407,17 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
 {
 
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_nnz_t j;
-    ghost_nnz_t i;
-    ghost_nnz_t max_loc_elements, thisentry;
-    ghost_nnz_t *present_values = NULL;
-    ghost_nnz_t acc_dues = 0;
-    ghost_nnz_t *tmp_transfers = NULL;
-    ghost_nnz_t acc_wishes;
+    ghost_idx_t j;
+    ghost_idx_t i;
+    ghost_idx_t max_loc_elements, thisentry;
+    ghost_idx_t *present_values = NULL;
+    ghost_idx_t acc_dues = 0;
+    ghost_idx_t *tmp_transfers = NULL;
+    ghost_idx_t acc_wishes;
 
-    ghost_nnz_t *item_from = NULL;
+    ghost_idx_t *item_from = NULL;
 
-    ghost_nnz_t *wishlist_counts = NULL;
+    ghost_idx_t *wishlist_counts = NULL;
 
     ghost_idx_t **wishlist = NULL;
     ghost_idx_t **cwishlist = NULL;
@@ -432,7 +432,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
     ghost_idx_t *comm_remoteEl = NULL;
     ghost_idx_t *wishl_mem  = NULL;
     ghost_idx_t *duel_mem   = NULL;
-    ghost_nnz_t acc_transfer_wishes, acc_transfer_dues;
+    ghost_idx_t acc_transfer_wishes, acc_transfer_dues;
 
     size_t size_nint, size_col;
     size_t size_a2ai, size_nptr, size_pval;  
@@ -460,7 +460,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
         }
     }
 
-    size_pval = (size_t)( max_loc_elements * sizeof(ghost_nnz_t) );
+    size_pval = (size_t)( max_loc_elements * sizeof(ghost_idx_t) );
     size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_idx_t ) );
 
     /*       / 1  2  .  3  4  . \
@@ -483,7 +483,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_idx_t *col)
       
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_nnz_t)),err,ret); 
+    GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_idx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_col),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_col),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret); 

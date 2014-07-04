@@ -83,11 +83,11 @@ struct ghost_context_t
     /**
      * @brief Number of matrix elements for each rank
      */
-    ghost_nnz_t* lnEnts; // TODO rename nLclEnts
+    ghost_idx_t* lnEnts; // TODO rename nLclEnts
     /**
      * @brief Index of first element into the global matrix for each rank
      */
-    ghost_nnz_t* lfEnt; // TODO rename firstLclEnt
+    ghost_idx_t* lfEnt; // TODO rename firstLclEnt
     /**
      * @brief Number of matrix rows for each rank
      */
@@ -99,7 +99,7 @@ struct ghost_context_t
     /**
      * @brief Number of wishes (= unique RHS elements to get) from each rank
      */
-    ghost_nnz_t * wishes; // TODO rename nWishes
+    ghost_idx_t * wishes; // TODO rename nWishes
     /**
      * @brief Column idx of wishes from each rank
      */
@@ -107,7 +107,7 @@ struct ghost_context_t
     /**
      * @brief Number of dues (= unique RHS elements from myself) to each rank
      */
-    ghost_nnz_t * dues; // TODO rename nDues
+    ghost_idx_t * dues; // TODO rename nDues
     /**
      * @brief Column indices of dues to each rank
      */

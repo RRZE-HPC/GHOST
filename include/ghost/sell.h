@@ -19,7 +19,7 @@ typedef struct
     ghost_idx_t * col;
     ghost_idx_t * rowLen;
     ghost_idx_t * rowLenPadded;
-    ghost_nnz_t * chunkStart;
+    ghost_idx_t * chunkStart;
     ghost_idx_t * chunkLen;
 /*    ghost_idx_t nrows;
     ghost_idx_t nrowsPadded;
@@ -44,7 +44,7 @@ typedef struct
 {
     char *val;
     ghost_idx_t *col;
-    ghost_nnz_t *chunkStart;
+    ghost_idx_t *chunkStart;
     double beta; // chunk occupancy
     int T; // number of threads per row (if applicable)
     ghost_idx_t *chunkMin; // for version with remainder loop

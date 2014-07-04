@@ -641,8 +641,8 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 
     ghost_idx_t ncol = arg->rhs->traits.ncols;
     double flops;
-    ghost_nnz_t nnz;
-    ghost_nnz_t nrow;
+    ghost_idx_t nnz;
+    ghost_idx_t nrow;
     int flopsPerEntry;
 
     ghost_sparsemat_nnz(&nnz,arg->mat);

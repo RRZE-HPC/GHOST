@@ -50,12 +50,12 @@ extern "C" {
 #endif
 
     ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *path);
-    ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols);
-    ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
-    ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
-    ghost_error_t ghost_bincrs_rpt_read(ghost_nnz_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_nnz_t offsRows, ghost_nnz_t nRows, ghost_permutation_t *perm, FILE *filed);
+    ghost_error_t ghost_bincrs_col_read(ghost_idx_t *col, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, int keepCols);
+    ghost_error_t ghost_bincrs_col_read_opened(ghost_idx_t *col, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
+    ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm);
+    ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, FILE *filed);
+    ghost_error_t ghost_bincrs_rpt_read(ghost_idx_t *rpt, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm);
+    ghost_error_t ghost_bincrs_rpt_read_opened(ghost_idx_t *rpt, char *matrixPath, ghost_idx_t offsRows, ghost_idx_t nRows, ghost_permutation_t *perm, FILE *filed);
 
     /**
      * @brief Check if the machine endianess differs from the sparse matrix file.

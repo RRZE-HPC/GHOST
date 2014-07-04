@@ -273,7 +273,7 @@ extern __shared__ char shared[];
 }
 
     template<typename m_t, typename v_t>
-__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_idx_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(C);
     UNUSED(T);
@@ -309,7 +309,7 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int
 }
     
     template<typename m_t, typename v_t>  
-__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrowsorig, int nrowspadded, int ncolsorig, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_idx_t *chunkstart, ghost_idx_t *chunklen, int C, int T, char *colmask, char *rowmask, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -363,7 +363,7 @@ __global__ void SELL_kernel_scattered_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, i
 
 
     template<typename m_t, typename v_t>  
-__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_idx_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -406,7 +406,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
 }
 
     template<typename m_t, typename v_t>
-__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_idx_t nrows, ghost_idx_t nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, ghost_idx_t C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
+__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_idx_t nrows, ghost_idx_t nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_idx_t *chunkstart, ghost_idx_t *chunklen, ghost_idx_t C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot, const bool do_axpy, const bool do_axpby, const bool do_scale, const bool do_shift, const bool do_vshift, const bool do_localdot)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
 
