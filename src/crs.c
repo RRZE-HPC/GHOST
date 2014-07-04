@@ -431,7 +431,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
         ghost_idx_t nents;
         nents = mat->context->lnEnts[me];
-        MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_nnz,mat->context->lnEnts,1,ghost_mpi_dt_nnz,mat->context->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Allgather(&nents,1,ghost_mpi_dt_idx,mat->context->lnEnts,1,ghost_mpi_dt_idx,mat->context->mpicomm),err,ret);
 
         for (i=0; i<nprocs; i++) {
             mat->context->lfEnt[i] = 0;
@@ -546,7 +546,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
         lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;
 
-        DEBUG_LOG(1,"PE%d: Rows=%"PRIDX"\t Ents=%"PRNNZ"(l),%"PRNNZ"(r),%"PRNNZ"(g)\t pdim=%"PRIDX, 
+        DEBUG_LOG(1,"PE%d: Rows=%"PRIDX"\t Ents=%"PRIDX"(l),%"PRIDX"(r),%"PRIDX"(g)\t pdim=%"PRIDX, 
                 me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
         ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);

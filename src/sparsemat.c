@@ -322,8 +322,8 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
 
     DEBUG_LOG(1,"local rows          = %"PRIDX,mat->context->lnrows[me]);
     DEBUG_LOG(1,"local rows (offset) = %"PRIDX,mat->context->lfRow[me]);
-    DEBUG_LOG(1,"local entries          = %"PRNNZ,mat->context->lnEnts[me]);
-    DEBUG_LOG(1,"local entries (offset) = %"PRNNZ,mat->context->lfEnt[me]);
+    DEBUG_LOG(1,"local entries          = %"PRIDX,mat->context->lnEnts[me]);
+    DEBUG_LOG(1,"local entries (offset) = %"PRIDX,mat->context->lfEnt[me]);
 
     mat->nrows = mat->context->lnrows[me];
     mat->nnz = mat->context->lnEnts[me];
@@ -767,7 +767,7 @@ ghost_error_t ghost_sparsemat_nnz(ghost_idx_t *nnz, ghost_sparsemat_t *mat)
         *nnz = lnnz;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_nnz,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #else
         ERROR_LOG("Trying to get the number of matrix nonzeros in a distributed context without MPI");
         return GHOST_ERR_UNKNOWN;
@@ -804,7 +804,7 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_line_string(str,"Data type",NULL,"%s",ghost_datatype_string(mat->traits->datatype));
     ghost_line_string(str,"Matrix location",NULL,"%s",matrixLocation);
     ghost_line_string(str,"Total number of rows",NULL,"%"PRIDX,nrows);
-    ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRNNZ,nnz);
+    ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRIDX,nnz);
     ghost_line_string(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
     ghost_line_string(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
 
