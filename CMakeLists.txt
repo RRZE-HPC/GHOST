@@ -40,6 +40,7 @@ if (USE_LOC_LONGIDX)
 endif()
 if (USE_GLOB_LONGIDX)
     set(GHOST_HAVE_GLOB_LONGIDX 1)
+    set(GHOST_HAVE_LONGIDX 1) # backward compatibility
 endif()
 
 if (TRACK_DATATRANSFERS)
