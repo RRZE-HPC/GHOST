@@ -264,8 +264,8 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
             }
         }
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_idx, 0, mat->context->mpicomm),err,ret);
-        MPI_CALL_GOTO(MPI_Bcast(mat->context->lnEnts, nprocs, ghost_mpi_dt_idx, 0, mat->context->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_gidx, 0, mat->context->mpicomm),err,ret);
+        MPI_CALL_GOTO(MPI_Bcast(mat->context->lnEnts, nprocs, ghost_mpi_dt_lidx, 0, mat->context->mpicomm),err,ret);
 
         if (me != 0) {
             GHOST_CALL_GOTO(ghost_malloc_align((void **)grpt,(mat->context->lnrows[me]+1)*sizeof(ghost_gidx_t),GHOST_DATA_ALIGNMENT),err,ret);
@@ -281,11 +281,11 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
             req[i] = MPI_REQUEST_NULL;
 
         if (me != 0) {
-            MPI_CALL_GOTO(MPI_Irecv(grpt,mat->context->lnrows[me]+1,ghost_mpi_dt_idx,0,me,mat->context->mpicomm,&req[msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Irecv(grpt,mat->context->lnrows[me]+1,ghost_mpi_dt_gidx,0,me,mat->context->mpicomm,&req[msgcount]),err,ret);
             msgcount++;
         } else {
             for (i=1;i<nprocs;i++) {
-                MPI_CALL_GOTO(MPI_Isend(&grpt[mat->context->lfRow[i]],mat->context->lnrows[i]+1,ghost_mpi_dt_idx,i,i,mat->context->mpicomm,&req[msgcount]),err,ret);
+                MPI_CALL_GOTO(MPI_Isend(&grpt[mat->context->lfRow[i]],mat->context->lnrows[i]+1,ghost_mpi_dt_gidx,i,i,mat->context->mpicomm,&req[msgcount]),err,ret);
                 msgcount++;
             }
         }
@@ -746,7 +746,7 @@ ghost_error_t ghost_sparsemat_nrows(ghost_gidx_t *nrows, ghost_sparsemat_t *mat)
         *nrows = lnrows;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_RETURN(MPI_Allreduce(&lnrows,nrows,1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnrows,nrows,1,ghost_mpi_dt_gidx,MPI_SUM,mat->context->mpicomm));
 #else
         ERROR_LOG("Trying to get the number of matrix rows in a distributed context without MPI");
         return GHOST_ERR_UNKNOWN;
@@ -768,7 +768,7 @@ ghost_error_t ghost_sparsemat_nnz(ghost_gidx_t *nnz, ghost_sparsemat_t *mat)
         *nnz = lnnz;
     } else {
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
+        MPI_CALL_RETURN(MPI_Allreduce(&lnnz,nnz,1,ghost_mpi_dt_gidx,MPI_SUM,mat->context->mpicomm));
 #else
         ERROR_LOG("Trying to get the number of matrix nonzeros in a distributed context without MPI");
         return GHOST_ERR_UNKNOWN;
@@ -804,14 +804,14 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_header_string(str,"%s @ rank %d",mat->name,myrank);
     ghost_line_string(str,"Data type",NULL,"%s",ghost_datatype_string(mat->traits->datatype));
     ghost_line_string(str,"Matrix location",NULL,"%s",matrixLocation);
-    ghost_line_string(str,"Total number of rows",NULL,"%"PRIDX,nrows);
-    ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRIDX,nnz);
+    ghost_line_string(str,"Total number of rows",NULL,"%"PRGIDX,nrows);
+    ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRGIDX,nnz);
     ghost_line_string(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
-    ghost_line_string(str,"Bandwidth",NULL,"%"PRIDX,mat->bandwidth);
+    ghost_line_string(str,"Bandwidth",NULL,"%"PRGIDX,mat->bandwidth);
 
-    ghost_line_string(str,"Local number of rows",NULL,"%"PRIDX,mat->nrows);
-    ghost_line_string(str,"Local number of rows (padded)",NULL,"%"PRIDX,mat->nrowsPadded);
-    ghost_line_string(str,"Local number of nonzeros",NULL,"%"PRIDX,mat->nnz);
+    ghost_line_string(str,"Local number of rows",NULL,"%"PRLIDX,mat->nrows);
+    ghost_line_string(str,"Local number of rows (padded)",NULL,"%"PRLIDX,mat->nrowsPadded);
+    ghost_line_string(str,"Local number of nonzeros",NULL,"%"PRLIDX,mat->nnz);
 
     ghost_line_string(str,"Full   matrix format",NULL,"%s",mat->formatName(mat));
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED)

@@ -153,7 +153,7 @@ struct ghost_sparsemat_traits_t
      */
     void * aux;
     char * scotchStrat;
-    ghost_idx_t sortScope;
+    ghost_gidx_t sortScope;
     ghost_datatype_t datatype;
 };
 
@@ -199,8 +199,6 @@ struct ghost_sparsemat_t
     size_t elSize;
 
     ghost_permutation_t *permutation;
-    //ghost_idx_t *rowPerm;
-    //ghost_idx_t *invRowPerm;
 
     ghost_gidx_t *col_orig;
 
@@ -311,7 +309,6 @@ struct ghost_sparsemat_t
      * The function func may be called several times for each row concurrently by multiple threads.
      */
     ghost_error_t (*fromRowFunc)(ghost_sparsemat_t *, ghost_sparsemat_src_rowfunc_t *src);
-    //ghost_idx_t maxrowlen, int base, ghost_sparsemat_fromRowFunc_t func, ghost_sparsemat_fromRowFunc_flags_t flags);
     /**
      * @brief Write a matrix to a binary CRS file.
      *
@@ -385,7 +382,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sparsemat_nnz(ghost_idx_t *nnz, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_sparsemat_nnz(ghost_gidx_t *nnz, ghost_sparsemat_t *mat);
     /**
      * @brief Obtain the global number of rows of a sparse matrix.
      
@@ -394,7 +391,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sparsemat_nrows(ghost_idx_t *nrows, ghost_sparsemat_t *mat);
+    ghost_error_t ghost_sparsemat_nrows(ghost_gidx_t *nrows, ghost_sparsemat_t *mat);
     /**
      * @ingroup stringification
      *
@@ -423,7 +420,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
-    ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_idx_t scope);
+    ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope);
     ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSize, ghost_lidx_t rowlen, ghost_lidx_t stride);
     /**
      * @brief Common function for matrix creation from a file.
@@ -475,7 +472,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *col, ghost_idx_t rowlen, ghost_idx_t stride);
+    ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t row, ghost_gidx_t *col, ghost_lidx_t rowlen, ghost_lidx_t stride);
     /**
      * @brief Finalize the storing of matrix information like bandwidth and nonzero distribution.
      *

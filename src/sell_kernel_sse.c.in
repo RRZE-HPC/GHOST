@@ -12,7 +12,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 {
 #if defined(GHOST_HAVE_SSE) && CHUNKHEIGHT>=2
     INFO_LOG("in CM kernel w CH %d",CHUNKHEIGHT);
-    ghost_idx_t i;
+    ghost_lidx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
@@ -46,8 +46,8 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 
 #pragma omp parallel shared(partsums)
     {
-        ghost_idx_t j,c,v;
-        ghost_idx_t offs;
+        ghost_lidx_t j,c,v;
+        ghost_lidx_t offs;
         __m128d val;
         __m128d rhs;
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT/2
@@ -99,7 +99,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                         #GHOST_UNROLL#dot2[v] = _mm_add_pd(dot2[v],_mm_mul_pd(_mm_load_pd(&rval[c*CHUNKHEIGHT+2*@]),_mm_load_pd(&lval[c*CHUNKHEIGHT+2*@])));#CHUNKHEIGHT/2
                         #GHOST_UNROLL#dot3[v] = _mm_add_pd(dot3[v],_mm_mul_pd(_mm_load_pd(&rval[c*CHUNKHEIGHT+2*@]),_mm_load_pd(&rval[c*CHUNKHEIGHT+2*@])));#CHUNKHEIGHT/2
                     } else {
-                        ghost_idx_t rem;
+                        ghost_lidx_t rem;
                         for (rem=0; rem<mat->nrows-c*CHUNKHEIGHT; rem++) {
                             partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += lval[c*CHUNKHEIGHT+rem]*lval[c*CHUNKHEIGHT+rem];
                             partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += lval[c*CHUNKHEIGHT+rem]*rval[c*CHUNKHEIGHT+rem];
@@ -128,7 +128,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_idx_t v;
+        ghost_lidx_t v;
         for (v=0; v<invec->traits.ncols; v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   invec->traits.ncols] = 0.;
@@ -158,8 +158,8 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 {
 #ifdef GHOST_HAVE_SSE
     INFO_LOG("in RM kernel with %"PRLIDX" vecs",invec->traits.ncols);
-    ghost_idx_t j,c,col;
-    ghost_idx_t offs;
+    ghost_lidx_t j,c,col;
+    ghost_lidx_t offs;
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -203,7 +203,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
             ghost_malloc((void **)&tmpresult,sizeof(double)*CHUNKHEIGHT*ncolspadded);
         }
 
-        ghost_idx_t donecols;
+        ghost_lidx_t donecols;
 
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
@@ -318,7 +318,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         }
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*invec->traits.ncols+padding)*nthreads*sizeof(double))); 
-        ghost_idx_t col;
+        ghost_lidx_t col;
         for (col=0; col<(3*invec->traits.ncols+padding)*nthreads; col++) {
             partsums[col] = 0.;
         }
@@ -326,8 +326,8 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 
 #pragma omp parallel shared (partsums)
     {
-        ghost_idx_t j,c,col;
-        ghost_idx_t offs;
+        ghost_lidx_t j,c,col;
+        ghost_lidx_t offs;
         __m128d rhs;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m128d tmp@;#CHUNKHEIGHT*NVECS/2
@@ -374,7 +374,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
         }
-        ghost_idx_t col;
+        ghost_lidx_t col;
         for (col=0; col<invec->traits.ncols; col++) {
             local_dot_product[col                       ] = 0.; 
             local_dot_product[col  +   invec->traits.ncols] = 0.;

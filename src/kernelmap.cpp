@@ -13,7 +13,7 @@ struct ghost_tsmttsm_parameters_t
     ghost_datatype_t dt;
     int blocksz;
 
-    ghost_tsmttsm_parameters_t(ghost_datatype_t dt, ghost_idx_t blocksz) : dt(dt), blocksz(blocksz) {}
+    ghost_tsmttsm_parameters_t(ghost_datatype_t dt, ghost_lidx_t blocksz) : dt(dt), blocksz(blocksz) {}
 };
     
 bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 

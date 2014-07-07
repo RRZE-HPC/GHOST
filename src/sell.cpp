@@ -60,8 +60,8 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *rhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_idx_t i,j,c,col,colidx;
-    ghost_idx_t v;
+    ghost_lidx_t i,j,c,col,colidx;
+    ghost_lidx_t v;
     int nthreads = 1;
 
     unsigned clsize;
@@ -247,8 +247,8 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     v_t *lhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
     int nthreads = 1;
-    ghost_idx_t i,j;
-    ghost_idx_t v;
+    ghost_lidx_t i,j;
+    ghost_lidx_t v;
     v_t tmp;
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     m_t *sellv = (m_t*)(sell->val);
@@ -343,7 +343,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     DEBUG_LOG(1,"Creating SELL matrix");
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
-    ghost_idx_t i,j,c;
+    ghost_lidx_t i,j,c;
     unsigned int flags = mat->traits->flags;
 
 
@@ -351,23 +351,23 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     //mat->data = (ghost_sell_t *)ghost_malloc(sizeof(ghost_sell_t));
     mat->nnz = crsmat->nnz;
 
-    ghost_idx_t chunkMin = crsmat->ncols;
-    ghost_idx_t chunkLen = 0;
-    ghost_idx_t chunkLenPadded = 0;
-    ghost_idx_t chunkEnts = 0;
-    ghost_idx_t nnz = 0;
+    ghost_lidx_t chunkMin = crsmat->ncols;
+    ghost_lidx_t chunkLen = 0;
+    ghost_lidx_t chunkLenPadded = 0;
+    ghost_lidx_t chunkEnts = 0;
+    ghost_lidx_t nnz = 0;
     double chunkAvg = 0.;
-    ghost_idx_t curChunk = 1;
+    ghost_lidx_t curChunk = 1;
     double avgRowlen = 0;
-    std::map<ghost_idx_t,ghost_idx_t> rowlengths;
+    std::map<ghost_lidx_t,ghost_lidx_t> rowlengths;
 
-    ghost_idx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkStart, (nChunks+1)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_idx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_idx_t)),err,ret);
+    ghost_lidx_t nChunks = mat->nrowsPadded/SELL(mat)->chunkHeight;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkStart, (nChunks+1)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkMin, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLen, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->chunkLenPadded, (nChunks)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLen, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->rowLenPadded, (mat->nrowsPadded)*sizeof(ghost_lidx_t)),err,ret);
     SELL(mat)->chunkStart[0] = 0;
     SELL(mat)->maxRowLen = 0;
 
@@ -402,8 +402,8 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
        }*/
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
 
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,mat->nrows*sizeof(ghost_idx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
 
         for (c=0; c<crsmat->nrows/SELL(mat)->scope; c++)  
@@ -426,7 +426,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
         /* sort within same rowlength with asceding row number #################### */
         /*i=0;
           while(i < cr->nrows) {
-          ghost_idx_t start = i;
+          ghost_lidx_t start = i;
 
           j = rowSort[start].nEntsInRow;
           while( i<cr->nrows && rowSort[i].nEntsInRow >= j ) 
@@ -510,7 +510,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     rowlengths.erase(0); // erase padded rows
     SELL(mat)->variance = 0.;
     SELL(mat)->deviation = 0.;
-    for (std::map<ghost_idx_t,ghost_idx_t>::const_iterator it = rowlengths.begin(); it != rowlengths.end(); it++) {
+    for (std::map<ghost_lidx_t,ghost_lidx_t>::const_iterator it = rowlengths.begin(); it != rowlengths.end(); it++) {
         SELL(mat)->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
     SELL(mat)->variance /= mat->nrows;
@@ -522,7 +522,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
     }
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->traits->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_idx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
 
     DEBUG_LOG(2,"Doing SELL NUMA first-touch initialization");
     if (SELL(mat)->chunkHeight < mat->nrowsPadded) 
@@ -561,7 +561,7 @@ template <typename m_t> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost
         for (j=0; j<SELL(mat)->chunkLen[c]; j++) {
 
             for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                ghost_idx_t row = c*SELL(mat)->chunkHeight+i;
+                ghost_lidx_t row = c*SELL(mat)->chunkHeight+i;
 
                 if (j<SELL(mat)->rowLen[row]) {
                     if (flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -618,14 +618,14 @@ out:
 
 template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense)
 {
-    ghost_idx_t chunk,i,j,row=0,col;
+    ghost_lidx_t chunk,i,j,row=0,col;
     m_t *val = (m_t *)SELL(mat)->val;
 
     stringstream buffer;
 
     for (chunk = 0; chunk < mat->nrowsPadded/SELL(mat)->chunkHeight; chunk++) {
         for (i=0; i<SELL(mat)->chunkHeight && row<mat->nrows; i++, row++) {
-            ghost_idx_t rowOffs = SELL(mat)->chunkStart[chunk]+i;
+            ghost_lidx_t rowOffs = SELL(mat)->chunkStart[chunk]+i;
             if (dense) {
                 for (col=0, j=0; col<mat->ncols; col++) {
                     if ((j < SELL(mat)->rowLen[row]) && (SELL(mat)->col[rowOffs+j*SELL(mat)->chunkHeight] == col)) { // there is an entry at col
@@ -637,7 +637,7 @@ template <typename m_t> static ghost_error_t SELL_stringify(ghost_sparsemat_t *m
                 }
             } else {
                 for (j=0; j<(dense?mat->ncols:SELL(mat)->chunkLen[chunk]); j++) {
-                    ghost_idx_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
+                    ghost_lidx_t idx = SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i;
                     if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                         buffer << val[idx] << " (" << SELL(mat)->col[idx] << ")" << "\t";
                     } else {

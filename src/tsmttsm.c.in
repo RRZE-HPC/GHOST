@@ -45,7 +45,7 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
-    ghost_idx_t k = w->traits.ncols;
+    ghost_lidx_t k = w->traits.ncols;
 
     if (k != BLOCKSZ) {
         ERROR_LOG("Invalid dimensions");
@@ -57,11 +57,11 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
 
     GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
 
-    ghost_idx_t n = v->traits.nrows;
-    ghost_idx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+    ghost_lidx_t m = v->traits.ncols;
     
     double * restrict vval, * restrict wval, * restrict xval;
-    ghost_idx_t ldv, ldw, ldx;
+    ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
     ldw = *w->stride;
@@ -79,10 +79,10 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
         dbeta = 0.;
     }
 
-    ghost_idx_t i,j;
+    ghost_lidx_t i,j;
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-        ghost_idx_t k;
+        ghost_lidx_t k;
         for (j=0; j<m; j++) {
             for (k=0; k<BLOCKSZ; k++) {
                 xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -123,7 +123,7 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
 #endif
     
     } else {
-        ghost_idx_t k;
+        ghost_lidx_t k;
         for (j=0; j<m; j++) {
             for (k=0; k<BLOCKSZ; k++) {
                 xval[j*ldx+k] = dbeta*xval[j*ldx+k];

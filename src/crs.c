@@ -143,7 +143,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, gho
     GHOST_CALL_GOTO(ghost_malloc((void **)&val_perm,mat->nnz*mat->elSize),err,ret);
 
     /*for (i=0; i<mat->nrows; i++) {
-      printf("perm/inv[%"PRIDX"] = %"PRIDX" %"PRIDX"\n",i,perm[i],invPerm[i]);
+      printf("perm/inv[%"PRLIDX"] = %"PRLIDX" %"PRLIDX"\n",i,perm[i],invPerm[i]);
       }*/
 
 
@@ -151,7 +151,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, gho
     for (i=1; i<mat->nrows+1; i++) {
         rowLen = cr->rpt[invPerm[i-1]+1]-cr->rpt[invPerm[i-1]];
         rpt_perm[i] = rpt_perm[i-1]+rowLen;
-        //printf("rpt_perm[%"PRIDX"] = %"PRIDX", rowLen: %"PRIDX"\n",i,rpt_perm[i],rowLen);
+        //printf("rpt_perm[%"PRLIDX"] = %"PRLIDX", rowLen: %"PRLIDX"\n",i,rpt_perm[i],rowLen);
     }
     if (rpt_perm[mat->nrows] != mat->nnz) {
         ERROR_LOG("Error in row pointer permutation: %"PRLIDX" != %"PRLIDX,rpt_perm[mat->nrows],mat->nnz);
@@ -168,7 +168,7 @@ static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, gho
         globrow = mat->context->lfRow[me]+i;
         rowLen = rpt_perm[i+1]-rpt_perm[i];
         memcpy(&val_perm[rpt_perm[i]*mat->elSize],&cr->val[cr->rpt[invPerm[i]]*mat->elSize],rowLen*mat->elSize);
-        //memcpy(&col_perm[rpt_perm[i]],&cr->col[cr->rpt[invPerm[i]]],rowLen*sizeof(ghost_idx_t));
+        //memcpy(&col_perm[rpt_perm[i]],&cr->col[cr->rpt[invPerm[i]]],rowLen*sizeof(ghost_lidx_t));
         for (j=rpt_perm[i], c=0; j<rpt_perm[i+1]; j++, c++) {
             if (
                     cr->col[cr->rpt[invPerm[i]]+c] >= mat->context->lfRow[me] &&
@@ -403,7 +403,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                 funcret = src->func(mat->context->lfRow[me]+i,&rowlen,&mat->col_orig[CR(mat)->rpt[i]],&CR(mat)->val[CR(mat)->rpt[i]*mat->elSize]);
                  /*for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
                     if (CR(mat)->col[j] >= mat->context->gncols) {
-                        ERROR_LOG("col idx too large! %"PRIDX" >= %"PRIDX" (row %"PRIDX" el %"PRIDX"/%"PRIDX" (%"PRIDX"))",CR(mat)->col[j],mat->context->gncols,i,j-CR(mat)->rpt[i],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],rowlen);
+                        ERROR_LOG("col idx too large! %"PRLIDX" >= %"PRLIDX" (row %"PRLIDX" el %"PRLIDX"/%"PRLIDX" (%"PRLIDX"))",CR(mat)->col[j],mat->context->gncols,i,j-CR(mat)->rpt[i],CR(mat)->rpt[i+1]-CR(mat)->rpt[i],rowlen);
                         ret = GHOST_ERR_UNKNOWN;
                         break;
                     }
@@ -555,7 +555,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 
         lnEnts_r = mat->context->lnEnts[me]-lnEnts_l;
 
-        DEBUG_LOG(1,"PE%d: Rows=%"PRLIDX"\t Ents=%"PRLIDX"(l),%"PRLIDX"(r),%"PRLIDX"(g)\t pdim=%"PRIDX, 
+        DEBUG_LOG(1,"PE%d: Rows=%"PRLIDX"\t Ents=%"PRLIDX"(l),%"PRLIDX"(r),%"PRLIDX"(g)\t pdim=%"PRLIDX, 
                 me, mat->context->lnrows[me], lnEnts_l, lnEnts_r, mat->context->lnEnts[me],mat->context->lnrows[me]+mat->context->halo_elements  );
 
         ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);

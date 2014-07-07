@@ -55,11 +55,11 @@ struct ghost_context_t
     /**
      * @brief The global number of rows
      */
-    ghost_idx_t gnrows;
+    ghost_gidx_t gnrows;
     /**
      * @brief The global number of columns.
      */
-    ghost_idx_t gncols;
+    ghost_gidx_t gncols;
     /**
      * @brief The context's property flags.
      */
@@ -79,7 +79,7 @@ struct ghost_context_t
     /**
      * @brief Number of remote elements with unique colidx
      */
-    ghost_idx_t halo_elements; // TODO rename nHaloElements
+    ghost_lidx_t halo_elements; // TODO rename nHaloElements
     /**
      * @brief Number of matrix elements for each rank
      */
@@ -119,7 +119,7 @@ struct ghost_context_t
     /**
      * @brief First index to get RHS elements coming from each rank
      */
-    ghost_idx_t* hput_pos; // TODO rename
+    ghost_lidx_t* hput_pos; // TODO rename
 };
 
 
@@ -174,7 +174,7 @@ extern "C" {
      * Thus, A would be assigned 6 million matrix rows and B 2 million.
      * 
      */
-    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_idx_t gnrows, ghost_idx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
+    ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrows, ghost_gidx_t gncols, ghost_context_flags_t context_flags, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_mpi_comm_t comm, double weight); 
     
     /**
      * @ingroup stringification

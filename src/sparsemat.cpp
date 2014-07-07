@@ -7,11 +7,11 @@
 #include "ghost/sparsemat.h"
 
 using namespace std;
-static map<ghost_sparsemat_t *,map<ghost_idx_t, ghost_idx_t> > rowlengths;
+static map<ghost_sparsemat_t *,map<ghost_lidx_t, ghost_gidx_t> > rowlengths;
 
-ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_idx_t row, ghost_idx_t *cols, ghost_idx_t rowlen, ghost_idx_t stride)
+ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t row, ghost_gidx_t *cols, ghost_lidx_t rowlen, ghost_lidx_t stride)
 {
-    ghost_idx_t c, col;
+    ghost_lidx_t c, col;
 
     for (c=0; c<rowlen; c++) {
         col = cols[c*stride];
@@ -42,8 +42,8 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     double avgRowlen = mat->nnz*1.0/(double)mat->nrows;
 
 #ifdef GHOST_HAVE_MPI
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
-    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->lowerBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
+    MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&mat->upperBandwidth,1,ghost_mpi_dt_gidx,MPI_MAX,mat->context->mpicomm));
 #ifdef GHOST_GATHER_GLOBAL_INFO
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,mat->nzDist,2*mat->context->gnrows-1,ghost_mpi_dt_idx,MPI_SUM,mat->context->mpicomm));
 #endif
@@ -54,7 +54,7 @@ ghost_error_t ghost_sparsemat_registerrow_finalize(ghost_sparsemat_t *mat)
     
     mat->variance = 0.;
     mat->deviation = 0.;
-    for (map<ghost_idx_t,ghost_idx_t>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
+    for (map<ghost_lidx_t,ghost_gidx_t>::const_iterator it = rowlengths[mat].begin(); it != rowlengths[mat].end(); it++) {
         mat->variance += (it->first-avgRowlen)*(it->first-avgRowlen)*it->second;
     }
     mat->variance /= mat->nrows;

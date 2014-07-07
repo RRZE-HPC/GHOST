@@ -46,8 +46,8 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
 
 ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 {
-    ghost_idx_t ncols = vec->traits.ncols;
-    ghost_idx_t c;
+    ghost_lidx_t ncols = vec->traits.ncols;
+    ghost_lidx_t c;
 
     GHOST_INSTR_START(normalize);
     if (vec->traits.datatype & GHOST_DT_FLOAT) {
@@ -259,7 +259,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         reduce = 0;
     }
 
-    ghost_idx_t nrV,ncV,nrW,ncW,nrX,ncX;
+    ghost_lidx_t nrV,ncV,nrW,ncW,nrX,ncX;
 
     if (strncasecmp(transv_in,"N",1)) {
         nrV=v->traits.ncols; ncV=v->traits.nrows;
@@ -283,7 +283,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         ncX=x->traits.ncols;
     }
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
-        ERROR_LOG("GEMM with incompatible vectors: %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX" = %"PRIDX"x%"PRIDX,nrV,ncV,nrW,ncW,nrX,ncX);
+        ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
        // return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits.datatype != w->traits.datatype) {
@@ -395,7 +395,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     }
 
 #ifdef GHOST_HAVE_MPI 
-    ghost_idx_t i;
+    ghost_lidx_t i;
     if (reduce == GHOST_GEMM_NO_REDUCE) {
         return GHOST_SUCCESS;
     } 
@@ -403,10 +403,10 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     {
 
 #ifdef GHOST_HAVE_CUDA
-        ghost_idx_t lda = *x->stride;
+        ghost_lidx_t lda = *x->stride;
 #endif
-        ghost_idx_t dima;
-        ghost_idx_t dimb;
+        ghost_lidx_t dima;
+        ghost_lidx_t dimb;
         if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             dima = x->traits.nrows;
             dimb = x->traits.ncols;
@@ -639,10 +639,10 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 {
     ghost_spmv_perf_args_t *arg = (ghost_spmv_perf_args_t *)varg;
 
-    ghost_idx_t ncol = arg->rhs->traits.ncols;
+    ghost_lidx_t ncol = arg->rhs->traits.ncols;
     double flops;
-    ghost_idx_t nnz;
-    ghost_idx_t nrow;
+    ghost_gidx_t nnz;
+    ghost_gidx_t nrow;
     int flopsPerEntry;
 
     ghost_sparsemat_nnz(&nnz,arg->mat);

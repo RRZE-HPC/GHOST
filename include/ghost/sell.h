@@ -21,10 +21,6 @@ typedef struct
     ghost_lidx_t * rowLenPadded;
     ghost_lidx_t * chunkStart;
     ghost_lidx_t * chunkLen;
-/*    ghost_idx_t nrows;
-    ghost_idx_t nrowsPadded;
-    int T; // number of threads per row (if applicable)
-    ghost_idx_t chunkHeight;*/
 }
 ghost_cu_sell_t;
 
