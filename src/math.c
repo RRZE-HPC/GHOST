@@ -640,7 +640,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     ghost_spmv_perf_args_t *arg = (ghost_spmv_perf_args_t *)varg;
 
     ghost_idx_t ncol = arg->rhs->traits.ncols;
-    int flops;
+    ghost_idx_t flops;
     ghost_nnz_t nnz;
     ghost_nnz_t nrow;
     int flopsPerEntry;
