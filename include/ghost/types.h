@@ -201,9 +201,9 @@ typedef int ghost_blas_idx_t;
 /**
  * @brief For backward compatibility.
  */
-//typedef ghost_gidx_t ghost_idx_t;
-//#define PRIDX PRGIDX
-//#define ghost_mpi_dt_idx ghost_mpi_dt_gidx
+typedef ghost_gidx_t ghost_idx_t;
+#define PRIDX PRGIDX
+#define ghost_mpi_dt_idx ghost_mpi_dt_gidx
 
 
 
