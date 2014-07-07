@@ -22,14 +22,14 @@
 
 
 template<typename T>  
-__global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
     if (rowmask || colmask) {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         v1[v*nrowspadded+idx] = axpy<T,T>(v1[v*nrowspadded+idx],v2[v*nrowspadded+idx],a[v]);
@@ -39,7 +39,7 @@ __global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_idx_t nrows, ch
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 v1[v*nrowspadded+idx] = axpy<T,T>(v1[v*nrowspadded+idx],v2[v*nrowspadded+idx],a[v]);
             }
@@ -49,14 +49,14 @@ __global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_idx_t nrows, ch
 }
 
 template<typename T>  
-__global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
     if (rowmask || colmask) {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a[v],b[v]);
@@ -66,7 +66,7 @@ __global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_idx_t nr
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a[v],b[v]);
             }
@@ -76,14 +76,14 @@ __global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_idx_t nr
 }
 
 template<typename T>  
-__global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
     if (rowmask || colmask) {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a,b);
@@ -93,7 +93,7 @@ __global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_idx_t nrows
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a,b);
             }
@@ -102,14 +102,14 @@ __global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_idx_t nrows
 }
 
 template<typename T>  
-__global__ static void cu_scale_kernel(T *vec, T a, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_scale_kernel(T *vec, T a, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
     if (rowmask || colmask) {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         vec[v*nrowspadded+idx] = scale<T>(a,vec[v*nrowspadded+idx]);
@@ -119,7 +119,7 @@ __global__ static void cu_scale_kernel(T *vec, T a, ghost_idx_t nrows, char *row
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 vec[v*nrowspadded+idx] = scale<T>(a,vec[v*nrowspadded+idx]);
             }
@@ -129,7 +129,7 @@ __global__ static void cu_scale_kernel(T *vec, T a, ghost_idx_t nrows, char *row
 }
 
 template<typename T>  
-__global__ static void cu_vscale_kernel(T *vec, T *a, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_vscale_kernel(T *vec, T *a, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
@@ -137,7 +137,7 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_idx_t nrows, char *r
         int c;
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (c=0,v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         vec[v*nrowspadded+idx] = scale<T>(a[c],vec[v*nrowspadded+idx]);
@@ -148,7 +148,7 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_idx_t nrows, char *r
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 vec[v*nrowspadded+idx] = scale<T>(a[v],vec[v*nrowspadded+idx]);
             }
@@ -157,14 +157,14 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_idx_t nrows, char *r
 }
 
 template<typename T>  
-__global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_idx_t nrows, char *rowmask, ghost_idx_t ncols, char *colmask, ghost_idx_t nrowspadded)
+__global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
 
     if (rowmask || colmask) {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
-                ghost_idx_t v;
+                ghost_lidx_t v;
                 for (v=0; v<ncols; v++) {
                     if (colmask[v]) {
                         vec[v*nrowspadded+idx] = a;
@@ -174,7 +174,7 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_idx_t nrows, char
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            ghost_idx_t v;
+            ghost_lidx_t v;
             for (v=0; v<ncols; v++) {
                 vec[v*nrowspadded+idx] = a;
             }
@@ -183,7 +183,7 @@ __global__ static void cu_fromscalar_kernel(T *vec, T a, ghost_idx_t nrows, char
 }
 
 template<typename T>  
-__global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_idx_t offs, ghost_idx_t *duelist, ghost_idx_t ncols, ghost_idx_t ndues, ghost_idx_t nrowspadded, ghost_idx_t *perm)
+__global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_lidx_t offs, ghost_lidx_t *duelist, ghost_lidx_t ncols, ghost_lidx_t ndues, ghost_lidx_t nrowspadded, ghost_lidx_t *perm)
 {
     int due = blockIdx.x*blockDim.x+threadIdx.x;
     int col = threadIdx.y;
@@ -199,7 +199,7 @@ __global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_id
     }
 }
 
-extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work, ghost_idx_t *dueptr, ghost_densemat_t *vec, ghost_idx_t *perm)
+extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work, ghost_lidx_t *dueptr, ghost_densemat_t *vec, ghost_lidx_t *perm)
 {
    
 
@@ -441,7 +441,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
      
     cublasHandle_t ghost_cublas_handle;
     GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
-    ghost_idx_t v;
+    ghost_lidx_t v;
     for (v=0; v<vecclone->traits.ncols; v++)
     {
         char *v1 = &((char *)(vecclone->cu_val))[v*vecclone->traits.nrowspadded*sizeofdt];
@@ -908,7 +908,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 
     one[1] = 0.;
 
-    ghost_idx_t v;
+    ghost_lidx_t v;
     for (v=0; v<vec->traits.ncols; v++)
     {
         if (vec->traits.datatype & GHOST_DT_COMPLEX)

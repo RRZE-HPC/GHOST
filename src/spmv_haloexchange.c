@@ -97,7 +97,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
-                ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,permutation->cu_perm);
+                ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
 #elif defined(CUDA_COMMUNICATION_ASSEMBLY_MEMCPY)
 #pragma omp parallel private(to_PE,i,c)
                 for (to_PE=0 ; to_PE<nprocs ; to_PE++) {

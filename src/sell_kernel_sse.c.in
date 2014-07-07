@@ -157,7 +157,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_SSE
-    INFO_LOG("in RM kernel with %"PRGIDX" vecs",invec->traits.ncols);
+    INFO_LOG("in RM kernel with %"PRLIDX" vecs",invec->traits.ncols);
     ghost_idx_t j,c,col;
     ghost_idx_t offs;
     double *mval = (double *)SELL(mat)->val;

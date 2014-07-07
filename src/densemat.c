@@ -128,7 +128,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
     }
     if (vec->traits.ncolspadded == 0) {
         DEBUG_LOG(2,"ncolspadded for vector not given. determining it from the context");
-        ghost_idx_t padding = vec->elSize;
+        ghost_lidx_t padding = vec->elSize;
         if (vec->traits.ncols > 1) {
 #ifdef GHOST_HAVE_MIC
             padding = 64; // 64 byte padding
@@ -151,7 +151,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         vec->traits.nrowsorig = vec->traits.nrows;
     }
 
-    DEBUG_LOG(1,"The vector has %"PRIDX" w/ %"PRIDX" halo elements (padded: %"PRIDX") rows",
+    DEBUG_LOG(1,"The vector has %"PRLIDX" w/ %"PRLIDX" halo elements (padded: %"PRLIDX") rows",
             vec->traits.nrows,vec->traits.nrowshalo-vec->traits.nrows,vec->traits.nrowspadded);
     return GHOST_SUCCESS; 
 }
@@ -184,7 +184,7 @@ ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr)
 
 }
 
-ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_idx_t len, char *charfield)
+ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_lidx_t len, char *charfield)
 {
     unsigned int i;
     memset(charfield,0,len);
@@ -197,9 +197,9 @@ ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_idx_t len
     return GHOST_SUCCESS;
 }
 
-bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc)
+bool array_strictly_ascending (ghost_lidx_t *coffs, ghost_lidx_t nc)
 {
-    ghost_idx_t i;
+    ghost_lidx_t i;
 
     for (i=1; i<nc; i++) {
         if (coffs[i] <= coffs[i-1]) {

@@ -25,7 +25,7 @@ template <typename v_t>
 static ghost_error_t ghost_densemat_cm_normalize_tmpl(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_idx_t v;
+    ghost_lidx_t v;
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
@@ -58,7 +58,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
     if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_idx_t i,v = 0;
+    ghost_lidx_t i,v = 0;
 
     int nthreads;
 #pragma omp parallel
@@ -74,7 +74,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
 
 #pragma omp parallel 
         {
-            ghost_idx_t row1,row2,rowidx = 0;
+            ghost_lidx_t row1,row2,rowidx = 0;
             int tid = ghost_omp_threadnum();
             if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
                 if (tid==0 && v==0) {
@@ -117,7 +117,7 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     }
     v_t *s = (v_t *)scale;
 
-    ghost_idx_t row1,row2,col,rowidx = 0;
+    ghost_lidx_t row1,row2,col,rowidx = 0;
     if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
         WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
         ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
@@ -148,7 +148,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
         ERROR_LOG("Cannot VAXPBY densemats with different number of rows");
         return GHOST_ERR_INVALID_ARG;
     }
-    ghost_idx_t row1,row2,col,rowidx;
+    ghost_lidx_t row1,row2,col,rowidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
 
@@ -171,7 +171,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t row,col,rowidx = 0;
+    ghost_lidx_t row,col,rowidx = 0;
     v_t *s = (v_t *)scale;
 
     if (!ghost_bitmap_iscompact(vec->ldmask)) {
@@ -223,7 +223,7 @@ static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
 
 #pragma omp parallel
     {
-    ghost_idx_t col,row,rowidx;
+    ghost_lidx_t col,row,rowidx;
     unsigned int *state;
     ghost_rand_get(&state);
     ITER_BEGIN_CM_INPAR(vec,col,row,rowidx)
@@ -244,7 +244,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
 
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_idx_t i,v,r,j;
+        ghost_lidx_t i,v,r,j;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
             if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
@@ -264,7 +264,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
         }
 #endif
     } else {
-        ghost_idx_t i,v,r;
+        ghost_lidx_t i,v,r;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
             if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {

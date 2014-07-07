@@ -86,15 +86,15 @@ typedef struct
     /**
      * @brief The number of columns.
      */
-    ghost_gidx_t ncols;
+    ghost_lidx_t ncols;
     /**
      * @brief The number of columns of the densemat which is viewed by this densemat.
      */
-    ghost_gidx_t ncolsorig;
+    ghost_lidx_t ncolsorig;
     /**
      * @brief The padded number of columns (may differ from ncols for row-major densemats).
      */
-    ghost_gidx_t ncolspadded;
+    ghost_lidx_t ncolspadded;
     /**
      * @brief Property flags.
      */
@@ -146,7 +146,7 @@ struct ghost_densemat_t
      *
      * Points to ncolspadded if the densemat has row-major storage and nrowspadded if it has col-major storage.
      */
-    ghost_idx_t *stride;
+    ghost_lidx_t *stride;
 
     /**
      * @brief Mask out elements in the leading dimension
@@ -164,11 +164,11 @@ struct ghost_densemat_t
     /**
      * @brief The column of the densemat which is being viewed as the my column.
      */
-    ghost_idx_t viewing_col;
+    ghost_lidx_t viewing_col;
     /**
      * @brief The row of the densemat which is being viewed as the my row.
      */
-    ghost_idx_t viewing_row;
+    ghost_lidx_t viewing_row;
 #ifdef GHOST_HAVE_CUDA
     /**
      * @brief The values of the vector/matrix on the CUDA device.
@@ -210,7 +210,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
+    ghost_error_t (*clone) (ghost_densemat_t *vec, ghost_densemat_t **dst, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
     /**
      * @brief Compresses a vector/matrix, i.e., make it non-scattered.
      * If the vector/matrix is a view, it will no longer be one afterwards.
@@ -296,12 +296,12 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param entry Where to store the entry.
-     * @param ghost_idx_t i The row.
-     * @param ghost_idx_t j The column.
+     * @param i The row.
+     * @param j The column.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*entry) (ghost_densemat_t *vec, void *entry, ghost_idx_t i, ghost_idx_t j);
+    ghost_error_t       (*entry) (ghost_densemat_t *vec, void *entry, ghost_lidx_t i, ghost_lidx_t j);
     /**
      * @ingroup denseinit
      *
@@ -313,7 +313,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*fromFunc) (ghost_densemat_t *vec, void (*fp)(ghost_idx_t, ghost_idx_t, void *));
+    ghost_error_t       (*fromFunc) (ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
     /**
      * @ingroup denseinit
      *
@@ -327,7 +327,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_idx_t roffs, ghost_idx_t coffs);
+    ghost_error_t (*fromVec) (ghost_densemat_t *vec, ghost_densemat_t *src, ghost_lidx_t roffs, ghost_lidx_t coffs);
     /**
      * @ingroup denseinit
      *
@@ -450,11 +450,11 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param data The plain data.
-     * @param ghost_idx_t roffs The row offset.
-     * @param ghost_idx_t coffs The column offset.
-     * @param ghost_idx_t lda The leading dimension.
+     * @param roffs The row offset.
+     * @param coffs The column offset.
+     * @param lda The leading dimension.
      */
-    ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda);
+    ghost_error_t       (*viewPlain) (ghost_densemat_t *vec, void *data, ghost_lidx_t roffs, ghost_lidx_t coffs, ghost_lidx_t lda);
     /**
      * @brief Create a vector/matrix as a scattered view of another vector/matrix.
      *
@@ -467,7 +467,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t *roffs,  ghost_idx_t nc, ghost_idx_t *coffs);
+    ghost_error_t  (*viewScatteredVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_lidx_t nr, ghost_lidx_t *roffs,  ghost_lidx_t nc, ghost_lidx_t *coffs);
     /**
      * @brief Create a densemat as a view of a scattered block of columns of another densemat.
      *
@@ -478,7 +478,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*viewScatteredCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t *coffs);
+    ghost_error_t  (*viewScatteredCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_lidx_t nc, ghost_lidx_t *coffs);
     /**
      * @brief Create a densemat as a view of a dense block of columns of another densemat.
      *
@@ -489,7 +489,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*viewCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nc, ghost_idx_t coffs);
+    ghost_error_t  (*viewCols) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_lidx_t nc, ghost_lidx_t coffs);
     /**
      * @brief Create a vector/matrix as a view of another vector/matrix.
      *
@@ -502,7 +502,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs);
+    ghost_error_t  (*viewVec) (ghost_densemat_t *src, ghost_densemat_t **dst, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
     /**
      * @ingroup locops
      * 
@@ -588,7 +588,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_gidx_t len, char *charfield);
+    ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_lidx_t len, char *charfield);
 
     /**
      * @brief Check if an array consists of strictly ascending numbers.
@@ -598,7 +598,7 @@ extern "C" {
      *
      * @return True if each number is greater than the previous one, false otherwise.
      */
-    bool array_strictly_ascending (ghost_gidx_t *coffs, ghost_gidx_t nc);
+    bool array_strictly_ascending (ghost_lidx_t *coffs, ghost_lidx_t nc);
 
     /**
      * @brief Check if a densemat has the same storage order on all processes.

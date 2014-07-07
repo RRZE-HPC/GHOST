@@ -26,7 +26,7 @@ template <typename v_t>
 static ghost_error_t ghost_densemat_rm_normalize_tmpl(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_idx_t v;
+    ghost_lidx_t v;
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
@@ -58,8 +58,8 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
     if (vec->traits.ncols != vec2->traits.ncols) {
         WARNING_LOG("The input vectors of the dot product have different numbers of columns");
     }
-    ghost_idx_t i,v,vidx;
-    ghost_idx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
+    ghost_lidx_t i,v,vidx;
+    ghost_lidx_t nr = MIN(vec->traits.nrows,vec2->traits.nrows);
 
     int nthreads;
 #pragma omp parallel
@@ -103,7 +103,7 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
 #pragma omp parallel 
         {
             int tid = ghost_omp_threadnum();
-            ghost_idx_t col1,col2,row,colidx;
+            ghost_lidx_t col1,col2,row,colidx;
             ITER2_COMPACT_BEGIN_RM_INPAR(vec,vec2,col1,col2,row,colidx)
                 partsums[(padding+vec->traits.ncols)*tid+colidx] += *(v_t *)VECVAL_RM(vec2,vec2->val,row,col2)*
                     conjugate((v_t *)(VECVAL_RM(vec,vec->val,row,col1)));
@@ -111,7 +111,7 @@ static ghost_error_t ghost_densemat_rm_dotprod_tmpl(ghost_densemat_t *vec, void 
             ITER2_COMPACT_END_RM()
 
         }
-        ghost_idx_t col;
+        ghost_lidx_t col;
         for (col=0; col<vec->traits.ncols; col++) {
             ((v_t *)res)[col] = 0.;
 
@@ -141,7 +141,7 @@ static ghost_error_t ghost_densemat_rm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
         ERROR_LOG("Cannot VAXPY densemats with different number of rows");
         return GHOST_ERR_INVALID_ARG;
     }
-    ghost_idx_t col1,col2,row,colidx;
+    ghost_lidx_t col1,col2,row,colidx;
     v_t *s = (v_t *)scale;
     
     if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
@@ -175,7 +175,7 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
         return GHOST_ERR_INVALID_ARG;
     }
 
-    ghost_idx_t col1,col2,row,colidx;
+    ghost_lidx_t col1,col2,row,colidx;
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
     
@@ -198,7 +198,7 @@ static ghost_error_t ghost_densemat_rm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
 template<typename v_t> 
 static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t col,row,colidx;
+    ghost_lidx_t col,row,colidx;
     v_t *s = (v_t *)scale;
 
     if (!ghost_bitmap_iscompact(vec->ldmask)) {
@@ -250,7 +250,7 @@ static ghost_error_t ghost_densemat_rm_fromRand_tmpl(ghost_densemat_t *vec)
 
 #pragma omp parallel
     {
-    ghost_idx_t col,row,colidx;
+    ghost_lidx_t col,row,colidx;
     unsigned int *state;
     ghost_rand_get(&state);
     ITER_BEGIN_RM_INPAR(vec,col,row,colidx)
@@ -270,7 +270,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     buffer.precision(6);
     buffer.setf(ios::fixed, ios::floatfield);
 
-    ghost_idx_t i,r;
+    ghost_lidx_t i,r;
     for (r=0; r<vec->traits.nrows; r++) {
         for (i=0; i<vec->traits.ncolsorig; i++) {
             if (ghost_bitmap_isset(vec->ldmask,i)) {
