@@ -261,7 +261,7 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
 {
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRIDX" rows of vector",vec->traits.nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_idx_t v;
         for (v=0; v<vec->traits.ncols; v++) {
@@ -289,7 +289,7 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec) 
 {
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRIDX" rows of vector",vec->traits.nrowshalo);
+        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_idx_t v,c,r;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
@@ -311,7 +311,7 @@ static ghost_error_t vec_cm_upload(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 {
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Downloading %"PRIDX" rows of vector",vec->traits.nrowshalo);
+        DEBUG_LOG(1,"Downloading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
 #ifdef GHOST_HAVE_CUDA
         ghost_idx_t v,c,r;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
@@ -332,7 +332,7 @@ static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t roffs, ghost_idx_t nc, ghost_idx_t coffs)
 {
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" densemat from a %"PRIDX"x%"PRIDX" densemat with offset %"PRIDX"x%"PRIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" densemat from a %"PRLIDX"x%"PRLIDX" densemat with offset %"PRLIDX"x%"PRLIDX,nr,nc,src->traits.nrows,src->traits.ncols,roffs,coffs);
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
@@ -389,7 +389,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda)
 {
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix from plain data with offset %"PRIDX"x%"PRIDX,vec->traits.nrows,vec->traits.ncols,roffs,coffs);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" dense matrix from plain data with offset %"PRLIDX"x%"PRLIDX,vec->traits.nrows,vec->traits.ncols,roffs,coffs);
     ghost_densemat_cm_malloc(vec);
 
     ghost_idx_t v;
@@ -405,7 +405,7 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nc, ghost_idx_t coffs)
 {
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" contiguous dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
     ghost_idx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
@@ -447,7 +447,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
         }
     }
 #endif
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_idx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
@@ -488,7 +488,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_idx_t nr, ghost_idx_t *roffs, ghost_idx_t nc, ghost_idx_t *coffs)
 {
-    DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" scattered dense matrix",src->traits.nrows,nc);
+    DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
     ghost_idx_t v,r,i,viewedrow;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
@@ -528,7 +528,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<nc; v++) {
             (*new)->val[v] = VECVAL_CM(src,src->val,coffs[v],0);
-            INFO_LOG("val[%"PRIDX"] = %"PRIDX" = %p",v,coffs[v],(*new)->val[v]);
+            INFO_LOG("val[%"PRLIDX"] = %"PRLIDX" = %p",v,coffs[v],(*new)->val[v]);
         }    
     }
     (*new)->viewing = src;
@@ -600,7 +600,7 @@ ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_idx_t roffs, ghost_idx_t coffs)
 {
     ghost_densemat_cm_malloc(vec);
-    DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRIDX,coffs);
+    DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRLIDX,coffs);
     ghost_idx_t v;
     roffs += ghost_bitmap_first(vec2->ldmask);
             
@@ -817,7 +817,7 @@ static ghost_error_t vec_cm_fromRand(ghost_densemat_t *vec)
 static ghost_error_t vec_cm_fromScalar(ghost_densemat_t *vec, void *val)
 {
     ghost_densemat_cm_malloc(vec);
-    DEBUG_LOG(1,"Initializing vector from scalar value with %"PRIDX" rows",vec->traits.nrows);
+    DEBUG_LOG(1,"Initializing vector from scalar value with %"PRLIDX" rows",vec->traits.nrows);
 
     int row,col,rowidx;
     ITER_BEGIN_CM(vec,col,row,rowidx)
@@ -1377,7 +1377,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,permvec->elSize*len));
         for(i = 0; i < len; ++i) {
             if( perm[i] >= len ) {
-                ERROR_LOG("Permutation index out of bounds: %"PRIDX" > %"PRIDX,perm[i],len);
+                ERROR_LOG("Permutation index out of bounds: %"PRLIDX" > %"PRLIDX,perm[i],len);
                 free(tmp);
                 return GHOST_ERR_UNKNOWN;
             }

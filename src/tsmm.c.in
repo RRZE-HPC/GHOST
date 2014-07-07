@@ -46,9 +46,9 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
         goto err;
     }
 
-    ghost_idx_t k = w->traits.ncols;
-    ghost_idx_t m = v->traits.ncols;
-    ghost_idx_t n = v->traits.nrows;
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
 
     if (k != BLOCKSZ1) {
         ERROR_LOG("Invalid dimensions");
@@ -61,10 +61,10 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
         goto err;
     }
 
-    INFO_LOG("In TSMM with two fixed block sizes %"PRIDX"x%"PRIDX" <- %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX,n,k,n,m,m,k);
+    INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval, * restrict wval, * restrict xval;
-    ghost_idx_t ldv, ldw, ldx;
+    ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
     ldw = *w->stride;
@@ -75,7 +75,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
     ghost_densemat_valptr(x,(void **)&xval);
 
     double dalpha = *(double *)alpha;
-    ghost_idx_t i,j,s;
+    ghost_lidx_t i,j,s;
     
     //if (BLOCKSZ1 <= 4) 
     {
@@ -161,9 +161,9 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
         goto err;
     }
 
-    ghost_idx_t k = w->traits.ncols;
-    ghost_idx_t m = v->traits.ncols;
-    ghost_idx_t n = v->traits.nrows;
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
 
     if (k != BLOCKSZ1) {
         ERROR_LOG("Invalid dimensions");
@@ -172,10 +172,10 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
     }
 
     
-    INFO_LOG("In TSMM with one fixed block size %"PRIDX"x%"PRIDX" <- %"PRIDX"x%"PRIDX" * %"PRIDX"x%"PRIDX,n,k,n,m,m,k);
+    INFO_LOG("In TSMM with one fixed block size %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval, * restrict wval, * restrict xval;
-    ghost_idx_t ldv, ldw, ldx;
+    ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
     ldw = *w->stride;
@@ -186,7 +186,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
     ghost_densemat_valptr(x,(void **)&xval);
 
     double dalpha = *(double *)alpha;
-    ghost_idx_t i,j,s;
+    ghost_lidx_t i,j,s;
     
     if (BLOCKSZ1 <= 4) 
     {

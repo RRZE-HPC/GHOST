@@ -70,31 +70,31 @@ typedef struct
     /**
      * @brief The number of rows.
      */
-    ghost_idx_t nrows;
+    ghost_lidx_t nrows;
     /**
      * @brief The number of rows of the densemat which is viewed by this densemat.
      */
-    ghost_idx_t nrowsorig;
+    ghost_lidx_t nrowsorig;
     /**
      * @brief The number of rows including halo elements.
      */
-    ghost_idx_t nrowshalo;
+    ghost_lidx_t nrowshalo;
     /**
      * @brief The padded number of rows (may differ from nrows for col-major densemats).
      */
-    ghost_idx_t nrowspadded;
+    ghost_lidx_t nrowspadded;
     /**
      * @brief The number of columns.
      */
-    ghost_idx_t ncols;
+    ghost_gidx_t ncols;
     /**
      * @brief The number of columns of the densemat which is viewed by this densemat.
      */
-    ghost_idx_t ncolsorig;
+    ghost_gidx_t ncolsorig;
     /**
      * @brief The padded number of columns (may differ from ncols for row-major densemats).
      */
-    ghost_idx_t ncolspadded;
+    ghost_gidx_t ncolspadded;
     /**
      * @brief Property flags.
      */
@@ -588,7 +588,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_idx_t len, char *charfield);
+    ghost_error_t ghost_densemat_mask2charfield(ghost_bitmap_t mask, ghost_gidx_t len, char *charfield);
 
     /**
      * @brief Check if an array consists of strictly ascending numbers.
@@ -598,7 +598,7 @@ extern "C" {
      *
      * @return True if each number is greater than the previous one, false otherwise.
      */
-    bool array_strictly_ascending (ghost_idx_t *coffs, ghost_idx_t nc);
+    bool array_strictly_ascending (ghost_gidx_t *coffs, ghost_gidx_t nc);
 
     /**
      * @brief Check if a densemat has the same storage order on all processes.
