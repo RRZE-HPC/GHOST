@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     ghost_sparsemat_create(&A, ctx, &mtraits, 1);
     ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     matsrc.func = diag;
-    matsrc.maxrowlen = N;
+    matsrc.maxrowlen = 1;
     A->fromRowFunc(A,&matsrc);
 
     // create input vector x and output vector y
