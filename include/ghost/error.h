@@ -26,7 +26,8 @@ typedef enum {
     GHOST_ERR_SCOTCH,
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_NOT_IMPLEMENTED,
-    GHOST_ERR_IO
+    GHOST_ERR_IO,
+    GHOST_ERR_DATATYPE
 } ghost_error_t;
 
 /**

@@ -30,6 +30,9 @@ char * ghost_error_string(ghost_error_t e)
         case GHOST_ERR_IO:
             return "I/O error";
             break;
+        case GHOST_ERR_DATATYPE:
+            return "Error with data types";
+            break;
         case GHOST_ERR_UNKNOWN:
             return "Unknown error";
             break;
