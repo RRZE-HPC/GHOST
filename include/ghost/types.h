@@ -205,6 +205,14 @@ typedef int ghost_blas_idx_t;
 
 #endif
 
+#if defined(GHOST_HAVE_LONGIDX_LOCAL) && defined(GHOST_HAVE_LONGIDX_GLOBAL)
+#define GHOST_HAVE_UNIFORM_IDX
+#endif
+
+#if !defined(GHOST_HAVE_LONGIDX_LOCAL) && !defined(GHOST_HAVE_LONGIDX_GLOBAL)
+#define GHOST_HAVE_UNIFORM_IDX
+#endif
+
 
 /**
  * @brief For backward compatibility.
