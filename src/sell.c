@@ -292,11 +292,11 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
     if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
         ERROR_LOG("The local number of entries is too large.");
-        return GHOST_ERR_UNKNOWN;
+        return GHOST_ERR_DATATYPE;
     }
     if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
         ERROR_LOG("The local number of nonzeroes is too large.");
-        return GHOST_ERR_UNKNOWN;
+        return GHOST_ERR_DATATYPE;
     }
     mat->nEnts = (ghost_lidx_t)gnents;
     mat->nnz = (ghost_lidx_t)gnnz;
