@@ -53,25 +53,34 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
         (*context)->flags |= GHOST_CONTEXT_DIST_ROWS;
     }
 
-    if ((gnrows < 1) || (gncols < 1)) {
+    if ((gnrows == 0) || (gncols == 0)) {
+        if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
+            ERROR_LOG("The correct dimensions have to be given if the sparsemat source is a function!");
+            return GHOST_ERR_INVALID_ARG;
+        }
         ghost_bincrs_header_t fileheader;
         GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
         if (fileheader.nrows >= (int64_t)INT_MAX) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
-            return GHOST_ERR_IO;
+            return GHOST_ERR_DATATYPE;
         }
 #endif
-        if (gnrows < 1)
+        if (gnrows == 0) {
             (*context)->gnrows = (ghost_gidx_t)fileheader.nrows;
-        if (gncols < 1)
+        }
+        if (gncols == 0) {
             (*context)->gncols = (ghost_gidx_t)fileheader.ncols;
+        }
 
+    } else if ((gnrows < 0) || (gncols < 0)) {
+            ERROR_LOG("The given context dimensions are smaller than zero which may be due to an integer overlow. Check your idx types!");
+            return GHOST_ERR_DATATYPE;
     } else {
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
         if (gnrows >= (int64_t)INT_MAX) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
-            return GHOST_ERR_IO;
+            return GHOST_ERR_DATATYPE;
         }
 #endif
         (*context)->gnrows = (ghost_gidx_t)gnrows;
@@ -299,9 +308,20 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 (*context)->lfRow[i] = (*context)->lfRow[i-1]+target_rows[i-1];
             }
             for (i=0; i<nranks-1; i++){
-                (*context)->lnrows[i] = (*context)->lfRow[i+1] - (*context)->lfRow[i] ;
+                ghost_gidx_t lnrows = (*context)->lfRow[i+1] - (*context)->lfRow[i];
+                if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
+                    ERROR_LOG("Re-compile with 64-bit local indices!");
+                    return GHOST_ERR_UNKNOWN;
+                }
+                (*context)->lnrows[i] = (ghost_lidx_t)lnrows;
             }
-            (*context)->lnrows[nranks-1] = (*context)->gnrows - (*context)->lfRow[nranks-1] ;
+            ghost_gidx_t lnrows = (*context)->gnrows - (*context)->lfRow[nranks-1];
+            if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
+                ERROR_LOG("Re-compile with 64-bit local indices!");
+                return GHOST_ERR_UNKNOWN;
+            }
+            (*context)->lnrows[nranks-1] = (ghost_lidx_t)lnrows;
+            
             MPI_CALL_GOTO(MPI_Bcast((*context)->lfRow,  nranks, ghost_mpi_dt_gidx, 0, (*context)->mpicomm),err,ret);
             MPI_CALL_GOTO(MPI_Bcast((*context)->lnrows, nranks, ghost_mpi_dt_lidx, 0, (*context)->mpicomm),err,ret);
             (*context)->lnEnts[0] = -1;
