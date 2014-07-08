@@ -141,6 +141,8 @@ typedef int64_t ghost_gidx_t;
  */
 #define PRGIDX PRId64
 
+#define GHOST_GIDX_MAX INT64_MAX
+
 #else
 
 /**
@@ -155,6 +157,8 @@ typedef int32_t ghost_gidx_t;
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
 #define PRGIDX PRId32
+
+#define GHOST_GIDX_MAX INT32_MAX
 
 #endif
 
@@ -186,6 +190,8 @@ typedef int ghost_blas_idx_t;
 
 #define PRLIDX PRId64
 
+#define GHOST_LIDX_MAX INT64_MAX
+
 #else
 
 typedef int32_t ghost_lidx_t;
@@ -194,6 +200,8 @@ typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 
 #define PRLIDX PRId32
+
+#define GHOST_LIDX_MAX INT32_MAX
 
 #endif
 
