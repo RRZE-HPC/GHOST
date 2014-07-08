@@ -457,15 +457,32 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
     ghost_lidx_t chunk;
     ghost_lidx_t idx, row;
 
-    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        WARNING_LOG("This does not have to be present twice in all cases!");
+#ifdef GHOST_HAVE_UNIFORM_IDX
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+        INFO_LOG("In-place column compression!");
+        SELL(mat)->col = mat->col_orig;
+    } else 
+#endif
+    {
+        INFO_LOG("Duplicate col array!");
         GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts),err,ret);
+    }
+   
+    if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
         GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
+
     } else {
         for (i=0; i<mat->nEnts; i++) {
             SELL(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
         }
     }
+#ifndef GHOST_HAVE_UNIFORM_IDX
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+        INFO_LOG("Free orig cols");
+        free(mat->col_orig);
+        mat->col_orig = NULL;
+    }
+#endif
 
     ghost_sparsemat_create(&(mat->localPart),mat->context,&mat->traits[0],1);
     localSELL = mat->localPart->data;

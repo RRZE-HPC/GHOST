@@ -544,16 +544,35 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     if (mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
 //        memcpy(mat->col_orig, fullCR->col, mat->nnz*sizeof(ghost_gidx_t));
     }
-
+    
+    WARNING_LOG("This does not have to be present twice in all cases!");
+    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_gidx_t)*mat->nnz),err,ret);
+    
+#ifdef GHOST_HAVE_UNIFORM_IDX
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+        INFO_LOG("In-place column compression!");
+        CR(mat)->col = mat->col_orig;
+    } else 
+#endif
+    {
+        INFO_LOG("Duplicate col array!");
+        GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
+    }
+   
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        WARNING_LOG("This does not have to be present twice in all cases!");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_gidx_t)*mat->nnz),err,ret);
         GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullCR->col),err,ret);
     } else {
         for (i=0; i<mat->nEnts; i++) {
             CR(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
         }
     }
+#ifndef GHOST_HAVE_UNIFORM_IDX
+    if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
+        INFO_LOG("Free orig cols");
+        free(mat->col_orig);
+        mat->col_orig = NULL;
+    }
+#endif
 
 
     if (!(mat->traits->flags & GHOST_SPARSEMAT_NOT_STORE_SPLIT)) { // split computation
