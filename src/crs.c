@@ -314,11 +314,11 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         CR(mat)->rpt[i] = 0;
     }
 
-    ghost_lidx_t nEnts = 0;
+    ghost_gidx_t gnents = 0;
     int funcret = 0;
 
     GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
-#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:nEnts,funcret) 
+#pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:gnents,funcret) 
     {
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
@@ -333,9 +333,15 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
             } else {
                 funcret += src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
             }
-            nEnts += rowlen;
+            gnents += rowlen;
 #pragma omp ordered
-            CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+            {
+                if ((ghost_gidx_t)CR(mat)->rpt[i]+rowlen > (ghost_gidx_t)GHOST_LIDX_MAX) {
+                    ERROR_LOG("rpt too large!");
+                    ret = GHOST_ERR_UNKNOWN;
+                }
+                CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+            }
         }
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
@@ -347,6 +353,12 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     if (ret != GHOST_SUCCESS){
         goto err;
     }
+    
+    if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        ERROR_LOG("The local number of entries is too large.");
+        return GHOST_ERR_UNKNOWN;
+    }
+
     GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
 
     mat->nnz = CR(mat)->rpt[mat->nrows];
