@@ -737,7 +737,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
     
     MPI_CALL_RETURN(MPI_File_set_view(fileh, GHOST_BINCRS_SIZE_HEADER + mat->context->lfRow[me]*GHOST_BINCRS_SIZE_RPT_EL,MPI_LONG_LONG,MPI_LONG_LONG,"native",MPI_INFO_NULL)); 
 
-#ifdef GHOST_HAVE_GLOB_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
 
     ghost_gidx_t *rpt_w_offs = NULL;
     size_t to_write = mat->nrows;
@@ -828,7 +828,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
         ERROR_LOG("Could not open binary CRS file %s: %s",matrixPath,strerror(errno));
         return GHOST_ERR_IO;
     }
-#ifdef GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
     if ((ret = fwrite(CR(mat)->rpt,8,mat->nrows+1,filed)) != mat->nrows+1) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);

@@ -162,7 +162,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
 ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v_in,  char * transv_in, 
 ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce) 
 {
-#ifdef GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
 #ifndef GHOST_HAVE_MKL
     WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
 #endif

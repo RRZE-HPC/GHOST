@@ -126,7 +126,7 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
     typedef complex double name ## _t; \
 ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
 
-#ifdef GHOST_HAVE_GLOB_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
 
 /**
  * @brief Type for global indices.
@@ -146,7 +146,7 @@ typedef int64_t ghost_gidx_t;
 /**
  * @brief Type for global indices.
  */
-typedef int34_t ghost_gidx_t; 
+typedef int32_t ghost_gidx_t; 
 /**
  * @brief MPI data type for matrix row/column indices
  */
@@ -158,7 +158,7 @@ typedef int34_t ghost_gidx_t;
 
 #endif
 
-#ifdef GHOST_HAVE_LOC_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
 
 /**
  * @brief Type for local indices.

@@ -56,8 +56,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     if ((gnrows < 1) || (gncols < 1)) {
         ghost_bincrs_header_t fileheader;
         GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
-#ifndef GHOST_HAVE_LONGIDX
-        if ((fileheader.nrows >= (int64_t)INT_MAX) || (fileheader.ncols >= (int64_t)INT_MAX)) {
+#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+        if (fileheader.nrows >= (int64_t)INT_MAX) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
             return GHOST_ERR_IO;
         }
@@ -68,8 +68,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             (*context)->gncols = (ghost_gidx_t)fileheader.ncols;
 
     } else {
-#ifndef GHOST_HAVE_LONGIDX
-        if ((gnrows >= (int64_t)INT_MAX) || (gncols >= (int64_t)INT_MAX)) {
+#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+        if (gnrows >= (int64_t)INT_MAX) {
             ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
             return GHOST_ERR_IO;
         }

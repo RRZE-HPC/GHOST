@@ -119,7 +119,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             return GHOST_ERR_IO;
         }
 
-#ifdef GHOST_HAVE_LOC_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
@@ -443,7 +443,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(void *rpt, char *matrixPath, ghost_gi
     }
 
     if (glob) {
-#ifdef GHOST_HAVE_GLOB_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,*(ghost_gidx_t *)nRows*8));
@@ -483,7 +483,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(void *rpt, char *matrixPath, ghost_gi
         free(tmp);
 #endif
     } else {
-#ifdef GHOST_HAVE_LOC_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,*(ghost_lidx_t *)nRows*8));
