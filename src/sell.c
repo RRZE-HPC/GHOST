@@ -459,7 +459,7 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
         WARNING_LOG("This does not have to be present twice in all cases!");
-        GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_gidx_t)*mat->nEnts),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&SELL(mat)->col,sizeof(ghost_lidx_t)*mat->nEnts),err,ret);
         GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullSELL->col),err,ret);
         mat->colsCompressed = true;
     } else {
