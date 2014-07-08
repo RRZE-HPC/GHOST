@@ -202,14 +202,6 @@ struct ghost_sparsemat_t
 
     ghost_gidx_t *col_orig;
 
-    /**
-     * @brief Indicates whether the matrix' col indices have already been compressed.
-     *
-     * If true, the col indices are of ghost_lidx_t.
-     * If false, the col indices are of ghost_gidx_t.
-     */
-    bool colsCompressed;
-    
     ghost_lidx_t nrows;
     ghost_gidx_t ncols;
     ghost_lidx_t nrowsPadded;

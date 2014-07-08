@@ -549,7 +549,6 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
         WARNING_LOG("This does not have to be present twice in all cases!");
         GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_gidx_t)*mat->nnz),err,ret);
         GHOST_CALL_GOTO(ghost_context_comm_init(mat->context,mat->col_orig,fullCR->col),err,ret);
-        mat->colsCompressed = true;
     } else {
         for (i=0; i<mat->nEnts; i++) {
             CR(mat)->col[i] = (ghost_lidx_t)mat->col_orig[i];
