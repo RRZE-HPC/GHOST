@@ -229,102 +229,13 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
     ghost_lidx_t maxRowLenInChunk = 0;
     ghost_lidx_t maxRowLen = 0;
-    ghost_lidx_t nEnts = 0, nnz = 0;
     SELL(mat)->chunkStart[0] = 0;
 
     GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,src),err,ret);
-    /*if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
-#pragma omp parallel private(i,tmpval,tmpcol)
-        { 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_lidx_t)),ret);
-#pragma omp for schedule(runtime)
-            for( chunk = 0; chunk < nChunks; chunk++ ) {
-                for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                    ghost_lidx_t row = chunk*SELL(mat)->chunkHeight+i;
-
-                    if (row < mat->nrows) {
-                        func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                    } else {
-                        SELL(mat)->rowLen[row] = 0;
-                    }
-                }
-            }
-
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        if (ret != GHOST_SUCCESS) {
-            goto err;
-        }
-
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,mat->nrows * sizeof(ghost_sorting_t)),err,ret);
-
-        ghost_lidx_t c;
-        for (c=0; c<mat->nrows/SELL(mat)->scope; c++)  
-        {
-            for( i = c*SELL(mat)->scope; i < (c+1)*SELL(mat)->scope; i++ ) 
-            {
-                rowSort[i].row = i;
-                rowSort[i].nEntsInRow = SELL(mat)->rowLen[i];
-            } 
-
-            qsort( rowSort+c*SELL(mat)->scope, SELL(mat)->scope, sizeof( ghost_sorting_t  ), compareNZEPerRow );
-        }
-        for( i = c*SELL(mat)->scope; i < mat->nrows; i++ ) 
-        { // remainder
-            rowSort[i].row = i;
-            rowSort[i].nEntsInRow = SELL(mat)->rowLen[i];
-        }
-        qsort( rowSort+c*SELL(mat)->scope, mat->nrows-c*SELL(mat)->scope, sizeof( ghost_sorting_t  ), compareNZEPerRow );
-
-        for(i=0; i < mat->nrows; ++i) {
-            (mat->permutation->invPerm)[i] = rowSort[i].row;
-            (mat->permutation->perm)[rowSort[i].row] = i;
-        }
-
-#pragma omp parallel private(maxRowLenInChunk,i,tmpcol,tmpval) reduction (+:nEnts,nnz)
-        { 
-            maxRowLenInChunk = 0; 
-            GHOST_CALL(ghost_malloc((void **)&tmpval,maxrowlen*mat->elSize),ret);
-            GHOST_CALL(ghost_malloc((void **)&tmpcol,maxrowlen*sizeof(ghost_lidx_t)),ret);
-#pragma omp for schedule(runtime)
-            for( chunk = 0; chunk < nChunks; chunk++ ) {
-                for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                    ghost_lidx_t row = chunk*SELL(mat)->chunkHeight+i;
-
-                    if (row < mat->nrows) {
-                        func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
-                    } else {
-                        SELL(mat)->rowLen[row] = 0;
-                    }
-
-                    SELL(mat)->rowLenPadded[row] = PAD(SELL(mat)->rowLen[row],SELL(mat)->T);
-
-                    nnz += SELL(mat)->rowLen[row];
-                    maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
-                }
-#pragma omp critical
-                maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
-                SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
-                SELL(mat)->chunkLenPadded[chunk] = PAD(maxRowLenInChunk,SELL(mat)->T);
-                nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
-                maxRowLenInChunk = 0;
-            }
-
-            free(tmpval); tmpval = NULL;
-            free(tmpcol); tmpcol = NULL;
-        }
-        if (ret != GHOST_SUCCESS) {
-            goto err;
-        }
-    } else {
-*/
     int funcerrs = 0;
+    ghost_gidx_t gnents = 0, gnnz = 0;
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:nEnts,nnz,funcerrs) 
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:gnents,gnnz,funcerrs) 
         {
             int funcret = 0;
             maxRowLenInChunk = 0; 
@@ -354,14 +265,14 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
                     SELL(mat)->rowLenPadded[row] = PAD(SELL(mat)->rowLen[row],SELL(mat)->T);
 
-                    nnz += SELL(mat)->rowLen[row];
+                    gnnz += SELL(mat)->rowLen[row];
                     maxRowLenInChunk = MAX(maxRowLenInChunk,SELL(mat)->rowLen[row]);
                 }
 #pragma omp critical
                 maxRowLen = MAX(maxRowLen,maxRowLenInChunk);
                 SELL(mat)->chunkLen[chunk] = maxRowLenInChunk;
                 SELL(mat)->chunkLenPadded[chunk] = PAD(maxRowLenInChunk,SELL(mat)->T);
-                nEnts += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
+                gnents += SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
                 maxRowLenInChunk = 0;
             }
 
@@ -379,8 +290,16 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         SELL(mat)->chunkStart[chunk+1] = SELL(mat)->chunkStart[chunk] + SELL(mat)->chunkLenPadded[chunk]*SELL(mat)->chunkHeight;
     }
 
-    mat->nEnts = nEnts;
-    mat->nnz = nnz;
+    if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        ERROR_LOG("The local number of entries is too large.");
+        return GHOST_ERR_UNKNOWN;
+    }
+    if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
+        ERROR_LOG("The local number of nonzeroes is too large.");
+        return GHOST_ERR_UNKNOWN;
+    }
+    mat->nEnts = (ghost_lidx_t)gnents;
+    mat->nnz = (ghost_lidx_t)gnnz;
     SELL(mat)->beta = mat->nnz*1.0/(double)mat->nEnts;
 
     GHOST_CALL_GOTO(ghost_malloc_align((void **)&SELL(mat)->val,mat->elSize*(size_t)mat->nEnts,GHOST_DATA_ALIGNMENT),err,ret);
