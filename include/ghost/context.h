@@ -150,8 +150,8 @@ extern "C" {
      * @brief Create a context. 
      *
      * @param[out] ctx Where to store the created context.
-     * @param[in] gnrows The global number of rows for the context. If gnrows<1 a valid matrix file path has to be provided in the argument matrixSource from which the number of rows will be read.
-     * @param[in] gncols The global number of columns for the context. If gncols<1 a valid matrix file path has to be provided in the argument matrixSource from which the number of columns will be read.
+     * @param[in] gnrows The global number of rows for the context. If gnrows is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of rows will be read.
+     * @param[in] gncols The global number of columns for the context. If gncols is 0 a valid matrix file path has to be provided in the argument matrixSource from which the number of columns will be read.
      * @param[in] flags Flags to the context.
      * @param[in] matrixSource The sparse matrix source.     
      * @param[in] srcType The type of the sparse matrix source.     
