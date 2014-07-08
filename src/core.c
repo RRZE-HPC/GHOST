@@ -489,6 +489,16 @@ ghost_error_t ghost_string(char **str)
 #else
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
 #endif
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+    ghost_line_string(str,"Gobal index size","bits","64");
+#else
+    ghost_line_string(str,"Gobal index size","bits","32");
+#endif
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
+    ghost_line_string(str,"Local index size","bits","64");
+#else
+    ghost_line_string(str,"Local index size","bits","32");
+#endif
     ghost_footer_string(str);
 
     return GHOST_SUCCESS;
