@@ -317,8 +317,8 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
             }
             ghost_gidx_t lnrows = (*context)->gnrows - (*context)->lfRow[nranks-1];
             if (lnrows > (ghost_gidx_t)GHOST_LIDX_MAX) {
-                ERROR_LOG("Re-compile with 64-bit local indices!");
-                return GHOST_ERR_UNKNOWN;
+                ERROR_LOG("The local number of rows exceeds the maximum range. Re-compile with 64-bit local indices!");
+                return GHOST_ERR_DATATYPE;
             }
             (*context)->lnrows[nranks-1] = (ghost_lidx_t)lnrows;
             
