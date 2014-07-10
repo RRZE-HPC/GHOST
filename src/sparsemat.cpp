@@ -11,7 +11,8 @@ static map<ghost_sparsemat_t *,map<ghost_lidx_t, ghost_gidx_t> > rowlengths;
 
 ghost_error_t ghost_sparsemat_registerrow(ghost_sparsemat_t *mat, ghost_gidx_t row, ghost_gidx_t *cols, ghost_lidx_t rowlen, ghost_lidx_t stride)
 {
-    ghost_lidx_t c, col;
+    ghost_lidx_t c;
+    ghost_gidx_t col;
 
     for (c=0; c<rowlen; c++) {
         col = cols[c*stride];
