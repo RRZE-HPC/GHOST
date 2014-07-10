@@ -302,10 +302,14 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
     GHOST_CALL_GOTO(ghost_sparsemat_fromfunc_common(mat,src),err,ret);
     ghost_lidx_t rowlen;
-    ghost_gidx_t i,j;
+    ghost_lidx_t i,j;
     mat->ncols = mat->context->gncols;
     mat->nrows = mat->context->lnrows[me];
-    
+   
+    if (((int64_t)mat->nrows)+1 > (int64_t)GHOST_LIDX_MAX) {
+       ERROR_LOG("Index too large!");
+       return GHOST_ERR_DATATYPE;
+    } 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(mat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
     mat->nEnts = 0;
 
@@ -315,7 +319,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     }
 
     ghost_gidx_t gnents = 0;
-    int funcret = 0;
+    ghost_lidx_t funcret = 0;
 
     GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
 #pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:gnents,funcret) 
@@ -334,14 +338,12 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
                 funcret += src->func(mat->context->lfRow[me]+i,&rowlen,tmpcol,tmpval);
             }
             gnents += rowlen;
-#pragma omp ordered
-            {
-                if ((ghost_gidx_t)CR(mat)->rpt[i]+rowlen > (ghost_gidx_t)GHOST_LIDX_MAX) {
-                    ERROR_LOG("rpt too large!");
-                    ret = GHOST_ERR_UNKNOWN;
-                }
-                CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
+            if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
+                ERROR_LOG("Number of elements too large!");
+                ret = GHOST_ERR_DATATYPE;
             }
+#pragma omp ordered
+            CR(mat)->rpt[i+1] = CR(mat)->rpt[i]+rowlen;
         }
         free(tmpval); tmpval = NULL;
         free(tmpcol); tmpcol = NULL;
@@ -355,7 +357,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     }
     
     if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large.");
+        ERROR_LOG("The local number of entries is too large: %"PRGIDX">%"PRLIDX,gnents,GHOST_LIDX_MAX);
         return GHOST_ERR_UNKNOWN;
     }
 
@@ -545,7 +547,6 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 //        memcpy(mat->col_orig, fullCR->col, mat->nnz*sizeof(ghost_gidx_t));
     }
     
-    WARNING_LOG("This does not have to be present twice in all cases!");
     GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_gidx_t)*mat->nnz),err,ret);
     
 #ifdef GHOST_HAVE_UNIFORM_IDX
