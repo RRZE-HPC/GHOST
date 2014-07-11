@@ -719,14 +719,14 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
                 }
             }
         }
-    }
 
 #ifdef GHOST_HAVE_CUDA
-    if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST)) {
-        mat->localPart->upload(mat->localPart);
-        mat->remotePart->upload(mat->remotePart);
-    }
+        if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST)) {
+            mat->localPart->upload(mat->localPart);
+            mat->remotePart->upload(mat->remotePart);
+        }
 #endif
+    }
 
     /*    INFO_LOG("+ local +++++++");
           for(chunk = 0; chunk < localSELL->nrowsPadded/localSELL->chunkHeight; chunk++) {
