@@ -549,7 +549,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->invPerm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->permutation->cu_perm,sizeof(ghost_idx_t)*nrows),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->permutation->cu_perm,sizeof(ghost_idx_t)*mat->context->gnrows),err,ret);
 #endif
     memset(mat->permutation->perm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
     memset(mat->permutation->invPerm,0,sizeof(ghost_idx_t)*mat->context->gnrows);
