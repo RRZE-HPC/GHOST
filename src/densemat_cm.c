@@ -391,6 +391,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_idx_t roffs, ghost_idx_t coffs, ghost_idx_t lda)
 {
     DEBUG_LOG(1,"Viewing a %"PRIDX"x%"PRIDX" dense matrix from plain data with offset %"PRIDX"x%"PRIDX,vec->traits.nrows,vec->traits.ncols,roffs,coffs);
+    vec->traits.flags |= GHOST_DENSEMAT_VIEW;
     ghost_densemat_cm_malloc(vec);
 
     ghost_idx_t v;
@@ -398,7 +399,6 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     for (v=0; v<vec->traits.ncols; v++) {
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
     }
-    vec->traits.flags |= GHOST_DENSEMAT_VIEW;
 
 //    vec->viewing = data;
     return GHOST_SUCCESS;

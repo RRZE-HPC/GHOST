@@ -1,5 +1,9 @@
+
+#include <mpi.h>
 #include <map>
+
 #include <cmath>
+
 
 #include "ghost/config.h"
 #include "ghost/types.h"
