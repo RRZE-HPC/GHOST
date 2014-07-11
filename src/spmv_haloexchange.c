@@ -142,7 +142,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                 }
 #endif
             }
-#endif
+#else
             if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
                 ghost_idx_t c;
 #pragma omp parallel private(to_PE,i,c)
@@ -155,6 +155,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
                     }
                 }
             }
+#endif
         }
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
