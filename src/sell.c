@@ -786,7 +786,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     ghost_idx_t chunk,j;
 
     ghost_sparsemat_fromfile_common(mat,matrixPath,&rpt);
-    
+   
     mat->nEnts = 0;
     mat->nrowsPadded = PAD(mat->nrows,SELL(mat)->chunkHeight);
 
@@ -969,7 +969,7 @@ static void SELL_free(ghost_sparsemat_t *mat)
 
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
-        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE && SELL(mat)->cumat) {
             ghost_cu_free(SELL(mat)->cumat->rowLen);
             ghost_cu_free(SELL(mat)->cumat->rowLenPadded);
             ghost_cu_free(SELL(mat)->cumat->col);
