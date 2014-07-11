@@ -640,7 +640,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     ghost_spmv_perf_args_t *arg = (ghost_spmv_perf_args_t *)varg;
 
     ghost_idx_t ncol = arg->rhs->traits.ncols;
-    ghost_idx_t flops;
+    double flops;
     ghost_nnz_t nnz;
     ghost_nnz_t nrow;
     int flopsPerEntry;
@@ -649,7 +649,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     ghost_sparsemat_nrows(&nrow,arg->mat);
     ghost_spmv_nflops(&flopsPerEntry,arg->mat->traits->datatype,arg->mat->traits->datatype);
 
-    flops = flopsPerEntry*nnz*ncol;
+    flops = (double)flopsPerEntry*(double)nnz*(double)ncol;
 
     if (arg->flags & GHOST_SPMV_AXPY) {
         flops += nrow*ncol;
@@ -670,7 +670,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
         flops += 6*nrow*ncol;
     }
 
-    *perf = flops/time/1.e9;
+    *perf = flops/1.e9/time;
 
     return 0;
 
