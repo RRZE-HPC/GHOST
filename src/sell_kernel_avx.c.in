@@ -356,7 +356,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/4
-            for (j=0; j<SELL(mat)->chunkLen[c/CHUNKHEIGHT]; j++) { // loop inside chunk
+            for (j=0; j<SELL(mat)->rowLen[c]; j++) { // loop inside chunk
                     #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[SELL(mat)->col[offs+j*CHUNKHEIGHT]]+@*4);tmp@ = _mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&mval[offs+j*CHUNKHEIGHT]),rhs));#NVECS/4
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
