@@ -201,7 +201,7 @@ __global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_id
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work, ghost_idx_t *dueptr, ghost_densemat_t *vec, ghost_idx_t *perm)
 {
-    
+   
 
     int nrank, proc;
     dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols,1);
@@ -241,9 +241,12 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
             }
         }
     }
-
     cudaDeviceSynchronize();
 
+    if (cudaPeekAtLastError() != cudaSuccess) {
+        ERROR_LOG("Error in kernel");
+        return GHOST_ERR_CUDA;
+    }
 
     return GHOST_SUCCESS;
 
