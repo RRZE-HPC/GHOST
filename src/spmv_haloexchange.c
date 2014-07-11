@@ -160,7 +160,9 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
+#endif
             ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
         }
 #endif
@@ -288,7 +290,9 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
         }
     }   
 #ifdef GHOST_HAVE_CUDA 
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
     ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
+#endif
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
 #endif
     
