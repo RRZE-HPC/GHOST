@@ -716,7 +716,7 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
 #pragma omp parallel for schedule(runtime) private (j)
     for (i = 0; i < mat->nrows; i++) {
         for (j=CR(mat)->rpt[i]; j<CR(mat)->rpt[i+1]; j++) {
-            mat->col_orig = 0;
+            mat->col_orig[j] = 0;
             memset(&CR(mat)->val[j*mat->elSize],0,mat->elSize);
         }
     }
@@ -913,11 +913,14 @@ static void CRS_free(ghost_sparsemat_t * mat)
 {
     if (mat) {
         DEBUG_LOG(1,"Freeing CRS matrix");
-        free(CR(mat)->rpt);
-        free(CR(mat)->col);
-        free(CR(mat)->val);
-
         ghost_sparsemat_destroy_common(mat);
+       
+        if (CR(mat)) { 
+            free(CR(mat)->rpt); CR(mat)->rpt = NULL;
+            free(CR(mat)->col); CR(mat)->col = NULL;
+            free(CR(mat)->val); CR(mat)->val = NULL;
+        }
+
 
         if (mat->localPart) {
             CRS_free(mat->localPart);
