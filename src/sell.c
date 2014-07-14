@@ -897,6 +897,7 @@ static void SELL_free(ghost_sparsemat_t *mat)
     if (!mat) {
         return;
     }
+    ghost_sparsemat_destroy_common(mat);
 
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
@@ -910,17 +911,16 @@ static void SELL_free(ghost_sparsemat_t *mat)
             free(SELL(mat)->cumat);
         }
 #endif
-        free(SELL(mat)->val);
-        free(SELL(mat)->col);
-        free(SELL(mat)->chunkStart);
-        free(SELL(mat)->chunkMin);
-        free(SELL(mat)->chunkLen);
-        free(SELL(mat)->chunkLenPadded);
-        free(SELL(mat)->rowLen);
-        free(SELL(mat)->rowLenPadded);
+        free(SELL(mat)->val); SELL(mat)->val = NULL;
+        free(SELL(mat)->col); SELL(mat)->col = NULL;
+        free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
+        free(SELL(mat)->chunkMin); SELL(mat)->chunkMin = NULL;
+        free(SELL(mat)->chunkLen); SELL(mat)->chunkLen = NULL;
+        free(SELL(mat)->chunkLenPadded); SELL(mat)->chunkLenPadded = NULL;
+        free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
+        free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     }
 
-    ghost_sparsemat_destroy_common(mat);
          
     if (mat->localPart) {
         SELL_free(mat->localPart);
