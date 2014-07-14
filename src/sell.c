@@ -777,7 +777,7 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     for (chunk = 0; chunk < nChunks; chunk++) {
         for (j=0; j<SELL(mat)->chunkLenPadded[chunk]; j++) {
             for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                SELL(mat)->col[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = 0;
+                mat->col_orig[SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i] = 0;
                 memset(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+j*SELL(mat)->chunkHeight+i)],0,mat->elSize);
             }
         }
