@@ -240,56 +240,63 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         mat->traits->flags |= GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
         mat->traits->flags |= GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
-    ghost_gidx_t *grpt = NULL;
 
 
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
-        if (me == 0) {
-            if (mat->context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read
-                grpt = mat->context->rpt;
-            } else { // read rpt and compute first entry and number of entries
-                GHOST_CALL_GOTO(ghost_malloc_align((void **)grpt,(header.nrows+1) * sizeof(ghost_gidx_t), GHOST_DATA_ALIGNMENT),err,ret);
-                GHOST_CALL_GOTO(ghost_bincrs_rpt_read_glob(grpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret); 
-                mat->context->lfEnt[0] = 0;
-
-                for (i=1; i<nprocs; i++){
-                    mat->context->lfEnt[i] = grpt[mat->context->lfRow[i]];
-                }
-                for (i=0; i<nprocs-1; i++){
-                    mat->context->lnEnts[i] = mat->context->lfEnt[i+1] - mat->context->lfEnt[i] ;
-                }
-
-                mat->context->lnEnts[nprocs-1] = header.nnz - mat->context->lfEnt[nprocs-1];
-            }
-        }
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_gidx, 0, mat->context->mpicomm),err,ret);
-        MPI_CALL_GOTO(MPI_Bcast(mat->context->lnEnts, nprocs, ghost_mpi_dt_lidx, 0, mat->context->mpicomm),err,ret);
+            ghost_gidx_t *grpt = NULL;
+            if (mat->context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read at rank 0
+                int msgcount = 0;
 
-        if (me != 0) {
-            GHOST_CALL_GOTO(ghost_malloc_align((void **)grpt,(mat->context->lnrows[me]+1)*sizeof(ghost_gidx_t),GHOST_DATA_ALIGNMENT),err,ret);
+                for (i=0;i<nprocs;i++) {
+                    req[i] = MPI_REQUEST_NULL;
+                }
+
+                if (me == 0) {
+                    grpt = mat->context->rpt;
+                    for (i=1;i<nprocs;i++) {
+                        MPI_CALL_GOTO(MPI_Isend(&grpt[mat->context->lfRow[i]],mat->context->lnrows[i]+1,ghost_mpi_dt_gidx,i,i,mat->context->mpicomm,&req[msgcount]),err,ret);
+                        msgcount++;
+                    }
+                    for (i=1; i<nprocs; i++){
+                        mat->context->lfEnt[i] = grpt[mat->context->lfRow[i]];
+                    }
+                    for (i=0; i<nprocs-1; i++){
+                        mat->context->lnEnts[i] = mat->context->lfEnt[i+1] - mat->context->lfEnt[i] ;
+                    }
+
+                    mat->context->lnEnts[nprocs-1] = header.nnz - mat->context->lfEnt[nprocs-1];
+                } else {
+                    GHOST_CALL_GOTO(ghost_malloc_align((void **)grpt,(mat->context->lnrows[me]+1)*sizeof(ghost_gidx_t),GHOST_DATA_ALIGNMENT),err,ret);
 #pragma omp parallel for schedule(runtime)
-            for (i = 0; i < mat->context->lnrows[me]+1; i++) {
-                (*rpt)[i] = 0;
+                    for (i = 0; i < mat->context->lnrows[me]+1; i++) {
+                        grpt[i] = 0;
+                    }
+                    MPI_CALL_GOTO(MPI_Irecv(grpt,mat->context->lnrows[me]+1,ghost_mpi_dt_gidx,0,me,mat->context->mpicomm,&req[msgcount]),err,ret);
+                    msgcount++;
+                }
+                MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
+                MPI_CALL_GOTO(MPI_Bcast(mat->context->lfEnt,  nprocs, ghost_mpi_dt_gidx, 0, mat->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Bcast(mat->context->lnEnts, nprocs, ghost_mpi_dt_lidx, 0, mat->context->mpicomm),err,ret);
+                
+                
+            } else { // read rpt and compute first entry and number of entries
+                GHOST_CALL_GOTO(ghost_malloc_align((void **)&grpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t), GHOST_DATA_ALIGNMENT),err,ret);
+                GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, mat->permutation),err,ret); 
+
+            WARNING_LOG("%"PRGIDX,grpt[0]);
+                ghost_gidx_t lfEnt = grpt[0];
+                ghost_lidx_t lnEnts = (ghost_lidx_t)grpt[mat->context->lnrows[me]]-grpt[0]; 
+
+                MPI_CALL_GOTO(MPI_Allgather(&lfEnt,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allgather(&lnEnts,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
+
+                INFO_LOG("frow %"PRGIDX" nrows %"PRLIDX" fent %"PRGIDX" %"PRGIDX" me %"PRGIDX" nents %"PRLIDX" %"PRLIDX" me %"PRLIDX,mat->context->lfRow[me],mat->context->lnrows[me],mat->context->lfEnt[0],mat->context->lfEnt[1],lfEnt,mat->context->lnEnts[0],mat->context->lnEnts[1],lnEnts);
+
+
             }
-        }
+            GHOST_CALL_GOTO(ghost_malloc_align((void **)rpt,(mat->context->lnrows[me]+1)*sizeof(ghost_lidx_t),GHOST_DATA_ALIGNMENT),err,ret);
 
-        int msgcount = 0;
-
-        for (i=0;i<nprocs;i++) 
-            req[i] = MPI_REQUEST_NULL;
-
-        if (me != 0) {
-            MPI_CALL_GOTO(MPI_Irecv(grpt,mat->context->lnrows[me]+1,ghost_mpi_dt_gidx,0,me,mat->context->mpicomm,&req[msgcount]),err,ret);
-            msgcount++;
-        } else {
-            for (i=1;i<nprocs;i++) {
-                MPI_CALL_GOTO(MPI_Isend(&grpt[mat->context->lfRow[i]],mat->context->lnrows[i]+1,ghost_mpi_dt_gidx,i,i,mat->context->mpicomm,&req[msgcount]),err,ret);
-                msgcount++;
-            }
-        }
-        MPI_CALL_GOTO(MPI_Waitall(msgcount,req,stat),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc_align((void **)rpt,(mat->context->lnrows[me]+1)*sizeof(ghost_lidx_t),GHOST_DATA_ALIGNMENT),err,ret);
 
 #pragma omp parallel for schedule(runtime)
         for (i=0;i<mat->context->lnrows[me]+1;i++) {
@@ -965,6 +972,10 @@ char * ghost_sparsemat_symmetry_string(ghost_sparsemat_symmetry_t symmetry)
 
 void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
 {
+    if (!mat) {
+        return;
+    }
+
     if (mat->permutation) {
         free(mat->permutation->perm); mat->permutation->perm = NULL;
         free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
