@@ -235,7 +235,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 }
                 if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
                     //GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL/*(*context)->invRowPerm)*/,err,ret);
-                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read_glob((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+                    GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
                 } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
                     ghost_sparsemat_fromRowFunc_t func;
                     if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {

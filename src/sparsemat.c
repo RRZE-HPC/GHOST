@@ -284,7 +284,6 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
                 GHOST_CALL_GOTO(ghost_malloc_align((void **)&grpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t), GHOST_DATA_ALIGNMENT),err,ret);
                 GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, mat->permutation),err,ret); 
 
-            WARNING_LOG("%"PRGIDX,grpt[0]);
                 ghost_gidx_t lfEnt = grpt[0];
                 ghost_lidx_t lnEnts = (ghost_lidx_t)grpt[mat->context->lnrows[me]]-grpt[0]; 
 
@@ -313,7 +312,8 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         for (i = 0; i < header.nrows+1; i++) {
             (*rpt)[i] = 0;
         }
-        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(*rpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
+        ghost_gidx_t *grpt = (ghost_gidx_t *)rpt;
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, 0, header.nrows+1, mat->permutation),err,ret);
         for (i=0; i<nprocs; i++){
             mat->context->lfEnt[i] = 0;
             mat->context->lfRow[i] = 0;
@@ -414,7 +414,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     } else {
         char *matrixPath = (char *)matrixSource;
 
-        GHOST_CALL_GOTO(ghost_bincrs_rpt_read_glob(rpt, matrixPath, rowOffset, nrows+1, NULL),err,ret);
+        GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, rowOffset, nrows+1, NULL),err,ret);
         for (i=0; i<nrows; i++) {
             rowSort[i].nEntsInRow = rpt[i+1]-rpt[i];
             rowSort[i].row = i;
