@@ -54,9 +54,8 @@ extern "C" {
     ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, int keepCols, FILE *filed);
     ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
     ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, FILE *filed);
-    ghost_error_t ghost_bincrs_rpt_read(ghost_lidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_rpt_read_glob(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_gidx_t nRows, ghost_permutation_t *perm);
-    ghost_error_t ghost_bincrs_rpt_read_opened(void *rpt, char *matrixPath, ghost_gidx_t offsRows, void * nRows, ghost_permutation_t *perm, FILE *filed, bool glob);
+    ghost_error_t ghost_bincrs_rpt_read(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm);
+    ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, void * nRows, ghost_permutation_t *perm, FILE *filed);
 
     /**
      * @brief Check if the machine endianess differs from the sparse matrix file.
