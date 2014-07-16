@@ -618,3 +618,8 @@ if (DOXYGEN_FOUND)
     add_custom_target(doc DEPENDS ${CMAKE_BINARY_DIR}/doc/html/index.html)
 endif()
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+enable_testing()
+add_test(NAME simple WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test COMMAND simple)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS simple)
+        
