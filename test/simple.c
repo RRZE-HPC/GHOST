@@ -3,7 +3,7 @@
 
 #define N 4
 
-static int diag(ghost_idx_t row, ghost_idx_t *rowlen, ghost_idx_t *col, void *val)
+static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
 {
     *rowlen = 1;
     col[0] = row;
