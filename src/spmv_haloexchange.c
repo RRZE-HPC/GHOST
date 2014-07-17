@@ -41,7 +41,6 @@ static void *cu_work;
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
 {
 #ifdef GHOST_HAVE_MPI
-    GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     //max_dues = 0;
@@ -51,6 +50,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     if (nprocs == 1) {
         return GHOST_SUCCESS;
     }
+    GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
     
