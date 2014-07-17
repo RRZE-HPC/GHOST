@@ -224,7 +224,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 ret = GHOST_ERR_INVALID_ARG;
                 goto err;
             }
-            WARNING_LOG("Will not take into account possible matrix re-ordering!");
+            WARNING_LOG("Will not take into account possible matrix re-ordering when dividing the matrix by number of non-zeros!");
 
 
             if (me == 0) {
