@@ -41,6 +41,7 @@ static void *cu_work;
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     //max_dues = 0;
@@ -61,7 +62,6 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     
     GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*acc_dues*vec->elSize));
     
-    GHOST_INSTR_START(spmv_haloexchange_assemblebuffers)
 #ifdef GHOST_HAVE_CUDA
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_DL
     ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*vec->traits.nrows*vec->elSize);
@@ -183,6 +183,7 @@ out:
 ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled)
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_INSTR_START(spmv_haloexchange_initiate)
     int nprocs;
     int me; 
     int i, from_PE, to_PE;
@@ -254,6 +255,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 err:
 
 out:
+    GHOST_INSTR_STOP(spmv_haloexchange_initiate)
     return ret;
 #else
     UNUSED(vec);
@@ -267,6 +269,7 @@ out:
 ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 {
 #ifdef GHOST_HAVE_MPI
+    GHOST_INSTR_START(spmv_haloexchange_finalize)
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     int i, from_PE;
@@ -310,6 +313,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 err:
 
 out:
+    GHOST_INSTR_STOP(spmv_haloexchange_finalize)
     return ret;
 
 #else
