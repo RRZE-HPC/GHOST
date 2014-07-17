@@ -135,7 +135,7 @@ typedef int64_t ghost_gidx_t;
 /**
  * @brief MPI data type for matrix row/column indices
  */
-#define ghost_mpi_dt_gidx MPI_LONG_LONG
+#define ghost_mpi_dt_gidx MPI_INT64_T
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -152,7 +152,7 @@ typedef int32_t ghost_gidx_t;
 /**
  * @brief MPI data type for matrix row/column indices
  */
-#define ghost_mpi_dt_gidx MPI_LONG
+#define ghost_mpi_dt_gidx MPI_INT32_T
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -171,7 +171,7 @@ typedef int64_t ghost_lidx_t;
 /**
  * @brief MPI data type for matrix row/column indices
  */
-#define ghost_mpi_dt_lidx MPI_LONG_LONG
+#define ghost_mpi_dt_lidx MPI_INT64_T
 /**
  * @brief Macro to print matrix/vector row/column indices depending on index size
  */
@@ -195,7 +195,7 @@ typedef int ghost_blas_idx_t;
 #else
 
 typedef int32_t ghost_lidx_t;
-#define ghost_mpi_dt_lidx MPI_INT
+#define ghost_mpi_dt_lidx MPI_INT32_T
 typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 
