@@ -368,7 +368,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
                     if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
                         if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
-                            SELL(mat)->col[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
+                            mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
                         } else { // local permutation: distinction between global and local entries
                             if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                                 if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
