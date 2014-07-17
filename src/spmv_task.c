@@ -87,7 +87,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    GHOST_INSTR_START(spmv_task_entiresolver)
+    GHOST_INSTR_START(spmv_task_0_entiresolver)
+    GHOST_INSTR_START(spmv_task_1_prepare);
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_spmv_flags_t localopts = spmvOptions;
@@ -105,7 +106,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     compArgs cplargs;
     ghost_task_t *commTask;
     ghost_task_t *compTask;
-    GHOST_INSTR_START(spmv_task_prepare);
 
     int taskflags = GHOST_TASK_DEFAULT;
     ghost_task_t *parent = NULL;
@@ -133,11 +133,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     cplargs.spmvOptions = localopts;
     va_copy(cplargs.argp,argp);
 
-    GHOST_INSTR_STOP(spmv_task_prepare);
+    GHOST_INSTR_STOP(spmv_task_1_prepare);
+    
+    GHOST_INSTR_START(spmv_task_2_haloassemble);
     
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec, mat->permutation),err,ret);
+    
+    GHOST_INSTR_STOP(spmv_task_2_haloassemble);
 
-    GHOST_INSTR_START(spmv_task_both_tasks);
+    GHOST_INSTR_START(spmv_task_3_both_tasks);
     if (remoteExists) {
         ghost_task_enqueue(commTask);
     }
@@ -152,15 +156,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
             goto err;
         }
     }
-    GHOST_INSTR_STOP(spmv_task_both_tasks);
+    GHOST_INSTR_STOP(spmv_task_3_both_tasks);
 
-    GHOST_INSTR_START(spmv_task_computeRemote);
+    GHOST_INSTR_START(spmv_task_4_computeRemote);
     if (remoteExists) {
         mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp);
     }
-    GHOST_INSTR_STOP(spmv_task_computeRemote);
+    GHOST_INSTR_STOP(spmv_task_4_computeRemote);
        
-    GHOST_INSTR_STOP(spmv_task_entiresolver)
+    GHOST_INSTR_STOP(spmv_task_0_entiresolver)
 
     goto out;
 err:
