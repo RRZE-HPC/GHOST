@@ -294,6 +294,21 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         ERROR_LOG("The local number of entries is too large.");
         return GHOST_ERR_DATATYPE;
     }
+
+    ghost_gidx_t fent = 0;
+    for (i=0; i<nprocs; i++) {
+        if (i>0 && me==i) {
+            MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
+        }
+        if (me==i && i<nprocs-1) {
+            ghost_gidx_t send = fent+gnents;
+            MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
+        }
+    }
+    
+    MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
+
     if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
         ERROR_LOG("The local number of nonzeroes is too large.");
         return GHOST_ERR_DATATYPE;

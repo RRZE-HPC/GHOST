@@ -360,6 +360,20 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         ERROR_LOG("The local number of entries is too large: %"PRGIDX">%"PRLIDX,gnents,GHOST_LIDX_MAX);
         return GHOST_ERR_UNKNOWN;
     }
+    
+    ghost_gidx_t fent = 0;
+    for (i=0; i<nprocs; i++) {
+        if (i>0 && me==i) {
+            MPI_CALL_GOTO(MPI_Recv(&fent,1,ghost_mpi_dt_gidx,me-1,me-1,mat->context->mpicomm,MPI_STATUS_IGNORE),err,ret);
+        }
+        if (me==i && i<nprocs-1) {
+            ghost_gidx_t send = fent+gnents;
+            MPI_CALL_GOTO(MPI_Send(&send,1,ghost_mpi_dt_gidx,me+1,me,mat->context->mpicomm),err,ret);
+        }
+    }
+    
+    MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
 
     GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
 
