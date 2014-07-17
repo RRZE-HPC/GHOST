@@ -236,19 +236,13 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
                     GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
                 } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
-                    ghost_sparsemat_fromRowFunc_t func;
-                    if (sizeof(void *) != sizeof(ghost_sparsemat_fromRowFunc_t)) {
-                        ERROR_LOG("Object pointers are of different size than function pointers. That probably means that you are not running on a POSIX-compatible OS.");
-                        goto err;
-                    }
-
-                    memcpy(&func,&matrixSource,sizeof(ghost_sparsemat_fromRowFunc_t));
-                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,(*context)->gncols*GHOST_DT_MAX_SIZE),err,ret);
-                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,(*context)->gncols*sizeof(ghost_gidx_t)),err,ret);
+                    ghost_sparsemat_src_rowfunc_t *matsrc = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
+                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);
+                    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,matsrc->maxrowlen*sizeof(ghost_gidx_t)),err,ret);
                     (*context)->rpt[0] = 0;
                     ghost_lidx_t rowlen;
                     for(row = 0; row < (*context)->gnrows; row++) {
-                        func(row,&rowlen,tmpcol,tmpval);
+                        matsrc->func(row,&rowlen,tmpcol,tmpval);
                         (*context)->rpt[row+1] = (*context)->rpt[row]+rowlen;
                     }
                     free(tmpval); tmpval = NULL;
