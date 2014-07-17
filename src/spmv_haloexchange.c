@@ -282,9 +282,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     GHOST_INSTR_STOP(spmv_haloexchange_waitall);
     
     if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
-#pragma omp parallel private(i,c)
         for (from_PE=0; from_PE<nprocs; from_PE++){
-#pragma omp for
             for (i=0; i<vec->context->wishes[from_PE]; i++){
                 for (c=0; c<vec->traits.ncols; c++) {
                     memcpy(&vec->val[c][(vec->context->hput_pos[from_PE]+i)*vec->elSize],&tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
