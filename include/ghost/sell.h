@@ -70,7 +70,7 @@ typedef ghost_error_t (*sellspmv_kernel)(ghost_sparsemat_t *, ghost_densemat_t *
 
 #define SELL(mat) ((ghost_sell_t *)(mat->data))
 
-#define SELL_CUDA_THREADSPERBLOCK 256
+#define SELL_CUDA_THREADSPERBLOCK 512
 
 ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 #ifdef __cplusplus
