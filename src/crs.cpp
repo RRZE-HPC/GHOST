@@ -39,7 +39,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     v_t scale = 1., beta = 1.;
     v_t *shift = NULL;
 
-    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t);
+    GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
     
         
     if (options & GHOST_SPMV_DOT) {

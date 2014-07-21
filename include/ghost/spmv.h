@@ -28,34 +28,34 @@ typedef enum {
     GHOST_SPMV_REMOTE = 2048
 } ghost_spmv_flags_t;
 
-#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt){\
-    dt *arg = NULL;\
+#define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt_in,dt_out){\
+    dt_in *arg = NULL;\
     if (flags & GHOST_SPMV_SCALE) {\
-        arg = va_arg(argp,dt *);\
+        arg = va_arg(argp,dt_in *);\
         if (!arg) {\
             ERROR_LOG("Scale argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        alpha = *arg;\
+        alpha = *(dt_out *)arg;\
     }\
     if (flags & GHOST_SPMV_AXPBY) {\
-        arg = va_arg(argp,dt *);\
+        arg = va_arg(argp,dt_in *);\
         if (!arg) {\
             ERROR_LOG("AXPBY argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        beta = *arg;\
+        beta = *(dt_out *)arg;\
     }\
     if (flags & (GHOST_SPMV_SHIFT | GHOST_SPMV_VSHIFT)) {\
-        arg = va_arg(argp,dt *);\
+        arg = va_arg(argp,dt_in *);\
         if (!arg) {\
             ERROR_LOG("Shift argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\
         }\
-        gamma = arg;\
+        gamma = (dt_out *)arg;\
     }\
     if (flags & GHOST_SPMV_DOT) {\
-        arg = va_arg(argp,dt *);\
+        arg = va_arg(argp,dt_in *);\
         if (!arg) {\
             ERROR_LOG("Dot argument is NULL!");\
             return GHOST_ERR_INVALID_ARG;\

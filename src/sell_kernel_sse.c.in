@@ -22,7 +22,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     double *sshift = NULL;
     __m128d shift, scale, beta;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double,double);
     scale = _mm_load1_pd(&sscale);
     beta = _mm_load1_pd(&sbeta);
 
@@ -176,7 +176,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     double *sshift = NULL;
     __m128d shift, scale, beta;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double,double);
     scale = _mm_load1_pd(&sscale);
     beta = _mm_load1_pd(&sbeta);
     
@@ -305,7 +305,7 @@ ghost_error_t ghost_sellspmv__sse_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     double *sshift = NULL;
     __m128d scale, beta;
 
-    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double);
+    GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double,double);
     scale = _mm_load1_pd(&sscale);
     beta = _mm_load1_pd(&sbeta);
     
