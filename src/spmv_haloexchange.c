@@ -70,7 +70,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     GHOST_INSTR_STOP(spmv_haloexchange_download)
 #else
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        ghost_cu_malloc(&cu_work,vec->traits.ncols*acc_dues*vec->elSize);
+        GHOST_CALL_GOTO(ghost_cu_malloc(&cu_work,vec->traits.ncols*acc_dues*vec->elSize),err,ret);
     }
 #endif
 #endif
