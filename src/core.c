@@ -245,12 +245,12 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     ghost_hwconfig_set(hwconfig);
 
-    //IF_DEBUG(2) {
+    IF_DEBUG(2) {
         char *cpusetStr;
         hwloc_bitmap_list_asprintf(&cpusetStr,globcpuset);
-        INFO_LOG("Available CPU set: %s",cpusetStr);
+        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
         free(cpusetStr);
-    //}
+    }
 
 #ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
