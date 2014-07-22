@@ -263,6 +263,9 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                     }
                 } else { 
                     #GHOST_UNROLL#_mm256_store_pd(&tmpresult[@*ncolspadded+donecols],tmp@);#CHUNKHEIGHT
+                    if (spmvmOptions & GHOST_SPMV_DOT) {
+                        WARNING_LOG("local dot currently not working here!");
+                    }
                     // TODO if non-AXPY cxompute DOT from tmp instead of lval
                 }
             }
