@@ -214,6 +214,35 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
 
+set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
+set(LIBHWLOC LIBHWLOC-NOTFOUND) 
+
+if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
+    message(STATUS "Try to find hwloc via pkg-config")
+	find_package(HWLOC REQUIRED)
+    find_library(LIBHWLOC hwloc)
+endif()
+
+# find hwloc.h in default header locations
+if (NOT HWLOC_INCLUDE_DIR)
+    find_path(HWLOC_INCLUDE_DIR hwloc.h)
+endif()
+
+if (NOT HWLOC_INCLUDE_DIR)
+    message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
+endif()
+    
+if (NOT LIBHWLOC)
+    get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
+    find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
+endif()
+    
+set(HWLOC_LIBRARIES ${LIBHWLOC})
+   
+
+mark_as_advanced(LIBHWLOC)
+mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
+
 if (USE_CUDA)
 	find_package(CUDA)
     if (CUDA_FOUND)
@@ -428,35 +457,6 @@ else () #generic BLAS
     set (BLAS_LIBRARIES "")
 	message(STATUS "Generic BLAS. BLAS_LIBRARIES has to be set manually before linking.")
 endif()
-
-set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
-set(LIBHWLOC LIBHWLOC-NOTFOUND) 
-
-if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
-    message(STATUS "Try to find hwloc via pkg-config")
-	find_package(HWLOC REQUIRED)
-    find_library(LIBHWLOC hwloc)
-endif()
-
-# find hwloc.h in default header locations
-if (NOT HWLOC_INCLUDE_DIR)
-    find_path(HWLOC_INCLUDE_DIR hwloc.h)
-endif()
-
-if (NOT HWLOC_INCLUDE_DIR)
-    message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
-endif()
-    
-if (NOT LIBHWLOC)
-    get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
-    find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
-endif()
-    
-set(HWLOC_LIBRARIES ${LIBHWLOC})
-   
-
-mark_as_advanced(LIBHWLOC)
-mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
 
 if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
 	message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")

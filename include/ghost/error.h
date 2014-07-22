@@ -106,6 +106,29 @@ typedef enum {
     }\
 }\
 
+#define HWLOC_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    HWLOC_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define HWLOC_CALL_GOTO(call,label,__err) {\
+    HWLOC_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define HWLOC_CALL(call,__err) {\
+    int __hwlocerr = call;\
+    if (__hwlocerr) {\
+        ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
+        __err = GHOST_ERR_HWLOC;\
+    }\
+}\
+
 #define CUDA_CALL_RETURN(call) {\
     ghost_error_t ret = GHOST_SUCCESS;\
     CUDA_CALL(call,ret);\

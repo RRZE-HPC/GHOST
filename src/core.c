@@ -22,6 +22,7 @@
 #endif
 
 #ifdef GHOST_HAVE_CUDA
+#include <hwloc/cuda.h>
 #include <cuda_runtime.h>
 #endif
 
@@ -244,12 +245,12 @@ ghost_error_t ghost_init(int argc, char **argv)
     }
     ghost_hwconfig_set(hwconfig);
 
-    IF_DEBUG(2) {
+    //IF_DEBUG(2) {
         char *cpusetStr;
         hwloc_bitmap_list_asprintf(&cpusetStr,globcpuset);
-        DEBUG_LOG(2,"Available CPU set: %s",cpusetStr);
+        INFO_LOG("Available CPU set: %s",cpusetStr);
         free(cpusetStr);
-    }
+    //}
 
 #ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
@@ -268,19 +269,14 @@ ghost_error_t ghost_init(int argc, char **argv)
     cudaDevice = 0;
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
-            hwloc_obj_t mynode = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,cudaDevice%nnumanodes);
-            hwloc_obj_t runner = mynode;
-            while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
-                runner = runner->first_child;
-            }
-            if (i == noderank) {
-                hwloc_bitmap_copy(mycpuset,runner->cpuset);
-                //    corestaken[runner->logical_index] = 1;
-            }
-            cudaDevice++;
-
+            hwloc_cpuset_t cuCpuset = hwloc_bitmap_alloc();
+            HWLOC_CALL_RETURN(hwloc_cuda_get_device_cpuset(topology,cudaDevice,cuCpuset));
+            cuCpuset = hwloc_get_obj_inside_cpuset_by_type(topology,cuCpuset,HWLOC_OBJ_CORE,0)->cpuset;
+            
             // delete CUDA cores from global cpuset
-            hwloc_bitmap_andnot(globcpuset,globcpuset,runner->cpuset);
+            hwloc_bitmap_andnot(globcpuset,globcpuset,cuCpuset);
+            
+            cudaDevice++;
         }
     }
 #endif
