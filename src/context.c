@@ -1,4 +1,5 @@
 #include "ghost/config.h"
+#include "ghost/core.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/context.h"
@@ -33,13 +34,18 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     GHOST_CALL_GOTO(ghost_nrank(&nranks, (*context)->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, (*context)->mpicomm),err,ret);
 
+    (*context)->cu_duelist = NULL;
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishlist,nranks*sizeof(ghost_lidx_t *)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->duelist,nranks*sizeof(ghost_lidx_t *)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->wishes,nranks*sizeof(ghost_lidx_t)),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->dues,nranks*sizeof(ghost_lidx_t)),err,ret); 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->cu_duelist,nranks*sizeof(ghost_lidx_t *)),err,ret);
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&(*context)->cu_duelist,nranks*sizeof(ghost_lidx_t *)),err,ret);
+    }
 #endif
 
     for (i=0; i<nranks; i++){
@@ -695,10 +701,14 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishl_mem,size_wish),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&duel_mem,size_dues),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&ctx->hput_pos,size_nptr),err,ret); 
-    
+   
+    ghost_type_t type;
+    ghost_type_get(&type); 
 #ifdef GHOST_HAVE_CUDA
     void *cu_duel_mem;
-    GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cu_duel_mem,size_dues),err,ret);
+    if (type == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cu_duel_mem,size_dues),err,ret);
+    }
 #endif
 
     acc_dues = 0;
@@ -709,7 +719,9 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
 #ifdef GHOST_HAVE_CUDA
-        ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
+        if (type == GHOST_TYPE_CUDA) {
+            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
+        }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
         ctx->hput_pos[i]   = ctx->lnrows[me]+acc_wishes;
@@ -745,7 +757,9 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 #endif
 
 #ifdef GHOST_HAVE_CUDA
-    GHOST_CALL_GOTO(ghost_cu_upload(cu_duel_mem,duel_mem,size_dues),err,ret);
+    if (type == GHOST_TYPE_CUDA) {
+        GHOST_CALL_GOTO(ghost_cu_upload(cu_duel_mem,duel_mem,size_dues),err,ret);
+    }
 #endif
 
 
