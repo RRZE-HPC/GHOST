@@ -720,7 +720,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
 #ifdef GHOST_HAVE_CUDA
         if (type == GHOST_TYPE_CUDA) {
-            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
+            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues*sizeof(ghost_lidx_t)]);
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);
