@@ -269,12 +269,20 @@ ghost_error_t ghost_init(int argc, char **argv)
     cudaDevice = 0;
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
-            hwloc_cpuset_t cuCpuset = hwloc_bitmap_alloc();
-            HWLOC_CALL_RETURN(hwloc_cudart_get_device_cpuset(topology,cudaDevice,cuCpuset));
-            cuCpuset = hwloc_get_obj_inside_cpuset_by_type(topology,cuCpuset,HWLOC_OBJ_CORE,0)->cpuset;
+            hwloc_cpuset_t fullCuCpuset = hwloc_bitmap_alloc();
+            hwloc_cpuset_t reducedCuCpuset;
             
+            HWLOC_CALL_RETURN(hwloc_cudart_get_device_cpuset(topology,cudaDevice,fullCuCpuset));
+            
+            // restrict CUDA cpuset to CPUs which are still in global cpuset
+            hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,globcpuset);
+            
+            reducedCuCpuset = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,NULL)->cpuset;
+        
             // delete CUDA cores from global cpuset
-            hwloc_bitmap_andnot(globcpuset,globcpuset,cuCpuset);
+            hwloc_bitmap_andnot(globcpuset,globcpuset,reducedCuCpuset);
+            
+            hwloc_bitmap_free(fullCuCpuset);
             
             cudaDevice++;
         }
