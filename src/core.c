@@ -516,7 +516,11 @@ ghost_error_t ghost_barrier()
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
 #ifdef GHOST_HAVE_CUDA
-    CUDA_CALL_RETURN(ghost_cu_barrier());
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type == GHOST_TYPE_CUDA) {
+        CUDA_CALL_RETURN(ghost_cu_barrier());
+    }
 #endif
     GHOST_INSTR_STOP(barrier);
 

@@ -390,7 +390,7 @@ set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.
 # firstly, try to find a Cblas header in the default locations
 if (NOT CBLAS_INCLUDE_DIR)
     message(STATUS "Try to find MKL in default paths and via MKLROOT")
-    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h ENV{MKLROOT}/include)
+    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h $ENV{MKLROOT}/include)
 endif()
 if (NOT CBLAS_INCLUDE_DIR)
     #Have to search GSL with find_package because it will not be found by find_path
