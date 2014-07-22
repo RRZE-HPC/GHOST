@@ -22,7 +22,7 @@
 #endif
 
 #ifdef GHOST_HAVE_CUDA
-#include <hwloc/cuda.h>
+#include <hwloc/cudart.h>
 #include <cuda_runtime.h>
 #endif
 
@@ -270,7 +270,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
             hwloc_cpuset_t cuCpuset = hwloc_bitmap_alloc();
-            HWLOC_CALL_RETURN(hwloc_cuda_get_device_cpuset(topology,cudaDevice,cuCpuset));
+            HWLOC_CALL_RETURN(hwloc_cudart_get_device_cpuset(topology,cudaDevice,cuCpuset));
             cuCpuset = hwloc_get_obj_inside_cpuset_by_type(topology,cuCpuset,HWLOC_OBJ_CORE,0)->cpuset;
             
             // delete CUDA cores from global cpuset
