@@ -58,7 +58,17 @@ sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_dense
         INFO_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
-
+    
+    if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4) {
+        if (p.chunkheight < 2) {
+            INFO_LOG("Chose SSE over AVX for col-major densemats and C<2");
+            p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        } else {
+            INFO_LOG("Chose SSE over AVX for col-major densemats and C<4");
+            p.impl = GHOST_IMPLEMENTATION_SSE;
+        }
+    }
+    
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED || rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Use plain implementation for scattered views");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
