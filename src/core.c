@@ -281,6 +281,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         
             // delete CUDA cores from global cpuset
             hwloc_bitmap_andnot(globcpuset,globcpuset,reducedCuCpuset);
+            hwloc_bitmap_copy(mycpuset,reducedCuCpuset);
             
             hwloc_bitmap_free(fullCuCpuset);
             
