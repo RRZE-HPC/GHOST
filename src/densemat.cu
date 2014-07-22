@@ -201,7 +201,16 @@ __global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_li
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work, ghost_lidx_t *dueptr, ghost_densemat_t *vec, ghost_lidx_t *perm)
 {
-   
+  
+    if (!vec->context->cu_duelist) {
+       ERROR_LOG("cu_duelist must not be NULL!");
+       return GHOST_ERR_INVALID_ARG;
+    }
+    if (!dueptr) {
+       ERROR_LOG("dueptr must not be NULL!");
+       return GHOST_ERR_INVALID_ARG;
+    }
+
 
     int nrank, proc;
     dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols,1);
