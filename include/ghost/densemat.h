@@ -616,7 +616,8 @@ extern "C" {
 #endif
 
 #ifdef GHOST_HAVE_CUDA
-#include "cu_densemat.h"
+#include "cu_densemat_cm.h"
+#include "cu_densemat_rm.h"
 #endif
 
 #endif

@@ -269,7 +269,55 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     stringstream buffer;
     buffer.precision(6);
     buffer.setf(ios::fixed, ios::floatfield);
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        ghost_lidx_t i,v,r,j;
+        for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
+            if (ghost_bitmap_isset(vec->trmask,i)) {
+                for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
+                    if (ghost_bitmap_isset(vec->ldmask,j)) {
+                        v_t val = 0.;
+                        GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[i*vec->traits.ncolspadded+j]),sizeof(v_t)));
+                        buffer << val << "\t";
+                        v++;
+                    }
+                }
+                if (r<vec->traits.nrows-1) {
+                    buffer << std::endl;
+                }
+                r++;
+            }
+        }
+#endif
+    } else {
+        ghost_lidx_t i,v,r;
+        for (r=0; r<vec->traits.nrows; r++) {
+            for (i=0, v=0; v<vec->traits.ncols; v++) {
+                if (ghost_bitmap_isset(vec->ldmask,v)) {
+                    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
+                        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
+                            double *val;
+                            val = (double *)VECVAL_RM(vec,vec->val,r,v);
+                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
+                        } else {
+                            float *val;
+                            val = (float *)VECVAL_RM(vec,vec->val,r,v);
+                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
+                        }
+                    } else {
+                        v_t val = *(v_t *)VECVAL_RM(vec,vec->val,r,v);
+                        buffer << val << "\t";
+                    }
+                    i++;
+                }
+            }
+            if (r<vec->traits.nrows-1) {
+                buffer << std::endl;
+            }
+        }
+    }
 
+#if 0
     ghost_lidx_t i,r;
     for (r=0; r<vec->traits.nrows; r++) {
         for (i=0; i<vec->traits.ncolsorig; i++) {
@@ -278,7 +326,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
                 if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
                 {
 #ifdef GHOST_HAVE_CUDA
-                    ghost_cu_download(&val,&(((v_t *)vec->cu_val)[r*vec->traits.ncolspadded+i]),sizeof(v_t));
+                    GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[r*vec->traits.ncolspadded+i]),sizeof(v_t)));
 #endif
                 }
                 else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
@@ -292,6 +340,8 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
             buffer << std::endl;
         }
     }
+#endif
+
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str,buffer.str().c_str());
 

@@ -13,7 +13,7 @@
 #include "densemat.h"
 
 #define VECVAL_RM(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
-#define CUVECVAL_RM(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
+#define CUVECVAL_RM(vec,val,__x,__y) &(val[((__x)*vec->traits.ncolspadded+(__y))*vec->elSize])
 
 #define ITER_COLS_BEGIN(vec,col,colidx)\
     colidx = 0;\
@@ -27,12 +27,10 @@
     }
 
 #define ITER_BEGIN_RM_INPAR(vec,col,row,colidx)\
-    _Pragma("omp for schedule(runtime)")\
     for (row=0; row<vec->traits.nrows; row++) {\
         ITER_COLS_BEGIN(vec,col,colidx)\
 
 #define ITER_BEGIN_RM(vec,col,row,colidx)\
-    _Pragma("omp parallel private(col,colidx)")\
     ITER_BEGIN_RM_INPAR(vec,col,row,colidx)\
 
 #define ITER_END_RM(colidx)\

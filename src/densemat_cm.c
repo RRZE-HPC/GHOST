@@ -340,6 +340,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
+    ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_cm_malloc(*new);
     ghost_lidx_t v,r,viewedrow;
 
@@ -498,6 +499,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
+    ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_cm_malloc(*new);
     
     for (viewedrow=-1,r=0,i=0; r<(*new)->traits.nrowsorig; r++) {

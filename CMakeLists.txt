@@ -257,19 +257,22 @@ if (USE_CUDA)
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
         cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
-        cuda_compile(VEC_CU_O src/densemat.cu)
+        cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
+        cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
         set (SOURCES 
                 ${SOURCES} 
                 ${SELL_KERNEL_CU_O}
-                ${VEC_CU_O}
+                ${DENSEMAT_CM_CU_O}
+                ${DENSEMAT_RM_CU_O}
                 ${CRS_CU_O}
                 src/cu_util.c
             )
         include_directories(${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
                 include/ghost/cu_util.h
-                include/ghost/cu_densemat.h
+                include/ghost/cu_densemat_cm.h
+                include/ghost/cu_densemat_rm.h
             )
         if (USE_CUDA_PINNEDMEM)
             set(GHOST_HAVE_CUDA_PINNEDMEM 1)

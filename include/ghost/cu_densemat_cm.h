@@ -1,10 +1,10 @@
 /**
  * @file cu_densemat.h
- * @brief Functions for dense matrices/vectors with CUDA.
+ * @brief Functions for col-major dense matrices/vectors with CUDA.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_CU_DENSEMAT_H
-#define GHOST_CU_DENSEMAT_H
+#ifndef GHOST_CU_DENSEMAT_CM_H
+#define GHOST_CU_DENSEMAT_CM_H
 
 #include "config.h"
 #include "types.h"

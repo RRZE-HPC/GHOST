@@ -271,11 +271,19 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_
     char colfield[v1->traits.ncolsorig];
     char rowfield[v1->traits.nrowsorig];
     char *cucolfield = NULL, *curowfield = NULL;
+    ghost_idx_t c,v=0;
     ghost_datatype_size(&sizeofdt,v1->traits.datatype);
     
     GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_memset(d_a,0,v1->traits.ncolsorig*sizeofdt),err,ret);
     
-    ghost_cu_upload(d_a,a,v1->traits.ncols*sizeofdt);
+    for (c=0; c<v1->traits.ncolsorig; c++) {
+        if (ghost_bitmap_isset(v1->ldmask,c)) {
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*sizeofdt],&((char *)a)[v*sizeofdt],sizeofdt),err,ret);
+            v++;
+        }
+    }
+    
     if (v1->traits.datatype != v2->traits.datatype)
     {
         ERROR_LOG("Cannot VAXPY vectors with different data types");
@@ -343,6 +351,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
     size_t sizeofdt;
     char colfield[v1->traits.ncolsorig];
     char rowfield[v1->traits.nrowsorig];
+    ghost_idx_t c,v=0;
 
     char *cucolfield = NULL, *curowfield = NULL;
     
@@ -350,8 +359,17 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
     
     GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,v1->traits.ncols*sizeofdt),err,ret);
     GHOST_CALL_GOTO(ghost_cu_malloc(&d_b,v1->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_memset(d_a,0,v1->traits.ncolsorig*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_memset(d_b,0,v1->traits.ncolsorig*sizeofdt),err,ret);
     
-    ghost_cu_upload(d_b,b,v1->traits.ncols*sizeofdt);
+    for (c=0; c<v1->traits.ncolsorig; c++) {
+        if (ghost_bitmap_isset(v1->ldmask,c)) {
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*sizeofdt],&((char *)a)[v*sizeofdt],sizeofdt),err,ret);
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_b)[c*sizeofdt],&((char *)b)[v*sizeofdt],sizeofdt),err,ret);
+            v++;
+        }
+    }
+    
     
     if (v1->traits.datatype != v2->traits.datatype)
     {
@@ -762,12 +780,20 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
     size_t sizeofdt;
     char colfield[vec->traits.ncolsorig];
     char rowfield[vec->traits.nrowsorig];
+    ghost_idx_t c,v=0;
 
     char *cucolfield = NULL, *curowfield = NULL;
     
     ghost_datatype_size(&sizeofdt,vec->traits.datatype);
     GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,vec->traits.ncols*sizeofdt),err,ret);
-    ghost_cu_upload(d_a,a,vec->traits.ncols*sizeofdt);
+    GHOST_CALL_GOTO(ghost_cu_memset(d_a,0,vec->traits.ncolsorig*sizeofdt),err,ret);
+    
+    for (c=0; c<vec->traits.ncolsorig; c++) {
+        if (ghost_bitmap_isset(vec->ldmask,c)) {
+            GHOST_CALL_GOTO(ghost_cu_upload(&((char *)d_a)[c*sizeofdt],&((char *)a)[v*sizeofdt],sizeofdt),err,ret);
+            v++;
+        }
+    }
     
     if (!ghost_bitmap_iscompact(vec->ldmask) || 
             !ghost_bitmap_iscompact(vec->trmask)) {
