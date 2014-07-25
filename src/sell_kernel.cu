@@ -27,13 +27,13 @@
 
 
 #define CALL(func,dt1,dt2,b1,b2,b3,b4,...){\
-    func<dt1,dt2,b1,b2,b3,b4><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,*(int *)(lhs->stride),(dt2 *)rhs->cu_val,*(int *)rhs->stride,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols/MAX_COLS_PER_BLOCK,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot);\
+    func<dt1,dt2,b1,b2,b3,b4><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,*(int *)(lhs->stride),(dt2 *)rhs->cu_val,*(int *)rhs->stride,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols/MAX_COLS_PER_BLOCK,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot);\
 }\
 
 #define SWITCH_BOOLS(func,dt1,dt2,...)\
         if (flags & GHOST_SPMV_AXPBY || flags & GHOST_SPMV_AXPY) {\
             if (flags & GHOST_SPMV_SCALE) {\
-                if (flags & GHOST_SPMV_VSHIFT) {\
+                if (flags & (GHOST_SPMV_VSHIFT | GHOST_SPMV_SHIFT)) {\
                     if (flags & GHOST_SPMV_DOT) {\
                         CALL(func,dt1,dt2,true,true,true,true,__VA_ARGS__)\
                     } else {\
@@ -47,7 +47,7 @@
                     }\
                 }\
             } else {\
-                if (flags & GHOST_SPMV_VSHIFT) {\
+                if (flags & (GHOST_SPMV_VSHIFT | GHOST_SPMV_SHIFT)) {\
                     if (flags & GHOST_SPMV_DOT) {\
                         CALL(func,dt1,dt2,true,false,true,true,__VA_ARGS__)\
                     } else {\
@@ -63,7 +63,7 @@
             }\
         } else {\
             if (flags & GHOST_SPMV_SCALE) {\
-                if (flags & GHOST_SPMV_VSHIFT) {\
+                if (flags & (GHOST_SPMV_VSHIFT | GHOST_SPMV_SHIFT)) {\
                     if (flags & GHOST_SPMV_DOT) {\
                         CALL(func,dt1,dt2,false,true,true,true,__VA_ARGS__)\
                     } else {\
@@ -77,7 +77,7 @@
                     }\
                 }\
             } else {\
-                if (flags & GHOST_SPMV_VSHIFT) {\
+                if (flags & (GHOST_SPMV_VSHIFT | GHOST_SPMV_SHIFT)) {\
                     if (flags & GHOST_SPMV_DOT) {\
                         CALL(func,dt1,dt2,false,false,true,true,__VA_ARGS__)\
                     } else {\
@@ -98,19 +98,19 @@
 #define PROCESS_LOCALDOT(dt2_host)\
         GHOST_INSTR_START(spmv_cuda_dot_reduction)\
         int block, col;\
-        INFO_LOG("Experimental local dot product with final reduction over %d blocks!",SELL_CUDA_NBLOCKS);\
+        INFO_LOG("Experimental local dot product with final reduction over %d blocks!",grid.x);\
         dt2_host *localdot_blocks;\
-        GHOST_CALL_RETURN(ghost_malloc((void **)&localdot_blocks,sizeof(dt2_host)*rhs->traits.ncols*3*SELL_CUDA_NBLOCKS));\
-        GHOST_CALL_RETURN(ghost_cu_download(localdot_blocks,cu_localdot,sizeof(dt2_host)*rhs->traits.ncols*3*SELL_CUDA_NBLOCKS));\
+        GHOST_CALL_RETURN(ghost_malloc((void **)&localdot_blocks,sizeof(dt2_host)*rhs->traits.ncols*3*grid.x));\
+        GHOST_CALL_RETURN(ghost_cu_download(localdot_blocks,cu_localdot,sizeof(dt2_host)*rhs->traits.ncols*3*grid.x));\
         _Pragma("omp parallel for private(block)")\
         for (col=0; col<rhs->traits.ncols; col++) {\
             localdot[col                      ] = 0;\
             localdot[col + 1*rhs->traits.ncols] = 0;\
             localdot[col + 2*rhs->traits.ncols] = 0;\
-            for (block=0; block<SELL_CUDA_NBLOCKS; block++) {\
-                localdot[col                      ] += localdot_blocks[                                        col*SELL_CUDA_NBLOCKS + block];\
-                localdot[col + 1*rhs->traits.ncols] += localdot_blocks[1*SELL_CUDA_NBLOCKS*rhs->traits.ncols + col*SELL_CUDA_NBLOCKS + block];\
-                localdot[col + 2*rhs->traits.ncols] += localdot_blocks[2*SELL_CUDA_NBLOCKS*rhs->traits.ncols + col*SELL_CUDA_NBLOCKS + block];\
+            for (block=0; block<grid.x; block++) {\
+                localdot[col                      ] += localdot_blocks[                             col*grid.x + block];\
+                localdot[col + 1*rhs->traits.ncols] += localdot_blocks[1*grid.x*rhs->traits.ncols + col*grid.x + block];\
+                localdot[col + 2*rhs->traits.ncols] += localdot_blocks[2*grid.x*rhs->traits.ncols + col*grid.x + block];\
             }\
         }\
         free(localdot_blocks);\
@@ -134,66 +134,57 @@
     dt2 *cu_shift = NULL;\
     dt2_host *localdot = NULL;\
     dt2 *shift, scale, beta;\
+    dim3 block, grid;\
     GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2_host,dt2);\
     if (flags & GHOST_SPMV_AXPY) {\
         dt2_host hbeta = 1.;\
         beta = *((dt2 *)&hbeta);\
     }\
-    if (flags & GHOST_SPMV_SHIFT) {\
-        ERROR_LOG("Currently not working!");\
-    }\
-    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*SELL_CUDA_NBLOCKS));\
-    size_t shiftsize = sizeof(dt2)*(flags & GHOST_SPMV_SHIFT?1:(flags & GHOST_SPMV_VSHIFT?rhs->traits.ncols:0));\
+    size_t shiftsize = sizeof(dt2)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);\
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));\
-    GHOST_CALL_RETURN(ghost_cu_upload(cu_shift,shift,shiftsize));\
+    if (flags & GHOST_SPMV_SHIFT) {\
+        INFO_LOG("scatter shift %zu bytes",shiftsize);\
+        ghost_lidx_t c;\
+        for (c=0; c<rhs->traits.ncols; c++) {\
+            GHOST_CALL_RETURN(ghost_cu_upload(&cu_shift[c],shift,sizeof(dt2)));\
+        }\
+    } else {\
+        GHOST_CALL_RETURN(ghost_cu_upload(cu_shift,shift,shiftsize));\
+    }\
     struct cudaDeviceProp prop;\
     CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
     GHOST_INSTR_START(spmv_cuda)\
-    if (rhs->traits.ncols > 1) {\
-        if (SELL(mat)->T > 1) {\
-            WARNING_LOG("SELL-T kernel for multiple vectors nor implemented, falling back to SELL-1!");\
+    if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
+        block.x = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        block.y = (MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        grid.x = (int)ceil(mat->nrowsPadded/(double)block.x);\
+        grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
+        size_t reqSmem = 0;\
+        if (flags & GHOST_SPMV_DOT) {\
+            reqSmem = sizeof(dt2)*32*block.y*3;\
         }\
-        int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/MIN(rhs->traits.ncols,MAX_COLS_PER_BLOCK)),SELL(mat)->chunkHeight);\
-        if (blockheight*MIN(rhs->traits.ncols,MAX_COLS_PER_BLOCK) > 1024) {\
-            WARNING_LOG("Too many threads! (FIXME)");\
-        }\
-        if (rhs->traits.ncols > MAX_COLS_PER_BLOCK) {\
-            WARNING_LOG("Will have a loop over the vectors!");\
-        }\
-        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
-            dim3 block(SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols),MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols));\
-            dim3 grid((int)ceil(mat->nrowsPadded/(double)block.x),(int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK)));\
-            size_t reqSmem = 0;\
-            if (flags & GHOST_SPMV_DOT) {\
-                reqSmem = sizeof(dt2)*32*block.y;\
-            }\
-            if (prop.sharedMemPerBlock < reqSmem) {\
-                WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
-            }\
-            INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);\
-            SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,grid,block,reqSmem)\
-            /*SELL_kernel_CU_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)blockheight),block,reqSmem>>>((dt2 *)lhs->cu_val,lhs->traits.nrowspadded,(dt2 *)rhs->cu_val,rhs->traits.nrowspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols/block.y,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);*/\
-        } else {\
-            INFO_LOG("Experimental row-major CUDA SELL-SpMMV");\
-            dim3 block(MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols),SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols));\
-            dim3 grid((int)ceil(mat->nrowsPadded/(double)block.y),(int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK)));\
-            INFO_LOG("grid %dx%d block %dx%d",grid.x,grid.y,block.x,block.y);\
-            SWITCH_BOOLS(SELL_kernel_CU_rm_tmpl,dt1,dt2,grid,block)\
-            /*SELL_kernel_CU_rm_tmpl<dt1,dt2><<<(int)ceil(mat->nrowsPadded/(double)32),newblock,reqSmem>>>((dt2 *)lhs->cu_val,lhs->traits.ncolspadded,(dt2 *)rhs->cu_val,rhs->traits.ncolspadded,flags,mat->nrows,mat->nrowsPadded,rhs->traits.ncols/newblock.x,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,SELL(mat)->cumat->chunkLen,SELL(mat)->chunkHeight,SELL(mat)->T,cu_shift,scale,beta,cu_localdot,flags&GHOST_SPMV_AXPY,flags&GHOST_SPMV_AXPBY,flags&GHOST_SPMV_SCALE,flags&GHOST_SPMV_SHIFT,flags&GHOST_SPMV_VSHIFT,flags&GHOST_SPMV_DOT);*/\
-        }\
-    } else {\
-        int blockheight = PAD((int)ceil((double)SELL_CUDA_THREADSPERBLOCK/rhs->traits.ncols),SELL(mat)->chunkHeight);\
-        if (blockheight*rhs->traits.ncols > 1024) {\
-            WARNING_LOG("Too many threads! (FIXME)");\
-        }\
-        size_t reqSmem;\
-        ghost_datatype_size(&reqSmem,lhs->traits.datatype);\
-        reqSmem *= blockheight*rhs->traits.ncols;\
         if (prop.sharedMemPerBlock < reqSmem) {\
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
         }\
-        dim3 block(blockheight,rhs->traits.ncols);\
-        SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,SELL_CUDA_NBLOCKS,SELL_CUDA_THREADSPERBLOCK)\
+        INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
+        SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,grid,block,reqSmem)\
+    } else {\
+        INFO_LOG("Experimental row-major CUDA SELL-SpMMV");\
+        block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        block.y = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        grid.x = (int)ceil(mat->nrows/(double)block.y);\
+        grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
+        size_t reqSmem = 0;\
+        if (flags & GHOST_SPMV_DOT) {\
+            reqSmem = sizeof(dt2)*block.x*block.y*3;\
+        }\
+        if (prop.sharedMemPerBlock < reqSmem) {\
+            WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
+        }\
+        INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
+        SWITCH_BOOLS(SELL_kernel_CU_rm_tmpl,dt1,dt2,grid,block,reqSmem)\
     }\
     cudaDeviceSynchronize();\
     GHOST_INSTR_STOP(spmv_cuda)\
@@ -214,7 +205,7 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
 
     if (i<nrows) {
         int cs, tid;
-        if (C == blockDim.x) {
+        if (C == blockDim.y) {
             cs = chunkstart[blockIdx.x];
             tid = threadIdx.y;
         } else {
@@ -237,12 +228,113 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
             tmp = scale<v_t>(alpha,tmp);
         }
         if (do_axpby) {
-            lhs[lhs_lda*i+col] = axpy<v_t,float>(lhs[lhs_lda*i+col],tmp,1.f);
+            lhs[lhs_lda*i+col] = axpy<v_t,v_t>(tmp,lhs[lhs_lda*i+col],beta);
         } else {
             lhs[lhs_lda*i+col] = tmp;
         }
     }
 #ifdef LOCALDOT_ONTHEFLY 
+    if (do_localdot) {
+        v_t dot1, dot2, dot3;
+        zero<v_t>(dot1);
+        zero<v_t>(dot2);
+        zero<v_t>(dot3);
+        int sidx1 = 0*blockDim.x*blockDim.y + threadIdx.y*blockDim.x + threadIdx.x;
+        int sidx2 = 1*blockDim.x*blockDim.y + threadIdx.y*blockDim.x + threadIdx.x;
+        int sidx3 = 2*blockDim.x*blockDim.y + threadIdx.y*blockDim.x + threadIdx.x;
+        int stride = blockDim.x;
+
+        v_t *shmem = (v_t *) shared;
+        
+        if (i<nrows) {
+            shmem[sidx1] = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
+            shmem[sidx2] = axpy<v_t>(dot1,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
+            shmem[sidx3] = axpy<v_t>(dot1,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+        } else {
+            zero<v_t>(shmem[sidx1]);
+            zero<v_t>(shmem[sidx2]);
+            zero<v_t>(shmem[sidx3]);
+        }
+
+        __syncthreads();
+        
+        if (threadIdx.y < 64) {
+            if (blockDim.y >= 128) {
+                shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+64*stride],1.f);
+                shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+64*stride],1.f);
+                shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+64*stride],1.f);
+                __syncthreads();
+            }
+            if (threadIdx.y < 32) {
+                if (blockDim.y >= 64) {
+                    shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+32*stride],1.f);
+                    shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+32*stride],1.f);
+                    shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+32*stride],1.f);
+                    __syncthreads();
+                }
+                if (threadIdx.y < 16) {
+                    if (blockDim.y >= 32) {
+                        shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+16*stride],1.f);
+                        shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+16*stride],1.f);
+                        shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+16*stride],1.f);
+                        __syncthreads();
+                    }
+                    if (threadIdx.y < 8) {
+                        if (blockDim.y >= 16) {
+                            shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+8*stride],1.f);
+                            shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+8*stride],1.f);
+                            shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+8*stride],1.f);
+                            __syncthreads();
+                        }
+                        if (threadIdx.y < 4) {
+                            if (blockDim.y >= 8) {
+                                shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+4*stride],1.f);
+                                shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+4*stride],1.f);
+                                shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+4*stride],1.f);
+                                __syncthreads();
+                            }
+                            if (threadIdx.y < 2) {
+                                if (blockDim.y >= 4) {
+                                    shmem[sidx1] = axpy<v_t>(shmem[sidx1],shmem[sidx1+2*stride],1.f);
+                                    shmem[sidx2] = axpy<v_t>(shmem[sidx2],shmem[sidx2+2*stride],1.f);
+                                    shmem[sidx3] = axpy<v_t>(shmem[sidx3],shmem[sidx3+2*stride],1.f);
+                                    __syncthreads();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (threadIdx.y==0) {
+            localdot[0*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx1],shmem[sidx1+stride],1.f);
+            localdot[1*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx2],shmem[sidx2+stride],1.f);
+            localdot[2*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx3],shmem[sidx3+stride],1.f);
+        }
+
+
+#if 0
+        if (i<nrows) {
+            dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot2 = axpy<v_t>(dot2,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+        } else {
+            zero<v_t>(dot1);
+            zero<v_t>(dot2);
+            zero<v_t>(dot3);
+        }
+
+        dot1 = blockReduceSum(dot1);
+        dot2 = blockReduceSum(dot2);
+        dot3 = blockReduceSum(dot3);
+
+        if (threadIdx.y==0) {
+            localdot[0*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot1;
+            localdot[1*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot2;
+            localdot[2*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot3;
+        }
+#endif
+    }
 #endif
 
 }
@@ -306,9 +398,9 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
         dot3 = blockReduceSum(dot3);
 
         if (threadIdx.x==0) {
-            localdot[0*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot1;
-            localdot[1*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot2;
-            localdot[2*ncols*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot3;
+            localdot[0*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot1;
+            localdot[1*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot2;
+            localdot[2*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot3;
         }
     }
 #endif
