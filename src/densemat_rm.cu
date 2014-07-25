@@ -181,24 +181,26 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
 
 
     int nrank, proc;
-    dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols,1);
     ghost_context_t *ctx = vec->context;
     
     ghost_nrank(&nrank,ctx->mpicomm); 
             
     for (proc=0 ; proc<nrank ; proc++){
+        dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols);
+        dim3 grid((int)ceil((double)ctx->dues[proc]/block.x));
+        INFO_LOG("communication assembly with grid %d block %dx%d",grid.x,block.x,block.y);
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<cuDoubleComplex><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<cuFloatComplex><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
                 }
             }
         }
@@ -207,13 +209,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<double><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                    cu_communicationassembly_kernel<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<float><<< (int)ceil((double)ctx->dues[proc]/THREADSPERBLOCK)*vec->traits.ncols,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.nrowspadded,perm);
+                    cu_communicationassembly_kernel<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
                 }
             }
         }
@@ -566,7 +568,8 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
     char *cucolfield = NULL, *curowfield = NULL;
     int grid = (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK);
     dim3 block (THREADSPERBLOCK/v1->traits.ncolsorig,v1->traits.ncolsorig); 
-    
+    INFO_LOG("block %dx%d",block.x,block.y);
+
     if (ghost_bitmap_weight(v1->ldmask) != v1->traits.ncolsorig || 
             ghost_bitmap_weight(v1->trmask) != v1->traits.nrowsorig ||
             ghost_bitmap_weight(v2->ldmask) != v2->traits.ncolsorig ||
@@ -872,39 +875,35 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
     onevec->fromScalar(onevec,one);
 
     one[1] = 0.;
-
-    ghost_lidx_t r;
-    for (r=0; r<vec->traits.nrows; r++)
+    
+    if (vec->traits.datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits.datatype & GHOST_DT_COMPLEX)
+        if (vec->traits.datatype & GHOST_DT_DOUBLE)
         {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
-            {
-                CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
-                            &((double *)(vec->cu_val))[r*vec->traits.ncolspadded],
-                            vec->traits.ncols*2),err,ret);
-            } 
-            else 
-            {
-                CURAND_CALL_GOTO(curandGenerateUniform(gen,
-                            &((float *)(vec->cu_val))[r*vec->traits.ncolspadded],
-                            vec->traits.ncols*2),err,ret);
-            }
+            CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
+                        (double *)(vec->cu_val),
+                        vec->traits.ncolspadded*vec->traits.nrows*2),err,ret);
+        } 
+        else 
+        {
+            CURAND_CALL_GOTO(curandGenerateUniform(gen,
+                        (float *)(vec->cu_val),
+                        vec->traits.ncolspadded*vec->traits.nrows*2),err,ret);
         }
-        else
+    }
+    else
+    {
+        if (vec->traits.datatype & GHOST_DT_DOUBLE)
         {
-            if (vec->traits.datatype & GHOST_DT_DOUBLE)
-            {
-                CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
-                            &((double *)(vec->cu_val))[r*vec->traits.ncolspadded],
-                            vec->traits.ncols),err,ret);
-            } 
-            else 
-            {
-                CURAND_CALL_GOTO(curandGenerateUniform(gen,
-                            &((float *)(vec->cu_val))[r*vec->traits.ncolspadded],
-                            vec->traits.ncols),err,ret);
-            }
+            CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
+                        (double *)(vec->cu_val),
+                        vec->traits.ncolspadded*vec->traits.nrows),err,ret);
+        } 
+        else 
+        {
+            CURAND_CALL_GOTO(curandGenerateUniform(gen,
+                        (float *)(vec->cu_val),
+                        vec->traits.ncolspadded*vec->traits.nrows),err,ret);
         }
     }
     if (vec->traits.datatype & GHOST_DT_DOUBLE) {
