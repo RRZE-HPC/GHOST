@@ -217,7 +217,7 @@ static ghost_error_t ghost_densemat_rm_vscale_tmpl(ghost_densemat_t *vec, void *
 
 // thread-safe type generic random function, returns pseudo-random numbers between -1 and 1.
 template <typename v_t>
-static void my_rand(unsigned int* state, v_t* result)
+static inline void my_rand(unsigned int* state, v_t* result)
 {
     // default implementation
     static const v_t scal = (v_t)2.0/(v_t)RAND_MAX;
@@ -234,7 +234,7 @@ static void my_rand(unsigned int* state, std::complex<float_type>* result)
 }
 
 template <typename float_type>
-static void my_rand(unsigned int* state, ghost_complex<float_type>* result)
+static inline void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 {
     my_rand<float_type>(state,(float_type *)result);
     my_rand<float_type>(state,((float_type *)result)+1);
@@ -248,15 +248,31 @@ static ghost_error_t ghost_densemat_rm_fromRand_tmpl(ghost_densemat_t *vec)
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Filling vector with random values");
 
+    if (ghost_bitmap_weight(vec->ldmask) != vec->traits.ncolsorig || 
+            ghost_bitmap_weight(vec->trmask) != vec->traits.nrowsorig) {
+        WARNING_LOG("Potentially slow fromRand operation because some rows or columns are masked out!");
 #pragma omp parallel
-    {
-    ghost_lidx_t col,row,colidx;
-    unsigned int *state;
-    ghost_rand_get(&state);
-    ITER_BEGIN_RM_INPAR(vec,col,row,colidx)
-    my_rand(state,(v_t *)VECVAL_RM(vec,vec->val,row,col));
-    ITER_END_RM(colidx)
+        {
+            ghost_lidx_t col,row,colidx;
+            unsigned int *state;
+            ghost_rand_get(&state);
+            ITER_BEGIN_RM_INPAR(vec,col,row,colidx)
+            my_rand(state,(v_t *)VECVAL_RM(vec,vec->val,row,col));
+            ITER_END_RM(colidx)
+        }
+    } else {
+#pragma omp parallel
+        {
+            unsigned int *state;
+            ghost_rand_get(&state);
+            ghost_lidx_t i;
+#pragma omp for
+            for (i=0; i<vec->traits.ncolspadded*vec->traits.nrows; i++) {
+                my_rand(state,&((v_t *)(vec->val[0]))[i]);
+            }
+        }
     }
+
     vec->upload(vec);
 
     return GHOST_SUCCESS;

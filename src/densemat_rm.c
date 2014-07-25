@@ -237,7 +237,9 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t x,c,r;
+        GHOST_CALL_RETURN(ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,vec->traits.nrows,0),VECVAL_RM(vec,vec->val,vec->traits.nrows,0),vec->traits.ncolspadded*vec->context->halo_elements*vec->elSize));
+        //GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[vec->traits.nrows*vec->traits.ncolspadded*vec->elSize],vec->val[vec->traits.nrows],vec->traits.ncolspadded*vec->context->halo_elements*vec->elSize));
+        /*ghost_lidx_t x,c,r;
         for (x=vec->traits.nrowsorig, r=0; x<vec->traits.nrowshalo; x++) {
             if (ghost_bitmap_isset(vec->trmask,x)) {
                 for (c=0; c<vec->traits.ncolsorig; c++) {
@@ -247,7 +249,7 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
                 }
                 r++;
             }
-        }
+        }*/
 #endif
     }
     return GHOST_SUCCESS;
@@ -587,10 +589,10 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
             //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrows*vec->traits.ncolspadded*vec->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
 #else
             //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits.nrowspadded,vec->traits.nrowshalo*sizeofdt,vec->traits.ncols));
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrows*vec->traits.ncolspadded*vec->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
 #endif
         }
 #endif
@@ -610,38 +612,67 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
         roffs += ghost_bitmap_first(vec2->trmask);
     }
 
-    for (r=0; r<vec->traits.nrows; r++) {
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-        {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
+    if (ghost_bitmap_weight(vec->ldmask) != vec->traits.ncolsorig || 
+            ghost_bitmap_weight(vec->trmask) != vec->traits.nrowsorig ||
+            ghost_bitmap_weight(vec2->ldmask) != vec2->traits.ncolsorig ||
+            ghost_bitmap_weight(vec2->trmask) != vec2->traits.nrowsorig || roffs || coffs) { 
+        WARNING_LOG("Potentially slow fromVec operation because some rows or columns are masked out!");
+
+        for (r=0; r<vec->traits.nrows; r++) {
+            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
+                if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
+                {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL_RM(vec,vec->cu_val,r,ghost_bitmap_first(vec->ldmask)),CUVECVAL_RM(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                    ghost_cu_memcpy(CUVECVAL_RM(vec,vec->cu_val,r,ghost_bitmap_first(vec->ldmask)),CUVECVAL_RM(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
 
 #endif
+                }
+                else
+                {
+#ifdef GHOST_HAVE_CUDA
+                    ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,r,ghost_bitmap_first(vec->ldmask)),VECVAL_RM(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+#endif
+                }
             }
             else
             {
+                if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
+                {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,r,ghost_bitmap_first(vec->ldmask)),VECVAL_RM(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                    ghost_cu_download(VECVAL_RM(vec,vec->val,r,ghost_bitmap_first(vec->ldmask)),CUVECVAL_RM(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
 #endif
+                }
+                else
+                {
+                    memcpy(VECVAL_RM(vec,vec->val,r,ghost_bitmap_first(vec->ldmask)),VECVAL_RM(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
+                }
             }
-        }
-        else
-        {
-            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
-            {
-#ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(VECVAL_RM(vec,vec->val,r,ghost_bitmap_first(vec->ldmask)),CUVECVAL_RM(vec2,vec2->cu_val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
-#endif
-            }
-            else
-            {
-                memcpy(VECVAL_RM(vec,vec->val,r,ghost_bitmap_first(vec->ldmask)),VECVAL_RM(vec2,vec2->val,roffs+r,coffs),vec->traits.ncols*vec->elSize);
-            }
-        }
 
+        }
+    } else {
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+                ghost_cu_memcpy(vec->cu_val,vec2->cu_val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+#endif
+            } else {
+#ifdef GHOST_HAVE_CUDA
+                ghost_cu_upload(vec->cu_val,vec2->val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+#endif
+            }
+        } else {
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+                ghost_cu_download(vec->val,vec2->cu_val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+#endif
+            } else {
+                memcpy(vec->val,vec2->val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+            }
+        }
     }
+
+
     return GHOST_SUCCESS;
 }
 
@@ -823,12 +854,22 @@ static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRLIDX" rows",vec->traits.nrows);
 
-    ghost_lidx_t col,row,colidx;
 
-    ITER_BEGIN_RM(vec,col,row,colidx)
-    memcpy(VECVAL_RM(vec,vec->val,row,col),val,vec->elSize);
-    ITER_END_RM(colidx)
-    vec->upload(vec);
+    if (ghost_bitmap_weight(vec->ldmask) != vec->traits.ncolsorig || 
+            ghost_bitmap_weight(vec->trmask) != vec->traits.nrowsorig) {
+        ghost_lidx_t col,row,colidx;
+        WARNING_LOG("Potentially slow fromScalar operation because some rows or columns are masked out!");
+        ITER_BEGIN_RM(vec,col,row,colidx)
+        memcpy(VECVAL_RM(vec,vec->val,row,col),val,vec->elSize);
+        ITER_END_RM(colidx)
+        vec->upload(vec);
+    } else {
+        ghost_lidx_t i;
+        for (i=0; i<vec->traits.ncolspadded*vec->traits.nrows; i++) {
+            memcpy(&vec->val[0][i],val,vec->elSize);
+        }
+    }
+        
 
     return GHOST_SUCCESS;
 }
