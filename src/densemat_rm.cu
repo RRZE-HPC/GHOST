@@ -37,7 +37,7 @@ __global__ static void cu_vaxpy_kernel(T *v1, T *v2, T *a, ghost_lidx_t nrows, c
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            v1[idx+v] = axpy<T,T>(v1[idx+v],v2[idx+v],a[v]);
+            v1[idx+v] = axpy<T,T>(v1[idx*ncolspadded+v],v2[idx*ncolspadded+v],a[v]);
         }
     }
 
@@ -53,13 +53,13 @@ __global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_lidx_t n
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
                 if (colmask[v]) {
-                    v1[idx*ncolspadded+v] = axpby<T>(v1[idx*ncolspadded+v],v2[idx*ncolspadded+v],a[v],b[v]);
+                    v1[idx*ncolspadded+v] = axpby<T>(v2[idx*ncolspadded+v],v1[idx*ncolspadded+v],a[v],b[v]);
                 }
             }
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            v1[idx+v] = axpby<T>(v1[idx+v],v2[idx+v],a[v],b[v]);
+            v1[idx+v] = axpby<T>(v2[idx*ncolspadded+v],v1[idx*ncolspadded+v],a[v],b[v]);
         }
     }
 
@@ -75,13 +75,13 @@ __global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_lidx_t nrow
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
             if (rowmask[idx]) {
                 if (colmask[v]) {
-                    v1[idx*ncolspadded+v] = axpby<T>(v1[idx*ncolspadded+v],v2[idx*ncolspadded+v],a,b);
+                    v1[idx*ncolspadded+v] = axpby<T>(v2[idx*ncolspadded+v],v1[idx*ncolspadded+v],a,b);
                 }
             }
         }
     } else {
         for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            v1[idx+v] = axpby<T>(v1[idx+v],v2[idx+v],a,b);
+            v1[idx*ncolspadded+v] = axpby<T>(v2[idx*ncolspadded+v],v1[idx*ncolspadded+v],a,b);
         }
     }
 }
