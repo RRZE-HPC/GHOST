@@ -264,7 +264,7 @@ if (USE_CUDA)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
         set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
-        cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-arch=sm_35;-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
+        cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
         set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
         install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
         set (SOURCES 
