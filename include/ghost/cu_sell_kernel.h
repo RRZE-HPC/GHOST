@@ -89,6 +89,32 @@ __global__ void deviceReduceKernel(v_t *in, v_t* out, int N) {
         out[blockIdx.x]=sum;
 }
 
+template<typename v_t>
+__global__ void localdotKernel(v_t *lhs, int lhs_lda, v_t* rhs, int rhs_lda, v_t *localdot) {
+        v_t dot1, dot2, dot3;
+        zero<v_t>(dot1);
+        zero<v_t>(dot2);
+        zero<v_t>(dot3);
+        int i = threadIdx.x+blockIdx.x*blockDim.x;
+        int col = blockDim.y*blockIdx.y+threadIdx.y;
+
+        dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
+        dot2 = axpy<v_t>(dot2,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
+        dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+
+        dot1 = blockReduceSum(dot1);
+        __syncthreads();
+        dot2 = blockReduceSum(dot2);
+        __syncthreads();
+        dot3 = blockReduceSum(dot3);
+        __syncthreads();
+
+        if (threadIdx.x==0) {
+            localdot[3*col + 0] = dot1;
+            localdot[3*col + 1] = dot2;
+            localdot[3*col + 2] = dot3;
+        }
+}
 
 
 #endif

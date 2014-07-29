@@ -249,23 +249,32 @@ if (USE_CUDA)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${CMAKE_SOURCE_DIR}/include
                 ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-gencode=arch=compute_35,code=sm_35)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-rdc=true)
         if (USE_OPENMP)
             list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
         endif()
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
+        set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
+        set(CUDA_SEPARABLE_COMPILATION_ON)
+        set(BUILD_SHARED_LIBS OFF)
         cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
+        set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
+        cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-arch=sm_35;-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
+        set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
+        install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
         set (SOURCES 
-                ${SOURCES} 
+                ${SOURCES}
                 ${SELL_KERNEL_CU_O}
                 ${DENSEMAT_CM_CU_O}
                 ${DENSEMAT_RM_CU_O}
                 ${CRS_CU_O}
+                ${CMAKE_BINARY_DIR}/libghost_cuda.a
+                ${LIBCUDADEVRT}
                 src/cu_util.c
             )
         include_directories(${CUDA_INCLUDE_DIRS})
@@ -303,7 +312,7 @@ add_dependencies(ghost preprocess)
 
 
 if (USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${LIBCUDADEVRT})
     set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
             ${CUDA_LIBRARIES})
 endif()

@@ -108,9 +108,9 @@
             localdot[col + 1*rhs->traits.ncols] = 0;\
             localdot[col + 2*rhs->traits.ncols] = 0;\
             for (block=0; block<grid.x; block++) {\
-                localdot[col                      ] += localdot_blocks[                             col*grid.x + block];\
-                localdot[col + 1*rhs->traits.ncols] += localdot_blocks[1*grid.x*rhs->traits.ncols + col*grid.x + block];\
-                localdot[col + 2*rhs->traits.ncols] += localdot_blocks[2*grid.x*rhs->traits.ncols + col*grid.x + block];\
+                localdot[col                      ] += localdot_blocks[3*rhs->traits.ncols*block + 3*col +0];\
+                localdot[col + 1*rhs->traits.ncols] += localdot_blocks[3*rhs->traits.ncols*block + 3*col +1];\
+                localdot[col + 2*rhs->traits.ncols] += localdot_blocks[3*rhs->traits.ncols*block + 3*col +2];\
             }\
         }\
         free(localdot_blocks);\
@@ -177,7 +177,8 @@
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
         size_t reqSmem = 0;\
         if (flags & GHOST_SPMV_DOT) {\
-            reqSmem = sizeof(dt2)*block.x*block.y*3;\
+            /*reqSmem = sizeof(dt2)*block.x*block.y*3;*/\
+            /*reqSmem = sizeof(dt2)*32*block.x;*/\
         }\
         if (prop.sharedMemPerBlock < reqSmem) {\
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
@@ -235,6 +236,14 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
     }
 #ifdef LOCALDOT_ONTHEFLY 
     if (do_localdot) {
+        __syncthreads();
+        if (threadIdx.y == 0 && threadIdx.x == 0) { // first line in block -> call reduction kernel
+            dim3 childblock(MIN(nrows-i,blockDim.y),blockDim.x);
+            dim3 childgrid(1,gridDim.y);
+            localdotKernel<<<childgrid, childblock, 32*sizeof(v_t)*blockDim.x>>>(&lhs[lhs_lda*i],lhs_lda,&rhs[rhs_lda*i],rhs_lda,&localdot[3*gridDim.y*blockDim.x*blockIdx.x]);
+        }
+
+#if 0
         v_t dot1, dot2, dot3;
         zero<v_t>(dot1);
         zero<v_t>(dot2);
@@ -307,12 +316,12 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
             }
         }
         if (threadIdx.y==0) {
-            localdot[0*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx1],shmem[sidx1+stride],1.f);
-            localdot[1*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx2],shmem[sidx2+stride],1.f);
-            localdot[2*blockDim.x*gridDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = axpy<v_t>(shmem[sidx3],shmem[sidx3+stride],1.f);
+            localdot[3*blockDim.x*gridDim.y*blockIdx.x + 3*col + 0] = axpy<v_t>(shmem[sidx1],shmem[sidx1+stride],1.f);
+            localdot[3*blockDim.x*gridDim.y*blockIdx.x + 3*col + 1] = axpy<v_t>(shmem[sidx2],shmem[sidx2+stride],1.f);
+            localdot[3*blockDim.x*gridDim.y*blockIdx.x + 3*col + 2] = axpy<v_t>(shmem[sidx3],shmem[sidx3+stride],1.f);
         }
 
-
+#endif
 #if 0
         if (i<nrows) {
             dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
@@ -398,9 +407,9 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
         dot3 = blockReduceSum(dot3);
 
         if (threadIdx.x==0) {
-            localdot[0*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot1;
-            localdot[1*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot2;
-            localdot[2*gridDim.y*blockDim.y*gridDim.x + col*gridDim.x + blockIdx.x] = dot3;
+            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 0] = dot1;
+            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 1] = dot2;
+            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 2] = dot3;
         }
     }
 #endif
