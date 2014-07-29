@@ -866,7 +866,7 @@ static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
     } else {
         ghost_lidx_t i;
         for (i=0; i<vec->traits.ncolspadded*vec->traits.nrows; i++) {
-            memcpy(&vec->val[0][i],val,vec->elSize);
+            memcpy(&vec->val[0][i*vec->elSize],val,vec->elSize);
         }
     }
         
