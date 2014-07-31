@@ -15,6 +15,7 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <complex.h>
+#include <cub/cub.cuh>
 
 #include "ghost/cu_complex.h"
 #include "ghost/cu_sell_kernel.h"
@@ -24,6 +25,10 @@
 #define SELL_CUDA_NBLOCKS (int)ceil(mat->nrowsPadded/ceil((double)(SELL_CUDA_THREADSPERBLOCK/((double)SELL(mat)->T*(double)(MIN(rhs->traits.ncols,MAX_COLS_PER_BLOCK))))))
 //#define SELLT_STRIDE_ONE
 #define LOCALDOT_ONTHEFLY
+
+//#define LOCALDOT_ONTHEFLY_RM_SUBKERNEL
+#define LOCALDOT_ONTHEFLY_RM_TRANSPOSE
+//#define LOCALDOT_ONTHEFLY_RM_NORMAL
 
 
 #define CALL(func,dt1,dt2,b1,b2,b3,b4,...){\
@@ -97,9 +102,41 @@
 #ifdef LOCALDOT_ONTHEFLY
 #define PROCESS_LOCALDOT(dt2_host)\
         GHOST_INSTR_START(spmv_cuda_dot_reduction)\
-        int block, col;\
-        INFO_LOG("Experimental local dot product with final reduction over %d blocks!",grid.x);\
-        dt2_host *localdot_blocks;\
+        /*int b, col = 0;\
+        dim3 reductionblock,reductiongrid;\
+        if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
+            reductionblock.x = block.x;\
+            reductionblock.y = SELL_CUDA_THREADSPERBLOCK/reductionblock.x;\
+        } else {\
+            reductionblock.y = block.x;\
+            reductionblock.x = SELL_CUDA_THREADSPERBLOCK/reductionblock.y;\
+        }\
+        reductiongrid.y = grid.y;\
+        reductiongrid.x = (int)(ceil(grid.x/(double)reductionblock.x));\
+        int N = grid.x;\
+        INFO_LOG("Experimental local dot product with final reduction kernel with grid %dx%d block %dx%d over %d values!",reductiongrid.x,reductiongrid.y,reductionblock.x,reductionblock.y,N);\
+        deviceReduceKernel<<<reductiongrid,reductionblock,rhs->traits.ncols*32*sizeof(dt2_host)>>>(cu_localdot,cu_localdot,grid.x);\
+        deviceReduceKernel<<<reductiongrid,reductionblock,rhs->traits.ncols*32*sizeof(dt2_host)>>>(&cu_localdot[rhs->traits.ncols*grid.x],&cu_localdot[rhs->traits.ncols*grid.x],N);\
+        deviceReduceKernel<<<reductiongrid,reductionblock,rhs->traits.ncols*32*sizeof(dt2_host)>>>(&cu_localdot[2*rhs->traits.ncols*grid.x],&cu_localdot[2*rhs->traits.ncols*grid.x],N);\
+        GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(dt2_host)));\
+        GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
+        GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));*/\
+        int col;\
+        double *cu_finaldot1;\
+        ghost_cu_malloc((void **)&cu_finaldot1,sizeof(dt2_host)*rhs->traits.ncols);\
+        for (col=0; col<rhs->traits.ncols; col++) {\
+            void *d_temp_storage = NULL;\
+            size_t temp_storage_bytes = 0;\
+            cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,(double *)cu_localdot,(double *)cu_localdot,grid.x);\
+            ghost_cu_malloc((void **)&d_temp_storage,temp_storage_bytes);\
+            cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[grid.x*col],&((double *)cu_localdot)[col],grid.x);\
+            cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[rhs->traits.ncols*grid.x+grid.x*col],&((double *)cu_localdot)[rhs->traits.ncols*grid.x+col],grid.x);\
+            cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[2*rhs->traits.ncols*grid.x+grid.x*col],&((double *)cu_localdot)[2*rhs->traits.ncols*grid.x+col],grid.x);\
+        }\
+        GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(dt2_host)));\
+        GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
+        GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
+        /*dt2_host *localdot_blocks;\
         GHOST_CALL_RETURN(ghost_malloc((void **)&localdot_blocks,sizeof(dt2_host)*rhs->traits.ncols*3*grid.x));\
         GHOST_CALL_RETURN(ghost_cu_download(localdot_blocks,cu_localdot,sizeof(dt2_host)*rhs->traits.ncols*3*grid.x));\
         _Pragma("omp parallel for private(block)")\
@@ -113,7 +150,7 @@
                 localdot[col + 2*rhs->traits.ncols] += localdot_blocks[3*rhs->traits.ncols*block + 3*col +2];\
             }\
         }\
-        free(localdot_blocks);\
+        free(localdot_blocks);*/\
         GHOST_INSTR_STOP(spmv_cuda_dot_reduction)
 #else
 #define PROCESS_LOCALDOT(dt2_host)\
@@ -172,11 +209,12 @@
     } else {\
         INFO_LOG("Experimental row-major CUDA SELL-SpMMV");\
         block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
-        block.y = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        block.y = SELL_CUDA_THREADSPERBLOCK/block.x;\
         grid.x = (int)ceil(mat->nrows/(double)block.y);\
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
         size_t reqSmem = 0;\
         if (flags & GHOST_SPMV_DOT) {\
+            reqSmem = sizeof(dt2)*32*block.x;\
             /*reqSmem = sizeof(dt2)*block.x*block.y*3;*/\
             /*reqSmem = sizeof(dt2)*32*block.x;*/\
         }\
@@ -236,13 +274,61 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
     }
 #ifdef LOCALDOT_ONTHEFLY 
     if (do_localdot) {
+
+        //if (threadIdx.y == 0) {
+            //typedef cub::BlockExchange<v_t, 4, 1, false, 4, 1, 350> BlockExchange;
+            /*typedef cub::BlockExchange<v_t, 32*4, 1> BlockExchange;
+            __shared__ typename BlockExchange::TempStorage temp_storage;
+
+            v_t data[1];
+            printf("load striped %d ::: %f\n",threadIdx.x+blockDim.x*threadIdx.y,lhs[threadIdx.x+blockDim.x*threadIdx.y]);
+            cub::LoadDirectStriped<1>(threadIdx.x+blockDim.x*threadIdx.y,&lhs[lhs_lda*threadIdx.y],data);
+
+            //printf("thread %d/%d ::: %f %f %f %f ... %f\n",threadIdx.x,threadIdx.y,data[0],data[1],data[2],data[3],data[sizeof(data)/sizeof(v_t)-1]);
+            printf("thread %d/%d ::: %f\n",threadIdx.x,threadIdx.y,data[0]);
+
+            BlockExchange(temp_storage).StripedToBlocked(data);
+            //printf("thread %d/%d ::: %f %f %f %f ... %f\n",threadIdx.x,threadIdx.y,data[0],data[1],data[2],data[3],data[sizeof(data)/sizeof(v_t)-1]);
+            printf("thread %d/%d ::: %f\n",threadIdx.x,threadIdx.y,data[0]);
+*/
+        v_t dot1, dot2, dot3;
+        zero<v_t>(dot1);
+        zero<v_t>(dot2);
+        zero<v_t>(dot3);
+    
+        i = threadIdx.x+blockIdx.x*blockDim.y;
+        col = blockDim.x*blockIdx.y+threadIdx.y;
+
+        __syncthreads();
+        if (i<nrows) {
+            dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot2 = axpy<v_t>(dot2,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+        } else {
+            zero<v_t>(dot1);
+            zero<v_t>(dot2);
+            zero<v_t>(dot3);
+        }
+
+        dot1 = ghost_blockReduceSum(dot1);
+        dot2 = ghost_blockReduceSum(dot2);
+        dot3 = ghost_blockReduceSum(dot3);
+
+        if (threadIdx.x==0) {
+            localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot1;
+            localdot[1*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot2;
+            localdot[2*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot3;
+        }
+        //}
+
+#if 0
         __syncthreads();
         if (threadIdx.y == 0 && threadIdx.x == 0) { // first line in block -> call reduction kernel
             dim3 childblock(MIN(nrows-i,blockDim.y),blockDim.x);
             dim3 childgrid(1,gridDim.y);
             localdotKernel<<<childgrid, childblock, 32*sizeof(v_t)*blockDim.x>>>(&lhs[lhs_lda*i],lhs_lda,&rhs[rhs_lda*i],rhs_lda,&localdot[3*gridDim.y*blockDim.x*blockIdx.x]);
         }
-
+#endif
 #if 0
         v_t dot1, dot2, dot3;
         zero<v_t>(dot1);
@@ -402,14 +488,14 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
             zero<v_t>(dot3);
         }
 
-        dot1 = blockReduceSum(dot1);
-        dot2 = blockReduceSum(dot2);
-        dot3 = blockReduceSum(dot3);
+        dot1 = ghost_blockReduceSum(dot1);
+        dot2 = ghost_blockReduceSum(dot2);
+        dot3 = ghost_blockReduceSum(dot3);
 
         if (threadIdx.x==0) {
-            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 0] = dot1;
-            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 1] = dot2;
-            localdot[3*gridDim.y*blockDim.y*blockIdx.x + 3*col + 2] = dot3;
+            localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot1;
+            localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot2;
+            localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot3;
         }
     }
 #endif
