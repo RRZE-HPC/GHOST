@@ -291,10 +291,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_
     }
 
     
-    if (!ghost_bitmap_iscompact(v1->ldmask) || 
-            !ghost_bitmap_iscompact(v1->trmask) || 
-            !ghost_bitmap_iscompact(v2->ldmask) || 
-            !ghost_bitmap_iscompact(v2->trmask)) {
+    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         WARNING_LOG("Potentially slow VAXPY operation because some rows or columns are masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
@@ -336,6 +333,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(vaxpy);
 
     return ret;
@@ -377,10 +375,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
-    if (!ghost_bitmap_iscompact(v1->ldmask) || 
-            !ghost_bitmap_iscompact(v1->trmask) || 
-            !ghost_bitmap_iscompact(v2->ldmask) || 
-            !ghost_bitmap_iscompact(v2->trmask)) {
+    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         
         WARNING_LOG("Potentially slow VAXPBY operation because some rows or columns are masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
@@ -430,6 +425,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(vaxpby);
 
     return ret;
@@ -450,15 +446,13 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_densemat_t *vecclone;
     ghost_densemat_t *vec2clone;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
     } else {
         vecclone = vec;
     }
-    if (!ghost_bitmap_iscompact(vec2->ldmask) || 
-            !ghost_bitmap_iscompact(vec2->trmask)) {
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
     } else {
@@ -504,15 +498,14 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     goto out;
 err:
 out:
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         vecclone->destroy(vecclone);
     }
     
-    if (!ghost_bitmap_iscompact(vec2->ldmask) || 
-            !ghost_bitmap_iscompact(vec2->trmask)) {
+    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         vec2clone->destroy(vec2clone);
     }
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(dot);
 
     return ret;
@@ -533,10 +526,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
 
     char *cucolfield = NULL, *curowfield = NULL;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask) || 
-            !ghost_bitmap_iscompact(vec2->ldmask) || 
-            !ghost_bitmap_iscompact(vec2->trmask)) {
+    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) || (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         WARNING_LOG("Potentially slow AXPY operation because some rows or columns are masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
@@ -626,6 +616,7 @@ out:
     
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(axpy)
 
     return ret;
@@ -646,10 +637,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
 
     char *cucolfield = NULL, *curowfield = NULL;
     
-    if (!ghost_bitmap_iscompact(v1->ldmask) || 
-            !ghost_bitmap_iscompact(v1->trmask) || 
-            !ghost_bitmap_iscompact(v2->ldmask) || 
-            !ghost_bitmap_iscompact(v2->trmask)) {
+    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         
         WARNING_LOG("Potentially slow AXPBY operation because some rows or columns are masked out!");
         
@@ -699,6 +687,7 @@ err:
 out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(axpby);
 
     return ret;
@@ -714,8 +703,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void 
 
     char *cucolfield = NULL, *curowfield = NULL;
     
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) { 
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         WARNING_LOG("Potentially slow SCAL operation because some rows or columns are masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
@@ -765,6 +753,7 @@ err:
 out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(scale);
 
     
@@ -795,8 +784,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
         }
     }
     
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         
         WARNING_LOG("Potentially slow VSCALE operation because some rows or columns are masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
@@ -846,6 +834,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
+    cudaDeviceSynchronize();
     GHOST_INSTR_STOP(vscale)
 
     return ret;
@@ -860,8 +849,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
 
     char *cucolfield = NULL, *curowfield = NULL;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         
         WARNING_LOG("Potentially slow fromScalar operation because some rows or columns are masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
@@ -918,8 +906,7 @@ out:
 extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    if (!ghost_bitmap_iscompact(vec->ldmask) || 
-            !ghost_bitmap_iscompact(vec->trmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         ERROR_LOG("fromRand does currently not consider vector views!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
