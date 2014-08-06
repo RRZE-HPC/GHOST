@@ -985,7 +985,7 @@ static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t
 
     ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
     
-    if (ghost_bitmap_iscompact(rhs->ldmask)) {
+    if (!(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
 #ifdef GHOST_HAVE_MIC
         impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX)
