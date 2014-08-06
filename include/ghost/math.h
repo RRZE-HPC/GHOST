@@ -29,6 +29,29 @@ ghost_spmv_perf_args_t;
 #define GHOST_SPMV_PERF_UNIT "GF/s"
 #define GHOST_SPMV_PERF_TAG "spmv"
 
+typedef struct {
+    ghost_densemat_t *vec1;
+    ghost_densemat_t *vec2;
+}
+ghost_axpy_perf_args_t;
+#define GHOST_AXPY_PERF_UNIT "GB/s"
+#define GHOST_AXPY_PERF_TAG "axpy"
+
+typedef struct {
+    ghost_densemat_t *vec1;
+    ghost_densemat_t *vec2;
+}
+ghost_dot_perf_args_t;
+#define GHOST_DOT_PERF_UNIT "GB/s"
+#define GHOST_DOT_PERF_TAG "dot"
+
+typedef struct {
+    ghost_densemat_t *vec;
+}
+ghost_scale_perf_args_t;
+#define GHOST_SCALE_PERF_UNIT "GB/s"
+#define GHOST_SCALE_PERF_TAG "scale"
+
 typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
 
 #ifdef __cplusplus
@@ -148,6 +171,9 @@ extern "C" {
     char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
 
     int ghost_spmv_perf(double *perf, double time, void *arg);
+    int ghost_axpy_perf(double *perf, double time, void *arg);
+    int ghost_scale_perf(double *perf, double time, void *arg);
+    int ghost_dot_perf(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"

@@ -675,3 +675,53 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     return 0;
 
 }
+
+int ghost_axpy_perf(double *perf, double time, void *varg)
+{
+    ghost_axpy_perf_args_t *arg = (ghost_axpy_perf_args_t *)varg;
+
+    ghost_lidx_t ncol = arg->vec1->traits.ncols;
+    ghost_lidx_t nrow = arg->vec1->traits.nrows;
+
+    size_t size;
+    ghost_datatype_size(&size,arg->vec1->traits.datatype);
+
+    *perf = size*3*ncol*nrow/1.e9/time;
+
+    return 0;
+}
+
+int ghost_dot_perf(double *perf, double time, void *varg)
+{
+    ghost_dot_perf_args_t *arg = (ghost_dot_perf_args_t *)varg;
+
+    ghost_lidx_t ncol = arg->vec1->traits.ncols;
+    ghost_lidx_t nrow = arg->vec1->traits.nrows;
+
+    size_t size;
+    ghost_datatype_size(&size,arg->vec1->traits.datatype);
+
+    *perf = size*ncol*nrow/1.e9/time;
+
+    if (arg->vec1 != arg->vec2) {
+        *perf *= 2;
+    }
+
+    return 0;
+}
+
+int ghost_scale_perf(double *perf, double time, void *varg)
+{
+    ghost_scale_perf_args_t *arg = (ghost_scale_perf_args_t *)varg;
+
+    ghost_lidx_t ncol = arg->vec->traits.ncols;
+    ghost_lidx_t nrow = arg->vec->traits.nrows;
+
+    size_t size;
+    ghost_datatype_size(&size,arg->vec->traits.datatype);
+
+
+    *perf = size*2*ncol*nrow/1.e9/time;
+
+    return 0;
+}
