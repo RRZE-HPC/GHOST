@@ -243,12 +243,26 @@ set(HWLOC_LIBRARIES ${LIBHWLOC})
 mark_as_advanced(LIBHWLOC)
 mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
 
+if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
+	if (${INSTRUMENTATION} STREQUAL "TIMING")
+		set(GHOST_HAVE_INSTR_TIMING 1)
+	endif()
+	if (${INSTRUMENTATION} STREQUAL "LIKWID")
+		set(GHOST_HAVE_INSTR_LIKWID 1)
+	    set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
+		include_directories(${LIKWID_INCLUDE_DIR})
+        add_definitions(-DLIKWID_PERFMON)
+        get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
+	    find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
+	endif()
+endif()
+
 if (USE_CUDA)
 	find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${CMAKE_SOURCE_DIR}/include
-                ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR})
+                ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
         list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-rdc=true)
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -O0)
@@ -267,7 +281,7 @@ if (USE_CUDA)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
         set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
-        cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
+        cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC;-arch=sm_35" "${CU_OBJS}")
         set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
         install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
         set (SOURCES 
@@ -355,21 +369,6 @@ endif()
 
 
 
-
-if (NOT ${INSTRUMENTATION} STREQUAL "NONE")
-	if (${INSTRUMENTATION} STREQUAL "TIMING")
-		set(GHOST_HAVE_INSTR_TIMING 1)
-	endif()
-	if (${INSTRUMENTATION} STREQUAL "LIKWID")
-		set(GHOST_HAVE_INSTR_LIKWID 1)
-	    set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
-		include_directories(${LIKWID_INCLUDE_DIR})
-        add_definitions(-DLIKWID_PERFMON)
-        get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
-	    find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
-        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${LIKWID_LIBRARIES})
-	endif()
-endif()
 
 	
 
