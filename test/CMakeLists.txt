@@ -8,4 +8,6 @@ include_directories(${CMAKE_BINARY_DIR})
 #set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${GHOST_Fortran_FLAGS}")
 
 link_libraries(${HWLOC_LIBRARIES} ${MPI_LIBRARIES} ${BLAS_LIBRARIES} ${CMAKE_BINARY_DIR}/libghost_cuda.a ${CMAKE_BINARY_DIR}/libghost.so ${SCOTCH_LIBRARIES} ${CUDA_LIBRARIES})
-add_executable(simple simple.c)
+if (USE_CUDA)
+    add_executable(simple simple.c)
+endif()
