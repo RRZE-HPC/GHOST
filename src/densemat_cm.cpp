@@ -76,7 +76,7 @@ static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void 
         {
             ghost_lidx_t row1,row2,rowidx = 0;
             int tid = ghost_omp_threadnum();
-            if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
+            if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) || (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
                 if (tid==0 && v==0) {
                     WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
                 }
@@ -118,7 +118,7 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
     v_t *s = (v_t *)scale;
 
     ghost_lidx_t row1,row2,col,rowidx = 0;
-    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
+    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) || (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
         ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
@@ -152,7 +152,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
+    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) || (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         WARNING_LOG("Potentially slow VAXPBY operation because some rows are masked out!");
         ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col] +
@@ -174,7 +174,7 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
     ghost_lidx_t row,col,rowidx = 0;
     v_t *s = (v_t *)scale;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask)) {
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
         ITER_BEGIN_CM(vec,col,row,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
