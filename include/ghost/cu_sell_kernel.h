@@ -47,6 +47,17 @@ v_t ghost_warpReduceSum(v_t val) {
     return val;
 }
 
+template<>
+__inline__ __device__
+double3 ghost_warpReduceSum<double3>(double3 val) {
+    for (int offset = warpSize/2; offset > 0; offset /= 2) { 
+        val.x += ghost_shfl_down(val.x, offset);
+        val.y += ghost_shfl_down(val.y, offset);
+        val.z += ghost_shfl_down(val.z, offset);
+    }
+    return val;
+}
+
 template<typename v_t>
 __inline__ __device__
 v_t ghost_blockReduceSum(v_t val) {
@@ -67,6 +78,35 @@ v_t ghost_blockReduceSum(v_t val) {
         val = shmem[lane];
     } else {
         zero<v_t>(val);
+    }
+
+    if (threadIdx.x/warpSize == 0) val = ghost_warpReduceSum(val); //Final reduce within first warp
+
+    return val;
+}
+
+template<>
+__inline__ __device__
+double3 ghost_blockReduceSum<double3>(double3 val) {
+
+    double3 * shmem = (double3 *)shared; // Shared mem for 32 partial sums
+
+    int lane = (threadIdx.x % warpSize) + (32*threadIdx.y);
+    int wid = (threadIdx.x / warpSize) + (32*threadIdx.y);
+
+    val = ghost_warpReduceSum(val);     // Each warp performs partial reduction
+
+    if (threadIdx.x%warpSize == 0) shmem[wid]=val; // Write reduced value to shared memory
+
+    __syncthreads();              // Wait for all partial reductions
+
+    //read from shared memory only if that warp existed
+    if (threadIdx.x < blockDim.x / warpSize) {
+        val = shmem[lane];
+    } else {
+        val.x = 0.;
+        val.y = 0.;
+        val.z = 0.;
     }
 
     if (threadIdx.x/warpSize == 0) val = ghost_warpReduceSum(val); //Final reduce within first warp

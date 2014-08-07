@@ -214,7 +214,7 @@
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
         size_t reqSmem = 0;\
         if (flags & GHOST_SPMV_DOT) {\
-            reqSmem = sizeof(dt2)*32*block.x;\
+            /*reqSmem = sizeof(dt2)*3*32*block.x;*/\
             /*reqSmem = sizeof(dt2)*block.x*block.y*3;*/\
             /*reqSmem = sizeof(dt2)*32*block.x;*/\
         }\
@@ -236,7 +236,7 @@
 }
 
     template<typename m_t, typename v_t, bool do_axpby, bool do_scale, bool do_vshift, bool do_localdot>  
-__global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_lidx_t *rowlen, ghost_lidx_t *mcol, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot)
+__global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const int nrowspadded, const int ncols, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const ghost_lidx_t * const __restrict__ chunklen, const int C, const int T, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot)
 {
     UNUSED(T);
     int i = threadIdx.y+blockIdx.x*blockDim.y;
@@ -304,10 +304,6 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
             dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
             dot2 = axpy<v_t>(dot2,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
             dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
-        } else {
-            zero<v_t>(dot1);
-            zero<v_t>(dot2);
-            zero<v_t>(dot3);
         }
 
         dot1 = ghost_blockReduceSum(dot1);
@@ -432,6 +428,56 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_
     }
 #endif
 
+}
+
+
+    template<>  
+__global__ void SELL_kernel_CU_rm_tmpl<double,double,true,true,true,true>(double * const __restrict__ lhs, const int lhs_lda, const double * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const int nrowspadded, const int ncols, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const double * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const ghost_lidx_t * const __restrict__ chunklen, const int C, const int T, const double * const __restrict__ shift, const double alpha, const double beta, double * const __restrict__ localdot)
+{
+    UNUSED(T);
+    int i = threadIdx.y+blockIdx.x*blockDim.y;
+    int col = blockDim.x*blockIdx.y+threadIdx.x;
+
+    if (i<nrows) {
+        int cs, tid;
+        if (C == blockDim.y) {
+            cs = chunkstart[blockIdx.x];
+            tid = threadIdx.y;
+        } else {
+            cs = chunkstart[i/C];
+            tid = threadIdx.y%C;
+        }
+        int j;
+        double tmp = 0.;
+
+        for (j=0; j<rowlen[i]; j++) {
+            tmp += rhs[rhs_lda*mcol[cs + tid + j*C]+col] * val[cs+tid+j*C];
+        }
+
+        lhs[lhs_lda*i+col] = lhs[lhs_lda*i+col]*beta + alpha*(tmp-rhs[rhs_lda*i+col]*shift[col]);
+    }
+#ifdef LOCALDOT_ONTHEFLY 
+
+    double3 dot;
+
+    i = threadIdx.x+blockIdx.x*blockDim.y;
+    col = blockDim.x*blockIdx.y+threadIdx.y;
+
+    __syncthreads();
+    if (i<nrows) {
+        dot.x = lhs[lhs_lda*i+col] * lhs[lhs_lda*i+col];
+        dot.y = rhs[rhs_lda*i+col] * lhs[lhs_lda*i+col];
+        dot.z = rhs[rhs_lda*i+col] * rhs[rhs_lda*i+col];
+    }
+
+    dot = ghost_warpReduceSum(dot);
+
+    if (threadIdx.x==0) {
+        localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot.x;
+        localdot[1*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot.y;
+        localdot[2*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot.z;
+    }
+#endif
 }
 
     template<typename m_t, typename v_t, bool do_axpby, bool do_scale, bool do_vshift, bool do_localdot>  
