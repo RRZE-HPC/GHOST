@@ -208,7 +208,8 @@
         SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,grid,block,reqSmem)\
     } else {\
         INFO_LOG("Experimental row-major CUDA SELL-SpMMV");\
-        block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
+        /*block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);*/\
+        block.x = 32;\
         block.y = SELL_CUDA_THREADSPERBLOCK/block.x;\
         grid.x = (int)ceil(mat->nrows/(double)block.y);\
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
@@ -440,18 +441,18 @@ __global__ void SELL_kernel_CU_rm_tmpl<double,double,true,true,true,true>(double
 
     if (i<nrows) {
         int cs, tid;
-        if (C == blockDim.y) {
+        if (32 == blockDim.y) {
             cs = chunkstart[blockIdx.x];
             tid = threadIdx.y;
         } else {
-            cs = chunkstart[i/C];
-            tid = threadIdx.y%C;
+            cs = chunkstart[i/32];
+            tid = threadIdx.y%32;
         }
         int j;
         double tmp = 0.;
 
         for (j=0; j<rowlen[i]; j++) {
-            tmp += rhs[rhs_lda*mcol[cs + tid + j*C]+col] * val[cs+tid+j*C];
+            tmp += rhs[rhs_lda*mcol[cs + tid + j*32]+col] * val[cs+tid+j*32];
         }
 
         lhs[lhs_lda*i+col] = lhs[lhs_lda*i+col]*beta + alpha*(tmp-rhs[rhs_lda*i+col]*shift[col]);
@@ -459,12 +460,12 @@ __global__ void SELL_kernel_CU_rm_tmpl<double,double,true,true,true,true>(double
 #ifdef LOCALDOT_ONTHEFLY 
 
     double3 dot;
-
-    i = threadIdx.x+blockIdx.x*blockDim.y;
-    col = blockDim.x*blockIdx.y+threadIdx.y;
-
     __syncthreads();
+
     if (i<nrows) {
+        i = threadIdx.x+blockIdx.x*blockDim.y;
+        col = blockDim.x*blockIdx.y+threadIdx.y;
+
         dot.x = lhs[lhs_lda*i+col] * lhs[lhs_lda*i+col];
         dot.y = rhs[rhs_lda*i+col] * lhs[lhs_lda*i+col];
         dot.z = rhs[rhs_lda*i+col] * rhs[rhs_lda*i+col];
@@ -481,7 +482,7 @@ __global__ void SELL_kernel_CU_rm_tmpl<double,double,true,true,true,true>(double
 }
 
     template<typename m_t, typename v_t, bool do_axpby, bool do_scale, bool do_vshift, bool do_localdot>  
-__global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda, ghost_spmv_flags_t flags, int nrows, int nrowspadded, int ncols, ghost_lidx_t *rowlen, ghost_lidx_t *mcol, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t *shift, v_t alpha, v_t beta, v_t *localdot)
+__global__ void SELL_kernel_CU_tmpl(v_t * const __restrict__ lhs, const int lhs_lda, const v_t * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const int nrowspadded, const int ncols, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const m_t * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const ghost_lidx_t * const __restrict__ chunklen, const int C, const int T, const v_t * const __restrict__ shift, const v_t alpha, const v_t beta, v_t * const __restrict__ localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -543,6 +544,54 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, int lhs_lda, v_t *rhs, int rhs_lda
             localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot2;
             localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot3;
         }
+    }
+#endif
+}
+
+    template<>
+__global__ void SELL_kernel_CU_tmpl<double,double,true,true,true,true>(double * const __restrict__ lhs, const int lhs_lda, const double * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const int nrowspadded, const int ncols, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const double * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const ghost_lidx_t * const __restrict__ chunklen, const int C, const int T, const double * const __restrict__ shift, const double alpha, const double beta, double * const __restrict__ localdot)
+{
+    UNUSED(T);
+    int i = threadIdx.x+blockIdx.x*blockDim.x;
+    int col = blockDim.y*blockIdx.y+threadIdx.y;
+
+    if (i<nrows) {
+        int cs, tid;
+        if (C == blockDim.x) {
+            cs = chunkstart[blockIdx.x];
+            tid = threadIdx.x;
+        } else {
+            cs = chunkstart[i/C];
+            tid = threadIdx.x%C;
+        }
+        int j;
+        double tmp = 0.;
+
+        for (j=0; j<rowlen[i]; j++) {
+            tmp += rhs[rhs_lda*col+mcol[cs + tid + j*C]] * val[cs+tid+j*C];
+        }
+
+        lhs[lhs_lda*col+i] = beta*lhs[lhs_lda*col+i] + alpha*(tmp-rhs[rhs_lda*col+i]*shift[col]);
+    }
+#ifdef LOCALDOT_ONTHEFLY 
+    double3 dot;
+
+    if (i<nrows) {
+        dot.x = lhs[lhs_lda*col+i]*lhs[lhs_lda*col+i];
+        dot.y = rhs[rhs_lda*col+i]*lhs[lhs_lda*col+i];
+        dot.z = rhs[rhs_lda*col+i]*rhs[rhs_lda*col+i];
+    } else {
+        dot.x = 0.;
+        dot.y = 0.;
+        dot.z = 0.;
+    }
+
+    dot = ghost_blockReduceSum(dot);
+
+    if (threadIdx.x==0) {
+        localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot.x;
+        localdot[1*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot.y;
+        localdot[2*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot.z;
     }
 #endif
 }
