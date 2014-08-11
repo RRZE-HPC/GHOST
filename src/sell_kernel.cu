@@ -307,9 +307,9 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
             dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
         }
 
-        dot1 = ghost_blockReduceSum(dot1);
-        dot2 = ghost_blockReduceSum(dot2);
-        dot3 = ghost_blockReduceSum(dot3);
+        dot1 = ghost_warpReduceSum(dot1);
+        dot2 = ghost_warpReduceSum(dot2);
+        dot3 = ghost_warpReduceSum(dot3);
 
         if (threadIdx.x==0) {
             localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot1;
@@ -460,12 +460,15 @@ __global__ void SELL_kernel_CU_rm_tmpl<double,double,true,true,true,true>(double
 #ifdef LOCALDOT_ONTHEFLY 
 
     double3 dot;
+    zero<double>(dot.x);
+    zero<double>(dot.y);
+    zero<double>(dot.z);
+
+    i = threadIdx.x+blockIdx.x*blockDim.y;
+    col = blockDim.x*blockIdx.y+threadIdx.y;
+
     __syncthreads();
-
     if (i<nrows) {
-        i = threadIdx.x+blockIdx.x*blockDim.y;
-        col = blockDim.x*blockIdx.y+threadIdx.y;
-
         dot.x = lhs[lhs_lda*i+col] * lhs[lhs_lda*i+col];
         dot.y = rhs[rhs_lda*i+col] * lhs[lhs_lda*i+col];
         dot.z = rhs[rhs_lda*i+col] * rhs[rhs_lda*i+col];
