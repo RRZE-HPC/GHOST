@@ -137,6 +137,19 @@ set (HEADERS
 		include/ghost/util.h
 	)
 
+string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
+
+set(SELL_CHUNKHEIGHT_IFS "switch \(SELL(mat)->chunkHeight) {\\\n")
+foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+    set(SELL_CHUNKHEIGHT_IFS "${SELL_CHUNKHEIGHT_IFS}    case ${SELL_CHUNKHEIGHT}:\\\n        SWITCH_BOOLS\(kernel,dt1,dt2,${SELL_CHUNKHEIGHT},grid,block,smem\)\\\n        break;\\\n")
+endforeach()
+set(SELL_CHUNKHEIGHT_IFS "${SELL_CHUNKHEIGHT_IFS}    default:\\\n        ERROR_LOG(\"Non-configured chunk height!\");\\\n        return GHOST_ERR_INVALID_ARG;\\\n}\\")
+
+configure_file(
+    ${PROJECT_SOURCE_DIR}/src/sell_kernel.cu.in
+    ${PROJECT_BINARY_DIR}/src/sell_kernel.cu
+    )
+
 configure_file (
 	${PROJECT_SOURCE_DIR}/src/sell_kernel_sse.c.in
 	${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
@@ -276,7 +289,7 @@ if (USE_CUDA)
         set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
         set(CUDA_SEPARABLE_COMPILATION_ON)
         set(BUILD_SHARED_LIBS OFF)
-        cuda_compile(SELL_KERNEL_CU_O src/sell_kernel.cu)
+        cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_kernel.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
