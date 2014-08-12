@@ -17,12 +17,17 @@
 
 #define ITER_ROWS_BEGIN(vec,row,rowidx)\
     rowidx = 0;\
-    _Pragma("omp for schedule(runtime)")\
+    _Pragma("omp for schedule(runtime) ordered")\
     for (row=0; row<vec->traits.nrowsorig; row++) {\
-        if (hwloc_bitmap_isset(vec->ldmask,row)) {
+        if (hwloc_bitmap_isset(vec->ldmask,row)) {\
+            _Pragma("omp ordered")\
+            {\
+
 
 #define ITER_ROWS_END(rowidx)\
-            rowidx++;\
+                _Pragma("omp critical")\
+                rowidx++;\
+            }\
         }\
     }
 
@@ -36,7 +41,9 @@
 
 #define ITER_BEGIN_CM(vec,col,row,rowidx)\
     for (col=0; col<vec->traits.ncols; col++) {\
-        _Pragma("omp parallel private(row,rowidx)")\
+        row = 0;\
+        rowidx = 0;\
+        _Pragma("omp parallel shared(rowidx)")\
         {\
             ITER_ROWS_BEGIN(vec,row,rowidx)
 
