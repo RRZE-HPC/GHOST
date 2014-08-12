@@ -89,7 +89,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
                 ghost_densemat_rm_cu_communicationassembly(cu_work,dueptr,vec,NULL);
 #endif
-            }
+            } else 
 #endif
             if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
 #pragma omp parallel private(to_PE,i)
@@ -165,17 +165,17 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
             }
 #endif
         }
+    }
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
-            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
 #endif
-            ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
-        }
-#endif
-#endif
+        ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
     }
+#endif
+#endif
     GHOST_INSTR_STOP(spmv_haloexchange_assemblebuffers)
     goto out;
 err:
