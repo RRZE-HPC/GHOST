@@ -160,14 +160,16 @@ GHOST_INSTR_STOP(spmv_cuda_dot)
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
         size_t reqSmem = 0;\
         if (flags & GHOST_SPMV_DOT) {\
-            reqSmem = sizeof(dt2)*32*block.y*3;\
+            reqSmem = sizeof(dt2)*3*32*block.y;\
+            WARNING_LOG("Maybe too much shared mem allocated!");\
         }\
         if (prop.sharedMemPerBlock < reqSmem) {\
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
         }\
         INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
-        SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,32,grid,block,reqSmem)\
+        SELL_C_VARIANTS(SELL_kernel_CU_tmpl,dt1,dt2,grid,block,reqSmem)\
+        /*SWITCH_BOOLS(SELL_kernel_CU_tmpl,dt1,dt2,32,grid,block,reqSmem)*/\
     } else {\
         INFO_LOG("Experimental row-major CUDA SELL-SpMMV");\
         /*block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);*/\
@@ -253,8 +255,11 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
         }
 
         dot1 = ghost_warpReduceSum(dot1);
+        __syncthreads();
         dot2 = ghost_warpReduceSum(dot2);
+        __syncthreads();
         dot3 = ghost_warpReduceSum(dot3);
+        __syncthreads();
 
         if (threadIdx.x==0) {
             localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot1;
@@ -453,7 +458,7 @@ __global__ void SELL_kernel_CU_tmpl(
         }
 
         if (do_vshift) {
-            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*col+i],scale2<v_t,float>(shift[col*blockDim.y+threadIdx.y],-1.f));
+            tmp = axpy<v_t,v_t>(tmp,rhs[rhs_lda*col+i],scale2<v_t,float>(shift[col],-1.f));
         }
         if (do_scale) {
             tmp = scale<v_t>(alpha,tmp);
@@ -482,8 +487,11 @@ __global__ void SELL_kernel_CU_tmpl(
         }
 
         dot1 = ghost_blockReduceSum(dot1);
+        __syncthreads();
         dot2 = ghost_blockReduceSum(dot2);
+        __syncthreads();
         dot3 = ghost_blockReduceSum(dot3);
+        __syncthreads();
 
         if (threadIdx.x==0) {
             localdot[0*gridDim.y*blockDim.y*gridDim.x + 3*col + blockIdx.x] = dot1;
