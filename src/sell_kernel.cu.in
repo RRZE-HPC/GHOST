@@ -370,7 +370,7 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
 #endif
 
 }
-/*
+
     template<>  
 __global__ void SELL_kernel_CU_rm_tmpl<double,double,32,32,true,true,true,true>(double * const __restrict__ lhs, const int lhs_lda, const double * const __restrict__ rhs, const int rhs_lda, const ghost_spmv_flags_t flags, const int nrows, const ghost_lidx_t * const __restrict__ rowlen, const ghost_lidx_t * const __restrict__ mcol, const double * const __restrict__ val, const ghost_lidx_t * const __restrict__ chunkstart, const double * const __restrict__ shift, const double alpha, const double beta, double * const __restrict__ localdot)
 {
@@ -472,7 +472,7 @@ __global__ void SELL_kernel_CU_rm_tmpl<double,double,1,32,true,true,true,true>(d
     }
 #endif
 }
-*/
+
 
 /*
    template<>  
