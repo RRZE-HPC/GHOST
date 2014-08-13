@@ -16,18 +16,12 @@
 #define CUVECVAL_CM(vec,val,__x,__y) &(val[((__x)*vec->traits.nrowspadded+(__y))*vec->elSize])
 
 #define ITER_ROWS_BEGIN(vec,row,rowidx)\
-    rowidx = 0;\
-    _Pragma("omp for schedule(runtime) ordered")\
     for (row=0; row<vec->traits.nrowsorig; row++) {\
         if (hwloc_bitmap_isset(vec->ldmask,row)) {\
-            _Pragma("omp ordered")\
-            {\
 
 
 #define ITER_ROWS_END(rowidx)\
-                _Pragma("omp critical")\
-                rowidx++;\
-            }\
+            rowidx++;\
         }\
     }
 
@@ -43,13 +37,10 @@
     for (col=0; col<vec->traits.ncols; col++) {\
         row = 0;\
         rowidx = 0;\
-        _Pragma("omp parallel shared(rowidx)")\
-        {\
-            ITER_ROWS_BEGIN(vec,row,rowidx)
+        ITER_ROWS_BEGIN(vec,row,rowidx)
 
 #define ITER_END_CM(rowidx)\
-            ITER_ROWS_END(rowidx)\
-        }\
+        ITER_ROWS_END(rowidx)\
     }\
 
 #define ITER_COMPACT_ROWS_BEGIN(vec,row,rowidx)\
