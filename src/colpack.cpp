@@ -44,11 +44,34 @@ ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
     mat->ncolors = GC->GetVertexColorCount();
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->colors,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_map,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx_t)),err,ret);
+
+    ghost_lidx_t *curcol;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx_t)),err,ret);
+    memset(curcol,0,mat->ncolors*sizeof(ghost_lidx_t));
+    
     colvec = GC->GetVertexColorsPtr();
 
-    for (int i=0;i<mat->nrows;i++)
-    {
+    for (int i=0;i<mat->nrows;i++) {
         mat->colors[i] = (*colvec)[i];
+    }
+    
+    for (int i=0;i<mat->ncolors+1;i++) {
+        mat->color_ptr[i] = 0;
+    }
+
+    for (int i=0;i<mat->nrows;i++) {
+        mat->color_ptr[mat->colors[i]+1]++;
+    }
+
+    for (int i=1;i<mat->ncolors+1;i++) {
+        mat->color_ptr[i] += mat->color_ptr[i-1];
+    }
+    
+    for (int i=0;i<mat->nrows;i++) {
+        mat->color_map[i] = curcol[mat->colors[i]] + mat->color_ptr[mat->colors[i]];
+        curcol[mat->colors[i]]++;
     }
 
     goto out;
@@ -58,6 +81,7 @@ out:
     delete [] adolc_data;
     delete [] adolc;
     delete GC;
+    delete curcol;
 
     return ret;
 #else

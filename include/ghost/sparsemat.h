@@ -204,6 +204,9 @@ struct ghost_sparsemat_t
 
     ghost_lidx_t ncolors;
     ghost_lidx_t *colors;
+    ghost_lidx_t *color_ptr;
+    ghost_lidx_t *color_map; // map[row]
+
 
     ghost_lidx_t nrows;
     ghost_gidx_t ncols;

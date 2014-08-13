@@ -65,6 +65,7 @@ set (SOURCES
         src/core.c
 		src/crs.c 
 		src/crs.cpp
+		src/crs_kacz.cpp
         src/datatransfers.cpp 
         src/densemat.c
 		src/densemat_cm.c 
@@ -107,10 +108,12 @@ set (HEADERS
         include/ghost/bindensemat.h
         include/ghost/bitmap.h
 		include/ghost/blas_mangle.h
+        include/ghost/colpack.h
 		include/ghost/complex.h
 		include/ghost/context.h
         include/ghost/core.h
 		include/ghost/crs.h
+        include/ghost/crs_kacz.h
 		include/ghost/densemat.h
 		include/ghost/densemat_cm.h
 		include/ghost/densemat_rm.h
