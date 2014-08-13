@@ -11,14 +11,14 @@ static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost
     ghost_lidx_t row;
     ghost_lidx_t j;
     ghost_lidx_t color;
-    ghost_crs_t *crmat = CR(mat);
+    ghost_crs_t *crmat = CR(mat->localPart);
     v_t *bval = (v_t *)(b->val[0]);
     v_t *xval = (v_t *)(x->val[0]);
     m_t *mval = (m_t *)crmat->val;
     m_t rownorm;
 
     for (color=0; color<mat->ncolors; color++) {
-#pragma omp parallel for
+#pragma omp parallel for private(j,row,rownorm)
         for (i=mat->color_ptr[color]; i<mat->color_ptr[color+1]; i++) {
             row = mat->color_map[i];
             rownorm = 0.;
@@ -36,7 +36,7 @@ static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost
             }
         }
     }
-
+    
     return GHOST_SUCCESS;
 } 
 

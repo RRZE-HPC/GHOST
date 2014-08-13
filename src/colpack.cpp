@@ -81,7 +81,7 @@ out:
     delete [] adolc_data;
     delete [] adolc;
     delete GC;
-    delete curcol;
+    free(curcol);
 
     return ret;
 #else
