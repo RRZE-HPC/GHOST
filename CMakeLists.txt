@@ -20,6 +20,7 @@ option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
+option(USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local matrices and vectors" 0)
 option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global matrices and vectors" 0)
@@ -60,6 +61,7 @@ set (SOURCES
         src/bincrs.c
         src/bincrs.cpp
 		src/context.c
+        src/colpack.cpp
         src/core.c
 		src/crs.c 
 		src/crs.cpp
@@ -391,6 +393,17 @@ if (USE_SCOTCH)
 endif()
 
 
+if (USE_COLPACK)
+    set(GHOST_HAVE_COLPACK 1)
+    set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
+    get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
+    
+    set(LIBCOLPACK LIBCOLPACK-NOTFOUND)
+
+	find_library(LIBCOLPACK ColPack ${COLPACK_LIBDIR})
+    set(COLPACK_LIBRARIES ${LIBCOLPACK})
+    mark_as_advanced(LIBCOLPACK)
+endif()
 
 
 	

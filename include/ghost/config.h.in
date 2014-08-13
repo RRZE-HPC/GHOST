@@ -3,6 +3,7 @@
 #cmakedefine GHOST_HAVE_MPI
 #cmakedefine GHOST_HAVE_OPENMP
 #cmakedefine GHOST_HAVE_SCOTCH
+#cmakedefine GHOST_HAVE_COLPACK
 #cmakedefine GHOST_HAVE_CUDA
 #cmakedefine GHOST_HAVE_CUDA_PINNEDMEM
 #cmakedefine GHOST_HAVE_OPENCL
