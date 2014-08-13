@@ -11,7 +11,7 @@ static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost
     ghost_lidx_t row;
     ghost_lidx_t j;
     ghost_lidx_t color;
-    ghost_crs_t *crmat = CR(mat->localPart);
+    ghost_crs_t *crmat = CR(mat);
     v_t *bval = (v_t *)(b->val[0]);
     v_t *xval = (v_t *)(x->val[0]);
     m_t *mval = (m_t *)crmat->val;
