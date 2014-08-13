@@ -282,7 +282,7 @@ if (USE_CUDA)
         set(GHOST_HAVE_CUDA 1)
         cuda_include_directories(${CMAKE_SOURCE_DIR}/include
                 ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35;-rdc=true)
+        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35)
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -O0)
         endif()
@@ -292,29 +292,29 @@ if (USE_CUDA)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
-        set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-        set(CUDA_SEPARABLE_COMPILATION_ON)
-        set(BUILD_SHARED_LIBS OFF)
+#set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
+#set(CUDA_SEPARABLE_COMPILATION_ON)
+#set(BUILD_SHARED_LIBS OFF)
         cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_kernel.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
-        set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
-        if ("${CUDA_VERSION_MAJOR}" STREQUAL "6")
-            cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC;-arch=sm_35" "${CU_OBJS}")
-        else()
-            cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
-        endif()
-        set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
-        install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
+#set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
+#if ("${CUDA_VERSION_MAJOR}" STREQUAL "6")
+#cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC;-arch=sm_35" "${CU_OBJS}")
+#else()
+#cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
+#endif()
+#set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
+#install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
         set (SOURCES 
                 ${SOURCES}
                 ${SELL_KERNEL_CU_O}
                 ${DENSEMAT_CM_CU_O}
                 ${DENSEMAT_RM_CU_O}
                 ${CRS_CU_O}
-                ${CMAKE_BINARY_DIR}/libghost_cuda.a
-                ${LIBCUDADEVRT}
+#${CMAKE_BINARY_DIR}/libghost_cuda.a
+#${LIBCUDADEVRT}
                 src/cu_util.c
             )
         include_directories(${CUDA_INCLUDE_DIRS})
