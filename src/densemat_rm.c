@@ -347,7 +347,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_rm_malloc(*new);
-    ghost_lidx_t r,c,viewedcol,viewedrow;
+    ghost_lidx_t r,c,viewedcol;
     
     for (viewedcol=0, c=0; c<src->traits.ncolsorig; c++) {
         if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
@@ -360,6 +360,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
+        ghost_lidx_t viewedrow;
         (*new)->cu_val = src->cu_val;
         for (viewedrow=0, r=0; r<src->traits.nrowsorig; r++) {
             if (viewedrow<roffs || (viewedrow >= roffs+nr)) {
@@ -402,7 +403,7 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_lidx_t c,r,i,viewedcol,viewedrow;
+    ghost_lidx_t c,r,i,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
     newTraits.nrows = nr;
@@ -427,6 +428,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
+        ghost_lidx_t viewedrow;
         (*new)->cu_val = src->cu_val;
         for (r=0,i=0,viewedrow=-1; r<(*new)->traits.nrowsorig; r++) {
             if (ghost_bitmap_isset(src->trmask,r)) {
