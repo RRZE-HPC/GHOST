@@ -7,7 +7,6 @@
 #define GHOST_H
 
 #include "ghost/config.h"
-#include <hwloc.h>
 #include "ghost/types.h"
 #include "ghost/core.h"
 #include "ghost/sparsemat.h"
@@ -17,5 +16,7 @@
 #include "ghost/math.h"
 #include "ghost/timing.h"
 #include "ghost/locality.h"
+
+#include <hwloc.h>
 
 #endif
