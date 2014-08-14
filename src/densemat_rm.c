@@ -660,16 +660,16 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
 #endif
             } else {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(vec->cu_val,vec2->val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+                ghost_cu_upload(vec->cu_val,vec2->val[0],vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
 #endif
             }
         } else {
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_download(vec->val,vec2->cu_val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+                ghost_cu_download(vec->val[0],vec2->cu_val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
 #endif
             } else {
-                memcpy(vec->val,vec2->val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+                memcpy(vec->val[0],vec2->val[0],vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
             }
         }
     }
