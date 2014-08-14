@@ -60,6 +60,7 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set (SOURCES
         src/bincrs.c
         src/bincrs.cpp
+        src/carp.c
 		src/context.c
         src/colpack.cpp
         src/core.c
@@ -108,6 +109,7 @@ set (HEADERS
         include/ghost/bindensemat.h
         include/ghost/bitmap.h
 		include/ghost/blas_mangle.h
+        include/ghost/carp.h
         include/ghost/colpack.h
 		include/ghost/complex.h
 		include/ghost/context.h
