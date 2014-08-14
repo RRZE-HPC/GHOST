@@ -143,26 +143,6 @@ extern "C" {
      * @return 
      */
     ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce); 
-    /**
-     * @brief 
-     *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
-     * @param beta
-     *
-     * x = alpha*v^T*w + beta*x
-     * v is NxM, row-major
-     * w is NxK, row-major
-     * x is MxK, col-major
-     * M<<N
-     * K=4,8,...
-     * Allreduce should be done on x
-     *
-     * @return 
-     */
-    //ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);

@@ -25,21 +25,29 @@ extern "C" {
 #endif
 
     /**
-     * @brief 
+     * @ingroup locops
      *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
+     * @brief Multiply a distributed dense tall skinny matrix with a redundant dense matrix. 
      *
-     * x = alpha*v*w
-     * v is NxM, distributed, row-major
-     * w is MxK, redundant, col-mjaor
-     * x is NxK, distributed, row-major
+     * @param[inout] x
+     * @param[in] v
+     * @param[in] w
+     * @param[in] alpha
+     *
+     *
+     * Compute \f$ x = \alpha \cdot v \cdot w \f$.
+     *
+     * v is NxM, distributed, row-major.
+     *
+     * w is MxK, redundant, col-major.
+     *
+     * x is NxK, distributed, row-major.
      * M<<N
-     * K=4,8,...
      *
-     * @return 
+     * This kernel is auto-generated at compile time for given values of K and M.
+     * Additionally, a version for given K but arbitrary M is being generated.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
     void ghost_tsmm_kernelmap_generate();
