@@ -41,11 +41,10 @@ Quick install
 
 To do a quick build with the system compilers and only MPI and OpenMP enabled:
 
-`cmake .. -DCMAKE_INSTALL_PREFIX=<where-to-install> && make install`
+`cmake .. -DCMAKE_INSTALL_PREFIX=<where-to-install> && make install -j`
 
-Once the Makefile is present you can type
-
-`make && make install`
+Advanced install
+-------------
 
 For interactive specification of build options and variables, use ccmake to configure and generate a Makefile:
 
@@ -55,15 +54,24 @@ If you do not want to use the system compilers, invoke (c)cmake as follows (e.g.
 
 `CC=icc CXX=icpc ccmake ..`
 
+Once the Makefile is present you can type
+
+`make install -j`
+
 Further options
 ---------------
 
 The build system will try to find a Cblas header `*cblas.h` in default locations.
 In some cases (if a MKL or GSL Cblas is detected), a hint about the necessary BLAS libraries will be created for the future build of executables which link to GHOST.
 If finding a Cblas header fails, or if you want to overwrite the found Cblas header, you can pass `-DCBLAS_INCLUDE_DIR=<dir-of-cblas-header>` to (c)cmake or set the value in ccmake.
-If the detected Cblas is neither MKL or GSL, the variable `BLAS_LIBRARIES` has to be set manually before linking.
+If the detected Cblas is neither MKL nor GSL, the variable `BLAS_LIBRARIES` has to be set manually before linking.
 
 The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBRARIES`.
+
+Testing
+-------
+
+To check your installation you can type `make check`.
 
 Documentation
 =============
