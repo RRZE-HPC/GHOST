@@ -17,7 +17,7 @@ typedef struct
     int blocksz2;
 } ghost_tsmm_parameters_t;
 
-typedef ghost_error_t (*tsmm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *);
+typedef ghost_error_t (*tsmm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -33,9 +33,10 @@ extern "C" {
      * @param[in] v
      * @param[in] w
      * @param[in] alpha
+     * @param[in] beta
      *
      *
-     * Compute \f$ x = \alpha \cdot v \cdot w \f$.
+     * Compute \f$ x = \alpha \cdot v \cdot w  + \beta \cdot x\f$.
      *
      * v is NxM, distributed, row-major.
      *
@@ -49,7 +50,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
+    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     void ghost_tsmm_kernelmap_generate();
     tsmm_kernel ghost_tsmm_kernel(ghost_tsmm_parameters_t p);
 
