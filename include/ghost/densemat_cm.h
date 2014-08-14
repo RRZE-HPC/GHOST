@@ -104,7 +104,7 @@
     row1 = 0;\
     row2 = 0;\
     const int offs1 = hwloc_bitmap_first(vec1->ldmask);\
-    const int offs2 = hwloc_bitmap_first(vec1->ldmask);\
+    const int offs2 = hwloc_bitmap_first(vec2->ldmask);\
     _Pragma("omp for schedule(runtime)")\
     for (rowidx=0; rowidx<vec->traits.nrows; rowidx++) {\
         row1 = offs1+rowidx;\
