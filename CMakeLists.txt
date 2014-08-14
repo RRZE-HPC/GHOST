@@ -20,6 +20,7 @@ option(USE_MPI "Build with MPI" 1)
 option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
+option(USE_COLPACK "Use ColPack for matrix coloring" 0)
 option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local matrices and vectors" 0)
 option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global matrices and vectors" 0)
@@ -59,10 +60,13 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set (SOURCES
         src/bincrs.c
         src/bincrs.cpp
+        src/carp.c
 		src/context.c
+        src/colpack.cpp
         src/core.c
 		src/crs.c 
 		src/crs.cpp
+		src/crs_kacz.cpp
         src/datatransfers.cpp 
         src/densemat.c
 		src/densemat_cm.c 
@@ -105,10 +109,13 @@ set (HEADERS
         include/ghost/bindensemat.h
         include/ghost/bitmap.h
 		include/ghost/blas_mangle.h
+        include/ghost/carp.h
+        include/ghost/colpack.h
 		include/ghost/complex.h
 		include/ghost/context.h
         include/ghost/core.h
 		include/ghost/crs.h
+        include/ghost/crs_kacz.h
 		include/ghost/densemat.h
 		include/ghost/densemat_cm.h
 		include/ghost/densemat_rm.h
@@ -391,6 +398,17 @@ if (USE_SCOTCH)
 endif()
 
 
+if (USE_COLPACK)
+    set(GHOST_HAVE_COLPACK 1)
+    set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
+    get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
+    
+    set(LIBCOLPACK LIBCOLPACK-NOTFOUND)
+
+	find_library(LIBCOLPACK ColPack ${COLPACK_LIBDIR})
+    set(COLPACK_LIBRARIES ${LIBCOLPACK})
+    mark_as_advanced(LIBCOLPACK)
+endif()
 
 
 	

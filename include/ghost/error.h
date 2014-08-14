@@ -27,7 +27,8 @@ typedef enum {
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_NOT_IMPLEMENTED,
     GHOST_ERR_IO,
-    GHOST_ERR_DATATYPE
+    GHOST_ERR_DATATYPE,
+    GHOST_ERR_COLPACK
 } ghost_error_t;
 
 /**
@@ -218,6 +219,29 @@ typedef enum {
     if (err) {\
         ERROR_LOG("SCOTCH Error: %d",err);\
         __err = GHOST_ERR_SCOTCH;\
+    }\
+}\
+
+#define COLPACK_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    COLPACK_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define COLPACK_CALL_GOTO(call,label,__err) {\
+    COLPACK_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define COLPACK_CALL(call,__err) {\
+    int err = call;\
+    if (err != _TRUE) {\
+        ERROR_LOG("ColPack Error: %d",err);\
+        __err = GHOST_ERR_COLPACK;\
     }\
 }\
 

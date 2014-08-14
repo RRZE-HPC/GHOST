@@ -25,6 +25,8 @@ struct ghost_complex
         ghost_complex<T>& operator+=(const ghost_complex<T>&);
         ghost_complex<T> operator*(const ghost_complex<T>&);
         ghost_complex<T>& operator*=(const ghost_complex<T>&);
+        ghost_complex<T> operator/(const ghost_complex<T>&);
+        ghost_complex<T>& operator/=(const ghost_complex<T>&);
 };
 
 template <typename T>
@@ -45,6 +47,12 @@ ghost_complex<T>& ghost_complex<T>::operator *=(const ghost_complex<T>& c) {
 }
 
 template <typename T>
+ghost_complex<T>& ghost_complex<T>::operator /=(const ghost_complex<T>& c) {
+    *this = *this / c;
+    return *this;
+}
+
+template <typename T>
 ghost_complex<T> ghost_complex<T>::operator +(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re + c.re, this->im + c.im);
 }
@@ -57,6 +65,12 @@ ghost_complex<T> ghost_complex<T>::operator -(const ghost_complex<T>& c) {
 template <typename T>
 ghost_complex<T> ghost_complex<T>::operator *(const ghost_complex<T>& c) {
     return ghost_complex<T>(this->re*c.re - this->im*c.im, this->re*c.im + this->im*c.re);
+}
+
+template <typename T>
+ghost_complex<T> ghost_complex<T>::operator /(const ghost_complex<T>& c) {
+    T scale = c.re*c.re + c.im*c.im;
+    return ghost_complex<T>((this->re*c.re + this->im*c.im)/scale, (this->im*c.re - this->re*c.im)/scale);
 }
 
 template <typename T>
