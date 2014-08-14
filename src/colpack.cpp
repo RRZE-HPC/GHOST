@@ -1,7 +1,9 @@
 #include "ghost/colpack.h"
 #include "ghost/crs.h"
 #include "ghost/util.h"
+#ifdef GHOST_HAVE_COLPACK
 #include "ColPack/ColPackHeaders.h"
+#endif
 
 ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
 {
