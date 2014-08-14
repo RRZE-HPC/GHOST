@@ -73,6 +73,11 @@ sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_dense
         INFO_LOG("Use plain implementation for scattered views");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
+    
+    if (lhs->traits.flags & GHOST_DENSEMAT_VIEW || rhs->traits.flags & GHOST_DENSEMAT_VIEW) {
+        INFO_LOG("Use plain implementation for views. This is subject to be fixed, i.e., the vectorized kernels should work with dense views.");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
 
     sellspmv_kernel kernel = ghost_sellspmv_kernels[p];
 
