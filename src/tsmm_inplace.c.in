@@ -1,0 +1,59 @@
+#include "ghost/config.h"
+#include "ghost/types.h"
+#include "ghost/math.h"
+#include "ghost/instr.h"
+
+#GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+{
+    GHOST_INSTR_START(tsmm)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t m = x->traits.ncols;
+    ghost_lidx_t n = x->traits.nrows;
+
+    if (m != BLOCKSZ) {
+        ERROR_LOG("Invalid dimensions");
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
+    }
+
+    INFO_LOG("In in-place TSMM with fixed block size %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,m,n,m,m,m);
+
+    double * restrict wval, * restrict xval;
+    ghost_lidx_t ldw, ldx;
+
+    ldw = *w->stride;
+    ldx = *x->stride;
+
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double dalpha = *(double *)alpha;
+    double tmp;
+    ghost_lidx_t i,j,s;
+    
+#pragma omp parallel for private(j,s) schedule(runtime)
+    for (i=0; i<n; i++) {
+        for (s=0; s<BLOCKSZ; s++) {
+            tmp = 0.;
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+            for (j=0; j<BLOCKSZ; j++) {
+                tmp += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+            }
+            xval[i*ldx+s] = tmp;
+        }
+    }
+
+    goto out;
+err:
+
+out:
+    GHOST_INSTR_STOP(tsmm)
+    return ret;
+}
+#GHOST_FUNC_END
+

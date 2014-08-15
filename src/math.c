@@ -170,6 +170,12 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     GHOST_INSTR_START(gemm)
 
     
+    ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
+    ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x,v_in,w_in,reduce);
+    if (tsmm_inplace_kernel) {
+        INFO_LOG("Doing in-place TSMM instead of GEMM!");
+        return ghost_tsmm_inplace(x,w_in,alpha);
+    }
     ghost_tsmm_parameters_t tsmm_par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = v_in->traits.ncols};
     ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x,v_in,w_in,reduce);
     if (tsmm_kernel) {

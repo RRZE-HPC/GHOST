@@ -13,6 +13,7 @@
 #include "densemat.h"
 #include "error.h"
 #include "tsmm.h"
+#include "tsmm_inplace.h"
 #include "tsmttsm.h"
 
 #include <stdarg.h>

@@ -13,6 +13,7 @@
 #include "ghost/rand.h"
 #include "ghost/sell.h"
 #include "ghost/tsmm.h"
+#include "ghost/tsmm_inplace.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/instr.h"
 
@@ -409,6 +410,7 @@ ghost_error_t ghost_init(int argc, char **argv)
 
     ghost_sellspmv_kernelmap_generate();
     ghost_tsmm_kernelmap_generate();
+    ghost_tsmm_inplace_kernelmap_generate();
     ghost_tsmttsm_kernelmap_generate();
     return GHOST_SUCCESS;
 }

@@ -98,6 +98,8 @@ set (SOURCES
         src/timing.cpp
         src/tsmm.c
         src/tsmm_kernelmap.cpp
+        src/tsmm_inplace.c
+        src/tsmm_inplace_kernelmap.cpp
         src/tsmttsm.c
         src/tsmttsm_kernelmap.cpp
         src/types.c
@@ -139,6 +141,7 @@ set (HEADERS
         include/ghost/thpool.h
         include/ghost/timing.h
         include/ghost/tsmm.h
+        include/ghost/tsmm_inplace.h
         include/ghost/tsmttsm.h
 		include/ghost/types.h
 		include/ghost/util.h
@@ -180,6 +183,10 @@ configure_file (
 	${PROJECT_BINARY_DIR}/src/tsmm.c
 )
 configure_file (
+	${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
+	${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
+)
+configure_file (
 	${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
 	${PROJECT_BINARY_DIR}/src/tsmttsm.c
 )
@@ -189,6 +196,7 @@ set (TO_PREPROCESS
         ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
         ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
         ${PROJECT_BINARY_DIR}/src/tsmm.c
+        ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
         ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 
