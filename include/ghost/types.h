@@ -6,7 +6,7 @@
 #ifndef GHOST_TYPES_H
 #define GHOST_TYPES_H
 
-#include "error.h"
+#include "config.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -22,6 +22,8 @@ typedef int ghost_mpi_datatype_t;
 #define MPI_DATATYPE_NULL 0
 #define MPI_COMM_WORLD 0
 #endif
+
+#include "error.h"
 
 #include <inttypes.h>
 #include <stdint.h>
