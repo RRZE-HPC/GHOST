@@ -540,19 +540,7 @@ struct ghost_densemat_t
 /**
  * @brief Initializer for densemat traits.
  */
-#define GHOST_DENSEMAT_TRAITS_INITIALIZER {\
-    .nrows = 0,\
-    .nrowsorig = 0,\
-    .nrowshalo = 0,\
-    .nrowspadded = 0,\
-    .ncols = 1,\
-    .ncolsorig = 0,\
-    .ncolspadded = 0,\
-    .flags = GHOST_DENSEMAT_DEFAULT,\
-    .storage = GHOST_DENSEMAT_COLMAJOR,\
-    .datatype = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL),\
-};
-
+extern const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER;
 
 #ifdef __cplusplus
 

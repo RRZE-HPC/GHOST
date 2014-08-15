@@ -85,12 +85,7 @@ typedef struct
     ghost_sparsemat_fromRowFunc_flags_t flags;
 } ghost_sparsemat_src_rowfunc_t;
 
-#define GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER {\
-    .func = NULL,\
-    .maxrowlen = 0,\
-    .base = 0,\
-    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT\
-}
+extern const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
 
 /**
  * @brief Flags to a sparse matrix.
@@ -187,15 +182,7 @@ struct ghost_sparsemat_traits_t
 /**
  * @brief Initialize sparse matrix traits with default values.
  */
-#define GHOST_SPARSEMAT_TRAITS_INITIALIZER {\
-    .format = GHOST_SPARSEMAT_CRS,\
-    .flags = GHOST_SPARSEMAT_DEFAULT,\
-    .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,\
-    .aux = NULL,\
-    .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,\
-    .sortScope = 1,\
-    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL)\
-};
+extern const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER;
 
 /**
  * @ingroup types

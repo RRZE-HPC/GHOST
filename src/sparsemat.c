@@ -20,6 +20,25 @@
 #endif
 #endif
 
+const ghost_sparsemat_src_rowfunc_t GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER = {
+    .func = NULL,
+    .maxrowlen = 0,
+    .base = 0,
+    .flags = GHOST_SPARSEMAT_FROMROWFUNC_DEFAULT
+};
+    
+
+const ghost_sparsemat_traits_t GHOST_SPARSEMAT_TRAITS_INITIALIZER = {
+    .format = GHOST_SPARSEMAT_CRS,
+    .flags = GHOST_SPARSEMAT_DEFAULT,
+    .symmetry = GHOST_SPARSEMAT_SYMM_GENERAL,
+    .aux = NULL,
+    .scotchStrat = (char*)GHOST_SCOTCH_STRAT_DEFAULT,
+    .sortScope = 1,
+    .datatype = (ghost_datatype_t) (GHOST_DT_DOUBLE|GHOST_DT_REAL)
+};
+
+
 ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *context, ghost_sparsemat_traits_t *traits, int nTraits)
 {
     UNUSED(nTraits);
