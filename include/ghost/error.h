@@ -249,6 +249,15 @@ typedef enum {
 extern "C" {
 #endif
 
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string of the GHOST error. 
+     *
+     * @param e The error.
+     *
+     * @return The string.
+     */
     char * ghost_error_string(ghost_error_t e);
 
 #ifdef __cplusplus

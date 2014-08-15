@@ -388,6 +388,8 @@ struct ghost_densemat_t
      */
     ghost_error_t       (*permute) (ghost_densemat_t *vec, ghost_permutation_t *perm, ghost_permutation_direction_t dir);
     /**
+     * @ingroup stringification
+     *
      * @brief Create a string from the vector.
      *
      * @param vec The vector/matrix.
@@ -611,6 +613,11 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec);
 
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string about the storage order.
+     */
     char * ghost_densemat_storage_string(ghost_densemat_t *densemat);
 
 #ifdef __cplusplus

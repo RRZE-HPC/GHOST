@@ -45,7 +45,7 @@ extern "C" {
      *
      * @param cpuset The CPU set to be covered by the PU map.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_pumap_create(hwloc_cpuset_t cpuset);
     /**
@@ -57,7 +57,7 @@ extern "C" {
      *
      * @param map Where to store the map.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_pumap_get(ghost_pumap_t **map);
     /**
@@ -65,7 +65,7 @@ extern "C" {
      *
      * @param cpuset The CPU set to be set idle.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
@@ -75,7 +75,7 @@ extern "C" {
      *
      * @param idx The index.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * If the index is not included in the PU map's CPU set an error is returned.
      */
@@ -85,7 +85,7 @@ extern "C" {
      *
      * @param cpuset The CPU set to be set busy.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * If the CPU set is not included in the PU map's CPU set an error is returned.
      */
@@ -96,7 +96,7 @@ extern "C" {
      * @param nPUs Where to store the number.
      * @param numaNode The NUMA node to consider or GHOST_NUMANODE_ANY.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_pumap_nidle(int *nPUs, int numaNode);
 
@@ -106,10 +106,19 @@ extern "C" {
      * @param nPUs Where to store the number.
      * @param numaNode The NUMA node to consider or GHOST_NUMANODE_ANY.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_pumap_npu(int *nPUs, int numaNode);
 
+    /**
+     * @ingroup stringification
+     *
+     * @brief Turn the PU mpa into a string. 
+     *
+     * @param[out] str Where to store the string.
+     *
+     * @return ::::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_pumap_string(char **str);
 
 #ifdef __cplusplus

@@ -148,6 +148,15 @@ extern "C" {
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string about the SpMV solver mode. 
+     *
+     * @param flags The SpMV flags.
+     *
+     * @return The string.
+     */
     char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
 
     int ghost_spmv_perf(double *perf, double time, void *arg);

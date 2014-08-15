@@ -25,7 +25,7 @@ extern "C" {
     /**
      * @brief Initialize and load the topology object (of type hwloc_topology_t). 
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * If the topology has been created before, this function returns immediately.
      */
@@ -39,7 +39,7 @@ extern "C" {
      *
      * @param topo Where to store the topology.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_topology_get(hwloc_topology_t *topo);
     /**
@@ -49,7 +49,7 @@ extern "C" {
      *
      * @param size Where to store the size.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
      */
@@ -59,7 +59,7 @@ extern "C" {
      *
      * @param size Where to store the size.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      *
      * This information may be useful in situations where false sharing has to be avoided.
      */
@@ -70,7 +70,7 @@ extern "C" {
      * @param nCores Where to store the number of cores.
      * @param numaNode Only look for PUs inside this NUMA node.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_machine_ncore(int *nCores, int numaNode);
     /**
@@ -78,7 +78,7 @@ extern "C" {
      *
      * @param nLevels Where to store the number.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_machine_nsmt(int *nLevels);
     /**
@@ -88,7 +88,7 @@ extern "C" {
      * @param nPUs Where to store the number.
      * @param numaNode Only look for PUs inside this NUMA node.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_machine_npu(int *nPUs, int numaNode);
     /**
@@ -96,7 +96,7 @@ extern "C" {
      *
      * @param nNodes Where to store the number.
      *
-     * @return GHOST_SUCCESS on success or an error indicator.
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_machine_nnuma(int *nNodes);
     ghost_error_t ghost_machine_numanode(hwloc_obj_t *node, int idx);
@@ -106,6 +106,15 @@ extern "C" {
      * @return true if machine is big endian, false if machine is little endian.
      */
     bool ghost_machine_bigendian();
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string of the machine information. 
+     *
+     * @param[out] str Where to store the string.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_machine_string(char **str);
 
 #ifdef __cplusplus

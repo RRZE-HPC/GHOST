@@ -263,6 +263,8 @@ extern "C" {
      */
     bool ghost_datatype_valid(ghost_datatype_t datatype);
     /**
+     * @ingroup stringification
+     *
      * @brief Stringify a ghost_datatype_t.
      *
      * @param datatype The data type.

@@ -356,6 +356,8 @@ struct ghost_sparsemat_t
      */
     void       (*destroy) (ghost_sparsemat_t *mat);
     /**
+     * @ingroup stringification
+     *
      * @brief Prints specific information on the matrix.
      *
      * @param mat The matrix.
@@ -366,6 +368,8 @@ struct ghost_sparsemat_t
      */
     void       (*auxString) (ghost_sparsemat_t *mat, char **str);
     /**
+     * @ingroup stringification
+     *
      * @brief Turns the matrix into a string.
      *
      * @param mat The matrix.
@@ -386,6 +390,8 @@ struct ghost_sparsemat_t
      */
     ghost_lidx_t  (*rowLen) (ghost_sparsemat_t *mat, ghost_lidx_t row);
     /**
+     * @ingroup stringification
+     *
      * @brief Return the name of the storage format.
      *
      * @param mat The matrix.
