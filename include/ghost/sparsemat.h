@@ -26,7 +26,7 @@ typedef enum {
      */
     GHOST_SPARSEMAT_CRS,
     /**
-     * @brief The SELL (Sliced ELLPACK) data format.
+     * @brief The SELL-C-\f$\sigma\f$ data format.
      */
     GHOST_SPARSEMAT_SELL
 } ghost_sparsemat_format_t;
@@ -136,6 +136,9 @@ typedef enum {
      * @brief Reduce the matrix bandwidth with PT-Scotch
      */
     GHOST_SPARSEMAT_SCOTCHIFY = 128,
+    /**
+     * @brief Save the un-compressed original columns of a distributed matrix.
+     */
     GHOST_SPARSEMAT_SAVE_ORIG_COLS = 256
 } ghost_sparsemat_flags_t;
 
@@ -145,15 +148,33 @@ typedef enum {
  */
 struct ghost_sparsemat_traits_t
 {
+    /**
+     * @brief The matrix format.
+     */
     ghost_sparsemat_format_t format;
+    /**
+     * @brief Flags to the matrix.
+     */
     ghost_sparsemat_flags_t flags;
+    /**
+     * @brief The matrix symmetry.
+     */
     ghost_sparsemat_symmetry_t symmetry;
     /**
      * @brief Auxiliary matrix traits (to be interpreted by the concrete format implementation).
      */
     void * aux;
+    /**
+     * @brief The re-ordering strategy to be passed to SCOTCH.
+     */
     char * scotchStrat;
+    /**
+     * @brief The sorting scope if sorting should be applied.
+     */
     ghost_gidx_t sortScope;
+    /**
+     * @brief The data type.
+     */
     ghost_datatype_t datatype;
 };
 
@@ -186,45 +207,126 @@ struct ghost_sparsemat_traits_t
  */
 struct ghost_sparsemat_t
 {
+    /**
+     * @brief The matrix' traits.
+     */
     ghost_sparsemat_traits_t *traits;
+    /**
+     * @brief The local part of the matrix (if distributed).
+     */
     ghost_sparsemat_t *localPart;
+    /**
+     * @brief The remote part (i.e., the part which has remote column indices) of the matrix (if distributed).
+     */
     ghost_sparsemat_t *remotePart;
+    /**
+     * @brief The context of the matrix (if distributed).
+     */
     ghost_context_t *context;
+    /**
+     * @brief The matrix' name.
+     */
     char *name;
+    /**
+     * @brief Pointer to actual sparse matrix data which may be one of ghost_crs_t ghost_sell_t.
+     */
     void *data;
-    
     /**
      * @brief Size (in bytes) of one matrix element.
      */
     size_t elSize;
-
+    /**
+     * @brief The matrix' permutation.
+     */
     ghost_permutation_t *permutation;
-
+    /**
+     * @brief The original column indices of the matrix.
+     *
+     * Once a matrix gets distributed, the column indices of the matrix are being compressed.
+     * That means, the local part of the matrix comes first and the remote part's column indices (compresed) thereafter.
+     * If the flag ::GHOST_SPARSEMAT_SAVE_ORIG_COLS is set, the original (un-compressed) column indices are stored in this variable.
+     * This is only necessary if, e.g., a distributed matrix should be written out to a file. 
+     */
     ghost_gidx_t *col_orig;
-
+    /**
+     * @brief The number of colors from distance-2 coloring.
+     */
     ghost_lidx_t ncolors;
+    /**
+     * @brief The color of each matrix row. 
+     */
     ghost_lidx_t *colors;
+    /**
+     * @brief The number of rows with each color (length: ncolors+1).
+     */
     ghost_lidx_t *color_ptr;
-    ghost_lidx_t *color_map; // map[row]
-
-
+    /**
+     * @brief This maps each row to contiguously colored rows. 
+     *
+     * By using this mapping, the rows of each color can be processed in parallel.
+     * TODO: This should be reflected by a permutation.
+     */
+    ghost_lidx_t *color_map;
+    /**
+     * @brief The number of rows.
+     */
     ghost_lidx_t nrows;
-    ghost_gidx_t ncols;
+    /**
+     * @brief The padded number of rows.
+     *
+     * In the SELL data format, the number of rows is padded to a multiple of C.
+     */
     ghost_lidx_t nrowsPadded;
+    /**
+     * @brief The number of columns.
+     */
+    ghost_gidx_t ncols;
+    /**
+     * @brief The number of non-zero entries in the matrix.
+     */
     ghost_lidx_t nnz;
+    /**
+     * @brief The number of stored entries in the matrix.
+     *
+     * For CRS or SELL-1, this is equal to nnz.
+     */
+    ghost_lidx_t nEnts;
+    /**
+     * @brief The bandwidth of the lower triangular part of the matrix.
+     */
     ghost_gidx_t lowerBandwidth;
+    /**
+     * @brief The bandwidth of the upper triangular part of the matrix.
+     */
     ghost_gidx_t upperBandwidth;
+    /**
+     * @brief The bandwidth of the matrix.
+     */
     ghost_gidx_t bandwidth;
+    /**
+     * @brief The maximum row length.
+     */
     ghost_gidx_t maxRowLen;
+    /**
+     * @brief The number of rows with length maxRowLen.
+     */
     ghost_gidx_t nMaxRows;
-    double variance; // row length variance
-    double deviation; // row lenght standard deviation
-    double cv; // row lenght coefficient of variation
+    /**
+     * @brief Row length variance
+     */
+    double variance;
+    /**
+     * @brief Row length standard deviation
+     */
+    double deviation;
+    /**
+     * @brief Row length coefficient of variation
+     */
+    double cv;
     /**
      * @brief Array of length (2*nrows-1) with nzDist[i] = number nonzeros with distance i from diagonal
      */
     ghost_gidx_t *nzDist;
-    ghost_lidx_t nEnts;
 
     /**
      * @brief Permute the matrix rows and column indices (if set in mat->traits->flags) with the given permutation.
@@ -418,7 +520,28 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
+    /**
+     * @brief Create a matrix permutation based on row length sorting within a given scope.
+     *
+     * @param[inout] mat The sparse matrix.
+     * @param[in] matrixSource The matrix source. This will be casted depending on \p srcType.
+     * @param[in] srcType Type of the matrix source.
+     * @param[in] scope The sorting scope.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope);
+    /**
+     * @brief Sort the entries in a given row physically to have increasing column indices.
+     *
+     * @param[inout] col The column indices of the row.
+     * @param[inout] val The values of the row.
+     * @param[in] valSize The size of one entry.
+     * @param[in] rowlen The length of the row.
+     * @param[in] stride The stride between successive elements in the row (1 for CRS, C for SELL-C).
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
     ghost_error_t ghost_sparsemat_sortrow(ghost_gidx_t *col, char *val, size_t valSize, ghost_lidx_t rowlen, ghost_lidx_t stride);
     /**
      * @brief Common function for matrix creation from a file.
