@@ -114,19 +114,37 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
     typedef float name ## _t; \
 ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
 
+#ifdef __cplusplus
+/**
+ * @see GHOST_REGISTER_DT_D with float complex instead of double.
+ */
+#define GHOST_REGISTER_DT_C(name) \
+    typedef ghost_complex<float> name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+#else
 /**
  * @see GHOST_REGISTER_DT_D with float complex instead of double.
  */
 #define GHOST_REGISTER_DT_C(name) \
     typedef complex float name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+#endif
 
+#ifdef __cplusplus
+/**
+ * @see GHOST_REGISTER_DT_D with double complex instead of double.
+ */
+#define GHOST_REGISTER_DT_Z(name) \
+    typedef ghost_complex<double> name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+#else
 /**
  * @see GHOST_REGISTER_DT_D with double complex instead of double.
  */
 #define GHOST_REGISTER_DT_Z(name) \
     typedef complex double name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+#endif
 
 #ifdef GHOST_HAVE_LONGIDX_GLOBAL
 
