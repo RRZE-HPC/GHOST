@@ -83,12 +83,13 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s<BLOCKSZ1; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
                 for (j=0; j<BLOCKSZ2; j++) {
-                    xval[i*ldx+s] = dbeta*xval[i*ldx+s] + dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                 }
             }
         }
@@ -195,12 +196,13 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s<BLOCKSZ1; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
                 for (j=0; j<m; j++) {
-                    xval[i*ldx+s] = dbeta*xval[i*ldx+s] + dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                 }
             }
         }
@@ -209,13 +211,20 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
     {
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+            for (s=0; s<BLOCKSZ1; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+            }
             for (j=0; j<m; j++) {
 #pragma simd
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
                 for (s=0; s<BLOCKSZ1; s++) {
-                    xval[i*ldx+s] = dbeta*xval[i*ldx+s] + dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                 }
             }
         }
