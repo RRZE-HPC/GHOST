@@ -227,3 +227,15 @@ ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec
 #endif
     return GHOST_SUCCESS;;
 }
+
+char * ghost_densemat_storage_string(ghost_densemat_t *densemat)
+{
+    switch(densemat->traits.storage) {
+        case GHOST_DENSEMAT_ROWMAJOR:
+            return "Row-major";
+        case GHOST_DENSEMAT_COLMAJOR:
+            return "Col-major";
+        default:
+            return "Invalid";
+    }
+}

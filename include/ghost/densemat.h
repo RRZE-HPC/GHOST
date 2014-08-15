@@ -611,6 +611,8 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec);
 
+    char * ghost_densemat_storage_string(ghost_densemat_t *densemat);
+
 #ifdef __cplusplus
 }
 #endif
