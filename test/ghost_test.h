@@ -20,17 +20,17 @@
             }\
         } else {\
             if (t & GHOST_DT_DOUBLE) {\
-                if (fabs((*(complex<double> *)a).real() - (*(complex<double> *)b).real()) > D_EPS*f) {\
+                if (fabs((*(ghost_complex<double> *)a).re - (*(ghost_complex<double> *)b).re) > D_EPS*f) {\
                     return EXIT_FAILURE;\
                 }\
-                if (fabs((*(complex<double> *)a).imag() - (*(complex<double> *)b).imag()) > D_EPS*f) {\
+                if (fabs((*(ghost_complex<double> *)a).im - (*(ghost_complex<double> *)b).im) > D_EPS*f) {\
                     return EXIT_FAILURE;\
                 }\
             } else {\
-                if (fabsf((*(complex<float> *)a).real() - (*(complex<float> *)b).real()) > S_EPS*f) {\
+                if (fabsf((*(ghost_complex<float> *)a).re - (*(ghost_complex<float> *)b).re) > S_EPS*f) {\
                     return EXIT_FAILURE;\
                 }\
-                if (fabsf((*(complex<float> *)a).imag() - (*(complex<float> *)b).imag()) > S_EPS*f) {\
+                if (fabsf((*(ghost_complex<float> *)a).im - (*(ghost_complex<float> *)b).im) > S_EPS*f) {\
                     return EXIT_FAILURE;\
                 }\
             }\

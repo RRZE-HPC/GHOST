@@ -1,7 +1,6 @@
 #include <ghost.h>
 #include <vector>
 #include <map>
-#include <complex>
 #include <iostream>
 #include "ghost_test.h"
 
@@ -9,70 +8,38 @@
 
 using namespace std;
 
+template<typename m_t>
+static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
+{
+    *rowlen = 1;
+    col[0] = row;
+    ((m_t *)val)[0] = (m_t)(row+1);
+    
+    return 0;
+}
+
+template<typename v_t, typename m_t>
+static void diag_ref(void *ref, ghost_gidx_t row, void *x)
+{
+    ghost_gidx_t dummyrowlen, dummycol;
+    m_t diagent;
+    diag<m_t>(row,&dummyrowlen,&dummycol,&diagent);
+    *((v_t *)ref) = (v_t)diagent*(*(v_t *)x);
+}
+
+
 typedef void (*ref_func_t)(void *, ghost_gidx_t, void *); 
 
-static int diag_d(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
-{
-    *rowlen = 1;
-    col[0] = row;
-    ((double *)val)[0] = (double)(row+1);
-    
-    return 0;
-}
-
-static void diag_d_ref(void *ref, ghost_gidx_t row, void *x)
-{
-    *(double *)ref = (row+1)*(*(double *)x);
-}
-
-static int diag_s(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
-{
-    *rowlen = 1;
-    col[0] = row;
-    ((float *)val)[0] = (float)(row+1);
-    
-    return 0;
-}
-
-static void diag_s_ref(void *ref, ghost_gidx_t row, void *x)
-{
-    *(float *)ref = (row+1)*(*(float *)x);
-}
-
-static int diag_z(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
-{
-    *rowlen = 1;
-    col[0] = row;
-    ((complex<double> *)val)[0] = complex<double>((double)(row+1),(double)(row+1));
-    
-    return 0;
-}
-
-static void diag_z_ref(void *ref, ghost_gidx_t row, void *x)
-{
-    *(complex<double> *)ref = (complex<double>)(row+1)*(*(complex<double> *)x);
-}
-
-static int diag_c(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
-{
-    *rowlen = 1;
-    col[0] = row;
-    ((complex<float> *)val)[0] = complex<float>((float)(row+1),(float)(row+1));
-    
-    return 0;
-}
-
-static void diag_c_ref(void *ref, ghost_gidx_t row, void *x)
-{
-    *(complex<float> *)ref = (complex<float>)(row+1)*(*(complex<float> *)x);
-}
-
+GHOST_REGISTER_DT_D(dt_d)
+GHOST_REGISTER_DT_S(dt_s)
+GHOST_REGISTER_DT_Z(dt_z)
+GHOST_REGISTER_DT_C(dt_c)
 
 int main(int argc, char **argv) {
     ghost_context_t *ctx;
     ghost_sparsemat_t *A;
     ghost_densemat_t *y, *x;
-    complex<double> zero = 0.;
+    ghost_complex<double> zero = 0.;
 
     vector<ghost_sparsemat_traits_t> mtraits_vec;
     vector<ghost_densemat_traits_t> vtraits_vec;
@@ -113,21 +80,32 @@ int main(int argc, char **argv) {
     map<ghost_datatype_t,ghost_sparsemat_src_rowfunc_t> mat_funcs_diag;
     ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
     matsrc.maxrowlen = N;
-    matsrc.func = diag_d;
+    matsrc.func = diag<double>;
     mat_funcs_diag[(ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = matsrc;
-    matsrc.func = diag_s;
+    matsrc.func = diag<float>;
     mat_funcs_diag[(ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT)] = matsrc;
-    matsrc.func = diag_z;
+    matsrc.func = diag<ghost_complex<double>>;
     mat_funcs_diag[(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE)] = matsrc;
-    matsrc.func = diag_c;
+    matsrc.func = diag<ghost_complex<float>>;
     mat_funcs_diag[(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT)] = matsrc;
     
-    map<ghost_datatype_t,ref_func_t> ref_funcs_diag;
-    ref_funcs_diag[(ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_DOUBLE)] = diag_d_ref;
-    ref_funcs_diag[(ghost_datatype_t)(GHOST_DT_REAL|GHOST_DT_FLOAT)] = diag_s_ref;
-    ref_funcs_diag[(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE)] = diag_z_ref;
-    ref_funcs_diag[(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_FLOAT)] = diag_c_ref;
-
+    map<pair<ghost_datatype_t,ghost_datatype_t>,ref_func_t> ref_funcs_diag;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_d,dt_d)] = diag_ref<double,double>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_d,dt_s)] = diag_ref<double,float>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_d,dt_z)] = diag_ref<double,ghost_complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_d,dt_c)] = diag_ref<double,ghost_complex<float>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_s,dt_d)] = diag_ref<float,double>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_s,dt_s)] = diag_ref<float,float>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_s,dt_z)] = diag_ref<float,ghost_complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_s,dt_c)] = diag_ref<float,ghost_complex<float>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_z,dt_d)] = diag_ref<ghost_complex<double>,double>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_z,dt_s)] = diag_ref<ghost_complex<double>,float>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_z,dt_z)] = diag_ref<ghost_complex<double>,ghost_complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_z,dt_c)] = diag_ref<ghost_complex<double>,ghost_complex<float>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_c,dt_d)] = diag_ref<ghost_complex<float>,double>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_c,dt_s)] = diag_ref<ghost_complex<float>,float>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_c,dt_z)] = diag_ref<ghost_complex<float>,ghost_complex<double>>;
+    ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(dt_c,dt_c)] = diag_ref<ghost_complex<float>,ghost_complex<float>>;
 
     ghost_spmv_flags_t spmvflags = GHOST_SPMV_DEFAULT;
     
@@ -159,7 +137,7 @@ int main(int argc, char **argv) {
             for (i=0; i<y->traits.nrows; i++) {
                 GHOST_TEST_CALL(y->entry(y,&yent,i,0));
                 GHOST_TEST_CALL(x->entry(x,&xent,i,0));
-                ref_funcs_diag[vtraits_it->datatype](yent_ref,i,xent);
+                ref_funcs_diag[pair<ghost_datatype_t,ghost_datatype_t>(vtraits_it->datatype,mtraits_it->datatype)](yent_ref,i,xent);
                 RETURN_IF_DIFFER((void *)yent,(void *)yent_ref,1,vtraits_it->datatype);
             }
 
