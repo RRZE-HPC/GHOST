@@ -291,6 +291,11 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
                     mat->context->lnEnts[nprocs-1] = header.nnz - mat->context->lfEnt[nprocs-1];
                 } else {
                     GHOST_CALL_GOTO(ghost_malloc_align((void **)grpt,(mat->context->lnrows[me]+1)*sizeof(ghost_gidx_t),GHOST_DATA_ALIGNMENT),err,ret);
+                    if (!grpt) { // This should not happen but Clang SCA complained so I added this test
+                        ERROR_LOG("Malloc failed");
+                        ret = GHOST_ERR_UNKNOWN;
+                        goto err;
+                    }
 #pragma omp parallel for schedule(runtime)
                     for (i = 0; i < mat->context->lnrows[me]+1; i++) {
                         grpt[i] = 0;
@@ -461,11 +466,13 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
 
 err:
     ERROR_LOG("Deleting permutations");
-    free(mat->permutation->perm); mat->permutation->perm = NULL;
-    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+    if (mat->permutation) {
+        free(mat->permutation->perm); mat->permutation->perm = NULL;
+        free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+        ghost_cu_free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
 #endif
+    }
     free(mat->permutation); mat->permutation = NULL;
 
 out:

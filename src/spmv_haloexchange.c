@@ -32,7 +32,7 @@ static ghost_lidx_t *dueptr = NULL;
 static ghost_lidx_t *wishptr = NULL;
 static ghost_lidx_t acc_dues = 0;
 static ghost_lidx_t acc_wishes = 0;
-#ifdef GHOST_HAVE_CUDA || !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
+#if defined(GHOST_HAVE_CUDA) && !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
 static void *cu_work;
 #endif
 
@@ -306,7 +306,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
 #endif
     
-#ifdef GHOST_HAVE_CUDA || !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
+#if defined(GHOST_HAVE_CUDA) && !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
         ghost_cu_free(cu_work);
     }
