@@ -61,10 +61,10 @@ sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_dense
     
     if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4) {
         if (p.chunkheight < 2) {
-            INFO_LOG("Chose SSE over AVX for col-major densemats and C<2");
+            INFO_LOG("Chose plain kernel for col-major densemats and C<2");
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
         } else {
-            INFO_LOG("Chose SSE over AVX for col-major densemats and C<4");
+            INFO_LOG("Chose SSE for col-major densemats and C<4");
             p.impl = GHOST_IMPLEMENTATION_SSE;
         }
     }
