@@ -12,6 +12,7 @@ static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void 
     return 0;
 }
 
+
 int main(int argc, char **argv) {
     ghost_context_t *ctx;
     ghost_sparsemat_t *A;
