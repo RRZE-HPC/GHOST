@@ -16,7 +16,7 @@ typedef struct
     int blocksz;
 } ghost_tsmttsm_parameters_t;
 
-typedef ghost_error_t (*tsmttsm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -51,7 +51,7 @@ extern "C" {
      */
     ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     void ghost_tsmttsm_kernelmap_generate();
-    tsmttsm_kernel ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p);
+    ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
 
 #ifdef __cplusplus
 }

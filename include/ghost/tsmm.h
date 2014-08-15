@@ -29,7 +29,7 @@ typedef struct
 /**
  * @brief A tsmm kernel function. 
  */
-typedef ghost_error_t (*tsmm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error_t (*ghost_tsmm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -75,7 +75,7 @@ extern "C" {
      *
      * @return The according kernel. 
      */
-    tsmm_kernel ghost_tsmm_kernel(ghost_tsmm_parameters_t p);
+    ghost_tsmm_kernel_t ghost_tsmm_kernel(ghost_tsmm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
 
 #ifdef __cplusplus
 }

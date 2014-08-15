@@ -9,43 +9,6 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
     GHOST_INSTR_START(tsmm)
     ghost_error_t ret = GHOST_SUCCESS;
 
-
-    if (!v->context) {
-        ERROR_LOG("v needs to be distributed");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (!x->context) {
-        ERROR_LOG("x needs to be distributed");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
-        ERROR_LOG("w needs to be present in col-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (x->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("x needs to be present in row-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("v needs to be present in row-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
-        ERROR_LOG("Currently only double data supported");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
-    if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
-        ERROR_LOG("Mixed datatypes not supported");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-
     ghost_lidx_t k = w->traits.ncols;
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
@@ -125,43 +88,6 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
 {
     GHOST_INSTR_START(tsmm)
     ghost_error_t ret = GHOST_SUCCESS;
-
-
-    if (!v->context) {
-        ERROR_LOG("v needs to be distributed");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (!x->context) {
-        ERROR_LOG("x needs to be distributed");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
-        ERROR_LOG("w needs to be present in col-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (x->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("x needs to be present in row-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("v needs to be present in row-major storage");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
-        ERROR_LOG("Currently only double data supported");
-        ret = GHOST_ERR_NOT_IMPLEMENTED;
-        goto err;
-    }
-    if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
-        ERROR_LOG("Mixed datatypes not supported");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
 
     ghost_lidx_t k = w->traits.ncols;
     ghost_lidx_t m = v->traits.ncols;
