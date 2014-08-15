@@ -43,28 +43,28 @@ static int diag_z(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, voi
 {
     *rowlen = 1;
     col[0] = row;
-    ((complex<double> *)val)[0] = ((double)(row+1),(double)(row+1));
+    ((complex<double> *)val)[0] = complex<double>((double)(row+1),(double)(row+1));
     
     return 0;
 }
 
 static void diag_z_ref(void *ref, ghost_gidx_t row, void *x)
 {
-    *(complex<double> *)ref = (row+1)*(*(complex<double> *)x);
+    *(complex<double> *)ref = (complex<double>)(row+1)*(*(complex<double> *)x);
 }
 
 static int diag_c(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
 {
     *rowlen = 1;
     col[0] = row;
-    ((complex<float> *)val)[0] = ((float)(row+1),(float)(row+1));
+    ((complex<float> *)val)[0] = complex<float>((float)(row+1),(float)(row+1));
     
     return 0;
 }
 
 static void diag_c_ref(void *ref, ghost_gidx_t row, void *x)
 {
-    *(complex<float> *)ref = (row+1)*(*(complex<float> *)x);
+    *(complex<float> *)ref = (complex<float>)(row+1)*(*(complex<float> *)x);
 }
 
 
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
             size_t vecdtsize;
             ghost_datatype_size(&vecdtsize,vtraits_it->datatype);
-            char yent[vecdtsize], yent_ref[vecdtsize], xent[vecdtsize];
+            char yent[16], yent_ref[16], xent[16];
 
             ghost_lidx_t i;
 
@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
                 GHOST_TEST_CALL(y->entry(y,&yent,i,0));
                 GHOST_TEST_CALL(x->entry(x,&xent,i,0));
                 ref_funcs_diag[vtraits_it->datatype](yent_ref,i,xent);
-                RETURN_IF_DIFFER(yent,yent_ref,1,vtraits_it->datatype);
+                RETURN_IF_DIFFER((void *)yent,(void *)yent_ref,1,vtraits_it->datatype);
             }
 
             x->destroy(x);
