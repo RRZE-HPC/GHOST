@@ -661,7 +661,7 @@ if (DOXYGEN_FOUND)
 	configure_file(${CMAKE_SOURCE_DIR}/doxygen/Doxyfile.in ${CMAKE_BINARY_DIR}/doxygen/Doxyfile @ONLY)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
     mark_as_advanced(DOC_INSTALL_PREFIX)
-    file(GLOB DOCFILES "${CMAKE_SOURCE_DIR}/doxygen/*")
+    file(GLOB DOCFILES "${CMAKE_SOURCE_DIR}/doxygen/[^.]*")
     if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
                 OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 

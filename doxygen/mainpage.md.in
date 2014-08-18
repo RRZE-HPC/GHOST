@@ -15,7 +15,7 @@ Likwid instrumentation | @GHOST_HAVE_INSTR_LIKWID@ |
 Minimal code example
 --------------------
 
-The following code example performs a sparse matrix-vector multiplication with a diagonal matrix.
+The following code example performs a sparse matrix-vector multiplication with random input vector and a diagonal matrix.
 
 ~~~{.c}
 #include <ghost.h>

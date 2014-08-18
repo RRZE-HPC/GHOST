@@ -26,14 +26,14 @@
 
 /** 
  * @defgroup locops Local math
- * @brief Mathematical operations which act locally.
+ * @brief Mathematical operations not involving communication.
  * 
  * These operations are usually executed by function pointers which are part of the matrix or vector. 
  */
 
 /** 
  * @defgroup globops Global math
- * @brief Mathematical operations which act globally.
+ * @brief Mathematical operations which involve communication.
  *
  * These operations usually call one or more local operations (cf. \ref locops) together with communication calls.
  */
