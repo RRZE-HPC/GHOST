@@ -54,7 +54,7 @@ sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_dense
         p.storage = GHOST_DENSEMAT_COLMAJOR;
     }
 
-    if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz <= 2) {
+    if (p.impl == GHOST_IMPLEMENTATION_AVX && p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz <= 2 && !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
         INFO_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
