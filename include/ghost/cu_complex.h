@@ -194,13 +194,13 @@ __device__ inline cuFloatComplex scale2<cuFloatComplex,cuFloatComplex>(cuFloatCo
 template<>
 __device__ inline cuFloatComplex scale2<cuFloatComplex,float>(cuFloatComplex y, float a)
 {
-    return cuCmulf(make_cuFloatComplex(a,a),y);
+    return cuCmulf(make_cuFloatComplex(a,0.f),y);
 }
 
 template<>
 __device__ inline cuFloatComplex scale2<cuFloatComplex,double>(cuFloatComplex y, double a)
 {
-    return cuCmulf(make_cuFloatComplex(a,a),y);
+    return cuCmulf(make_cuFloatComplex((float)a,0.f),y);
 }
 
 template<>
@@ -213,13 +213,13 @@ __device__ inline cuDoubleComplex scale2<cuDoubleComplex,cuDoubleComplex>(cuDoub
 template<>
 __device__ inline cuDoubleComplex scale2<cuDoubleComplex,float>(cuDoubleComplex y, float a)
 {
-    return cuCmul(make_cuDoubleComplex(a,a),y);
+    return cuCmul(make_cuDoubleComplex(a,0.),y);
 }
 
 template<>
 __device__ inline cuDoubleComplex scale2<cuDoubleComplex,double>(cuDoubleComplex y, double a)
 {
-    return cuCmul(make_cuDoubleComplex(a,a),y);
+    return cuCmul(make_cuDoubleComplex(a,0.),y);
 }
 
 
