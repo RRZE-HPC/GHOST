@@ -273,9 +273,6 @@ __global__ void SELL_kernel_CU_rm_1dblock_tmpl(v_t * const __restrict__ lhs, con
 #ifdef LOCALDOT_ONTHEFLY 
     if (do_localdot) {
         v_t dot1, dot2, dot3;
-        zero<v_t>(dot1);
-        zero<v_t>(dot2);
-        zero<v_t>(dot3);
     
         row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
         col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
@@ -283,9 +280,13 @@ __global__ void SELL_kernel_CU_rm_1dblock_tmpl(v_t * const __restrict__ lhs, con
 
         __syncthreads();
         if (row<nrows) {
-            dot1 = axpy<v_t>(dot1,lhs[lhs_lda*row+col],lhs[lhs_lda*row+col]);
-            dot2 = axpy<v_t>(dot2,rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
-            dot3 = axpy<v_t>(dot3,rhs[rhs_lda*row+col],rhs[rhs_lda*row+col]);
+            dot1 = mulConj<v_t>(lhs[lhs_lda*row+col],lhs[lhs_lda*row+col]);
+            dot2 = mulConj<v_t>(rhs[rhs_lda*row+col],lhs[lhs_lda*row+col]);
+            dot3 = mulConj<v_t>(rhs[rhs_lda*row+col],rhs[rhs_lda*row+col]);
+        } else {
+            zero<v_t>(dot1);
+            zero<v_t>(dot2);
+            zero<v_t>(dot3);
         }
 
 
@@ -374,9 +375,13 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
 
         __syncthreads();
         if (i<nrows) {
-            dot1 = axpy<v_t>(dot1,lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
-            dot2 = axpy<v_t>(dot2,rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
-            dot3 = axpy<v_t>(dot3,rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+            dot1 = mulConj<v_t>(lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot2 = mulConj<v_t>(rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
+            dot3 = mulConj<v_t>(rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
+        } else {
+            zero<v_t>(dot1);
+            zero<v_t>(dot2);
+            zero<v_t>(dot3);
         }
 
         dot1 = ghost_warpReduceSum(dot1);
