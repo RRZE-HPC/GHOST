@@ -94,21 +94,46 @@
 #define SELL_C_VARIANTS(kernel,dt1,dt2,grid,block,smem)\
 ${SELL_C_NCOLS_SWITCHCASCADE}
 
+struct CustomSum
+{
+    template<typename T>
+    __device__ __forceinline__ 
+    T operator() (const T &a, const T &b) const 
+    {
+        return a+b;
+    }
+    __device__ __forceinline__ 
+    cuDoubleComplex operator() (const cuDoubleComplex &a, const cuDoubleComplex &b) const 
+    {
+        return cuCadd(a,b);
+    }
+    __device__ __forceinline__ 
+    cuFloatComplex operator() (const cuFloatComplex &a, const cuFloatComplex &b) const 
+    {
+        return cuCaddf(a,b);
+    }
+};
+
+template <typename T>
+inline void deviceReduce3(T *cu_data_in, T *cu_data_out, unsigned int stride, unsigned int N)
+{
+    CustomSum sumop;
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_in,N,sumop);
+    ghost_cu_malloc((void **)&d_temp_storage,temp_storage_bytes);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_out,N,sumop);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[stride],&cu_data_out[stride],N,sumop);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[2*stride],&cu_data_out[2*stride],N,sumop);
+}
+
 
 #ifdef LOCALDOT_ONTHEFLY
-#define PROCESS_LOCALDOT(dt2_host)\
+#define PROCESS_LOCALDOT(dt2,dt2_host)\
     GHOST_INSTR_START(spmv_cuda_dot_reduction)\
 int col;\
-double *cu_finaldot1;\
-ghost_cu_malloc((void **)&cu_finaldot1,sizeof(dt2_host)*rhs->traits.ncols);\
 for (col=0; col<rhs->traits.ncols; col++) {\
-    void *d_temp_storage = NULL;\
-    size_t temp_storage_bytes = 0;\
-    cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,(double *)cu_localdot,(double *)cu_localdot,grid.x);\
-    ghost_cu_malloc((void **)&d_temp_storage,temp_storage_bytes);\
-    cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[grid.x*col],&((double *)cu_localdot)[col],grid.x);\
-    cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[rhs->traits.ncols*grid.x+grid.x*col],&((double *)cu_localdot)[rhs->traits.ncols*grid.x+col],grid.x);\
-    cub::DeviceReduce::Sum(d_temp_storage,temp_storage_bytes,&((double *)cu_localdot)[2*rhs->traits.ncols*grid.x+grid.x*col],&((double *)cu_localdot)[2*rhs->traits.ncols*grid.x+col],grid.x);\
+    deviceReduce3<dt2>(&cu_localdot[grid.x*col], &cu_localdot[col], rhs->traits.ncols*grid.x, grid.x);\
 }\
 GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(dt2_host)));\
 GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
@@ -205,7 +230,7 @@ GHOST_INSTR_STOP(spmv_cuda_dot)
     cudaDeviceSynchronize();\
     GHOST_INSTR_STOP(spmv_cuda)\
     if (flags & GHOST_SPMV_DOT) {\
-        PROCESS_LOCALDOT(dt2_host)\
+        PROCESS_LOCALDOT(dt2,dt2_host)\
     }\
     GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));\
     GHOST_CALL_RETURN(ghost_cu_free(cu_shift));\
