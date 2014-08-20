@@ -236,17 +236,19 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
 {
 #ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-        ghost_lidx_t x,c,r;
-        for (x=vec->traits.nrowsorig, r=vec->traits.nrows; x<vec->traits.nrowshalo; x++) {
-            if (ghost_bitmap_isset(vec->trmask,x)) {
+        if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+            WARNING_LOG("Potentially slow upload because some cols may be masked out!"); 
+            DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
+            ghost_lidx_t x,c;
+            for (x=vec->traits.nrowsorig; x<vec->traits.nrowshalo; x++) {
                 for (c=0; c<vec->traits.ncolsorig; c++) {
                     if (ghost_bitmap_isset(vec->ldmask,c)) {
-                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,r,c), vec->elSize));
+                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,x,c), vec->elSize));
                     }
                 }
-                r++;
             }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,vec->traits.nrows,0),VECVAL_RM(vec,vec->val,vec->traits.nrows,0), (vec->traits.nrowshalo-vec->traits.nrows)*vec->traits.ncolspadded*vec->elSize));
         }
     }
 #endif
