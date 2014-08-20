@@ -342,7 +342,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_cm_malloc(*new);
-    ghost_lidx_t v,r,viewedrow;
+    ghost_lidx_t v,r,viewedrow,viewedcol;
 
     //char *bm;
     //ghost_bitmap_list_asprintf(&bm,src->ldmask);
@@ -351,7 +351,6 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     //roffs += ghost_bitmap_first((*new)->ldmask);
     
     for (viewedrow=0, r=0; r<src->traits.nrowsorig; r++) {
-        //INFO_LOG("to view: %d..%d, current viewed row: %d, bitmap[%d] %d",roffs,roffs+nr-1,viewedrow,r,ghost_bitmap_isset(src->ldmask,r));
         if (viewedrow<roffs || (viewedrow >= roffs+nr)) {
             //INFO_LOG("clr");
             ghost_bitmap_clr((*new)->ldmask,r);
@@ -359,6 +358,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         if (ghost_bitmap_isset(src->ldmask,r)) {
             viewedrow++;
         }
+        //printf("row to view: %d..%d, current viewed row: %d, srcbitmap[%d]=%d newbitmap[%d]=%d\n",roffs,roffs+nr-1,viewedrow,r,ghost_bitmap_isset(src->ldmask,r),r,ghost_bitmap_isset((*new)->ldmask,r));
     }
     //ghost_bitmap_list_asprintf(&bm,(*new)->ldmask);
     //WARNING_LOG("%s %p",bm,(*new)->ldmask);
@@ -366,10 +366,14 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         (*new)->cu_val = src->cu_val;
-        for (v=0; v<src->traits.ncolsorig; v++) {
-            if (v<coffs || (v >= coffs+nc)) {
+        for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
+            if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
                 ghost_bitmap_clr((*new)->trmask,v);
             }
+            if (ghost_bitmap_isset(src->trmask,v)) {
+                viewedcol++;
+            }
+        //printf("col to view: %d..%d, current viewed col: %d, srcbitmap[%d]=%d newbitmap[%d]=%d\n",coffs,coffs+nc-1,viewedcol,v,ghost_bitmap_isset(src->trmask,v),v,ghost_bitmap_isset((*new)->trmask,v));
         }
 #endif
     } 
