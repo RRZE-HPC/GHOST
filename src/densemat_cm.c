@@ -241,11 +241,7 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
         ghost_lidx_t v,c,r;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
             if (ghost_bitmap_isset(vec->trmask,v)) {
-                for (r=vec->traits.nrowsorig; r<vec->traits.nrowshalo; r++) {
-                    if (ghost_bitmap_isset(vec->ldmask,r)) {
-                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize],VECVAL_CM(vec,vec->val,c,r), vec->elSize));
-                    }
-                }
+                GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize],VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig), (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
                 c++;
             }
         }
@@ -262,11 +258,7 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
         ghost_lidx_t v,c,r;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
             if (ghost_bitmap_isset(vec->trmask,v)) {
-                for (r=vec->traits.nrowsorig; r<vec->traits.nrowshalo; r++) {
-                    if (ghost_bitmap_isset(vec->ldmask,r)) {
-                        GHOST_CALL_RETURN(ghost_cu_download(VECVAL_CM(vec,vec->val,c,r),&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize], vec->elSize));
-                    }
-                }
+                GHOST_CALL_RETURN(ghost_cu_download(VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig),&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize], (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
                 c++;
             }
         }
