@@ -620,13 +620,13 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v,ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
+                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v+hwloc_bitmap_first(vec->trmask),ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
 #endif
             }
             else
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL_CM(vec,vec->cu_val,v,ghost_bitmap_first(vec->ldmask)),VECVAL_CM(vec2,vec2->val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
+                ghost_cu_upload(CUVECVAL_CM(vec,vec->cu_val,v+hwloc_bitmap_first(vec->trmask),ghost_bitmap_first(vec->ldmask)),VECVAL_CM(vec2,vec2->val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
 #endif
             }
         }
