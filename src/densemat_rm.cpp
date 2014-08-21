@@ -308,7 +308,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
     } else {
         ghost_lidx_t i,v,r;
         for (r=0; r<vec->traits.nrows; r++) {
-            for (i=0, v=0; v<vec->traits.ncols; v++) {
+            for (i=0, v=0; v<vec->traits.ncolsorig; v++) {
                 if (ghost_bitmap_isset(vec->ldmask,v)) {
                     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
                         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
