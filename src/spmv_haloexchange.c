@@ -76,11 +76,20 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #endif
     if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
+#ifdef GHOST_HAVE_CUDA
+            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef CUDA_COMMUNICATION_ASSEMBLY_KERNEL
+                ghost_densemat_rm_cu_communicationassembly(cu_work,dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
+#endif
+            } else 
+#endif
+            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
 #pragma omp parallel private(to_PE,i)
-            for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                for (i=0; i<vec->context->dues[to_PE]; i++){
-                    memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
+                    for (i=0; i<vec->context->dues[to_PE]; i++){
+                        memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
+                    }
                 }
             }
         } else {
