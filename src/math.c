@@ -357,31 +357,6 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         mybeta = &zero;
     }
     DEBUG_LOG(1,"Calling XGEMM with (%"PRBLASIDX"x%"PRBLASIDX") * (%"PRBLASIDX"x%"PRBLASIDX") = (%"PRBLASIDX"x%"PRBLASIDX")",*m,*k,*k,*n,*m,*n);
-    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
-    {
-        if (v->traits.datatype & GHOST_DT_COMPLEX) 
-        {
-            if (v->traits.datatype & GHOST_DT_DOUBLE) 
-            {
-                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
-            } 
-            else 
-            {
-                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
-            }
-        } 
-        else 
-        {
-            if (v->traits.datatype & GHOST_DT_DOUBLE) 
-            {
-                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
-            } 
-            else 
-            {
-                sgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
-            }    
-        }
-    }
     if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
@@ -412,6 +387,31 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             }    
         }
 #endif
+    } else
+    if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_HOST)
+    {
+        if (v->traits.datatype & GHOST_DT_COMPLEX) 
+        {
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
+            {
+                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
+            } 
+            else 
+            {
+                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
+            }
+        } 
+        else 
+        {
+            if (v->traits.datatype & GHOST_DT_DOUBLE) 
+            {
+                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
+            } 
+            else 
+            {
+                sgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
+            }    
+        }
     }
 
 #ifdef GHOST_HAVE_MPI 
