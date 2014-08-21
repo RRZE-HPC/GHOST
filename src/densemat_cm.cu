@@ -291,8 +291,8 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_
     }
 
     
-    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        WARNING_LOG("Potentially slow VAXPY operation because some rows or columns are masked out!");
+    if ((v1->traits.flags & GHOST_DENSEMAT_VIEW) || (v2->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        WARNING_LOG("Potentially slow VAXPY operation because some rows or columns may be masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
@@ -375,9 +375,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
-    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+    if ((v1->traits.flags & GHOST_DENSEMAT_VIEW) || (v2->traits.flags & GHOST_DENSEMAT_VIEW)) {
         
-        WARNING_LOG("Potentially slow VAXPBY operation because some rows or columns are masked out!");
+        WARNING_LOG("Potentially slow VAXPBY operation because some rows or columns may be masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
 
@@ -526,8 +526,8 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
 
     char *cucolfield = NULL, *curowfield = NULL;
 
-    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) || (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        WARNING_LOG("Potentially slow AXPY operation because some rows or columns are masked out!");
+    if ((vec->traits.flags & GHOST_DENSEMAT_VIEW) || (vec2->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        WARNING_LOG("Potentially slow AXPY operation because some rows or columns may be masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig),err,ret);
@@ -637,9 +637,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
 
     char *cucolfield = NULL, *curowfield = NULL;
     
-    if ((v1->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v2->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+    if ((v1->traits.flags & GHOST_DENSEMAT_VIEW) || (v2->traits.flags & GHOST_DENSEMAT_VIEW)) {
         
-        WARNING_LOG("Potentially slow AXPBY operation because some rows or columns are masked out!");
+        WARNING_LOG("Potentially slow AXPBY operation because some rows or columns may be masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
@@ -703,8 +703,8 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void 
 
     char *cucolfield = NULL, *curowfield = NULL;
     
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        WARNING_LOG("Potentially slow SCAL operation because some rows or columns are masked out!");
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+        WARNING_LOG("Potentially slow SCAL operation because some rows or columns may be masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig),err,ret);
@@ -784,9 +784,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
         }
     }
     
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         
-        WARNING_LOG("Potentially slow VSCALE operation because some rows or columns are masked out!");
+        WARNING_LOG("Potentially slow VSCALE operation because some rows or columns may be masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig),err,ret);
 
@@ -849,9 +849,9 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_fromScalar(ghost_densemat_t *vec, 
 
     char *cucolfield = NULL, *curowfield = NULL;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         
-        WARNING_LOG("Potentially slow fromScalar operation because some rows or columns are masked out!");
+        WARNING_LOG("Potentially slow fromScalar operation because some rows or columns may be masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig),err,ret);
 
@@ -906,7 +906,7 @@ out:
 extern "C" ghost_error_t ghost_densemat_cm_cu_fromRand(ghost_densemat_t *vec)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         ERROR_LOG("fromRand does currently not consider vector views!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }

@@ -123,7 +123,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         if (*flags & GHOST_SPMV_AXPBY) {
             dot = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_SHIFT) {
+        if ((*flags & GHOST_SPMV_SHIFT) || (*flags & GHOST_SPMV_VSHIFT)) {
             dot = va_arg(argp_backup,void *);
         }
         if (*flags & GHOST_SPMV_DOT) {

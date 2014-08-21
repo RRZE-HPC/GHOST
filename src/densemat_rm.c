@@ -234,104 +234,100 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
 
 static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
 {
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
 #ifdef GHOST_HAVE_CUDA
-        GHOST_CALL_RETURN(ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,vec->traits.nrows,0),VECVAL_RM(vec,vec->val,vec->traits.nrows,0),vec->traits.ncolspadded*vec->context->halo_elements*vec->elSize));
-        //GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[vec->traits.nrows*vec->traits.ncolspadded*vec->elSize],vec->val[vec->traits.nrows],vec->traits.ncolspadded*vec->context->halo_elements*vec->elSize));
-        /*ghost_lidx_t x,c,r;
-        for (x=vec->traits.nrowsorig, r=0; x<vec->traits.nrowshalo; x++) {
-            if (ghost_bitmap_isset(vec->trmask,x)) {
+    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+        if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
+            WARNING_LOG("Potentially slow upload because some cols may be masked out!"); 
+            DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
+            ghost_lidx_t x,c;
+            for (x=vec->traits.nrowsorig; x<vec->traits.nrowshalo; x++) {
                 for (c=0; c<vec->traits.ncolsorig; c++) {
                     if (ghost_bitmap_isset(vec->ldmask,c)) {
-                        ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,r,c), vec->elSize);
+                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,x,c), vec->elSize));
                     }
                 }
-                r++;
             }
-        }*/
-#endif
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,vec->traits.nrows,0),VECVAL_RM(vec,vec->val,vec->traits.nrows,0), (vec->traits.nrowshalo-vec->traits.nrows)*vec->traits.ncolspadded*vec->elSize));
+        }
     }
+#endif
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_rm_downloadHalo(ghost_densemat_t *vec)
 {
-
+#ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading halo elements of vector");
-        WARNING_LOG("Not yet implemented!");
-    }
-    return GHOST_SUCCESS;
-}
-static ghost_error_t vec_rm_uploadNonHalo(ghost_densemat_t *vec)
-{
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t r;
-        for (r=0; r<vec->traits.nrows; r++) {
-            ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,r,0),
-                    VECVAL_RM(vec,vec->val,r,0), 
-                    vec->traits.ncols*vec->elSize);
-        }
-#endif
-    }
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_rm_downloadNonHalo(ghost_densemat_t *vec)
-{
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Downloading vector");
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t r;
-        for (r=0; r<vec->traits.nrows; r++) {
-            ghost_cu_download(VECVAL_RM(vec,vec->val,r,0),
-                    CUVECVAL_RM(vec,vec->cu_val,r,0),
-                    vec->traits.ncols*vec->elSize);
-        }
-#endif
-    }
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_rm_upload(ghost_densemat_t *vec) 
-{
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-#ifdef GHOST_HAVE_CUDA
         ghost_lidx_t x,c,r;
-        for (x=0, r=0; x<vec->traits.nrowsorig; x++) {
+        for (x=vec->traits.nrowsorig, r=vec->traits.nrows; x<vec->traits.nrowsorig; x++) {
             if (ghost_bitmap_isset(vec->trmask,x)) {
                 for (c=0; c<vec->traits.ncolsorig; c++) {
                     if (ghost_bitmap_isset(vec->ldmask,c)) {
-                        ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,r,c), vec->elSize);
+                        GHOST_CALL_RETURN(ghost_cu_download(VECVAL_RM(vec,vec->val,r,c),&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize], vec->elSize));
                     }
                 }
                 r++;
             }
         }
-#endif
     }
-    
-    vec->uploadHalo(vec);
+#endif
+    return GHOST_SUCCESS;
+}
+static ghost_error_t vec_rm_uploadNonHalo(ghost_densemat_t *vec)
+{
+#ifdef GHOST_HAVE_CUDA
+    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
+        ghost_lidx_t x,c,r;
+        for (x=0, r=0; x<vec->traits.nrowsorig; x++) {
+            if (ghost_bitmap_isset(vec->trmask,x)) {
+                for (c=0; c<vec->traits.ncolsorig; c++) {
+                    if (ghost_bitmap_isset(vec->ldmask,c)) {
+                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize],VECVAL_RM(vec,vec->val,r,c), vec->elSize));
+                    }
+                }
+                r++;
+            }
+        }
+    }
+#endif
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_rm_downloadNonHalo(ghost_densemat_t *vec)
+{
+#ifdef GHOST_HAVE_CUDA
+    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+        DEBUG_LOG(1,"Downloading vector");
+        ghost_lidx_t x,c,r;
+        for (x=0, r=0; x<vec->traits.nrowsorig; x++) {
+            if (ghost_bitmap_isset(vec->trmask,x)) {
+                for (c=0; c<vec->traits.ncolsorig; c++) {
+                    if (ghost_bitmap_isset(vec->ldmask,c)) {
+                        GHOST_CALL_RETURN(ghost_cu_download(VECVAL_RM(vec,vec->val,r,c),&vec->cu_val[(vec->traits.ncolspadded*x+c)*vec->elSize], vec->elSize));
+                    }
+                }
+                r++;
+            }
+        }
+    }
+#endif
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_rm_upload(ghost_densemat_t *vec) 
+{
+    GHOST_CALL_RETURN(vec->uploadNonHalo(vec));
+    GHOST_CALL_RETURN(vec->uploadHalo(vec));
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_rm_download(ghost_densemat_t *vec)
 {
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Downloading vector");
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t r;
-        for (r=0; r<vec->traits.nrowshalo; r++) {
-            ghost_cu_download(VECVAL_RM(vec,vec->val,r,0),
-                    CUVECVAL_RM(vec,vec->cu_val,r,0),
-                    vec->traits.ncols*vec->elSize);
-        }
-#endif
-    }
+    GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
+    GHOST_CALL_RETURN(vec->downloadHalo(vec));
     return GHOST_SUCCESS;
 }
 

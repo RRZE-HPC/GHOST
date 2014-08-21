@@ -235,98 +235,90 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
 
 static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
 {
+#ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading halo elements of vector");
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v;
-        for (v=0; v<vec->traits.ncols; v++) {
-            ghost_cu_upload(CUVECVAL_CM(vec,vec->cu_val,v,vec->traits.nrows),
-                    VECVAL_CM(vec,vec->val,v,vec->traits.nrows), 
-                    vec->context->halo_elements*vec->elSize);
+        ghost_lidx_t v,c,r;
+        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
+            if (ghost_bitmap_isset(vec->trmask,v)) {
+                GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize],VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig), (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
+                c++;
+            }
         }
-#endif
     }
+#endif
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
 {
-
+#ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading halo elements of vector");
-        WARNING_LOG("Not yet implemented!");
+        ghost_lidx_t v,c,r;
+        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
+            if (ghost_bitmap_isset(vec->trmask,v)) {
+                GHOST_CALL_RETURN(ghost_cu_download(VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig),&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize], (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
+                c++;
+            }
+        }
     }
+#endif
     return GHOST_SUCCESS;
 }
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
 {
+#ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v;
-        for (v=0; v<vec->traits.ncols; v++) {
-            ghost_cu_upload(&vec->cu_val[vec->traits.nrowspadded*v*vec->elSize],VECVAL_CM(vec,vec->val,v,0), vec->traits.nrows*vec->elSize);
+        ghost_lidx_t v,c,r;
+        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
+            if (ghost_bitmap_isset(vec->trmask,v)) {
+                for (r=0; r<vec->traits.nrowsorig; r++) {
+                    if (ghost_bitmap_isset(vec->ldmask,r)) {
+                        GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize],VECVAL_CM(vec,vec->val,c,r), vec->elSize));
+                    }
+                }
+                c++;
+            }
         }
-#endif
     }
+#endif
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
 {
+#ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading vector");
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v;
-        for (v=0; v<vec->traits.ncols; v++) {
-            ghost_cu_download(VECVAL_CM(vec,vec->val,v,0),&vec->cu_val[vec->traits.nrowspadded*v*vec->elSize],vec->traits.nrows*vec->elSize);
+        ghost_lidx_t v,c,r;
+        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
+            if (ghost_bitmap_isset(vec->trmask,v)) {
+                for (r=0; r<vec->traits.nrowsorig; r++) {
+                    if (ghost_bitmap_isset(vec->ldmask,r)) {
+                        GHOST_CALL_RETURN(ghost_cu_download(VECVAL_CM(vec,vec->val,c,r),&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize], vec->elSize));
+                    }
+                }
+                c++;
+            }
         }
-#endif
     }
+#endif
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_upload(ghost_densemat_t *vec) 
 {
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Uploading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v,c,r;
-        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
-            if (ghost_bitmap_isset(vec->trmask,v)) {
-                for (r=0; r<vec->traits.nrowsorig; r++) {
-                    if (ghost_bitmap_isset(vec->ldmask,r)) {
-                        ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize],VECVAL_CM(vec,vec->val,c,r), vec->elSize);
-                    }
-                }
-                c++;
-            }
-        }
-#endif
-    }
-    vec->uploadHalo(vec);
+    GHOST_CALL_RETURN(vec->uploadNonHalo(vec));
+    GHOST_CALL_RETURN(vec->uploadHalo(vec));
     return GHOST_SUCCESS;
 }
 
 static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 {
-    if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        DEBUG_LOG(1,"Downloading %"PRLIDX" rows of vector",vec->traits.nrowshalo);
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t v,c,r;
-        for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
-            if (ghost_bitmap_isset(vec->trmask,v)) {
-                for (r=0; r<vec->traits.nrowsorig; r++) {
-                    if (ghost_bitmap_isset(vec->ldmask,r)) {
-                        ghost_cu_download(VECVAL_CM(vec,vec->val,c,r),&vec->cu_val[(vec->traits.nrowspadded*v+r)*vec->elSize], vec->elSize);
-                    }
-                }
-                c++;
-            }
-        }
-#endif
-    }
-    vec->downloadHalo(vec);
+    GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
+    GHOST_CALL_RETURN(vec->downloadHalo(vec));
     return GHOST_SUCCESS;
 }
 
@@ -342,7 +334,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_cm_malloc(*new);
-    ghost_lidx_t v,r,viewedrow;
+    ghost_lidx_t v,r,viewedrow,viewedcol;
 
     //char *bm;
     //ghost_bitmap_list_asprintf(&bm,src->ldmask);
@@ -351,7 +343,6 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     //roffs += ghost_bitmap_first((*new)->ldmask);
     
     for (viewedrow=0, r=0; r<src->traits.nrowsorig; r++) {
-        //INFO_LOG("to view: %d..%d, current viewed row: %d, bitmap[%d] %d",roffs,roffs+nr-1,viewedrow,r,ghost_bitmap_isset(src->ldmask,r));
         if (viewedrow<roffs || (viewedrow >= roffs+nr)) {
             //INFO_LOG("clr");
             ghost_bitmap_clr((*new)->ldmask,r);
@@ -359,6 +350,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
         if (ghost_bitmap_isset(src->ldmask,r)) {
             viewedrow++;
         }
+        //printf("row to view: %d..%d, current viewed row: %d, srcbitmap[%d]=%d newbitmap[%d]=%d\n",roffs,roffs+nr-1,viewedrow,r,ghost_bitmap_isset(src->ldmask,r),r,ghost_bitmap_isset((*new)->ldmask,r));
     }
     //ghost_bitmap_list_asprintf(&bm,(*new)->ldmask);
     //WARNING_LOG("%s %p",bm,(*new)->ldmask);
@@ -366,10 +358,14 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         (*new)->cu_val = src->cu_val;
-        for (v=0; v<src->traits.ncolsorig; v++) {
-            if (v<coffs || (v >= coffs+nc)) {
+        for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
+            if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
                 ghost_bitmap_clr((*new)->trmask,v);
             }
+            if (ghost_bitmap_isset(src->trmask,v)) {
+                viewedcol++;
+            }
+        //printf("col to view: %d..%d, current viewed col: %d, srcbitmap[%d]=%d newbitmap[%d]=%d\n",coffs,coffs+nc-1,viewedcol,v,ghost_bitmap_isset(src->trmask,v),v,ghost_bitmap_isset((*new)->trmask,v));
         }
 #endif
     } 
@@ -616,13 +612,13 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v,ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
+                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v+hwloc_bitmap_first(vec->trmask),ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
 #endif
             }
             else
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_upload(CUVECVAL_CM(vec,vec->cu_val,v,ghost_bitmap_first(vec->ldmask)),VECVAL_CM(vec2,vec2->val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
+                ghost_cu_upload(CUVECVAL_CM(vec,vec->cu_val,v+hwloc_bitmap_first(vec->trmask),ghost_bitmap_first(vec->ldmask)),VECVAL_CM(vec2,vec2->val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
 #endif
             }
         }
