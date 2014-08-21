@@ -21,7 +21,8 @@ static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void 
 template<typename v_t, typename m_t>
 static void diag_ref(void *ref, ghost_gidx_t row, void *x)
 {
-    ghost_gidx_t dummyrowlen, dummycol;
+    ghost_lidx_t dummyrowlen;
+    ghost_gidx_t dummycol;
     m_t diagent;
     diag<m_t>(row,&dummyrowlen,&dummycol,&diagent);
     *((v_t *)ref) = (v_t)diagent*(*(v_t *)x);
