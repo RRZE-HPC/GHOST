@@ -352,7 +352,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         #GHOST_UNROLL#__m256d tmp@;#NVECS/4
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded; c++) 
+        for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
             double *lval = (double *)res->val[c];
             double *rval = (double *)invec->val[c];
@@ -469,7 +469,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         #GHOST_UNROLL#__m256d tmp@;#NVECS/2
 
 #pragma omp for schedule(runtime)
-        for (c=0; c<mat->nrowsPadded; c++) 
+        for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
             complex double *lval = (complex double *)res->val[c];
             complex double *rval = (complex double *)invec->val[c];
