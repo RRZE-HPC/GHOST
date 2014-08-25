@@ -36,8 +36,10 @@ ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* ma
 
     ghost_error_t ret = GHOST_SUCCESS;
     
+    GHOST_INSTR_START(spmv_vector_comm);
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->permutation,false),err,ret);
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(invec),err,ret);
+    GHOST_INSTR_STOP(spmv_vector_comm);
 
     GHOST_INSTR_START(spmv_vector_comp);
     GHOST_CALL_GOTO(mat->spmv(mat,res,invec,flags,argp),err,ret);    

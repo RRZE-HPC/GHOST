@@ -177,10 +177,12 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        GHOST_INSTR_START(spmv_haloexchange_downloadwork)
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
 #endif
         ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
+        GHOST_INSTR_STOP(spmv_haloexchange_downloadwork)
     }
 #endif
 #endif
@@ -294,9 +296,9 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
-    GHOST_INSTR_START(spmv_haloexchange_waitall);
+    GHOST_INSTR_START(spmv_haloexchange_finalize_waitall);
     MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
-    GHOST_INSTR_STOP(spmv_haloexchange_waitall);
+    GHOST_INSTR_STOP(spmv_haloexchange_finalize_waitall);
     
     if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         for (from_PE=0; from_PE<nprocs; from_PE++){
@@ -308,10 +310,12 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
         }
     }   
 #ifdef GHOST_HAVE_CUDA 
+    GHOST_INSTR_START(spmv_haloexchange_finalize_upload)
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
     ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
 #endif
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
+    GHOST_INSTR_STOP(spmv_haloexchange_finalize_upload)
 #endif
     
 #if defined(GHOST_HAVE_CUDA) && !defined(CUDA_COMMUNICATION_ASSEMBLY_DL)

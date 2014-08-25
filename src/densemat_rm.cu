@@ -169,6 +169,7 @@ __global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_li
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work, ghost_lidx_t *dueptr, ghost_densemat_t *vec, ghost_lidx_t *perm)
 {
+    GHOST_INSTR_START(densemat_rm_cuda_commassembly)
   
     if (!vec->context->cu_duelist) {
        ERROR_LOG("cu_duelist must not be NULL!");
@@ -180,15 +181,16 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
     }
 
 
-    int nrank, proc;
+    int nrank, proc, me;
     ghost_context_t *ctx = vec->context;
     
     ghost_nrank(&nrank,ctx->mpicomm); 
+    ghost_rank(&me,ctx->mpicomm);
             
     for (proc=0 ; proc<nrank ; proc++){
         dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols);
         dim3 grid((int)ceil((double)ctx->dues[proc]/block.x));
-        INFO_LOG("communication assembly with grid %d block %dx%d",grid.x,block.x,block.y);
+        INFO_LOG("communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
@@ -226,6 +228,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
         ERROR_LOG("Error in kernel");
         return GHOST_ERR_CUDA;
     }
+    GHOST_INSTR_STOP(densemat_rm_cuda_commassembly)
 
     return GHOST_SUCCESS;
 
