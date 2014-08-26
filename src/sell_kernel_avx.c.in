@@ -162,6 +162,12 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+#if CHUNKHEIGHT < 4
+    ERROR_LOG("Invalid chunk height!");
+#else
+    ERROR_LOG("No AVX available");
+#endif
+    return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
 }
@@ -299,6 +305,8 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+    ERROR_LOG("No AVX available");
+    return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
 }
@@ -409,6 +417,12 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+#if NVECS < 4
+    ERROR_LOG("Invalid nVecs");
+#else
+    ERROR_LOG("No AVX available");
+#endif
+    return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
 }
@@ -419,7 +433,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
-#if defined(GHOST_HAVE_AVX)
+#if defined(GHOST_HAVE_AVX) && NVECS >= 2
     INFO_LOG("in RM kernel");
     double *mval = (double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
@@ -527,6 +541,12 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+#if NVECS < 2
+    ERROR_LOG("Invalid nVecs");
+#else
+    ERROR_LOG("No AVX available");
+#endif
+    return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
 }
@@ -641,6 +661,12 @@ ghost_error_t ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
     UNUSED(invec);
     UNUSED(spmvmOptions);
     UNUSED(argp);
+#if NVECS < 4
+    ERROR_LOG("Invalid nVecs");
+#else
+    ERROR_LOG("No AVX available");
+#endif
+    return GHOST_ERR_UNKNOWN;
 #endif
     return GHOST_SUCCESS;
 }

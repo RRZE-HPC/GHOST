@@ -238,7 +238,7 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
 #ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Uploading halo elements of vector");
-        ghost_lidx_t v,c,r;
+        ghost_lidx_t v,c;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
             if (ghost_bitmap_isset(vec->trmask,v)) {
                 GHOST_CALL_RETURN(ghost_cu_upload(&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize],VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig), (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
@@ -255,7 +255,7 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
 #ifdef GHOST_HAVE_CUDA
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && (vec->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         DEBUG_LOG(1,"Downloading halo elements of vector");
-        ghost_lidx_t v,c,r;
+        ghost_lidx_t v,c;
         for (v=0, c=0; v<vec->traits.ncolsorig; v++) {
             if (ghost_bitmap_isset(vec->trmask,v)) {
                 GHOST_CALL_RETURN(ghost_cu_download(VECVAL_CM(vec,vec->val,c,vec->traits.nrowsorig),&vec->cu_val[(vec->traits.nrowspadded*v+vec->traits.nrowsorig)*vec->elSize], (vec->traits.nrowshalo-vec->traits.nrows)*vec->elSize));
