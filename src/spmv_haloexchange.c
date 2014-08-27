@@ -60,7 +60,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     }
     acc_dues = dueptr[nprocs];
     
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,vec->traits.ncols*acc_dues*vec->elSize));
+    GHOST_CALL_RETURN(ghost_malloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize));
     
 #ifdef GHOST_HAVE_CUDA
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_DL

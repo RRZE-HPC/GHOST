@@ -581,9 +581,9 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
-            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
             for (v=1; v<vec->traits.nrowspadded; v++) {
-                vec->val[v] = vec->val[0]+v*vec->traits.ncolspadded*vec->elSize;
+                vec->val[v] = vec->val[0]+v*(size_t)vec->traits.ncolspadded*vec->elSize;
             }
         }
     }
