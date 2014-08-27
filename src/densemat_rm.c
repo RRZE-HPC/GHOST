@@ -251,6 +251,8 @@ static ghost_error_t vec_rm_uploadHalo(ghost_densemat_t *vec)
             GHOST_CALL_RETURN(ghost_cu_upload(CUVECVAL_RM(vec,vec->cu_val,vec->traits.nrows,0),VECVAL_RM(vec,vec->val,vec->traits.nrows,0), (vec->traits.nrowshalo-vec->traits.nrows)*vec->traits.ncolspadded*vec->elSize));
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -272,6 +274,8 @@ static ghost_error_t vec_rm_downloadHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -292,6 +296,8 @@ static ghost_error_t vec_rm_uploadNonHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -313,6 +319,8 @@ static ghost_error_t vec_rm_downloadNonHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }

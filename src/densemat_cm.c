@@ -246,6 +246,8 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -263,6 +265,8 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -283,6 +287,8 @@ static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
@@ -304,6 +310,8 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
             }
         }
     }
+#else
+    UNUSED(vec);
 #endif
     return GHOST_SUCCESS;
 }
