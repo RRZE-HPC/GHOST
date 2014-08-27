@@ -250,7 +250,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            MPI_CALL_GOTO(MPI_Irecv(recv, vec->traits.ncols*vec->elSize*vec->context->wishes[from_PE],MPI_CHAR, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Irecv(recv, vec->context->wishes[from_PE], vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
             msgcount++;
         }
     }
@@ -264,7 +264,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            MPI_CALL_GOTO(MPI_Isend( work + dueptr[to_PE]*vec->elSize*vec->traits.ncols, vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols, MPI_CHAR, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Isend( work + dueptr[to_PE]*vec->elSize*vec->traits.ncols, vec->context->dues[to_PE], vec->row_mpidt, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
             msgcount++;
         }
     ;}

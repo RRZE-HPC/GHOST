@@ -78,6 +78,16 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         ghost_densemat_cm_setfuncs(*vec);
         (*vec)->stride = &(*vec)->traits.nrowspadded;
     }
+#ifdef GHOST_HAVE_MPI
+    ghost_mpi_datatype_t dt;
+    ghost_mpi_datatype(&dt,(*vec)->traits.datatype);
+
+    MPI_CALL_RETURN(MPI_Type_contiguous((*vec)->traits.ncols,dt,&(*vec)->row_mpidt));
+    MPI_CALL_RETURN(MPI_Type_commit(&(*vec)->row_mpidt));
+#else
+    (*vec)->row_mpidt = MPI_DATATYPE_NULL;
+#endif
+
 
     goto out;
 err:

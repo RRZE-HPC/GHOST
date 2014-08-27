@@ -169,6 +169,8 @@ struct ghost_densemat_t
      * @brief The row of the densemat which is being viewed as the my row.
      */
     ghost_lidx_t viewing_row;
+
+    ghost_mpi_datatype_t row_mpidt;
 #ifdef GHOST_HAVE_CUDA
     /**
      * @brief The values of the vector/matrix on the CUDA device.
