@@ -207,20 +207,27 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     int me; 
     int i, from_PE, to_PE;
     ghost_error_t ret = GHOST_SUCCESS;
+    int rowsize;
+    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret); 
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
     
     msgcount = 0;
-    GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*2*nprocs),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*2*nprocs),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_lidx_t)),err,ret);
+
+    int nMsgsOverall = 0;
 
     wishptr[0] = 0;
     for (i=0;i<nprocs;i++) {
         wishptr[i+1] = wishptr[i]+vec->context->wishes[i];
+        nMsgsOverall += ((size_t)rowsize*vec->context->wishes[i])/INT_MAX + 1;
     }
     acc_wishes = wishptr[nprocs];
+    nMsgsOverall *= 2; // we need to send _and_ receive
+    
+    GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
     
     if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes),err,ret);
@@ -230,8 +237,6 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
             tmprecv[from_PE] = &tmprecv_mem[wishptr[from_PE]*vec->traits.ncols*vec->elSize];
         }
     }
-
-    
 
     msgcount = 0;
     for (i=0;i<2*nprocs;i++) {
@@ -250,7 +255,17 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            MPI_CALL_GOTO(MPI_Irecv(recv, vec->context->wishes[from_PE], vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
+            int msg;
+            int nmsgs = (size_t)rowsize*vec->context->wishes[from_PE]/INT_MAX + 1;
+            size_t msgSizeRows = vec->context->wishes[from_PE]/nmsgs;
+
+            for (msg = 0; msg < nmsgs-1; msg++) {
+                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
+                msgcount++;
+            }
+
+            // remainder
+            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, vec->context->wishes[from_PE] - msg*msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&request[msgcount]),err,ret);
             msgcount++;
         }
     }
@@ -264,7 +279,17 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols);
 #endif
-            MPI_CALL_GOTO(MPI_Isend( work + dueptr[to_PE]*vec->elSize*vec->traits.ncols, vec->context->dues[to_PE], vec->row_mpidt, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
+            int msg;
+            int nmsgs = (size_t)rowsize*vec->context->dues[to_PE]/INT_MAX + 1;
+            size_t msgSizeRows = vec->context->dues[to_PE]/nmsgs;
+
+            for (msg = 0; msg < nmsgs-1; msg++) {
+                MPI_CALL_GOTO(MPI_Isend(work + dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
+                msgcount++;
+            }
+
+            // remainder
+            MPI_CALL_GOTO(MPI_Isend(work + dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, vec->context->dues[to_PE] - msg*msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
             msgcount++;
         }
     ;}
