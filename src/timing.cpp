@@ -68,12 +68,11 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
 
 ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char *tag)
 {
-    ghost_timing_region_accu_t ti;
-    if (!timings.count(string(tag))) {
+    ghost_timing_region_accu_t ti = timings[string(tag)];
+    if (!ti.times.size()) {
         ERROR_LOG("The region %s does not exist!",tag);
         return GHOST_ERR_INVALID_ARG;
     }
-    ti = timings[string(tag)];
 
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)ri,sizeof(ghost_timing_region_t)),err,ret);
@@ -151,17 +150,19 @@ ghost_error_t ghost_timing_summarystring(char **str)
 
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
-        ghost_timing_region_t *region;
+        ghost_timing_region_t *region = NULL;
         ghost_timing_region_create(&region,iter->first.c_str());
 
-        buffer << scientific << left << setw(maxRegionLen+4) << iter->first << " | " << right << setw(maxCallsLen) <<
-            region->nCalls << " | " <<
-            region->minTime << " | " <<
-            region->maxTime << " | " <<
-            region->avgTime << " | " <<
-            region->accTime << endl;
+        if (region) {
+            buffer << scientific << left << setw(maxRegionLen+4) << iter->first << " | " << right << setw(maxCallsLen) <<
+                region->nCalls << " | " <<
+                region->minTime << " | " <<
+                region->maxTime << " | " <<
+                region->avgTime << " | " <<
+                region->accTime << endl;
 
-        ghost_timing_region_destroy(region);
+            ghost_timing_region_destroy(region);
+        }
     }
 
     int printed = 0;
@@ -182,40 +183,42 @@ ghost_error_t ghost_timing_summarystring(char **str)
         }
         printed = 1;
 
-        ghost_timing_region_t *region;
+        ghost_timing_region_t *region = NULL;
         ghost_timing_region_create(&region,iter->first.c_str());
         
-        void *pfa = iter->second.perfFuncArg;
+        if (region) {
+            void *pfa = iter->second.perfFuncArg;
 
-        double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
-        int err = pf(&P_min,region->maxTime,pfa);
-        if (err) {
-            ERROR_LOG("Error in calling performance computation callback!");
-        }
-        err = pf(&P_max,region->minTime,pfa);
-        if (err) {
-            ERROR_LOG("Error in calling performance computation callback!");
-        }
-        err = pf(&P_avg,region->avgTime,pfa);
-        if (err) {
-            ERROR_LOG("Error in calling performance computation callback!");
-        }
-        if (region->nCalls > 10) {
-            err = pf(&P_skip10,accumulate(iter->second.times.begin()+10,iter->second.times.end(),0.)/(region->nCalls-10),pfa);
+            double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
+            int err = pf(&P_min,region->maxTime,pfa);
             if (err) {
                 ERROR_LOG("Error in calling performance computation callback!");
             }
-        }
+            err = pf(&P_max,region->minTime,pfa);
+            if (err) {
+                ERROR_LOG("Error in calling performance computation callback!");
+            }
+            err = pf(&P_avg,region->avgTime,pfa);
+            if (err) {
+                ERROR_LOG("Error in calling performance computation callback!");
+            }
+            if (region->nCalls > 10) {
+                err = pf(&P_skip10,accumulate(iter->second.times.begin()+10,iter->second.times.end(),0.)/(region->nCalls-10),pfa);
+                if (err) {
+                    ERROR_LOG("Error in calling performance computation callback!");
+                }
+            }
 
-        buffer << scientific << left << setw(maxRegionLen-maxUnitLen+2) << iter->first << 
-            right << "(" << setw(maxUnitLen) << iter->second.perfUnit << ")" << " | " << setw(maxCallsLen) <<
-            region->nCalls << " | " <<
-            P_max << " | " <<
-            P_min << " | " <<
-            P_avg << " | " <<
-            P_skip10 << endl;
-        
-        ghost_timing_region_destroy(region);
+            buffer << scientific << left << setw(maxRegionLen-maxUnitLen+2) << iter->first << 
+                right << "(" << setw(maxUnitLen) << iter->second.perfUnit << ")" << " | " << setw(maxCallsLen) <<
+                region->nCalls << " | " <<
+                P_max << " | " <<
+                P_min << " | " <<
+                P_avg << " | " <<
+                P_skip10 << endl;
+            
+            ghost_timing_region_destroy(region);
+        }
     }
 
 
