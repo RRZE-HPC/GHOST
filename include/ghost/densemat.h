@@ -341,7 +341,7 @@ struct ghost_densemat_t
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*fromFile) (ghost_densemat_t *vec, char *filename);
+    ghost_error_t       (*fromFile) (ghost_densemat_t *vec, char *filename, bool singleFile);
     /**
      * @ingroup denseinit
      *
@@ -416,10 +416,11 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param filename The path to the file.
+     * @param singleFile Write to a single (global) file. Ignored in the non-MPI case.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t       (*toFile) (ghost_densemat_t *vec, char *filename);
+    ghost_error_t       (*toFile) (ghost_densemat_t *vec, char *filename, bool singleFile);
     /**
      * @ingroup gputransfer
      * 
@@ -598,7 +599,6 @@ extern "C" {
      * @param uniform Where to store the result of the check.
      * @param vec The densemat.
      *
-     * @return True if the storage is the same everywhere, false otherwise. 
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_uniformstorage(bool *uniform, ghost_densemat_t *vec);
