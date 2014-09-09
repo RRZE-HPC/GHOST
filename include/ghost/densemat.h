@@ -338,6 +338,7 @@ struct ghost_densemat_t
      *
      * @param vec The vector/matrix.
      * @param filename Path to the file.
+     * @param singleFile Read from a single (global) file. Ignored in the non-MPI case.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
