@@ -244,7 +244,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
         ghost_machine_nsmt(&hwconfig.nsmt);
     }
-    ghost_hwconfig_set(hwconfig);
 
     IF_DEBUG(2) {
         char *cpusetStr;
@@ -256,14 +255,20 @@ ghost_error_t ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
 
-    for (i=0; i<nnoderanks; i++) {
-        if (localTypes[i] == GHOST_TYPE_CUDA) {
-            if (i == noderank) {
-                ghost_cu_init(cudaDevice%ncudadevs);
+    if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
+        ghost_cu_init(hwconfig.cudevice);
+    } else { // automatically assign a CUDA device
+        for (i=0; i<nnoderanks; i++) {
+            if (localTypes[i] == GHOST_TYPE_CUDA) {
+                if (i == noderank) {
+                    hwconfig.cudevice = cudaDevice%ncudadevs;
+                    ghost_cu_init(hwconfig.cudevice);
+                }
+                cudaDevice++;
             }
-            cudaDevice++;
         }
     }
+    ghost_hwconfig_set(hwconfig);
 
 
     // CUDA ranks have a physical core

@@ -34,6 +34,9 @@ ghost_error_t ghost_cu_init(int dev)
 
         DEBUG_LOG(1,"Selecting CUDA device %d",cu_device);
         CUDA_CALL_RETURN(cudaSetDevice(cu_device));
+    } else {
+        ERROR_LOG("CUDA device out of range!");
+        return GHOST_ERR_CUDA;
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
