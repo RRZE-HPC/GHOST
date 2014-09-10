@@ -361,6 +361,8 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         return GHOST_ERR_UNKNOWN;
     }
     
+
+#ifdef GHOST_HAVE_MPI
     ghost_gidx_t fent = 0;
     for (i=0; i<nprocs; i++) {
         if (i>0 && me==i) {
@@ -374,6 +376,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     
     MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
+#endif
 
     GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
 

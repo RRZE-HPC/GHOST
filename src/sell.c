@@ -295,6 +295,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         return GHOST_ERR_DATATYPE;
     }
 
+#ifdef GHOST_HAVE_MPI
     ghost_gidx_t fent = 0;
     for (i=0; i<nprocs; i++) {
         if (i>0 && me==i) {
@@ -308,6 +309,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     
     MPI_CALL_GOTO(MPI_Allgather(&gnents,1,ghost_mpi_dt_lidx,mat->context->lnEnts,1,ghost_mpi_dt_lidx,mat->context->mpicomm),err,ret);
     MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
+#endif
 
     if (gnnz > (ghost_gidx_t)GHOST_LIDX_MAX) {
         ERROR_LOG("The local number of nonzeroes is too large.");
