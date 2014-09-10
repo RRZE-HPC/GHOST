@@ -184,8 +184,7 @@ ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    hwconfig->ncore = ghost_hwconfig.ncore;
-    hwconfig->nsmt = ghost_hwconfig.nsmt;
+    *hwconfig = ghost_hwconfig;
     
     return GHOST_SUCCESS;
 }
