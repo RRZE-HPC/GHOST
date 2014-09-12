@@ -285,9 +285,6 @@ ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
         }
 
         if (spmvmOptions & GHOST_SPMV_DOT) {
-            __m256d sum12;
-            __m128d sum12high;
-            __m128d res12;
             for (v=0; v<invec->traits.ncols; v++) {
                 partsums[((padding+3*invec->traits.ncols)*tid)+3*v+0] += ((complex double *)dot1)[2*v] + ((complex double *)dot1)[2*v+1];
                 partsums[((padding+3*invec->traits.ncols)*tid)+3*v+1] += ((complex double *)dot2)[2*v] + ((complex double *)dot2)[2*v+1];
