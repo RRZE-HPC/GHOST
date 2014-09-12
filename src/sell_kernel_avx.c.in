@@ -448,7 +448,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
-    __m256d scale, beta;
+    __m256d scale, beta, shift;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,complex double,complex double);
     scale = _mm256_setzero_pd();
@@ -495,7 +495,9 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
                     #GHOST_UNROLL#rhs = _mm256_load_pd((double *)invec->val[(SELL(mat)->col[offs+j*CHUNKHEIGHT])]+@*4);matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),0);matval=_mm256_insertf128_pd(matval,_mm_load_pd(&mval[2*(offs+j*CHUNKHEIGHT)]),1);tmp@ = _mm256_add_pd(tmp@,complex_mul(rhs,matval));#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
-                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&((double *)sshift)[0]),_mm256_load_pd(((double *)rval)+@*4)));#NVECS/2
+                shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
+                shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
+                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(shift,_mm256_load_pd(((double *)rval)+@*4)));#NVECS/2
             } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,complex_mul(_mm256_load_pd(&((double *)sshift)[(@%(NVECS/2))*4]),_mm256_load_pd(((double *)rval)+@*4)));#NVECS/2
             }
