@@ -7,6 +7,9 @@
 #include "ghost/omp.h"
 #include <immintrin.h>
 
+#define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
+#define complex_mul_conj1(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
+
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
@@ -424,7 +427,6 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 }
 #GHOST_FUNC_END
 
-#define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
