@@ -894,7 +894,7 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
 
         int32_t endianess = ghost_machine_bigendian();
         int32_t version = 1;
-        int32_t order = GHOST_BINDENSEMAT_ORDER_COL_FIRST;
+        int32_t order = GHOST_BINDENSEMAT_ORDER_ROW_FIRST;
         int32_t datatype = vec->traits.datatype;
         int64_t nrows = (int64_t)vec->context->gnrows;
         int64_t ncols = (int64_t)vec->traits.ncols;
@@ -916,9 +916,9 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
         ghost_mpi_datatype_t mpidt;
         GHOST_CALL_RETURN(ghost_mpi_datatype(&mpidt,vec->traits.datatype));
         MPI_CALL_RETURN(MPI_File_set_view(fileh,4*sizeof(int32_t)+2*sizeof(int64_t),mpidt,mpidt,"native",MPI_INFO_NULL));
-        MPI_Offset fileoffset = vec->context->lfRow[rank];
+        MPI_Offset fileoffset = vec->context->lfRow[rank]*vec->traits.ncols;
         ghost_lidx_t vecoffset = 0;
-        for (v=0; v<vec->traits.ncols; v++) {
+        for (v=0; v<vec->traits.nrows; v++) {
             char *val = NULL;
             int copied = 0;
             if (vec->traits.flags & GHOST_DENSEMAT_HOST)
@@ -934,9 +934,9 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
                 ghost_cu_download(val,&vec->cu_val[v*vec->traits.nrowspadded*vec->elSize],vec->traits.nrows*vec->elSize);
 #endif
             }
-            MPI_CALL_RETURN(MPI_File_write_at(fileh,fileoffset,val,vec->traits.nrows,mpidt,&status));
-            fileoffset += nrows;
-            vecoffset += vec->traits.nrowspadded*vec->elSize;
+            MPI_CALL_RETURN(MPI_File_write_at(fileh,fileoffset,val,vec->traits.ncols,mpidt,&status));
+            fileoffset += ncols;
+            vecoffset += vec->traits.ncolspadded*vec->elSize;
             if (copied)
                 free(val);
         }
@@ -951,7 +951,7 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
 
         int32_t endianess = ghost_machine_bigendian();
         int32_t version = 1;
-        int32_t order = GHOST_BINDENSEMAT_ORDER_COL_FIRST;
+        int32_t order = GHOST_BINDENSEMAT_ORDER_ROW_FIRST;
         int32_t datatype = vec->traits.datatype;
         int64_t nrows = (int64_t)vec->traits.nrows;
         int64_t ncols = (int64_t)vec->traits.ncols;
@@ -995,7 +995,7 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
         }
 
         ghost_lidx_t v;
-        for (v=0; v<vec->traits.ncols; v++) {
+        for (v=0; v<vec->traits.nrows; v++) {
             char *val = NULL;
             int copied = 0;
             if (vec->traits.flags & GHOST_DENSEMAT_HOST)
@@ -1006,13 +1006,13 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
             else if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.nrows*vec->elSize));
+                GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.ncols*vec->elSize));
                 copied = 1;
-                ghost_cu_download(val,&vec->cu_val[v*vec->traits.nrowspadded*vec->elSize],vec->traits.nrows*vec->elSize);
+                ghost_cu_download(val,&vec->cu_val[v*vec->traits.ncolspadded*vec->elSize],vec->traits.ncols*vec->elSize);
 #endif
             }
 
-            if ((ret = fwrite(val, vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
+            if ((ret = fwrite(val, vec->elSize, vec->traits.ncols,filed)) != vec->traits.ncols) {
                 ERROR_LOG("fwrite failed: %zu",ret);
                 fclose(filed);
                 if (copied) {
@@ -1046,7 +1046,7 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
     if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED) || !singleFile) {
         offset = 0;
     } else {
-        offset = vec->context->lfRow[rank];
+        offset = vec->context->lfRow[rank]*vec->traits.ncols;
     }
 
     ghost_densemat_rm_malloc(vec);
@@ -1099,7 +1099,10 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         vec->destroy(vec);
         return GHOST_ERR_IO;
     }
-    // Order does not matter for vectors
+    if (order != GHOST_BINDENSEMAT_ORDER_ROW_FIRST) {
+        ERROR_LOG("Can only read row-major files!");
+        return GHOST_ERR_IO;
+    }
 
     if ((ret = fread(&datatype, sizeof(datatype), 1,filed)) != 1) {
         ERROR_LOG("fread failed: %zu",ret);
@@ -1125,16 +1128,26 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         return GHOST_ERR_IO;
     }
 
+    if (!singleFile && (vec->traits.nrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file and the densemat!");
+        return GHOST_ERR_IO;
+    }
+    if (singleFile && (vec->context->gnrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file and the densemat's context!");
+        return GHOST_ERR_IO;
+    }
+
+    if (fseeko(filed,offset*vec->elSize,SEEK_CUR)) {
+        ERROR_LOG("seek failed");
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
+
     int v;
-    for (v=0; v<vec->traits.ncols; v++) {
-        if (fseeko(filed,offset*vec->elSize,SEEK_CUR)) {
-            ERROR_LOG("seek failed");
-            vec->destroy(vec);
-            return GHOST_ERR_IO;
-        }
+    for (v=0; v<vec->traits.nrows; v++) {
         if (vec->traits.flags & GHOST_DENSEMAT_HOST)
         {
-            if ((ghost_lidx_t)(ret = fread(VECVAL_RM(vec,vec->val,v,0), vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
+            if ((ghost_lidx_t)(ret = fread(VECVAL_RM(vec,vec->val,v,0), vec->elSize, vec->traits.ncols,filed)) != vec->traits.ncols) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
@@ -1146,12 +1159,12 @@ static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool sin
 #ifdef GHOST_HAVE_CUDA
             char *val;
             GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.nrows*vec->elSize));
-            if ((ret = fread(val, vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
+            if ((ret = fread(val, vec->elSize, vec->traits.ncols,filed)) != vec->traits.ncols) {
                 ERROR_LOG("fread failed: %zu",ret);
                 vec->destroy(vec);
                 return GHOST_ERR_IO;
             }
-            ghost_cu_upload(&vec->cu_val[v*vec->traits.nrowspadded*vec->elSize],val,vec->traits.nrows*vec->elSize);
+            ghost_cu_upload(&vec->cu_val[v*vec->traits.ncolspadded*vec->elSize],val,vec->traits.ncols*vec->elSize);
             free(val);
 #endif
         }

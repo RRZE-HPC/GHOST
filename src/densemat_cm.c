@@ -994,10 +994,13 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
     GHOST_CALL_RETURN(ghost_rank(&rank, vec->context->mpicomm));
 
     off_t offset;
+    off_t stride;
     if ((vec->context == NULL) || !(vec->context->flags & GHOST_CONTEXT_DISTRIBUTED) || !singleFile) {
         offset = 0;
+        stride = 0;
     } else {
         offset = vec->context->lfRow[rank];
+        stride = vec->context->gnrows-vec->context->lnrows[rank];
     }
 
     ghost_densemat_cm_malloc(vec);
@@ -1050,7 +1053,10 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         vec->destroy(vec);
         return GHOST_ERR_IO;
     }
-    // Order does not matter for vectors
+    if (order != GHOST_BINDENSEMAT_ORDER_COL_FIRST) {
+        ERROR_LOG("Can only read col-major files!");
+        return GHOST_ERR_IO;
+    }
 
     if ((ret = fread(&datatype, sizeof(datatype), 1,filed)) != 1) {
         ERROR_LOG("fread failed: %zu",ret);
@@ -1075,14 +1081,23 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
         vec->destroy(vec);
         return GHOST_ERR_IO;
     }
+    
+    if (!singleFile && (vec->traits.nrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file and the densemat!");
+        return GHOST_ERR_IO;
+    }
+    if (singleFile && (vec->context->gnrows != nrows)) {
+        ERROR_LOG("The number of rows does not match between the file and the densemat's context!");
+        return GHOST_ERR_IO;
+    }
+    if (fseeko(filed,offset*vec->elSize,SEEK_CUR)) {
+        ERROR_LOG("seek failed");
+        vec->destroy(vec);
+        return GHOST_ERR_IO;
+    }
 
     int v;
     for (v=0; v<vec->traits.ncols; v++) {
-        if (fseeko(filed,offset*vec->elSize,SEEK_CUR)) {
-            ERROR_LOG("seek failed");
-            vec->destroy(vec);
-            return GHOST_ERR_IO;
-        }
         if (vec->traits.flags & GHOST_DENSEMAT_HOST)
         {
             if ((ghost_lidx_t)(ret = fread(VECVAL_CM(vec,vec->val,v,0), vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
@@ -1112,6 +1127,11 @@ static ghost_error_t vec_cm_fromFile(ghost_densemat_t *vec, char *path, bool sin
             fclose(filed);
         }
 
+        if (fseeko(filed,stride*vec->elSize,SEEK_CUR)) {
+            ERROR_LOG("seek failed");
+            vec->destroy(vec);
+            return GHOST_ERR_IO;
+        }
     }
 
     fclose(filed);
