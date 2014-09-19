@@ -913,7 +913,7 @@ static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath)
     }
 
 #endif
-    if ((ret = fwrite(CR(mat)->val,mat->elSize,mat->nnz,filed)) != mat->nnz) {
+    if ((ret = fwrite(CR(mat)->val,mat->elSize,mat->nnz,filed)) != (size_t)mat->nnz) {
         ERROR_LOG("fwrite failed: %zu",ret);
         fclose(filed);
         return GHOST_ERR_IO;

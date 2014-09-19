@@ -1,5 +1,7 @@
-
+#ifdef GHOST_HAVE_MPI
 #include <mpi.h>
+#endif
+
 #include <map>
 
 #include <cmath>

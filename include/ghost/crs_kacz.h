@@ -1,10 +1,9 @@
 #ifndef GHOST_CRS_KACZ_H
 #define GHOST_CRS_KACZ_H
-
-
 #include "error.h"
 #include "sparsemat.h"
 #include "densemat.h"
+
 
 #ifdef __cplusplus
 extern "C" {

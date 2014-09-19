@@ -223,7 +223,7 @@ static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
 
 #pragma omp parallel
     {
-    ghost_lidx_t col,row,rowidx;
+    ghost_lidx_t col,row,rowidx=0;
     unsigned int *state;
     ghost_rand_get(&state);
     ITER_BEGIN_CM_INPAR(vec,col,row,rowidx)

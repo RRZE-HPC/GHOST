@@ -342,7 +342,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
     ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_cm_malloc(*new);
-    ghost_lidx_t v,r,viewedrow,viewedcol;
+    ghost_lidx_t v,r,viewedrow;
 
     //char *bm;
     //ghost_bitmap_list_asprintf(&bm,src->ldmask);
@@ -963,7 +963,7 @@ static ghost_error_t vec_cm_toFile(ghost_densemat_t *vec, char *path, bool singl
 #endif
             }
 
-            if ((ret = fwrite(val, vec->elSize, vec->traits.nrows,filed)) != vec->traits.nrows) {
+            if ((ret = fwrite(val, vec->elSize, vec->traits.nrows,filed)) != (size_t)vec->traits.nrows) {
                 ERROR_LOG("fwrite failed: %zu",ret);
                 fclose(filed);
                 if (copied) {

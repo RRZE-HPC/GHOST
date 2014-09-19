@@ -1012,7 +1012,7 @@ static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singl
 #endif
             }
 
-            if ((ret = fwrite(val, vec->elSize, vec->traits.ncols,filed)) != vec->traits.ncols) {
+            if ((ret = fwrite(val, vec->elSize, vec->traits.ncols,filed)) != (size_t)vec->traits.ncols) {
                 ERROR_LOG("fwrite failed: %zu",ret);
                 fclose(filed);
                 if (copied) {
