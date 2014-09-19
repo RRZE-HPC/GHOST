@@ -607,7 +607,7 @@ extern "C" {
     void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat);
 
 #ifdef __cplusplus
-} extern "C"
+} 
 #endif
 
 #endif
