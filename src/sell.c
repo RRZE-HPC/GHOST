@@ -404,22 +404,19 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
         goto err;
     }
 
-    if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
-#ifdef GHOST_HAVE_MPI
 
-        mat->context->lnEnts[me] = mat->nEnts;
+    mat->context->lnEnts[me] = mat->nEnts;
 
-        for (i=0; i<nprocs; i++) {
-            mat->context->lfEnt[i] = 0;
-        } 
+    for (i=0; i<nprocs; i++) {
+        mat->context->lfEnt[i] = 0;
+    } 
 
-        for (i=1; i<nprocs; i++) {
-            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
-        } 
+    for (i=1; i<nprocs; i++) {
+        mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
+    } 
 
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
-#endif
-    }
+    GHOST_CALL_GOTO(mat->split(mat),err,ret);
+
 #ifdef GHOST_HAVE_CUDA
     if (!(mat->traits->flags & GHOST_SPARSEMAT_HOST))
         mat->upload(mat);

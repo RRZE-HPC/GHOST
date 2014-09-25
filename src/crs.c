@@ -45,9 +45,7 @@ static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense
 static void CRS_free(ghost_sparsemat_t * mat);
 static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat);
-#ifdef GHOST_HAVE_MPI
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat);
-#endif
 static ghost_error_t CRS_upload(ghost_sparsemat_t *mat);
 
 
@@ -91,9 +89,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     mat->destroy  = &CRS_free;
     mat->string = &CRS_stringify;
     mat->upload = &CRS_upload;
-#ifdef GHOST_HAVE_MPI
     mat->split = &CRS_split;
-#endif
     GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->data),sizeof(ghost_crs_t)),err,ret);
 
     CR(mat)->rpt = NULL;
@@ -462,23 +458,19 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     GHOST_INSTR_STOP(crs_fromrowfunc_readcolval)
 
 
-    if (!(mat->context->flags & GHOST_CONTEXT_REDUNDANT)) {
-#ifdef GHOST_HAVE_MPI
 
-        mat->context->lnEnts[me] = mat->nEnts;
+    mat->context->lnEnts[me] = mat->nEnts;
 
-        for (i=0; i<nprocs; i++) {
-            mat->context->lfEnt[i] = 0;
-        } 
+    for (i=0; i<nprocs; i++) {
+        mat->context->lfEnt[i] = 0;
+    } 
 
-        for (i=1; i<nprocs; i++) {
-            mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
-        } 
+    for (i=1; i<nprocs; i++) {
+        mat->context->lfEnt[i] = mat->context->lfEnt[i-1]+mat->context->lnEnts[i-1];
+    } 
 
-        GHOST_CALL_GOTO(mat->split(mat),err,ret);
+    GHOST_CALL_GOTO(mat->split(mat),err,ret);
 
-#endif
-    }
     mat->nrows = mat->context->lnrows[me];
 
     goto out;
@@ -539,7 +531,6 @@ out:
     return ret;
 }
 
-#ifdef GHOST_HAVE_MPI
 
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 {
@@ -554,17 +545,11 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     DEBUG_LOG(1,"Splitting the CRS matrix into a local and remote part");
     ghost_gidx_t j,i;
     int me;
+    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
 
     ghost_lidx_t lnEnts_l, lnEnts_r;
     ghost_lidx_t current_l, current_r;
-
-
-    GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
-    if (mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS) {
-//        memcpy(mat->col_orig, fullCR->col, mat->nnz*sizeof(ghost_gidx_t));
-    }
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_gidx_t)*mat->nnz),err,ret);
     
 #ifdef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
@@ -690,7 +675,6 @@ out:
 
 }
 
-#endif
 
 /*int compareNZEPos( const void* a, const void* b ) 
   {
@@ -750,11 +734,9 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     }
     ghost_sparsemat_registerrow_finalize(mat);
 
-#ifdef GHOST_HAVE_MPI
     DEBUG_LOG(1,"Split matrix");
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
     DEBUG_LOG(1,"Matrix read in successfully");
-#endif
 
     goto out;
 err:
