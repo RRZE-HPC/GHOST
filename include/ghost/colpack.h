@@ -9,8 +9,6 @@
 #include "error.h"
 #include "sparsemat.h"
 
-ghost_error_t ghost_sparsemat_coloring_create_cpp(ghost_sparsemat_t *mat);
-
 #ifdef __cplusplus
 extern "C" {
 #endif

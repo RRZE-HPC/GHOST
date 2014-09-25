@@ -5,7 +5,7 @@
 #include "ColPack/ColPackHeaders.h"
 #endif
 
-ghost_error_t ghost_sparsemat_coloring_create_cpp(ghost_sparsemat_t *mat)
+extern "C" ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
 {
 #ifdef GHOST_HAVE_COLPACK
     ghost_error_t ret = GHOST_SUCCESS;
@@ -93,7 +93,3 @@ out:
 #endif
 }
 
-extern "C" ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
-{
-    return ghost_sparsemat_coloring_create_cpp(mat);
-}
