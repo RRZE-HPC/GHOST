@@ -215,7 +215,7 @@ foreach (TO_PP_FILE ${TO_PREPROCESS})
     add_custom_command(
             OUTPUT ${PP_FILE}
             DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
-            COMMAND mkdir -p ${PP_SRC_DIR} && perl -I ${CMAKE_SOURCE_DIR}/bin/lib/perl5 ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
+            COMMAND mkdir -p ${PP_SRC_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
             )
     add_custom_command(
             OUTPUT ${PP_HEADER}
