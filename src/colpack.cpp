@@ -10,6 +10,7 @@ extern "C" ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
 #ifdef GHOST_HAVE_COLPACK
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_crs_t *crmat = CR(mat->localPart);
+    ghost_lidx_t *curcol = NULL;
     int64_t nzloc=mat->localPart->nnz;
     uint32_t** adolc = new uint32_t*[mat->nrows];
     std::vector<int>* colvec = NULL;
@@ -49,7 +50,6 @@ extern "C" ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_map,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx_t)),err,ret);
 
-    ghost_lidx_t *curcol;
     GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx_t)),err,ret);
     memset(curcol,0,mat->ncolors*sizeof(ghost_lidx_t));
     
