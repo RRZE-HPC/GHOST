@@ -22,6 +22,7 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
 
 ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2)
 {
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
     vec->dot(vec,res,vec2);
 #ifdef GHOST_HAVE_MPI
     if (vec->context) {
@@ -40,6 +41,7 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
     }
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return GHOST_SUCCESS;
 
 }
