@@ -391,15 +391,16 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
 static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t roffs, ghost_lidx_t coffs, ghost_lidx_t lda)
 {
-    WARNING_LOG("Possibly broken!");
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" dense matrix from plain data with offset %"PRLIDX"x%"PRLIDX,vec->traits.nrows,vec->traits.ncols,roffs,coffs);
 
     ghost_lidx_t v;
 
-    for (v=0; v<vec->traits.nrowspadded; v++) {
+    for (v=0; v<vec->traits.nrows; v++) {
         vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
     }
     vec->traits.flags |= GHOST_DENSEMAT_VIEW;
+    ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncolsorig);
+    vec->traits.ncolsorig = vec->traits.ncols;
 
     return GHOST_SUCCESS;
 }
