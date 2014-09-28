@@ -2,11 +2,12 @@
 #include "ghost/types.h"
 #include "ghost/math.h"
 #include "ghost/instr.h"
+#include "ghost/util.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    GHOST_INSTR_START(tsmm)
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_lidx_t k = w->traits.ncols;
@@ -78,7 +79,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densema
 err:
 
 out:
-    GHOST_INSTR_STOP(tsmm)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
 #GHOST_FUNC_END
@@ -86,7 +87,7 @@ out:
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    GHOST_INSTR_START(tsmm)
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_lidx_t k = w->traits.ncols;
@@ -161,7 +162,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
 err:
 
 out:
-    GHOST_INSTR_STOP(tsmm)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
 #GHOST_FUNC_END

@@ -25,7 +25,7 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
     vec->dot(vec,res,vec2);
 #ifdef GHOST_HAVE_MPI
     if (vec->context) {
-        GHOST_INSTR_START(dot_reduce)
+        GHOST_INSTR_START("reduce")
         ghost_mpi_op_t sumOp;
         ghost_mpi_datatype_t mpiDt;
         ghost_mpi_op_sum(&sumOp,vec->traits.datatype);
@@ -36,7 +36,7 @@ ghost_error_t ghost_dot(void *res, ghost_densemat_t *vec, ghost_densemat_t *vec2
                 MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, (char *)res+vec->elSize*v, 1, mpiDt, sumOp, vec->context->mpicomm));
             }
         }
-        GHOST_INSTR_STOP(dot_reduce)
+        GHOST_INSTR_STOP("reduce")
     }
 #endif
 
@@ -49,7 +49,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
     ghost_lidx_t ncols = vec->traits.ncols;
     ghost_lidx_t c;
 
-    GHOST_INSTR_START(normalize);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     if (vec->traits.datatype & GHOST_DT_FLOAT) {
         if (vec->traits.datatype & GHOST_DT_COMPLEX) {
             complex float res[ncols];
@@ -83,7 +83,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
             GHOST_CALL_RETURN(vec->vscale(vec,res));
         }
     }
-    GHOST_INSTR_STOP(normalize);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return GHOST_SUCCESS;
 }
@@ -115,7 +115,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 #ifdef GHOST_HAVE_MPI
 
     if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT)) {
-        GHOST_INSTR_START(spmv_dot_reduce);
+        GHOST_INSTR_START("dot_reduce");
         void *dot = NULL;
         if (*flags & GHOST_SPMV_SCALE) {
             dot = va_arg(argp_backup,void *);
@@ -135,7 +135,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         ghost_mpi_datatype(&dt,res->traits.datatype);
 
         MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE, dot, 3*invec->traits.ncols, dt, op, mat->context->mpicomm));
-        GHOST_INSTR_STOP(spmv_dot_reduce);
+        GHOST_INSTR_STOP("dot_reduce");
     }
 #endif
 
@@ -146,7 +146,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 }
 ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, ...) 
 {
-    GHOST_INSTR_START(spmv);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
 
     ghost_error_t ret = GHOST_SUCCESS;
     va_list argp;
@@ -154,7 +154,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     ret = ghost_vspmv(res,mat,invec,flags,argp);
     va_end(argp);
     
-    GHOST_INSTR_STOP(spmv);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
@@ -167,7 +167,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
 #endif
 #endif
-    GHOST_INSTR_START(gemm)
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
 
     
     ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
@@ -503,7 +503,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         GHOST_CALL_RETURN(x->memtranspose(x));
     }
 
-    GHOST_INSTR_STOP(gemm)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return GHOST_SUCCESS;
 }
 

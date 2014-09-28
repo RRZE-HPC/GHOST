@@ -64,10 +64,10 @@ static void *computeLocal(void *vargs)
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
-    GHOST_INSTR_START(spmv_task_computeLocal);
+    GHOST_INSTR_START("local");
     compArgs *args = (compArgs *)vargs;
     GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions,args->argp),err,*ret);
-    GHOST_INSTR_STOP(spmv_task_computeLocal);
+    GHOST_INSTR_STOP("local");
 
     goto out;
 err:
@@ -87,8 +87,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    GHOST_INSTR_START(spmv_task_0_entiresolver)
-    GHOST_INSTR_START(spmv_task_1_prepare);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_INSTR_START("prepare");
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_spmv_flags_t localopts = spmvOptions;
@@ -136,15 +136,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     cplargs.spmvOptions = localopts;
     va_copy(cplargs.argp,argp);
 
-    GHOST_INSTR_STOP(spmv_task_1_prepare);
+    GHOST_INSTR_STOP("prepare");
     
-    GHOST_INSTR_START(spmv_task_2_haloassemble);
+    GHOST_INSTR_START("haloassembly");
     
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec, mat->permutation),err,ret);
     
-    GHOST_INSTR_STOP(spmv_task_2_haloassemble);
+    GHOST_INSTR_STOP("haloassembly");
 
-    GHOST_INSTR_START(spmv_task_3_both_tasks);
+    GHOST_INSTR_START("both_tasks");
     if (remoteExists) {
         ghost_task_enqueue(commTask);
     }
@@ -159,15 +159,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
             goto err;
         }
     }
-    GHOST_INSTR_STOP(spmv_task_3_both_tasks);
+    GHOST_INSTR_STOP("both_tasks");
 
-    GHOST_INSTR_START(spmv_task_4_computeRemote);
+    GHOST_INSTR_START("remote");
     if (remoteExists) {
         mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp);
     }
-    GHOST_INSTR_STOP(spmv_task_4_computeRemote);
+    GHOST_INSTR_STOP("remote");
        
-    GHOST_INSTR_STOP(spmv_task_0_entiresolver)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);)
 
     goto out;
 err:

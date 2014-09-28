@@ -286,6 +286,7 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
 
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src)
 {
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
     char * tmpval = NULL;
@@ -317,7 +318,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     ghost_gidx_t gnents = 0;
     ghost_lidx_t funcret = 0;
 
-    GHOST_INSTR_START(crs_fromrowfunc_extractrpt)
+    GHOST_INSTR_START("extractrpt")
 #pragma omp parallel private(i,rowlen,tmpval,tmpcol) reduction (+:gnents,funcret) 
     {
         GHOST_CALL(ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize),ret);
@@ -374,7 +375,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     MPI_CALL_GOTO(MPI_Allgather(&fent,1,ghost_mpi_dt_gidx,mat->context->lfEnt,1,ghost_mpi_dt_gidx,mat->context->mpicomm),err,ret);
 #endif
 
-    GHOST_INSTR_STOP(crs_fromrowfunc_extractrpt)
+    GHOST_INSTR_STOP("extractrpt")
 
     mat->nnz = CR(mat)->rpt[mat->nrows];
     mat->nEnts = mat->nnz;
@@ -392,7 +393,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
     int funcerrs = 0;
 
-    GHOST_INSTR_START(crs_fromrowfunc_readcolval)
+    GHOST_INSTR_START("readcolval")
 #pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
     {
         int funcret = 0;
@@ -455,7 +456,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
         goto err;
     }
     ghost_sparsemat_registerrow_finalize(mat);
-    GHOST_INSTR_STOP(crs_fromrowfunc_readcolval)
+    GHOST_INSTR_STOP("readcolval")
 
 
 
@@ -481,6 +482,7 @@ err:
 
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 

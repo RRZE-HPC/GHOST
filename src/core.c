@@ -71,6 +71,7 @@ ghost_error_t ghost_type_get(ghost_type_t *t)
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_PREPROCESS);
     static int initialized = 0;
 
     if (initialized) {
@@ -417,6 +418,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_tsmm_kernelmap_generate();
     ghost_tsmm_inplace_kernelmap_generate();
     ghost_tsmttsm_kernelmap_generate();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
     return GHOST_SUCCESS;
 }
 
@@ -519,7 +521,7 @@ ghost_error_t ghost_string(char **str)
 
 ghost_error_t ghost_barrier()
 {
-    GHOST_INSTR_START(barrier);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif
@@ -530,7 +532,7 @@ ghost_error_t ghost_barrier()
         CUDA_CALL_RETURN(ghost_cu_barrier());
     }
 #endif
-    GHOST_INSTR_STOP(barrier);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
 
     return GHOST_SUCCESS;
 }

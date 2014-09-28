@@ -24,7 +24,9 @@ static ghost_error_t (*SELL_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_den
 
 static map<ghost_sellspmv_parameters_t, sellspmv_kernel> ghost_sellspmv_kernels;
 
-void ghost_sellspmv_kernelmap_generate() {
+void ghost_sellspmv_kernelmap_generate() 
+{
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_PREPROCESS);
 #include "sell_kernel_avx.def"
 #include "sell_kernel_sse.def"
     
@@ -44,6 +46,7 @@ void ghost_sellspmv_kernelmap_generate() {
             ghost_sellspmv_kernels[p] =  SELL_kernels_plain[mdt][vdt];
         }
     }
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
 }
 
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs)

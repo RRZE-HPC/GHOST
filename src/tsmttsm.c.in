@@ -3,12 +3,13 @@
 #include "ghost/math.h"
 #include "ghost/instr.h"
 #include "ghost/locality.h"
+#include "ghost/util.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     INFO_LOG("tsmttsm with blocksz %d",BLOCKSZ);
-    GHOST_INSTR_START(tsmttsm)
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
 
@@ -134,7 +135,7 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
 err:
 
 out:
-    GHOST_INSTR_STOP(tsmttsm)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
 #GHOST_FUNC_END
