@@ -167,7 +167,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     }
     GHOST_INSTR_STOP("remote");
        
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     goto out;
 err:
