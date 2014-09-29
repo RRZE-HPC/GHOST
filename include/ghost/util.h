@@ -65,7 +65,7 @@ typedef enum
     GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
     char * __prefixbackup = ghost_instr_prefix_get();\
     char __prefix[256];\
-    snprintf(__prefix,strlen(__FUNCTION__+__funcnameoffset)+3,"%s::",__FUNCTION__+__funcnameoffset);\
+    snprintf(__prefix,strlen(__prefixbackup)+strlen(__FUNCTION__+__funcnameoffset)+3,"%s%s::",__prefixbackup,__FUNCTION__+__funcnameoffset);\
     ghost_instr_prefix_set(__prefix);\
 
 #define GHOST_FUNC_EXIT(functype)\
