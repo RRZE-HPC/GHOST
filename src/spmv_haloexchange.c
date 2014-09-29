@@ -49,7 +49,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     int i, to_PE;
 
     if (nprocs == 1) {
-        return GHOST_SUCCESS;
+        goto out;
     }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
