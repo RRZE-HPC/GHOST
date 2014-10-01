@@ -264,7 +264,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {
-    GHOST_INSTR_START(vaxpy);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     void *d_a;
     size_t sizeofdt;
@@ -334,14 +334,14 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(vaxpy);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
     
 extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
 {
-    GHOST_INSTR_START(vaxpby);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;
@@ -426,14 +426,14 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(vaxpby);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
-    GHOST_INSTR_START(dot);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     if (vec->traits.datatype != vec2->traits.datatype)
@@ -506,7 +506,7 @@ out:
         vec2clone->destroy(vec2clone);
     }
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(dot);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
@@ -518,7 +518,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
         ERROR_LOG("Cannot AXPY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_INSTR_START(axpy);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -617,7 +617,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(axpy)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
@@ -629,7 +629,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
         ERROR_LOG("Cannot AXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_INSTR_START(axpby);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     char colfield[v1->traits.ncolsorig];
@@ -688,14 +688,14 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(axpby);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_INSTR_START(scale);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -754,7 +754,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(scale);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     
     return ret;
@@ -762,7 +762,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_INSTR_START(vscale);
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;
@@ -835,7 +835,7 @@ out:
     GHOST_CALL_RETURN(ghost_cu_free(curowfield));
     GHOST_CALL_RETURN(ghost_cu_free(d_a));
     cudaDeviceSynchronize();
-    GHOST_INSTR_STOP(vscale)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 }

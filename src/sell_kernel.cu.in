@@ -130,7 +130,7 @@ inline void deviceReduce3(T *cu_data_in, T *cu_data_out, unsigned int stride, un
 
 #ifdef LOCALDOT_ONTHEFLY
 #define PROCESS_LOCALDOT(dt2,dt2_host)\
-    GHOST_INSTR_START(spmv_cuda_dot_reduction)\
+    GHOST_INSTR_START("spmv_cuda_dot_reduction")\
 int col;\
 for (col=0; col<rhs->traits.ncols; col++) {\
     deviceReduce3<dt2>(&cu_localdot[grid.x*col], &cu_localdot[col], rhs->traits.ncols*grid.x, grid.x);\
@@ -138,16 +138,16 @@ for (col=0; col<rhs->traits.ncols; col++) {\
 GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(dt2_host)));\
 GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
 GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
-GHOST_INSTR_STOP(spmv_cuda_dot_reduction)
+GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
 #define PROCESS_LOCALDOT(dt2_host)\
-    GHOST_INSTR_START(spmv_cuda_dot)\
+    GHOST_INSTR_START("spmv_cuda_dot")\
 INFO_LOG("Not doing the local dot product on-the-fly!");\
 memset(localdot,0,rhs->traits.ncols*3*sizeof(dt2_host));\
 lhs->dot(lhs,&localdot[0],lhs);\
 lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);\
 lhs->dot(rhs,&localdot[2*rhs->traits.ncols],rhs);\
-GHOST_INSTR_STOP(spmv_cuda_dot)
+GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
 
 #define CHOOSE_KERNEL(dt1,dt2,dt2_host) {\
@@ -177,7 +177,7 @@ GHOST_INSTR_STOP(spmv_cuda_dot)
     }\
     struct cudaDeviceProp prop;\
     CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));\
-    GHOST_INSTR_START(spmv_cuda)\
+    GHOST_INSTR_START("spmv_cuda")\
     if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {\
         block.x = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
         block.y = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);\
@@ -236,7 +236,7 @@ GHOST_INSTR_STOP(spmv_cuda_dot)
         /*SWITCH_BOOLS(SELL_kernel_CU_rm_1dblock_tmpl,dt1,dt2,1,16,grid,block,reqSmem)*/\
     }\
     cudaDeviceSynchronize();\
-    GHOST_INSTR_STOP(spmv_cuda)\
+    GHOST_INSTR_STOP("spmv_cuda")\
     if (flags & GHOST_SPMV_DOT) {\
         PROCESS_LOCALDOT(dt2,dt2_host)\
     }\
