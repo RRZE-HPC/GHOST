@@ -62,15 +62,19 @@ typedef enum
 
 #define GHOST_FUNC_ENTRY(functype)\
     int __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
-    GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
+    if (functype == GHOST_FUNCTYPE_MATH) {\
+        GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
+    }\
     char * __prefixbackup = ghost_instr_prefix_get();\
     char __prefix[256];\
-    snprintf(__prefix,strlen(__prefixbackup)+strlen(__FUNCTION__+__funcnameoffset)+3,"%s%s::",__prefixbackup,__FUNCTION__+__funcnameoffset);\
+    snprintf(__prefix,strlen(__prefixbackup)+strlen(__FUNCTION__+__funcnameoffset)+3,"%s%s->",__prefixbackup,__FUNCTION__+__funcnameoffset);\
     ghost_instr_prefix_set(__prefix);\
 
 #define GHOST_FUNC_EXIT(functype)\
     ghost_instr_prefix_set(__prefixbackup);\
-    GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);
+    if (functype == GHOST_FUNCTYPE_MATH) {\
+        GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
+    }
 
 
 #ifdef __cplusplus
