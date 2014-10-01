@@ -291,6 +291,18 @@ struct ghost_sparsemat_t
      */
     ghost_gidx_t bandwidth;
     /**
+     * @brief The average width of the rows wrt. the diagonal.
+     */
+    double avgRowBand;
+    /**
+     * @brief The average of the average width of the rows wrt. the diagonal.
+     */
+    double avgAvgRowBand;
+    /**
+     * @brief A smart value quantifying the matrix bandwidth. Currently the 90-percentile of the 90-percentile of all widths.
+     */
+    double smartRowBand;
+    /**
      * @brief The maximum row length.
      */
     ghost_gidx_t maxRowLen;

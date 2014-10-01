@@ -708,6 +708,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 }
 #GHOST_FUNC_END
 
+#if 0
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
 ghost_error_t ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
@@ -827,4 +828,4 @@ ghost_error_t ghost_sellspmv_v2__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t 
     return GHOST_SUCCESS;
 }
 #GHOST_FUNC_END
-
+#endif

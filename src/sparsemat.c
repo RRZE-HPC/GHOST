@@ -76,6 +76,9 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->bandwidth = 0;
     (*mat)->lowerBandwidth = 0;
     (*mat)->upperBandwidth = 0;
+    (*mat)->avgRowBand = 0.;
+    (*mat)->avgAvgRowBand = 0.;
+    (*mat)->smartRowBand = 0.;
     (*mat)->maxRowLen = 0;
     (*mat)->nMaxRows = 0;
     (*mat)->variance = 0.;
@@ -844,6 +847,9 @@ ghost_error_t ghost_sparsemat_string(char **str, ghost_sparsemat_t *mat)
     ghost_line_string(str,"Total number of nonzeros",NULL,"%"PRGIDX,nnz);
     ghost_line_string(str,"Avg. nonzeros per row",NULL,"%.3f",(double)nnz/nrows);
     ghost_line_string(str,"Bandwidth",NULL,"%"PRGIDX,mat->bandwidth);
+    ghost_line_string(str,"Avg. row band",NULL,"%.3f",mat->avgRowBand);
+    ghost_line_string(str,"Avg. avg. row band",NULL,"%.3f",mat->avgAvgRowBand);
+    ghost_line_string(str,"Smart row band",NULL,"%.3f",mat->smartRowBand);
 
     ghost_line_string(str,"Local number of rows",NULL,"%"PRLIDX,mat->nrows);
     ghost_line_string(str,"Local number of rows (padded)",NULL,"%"PRLIDX,mat->nrowsPadded);
