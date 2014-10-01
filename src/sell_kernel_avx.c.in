@@ -513,6 +513,9 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         __m256d rhs;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m256d tmp@;#NVECS/4
+        #GHOST_UNROLL#__m256d dot1_@ = _mm256_setzero_pd();#NVECS/4
+        #GHOST_UNROLL#__m256d dot2_@ = _mm256_setzero_pd();#NVECS/4
+        #GHOST_UNROLL#__m256d dot3_@ = _mm256_setzero_pd();#NVECS/4
 
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
@@ -541,10 +544,16 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#NVECS/4
             }
             if (spmvmOptions & GHOST_SPMV_DOT) {
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+0] += lval[@]*lval[@];#NVECS
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+1] += lval[@]*rval[@];#NVECS
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+2] += rval[@]*rval[@];#NVECS
+                #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
+                #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
+                #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(rval+@*4)));#NVECS/4
             }
+        }
+        if (spmvmOptions & GHOST_SPMV_DOT) {
+            __m128d part;
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot1_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+0],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+0],part);part=_mm256_extractf128_pd(dot1_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+0],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+0],part);#NVECS/4
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot2_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+1],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+1],part);part=_mm256_extractf128_pd(dot2_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+1],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+1],part);#NVECS/4
+            #GHOST_UNROLL#part=_mm256_extractf128_pd(dot3_@,0);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+2],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+3+2],part);part=_mm256_extractf128_pd(dot3_@,1);_mm_storel_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+6+2],part);_mm_storeu_pd(&partsums[((padding+3*invec->traits.ncols)*tid)+12*@+9+2],part);#NVECS/4
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
@@ -589,7 +598,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 {
 #if defined(GHOST_HAVE_AVX) && NVECS >= 2
     INFO_LOG("in RM kernel");
-    double *mval = (double *)SELL(mat)->val;
+    const double * const restrict mval = (const double * const restrict)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
@@ -635,12 +644,15 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
         __m256d matval;
         int tid = ghost_omp_threadnum();
         #GHOST_UNROLL#__m256d tmp@;#NVECS/2
+        #GHOST_UNROLL#__m256d dot1_@ = _mm256_setzero_pd();#NVECS/2
+        #GHOST_UNROLL#__m256d dot2_@ = _mm256_setzero_pd();#NVECS/2
+        #GHOST_UNROLL#__m256d dot3_@ = _mm256_setzero_pd();#NVECS/2
 
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            complex double *lval = (complex double *)res->val[c];
-            complex double *rval = (complex double *)invec->val[c];
+            complex double * const restrict lval = (complex double * const restrict)res->val[c];
+            const complex double * const restrict rval = (const complex double * const restrict)invec->val[c];
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/2
@@ -666,10 +678,15 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
                 #GHOST_UNROLL#_mm256_stream_pd(((double *)lval)+@*4,tmp@);#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_DOT) {
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+0] += conj(lval[@])*lval[@];#NVECS
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+1] += conj(lval[@])*rval[@];#NVECS
-                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*@+2] += conj(rval[@])*rval[@];#NVECS
+                #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,complex_mul_conj1(_mm256_load_pd((const double*)lval+@*4),_mm256_load_pd((const double*)lval+@*4)));#NVECS/2
+                #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,complex_mul_conj1(_mm256_load_pd((const double*)rval+@*4),_mm256_load_pd((const double*)lval+@*4)));#NVECS/2
+                #GHOST_UNROLL#dot3_@ = _mm256_add_pd(dot3_@,complex_mul_conj1(_mm256_load_pd((const double*)rval+@*4),_mm256_load_pd((const double*)rval+@*4)));#NVECS/2
             }
+        }
+        if (spmvmOptions & GHOST_SPMV_DOT) {
+            #GHOST_UNROLL#_mm256_storeu2_m128d(&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+0)],&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+3+0)],dot1_@);#NVECS/2
+            #GHOST_UNROLL#_mm256_storeu2_m128d(&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+1)],&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+3+1)],dot2_@);#NVECS/2
+            #GHOST_UNROLL#_mm256_storeu2_m128d(&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+2)],&((double *)partsums)[2*(((padding+3*invec->traits.ncols)*tid)+6*@+3+2)],dot3_@);#NVECS/2
         }
     }
     if (spmvmOptions & GHOST_SPMV_DOT) {
