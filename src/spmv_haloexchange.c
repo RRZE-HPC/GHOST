@@ -177,12 +177,12 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
 #ifdef GHOST_HAVE_CUDA
 #ifndef CUDA_COMMUNICATION_ASSEMBLY_DL
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        GHOST_INSTR_START(spmv_haloexchange_downloadwork)
+        GHOST_INSTR_START("downloadwork")
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
         ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
 #endif
         ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
-        GHOST_INSTR_STOP(spmv_haloexchange_downloadwork)
+        GHOST_INSTR_STOP("downloadwork")
     }
 #endif
 #endif
