@@ -365,6 +365,7 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
+        ghost_lidx_t viewedcol;
         (*new)->cu_val = src->cu_val;
         for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
             if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
