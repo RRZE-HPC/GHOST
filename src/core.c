@@ -497,11 +497,17 @@ ghost_error_t ghost_string(char **str)
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
 #ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
+#else
     ghost_line_string(str,"Instrumentation",NULL,"Likwid");
-#elif defined(GHOST_HAVE_INSTR_TIMING)
+#endif
+#else
+#ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Timing");
 #else
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
+#endif
 #endif
 #ifdef GHOST_HAVE_LONGIDX_GLOBAL
     ghost_line_string(str,"Gobal index size","bits","64");
