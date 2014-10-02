@@ -496,6 +496,8 @@ ghost_error_t ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
+    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_CFG_SELL_CHUNKHEIGHTS);
+    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_CFG_BLOCKVECTOR_SIZES);
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
