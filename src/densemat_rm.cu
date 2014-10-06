@@ -18,7 +18,7 @@
 #include "ghost/cu_complex.h"
 
 
-#define THREADSPERBLOCK 256
+#define THREADSPERBLOCK 1024
 
 
 template<typename T>  
