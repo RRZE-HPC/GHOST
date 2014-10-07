@@ -671,9 +671,9 @@ __global__ void SELL_kernel_CU_tmpl(
         zero<v_t>(dot3);
 
         if (i<nrows) {
-            dot1 = axpy<v_t>(dot1,lhs[lhs_lda*col+i],lhs[lhs_lda*col+i]);
-            dot2 = axpy<v_t>(dot2,rhs[rhs_lda*col+i],lhs[lhs_lda*col+i]);
-            dot3 = axpy<v_t>(dot3,rhs[rhs_lda*col+i],rhs[rhs_lda*col+i]);
+            dot1 = mulConj<v_t>(lhs[lhs_lda*col+i],lhs[lhs_lda*col+i]);
+            dot2 = mulConj<v_t>(rhs[rhs_lda*col+i],lhs[lhs_lda*col+i]);
+            dot3 = mulConj<v_t>(rhs[rhs_lda*col+i],rhs[rhs_lda*col+i]);
         } else {
             zero<v_t>(dot1);
             zero<v_t>(dot2);
