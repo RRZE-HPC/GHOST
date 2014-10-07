@@ -442,18 +442,18 @@ __global__ void SELL_kernel_CU_rm_tmpl(v_t * const __restrict__ lhs, const int l
             dot1 = mulConj<v_t>(lhs[lhs_lda*i+col],lhs[lhs_lda*i+col]);
             dot2 = mulConj<v_t>(rhs[rhs_lda*i+col],lhs[lhs_lda*i+col]);
             dot3 = mulConj<v_t>(rhs[rhs_lda*i+col],rhs[rhs_lda*i+col]);
-        } else {
-            zero<v_t>(dot1);
-            zero<v_t>(dot2);
-            zero<v_t>(dot3);
+        //} else {
+        //    zero<v_t>(dot1);
+        //    zero<v_t>(dot2);
+        //    zero<v_t>(dot3);
         }
 
         dot1 = ghost_warpReduceSum(dot1);
-        __syncthreads();
+        //__syncthreads();
         dot2 = ghost_warpReduceSum(dot2);
-        __syncthreads();
+        //__syncthreads();
         dot3 = ghost_warpReduceSum(dot3);
-        __syncthreads();
+        //__syncthreads();
 
         if (threadIdx.x==0) {
             localdot[0*gridDim.y*blockDim.x*gridDim.x + gridDim.x*threadIdx.y + blockIdx.x] = dot1;
