@@ -140,7 +140,7 @@ GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rh
 GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(dt2_host)));\
 GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
-#define PROCESS_LOCALDOT(dt2_host)\
+#define PROCESS_LOCALDOT(dt2,dt2_host)\
     GHOST_INSTR_START("spmv_cuda_dot")\
 INFO_LOG("Not doing the local dot product on-the-fly!");\
 memset(localdot,0,rhs->traits.ncols*3*sizeof(dt2_host));\
