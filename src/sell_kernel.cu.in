@@ -185,8 +185,8 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
         grid.y = (int)(ceil(rhs->traits.ncols/(double)MAX_COLS_PER_BLOCK));\
         size_t reqSmem = 0;\
         if (flags & GHOST_SPMV_DOT) {\
-            reqSmem = sizeof(dt2)*3*32*block.y;\
-            WARNING_LOG("Maybe too much shared mem allocated!");\
+            reqSmem = sizeof(dt2)*32*block.y;\
+            WARNING_LOG("Maybe too little shared mem allocated!");\
         }\
         if (prop.sharedMemPerBlock < reqSmem) {\
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");\
