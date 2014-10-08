@@ -129,6 +129,23 @@ __device__ inline T axpby(T x, T y, T a, T b)
     return b*y+a*x;
 }
 
+template<typename T,typename T_b>
+__device__ inline T_b mulConjSame(T x)
+{
+    return x*x;
+}
+
+template<>
+__device__ inline float mulConjSame<cuFloatComplex,float>(cuFloatComplex x)
+{
+    return cuCrealf(x)*cuCrealf(x) + cuCimagf(x)*cuCimagf(x);
+}
+
+template<>
+__device__ inline double mulConjSame<cuDoubleComplex,double>(cuDoubleComplex x)
+{
+    return cuCreal(x)*cuCreal(x) + cuCimag(x)*cuCimag(x);
+}
 
 template<typename T>
 __device__ inline T mulConj(T x, T y)
