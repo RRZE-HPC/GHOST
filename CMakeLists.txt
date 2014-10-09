@@ -27,7 +27,7 @@ option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global matrices and vectors
 option(BUILD_MIC "Build for Intel MIC" 0)
 set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CUDA_KERNELS "true,true,true,true" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
+set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,false,false;false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
