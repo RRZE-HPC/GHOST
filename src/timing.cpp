@@ -11,6 +11,23 @@
 
 using namespace std;
 
+typedef struct
+{
+    /**
+     * @brief User-defined callback function to compute a region's performance.
+     */
+    ghost_compute_performance_func_t perfFunc;
+    /**
+     * @brief Argument to perfFunc.
+     */
+    void *perfFuncArg;
+    /**
+     * @brief The unit of performance.
+     */
+    const char *perfUnit;
+}
+ghost_timing_perfFunc_t;
+
 
 /**
  * @brief Region timing accumulator
@@ -25,18 +42,8 @@ typedef struct
      * @brief The last start time of this region.
      */
     double start;
-    /**
-     * @brief User-defined callback function to compute a region's performance.
-     */
-    ghost_compute_performance_func_t perfFunc;
-    /**
-     * @brief Argument to perfFunc.
-     */
-    void *perfFuncArg;
-    /**
-     * @brief The unit of performance.
-     */
-    const char *perfUnit;
+
+    vector<ghost_timing_perfFunc_t> perfFuncs;
 } 
 ghost_timing_region_accu_t;
 
@@ -60,9 +67,12 @@ void ghost_timing_tock(const char *tag)
 
 void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, const char *unit)
 {
-    timings[tag].perfFunc = func;
-    timings[tag].perfFuncArg = arg;
-    timings[tag].perfUnit = unit;
+    ghost_timing_perfFunc_t pf;
+    pf.perfFunc = func;
+    pf.perfFuncArg = arg;
+    pf.perfUnit = unit;
+
+    timings[tag].perfFuncs.push_back(pf);
 }
 
 
@@ -111,6 +121,7 @@ ghost_error_t ghost_timing_summarystring(char **str)
 {
     stringstream buffer;
     map<string,ghost_timing_region_accu_t>::iterator iter;
+    vector<ghost_timing_perfFunc_t>::iterator pf_iter;
 
    
     size_t maxRegionLen = 0;
@@ -120,13 +131,15 @@ ghost_error_t ghost_timing_summarystring(char **str)
     stringstream tmp;
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
         int regLen = 0;
-        if (iter->second.perfUnit) {
-            tmp << iter->first.length();
-            maxUnitLen = max(strlen(iter->second.perfUnit),maxUnitLen);
-            regLen = strlen(iter->second.perfUnit);
-            tmp.str("");
+        for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
+            if (pf_iter->perfUnit) {
+                tmp << iter->first.length();
+                maxUnitLen = max(strlen(pf_iter->perfUnit),maxUnitLen);
+                regLen = strlen(pf_iter->perfUnit);
+                tmp.str("");
+            }
+            
         }
-        
         tmp << regLen+iter->first.length();
         maxRegionLen = max(regLen+iter->first.length(),maxRegionLen);
         tmp.str("");
@@ -168,10 +181,6 @@ ghost_error_t ghost_timing_summarystring(char **str)
     int printed = 0;
     buffer.precision(2);
     for (iter = timings.begin(); iter != timings.end(); ++iter) {
-        ghost_compute_performance_func_t pf = iter->second.perfFunc;
-        if (!pf) {
-            continue;
-        }
         if (!printed) {
             buffer << endl << endl << left << setw(maxRegionLen+4) << "Region" << right << " | ";
             buffer << setw(maxCallsLen+3) << "Calls | ";
@@ -187,36 +196,38 @@ ghost_error_t ghost_timing_summarystring(char **str)
         ghost_timing_region_create(&region,iter->first.c_str());
         
         if (region) {
-            void *pfa = iter->second.perfFuncArg;
+            for (pf_iter = iter->second.perfFuncs.begin(); pf_iter != iter->second.perfFuncs.end(); ++pf_iter) {
+                ghost_compute_performance_func_t pf = pf_iter->perfFunc;
+                void *pfa = pf_iter->perfFuncArg;
 
-            double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
-            int err = pf(&P_min,region->maxTime,pfa);
-            if (err) {
-                ERROR_LOG("Error in calling performance computation callback!");
-            }
-            err = pf(&P_max,region->minTime,pfa);
-            if (err) {
-                ERROR_LOG("Error in calling performance computation callback!");
-            }
-            err = pf(&P_avg,region->avgTime,pfa);
-            if (err) {
-                ERROR_LOG("Error in calling performance computation callback!");
-            }
-            if (region->nCalls > 10) {
-                err = pf(&P_skip10,accumulate(iter->second.times.begin()+10,iter->second.times.end(),0.)/(region->nCalls-10),pfa);
+                double P_min = 0., P_max = 0., P_avg = 0., P_skip10 = 0.;
+                int err = pf(&P_min,region->maxTime,pfa);
                 if (err) {
                     ERROR_LOG("Error in calling performance computation callback!");
                 }
-            }
+                err = pf(&P_max,region->minTime,pfa);
+                if (err) {
+                    ERROR_LOG("Error in calling performance computation callback!");
+                }
+                err = pf(&P_avg,region->avgTime,pfa);
+                if (err) {
+                    ERROR_LOG("Error in calling performance computation callback!");
+                }
+                if (region->nCalls > 10) {
+                    err = pf(&P_skip10,accumulate(iter->second.times.begin()+10,iter->second.times.end(),0.)/(region->nCalls-10),pfa);
+                    if (err) {
+                        ERROR_LOG("Error in calling performance computation callback!");
+                    }
+                }
 
-            buffer << scientific << left << setw(maxRegionLen-maxUnitLen+2) << iter->first << 
-                right << "(" << setw(maxUnitLen) << iter->second.perfUnit << ")" << " | " << setw(maxCallsLen) <<
-                region->nCalls << " | " <<
-                P_max << " | " <<
-                P_min << " | " <<
-                P_avg << " | " <<
-                P_skip10 << endl;
-            
+                buffer << scientific << left << setw(maxRegionLen-maxUnitLen+2) << iter->first << 
+                    right << "(" << setw(maxUnitLen) << pf_iter->perfUnit << ")" << " | " << setw(maxCallsLen) <<
+                    region->nCalls << " | " <<
+                    P_max << " | " <<
+                    P_min << " | " <<
+                    P_avg << " | " <<
+                    P_skip10 << endl;
+            }
             ghost_timing_region_destroy(region);
         }
     }
