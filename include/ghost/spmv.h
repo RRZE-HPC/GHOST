@@ -23,10 +23,15 @@ typedef enum {
     GHOST_SPMV_SCALE = 64,
     GHOST_SPMV_AXPBY = 128,
     GHOST_SPMV_DOT = 256,
-    GHOST_SPMV_NOT_REDUCE = 512,
-    GHOST_SPMV_LOCAL = 1024,
-    GHOST_SPMV_REMOTE = 2048
+    GHOST_SPMV_DOT_YY = 512,
+    GHOST_SPMV_DOT_XY = 1024,
+    GHOST_SPMV_DOT_XX = 2048,
+    GHOST_SPMV_NOT_REDUCE = 4096,
+    GHOST_SPMV_LOCAL = 8192,
+    GHOST_SPMV_REMOTE = 16384
 } ghost_spmv_flags_t;
+
+#define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX)
 
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt_in,dt_out){\
     dt_in *arg = NULL;\
@@ -54,7 +59,7 @@ typedef enum {
         }\
         gamma = (dt_out *)arg;\
     }\
-    if (flags & GHOST_SPMV_DOT) {\
+    if (flags & GHOST_SPMV_DOT_ANY) {\
         arg = va_arg(argp,dt_in *);\
         if (!arg) {\
             ERROR_LOG("Dot argument is NULL!");\
@@ -68,7 +73,7 @@ typedef enum {
         flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_VSHIFT);\
         flags = (ghost_spmv_flags_t)(flags | GHOST_SPMV_AXPY);\
     } else if (flags & GHOST_SPMV_LOCAL) {\
-        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT);\
+        flags = (ghost_spmv_flags_t)(flags & ~GHOST_SPMV_DOT_ANY);\
     }\
 }\
 
