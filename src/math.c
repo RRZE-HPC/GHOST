@@ -151,6 +151,10 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
 
     ghost_error_t ret = GHOST_SUCCESS;
+
+    if (*flags & GHOST_SPMV_DOT) {
+        *flags |= GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX;
+    }
     va_list argp;
     va_start(argp, flags);
     ret = ghost_vspmv(res,mat,invec,flags,argp);
