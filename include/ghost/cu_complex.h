@@ -42,6 +42,24 @@ __device__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
     val = make_cuDoubleComplex(1.,1.);
 }
 
+template<typename T, typename T_b>
+__device__ inline void fromReal(T &val, T_b real)
+{
+    val = real;
+}
+
+template<>
+__device__ inline void fromReal<cuDoubleComplex,double>(cuDoubleComplex &val, double real)
+{
+    val = make_cuDoubleComplex(real,0.);
+}
+
+template<>
+__device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float real)
+{
+    val = make_cuFloatComplex(real,0.f);
+}
+
 // val += val2*val3
 template<typename T, typename T2>
 __device__ inline T axpy(T val, T val2, T2 val3)
