@@ -673,10 +673,12 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     int spmvFlopsPerMatrixEntry = 0;
     int flopsPerAdd = 1;
     int flopsPerMul = 1;
+    int flopsPerMulSame = 1;
 
     if (arg->rhs->traits.datatype & GHOST_DT_COMPLEX) {
         flopsPerAdd = 2;
         flopsPerMul = 6;
+        flopsPerMulSame = 3;
     }
 
 
@@ -701,8 +703,14 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     if (arg->flags & GHOST_SPMV_SCALE) {
         flops += flopsPerMul*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_DOT) {
-        flops += (3*flopsPerMul+3*flopsPerAdd)*nrow*ncol;
+    if (arg->flags & GHOST_SPMV_DOT_YY) {
+        flops += (flopsPerMulSame+1)*nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_DOT_XY) {
+        flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
+    }
+    if (arg->flags & GHOST_SPMV_DOT_XX) {
+        flops += (flopsPerMulSame+1)*nrow*ncol;
     }
 
     *perf = flops/1.e9/time;
