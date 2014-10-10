@@ -696,8 +696,7 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
     }
     if (arg->flags & GHOST_SPMV_SHIFT) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
-    }
-    if (arg->flags & GHOST_SPMV_VSHIFT) {
+    } else if (arg->flags & GHOST_SPMV_VSHIFT) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
     }
     if (arg->flags & GHOST_SPMV_SCALE) {
