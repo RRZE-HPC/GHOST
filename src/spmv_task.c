@@ -34,6 +34,7 @@ typedef struct {
 
 static void *communicate(void *vargs)
 {
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
     commArgs *args = (commArgs *)vargs;
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
@@ -45,6 +46,7 @@ static void *communicate(void *vargs)
 err:
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 }
 
@@ -60,18 +62,18 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
-    GHOST_INSTR_START("local");
     compArgs *args = (compArgs *)vargs;
     GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions,args->argp),err,*ret);
-    GHOST_INSTR_STOP("local");
 
     goto out;
 err:
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 #endif
