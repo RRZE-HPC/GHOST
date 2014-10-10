@@ -162,6 +162,19 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
 
 #define CHOOSE_KERNEL(dt1,dt2,dt2_b,dt2_host) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    int cu_device;\
+    GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
+    dt2 *cu_localdot = NULL;\
+    dt2 *cu_shift = NULL;\
+    dt2_host *localdot = NULL;\
+    dt2 *shift, scale, beta;\
+    dim3 block, grid;\
+    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2_host,dt2);\
+    if (flags & GHOST_SPMV_AXPY) {\
+        dt2_host hbeta = 1.;\
+        beta = *((dt2 *)&hbeta);\
+    }\
     strcpy(boolstr,"\0");\
     if (flags & GHOST_SPMV_AXPBY || flags & GHOST_SPMV_AXPY) {\
         strcat(boolstr,"true,");\
@@ -192,19 +205,6 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
         strcat(boolstr,"true");\
     } else {\
         strcat(boolstr,"false");\
-    }\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    int cu_device;\
-    GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
-    dt2 *cu_localdot = NULL;\
-    dt2 *cu_shift = NULL;\
-    dt2_host *localdot = NULL;\
-    dt2 *shift, scale, beta;\
-    dim3 block, grid;\
-    GHOST_SPMV_PARSE_ARGS(flags,argp,scale,beta,shift,localdot,dt2_host,dt2);\
-    if (flags & GHOST_SPMV_AXPY) {\
-        dt2_host hbeta = 1.;\
-        beta = *((dt2 *)&hbeta);\
     }\
     size_t shiftsize = sizeof(dt2)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);\
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));\

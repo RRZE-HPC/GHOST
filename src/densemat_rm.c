@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <cuda_runtime.h>
 
 static ghost_error_t (*ghost_densemat_rm_normalize_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_densemat_rm_normalize, &d_ghost_densemat_rm_normalize, &c_ghost_densemat_rm_normalize, &z_ghost_densemat_rm_normalize};
@@ -582,7 +583,14 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
-            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
+            if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+                CUDA_CALL_RETURN(cudaHostAlloc((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,cudaHostAllocDefault));
+#endif
+            } else {
+                GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
+            }
+
             for (v=1; v<vec->traits.nrowspadded; v++) {
                 vec->val[v] = vec->val[0]+v*(size_t)vec->traits.ncolspadded*vec->elSize;
             }
@@ -600,6 +608,8 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 #else
             //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits.nrowspadded,vec->traits.nrowshalo*sizeofdt,vec->traits.ncols));
             GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
+//            printf("call!!! %p \n",vec->val[0]);
+//            CUDA_CALL_RETURN(cudaHostRegister(vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,cudaHostRegisterPortable));
 #endif
         }
 #endif
@@ -1371,7 +1381,13 @@ static void ghost_freeVector( ghost_densemat_t* vec )
                 }
             }
             else {
-                free(vec->val[0]); vec->val[0] = NULL;
+                if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+                    cudaFreeHost(vec->val[0]);
+#endif
+                } else {
+                    free(vec->val[0]); vec->val[0] = NULL;
+                }
             }
 #endif
 #ifdef GHOST_HAVE_CUDA
