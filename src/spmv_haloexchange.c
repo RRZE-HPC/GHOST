@@ -60,7 +60,13 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_perm
     }
     acc_dues = dueptr[nprocs];
     
-    GHOST_CALL_RETURN(ghost_malloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize));
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        CUDA_CALL_RETURN(cudaHostAlloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize,cudaHostAllocDefault));
+#endif
+    } else {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize));
+    }
     
 #ifdef GHOST_HAVE_CUDA
 #ifdef CUDA_COMMUNICATION_ASSEMBLY_DL
@@ -337,7 +343,9 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
-    ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
+    }
 #endif
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
     GHOST_INSTR_STOP("upload")
@@ -348,7 +356,13 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
         ghost_cu_free(cu_work);
     }
 #endif
-    free(work); work = NULL;
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        cudaFreeHost(work); work = NULL;
+#endif
+    } else {
+        free(work); work = NULL;
+    }
     free(tmprecv_mem); tmprecv_mem = NULL;
     free(tmprecv); tmprecv = NULL;
     free(request); request = NULL;
