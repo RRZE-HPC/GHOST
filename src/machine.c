@@ -3,10 +3,15 @@
 #include "ghost/util.h"
 #include "ghost/locality.h"
 #include "ghost/omp.h"
+#include "ghost/core.h"
+
 
 #include <strings.h>
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
+#endif
+#ifdef GHOST_HAVE_CUDA
+#include <cuda_runtime.h>
 #endif
 
 /** \cond */
@@ -240,6 +245,16 @@ ghost_error_t ghost_machine_string(char **str)
 
 
 #ifdef GHOST_HAVE_CUDA
+    int cu_device;
+    struct cudaDeviceProp devprop;
+    ghost_type_t mytype;
+    ghost_type_get(&mytype);
+    
+    if (mytype == GHOST_TYPE_CUDA) {
+        GHOST_CALL_RETURN(ghost_cu_device(&cu_device));
+        CUDA_CALL_RETURN(cudaGetDeviceProperties(&devprop,cu_device));
+    }
+    
     int cuVersion;
     GHOST_CALL_RETURN(ghost_cu_version(&cuVersion));
 
@@ -301,6 +316,9 @@ ghost_error_t ghost_machine_string(char **str)
         if (strcasecmp(CUdevInfo->names[j],"None")) {
             ghost_line_string(str,"",NULL,"%dx %s",CUdevInfo->ndevice[j],CUdevInfo->names[j]);
         }
+    }
+    if (mytype == GHOST_TYPE_CUDA) {
+        ghost_line_string(str,"CUDA device L2 Cache size","MiB","%.2f",(double)devprop.l2CacheSize/(1024.*1024.));
     }
 #endif
     ghost_footer_string(str);
