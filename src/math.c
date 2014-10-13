@@ -116,7 +116,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
 
 #ifdef GHOST_HAVE_MPI
 
-    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT)) {
+    if (!(*flags & GHOST_SPMV_NOT_REDUCE) && (*flags & GHOST_SPMV_DOT_ANY)) {
         GHOST_INSTR_START("dot_reduce");
         void *dot = NULL;
         if (*flags & GHOST_SPMV_SCALE) {
@@ -128,7 +128,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
         if ((*flags & GHOST_SPMV_SHIFT) || (*flags & GHOST_SPMV_VSHIFT)) {
             dot = va_arg(argp_backup,void *);
         }
-        if (*flags & GHOST_SPMV_DOT) {
+        if (*flags & GHOST_SPMV_DOT_ANY) {
             dot = va_arg(argp_backup,void *);
         }
         ghost_mpi_op_t op;
