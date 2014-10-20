@@ -1,7 +1,7 @@
-find_package(GHOST REQUIRED CONFIG PATHS ${CMAKE_BINARY_DIR})
+find_package(GHOST REQUIRED PATHS ${CMAKE_BINARY_DIR} NO_DEFAULT_PATH)
 
 include_directories(${CMAKE_BINARY_DIR})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing ${GHOST_CXX_FLAGS}")
 
 add_executable(simple simple.cpp)
 
