@@ -339,6 +339,7 @@ if (USE_CUDA)
             )
         include_directories(${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
+                include/ghost/cu_crs.h
                 include/ghost/cu_util.h
                 include/ghost/cu_densemat_cm.h
                 include/ghost/cu_densemat_rm.h
@@ -369,7 +370,7 @@ add_dependencies(ghost preprocess)
 
 
 if (USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${LIBCUDADEVRT})
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY} ${LIBCUDADEVRT})
     set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
             ${CUDA_LIBRARIES})
 endif()

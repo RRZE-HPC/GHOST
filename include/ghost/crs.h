@@ -10,6 +10,21 @@
 #include "types.h"
 #include "sparsemat.h"
 
+#ifdef GHOST_HAVE_CUDA
+#include "cu_crs.h"
+#endif
+
+/**
+ * @brief Struct defining a CRS matrix on CUDA.
+ */
+typedef struct 
+{
+    ghost_lidx_t  *rpt;
+    ghost_lidx_t  *col;
+    char *val;
+} 
+ghost_cu_crs_t;
+
 /**
  * @brief Struct defining a CRS matrix.
  */
@@ -18,6 +33,8 @@ typedef struct
     ghost_lidx_t  *rpt;
     ghost_lidx_t  *col;
     char *val;
+    
+    ghost_cu_crs_t *cumat;
 } 
 ghost_crs_t;
 
@@ -49,10 +66,6 @@ ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-
-#ifdef GHOST_HAVE_CUDA
-ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options);
-#endif
 
 #ifdef __cplusplus
 }

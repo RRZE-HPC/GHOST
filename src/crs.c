@@ -1,5 +1,8 @@
 #define _XOPEN_SOURCE 500
 
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/cu_crs.h"
+#endif
 #include "ghost/crs.h"
 #include "ghost/util.h"
 #include "ghost/core.h"
@@ -69,7 +72,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     {
 #ifdef GHOST_HAVE_CUDA
         WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
-        //   mat->spmv = &ghost_cu_crsspmv;
+        mat->spmv = &ghost_cu_crsspmv;
 #endif
     }
     else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
@@ -107,8 +110,24 @@ out:
 
 static ghost_error_t CRS_upload(ghost_sparsemat_t *mat)
 {
-    UNUSED(mat);
-    return GHOST_ERR_NOT_IMPLEMENTED;
+#ifdef GHOST_HAVE_CUDA
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&CR(mat)->cumat,sizeof(ghost_cu_crs_t)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&CR(mat)->cumat->rpt,(mat->nrows+1)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&CR(mat)->cumat->col,mat->nnz*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&CR(mat)->cumat->val,mat->nnz*mat->elSize));
+
+        GHOST_CALL_RETURN(ghost_cu_upload(CR(mat)->cumat->rpt, CR(mat)->rpt, (mat->nrows+1)*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_upload(CR(mat)->cumat->col, CR(mat)->col, mat->nnz*sizeof(ghost_lidx_t)));
+        GHOST_CALL_RETURN(ghost_cu_upload(CR(mat)->cumat->val, CR(mat)->val, mat->nnz*mat->elSize));
+    }
+#else
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+        ERROR_LOG("Device matrix cannot be created without CUDA");
+        return GHOST_ERR_CUDA;
+    }
+#endif
+    return GHOST_SUCCESS;
 }
 
 static ghost_error_t CRS_permute(ghost_sparsemat_t *mat, ghost_lidx_t *perm, ghost_lidx_t *invPerm)
@@ -474,6 +493,12 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
 
     mat->nrows = mat->context->lnrows[me];
 
+#ifdef GHOST_HAVE_CUDA
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+        GHOST_CALL_GOTO(mat->upload(mat),err,ret);
+    }
+#endif
+
     goto out;
 err:
     free(CR(mat)->rpt); CR(mat)->rpt = NULL;
@@ -666,6 +691,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
                 DEBUG_LOG(3,"-- remote -- PE%d: remoteCR->col[%"PRGIDX"]=%"PRLIDX, me, i, remoteCR->col[i]);
         }
     }
+#ifdef GHOST_HAVE_CUDA
+        if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+            mat->localPart->upload(mat->localPart);
+            mat->remotePart->upload(mat->remotePart);
+        }
+#endif
 
     goto out;
 err:

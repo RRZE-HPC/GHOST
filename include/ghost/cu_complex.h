@@ -7,37 +7,37 @@
 #define GHOST_CU_COMPLEX_H
 
 template<typename T>
-__device__ inline void zero(T &val)
+__device__  __host__ inline void zero(T &val)
 {
     val = 0.;
 }
 
 template<>
-__device__ inline void zero<cuFloatComplex>(cuFloatComplex &val)
+__device__  __host__ inline void zero<cuFloatComplex>(cuFloatComplex &val)
 {
     val = make_cuFloatComplex(0.,0.);
 }
 
 template<>
-__device__ inline void zero<cuDoubleComplex>(cuDoubleComplex &val)
+__device__  __host__ inline void zero<cuDoubleComplex>(cuDoubleComplex &val)
 {
     val = make_cuDoubleComplex(0.,0.);
 }
 
 template<typename T>
-__device__ inline void one(T &val)
+__device__ __host__ inline void one(T &val)
 {
     val = 1.;
 }
 
 template<>
-__device__ inline void one<cuFloatComplex>(cuFloatComplex &val)
+__device__  __host__ inline void one<cuFloatComplex>(cuFloatComplex &val)
 {
     val = make_cuFloatComplex(1.,1.);
 }
 
 template<>
-__device__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
+__device__  __host__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
 {
     val = make_cuDoubleComplex(1.,1.);
 }

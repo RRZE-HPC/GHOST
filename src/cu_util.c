@@ -20,6 +20,7 @@
 #define ghost_cu_MAX_DEVICE_NAME_LEN 500
 
 static cublasHandle_t ghost_cublas_handle;
+static cusparseHandle_t ghost_cusparse_handle;
 static int cu_device = -1;
 
 ghost_error_t ghost_cu_init(int dev)
@@ -39,6 +40,7 @@ ghost_error_t ghost_cu_init(int dev)
         return GHOST_ERR_CUDA;
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
+    CUBLAS_CALL_RETURN(cusparseCreate(&ghost_cusparse_handle));
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
     CUDA_CALL_RETURN(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
@@ -271,6 +273,17 @@ ghost_error_t ghost_cu_cublas_handle(cublasHandle_t *handle)
         return GHOST_ERR_CUBLAS;
     }
     *handle = ghost_cublas_handle;
+
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_cusparse_handle(cusparseHandle_t *handle)
+{
+    if (!ghost_cusparse_handle) {
+        ERROR_LOG("CUSPARSE not initialized!");
+        return GHOST_ERR_CUSPARSE;
+    }
+    *handle = ghost_cusparse_handle;
 
     return GHOST_SUCCESS;
 }

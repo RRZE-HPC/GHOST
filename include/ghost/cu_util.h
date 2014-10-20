@@ -2,6 +2,7 @@
 #define GHOST_CU_UTIL_H
 
 #include <cublas_v2.h>
+#include <cusparse_v2.h>
 #include "config.h"
 #include "types.h"
 #include "error.h"
@@ -34,6 +35,7 @@ extern "C" {
     ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **gpu_info);
     ghost_error_t ghost_cu_device(int *device);
     ghost_error_t ghost_cu_cublas_handle(cublasHandle_t *handle);
+    ghost_error_t ghost_cu_cusparse_handle(cusparseHandle_t *handle);
 
 #ifdef __cplusplus
 }
