@@ -180,6 +180,14 @@ ghost_error_t ghost_malloc(void **mem, const size_t size)
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
+{
+#ifdef GHOST_HAVE_CUDA
+    return ghost_cu_malloc_pinned(mem,size);
+#endif
+    return ghost_malloc(mem,size);
+}
+
 ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)
 {
     int ierr;

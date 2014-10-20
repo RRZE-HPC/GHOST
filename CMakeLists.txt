@@ -21,7 +21,6 @@ option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(USE_COLPACK "Use ColPack for matrix coloring" 0)
-option(USE_CUDA_PINNEDMEM "Use CUDA pinned memory" 0)
 option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local matrices and vectors" 0)
 option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global matrices and vectors" 0)
 option(BUILD_MIC "Build for Intel MIC" 0)
@@ -344,9 +343,6 @@ if (USE_CUDA)
                 include/ghost/cu_densemat_cm.h
                 include/ghost/cu_densemat_rm.h
             )
-        if (USE_CUDA_PINNEDMEM)
-            set(GHOST_HAVE_CUDA_PINNEDMEM 1)
-        endif()
         mark_as_advanced(
                 CUDA_BUILD_CUBIN
                 CUDA_BUILD_EMULATION

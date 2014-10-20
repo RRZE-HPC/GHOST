@@ -241,6 +241,18 @@ ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size)
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size)
+{
+
+    if (size/(1024.*1024.*1024.) > 1.) {
+        DEBUG_LOG(1,"Allocating big array of size %f GB",size/(1024.*1024.*1024.));
+    }
+
+    CUDA_CALL_RETURN(cudaHostAlloc(mem,size,cudaHostAllocDefault));
+
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_cu_device(int *device)
 {
     if (cu_device < 0) {
@@ -269,4 +281,9 @@ ghost_error_t ghost_cu_version(int *ver)
     CUDA_CALL_RETURN(cudaRuntimeGetVersion(ver));
     
     return GHOST_SUCCESS;
+}
+    
+void ghost_cu_free_host(void * mem)
+{
+    cudaFreeHost(mem);
 }

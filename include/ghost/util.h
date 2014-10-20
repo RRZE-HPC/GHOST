@@ -107,6 +107,18 @@ extern "C" {
     ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align);
 
     /**
+     * @brief Allocate pinned memory to enable fast CPU-GPU transfers.
+     *
+     * @param mem Where to store the allocated memory.
+     * @param size The size (in bytes) to allocate.
+     *
+     * @return GHOST_SUCCESS on success or an error indicator.
+     *
+     * If CUDA is not enabled, a normal malloc is done.
+     */
+    ghost_error_t ghost_malloc_pinned(void **mem, const size_t size);
+
+    /**
      * @brief Computes a hash from three integral input values.
      *
      * @param a First parameter.

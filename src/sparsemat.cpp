@@ -1,3 +1,4 @@
+#include "ghost/config.h"
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
 #endif
@@ -9,7 +10,6 @@
 #include <numeric>
 #include <algorithm>
 
-#include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"

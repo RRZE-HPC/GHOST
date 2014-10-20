@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <cuda_runtime.h>
 
 static ghost_error_t (*ghost_densemat_rm_normalize_funcs[4]) (ghost_densemat_t *) = 
 {&s_ghost_densemat_rm_normalize, &d_ghost_densemat_rm_normalize, &c_ghost_densemat_rm_normalize, &z_ghost_densemat_rm_normalize};
@@ -584,9 +583,7 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
         if (vec->val[0] == NULL) {
             DEBUG_LOG(2,"Allocating host side of vector");
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-                CUDA_CALL_RETURN(cudaHostAlloc((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,cudaHostAllocDefault));
-#endif
+                GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize));
             } else {
                 GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
             }
@@ -601,16 +598,7 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
         if (vec->cu_val == NULL) {
-#ifdef GHOST_HAVE_CUDA_PINNEDMEM
-            WARNING_LOG("CUDA pinned memory is disabled");
-            //ghost_cu_safecall(cudaHostGetDevicePointer((void **)&vec->cu_val,vec->val,0));
             GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
-#else
-            //ghost_cu_safecall(cudaMallocPitch(&(void *)vec->cu_val,&vec->traits.nrowspadded,vec->traits.nrowshalo*sizeofdt,vec->traits.ncols));
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncolspadded*vec->elSize));
-//            printf("call!!! %p \n",vec->val[0]);
-//            CUDA_CALL_RETURN(cudaHostRegister(vec->val[0],(size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*vec->elSize,cudaHostRegisterPortable));
-#endif
         }
 #endif
     }   
@@ -1355,22 +1343,6 @@ static void ghost_freeVector( ghost_densemat_t* vec )
     if( vec ) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             ghost_lidx_t v;
-#ifdef GHOST_HAVE_CUDA_PINNEDMEM
-            WARNING_LOG("CUDA pinned memory is disabled");
-            /*if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-              for (v=0; v<vec->traits.ncols; v++) { 
-              ghost_cu_safecall(cudaFreeHost(vec->val[v]));
-              }
-              }*/
-            if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-                for (v=0; v<vec->traits.nrows; v++) {
-                    free(vec->val[v]); vec->val[v] = NULL;
-                }
-            }
-            else {
-                free(vec->val[0]); vec->val[0] = NULL;
-            }
-#else
             //note: a 'scattered' vector (one with non-constant stride) is
             //      always a view of some other (there is no method to                        
             //      construct it otherwise), but we check anyway in case
@@ -1383,13 +1355,12 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             else {
                 if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                    cudaFreeHost(vec->val[0]);
+                    ghost_cu_free_host(vec->val[0]);
 #endif
                 } else {
                     free(vec->val[0]); vec->val[0] = NULL;
                 }
             }
-#endif
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                 ghost_cu_free(vec->cu_val);
@@ -1403,6 +1374,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         // TODO free traits ???
     }
 }
+
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir) 
 {
     // TODO enhance performance
