@@ -305,7 +305,7 @@ static size_t CRS_byteSize (ghost_sparsemat_t *mat)
 
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_INITIALIZATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
     char * tmpval = NULL;

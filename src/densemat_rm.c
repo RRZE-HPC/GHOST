@@ -683,7 +683,7 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
 
 static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t nc = MIN(vec->traits.ncols,vec2->traits.ncols);
     char *s = NULL;
@@ -709,7 +709,7 @@ out:
 
 static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *_b)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t nc = MIN(vec->traits.ncols,vec2->traits.ncols);
     char *s = NULL;
@@ -739,7 +739,7 @@ out:
 static ghost_error_t vec_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
     ret = ghost_densemat_rm_vaxpy_funcs[dtIdx](vec,vec2,scale);
@@ -754,7 +754,7 @@ out:
 static ghost_error_t vec_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
     ret = ghost_densemat_rm_vaxpby_funcs[dtIdx](vec,vec2,scale,b);
@@ -767,7 +767,7 @@ out:
 
 static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t nc = vec->traits.ncols;
     char *s;
@@ -793,7 +793,7 @@ out:
 static ghost_error_t vec_rm_vscale(ghost_densemat_t *vec, void *scale)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
     ret = ghost_densemat_rm_vscale_funcs[dtIdx](vec,scale);
@@ -808,7 +808,7 @@ out:
 static ghost_error_t vec_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
     ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_datatype_idx_t dtIdx;
     GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
     ret = ghost_densemat_rm_dotprod_funcs[dtIdx](vec,res,vec2);

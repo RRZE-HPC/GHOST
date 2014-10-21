@@ -34,7 +34,7 @@ typedef struct {
 
 static void *communicate(void *vargs)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     commArgs *args = (commArgs *)vargs;
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
@@ -62,7 +62,7 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
@@ -89,7 +89,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     GHOST_INSTR_START("prepare");
     ghost_error_t ret = GHOST_SUCCESS;
 

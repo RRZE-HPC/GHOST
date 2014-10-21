@@ -9,6 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "instr.h"
+#include "func_util.h"
 
 #ifdef GHOST_HAVE_CUDA
 #include "cu_util.h"
@@ -50,31 +51,6 @@
  * @brief Avoid unused variable/function warnings.
  */
 #define UNUSED(x) (void)(x)
-
-typedef enum
-{
-    GHOST_FUNCTYPE_MATH = 1,
-    GHOST_FUNCTYPE_UTIL = 2,
-    GHOST_FUNCTYPE_COMMUNICATION = 4,
-    GHOST_FUNCTYPE_PREPROCESS = 8,
-    GHOST_FUNCTYPE_INITIALIZATION = 16
-} ghost_functype_t;
-
-#define GHOST_FUNC_ENTRY(functype)\
-    int __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
-    if (functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION)) {\
-        GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
-    }\
-    char * __prefixbackup = ghost_instr_prefix_get();\
-    char __prefix[256];\
-    snprintf(__prefix,strlen(__prefixbackup)+strlen(__FUNCTION__+__funcnameoffset)+3,"%s%s->",__prefixbackup,__FUNCTION__+__funcnameoffset);\
-    ghost_instr_prefix_set(__prefix);\
-
-#define GHOST_FUNC_EXIT(functype)\
-    ghost_instr_prefix_set(__prefixbackup);\
-    if (functype & (GHOST_FUNCTYPE_MATH | GHOST_FUNCTYPE_COMMUNICATION)) {\
-        GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
-    }
 
 
 #ifdef __cplusplus

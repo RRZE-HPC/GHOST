@@ -9,7 +9,7 @@
 ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     INFO_LOG("tsmttsm with blocksz %d",BLOCKSZ);
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
 

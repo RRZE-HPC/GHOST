@@ -7,7 +7,7 @@
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_lidx_t m = x->traits.ncols;

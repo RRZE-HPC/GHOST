@@ -26,7 +26,7 @@ static map<ghost_sellspmv_parameters_t, sellspmv_kernel> ghost_sellspmv_kernels;
 
 void ghost_sellspmv_kernelmap_generate() 
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
 #include "sell_kernel_avx.def"
 #include "sell_kernel_sse.def"
     

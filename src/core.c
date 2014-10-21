@@ -71,7 +71,7 @@ ghost_error_t ghost_type_get(ghost_type_t *t)
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_PREPROCESS);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
     static int initialized = 0;
 
     if (initialized) {
@@ -529,7 +529,7 @@ ghost_error_t ghost_string(char **str)
 
 ghost_error_t ghost_barrier()
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
 #ifdef GHOST_HAVE_MPI
     MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
 #endif

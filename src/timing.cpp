@@ -80,8 +80,8 @@ ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** ri, const char
 {
     ghost_timing_region_accu_t ti = timings[string(tag)];
     if (!ti.times.size()) {
-        ERROR_LOG("The region %s does not exist!",tag);
-        return GHOST_ERR_INVALID_ARG;
+        *ri = NULL;
+        return GHOST_SUCCESS;
     }
 
     ghost_error_t ret = GHOST_SUCCESS;

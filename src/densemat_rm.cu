@@ -169,7 +169,7 @@ __global__ static void cu_communicationassembly_kernel(T *vec, T *work, ghost_li
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work, ghost_lidx_t *dueptr, ghost_densemat_t *vec, ghost_lidx_t *perm)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
   
     if (!vec->context->cu_duelist) {
        ERROR_LOG("cu_duelist must not be NULL!");
@@ -237,7 +237,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     void *d_a;
     size_t sizeofdt;
@@ -310,7 +310,7 @@ out:
     
 extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;
@@ -396,7 +396,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     if (vec->traits.datatype != vec2->traits.datatype)
@@ -484,7 +484,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpy(ghost_densemat_t *vec, ghost_
         ERROR_LOG("Cannot AXPY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -562,7 +562,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         ERROR_LOG("Cannot AXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     char colfield[v1->traits.ncolsorig];
@@ -634,7 +634,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -704,7 +704,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;

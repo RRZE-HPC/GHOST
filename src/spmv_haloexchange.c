@@ -41,7 +41,7 @@ static void *cu_work;
 ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
 {
 #ifdef GHOST_HAVE_MPI
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     //max_dues = 0;
@@ -208,7 +208,7 @@ out:
 ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled)
 {
 #ifdef GHOST_HAVE_MPI
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
     int nprocs;
     int me; 
     int i, from_PE, to_PE;
@@ -319,7 +319,7 @@ out:
 ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 {
 #ifdef GHOST_HAVE_MPI
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_COMMUNICATION);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
     int i, from_PE;

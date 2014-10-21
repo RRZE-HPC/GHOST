@@ -30,6 +30,7 @@ set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,
 set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
 set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
+set(INSTRUMENTATION_FUNCTYPES "(functype | GHOST_FUNCTYPE_MATH) && (functype | GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
 option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled for large-scale runs)" 0)
 
@@ -633,6 +634,10 @@ configure_file (
 	"${PROJECT_SOURCE_DIR}/include/ghost/config.h.in"
 	"${PROJECT_BINARY_DIR}/ghost/config.h"
 )
+configure_file (
+	"${PROJECT_SOURCE_DIR}/include/ghost/func_util.h.in"
+	"${PROJECT_BINARY_DIR}/ghost/func_util.h"
+)
 configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/ghost-config.cmake.in ${CMAKE_BINARY_DIR}/ghost-config.cmake @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/ghost-config-version.cmake.in ${CMAKE_BINARY_DIR}/ghost-config-version.cmake @ONLY)
@@ -650,6 +655,7 @@ install(FILES include/ghost.h DESTINATION include)
 install(FILES ${HEADERS} DESTINATION include/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
 install(FILES ${CMAKE_BINARY_DIR}/ghost/config.h DESTINATION include/ghost)
+install(FILES ${CMAKE_BINARY_DIR}/ghost/func_util.h DESTINATION include/ghost)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"

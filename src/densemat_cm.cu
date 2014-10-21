@@ -264,7 +264,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_communicationassembly(void * work,
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     void *d_a;
     size_t sizeofdt;
@@ -341,7 +341,7 @@ out:
     
 extern "C" ghost_error_t ghost_densemat_cm_cu_vaxpby(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a, void *b)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;
@@ -433,7 +433,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     if (vec->traits.datatype != vec2->traits.datatype)
@@ -518,7 +518,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
         ERROR_LOG("Cannot AXPY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -629,7 +629,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
         ERROR_LOG("Cannot AXPBY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     char colfield[v1->traits.ncolsorig];
@@ -695,7 +695,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_scale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
     char colfield[vec->traits.ncolsorig];
@@ -762,7 +762,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void *a)
 {
-    GHOST_FUNC_ENTRY(GHOST_FUNCTYPE_MATH);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     void *d_a;
