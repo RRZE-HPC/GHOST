@@ -73,6 +73,7 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
 
 #define CHOOSE_KERNEL(dt1,dt2,dt2_b,dt2_host) {\
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);\
     ghost_error_t ret = GHOST_SUCCESS;\
     int cu_device;\
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
@@ -193,6 +194,7 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
     }\
     GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));\
     GHOST_CALL_RETURN(ghost_cu_free(cu_shift));\
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);\
     return ret;\
 }
 # if 0

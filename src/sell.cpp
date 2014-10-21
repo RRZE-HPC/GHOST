@@ -57,6 +57,7 @@ using namespace std;
     template<typename m_t, typename v_t, int chunkHeight> 
 ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *rhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
@@ -236,12 +237,14 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
         free(partsums);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
 
 template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
     v_t *rhsv = NULL;
     v_t *lhsv = NULL;
@@ -325,6 +328,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
         free(partsums);
     }
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 /*

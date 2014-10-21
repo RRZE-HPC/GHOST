@@ -2,6 +2,7 @@
 
 static char *ghost_instr_prefix = "";
 static char *ghost_instr_suffix = "";
+int ghost_instr_enable = 1;
 
 void ghost_instr_prefix_set(const char *prefix)
 {

@@ -18,8 +18,12 @@ typedef enum
 
 #define GHOST_FUNC_ENTER(functype)\
     int __funcnameoffset = strncmp(__FUNCTION__,"ghost_",6)?0:6;\
+    bool __ghost_instr_enable_backup = ghost_instr_enable;\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
+        ghost_instr_enable = true;\
         GHOST_INSTR_START(__FUNCTION__+__funcnameoffset);\
+    } else {\
+        ghost_instr_enable = false;\
     }\
     char * __prefixbackup = ghost_instr_prefix_get();\
     char __prefix[256];\
@@ -30,6 +34,7 @@ typedef enum
     ghost_instr_prefix_set(__prefixbackup);\
     if (${INSTRUMENTATION_FUNCTYPES}) {\
         GHOST_INSTR_STOP(__FUNCTION__+__funcnameoffset);\
-    }
+    }\
+    ghost_instr_enable = __ghost_instr_enable_backup;
 
 #endif

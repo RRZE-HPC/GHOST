@@ -19,6 +19,8 @@
 
 #endif
 
+extern int ghost_instr_enable;
+
 #ifdef GHOST_HAVE_INSTR_TIMING
 
 #ifdef GHOST_HAVE_INSTR_LIKWID
@@ -42,15 +44,19 @@
 #else
 
 #define GHOST_INSTR_START(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tick(region);\
+    if (ghost_instr_enable) {\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tick(region);\
+    }\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256] = "";\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
-    ghost_timing_tock(region);\
+    if (ghost_instr_enable) {\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tock(region);\
+    }\
 }\
 
 #endif

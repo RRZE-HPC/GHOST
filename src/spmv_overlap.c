@@ -28,6 +28,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
     int localopts = flags|GHOST_SPMV_LOCAL;
@@ -52,6 +53,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
 err:
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return ret;
 #endif

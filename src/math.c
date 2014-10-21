@@ -92,6 +92,7 @@ ghost_error_t ghost_normalize(ghost_densemat_t *vec)
 
 static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_densemat_t *invec, ghost_spmv_flags_t *flags, va_list argp)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     va_list argp_backup;
     va_copy(argp_backup,argp);
     DEBUG_LOG(1,"Performing SpMV");
@@ -141,6 +142,7 @@ static ghost_error_t ghost_vspmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, 
     }
 #endif
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     return GHOST_SUCCESS;
 
