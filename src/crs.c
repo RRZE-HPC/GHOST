@@ -71,7 +71,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
-        WARNING_LOG("CUDA CRS SpMV has not yet been implemented!");
+        WARNING_LOG("It is not recommended to use CRS on a GPU!");
         mat->spmv = &ghost_cu_crsspmv;
 #endif
     }

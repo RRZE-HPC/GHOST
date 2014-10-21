@@ -205,4 +205,37 @@ __global__ void localdotKernel(v_t *lhs, int lhs_lda, v_t* rhs, int rhs_lda, v_t
 }
 */
 
+struct CustomSum
+{
+    template<typename T>
+    __device__ __forceinline__ 
+    T operator() (const T &a, const T &b) const 
+    {
+        return a+b;
+    }
+    __device__ __forceinline__ 
+    cuDoubleComplex operator() (const cuDoubleComplex &a, const cuDoubleComplex &b) const 
+    {
+        return cuCadd(a,b);
+    }
+    __device__ __forceinline__ 
+    cuFloatComplex operator() (const cuFloatComplex &a, const cuFloatComplex &b) const 
+    {
+        return cuCaddf(a,b);
+    }
+};
+
+template <typename T>
+inline void deviceReduce3(T *cu_data_in, T *cu_data_out, unsigned int stride, unsigned int N)
+{
+    CustomSum sumop;
+    void *d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_in,N,sumop);
+    ghost_cu_malloc((void **)&d_temp_storage,temp_storage_bytes);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_out,N,sumop);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[stride],&cu_data_out[stride],N,sumop);
+    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[2*stride],&cu_data_out[2*stride],N,sumop);
+}
+
 #endif

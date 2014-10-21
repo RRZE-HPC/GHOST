@@ -150,7 +150,7 @@ set (HEADERS
 string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
 string(REPLACE "," ";" CFG_BLOCKVECTOR_SIZES_LIST ${CFG_BLOCKVECTOR_SIZES})
 
-set(SELL_C_NCOLS_SWITCHCASCADE "switch \(SELL(mat)->chunkHeight) {\\\n")
+set(SELL_C_NCOLS_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(SELL(mat)->chunkHeight) {\\\n")
 foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
     set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
     set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
@@ -159,12 +159,12 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
             foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
                 set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { CALL(kernel,dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT},grid,block,smem) } else \\\n")
             endforeach()
-            set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                { ERROR_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                return GHOST_ERR_INVALID_ARG; }\\\n")
+            set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                { WARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        break;\\\n")
     endforeach() 
-    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                ERROR_LOG(\"Non-configured ncols!\");\\\n                return GHOST_ERR_INVALID_ARG;\\\n        }\\\n        break;\\\n")
+    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                WARNING_LOG(\"Non-configured ncols %d!\",SELL(mat)->chunkHeight);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
 endforeach()
-set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        ERROR_LOG(\"Non-configured chunk height!\");\\\n        return GHOST_ERR_INVALID_ARG;\\\n}\\")
+set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        WARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/src/sell_kernel.cu.in
