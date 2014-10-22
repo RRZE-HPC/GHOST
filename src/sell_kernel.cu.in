@@ -75,6 +75,10 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
 #define CHOOSE_KERNEL(dt1,dt2,dt2_b,dt2_host) {\
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);\
     ghost_error_t ret = GHOST_SUCCESS;\
+    if (rhs->traits.flags & GHOST_DENSEMAT_VIEW || lhs->traits.flags & GHOST_DENSEMAT_VIEW) {\
+        ERROR_LOG("CUDA SELL SpMV not yet implemented for (potentially scattered) views");\
+        return GHOST_ERR_NOT_IMPLEMENTED;\
+    }\
     int cu_device;\
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
     dt2 *cu_localdot = NULL;\

@@ -140,7 +140,7 @@ __global__ static void cu_vscale_kernel(T *vec, T *a, ghost_lidx_t nrows, char *
                 ghost_lidx_t v;
                 for (c=0,v=0; v<ncols; v++) {
                     if (colmask[v]) {
-                        vec[v*nrowspadded+idx] = scale<T>(a[c],vec[v*nrowspadded+idx]);
+                        vec[v*nrowspadded+idx] = scale<T>(a[v],vec[v*nrowspadded+idx]);
                         c++;
                     }
                 }
@@ -774,7 +774,7 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_vscale(ghost_densemat_t *vec, void
     char *cucolfield = NULL, *curowfield = NULL;
     
     ghost_datatype_size(&sizeofdt,vec->traits.datatype);
-    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,vec->traits.ncols*sizeofdt),err,ret);
+    GHOST_CALL_GOTO(ghost_cu_malloc(&d_a,vec->traits.ncolsorig*sizeofdt),err,ret);
     GHOST_CALL_GOTO(ghost_cu_memset(d_a,0,vec->traits.ncolsorig*sizeofdt),err,ret);
     
     for (c=0; c<vec->traits.ncolsorig; c++) {

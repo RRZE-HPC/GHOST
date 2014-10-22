@@ -59,6 +59,7 @@ static ghost_error_t ghost_densemat_rm_normalize( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static void ghost_freeVector( ghost_densemat_t* const vec );
+static void ghost_freeVectorVal(ghost_densemat_t *vec);
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
@@ -395,12 +396,21 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 
     ghost_lidx_t v;
 
-    for (v=0; v<vec->traits.nrows; v++) {
-        vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        INFO_LOG("The plain memory has to be valid CUDA device memory!");
+        INFO_LOG("The column offset is being ignored!");
+        vec->cu_val = &((char *)data)[lda*roffs*vec->elSize];
+        vec->traits.ncolspadded = vec->traits.ncols;
+    } else {
+        for (v=0; v<vec->traits.nrows; v++) {
+            vec->val[v] = &((char *)data)[(lda*(roffs+v)+coffs)*vec->elSize];
+        }
     }
     vec->traits.flags |= GHOST_DENSEMAT_VIEW;
     ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncolsorig);
+    ghost_bitmap_set_range(vec->trmask,0,vec->traits.nrowsorig);
     vec->traits.ncolsorig = vec->traits.ncols;
+    vec->traits.nrowsorig = vec->traits.nrows;
 
     return GHOST_SUCCESS;
 }
@@ -1338,7 +1348,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 
 }
 
-static void ghost_freeVector( ghost_densemat_t* vec ) 
+static void ghost_freeVectorVal(ghost_densemat_t *vec)
 {
     if( vec ) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
@@ -1367,6 +1377,14 @@ static void ghost_freeVector( ghost_densemat_t* vec )
             }
 #endif
         }
+    }
+
+}
+
+static void ghost_freeVector( ghost_densemat_t* vec ) 
+{
+    if( vec ) {
+        ghost_freeVectorVal(vec);
         free(vec->val); vec->val = NULL;
         ghost_bitmap_free(vec->ldmask);
         ghost_bitmap_free(vec->trmask);

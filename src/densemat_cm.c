@@ -399,11 +399,21 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 
     ghost_lidx_t v;
 
-    for (v=0; v<vec->traits.ncols; v++) {
-        vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        INFO_LOG("The plain memory has to be valid CUDA device memory!");
+        INFO_LOG("The row offset is being ignored!");
+        vec->cu_val = &((char *)data)[lda*coffs*vec->elSize];
+        vec->traits.nrowspadded = vec->traits.nrows;
+    } else {
+        for (v=0; v<vec->traits.ncols; v++) {
+            vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
+        }
     }
+
     vec->traits.flags |= GHOST_DENSEMAT_VIEW;
     ghost_bitmap_set_range(vec->ldmask,0,vec->traits.nrowsorig);
+    ghost_bitmap_set_range(vec->trmask,0,vec->traits.ncolsorig);
+    vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
 
     return GHOST_SUCCESS;
@@ -412,9 +422,10 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
-    ghost_lidx_t v;
+    ghost_lidx_t v,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
+    newTraits.ncolsorig = src->traits.ncolsorig;
     newTraits.flags |= GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
@@ -423,10 +434,12 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         (*new)->cu_val = src->cu_val;
-        for (v=0; v<src->traits.ncolsorig; v++) {
-            if (v<coffs || (v >= coffs+nc)) {
+        for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
+            if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
                 ghost_bitmap_clr((*new)->trmask,v);
-                //WARNING_LOG("clr %d",v);
+            }
+            if (ghost_bitmap_isset(src->trmask,v)) {
+                viewedcol++;
             }
         }
 #endif
@@ -495,10 +508,12 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_lidx_t v,r,i,viewedrow;
+    ghost_lidx_t v,r,c,i,viewedrow,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
+    newTraits.ncolsorig = src->traits.ncolsorig;
+    newTraits.nrowsorig = src->traits.nrowsorig;
     newTraits.flags |= GHOST_DENSEMAT_VIEW;
     newTraits.flags |= GHOST_DENSEMAT_SCATTERED;
 
@@ -521,13 +536,15 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t c;
         (*new)->cu_val = src->cu_val;
-        for (c=0,v=0; c<(*new)->traits.ncolsorig; c++) {
-            if (coffs[v] != c) {
+        for (viewedcol=-1,c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
+            if (ghost_bitmap_isset(src->trmask,c)) {
+                viewedcol++;
+            }
+            if (coffs[i] != viewedcol) {
                 ghost_bitmap_clr((*new)->trmask,c);
             } else {
-                v++;
+                i++;
             }
         }
 #endif
