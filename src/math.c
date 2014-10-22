@@ -369,30 +369,54 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     {
 #ifdef GHOST_HAVE_CUDA
         cublasHandle_t ghost_cublas_handle;
+        ghost_blas_idx_t culdv,culdw,culdx;
+        
         GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
         cublasOperation_t cutransv = !strncasecmp(transv,"T",1)?CUBLAS_OP_T:!strncasecmp(transv,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
         cublasOperation_t cutransw = !strncasecmp(transw,"T",1)?CUBLAS_OP_T:!strncasecmp(transw,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
+
+        culdv = *ldv;
+        culdw = *ldw;
+        culdx = *ldx;
+
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            if (cutransv == CUBLAS_OP_T) {
+                cutransv = CUBLAS_OP_N;
+            } else if (cutransv == CUBLAS_OP_N) {
+                cutransv = CUBLAS_OP_T;
+            }
+            culdv = v->traits.ncolspadded;
+        }
+        if (w->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            if (cutransw == CUBLAS_OP_T) {
+                cutransw = CUBLAS_OP_N;
+            } else if (cutransw == CUBLAS_OP_N) {
+                cutransw = CUBLAS_OP_T;
+            }
+            culdw = w->traits.ncolspadded;
+        }
+
 
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->cu_val,*ldv,(cuDoubleComplex *)w->cu_val,*ldw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->cu_val,culdv,(cuDoubleComplex *)w->cu_val,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->cu_val,*ldx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->cu_val,*ldv,(cuFloatComplex *)w->cu_val,*ldw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->cu_val,culdv,(cuFloatComplex *)w->cu_val,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->cu_val,*ldx));
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)v->cu_val,*ldv,(double *)w->cu_val,*ldw,(double *)mybeta,(double *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)v->cu_val,culdv,(double *)w->cu_val,culdw,(double *)mybeta,(double *)x->cu_val,*ldx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)v->cu_val,*ldv,(float *)w->cu_val,*ldw,(float *)mybeta,(float *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)v->cu_val,culdv,(float *)w->cu_val,culdw,(float *)mybeta,(float *)x->cu_val,*ldx));
             }    
         }
 #endif
