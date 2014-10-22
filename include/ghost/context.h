@@ -9,6 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "error.h"
+#include "perm.h"
 
 typedef struct ghost_context_t ghost_context_t;
 
@@ -76,6 +77,10 @@ struct ghost_context_t
      * @brief The context's MPI communicator.
      */
     ghost_mpi_comm_t mpicomm;
+    /**
+     * @brief The matrix' permutation.
+     */
+    ghost_permutation_t *permutation;
     /**
      * @brief Number of remote elements with unique colidx
      */

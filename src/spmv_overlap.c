@@ -37,7 +37,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
     va_list remote_argp;
     va_copy(remote_argp,argp);
 
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->permutation,false),err,ret);
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->context->permutation,false),err,ret);
     
     GHOST_INSTR_START("local");
     GHOST_CALL_GOTO(mat->localPart->spmv(mat->localPart,res,invec,localopts,argp),err,ret);

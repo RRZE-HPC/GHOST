@@ -173,9 +173,9 @@ static ghost_lidx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i)
   ghost_lidx_t e;
 
   if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE)
-  i = mat->permutation->perm[i];
+  i = mat->context->permutation->perm[i];
   if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE_COLS)
-  j = mat->permutation->perm[j];
+  j = mat->context->permutation->perm[j];
 
   for (e=SELL(mat)->chunkStart[i/SELL_LEN]+i%SELL_LEN; 
   e<SELL(mat)->chunkStart[i/SELL_LEN+1]; 
@@ -247,11 +247,11 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                     ghost_lidx_t row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
-                        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
-                            if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                                funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                        if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
+                            if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
+                                funcret = src->func(mat->context->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             } else {
-                                funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
+                                funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],tmpcol,tmpval);
                             }
                         } else {
                             funcret = src->func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],tmpcol,tmpval);
@@ -351,11 +351,11 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
                 row = chunk*SELL(mat)->chunkHeight+i;
 
                 if (row < mat->nrows) {
-                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
-                        if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
-                            funcret = src->func(mat->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
+                        if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) {
+                            funcret = src->func(mat->context->permutation->invPerm[mat->context->lfRow[me]+row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         } else {
-                            funcret = src->func(mat->context->lfRow[me]+mat->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
+                            funcret = src->func(mat->context->lfRow[me]+mat->context->permutation->invPerm[row],&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
                         }
                     } else {
                         funcret = src->func(mat->context->lfRow[me]+row,&SELL(mat)->rowLen[row],&tmpcol[src->maxrowlen*i],&tmpval[src->maxrowlen*i*mat->elSize]);
@@ -368,15 +368,15 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 
                 for (col = 0; col<SELL(mat)->chunkLenPadded[chunk]; col++) {
                     memcpy(&SELL(mat)->val[mat->elSize*(SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i)],&tmpval[mat->elSize*(i*src->maxrowlen+col)],mat->elSize);
-                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->permutation) {
-                        if (mat->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
-                            mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]];
+                    if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {
+                        if (mat->context->permutation->scope == GHOST_PERMUTATION_GLOBAL) { // no distinction between global and local entries
+                            mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->permutation->perm[tmpcol[i*src->maxrowlen+col]];
                         } else { // local permutation: distinction between global and local entries
                             if ((tmpcol[i*src->maxrowlen+col] >= mat->context->lfRow[me]) && (tmpcol[i*src->maxrowlen+col] < (mat->context->lfRow[me]+mat->nrows))) { // local entry: copy with permutation
                                 if (mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS) {
                                     mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
                                 } else {
-                                    mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
+                                    mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = mat->context->permutation->perm[tmpcol[i*src->maxrowlen+col]-mat->context->lfRow[me]]+mat->context->lfRow[me];
                                 }
                             } else { // remote entry: copy without permutation
                                 mat->col_orig[SELL(mat)->chunkStart[chunk]+col*SELL(mat)->chunkHeight+i] = tmpcol[i*src->maxrowlen+col];
@@ -435,10 +435,10 @@ err:
     SELL(mat)->beta = 0;
     mat->nEnts = 0;
     mat->nnz = 0;
-    free(mat->permutation->perm); mat->permutation->perm = NULL;
-    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+    free(mat->context->permutation->perm); mat->context->permutation->perm = NULL;
+    free(mat->context->permutation->invPerm); mat->context->permutation->invPerm = NULL;
 #ifdef GHOST_HAVE_CUDA
-    free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+    free(mat->context->permutation->cu_perm); mat->context->permutation->cu_perm = NULL;
 #endif
 
 out:
@@ -801,8 +801,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     WARNING_LOG("Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
-    GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->permutation),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
+    GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->context->permutation),err,ret);
 
     ghost_lidx_t row = 0;
     for (chunk = 0; chunk < nChunks; chunk++) {
@@ -848,10 +848,10 @@ err:
     free(SELL(mat)->rowLen); SELL(mat)->rowLen = NULL;
     free(SELL(mat)->rowLenPadded); SELL(mat)->rowLenPadded = NULL;
     free(SELL(mat)->chunkStart); SELL(mat)->chunkStart = NULL;
-    free(mat->permutation->perm); mat->permutation->perm = NULL;
-    free(mat->permutation->invPerm); mat->permutation->invPerm = NULL;
+    free(mat->context->permutation->perm); mat->context->permutation->perm = NULL;
+    free(mat->context->permutation->invPerm); mat->context->permutation->invPerm = NULL;
 #ifdef GHOST_HAVE_CUDA
-    free(mat->permutation->cu_perm); mat->permutation->cu_perm = NULL;
+    free(mat->context->permutation->cu_perm); mat->context->permutation->cu_perm = NULL;
 #endif
 
 out:

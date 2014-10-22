@@ -131,7 +131,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     }
 
     cargs.rhs = invec;
-    cargs.perm = mat->permutation;
+    cargs.perm = mat->context->permutation;
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
@@ -142,7 +142,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     
     GHOST_INSTR_START("haloassembly");
     
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec, mat->permutation),err,ret);
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec, mat->context->permutation),err,ret);
     
     GHOST_INSTR_STOP("haloassembly");
 

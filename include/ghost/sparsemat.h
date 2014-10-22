@@ -223,10 +223,6 @@ struct ghost_sparsemat_t
      */
     size_t elSize;
     /**
-     * @brief The matrix' permutation.
-     */
-    ghost_permutation_t *permutation;
-    /**
      * @brief The original column indices of the matrix.
      *
      * Once a matrix gets distributed, the column indices of the matrix are being compressed.

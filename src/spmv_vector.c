@@ -39,7 +39,7 @@ ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* ma
 
     
     GHOST_INSTR_START("comm");
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->permutation,false),err,ret);
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->context->permutation,false),err,ret);
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(invec),err,ret);
     GHOST_INSTR_STOP("comm");
 
