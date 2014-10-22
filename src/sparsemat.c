@@ -497,7 +497,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     WARNING_LOG("Scotch not available. Will not create matrix permutation!");
     return GHOST_SUCCESS;
 #else
-    GHOST_INSTR_START(scotch)
+    GHOST_INSTR_START("scotch")
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t *rpt = NULL;
     ghost_gidx_t *col = NULL, i, c;
@@ -531,7 +531,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx_t)),err,ret);
     
-    GHOST_INSTR_START(scotch_readin)
+    GHOST_INSTR_START("scotch_readin")
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);
@@ -583,7 +583,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
             
     }
-    GHOST_INSTR_STOP(scotch_readin)
+    GHOST_INSTR_STOP("scotch_readin")
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation,sizeof(ghost_permutation_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->permutation->perm,sizeof(ghost_gidx_t)*mat->context->gnrows),err,ret);
@@ -597,7 +597,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     mat->permutation->len = mat->context->gnrows;
 
 #ifdef GHOST_HAVE_MPI
-    GHOST_INSTR_START(scotch_createperm)
+    GHOST_INSTR_START("scotch_createperm")
     dgraph = SCOTCH_dgraphAlloc();
     if (!dgraph) {
         ERROR_LOG("Could not alloc SCOTCH graph");
@@ -624,10 +624,10 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->permutation->perm+mat->context->lfRow[me]),err,ret);
-    GHOST_INSTR_STOP(scotch_createperm)
+    GHOST_INSTR_STOP("scotch_createperm")
     
 
-    GHOST_INSTR_START(scotch_combineperm)
+    GHOST_INSTR_START("scotch_combineperm")
     // combine permutation vectors
     MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,mat->permutation->perm,mat->context->gnrows,ghost_mpi_dt_idx,MPI_MAX,mat->context->mpicomm),err,ret);
 
@@ -635,7 +635,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     for (i=0; i<mat->context->gnrows; i++) {
         mat->permutation->invPerm[mat->permutation->perm[i]] = i;
     }
-    GHOST_INSTR_STOP(scotch_combineperm)
+    GHOST_INSTR_STOP("scotch_combineperm")
     
 
 #else
@@ -691,7 +691,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #endif
     
     if (mat->traits->sortScope > 1) {
-        GHOST_INSTR_START(post-permutation with sorting)
+        GHOST_INSTR_START("post-permutation with sorting")
         ghost_gidx_t nrows = mat->context->gnrows;
         ghost_gidx_t scope = mat->traits->sortScope;
         
@@ -734,7 +734,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             (mat->permutation->invPerm)[i] =rowSort[i].row;
             (mat->permutation->perm)[rowSort[i].row] = i;
         }
-        GHOST_INSTR_STOP(post-permutation with sorting)
+        GHOST_INSTR_STOP("post-permutation with sorting")
     }
 #ifdef GHOST_HAVE_CUDA
     ghost_cu_upload(mat->permutation->cu_perm,mat->permutation->perm,mat->permutation->len*sizeof(ghost_gidx_t));
@@ -765,7 +765,7 @@ out:
     SCOTCH_graphExit(graph);
     SCOTCH_stratExit(strat);
 #endif
-    GHOST_INSTR_STOP(scotch)
+    GHOST_INSTR_STOP("scotch")
     
     
     return ret;
