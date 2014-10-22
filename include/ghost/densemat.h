@@ -610,6 +610,13 @@ extern "C" {
      * @brief Get a string about the storage order.
      */
     char * ghost_densemat_storage_string(ghost_densemat_t *densemat);
+    
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string containing information about the densemat.
+     */
+    ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat);
 
 #ifdef __cplusplus
 }

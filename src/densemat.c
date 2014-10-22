@@ -262,3 +262,53 @@ char * ghost_densemat_storage_string(ghost_densemat_t *densemat)
             return "Invalid";
     }
 }
+   
+static void charfield2string(char *str, char *cf, int len) {
+    int i;
+    for (i=0; i<len; i++) {
+        if (cf[i]) {
+            str[i] = 'x';
+        } else {
+            str[i] = '.';
+        }
+    }
+    str[len]='\0';
+}
+
+ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
+{
+    int myrank;
+    int mynoderank;
+    ghost_mpi_comm_t nodecomm;
+    
+    GHOST_CALL_RETURN(ghost_nodecomm_get(&nodecomm));
+    GHOST_CALL_RETURN(ghost_rank(&myrank, MPI_COMM_WORLD));
+    GHOST_CALL_RETURN(ghost_rank(&mynoderank, nodecomm));
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,1));
+    memset(*str,'\0',1);
+    
+    ghost_header_string(str,"Dense matrix @ local rank %d (glob %d)",mynoderank,myrank);
+    ghost_line_string(str,"Dimension",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrows,densemat->traits.ncols);
+    ghost_line_string(str,"View",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_VIEW?"Yes":"No");
+    if (densemat->traits.flags&GHOST_DENSEMAT_VIEW) {
+        ghost_line_string(str,"Dimension of viewed densemat",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowsorig,densemat->traits.ncolsorig);
+        char colmask[densemat->traits.ncolsorig];
+        char colmaskstr[densemat->traits.ncolsorig+1];
+        ghost_densemat_mask2charfield(densemat->traits.flags&GHOST_DENSEMAT_ROWMAJOR?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
+        charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
+        ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
+        char rowmask[densemat->traits.nrowsorig];
+        char rowmaskstr[densemat->traits.nrowsorig+1];
+        ghost_densemat_mask2charfield(densemat->traits.flags&GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
+        charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
+        ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
+
+    }
+   
+     ghost_line_string(str,"Location",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_DEVICE?densemat->traits.flags&GHOST_DENSEMAT_HOST?"Device+Host":"Device":"Host");
+    ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
+    ghost_footer_string(str);
+    
+    return GHOST_SUCCESS;
+
+}
