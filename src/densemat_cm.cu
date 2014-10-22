@@ -446,13 +446,13 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_densemat_t *vecclone;
     ghost_densemat_t *vec2clone;
 
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
     } else {
         vecclone = vec;
     }
-    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+    if (vec2->traits.flags & GHOST_DENSEMAT_VIEW) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
         vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
     } else {
