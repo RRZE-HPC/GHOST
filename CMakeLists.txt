@@ -163,7 +163,7 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
             set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                { WARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        break;\\\n")
     endforeach() 
-    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                WARNING_LOG(\"Non-configured ncols %d!\",SELL(mat)->chunkHeight);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
+    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                WARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
 endforeach()
 set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        WARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
 
