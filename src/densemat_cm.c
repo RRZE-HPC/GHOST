@@ -400,10 +400,12 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     ghost_lidx_t v;
 
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
         INFO_LOG("The plain memory has to be valid CUDA device memory!");
         INFO_LOG("The row offset is being ignored!");
         vec->cu_val = &((char *)data)[lda*coffs*vec->elSize];
         vec->traits.nrowspadded = vec->traits.nrows;
+#endif
     } else {
         for (v=0; v<vec->traits.ncols; v++) {
             vec->val[v] = &((char *)data)[(lda*(coffs+v)+roffs)*vec->elSize];
