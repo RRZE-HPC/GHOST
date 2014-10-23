@@ -262,6 +262,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpy(ghost_densemat_t *v1, ghost_
             ghost_bitmap_weight(v1->trmask) != v1->traits.nrowsorig ||
             ghost_bitmap_weight(v2->ldmask) != v2->traits.ncolsorig ||
             ghost_bitmap_weight(v2->trmask) != v2->traits.nrowsorig) { 
+        
+        if (!ghost_bitmap_isequal(v1->ldmask,v2->ldmask) || !ghost_bitmap_isequal(v1->trmask,v2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
+       
         WARNING_LOG("Potentially slow VAXPY operation because some rows or columns are masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
@@ -341,6 +348,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
             ghost_bitmap_weight(v2->ldmask) != v2->traits.ncolsorig ||
             ghost_bitmap_weight(v2->trmask) != v2->traits.nrowsorig) { 
         
+        if (!ghost_bitmap_isequal(v1->ldmask,v2->ldmask) || !ghost_bitmap_isequal(v1->trmask,v2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
+       
         WARNING_LOG("Potentially slow VAXPBY operation because some rows or columns are masked out!");
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
@@ -497,7 +510,14 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpy(ghost_densemat_t *vec, ghost_
     if (ghost_bitmap_weight(vec->ldmask) != vec->traits.ncolsorig || 
             ghost_bitmap_weight(vec->trmask) != vec->traits.nrowsorig ||
             ghost_bitmap_weight(vec2->ldmask) != vec2->traits.ncolsorig ||
-            ghost_bitmap_weight(vec2->trmask) != vec2->traits.nrowsorig) { 
+            ghost_bitmap_weight(vec2->trmask) != vec2->traits.nrowsorig) {
+
+        if (!ghost_bitmap_isequal(vec->ldmask,vec2->ldmask) || !ghost_bitmap_isequal(vec->trmask,vec2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
+       
         WARNING_LOG("Potentially slow AXPY operation because some rows or columns are masked out!");
         
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
@@ -578,8 +598,14 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
             ghost_bitmap_weight(v2->ldmask) != v2->traits.ncolsorig ||
             ghost_bitmap_weight(v2->trmask) != v2->traits.nrowsorig) { 
         
-        WARNING_LOG("Potentially slow AXPBY operation because some rows or columns are masked out!");
+        if (!ghost_bitmap_isequal(v1->ldmask,v2->ldmask) || !ghost_bitmap_isequal(v1->trmask,v2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }
         
+        WARNING_LOG("Potentially slow AXPBY operation because some rows or columns are masked out!");
+
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
 
@@ -853,6 +879,7 @@ out:
 
 extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
 {
+    INFO_LOG("fromRand");
     ghost_error_t ret = GHOST_SUCCESS;
     if (!ghost_bitmap_iscompact(vec->ldmask) || 
             !ghost_bitmap_iscompact(vec->trmask)) {
@@ -860,7 +887,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
-    ghost_densemat_t *onevec;
+    ghost_densemat_t *onevec, *onevecview;
     long pid = getpid();
     double time;
     double one[] = {1.,1.};
@@ -874,23 +901,26 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
     CURAND_CALL_GOTO(curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT),err,ret);
     CURAND_CALL_GOTO(curandSetPseudoRandomGeneratorSeed(gen,ghost_hash(int(time),clock(),pid)),err,ret);
 
-    vec->clone(vec,&onevec,vec->traits.nrows,0,vec->traits.ncols,0);
+    vec->clone(vec,&onevec,vec->traits.nrowsorig,0,vec->traits.ncolsorig,0);
     onevec->fromScalar(onevec,one);
+    onevec->viewVec(onevec,&onevecview,vec->traits.nrows,ghost_bitmap_first(vec->trmask),vec->traits.ncols,ghost_bitmap_first(vec->ldmask));
 
     one[1] = 0.;
+    void *valptr;
+    ghost_densemat_cu_valptr(vec,&valptr);
     
     if (vec->traits.datatype & GHOST_DT_COMPLEX)
     {
         if (vec->traits.datatype & GHOST_DT_DOUBLE)
         {
             CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
-                        (double *)(vec->cu_val),
+                        (double *)(valptr),
                         vec->traits.ncolspadded*vec->traits.nrows*2),err,ret);
         } 
         else 
         {
             CURAND_CALL_GOTO(curandGenerateUniform(gen,
-                        (float *)(vec->cu_val),
+                        (float *)(valptr),
                         vec->traits.ncolspadded*vec->traits.nrows*2),err,ret);
         }
     }
@@ -898,21 +928,26 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromRand(ghost_densemat_t *vec)
     {
         if (vec->traits.datatype & GHOST_DT_DOUBLE)
         {
+            int r;
+                for (r=0; r<vec->traits.nrowsorig; r++) {
+                    if (ghost_bitmap_isset(vec->trmask,r)) {
             CURAND_CALL_GOTO(curandGenerateUniformDouble(gen,
-                        (double *)(vec->cu_val),
-                        vec->traits.ncolspadded*vec->traits.nrows),err,ret);
+                        (double *)(valptr)+r*vec->traits.ncolspadded,
+                        /*vec->traits.ncolspadded**/vec->traits.ncols),err,ret);
+                    }
+                }
         } 
         else 
         {
             CURAND_CALL_GOTO(curandGenerateUniform(gen,
-                        (float *)(vec->cu_val),
+                        (float *)(valptr),
                         vec->traits.ncolspadded*vec->traits.nrows),err,ret);
         }
     }
     if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-        vec->axpby(vec,onevec,minusahalf,one);
+        vec->axpby(vec,onevecview,minusahalf,one);
     } else {
-        vec->axpby(vec,onevec,fminusahalf,fone);
+        vec->axpby(vec,onevecview,fminusahalf,fone);
     }
     goto out;
 err:

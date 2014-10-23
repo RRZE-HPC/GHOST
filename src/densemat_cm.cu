@@ -76,26 +76,35 @@ __global__ static void cu_vaxpby_kernel(T *v1, T *v2, T *a, T *b, ghost_lidx_t n
 }
 
 template<typename T>  
-__global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_lidx_t nrows, char *rowmask, ghost_lidx_t ncols, char *colmask, ghost_lidx_t nrowspadded)
+__global__ static void cu_axpby_kernel(T *v1, T *v2, T a, T b, ghost_lidx_t nrows1, char *rowmask1, ghost_lidx_t ncols1, char *colmask1, ghost_lidx_t nrowspadded1, ghost_lidx_t nrows2, char *rowmask2, ghost_lidx_t ncols2, char *colmask2, ghost_lidx_t nrowspadded2)
 {
     int idx = blockIdx.x*blockDim.x+threadIdx.x;
+    int idx2 = 0;
 
-    if (rowmask || colmask) {
-        for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
-            if (rowmask[idx]) {
-                ghost_lidx_t v;
-                for (v=0; v<ncols; v++) {
-                    if (colmask[v]) {
-                        v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a,b);
+    if (rowmask1 || colmask1 || rowmask2 || colmask2) {
+        for (;idx < nrows1; idx+=gridDim.x*blockDim.x) {
+            if (rowmask1[idx]) {
+                for (;idx2<nrows2; idx2++) {
+                    if (rowmask2[idx2]) {
+                        ghost_lidx_t c1,c2=0;
+                        for (c1=0; c1<ncols1; c1++) {
+                            if (colmask1[c1]) {
+                                for (;c2<ncols2; c2++) {
+                                    if (colmask2[c2]) {
+                                        v1[c1*nrowspadded1+idx] = axpby<T>(v2[c2*nrowspadded2+idx],v1[c1*nrowspadded1+idx],a,b);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     } else {
-        for (;idx < nrows; idx+=gridDim.x*blockDim.x) {
+        for (;idx < nrows1; idx+=gridDim.x*blockDim.x) {
             ghost_lidx_t v;
-            for (v=0; v<ncols; v++) {
-                v1[v*nrowspadded+idx] = axpby<T>(v2[v*nrowspadded+idx],v1[v*nrowspadded+idx],a,b);
+            for (v=0; v<ncols1; v++) {
+                v1[v*nrowspadded1+idx] = axpby<T>(v2[v*nrowspadded1+idx],v1[v*nrowspadded1+idx],a,b);
             }
         }
     }
@@ -511,9 +520,9 @@ out:
     return ret;
 }
 
-extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *a)
+extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *v1, ghost_densemat_t *v2, void *a)
 {
-    if (vec->traits.datatype != vec2->traits.datatype)
+    if (v1->traits.datatype != v2->traits.datatype)
     {
         ERROR_LOG("Cannot AXPY vectors with different data types");
         return GHOST_ERR_NOT_IMPLEMENTED;
@@ -521,55 +530,78 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
     
-    char colfield[vec->traits.ncolsorig];
-    char rowfield[vec->traits.nrowsorig];
+    char colfield1[v1->traits.ncolsorig];
+    char rowfield1[v1->traits.nrowsorig];
+    char *cucolfield1 = NULL, *curowfield1 = NULL;
 
-    char *cucolfield = NULL, *curowfield = NULL;
-
-    if ((vec->traits.flags & GHOST_DENSEMAT_VIEW) || (vec2->traits.flags & GHOST_DENSEMAT_VIEW)) {
+    char colfield2[v2->traits.ncolsorig];
+    char rowfield2[v2->traits.nrowsorig];
+    char *cucolfield2 = NULL, *curowfield2 = NULL;
+    
+    if ((v1->traits.flags & GHOST_DENSEMAT_VIEW) || (v2->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        
+/*        if (!ghost_bitmap_isequal(vec->ldmask,vec2->ldmask) || !ghost_bitmap_isequal(vec->trmask,vec2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }*/
+       
         WARNING_LOG("Potentially slow AXPY operation because some rows or columns may be masked out!");
         
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,vec->traits.ncolsorig),err,ret);
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,vec->traits.nrowsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield1,v1->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield1,v1->traits.nrowsorig),err,ret);
 
-        ghost_densemat_mask2charfield(vec->trmask,vec->traits.ncolsorig,colfield);
-        ghost_densemat_mask2charfield(vec->ldmask,vec->traits.nrowsorig,rowfield);
+        ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield1);
+        ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield1);
 
-        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield,colfield,vec->traits.ncolsorig),err,ret);
-        GHOST_CALL_GOTO(ghost_cu_upload(curowfield,rowfield,vec->traits.nrowsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield1,colfield1,v1->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(curowfield1,rowfield1,v1->traits.nrowsorig),err,ret);
+        
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield2,v2->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield2,v2->traits.nrowsorig),err,ret);
+
+        ghost_densemat_mask2charfield(v2->trmask,v2->traits.ncolsorig,colfield2);
+        ghost_densemat_mask2charfield(v2->ldmask,v2->traits.nrowsorig,rowfield2);
+
+        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield2,colfield2,v2->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(curowfield2,rowfield2,v2->traits.nrowsorig),err,ret);
     }
 
     
-    if (vec->traits.datatype & GHOST_DT_COMPLEX)
+    if (v1->traits.datatype & GHOST_DT_COMPLEX)
     {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
             const cuDoubleComplex one = make_cuDoubleComplex(1.,1.);
-            cu_axpby_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuDoubleComplex *)vec->cu_val, (cuDoubleComplex *)vec2->cu_val,*((cuDoubleComplex *)a),one,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
+            cu_axpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
+                ((cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,*((cuDoubleComplex *)a),one,
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         } 
         else 
         {
             const cuFloatComplex one = make_cuFloatComplex(1.,1.);
-            cu_axpby_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuFloatComplex *)vec->cu_val, (cuFloatComplex *)vec2->cu_val,*((cuFloatComplex *)a),one,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
+            cu_axpby_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
+                ((cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,*((cuFloatComplex *)a),one,
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         }
     }
     else
     {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE)
+        if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            cu_axpby_kernel<double><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((double *)vec->cu_val, (double *)vec2->cu_val,*((double *)a),(double)1.,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
+            cu_axpby_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
+                ((double *)v1->cu_val, (double *)v2->cu_val,*((double *)a),(double)1.,
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         } 
         else 
         {
-            cu_axpby_kernel<float><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((float *)vec->cu_val, (float *)vec2->cu_val,*((float *)a),(float)1.,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.nrowspadded);
+            cu_axpby_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
+                ((float *)v1->cu_val, (float *)v2->cu_val,*((float *)a),(float)1.,
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         }
     }
 
@@ -614,8 +646,10 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpy(ghost_densemat_t *vec, ghost_
 err:
 out:
     
-    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
-    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield1));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield1));
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield2));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield2));
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
@@ -632,23 +666,41 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
 
-    char colfield[v1->traits.ncolsorig];
-    char rowfield[v1->traits.nrowsorig];
-
-    char *cucolfield = NULL, *curowfield = NULL;
+    char colfield1[v1->traits.ncolsorig];
+    char rowfield1[v1->traits.nrowsorig];
+    char *cucolfield1 = NULL, *curowfield1 = NULL;
+    
+    char colfield2[v2->traits.ncolsorig];
+    char rowfield2[v2->traits.nrowsorig];
+    char *cucolfield2 = NULL, *curowfield2 = NULL;
     
     if ((v1->traits.flags & GHOST_DENSEMAT_VIEW) || (v2->traits.flags & GHOST_DENSEMAT_VIEW)) {
         
+/*        if (!ghost_bitmap_isequal(v1->ldmask,v2->ldmask) || !ghost_bitmap_isequal(v1->trmask,v2->trmask)) {
+            ERROR_LOG("The masks have to be equal!");
+            ret = GHOST_ERR_INVALID_ARG;
+            goto err;
+        }*/
+       
         WARNING_LOG("Potentially slow AXPBY operation because some rows or columns may be masked out!");
         
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield,v1->traits.ncolsorig),err,ret);
-        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield,v1->traits.nrowsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield1,v1->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield1,v1->traits.nrowsorig),err,ret);
 
-        ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield);
-        ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield);
+        ghost_densemat_mask2charfield(v1->trmask,v1->traits.ncolsorig,colfield1);
+        ghost_densemat_mask2charfield(v1->ldmask,v1->traits.nrowsorig,rowfield1);
 
-        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield,colfield,v1->traits.ncolsorig),err,ret);
-        GHOST_CALL_GOTO(ghost_cu_upload(curowfield,rowfield,v1->traits.nrowsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield1,colfield1,v1->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(curowfield1,rowfield1,v1->traits.nrowsorig),err,ret);
+        
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cucolfield2,v2->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_malloc((void **)&curowfield2,v2->traits.nrowsorig),err,ret);
+
+        ghost_densemat_mask2charfield(v1->trmask,v2->traits.ncolsorig,colfield2);
+        ghost_densemat_mask2charfield(v1->ldmask,v2->traits.nrowsorig,rowfield2);
+
+        GHOST_CALL_GOTO(ghost_cu_upload(cucolfield2,colfield2,v2->traits.ncolsorig),err,ret);
+        GHOST_CALL_GOTO(ghost_cu_upload(curowfield2,rowfield2,v2->traits.nrowsorig),err,ret);
     }
 
     if (v1->traits.datatype & GHOST_DT_COMPLEX)
@@ -657,13 +709,15 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
         {
             cu_axpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         } 
         else 
         {
             cu_axpby_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         }
     }
     else
@@ -672,21 +726,25 @@ extern "C" ghost_error_t ghost_densemat_cm_cu_axpby(ghost_densemat_t *v1, ghost_
         {
             cu_axpby_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((double *)v1->cu_val, (double *)v2->cu_val,*((double *)a),*((double *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         } 
         else 
         {
             cu_axpby_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
                 ((float *)v1->cu_val, (float *)v2->cu_val,*((float *)a),*((float *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.nrowspadded);
+                 v1->traits.nrowsorig,curowfield1,v1->traits.ncolsorig,cucolfield1,v1->traits.nrowspadded,
+                 v2->traits.nrowsorig,curowfield2,v2->traits.ncolsorig,cucolfield2,v2->traits.nrowspadded);
         }
     }
     
     goto out;
 err:
 out:
-    GHOST_CALL_RETURN(ghost_cu_free(cucolfield));
-    GHOST_CALL_RETURN(ghost_cu_free(curowfield));
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield1));
+    GHOST_CALL_RETURN(ghost_cu_free(cucolfield2));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield1));
+    GHOST_CALL_RETURN(ghost_cu_free(curowfield2));
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 

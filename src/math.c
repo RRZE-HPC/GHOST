@@ -177,24 +177,26 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
 
-    
-    ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
-    ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x,v_in,w_in,reduce);
-    if (tsmm_inplace_kernel) {
-        INFO_LOG("Doing in-place TSMM instead of GEMM!");
-        return ghost_tsmm_inplace(x,w_in,alpha);
-    }
-    ghost_tsmm_parameters_t tsmm_par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = v_in->traits.ncols};
-    ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x,v_in,w_in,reduce);
-    if (tsmm_kernel) {
-        INFO_LOG("Doing TSMM instead of GEMM!");
-        return ghost_tsmm(x,v_in,w_in,alpha,beta);
-    }
-    ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
-    ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x,v_in,w_in,reduce);
-    if (tsmttsm_kernel) {
-        INFO_LOG("Doing TSMTTSM instead of GEMM!");
-        return ghost_tsmttsm(x,v_in,w_in,alpha,beta);
+   
+    if (!v_in->traits.flags & GHOST_DENSEMAT_DEVICE) { 
+        ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
+        ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x,v_in,w_in,reduce);
+        if (tsmm_inplace_kernel) {
+            INFO_LOG("Doing in-place TSMM instead of GEMM!");
+            return ghost_tsmm_inplace(x,w_in,alpha);
+        }
+        ghost_tsmm_parameters_t tsmm_par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = v_in->traits.ncols};
+        ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x,v_in,w_in,reduce);
+        if (tsmm_kernel) {
+            INFO_LOG("Doing TSMM instead of GEMM!");
+            return ghost_tsmm(x,v_in,w_in,alpha,beta);
+        }
+        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
+        ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x,v_in,w_in,reduce);
+        if (tsmttsm_kernel) {
+            INFO_LOG("Doing TSMTTSM instead of GEMM!");
+            return ghost_tsmttsm(x,v_in,w_in,alpha,beta);
+        }
     }
 
     char transv[1], transw[1];
@@ -227,20 +229,22 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
                         need to transpose back */
     if (x->traits.storage != v->traits.storage)
     {
-        DEBUG_LOG(1,"gemm with different storage layout for V and X...");
-        if (strncasecmp(transv,"C",1) && strncasecmp(transv,"T",1))
-        {
-            // compute x=v'w and transpose afterwards
-            DEBUG_LOG(1,"case a: post-memtranspose of X needed.");
-            needMemTransposeX=1;
-        }
-        else
-        {
-            DEBUG_LOG(1,"case b: fool gemm to compute transp(X)=W'V instead.");
-            // compute x' = w'*v instead of v'*w
-            v=w_in;
-            w=v_in;
-            swapDimsX=1;
+        if (!(x->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+            DEBUG_LOG(1,"gemm with different storage layout for V and X...");
+            if (strncasecmp(transv,"C",1) && strncasecmp(transv,"T",1))
+            {
+                // compute x=v'w and transpose afterwards
+                DEBUG_LOG(1,"case a: post-memtranspose of X needed.");
+                needMemTransposeX=1;
+            }
+            else
+            {
+                    DEBUG_LOG(1,"case b: fool gemm to compute transp(X)=W'V instead.");
+                    // compute x' = w'*v instead of v'*w
+                    v=w_in;
+                    w=v_in;
+                    swapDimsX=1;
+            }
         }
     }
 
@@ -365,6 +369,18 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         mybeta = &zero;
     }
     DEBUG_LOG(1,"Calling XGEMM with (%"PRBLASIDX"x%"PRBLASIDX") * (%"PRBLASIDX"x%"PRBLASIDX") = (%"PRBLASIDX"x%"PRBLASIDX")",*m,*k,*k,*n,*m,*n);
+       /* char *xstr, *vstr, *wstr;
+        char *xvstr, *vvstr, *wvstr;
+        ghost_densemat_info_string(&xstr,x);
+        ghost_densemat_info_string(&vstr,v);
+        ghost_densemat_info_string(&wstr,w);
+        x->string(x,&xvstr);
+        v->string(v,&vvstr);
+        w->string(w,&wvstr);
+
+        printf("\nv\n%s\n%s\nw\n%s\n%s\nx\n%s\n%s\n\n",vstr,vvstr,wstr,wvstr,xstr,xvstr);
+        WARNING_LOG("GEMM %dx%d * %dx%d = %dx%d",*m,*k,*k,*n,*m,*n);
+        WARNING_LOG("%s %s",transv,transw);*/
     if (v->traits.flags & w->traits.flags & x->traits.flags & GHOST_DENSEMAT_DEVICE)
     {
 #ifdef GHOST_HAVE_CUDA
@@ -378,45 +394,64 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         culdv = *ldv;
         culdw = *ldw;
         culdx = *ldx;
-
+/*
         if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             if (cutransv == CUBLAS_OP_T) {
+                WARNING_LOG("v T->N");
                 cutransv = CUBLAS_OP_N;
             } else if (cutransv == CUBLAS_OP_N) {
-                cutransv = CUBLAS_OP_T;
+                //cutransv = CUBLAS_OP_T;
+                //WARNING_LOG("v N->T");
             }
-            culdv = v->traits.ncolspadded;
+            culdv = v->traits.ncolspadded;//colspadded;
+            WARNING_LOG("ldv %d->%d",*ldv,culdv);
         }
         if (w->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             if (cutransw == CUBLAS_OP_T) {
-                cutransw = CUBLAS_OP_N;
+                //cutransw = CUBLAS_OP_N;
+                //WARNING_LOG("w T->N");
             } else if (cutransw == CUBLAS_OP_N) {
                 cutransw = CUBLAS_OP_T;
+                WARNING_LOG("w N->T");
             }
             culdw = w->traits.ncolspadded;
+            WARNING_LOG("ldw %d->%d",*ldw,culdw);
         }
+        if (x->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
+            culdx = x->traits.nrows;//colspadded;
+            WARNING_LOG("ldx %d->%d",*ldx,culdx);
+        }
+        WARNING_LOG("CUBLAS GEMM v %s:%d ::: w %s:%d ::: x %s:%d",ghost_densemat_storage_string(v),culdv,ghost_densemat_storage_string(w),culdw,ghost_densemat_storage_string(x),culdx);*/
 
+
+
+        void *xcuval;
+        void *vcuval;
+        void *wcuval;
+        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(x,&xcuval));
+        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(v,&vcuval));
+        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(w,&wcuval));
 
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)v->cu_val,culdv,(cuDoubleComplex *)w->cu_val,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)vcuval,culdv,(cuDoubleComplex *)wcuval,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)xcuval,culdx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)v->cu_val,culdv,(cuFloatComplex *)w->cu_val,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)vcuval,culdv,(cuFloatComplex *)wcuval,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)xcuval,culdx));
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)v->cu_val,culdv,(double *)w->cu_val,culdw,(double *)mybeta,(double *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)vcuval,culdv,(double *)wcuval,culdw,(double *)mybeta,(double *)xcuval,culdx));
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)v->cu_val,culdv,(float *)w->cu_val,culdw,(float *)mybeta,(float *)x->cu_val,*ldx));
+                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)vcuval,culdv,(float *)wcuval,culdw,(float *)mybeta,(float *)xcuval,culdx));
             }    
         }
 #endif
@@ -446,6 +481,9 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             }    
         }
     }
+        /*x->string(x,&xvstr);
+
+        printf("\n\n%s\n\n",xvstr);*/
 
 #ifdef GHOST_HAVE_MPI 
     ghost_lidx_t i;

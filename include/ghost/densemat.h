@@ -573,6 +573,7 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_densemat_valptr(ghost_densemat_t *vec, void **ptr);
+    ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr);
     /**
      * @brief Create an array of chars ('0' or '1') of the densemat mask.
      *
