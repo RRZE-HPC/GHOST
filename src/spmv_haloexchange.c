@@ -331,7 +331,8 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
     GHOST_INSTR_STOP("waitall");
     
-    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
+        GHOST_INSTR_START("re-order from col-major");
         for (from_PE=0; from_PE<nprocs; from_PE++){
             for (i=0; i<vec->context->wishes[from_PE]; i++){
                 for (c=0; c<vec->traits.ncols; c++) {
@@ -339,7 +340,9 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
                 }
             }
         }
+        GHOST_INSTR_STOP("re-order from col-major");
     }   
+
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
