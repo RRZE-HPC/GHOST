@@ -59,7 +59,6 @@ static ghost_error_t ghost_densemat_rm_normalize( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static void ghost_freeVector( ghost_densemat_t* const vec );
-static void ghost_freeVectorVal(ghost_densemat_t *vec);
 static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutation_t *permutation, ghost_permutation_direction_t dir); 
 static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghost_lidx_t);
@@ -1351,7 +1350,7 @@ static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_
 
 }
 
-static void ghost_freeVectorVal(ghost_densemat_t *vec)
+static void ghost_freeVector( ghost_densemat_t* vec ) 
 {
     if( vec ) {
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
@@ -1380,14 +1379,6 @@ static void ghost_freeVectorVal(ghost_densemat_t *vec)
             }
 #endif
         }
-    }
-
-}
-
-static void ghost_freeVector( ghost_densemat_t* vec ) 
-{
-    if( vec ) {
-        ghost_freeVectorVal(vec);
         free(vec->val); vec->val = NULL;
         ghost_bitmap_free(vec->ldmask);
         ghost_bitmap_free(vec->trmask);
@@ -1395,7 +1386,6 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         MPI_Type_free(vec->row_mpidt);
 #else
         free(vec);
-        // TODO free traits ???
     }
 }
 

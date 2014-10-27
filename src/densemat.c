@@ -231,7 +231,11 @@ ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
+#ifdef GHOST_HAVE_CUDA
     *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(*(vec->stride))+ghost_bitmap_first(vec->ldmask))*vec->elSize];
+#else
+    *ptr = NULL;
+#endif
 
     return GHOST_SUCCESS;
 }

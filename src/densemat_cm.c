@@ -425,7 +425,7 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",src->traits.nrows,nc);
-    ghost_lidx_t v,viewedcol;
+    ghost_lidx_t v;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.ncolsorig = src->traits.ncolsorig;
@@ -436,6 +436,7 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
+        ghost_lidx_t viewedcol;
         (*new)->cu_val = src->cu_val;
         for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
             if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
@@ -511,7 +512,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs)
 {
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" scattered dense matrix",src->traits.nrows,nc);
-    ghost_lidx_t v,r,c,i,viewedrow,viewedcol;
+    ghost_lidx_t v,r,i,viewedrow;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
@@ -539,6 +540,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
+    ghost_lidx_t c,viewedcol;
         (*new)->cu_val = src->cu_val;
         for (viewedcol=-1,c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
             if (ghost_bitmap_isset(src->trmask,c)) {
