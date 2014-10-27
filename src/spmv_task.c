@@ -62,7 +62,7 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
@@ -73,7 +73,7 @@ static void *computeLocal(void *vargs)
     goto out;
 err:
 out:
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+    //GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 #endif
