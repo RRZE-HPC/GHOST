@@ -142,7 +142,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             return GHOST_ERR_IO;
         }
 
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
@@ -412,7 +412,7 @@ ghost_error_t ghost_bincrs_val_read(char *val, ghost_datatype_t datatype, char *
     return GHOST_SUCCESS;
 }
 
-ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, void * nRows, ghost_permutation_t *perm, FILE *filed)
+ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, ghost_gidx_t offsRows, ghost_lidx_t nRows, ghost_permutation_t *perm, FILE *filed)
 {
     ghost_bincrs_header_t header;
     size_t ret;
@@ -450,7 +450,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
                 }
             }
                 rpt[0] = rpt_raw[perm->invPerm[offsRows]];
-                for( i = 1; i < *(ghost_gidx_t *)nRows; i++ ) {
+                for( i = 1; i < nRows; i++ ) {
                     rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[i-1]+1]-rpt_raw[perm->invPerm[i-1]]);
                 }
 
@@ -458,7 +458,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
             return GHOST_SUCCESS;
         } else {
             int64_t *rpt_raw;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,*(ghost_gidx_t *)nRows*8));
+            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,nRows*8));
             offs = GHOST_BINCRS_SIZE_HEADER+
                 GHOST_BINCRS_SIZE_RPT_EL*offsRows;
             
@@ -468,23 +468,23 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
             }
             if (swapReq) {
                 int64_t *tmp;
-                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,*(ghost_gidx_t *)nRows*8));
-                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, *(ghost_gidx_t *)nRows,filed)) != (size_t)(*(ghost_gidx_t *)nRows)){
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (size_t)(nRows)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
-                for( i = 0; i < (*(ghost_gidx_t *)nRows); i++ ) {
+                for( i = 0; i < (nRows); i++ ) {
                     rpt_raw[i] = bswap_64(tmp[i]);
                 }
                 free(tmp);
             } else {
-                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, *(ghost_gidx_t *)nRows,filed)) != (size_t)(*(ghost_gidx_t *)nRows)){
+                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (size_t)(nRows)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
             }
                 rpt[0] = rpt_raw[0];
-                for( i = 1; i < *(ghost_gidx_t *)nRows; i++ ) {
+                for( i = 1; i < nRows; i++ ) {
                     rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[i-1]+1]-rpt_raw[perm->invPerm[i-1]]);
                 }
 
@@ -507,30 +507,30 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
 #ifdef GHOST_HAVE_LONGIDX_GLOBAL
         if (swapReq) {
             int64_t *tmp;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,*(ghost_gidx_t *)nRows*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, *(ghost_gidx_t *)nRows,filed)) != (*(ghost_gidx_t *)nRows)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
+                ERROR_LOG("fread failed with %"PRGIDX" rows: %s (%zu)",nRows,strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
-            for( i = 0; i < *(ghost_gidx_t *)nRows; i++ ) {
+            for( i = 0; i < nRows; i++ ) {
                 rpt[i] = bswap_64(tmp[i]);
             }
             free(tmp);
         } else {
-            if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, *(ghost_gidx_t *)nRows,filed)) != (*(ghost_gidx_t *)nRows)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+            if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
+                ERROR_LOG("fread failed with %"PRGIDX" rows: %s (%zu)",nRows,strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
         }
 #else // casting from 64 to 32 bit
         DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
         int64_t *tmp;
-        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,*(ghost_gidx_t *)nRows*8));
-        if ((ghost_lidx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, *(ghost_gidx_t *)nRows,filed)) != (*(ghost_gidx_t *)nRows)){
+        GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
+        if ((ghost_lidx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
-        for(i = 0 ; i < *(ghost_gidx_t *)nRows; ++i) {
+        for(i = 0 ; i < nRows; ++i) {
             if (tmp[i] >= (int64_t)INT_MAX) {
                 ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX!");
                 return GHOST_ERR_IO;
@@ -557,7 +557,7 @@ ghost_error_t ghost_bincrs_rpt_read(ghost_gidx_t *rpt, char *matrixPath, ghost_g
         return GHOST_ERR_IO;
     }
 
-    GHOST_CALL_RETURN(ghost_bincrs_rpt_read_opened(rpt,matrixPath,offsRows,(void *)&nRows,perm,filed));
+    GHOST_CALL_RETURN(ghost_bincrs_rpt_read_opened(rpt,matrixPath,offsRows,nRows,perm,filed));
 
     fclose(filed);
 
