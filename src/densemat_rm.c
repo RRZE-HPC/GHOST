@@ -1488,6 +1488,7 @@ static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t *
     // copy the data even if the input vector is itself a view
     // (bitwise NAND operation to unset the view flag if set)
     (*new)->traits.flags &= ~GHOST_DENSEMAT_VIEW;
+    (*new)->traits.flags &= ~GHOST_DENSEMAT_SCATTERED;
 
     (*new)->fromVec(*new,src,roffs,coffs);
     return GHOST_SUCCESS;
