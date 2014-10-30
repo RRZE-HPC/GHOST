@@ -25,7 +25,7 @@
 #define LOCALDOT_ONTHEFLY
 
 #define CALL(func,dt1,dt2,dt2_b,C,ncols,b1,b2,b3,b4,b5,b6,...){\
-    func<dt1,dt2,dt2_b,C,ncols,b1,b2,b3,b4,b5,b6><<<__VA_ARGS__>>>((dt2 *)lhs->cu_val,*(int *)(lhs->stride),(dt2 *)rhs->cu_val,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot);\
+    func<dt1,dt2,dt2_b,C,ncols,b1,b2,b3,b4,b5,b6><<<__VA_ARGS__>>>((dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot);\
 }\
 
 static char boolstr[256];
@@ -75,10 +75,22 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
 #define CHOOSE_KERNEL(dt1,dt2,dt2_b,dt2_host) {\
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);\
     ghost_error_t ret = GHOST_SUCCESS;\
-    if (rhs->traits.flags & GHOST_DENSEMAT_VIEW || lhs->traits.flags & GHOST_DENSEMAT_VIEW) {\
-        ERROR_LOG("CUDA SELL SpMV not yet implemented for (potentially scattered) views");\
-        return GHOST_ERR_NOT_IMPLEMENTED;\
+    void *lhsval, *rhsval;\
+    ghost_densemat_t *lhscompact, *rhscompact;\
+    if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {\
+        INFO_LOG("Cloning (and compressing) lhs before operation");\
+        GHOST_CALL_RETURN(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0));\
+    } else {\
+        lhscompact = lhs;\
     }\
+    if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {\
+        INFO_LOG("Cloning (and compressing) rhs before operation");\
+        GHOST_CALL_RETURN(rhs->clone(rhs,&rhscompact,rhs->traits.nrows,0,rhs->traits.ncols,0));\
+    } else {\
+        rhscompact = rhs;\
+    }\
+    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(lhscompact,&lhsval));\
+    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(rhscompact,&rhsval));\
     int cu_device;\
     GHOST_CALL_RETURN(ghost_cu_device(&cu_device));\
     dt2 *cu_localdot = NULL;\
@@ -190,6 +202,16 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
         INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
         SELL_C_VARIANTS(SELL_kernel_CU_rm_1dblock_tmpl,dt1,dt2,dt2_b,grid,block,reqSmem)\
+    }\
+    if (lhscompact != lhs) {\
+        INFO_LOG("Transform lhs back");\
+        GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));\
+        lhscompact->destroy(lhscompact);\
+    }\
+    if (rhscompact != rhs) {\
+        INFO_LOG("Transform rhs back");\
+        GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));\
+        rhscompact->destroy(rhscompact);\
     }\
     cudaDeviceSynchronize();\
     GHOST_INSTR_STOP("spmv_cuda")\
