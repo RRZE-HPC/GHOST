@@ -36,7 +36,9 @@ if (do_fallback) {\
     if (rhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {\
         block.x*=block.y;/* ignore special thread mapping for nvecs=32 */\
         block.y= 1;\
-        WARNING_LOG("Executing row-major fallback kernel with grid %dx%d and block %dx%d",grid.x,grid.y,block.x,block.y);\
+        block.x/=2; /* Otherwise, too many registers per thread! */\
+        grid.x*=2;\
+        WARNING_LOG("Executing row-major fallback kernel with grid %dx%d and block %dx%d smem %d",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>((dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,rhs->traits.ncols,flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),flags&GHOST_SPMV_SCALE,flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),flags&GHOST_SPMV_DOT_ANY);\
     } else {\
         WARNING_LOG("Executing col-major fallback kernel with grid %dx%d and block %dx%d smem %d",grid.x,grid.y,block.x,block.y,smem);\
@@ -74,6 +76,7 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
 
 #define CHOOSE_KERNEL(dt1,dt2,dt2_b,dt2_host) {\
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);\
+    cudaGetLastError(); /* Remove previous error */\
     ghost_error_t ret = GHOST_SUCCESS;\
     void *lhsval, *rhsval;\
     ghost_densemat_t *lhscompact, *rhscompact;\
