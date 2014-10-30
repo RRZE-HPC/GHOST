@@ -206,30 +206,31 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     
     ghost_densemat_t *v = v_in;
     ghost_densemat_t *w = w_in;
-
-    // we support the special cases V*W and V'*W with V row-major and W col-major or vice 
-    // versa. If the result X has different storage layout than V, we use the 
-    // memtranspose function afterwards if X is complex.
-    if (v->traits.storage != w->traits.storage)
-    {
-        DEBUG_LOG(1,"gemm with different storage layout for V and W...");
-        if (strncasecmp(transw,"N",1)) 
-        {
-            ERROR_LOG("GEMM with different storage layouts for V and W only implemented " 
-                      "for transw='N'!");
-            return GHOST_ERR_NOT_IMPLEMENTED;
-        }
-        // w has transposed mem-layout and "no transpose" is requested for w, cheat
-        // cblas_xgemm into doing the right thing:
-        transw[0]='T';
-    }
+        
     // if the result should be transposed swap the transv and transw if possible.
     int needMemTransposeX=0; // compute X.' and transpose back afterwards
     int swapDimsX=0; /* formally compute X' because X has different storage layout, but no 
-                        need to transpose back */
-    if (x->traits.storage != v->traits.storage)
-    {
-        if (!(x->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+                            need to transpose back */
+
+    if (!(x->traits.flags & GHOST_DENSEMAT_DEVICE)) {
+        // we support the special cases V*W and V'*W with V row-major and W col-major or vice 
+        // versa. If the result X has different storage layout than V, we use the 
+        // memtranspose function afterwards if X is complex.
+        if (v->traits.storage != w->traits.storage)
+        {
+            DEBUG_LOG(1,"gemm with different storage layout for V and W...");
+            if (strncasecmp(transw,"N",1)) 
+            {
+                ERROR_LOG("GEMM with different storage layouts for V and W only implemented " 
+                          "for transw='N'!");
+                return GHOST_ERR_NOT_IMPLEMENTED;
+            }
+            // w has transposed mem-layout and "no transpose" is requested for w, cheat
+            // cblas_xgemm into doing the right thing:
+            transw[0]='T';
+        }
+        if (x->traits.storage != v->traits.storage)
+        {
             DEBUG_LOG(1,"gemm with different storage layout for V and X...");
             if (strncasecmp(transv,"C",1) && strncasecmp(transv,"T",1))
             {
@@ -394,6 +395,18 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         culdv = *ldv;
         culdw = *ldw;
         culdx = *ldx;
+        if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR && w->traits.storage == GHOST_DENSEMAT_ROWMAJOR && (cutransv == CUBLAS_OP_T || cutransv == CUBLAS_OP_C) && cutransw == CUBLAS_OP_N) {
+            INFO_LOG("special case 1");
+            cutransw = cutransv;
+            cutransv = CUBLAS_OP_N;
+        }
+        if ((v->traits.storage != w->traits.storage) && cutransv == CUBLAS_OP_N && cutransw == CUBLAS_OP_N) {
+            INFO_LOG("special case 2");
+            //needMemTransposeX = 1;
+            cutransv = CUBLAS_OP_T;
+            culdx = x->traits.nrows;
+        }
+            
 /*
         if (v->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
             if (cutransv == CUBLAS_OP_T) {
@@ -487,11 +500,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 
 #ifdef GHOST_HAVE_MPI 
     ghost_lidx_t i;
-    if (reduce == GHOST_GEMM_NO_REDUCE) {
-        return GHOST_SUCCESS;
-    } 
-    else 
-    {
+    if (reduce != GHOST_GEMM_NO_REDUCE) {
 
 #ifdef GHOST_HAVE_CUDA
         ghost_lidx_t lda = *x->stride;
