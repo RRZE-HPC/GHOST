@@ -633,17 +633,16 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
     ghost_lidx_t v;
     roffs += ghost_bitmap_first(vec2->ldmask);
             
-    if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        coffs += ghost_bitmap_first(vec2->trmask);
-    }
-
+    int v1idx = -1, v2idx = -1;
     for (v=0; v<vec->traits.ncols; v++) {
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
         {
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE)
             {
 #ifdef GHOST_HAVE_CUDA
-                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v+hwloc_bitmap_first(vec->trmask),ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v,roffs),vec->traits.nrows*vec->elSize);
+                v1idx = ghost_bitmap_next(vec->trmask,v1idx);
+                v2idx = ghost_bitmap_next(vec2->trmask,v2idx);
+                ghost_cu_memcpy(CUVECVAL_CM(vec,vec->cu_val,v1idx,ghost_bitmap_first(vec->ldmask)),CUVECVAL_CM(vec2,vec2->cu_val,coffs+v2idx,roffs),vec->traits.nrows*vec->elSize);
 #endif
             }
             else
