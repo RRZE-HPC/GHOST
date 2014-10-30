@@ -203,6 +203,7 @@ GHOST_INSTR_STOP("spmv_cuda_dot")
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
         SELL_C_VARIANTS(SELL_kernel_CU_rm_1dblock_tmpl,dt1,dt2,dt2_b,grid,block,reqSmem)\
     }\
+    CUDA_CALL_RETURN(cudaGetLastError());\
     if (lhscompact != lhs) {\
         INFO_LOG("Transform lhs back");\
         GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));\
