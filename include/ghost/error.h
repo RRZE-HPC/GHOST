@@ -29,7 +29,8 @@ typedef enum {
     GHOST_ERR_NOT_IMPLEMENTED,
     GHOST_ERR_IO,
     GHOST_ERR_DATATYPE,
-    GHOST_ERR_COLPACK
+    GHOST_ERR_COLPACK,
+    GHOST_ERR_LAPACK
 } ghost_error_t;
 
 /**

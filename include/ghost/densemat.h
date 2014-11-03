@@ -547,6 +547,11 @@ struct ghost_densemat_t
 extern const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER;
 
 #ifdef __cplusplus
+ghost_densemat_flags_t operator|(ghost_densemat_flags_t a, ghost_densemat_flags_t b);
+ghost_densemat_flags_t operator|=(ghost_densemat_flags_t a, ghost_densemat_flags_t b);
+#endif
+
+#ifdef __cplusplus
 
 extern "C" {
 #endif

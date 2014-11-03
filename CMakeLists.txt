@@ -72,6 +72,7 @@ set (SOURCES
 		src/crs_kacz.cpp
         src/datatransfers.cpp 
         src/densemat.c
+        src/densemat.cpp
 		src/densemat_cm.c 
 		src/densemat_rm.c 
 		src/densemat_cm.cpp 
@@ -94,7 +95,8 @@ set (SOURCES
 		src/spmv_nompi.c 
         src/spmv_task.c
         src/spmv_vector.c 
-		src/task.c
+        src/svqb.cpp
+        src/task.c
 		src/taskq.c
         src/thpool.c
         src/timing.c
@@ -106,6 +108,7 @@ set (SOURCES
         src/tsmttsm.c
         src/tsmttsm_kernelmap.cpp
         src/types.c
+        src/types.cpp
 		src/util.c 
 	)
 
@@ -483,6 +486,7 @@ get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
 
 if (${CBLAS_H} STREQUAL "mkl_cblas.h")
 	set(GHOST_HAVE_MKL 1)
+	set(GHOST_HAVE_LAPACKE 1)
     if (BUILD_MIC)
         get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/mic REALPATH)
     else ()
