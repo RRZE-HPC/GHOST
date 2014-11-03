@@ -5,12 +5,11 @@
 #include "ghost/tsmm.h"
 #include <complex>
 
-#ifdef GHOST_HAVE_LAPACKE
+#ifdef GHOST_HAVE_LAPACK
 #ifdef GHOST_HAVE_MKL
 #include <mkl_lapacke.h>
 #else 
 #include <lapacke.h>
-#endif
 #endif
 
 template<typename T, typename T_b>
@@ -78,7 +77,7 @@ static ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t
     GHOST_CALL_GOTO(ghost_tsmttsm( x, v, v,&one,&zero),err,ret);
     
     for (i=0;i<n;i++) {
-        D[i] = std::real(1./std::sqrt(xval[i*ldx+i]));
+        D[i] = std::real((T)1./std::sqrt(xval[i*ldx+i]));
     }
     
     for (i=0;i<n;i++) {
@@ -113,7 +112,6 @@ out:
 
 ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
 {
-#ifdef GHOST_HAVE_LAPACKE
     if (v->traits.datatype & GHOST_DT_COMPLEX) {
         if (v->traits.datatype & GHOST_DT_DOUBLE) {
             return ghost_svqb_tmpl<std::complex<double>, double>(v_ot, v);
@@ -127,8 +125,14 @@ ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
             return ghost_svqb_tmpl<float, float>(v_ot, v);
         }
     }
+}
+
 #else
+ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v)
+{
+    UNUSED(v_ot);
+    UNUSED(v);
     ERROR_LOG("LAPACKE not found!");
     return GHOST_ERR_NOT_IMPLEMENTED;
-#endif
 }
+#endif

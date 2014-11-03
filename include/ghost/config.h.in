@@ -9,7 +9,7 @@
 #cmakedefine GHOST_HAVE_MKL
 #cmakedefine GHOST_HAVE_GSL
 #cmakedefine GHOST_HAVE_LIBSCI
-#cmakedefine GHOST_HAVE_LAPACKE
+#cmakedefine GHOST_HAVE_LAPACK
 #cmakedefine GHOST_HAVE_MIC
 #cmakedefine GHOST_HAVE_AVX
 #cmakedefine GHOST_HAVE_SSE
