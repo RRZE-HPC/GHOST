@@ -58,6 +58,10 @@ typedef enum {
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
 
+#ifdef __cplusplus
+ghost_datatype_t operator|(ghost_datatype_t a, ghost_datatype_t b);
+#endif
+
 typedef enum {
     GHOST_IMPLEMENTATION_AVX,
     GHOST_IMPLEMENTATION_SSE,
