@@ -654,7 +654,7 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
                         ghost_cu_download(VECVAL_RM(vec,vec->val,r,v1col),CUVECVAL_RM(vec2,vec2->cu_val,roffs+v2row,coffs+v2col),vec->elSize);
 #endif
                     } else {
-                        memcpy(VECVAL_RM(vec,vec->val,r,v1col),VECVAL_RM(vec2,vec2->val,roffs+r,v2col),vec->elSize);
+                        memcpy(VECVAL_RM(vec,vec->val,r,v1col),VECVAL_RM(vec2,vec2->val,roffs+r,coffs+v2col),vec->elSize);
                     }
                 }
 
