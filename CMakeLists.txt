@@ -73,178 +73,178 @@ set (SOURCES
         src/datatransfers.cpp 
         src/densemat.c
         src/densemat.cpp
-		src/densemat_cm.c 
-		src/densemat_rm.c 
-		src/densemat_cm.cpp 
-		src/densemat_rm.cpp 
-        src/error.c
-        src/instr.c
-        src/locality.c
-        src/machine.c
-		src/math.c
-        src/omp.c
-        src/pumap.c
-        src/rand.c
-		src/sell.c 
-		src/sell.cpp
-        src/sellspmv_kernelmap.cpp
-		src/sparsemat.c
-		src/sparsemat.cpp
-        src/spmv_haloexchange.c
-        src/spmv_overlap.c 
-		src/spmv_nompi.c 
-        src/spmv_task.c
-        src/spmv_vector.c 
-        src/svqb.cpp
-        src/task.c
-		src/taskq.c
-        src/thpool.c
-        src/timing.c
-        src/timing.cpp
-        src/tsmm.c
-        src/tsmm_kernelmap.cpp
-        src/tsmm_inplace.c
-        src/tsmm_inplace_kernelmap.cpp
-        src/tsmttsm.c
-        src/tsmttsm_kernelmap.cpp
-        src/types.c
-        src/types.cpp
-		src/util.c 
-	)
+            src/densemat_cm.c 
+            src/densemat_rm.c 
+            src/densemat_cm.cpp 
+            src/densemat_rm.cpp 
+            src/error.c
+            src/instr.c
+            src/locality.c
+            src/machine.c
+            src/math.c
+            src/omp.c
+            src/pumap.c
+            src/rand.c
+            src/sell.c 
+            src/sell.cpp
+            src/sellspmv_kernelmap.cpp
+            src/sparsemat.c
+            src/sparsemat.cpp
+            src/spmv_haloexchange.c
+            src/spmv_overlap.c 
+            src/spmv_nompi.c 
+            src/spmv_task.c
+            src/spmv_vector.c 
+            src/svqb.cpp
+            src/task.c
+            src/taskq.c
+            src/thpool.c
+            src/timing.c
+            src/timing.cpp
+            src/tsmm.c
+            src/tsmm_kernelmap.cpp
+            src/tsmm_inplace.c
+            src/tsmm_inplace_kernelmap.cpp
+            src/tsmttsm.c
+            src/tsmttsm_kernelmap.cpp
+            src/types.c
+            src/types.cpp
+            src/util.c 
+        )
 
-set (HEADERS
-        include/ghost/bincrs.h
-        include/ghost/bindensemat.h
-        include/ghost/bitmap.h
-		include/ghost/blas_mangle.h
-        include/ghost/carp.h
-        include/ghost/colpack.h
-		include/ghost/complex.h
-		include/ghost/context.h
-        include/ghost/core.h
-		include/ghost/crs.h
-        include/ghost/crs_kacz.h
-		include/ghost/densemat.h
-		include/ghost/densemat_cm.h
-		include/ghost/densemat_rm.h
-		include/ghost/error.h
-		include/ghost/helper.h
-        include/ghost/instr.h
-		include/ghost/locality.h	
-        include/ghost/log.h
-		include/ghost/machine.h
-		include/ghost/math.h
-        include/ghost/omp.h
-        include/ghost/perm.h
-        include/ghost/pumap.h
-        include/ghost/rand.h
-		include/ghost/sell.h
-		include/ghost/sparsemat.h
-        include/ghost/spmv.h
-		include/ghost/spmv_solvers.h
-		include/ghost/task.h
-		include/ghost/taskq.h
-        include/ghost/thpool.h
-        include/ghost/timing.h
-        include/ghost/tsmm.h
-        include/ghost/tsmm_inplace.h
-        include/ghost/tsmttsm.h
-		include/ghost/types.h
-		include/ghost/util.h
-	)
+    set (HEADERS
+            include/ghost/bincrs.h
+            include/ghost/bindensemat.h
+            include/ghost/bitmap.h
+            include/ghost/blas_mangle.h
+            include/ghost/carp.h
+            include/ghost/colpack.h
+            include/ghost/complex.h
+            include/ghost/context.h
+            include/ghost/core.h
+            include/ghost/crs.h
+            include/ghost/crs_kacz.h
+            include/ghost/densemat.h
+            include/ghost/densemat_cm.h
+            include/ghost/densemat_rm.h
+            include/ghost/error.h
+            include/ghost/helper.h
+            include/ghost/instr.h
+            include/ghost/locality.h	
+            include/ghost/log.h
+            include/ghost/machine.h
+            include/ghost/math.h
+            include/ghost/omp.h
+            include/ghost/perm.h
+            include/ghost/pumap.h
+            include/ghost/rand.h
+            include/ghost/sell.h
+            include/ghost/sparsemat.h
+            include/ghost/spmv.h
+            include/ghost/spmv_solvers.h
+            include/ghost/task.h
+            include/ghost/taskq.h
+            include/ghost/thpool.h
+            include/ghost/timing.h
+            include/ghost/tsmm.h
+            include/ghost/tsmm_inplace.h
+            include/ghost/tsmttsm.h
+            include/ghost/types.h
+            include/ghost/util.h
+        )
 
-string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
-string(REPLACE "," ";" CFG_BLOCKVECTOR_SIZES_LIST ${CFG_BLOCKVECTOR_SIZES})
+    string(REPLACE "," ";" CFG_SELL_CHUNKHEIGHTS_LIST ${CFG_SELL_CHUNKHEIGHTS})
+    string(REPLACE "," ";" CFG_BLOCKVECTOR_SIZES_LIST ${CFG_BLOCKVECTOR_SIZES})
 
-set(SELL_C_NCOLS_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(SELL(mat)->chunkHeight) {\\\n")
-foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
-    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
-    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
-    foreach (SELL_NCOLS ${CFG_BLOCKVECTOR_SIZES_LIST})
-        set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
-            foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
-                set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { CALL(kernel,dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT},grid,block,smem) } else \\\n")
-            endforeach()
-            set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                { WARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
-        set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        break;\\\n")
-    endforeach() 
-    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                WARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
-endforeach()
-set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        WARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
+    set(SELL_C_NCOLS_SWITCHCASCADE "bool do_fallback = false;\\\nswitch \(SELL(mat)->chunkHeight) {\\\n")
+    foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
+        set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    case ${SELL_CHUNKHEIGHT}:\\\n")
+        set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        switch \(rhs->traits.ncols) {\\\n")
+        foreach (SELL_NCOLS ${CFG_BLOCKVECTOR_SIZES_LIST})
+            set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
+                foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
+                    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { CALL(kernel,dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT},grid,block,smem) } else \\\n")
+                endforeach()
+                set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}                { WARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
+            set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}        break;\\\n")
+        endforeach() 
+        set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}            default:\\\n                WARNING_LOG(\"Non-configured ncols %d!\",rhs->traits.ncols);\\\n                do_fallback = true;\\\n        }\\\n        break;\\\n")
+    endforeach()
+    set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        WARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
 
-configure_file(
-    ${PROJECT_SOURCE_DIR}/src/sell_kernel.cu.in
-    ${PROJECT_BINARY_DIR}/src/sell_kernel.cu
-    )
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/src/sell_kernel.cu.in
+        ${PROJECT_BINARY_DIR}/src/sell_kernel.cu
+        )
 
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/sell_kernel_sse.c.in
-	${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
-)
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/sell_kernel_avx.c.in
-	${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
-)
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/sell_kernel_mic.c.in
-	${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
-)
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/tsmm.c.in
-	${PROJECT_BINARY_DIR}/src/tsmm.c
-)
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
-	${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
-)
-configure_file (
-	${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
-	${PROJECT_BINARY_DIR}/src/tsmttsm.c
-)
-
-set (TO_PREPROCESS
-        ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/sell_kernel_sse.c.in
         ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
+    )
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/sell_kernel_avx.c.in
+        ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+    )
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/sell_kernel_mic.c.in
         ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
+    )
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
         ${PROJECT_BINARY_DIR}/src/tsmm.c
+    )
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
         ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
+    )
+    configure_file (
+        ${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
         ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 
-set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
-set (PP_HEADER_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_extractfunc.pl)
-set (PP_KERNELMAP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_mapfunc.pl)
-set (PP_SRC_DIR ${CMAKE_BINARY_DIR}/src_pp/)
-set (PP_INC_DIR ${CMAKE_BINARY_DIR}/ghost/)
+    set (TO_PREPROCESS
+            ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+            ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
+            ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
+            ${PROJECT_BINARY_DIR}/src/tsmm.c
+            ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
+            ${PROJECT_BINARY_DIR}/src/tsmttsm.c
+        )
 
-foreach (TO_PP_FILE ${TO_PREPROCESS})
-    get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
-    get_filename_component(TO_PP_FILENAME_WE ${TO_PP_FILE} NAME_WE)
-    set(PP_FILE ${PP_SRC_DIR}/${TO_PP_FILENAME})
-    set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}_gen.h)
-    set(PP_KERNELMAP ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.def)
-    add_custom_command(
-            OUTPUT ${PP_FILE}
-            DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
-            COMMAND mkdir -p ${PP_SRC_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
-            )
-    add_custom_command(
-            OUTPUT ${PP_HEADER}
-            DEPENDS ${PP_FILE} ${PP_HEADER_SCRIPT} 
-            COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${PP_FILE} > ${PP_HEADER}
-            )
-    add_custom_command(
-            OUTPUT ${PP_KERNELMAP}
-            DEPENDS ${PP_HEADER} ${PP_KERNELMAP_SCRIPT} 
-            COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${PP_HEADER} > ${PP_KERNELMAP}
-            )
-    list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER} ${PP_KERNELMAP})
-    list(APPEND HEADERS ${PP_HEADER})
-endforeach()
+    set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
+    set (PP_HEADER_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_extractfunc.pl)
+    set (PP_KERNELMAP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_mapfunc.pl)
+    set (PP_SRC_DIR ${CMAKE_BINARY_DIR}/src_pp/)
+    set (PP_INC_DIR ${CMAKE_BINARY_DIR}/ghost/)
 
-set (SOURCES ${SOURCES} ${PP_FILES})
+    foreach (TO_PP_FILE ${TO_PREPROCESS})
+        get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
+        get_filename_component(TO_PP_FILENAME_WE ${TO_PP_FILE} NAME_WE)
+        set(PP_FILE ${PP_SRC_DIR}/${TO_PP_FILENAME})
+        set(PP_HEADER ${PP_INC_DIR}/${TO_PP_FILENAME_WE}_gen.h)
+        set(PP_KERNELMAP ${PP_INC_DIR}/${TO_PP_FILENAME_WE}.def)
+        add_custom_command(
+                OUTPUT ${PP_FILE}
+                DEPENDS ${TO_PP_FILE} ${PP_SCRIPT} 
+                COMMAND mkdir -p ${PP_SRC_DIR} && perl ${PP_SCRIPT} ${TO_PP_FILE} > ${PP_FILE}
+                )
+        add_custom_command(
+                OUTPUT ${PP_HEADER}
+                DEPENDS ${PP_FILE} ${PP_HEADER_SCRIPT} 
+                COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_HEADER_SCRIPT} ${PP_FILE} > ${PP_HEADER}
+                )
+        add_custom_command(
+                OUTPUT ${PP_KERNELMAP}
+                DEPENDS ${PP_HEADER} ${PP_KERNELMAP_SCRIPT} 
+                COMMAND mkdir -p ${PP_INC_DIR} && perl ${PP_KERNELMAP_SCRIPT} ${PP_HEADER} > ${PP_KERNELMAP}
+                )
+        list(APPEND PP_FILES ${PP_FILE} ${PP_HEADER} ${PP_KERNELMAP})
+        list(APPEND HEADERS ${PP_HEADER})
+    endforeach()
 
-add_custom_target(preprocess DEPENDS ${PP_FILES})
+    set (SOURCES ${SOURCES} ${PP_FILES})
+
+    add_custom_target(preprocess DEPENDS ${PP_FILES})
 
 #if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
 #    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
@@ -254,77 +254,77 @@ add_custom_target(preprocess DEPENDS ${PP_FILES})
 #    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
 #endif()
 
-if (NOT CMAKE_BUILD_TYPE)
-    message(STATUS "No build type specified. Setting it to Release.")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
-endif()
+    if (NOT CMAKE_BUILD_TYPE)
+        message(STATUS "No build type specified. Setting it to Release.")
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+    endif()
 
-set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
-set(LIBHWLOC LIBHWLOC-NOTFOUND) 
+    set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
+    set(LIBHWLOC LIBHWLOC-NOTFOUND) 
 
-if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
-    message(STATUS "Try to find hwloc via pkg-config")
-	find_package(HWLOC REQUIRED)
-    find_library(LIBHWLOC hwloc)
-endif()
+    if (PKGCONFIG_FOUND AND NOT HWLOC_INCLUDE_DIR)
+        message(STATUS "Try to find hwloc via pkg-config")
+        find_package(HWLOC REQUIRED)
+        find_library(LIBHWLOC hwloc)
+    endif()
 
 # find hwloc.h in default header locations
-if (NOT HWLOC_INCLUDE_DIR)
-    find_path(HWLOC_INCLUDE_DIR hwloc.h)
-endif()
-
-if (NOT HWLOC_INCLUDE_DIR)
-    message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
-endif()
-    
-if (NOT LIBHWLOC)
-    get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
-    find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
-endif()
-    
-set(HWLOC_LIBRARIES ${LIBHWLOC})
-   
-
-mark_as_advanced(LIBHWLOC)
-mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
-
-foreach(instr ${INSTRUMENTATION})
-    if (${instr} STREQUAL "TIMING")
-        set(GHOST_HAVE_INSTR_TIMING 1)
+    if (NOT HWLOC_INCLUDE_DIR)
+        find_path(HWLOC_INCLUDE_DIR hwloc.h)
     endif()
-    if (${instr} STREQUAL "LIKWID")
-        set(GHOST_HAVE_INSTR_LIKWID 1)
-        set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
-        include_directories(${LIKWID_INCLUDE_DIR})
-        add_definitions(-DLIKWID_PERFMON)
-        get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
-        find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
-    endif()
-endforeach()
 
-if (USE_CUDA)
-	find_package(CUDA)
-    if (CUDA_FOUND)
-        set(GHOST_HAVE_CUDA 1)
-        cuda_include_directories(${CMAKE_SOURCE_DIR}/include
-                ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
-        list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35)
-        if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-            list(APPEND CUDA_NVCC_FLAGS -O0)
+    if (NOT HWLOC_INCLUDE_DIR)
+        message(FATAL_ERROR "HWLOC_INCLUDE_DIR not set!")
+    endif()
+        
+    if (NOT LIBHWLOC)
+        get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
+        find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
+    endif()
+        
+    set(HWLOC_LIBRARIES ${LIBHWLOC})
+       
+
+    mark_as_advanced(LIBHWLOC)
+    mark_as_advanced(CLEAR HWLOC_INCLUDE_DIR)
+
+    foreach(instr ${INSTRUMENTATION})
+        if (${instr} STREQUAL "TIMING")
+            set(GHOST_HAVE_INSTR_TIMING 1)
         endif()
-        if (USE_OPENMP)
-            list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
+        if (${instr} STREQUAL "LIKWID")
+            set(GHOST_HAVE_INSTR_LIKWID 1)
+            set(LIKWID_INCLUDE_DIR "" CACHE PATH "Location of likwid.h")
+            include_directories(${LIKWID_INCLUDE_DIR})
+            add_definitions(-DLIKWID_PERFMON)
+            get_filename_component(LIKWID_LIBDIR ${LIKWID_INCLUDE_DIR}/../lib REALPATH)
+            find_library(LIKWID_LIBRARIES likwid ${LIKWID_LIBDIR})
         endif()
-        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-            list(APPEND CUDA_NVCC_FLAGS -G -g)
-        endif()
+    endforeach()
+
+    if (USE_CUDA)
+        find_package(CUDA)
+        if (CUDA_FOUND)
+            set(GHOST_HAVE_CUDA 1)
+            cuda_include_directories(${CMAKE_SOURCE_DIR}/include
+                    ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
+            list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35)
+            if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+                list(APPEND CUDA_NVCC_FLAGS -O0)
+            endif()
+            if (USE_OPENMP)
+                list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fopenmp)
+            endif()
+            if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND CUDA_NVCC_FLAGS -G -g)
+            endif()
 #set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
 #set(CUDA_SEPARABLE_COMPILATION_ON)
 #set(BUILD_SHARED_LIBS OFF)
-        cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_kernel.cu)
-        cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
-        cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
-        cuda_compile(CRS_CU_O src/crs.cu)
+            cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_kernel.cu)
+            cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
+            cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
+            cuda_compile(CRS_CU_O src/crs.cu)
 #set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
 #if ("${CUDA_VERSION_MAJOR}" STREQUAL "6")
 #cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC;-arch=sm_35" "${CU_OBJS}")
@@ -333,109 +333,109 @@ if (USE_CUDA)
 #endif()
 #set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
 #install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
-        set (SOURCES 
-                ${SOURCES}
-                ${SELL_KERNEL_CU_O}
-                ${DENSEMAT_CM_CU_O}
-                ${DENSEMAT_RM_CU_O}
-                ${CRS_CU_O}
+            set (SOURCES 
+                    ${SOURCES}
+                    ${SELL_KERNEL_CU_O}
+                    ${DENSEMAT_CM_CU_O}
+                    ${DENSEMAT_RM_CU_O}
+                    ${CRS_CU_O}
 #${CMAKE_BINARY_DIR}/libghost_cuda.a
 #${LIBCUDADEVRT}
-                src/cu_util.c
+                    src/cu_util.c
+                )
+            include_directories(${CUDA_INCLUDE_DIRS})
+            set (HEADERS ${HEADERS}
+                    include/ghost/cu_crs.h
+                    include/ghost/cu_util.h
+                    include/ghost/cu_densemat_cm.h
+                    include/ghost/cu_densemat_rm.h
+                )
+            mark_as_advanced(
+                    CUDA_BUILD_CUBIN
+                    CUDA_BUILD_EMULATION
+                    CUDA_HOST_COMPILER
+                    CUDA_SDK_ROOT_DIR
+                    CUDA_SEPARABLE_COMPILATION
+                    CUDA_VERBOSE_BUILD
             )
-        include_directories(${CUDA_INCLUDE_DIRS})
-        set (HEADERS ${HEADERS}
-                include/ghost/cu_crs.h
-                include/ghost/cu_util.h
-                include/ghost/cu_densemat_cm.h
-                include/ghost/cu_densemat_rm.h
-            )
-        mark_as_advanced(
-                CUDA_BUILD_CUBIN
-                CUDA_BUILD_EMULATION
-                CUDA_HOST_COMPILER
-                CUDA_SDK_ROOT_DIR
-                CUDA_SEPARABLE_COMPILATION
-                CUDA_VERBOSE_BUILD
-        )
+        else ()
+            message(WARNING "Could not find CUDA! You might want to make CUDA available or set USE_CUDA=OFF to suppress this warning.")
+        endif()
+    endif()
+
+    if (${LIBTYPE} STREQUAL "STATIC")
+        add_library(ghost STATIC ${SOURCES})
+    elseif (${LIBTYPE} STREQUAL "SHARED")
+        add_library(ghost SHARED ${SOURCES})
     else ()
-        message(WARNING "Could not find CUDA! You might want to make CUDA available or set USE_CUDA=OFF to suppress this warning.")
+        message(SEND_ERROR "Unknown library type. Setting it to SHARED")
+        set(LIBTYPE "SHARED")
+        add_library(ghost SHARED ${SOURCES})
     endif()
-endif()
-
-if (${LIBTYPE} STREQUAL "STATIC")
-    add_library(ghost STATIC ${SOURCES})
-elseif (${LIBTYPE} STREQUAL "SHARED")
-    add_library(ghost SHARED ${SOURCES})
-else ()
-    message(SEND_ERROR "Unknown library type. Setting it to SHARED")
-    set(LIBTYPE "SHARED")
-    add_library(ghost SHARED ${SOURCES})
-endif()
-add_dependencies(ghost preprocess)
+    add_dependencies(ghost preprocess)
 
 
-if (USE_CUDA)
-    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY} ${LIBCUDADEVRT})
-    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
-            ${CUDA_LIBRARIES})
-endif()
-
-if (USE_SCOTCH)
-    set(GHOST_HAVE_SCOTCH 1)
-    set(SCOTCH_INCLUDE_DIR "${SCOTCH_INCLUDE_DIR}" CACHE PATH "Location of PT-Scotch headers")
-    if (USE_MPI)
-      if (NOT EXISTS "${SCOTCH_INCLUDE_DIR}/ptscotch.h")
-          message(FATAL_ERROR "Could not find ptscotch.h in SCOTCH_INCLUDE_DIR!")
-      endif()
-    else()
-      if (NOT EXISTS "${SCOTCH_INCLUDE_DIR}/scotch.h")
-          message(FATAL_ERROR "Could not find scotch.h in SCOTCH_INCLUDE_DIR!")
-      endif()
+    if (USE_CUDA)
+        set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY} ${LIBCUDADEVRT})
+        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
+                ${CUDA_LIBRARIES})
     endif()
-    include_directories(${SCOTCH_INCLUDE_DIR})
-    get_filename_component(SCOTCH_LIBDIR ${SCOTCH_INCLUDE_DIR}/../lib REALPATH)
-    
-    set(LIBPTSCOTCH LIBPTSCOTCH-NOTFOUND)
-    set(LIBSCOTCH LIBSCOTCH-NOTFOUND)
-    set(LIBPTSCOTCHERR LIBPTSCOTCHERR-NOTFOUND)
-    set(LIBSCOTCHERR LIBSCOTCHERR-NOTFOUND)
 
-	find_library(LIBPTSCOTCH ptscotch ${SCOTCH_LIBDIR})
-	find_library(LIBSCOTCH scotch ${SCOTCH_LIBDIR})
-	find_library(LIBPTSCOTCHERR ptscotcherr ${SCOTCH_LIBDIR})
-	find_library(LIBSCOTCHERR scotcherr ${SCOTCH_LIBDIR})
-    if (USE_MPI)
-        set(SCOTCH_LIBRARIES ${LIBPTSCOTCH} ${LIBSCOTCH} ${LIBPTSCOTCHERR})
-    else()
-        set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
+    if (USE_SCOTCH)
+        set(GHOST_HAVE_SCOTCH 1)
+        set(SCOTCH_INCLUDE_DIR "${SCOTCH_INCLUDE_DIR}" CACHE PATH "Location of PT-Scotch headers")
+        if (USE_MPI)
+          if (NOT EXISTS "${SCOTCH_INCLUDE_DIR}/ptscotch.h")
+              message(FATAL_ERROR "Could not find ptscotch.h in SCOTCH_INCLUDE_DIR!")
+          endif()
+        else()
+          if (NOT EXISTS "${SCOTCH_INCLUDE_DIR}/scotch.h")
+              message(FATAL_ERROR "Could not find scotch.h in SCOTCH_INCLUDE_DIR!")
+          endif()
+        endif()
+        include_directories(${SCOTCH_INCLUDE_DIR})
+        get_filename_component(SCOTCH_LIBDIR ${SCOTCH_INCLUDE_DIR}/../lib REALPATH)
+        
+        set(LIBPTSCOTCH LIBPTSCOTCH-NOTFOUND)
+        set(LIBSCOTCH LIBSCOTCH-NOTFOUND)
+        set(LIBPTSCOTCHERR LIBPTSCOTCHERR-NOTFOUND)
+        set(LIBSCOTCHERR LIBSCOTCHERR-NOTFOUND)
+
+        find_library(LIBPTSCOTCH ptscotch ${SCOTCH_LIBDIR})
+        find_library(LIBSCOTCH scotch ${SCOTCH_LIBDIR})
+        find_library(LIBPTSCOTCHERR ptscotcherr ${SCOTCH_LIBDIR})
+        find_library(LIBSCOTCHERR scotcherr ${SCOTCH_LIBDIR})
+        if (USE_MPI)
+            set(SCOTCH_LIBRARIES ${LIBPTSCOTCH} ${LIBSCOTCH} ${LIBPTSCOTCHERR})
+        else()
+            set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
+        endif()
+        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${SCOTCH_LIBRARIES})
+        mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR LIBSCOTCHERR)
     endif()
-    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${SCOTCH_LIBRARIES})
-    mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR LIBSCOTCHERR)
-endif()
 
 
-if (USE_COLPACK)
-    set(GHOST_HAVE_COLPACK 1)
-    set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
-    get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
-    
-    set(LIBCOLPACK LIBCOLPACK-NOTFOUND)
+    if (USE_COLPACK)
+        set(GHOST_HAVE_COLPACK 1)
+        set(COLPACK_INCLUDE_DIR "${COLPACK_INCLUDE_DIR}" CACHE PATH "Location of ColPack headers")
+        get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
+        
+        set(LIBCOLPACK LIBCOLPACK-NOTFOUND)
 
-	find_library(LIBCOLPACK ColPack ${COLPACK_LIBDIR})
-    set(COLPACK_LIBRARIES ${LIBCOLPACK})
-    mark_as_advanced(LIBCOLPACK)
-endif()
+        find_library(LIBCOLPACK ColPack ${COLPACK_LIBDIR})
+        set(COLPACK_LIBRARIES ${LIBCOLPACK})
+        mark_as_advanced(LIBCOLPACK)
+    endif()
 
 
-	
+        
 
-if (USE_OPENMP)	
-	find_package(OpenMP REQUIRED)
-	set(GHOST_HAVE_OPENMP 1)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
+    if (USE_OPENMP)	
+        find_package(OpenMP REQUIRED)
+        set(GHOST_HAVE_OPENMP 1)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
 
 #if (${BLAS} STREQUAL "MKL")
 #    set(MKL_LIBDIR "" CACHE PATH "Location of libmkl")
@@ -457,43 +457,43 @@ endif()
 #    link_libraries("-lsci_cray_mp")
 #endif()
 
-set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
-    
+    set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
+        
 # firstly, try to find a Cblas header in the default locations
-if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find MKL in default paths and via MKLROOT")
-    find_path(CBLAS_INCLUDE_DIR mkl_cblas.h $ENV{MKLROOT}/include)
-endif()
-if (NOT CBLAS_INCLUDE_DIR)
-    #Have to search GSL with find_package because it will not be found by find_path
-    message(STATUS "Try to find GSL in default paths and via find_package")
-    find_package(GSL)
-    find_path(CBLAS_INCLUDE_DIR gsl_cblas.h ${GSL_INCLUDE_DIRS}/gsl)
-endif()
-if (NOT CBLAS_INCLUDE_DIR)
-    message(STATUS "Try to find default Cblas")
-    find_path(CBLAS_INCLUDE_DIR cblas.h)
-endif()
-
-if (NOT CBLAS_INCLUDE_DIR)
-    message(FATAL_ERROR "CBLAS_INCLUDE_DIR not set!")
-endif()
-
-include_directories(SYSTEM ${CBLAS_INCLUDE_DIR})
-
-file(GLOB CBLAS_H_FULL "${CBLAS_INCLUDE_DIR}/*cblas.h")
-get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
-
-if (${CBLAS_H} STREQUAL "mkl_cblas.h")
-	set(GHOST_HAVE_MKL 1)
-	set(GHOST_HAVE_LAPACK 1)
-    if (BUILD_MIC)
-        get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/mic REALPATH)
-    else ()
-        get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/intel64 REALPATH)
+    if (NOT CBLAS_INCLUDE_DIR)
+        message(STATUS "Try to find MKL in default paths and via MKLROOT")
+        find_path(CBLAS_INCLUDE_DIR mkl_cblas.h $ENV{MKLROOT}/include)
+    endif()
+    if (NOT CBLAS_INCLUDE_DIR)
+        #Have to search GSL with find_package because it will not be found by find_path
+        message(STATUS "Try to find GSL in default paths and via find_package")
+        find_package(GSL)
+        find_path(CBLAS_INCLUDE_DIR gsl_cblas.h ${GSL_INCLUDE_DIRS}/gsl)
+    endif()
+    if (NOT CBLAS_INCLUDE_DIR)
+        message(STATUS "Try to find default Cblas")
+        find_path(CBLAS_INCLUDE_DIR cblas.h)
     endif()
 
-    set(LIBMKL_CORE LIBMKL_CORE-NOTFOUND)
+    if (NOT CBLAS_INCLUDE_DIR)
+        message(FATAL_ERROR "CBLAS_INCLUDE_DIR not set!")
+    endif()
+
+    include_directories(SYSTEM ${CBLAS_INCLUDE_DIR})
+
+    file(GLOB CBLAS_H_FULL "${CBLAS_INCLUDE_DIR}/*cblas.h")
+    get_filename_component(CBLAS_H ${CBLAS_H_FULL} NAME)
+
+    if (${CBLAS_H} STREQUAL "mkl_cblas.h")
+        set(GHOST_HAVE_MKL 1)
+        set(GHOST_HAVE_LAPACK 1)
+        if (BUILD_MIC)
+            get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/mic REALPATH)
+        else ()
+            get_filename_component(MKL_LIBDIR ${CBLAS_INCLUDE_DIR}/../lib/intel64 REALPATH)
+        endif()
+
+        set(LIBMKL_CORE LIBMKL_CORE-NOTFOUND)
     set(LIBMKL_X_THREAD LIBMKL_X_THREAD-NOTFOUND)
     set(LIBMKL_INTEL_XLP64 LIBMKL_INTEL_XLP64-NOTFOUND)
 	
@@ -545,6 +545,7 @@ else ()
         message(STATUS "MKL LAPACK is used")
     	set(GHOST_HAVE_LAPACK 1)
         set(LAPACK_LIBRARIES ${BLAS_LIBRARIES})
+        set(LAPACK_INCLUDE_DIR ${CBLAS_INCLUDE_DIR})
     else()
         message(STATUS "Try to find LAPACK")
         find_package(LAPACK)
