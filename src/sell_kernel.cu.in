@@ -38,6 +38,8 @@ if (do_fallback) {\
         block.y= 1;\
         block.x/=2; /* Otherwise, too many registers per thread! */\
         grid.x*=2;\
+        ghost_cu_free(cu_localdot);\
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));\
         WARNING_LOG("Executing row-major fallback kernel with grid %dx%d and block %dx%d smem %d",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>((dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,rhs->traits.ncols,flags&(GHOST_SPMV_AXPBY|GHOST_SPMV_AXPY),flags&GHOST_SPMV_SCALE,flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),flags&GHOST_SPMV_DOT_ANY);\
     } else {\
@@ -327,8 +329,8 @@ __global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const
         zero<v_t>(dot2);
         zero<v_t_b>(dot3);
     
-        row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols);
-        col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols);
+        row = blockDim.x/ncols*blockIdx.x+threadIdx.x%(blockDim.x/ncols);
+        col = threadIdx.x/(blockDim.x/ncols);
     
 
         __syncthreads();
@@ -339,30 +341,30 @@ __global__ void SELL_kernel_rm_fallback_tmpl(v_t * const __restrict__ lhs, const
         }
 
 
-        if (SELL_CUDA_THREADSPERBLOCK/ncols <= 32) {
-            dot1 = ghost_partialWarpReduceSum(dot1,SELL_CUDA_THREADSPERBLOCK/ncols);
+        if (blockDim.x/ncols <= 32) {
+            dot1 = ghost_partialWarpReduceSum(dot1,blockDim.x/ncols);
             __syncthreads();
-            dot2 = ghost_partialWarpReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols);
+            dot2 = ghost_partialWarpReduceSum(dot2,blockDim.x/ncols);
             __syncthreads();
-            dot3 = ghost_partialWarpReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols);
+            dot3 = ghost_partialWarpReduceSum(dot3,blockDim.x/ncols);
             __syncthreads();
             
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols))) {
+            if (!(threadIdx.x%(blockDim.x/ncols))) {
                 fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
                 localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
                 fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
             }
         } else {
-            dot1 = ghost_partialBlockReduceSum(dot1,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
+            dot1 = ghost_partialBlockReduceSum(dot1,blockDim.x/ncols/warpSize);
             __syncthreads();
-            dot2 = ghost_partialBlockReduceSum(dot2,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
+            dot2 = ghost_partialBlockReduceSum(dot2,blockDim.x/ncols/warpSize);
             __syncthreads();
-            dot3 = ghost_partialBlockReduceSum(dot3,SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
+            dot3 = ghost_partialBlockReduceSum(dot3,blockDim.x/ncols/warpSize);
             __syncthreads();
                 
             
-            col = threadIdx.x/(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize);
-            if (!(threadIdx.x%(SELL_CUDA_THREADSPERBLOCK/ncols/warpSize)) && col<ncols) {
+            col = threadIdx.x/(blockDim.x/ncols/warpSize);
+            if (!(threadIdx.x%(blockDim.x/ncols/warpSize)) && col<ncols) {
                 fromReal<v_t,v_t_b>(localdot[0*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot1);
                 localdot[1*ncols*gridDim.x + gridDim.x*col + blockIdx.x] = dot2;
                 fromReal<v_t,v_t_b>(localdot[2*ncols*gridDim.x + gridDim.x*col + blockIdx.x],dot3);
