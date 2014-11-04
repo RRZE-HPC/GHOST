@@ -347,7 +347,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
         vecclone = vec;
     }
     if (vec2->traits.flags & GHOST_DENSEMAT_VIEW) {
-        INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
+        INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
         vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
     } else {
         vec2clone = vec2;
