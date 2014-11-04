@@ -20,6 +20,13 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 #endif
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+       
+    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x->traits.flags & GHOST_DENSEMAT_DEVICE);
+
+    if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
+        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
    
     if (!v_in->traits.flags & GHOST_DENSEMAT_DEVICE) { 
