@@ -11,7 +11,7 @@
 #endif
 
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v_in,  char * transv_in, 
+ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in,  char * transv_in, 
 ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce) 
 {
 #ifdef GHOST_HAVE_LONGIDX_LOCAL
@@ -21,7 +21,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 #endif
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
        
-    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x->traits.flags & GHOST_DENSEMAT_DEVICE);
+    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
 
     if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
         ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
@@ -30,23 +30,23 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
 
    
     if (!v_in->traits.flags & GHOST_DENSEMAT_DEVICE) { 
-        ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
-        ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x,v_in,w_in,reduce);
+        ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x_in->traits.datatype, .blocksz = x_in->traits.ncols};
+        ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x_in,v_in,w_in,reduce);
         if (tsmm_inplace_kernel) {
             INFO_LOG("Doing in-place TSMM instead of GEMM!");
-            return ghost_tsmm_inplace(x,w_in,alpha);
+            return ghost_tsmm_inplace(x_in,w_in,alpha);
         }
-        ghost_tsmm_parameters_t tsmm_par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = v_in->traits.ncols};
-        ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x,v_in,w_in,reduce);
+        ghost_tsmm_parameters_t tsmm_par = {.dt = x_in->traits.datatype, .blocksz1 = x_in->traits.ncols, .blocksz2 = v_in->traits.ncols};
+        ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x_in,v_in,w_in,reduce);
         if (tsmm_kernel) {
             INFO_LOG("Doing TSMM instead of GEMM!");
-            return ghost_tsmm(x,v_in,w_in,alpha,beta);
+            return ghost_tsmm(x_in,v_in,w_in,alpha,beta);
         }
-        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x->traits.datatype, .blocksz = x->traits.ncols};
-        ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x,v_in,w_in,reduce);
+        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x_in->traits.datatype, .blocksz = x_in->traits.ncols};
+        ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x_in,v_in,w_in,reduce);
         if (tsmttsm_kernel) {
             INFO_LOG("Doing TSMTTSM instead of GEMM!");
-            return ghost_tsmttsm(x,v_in,w_in,alpha,beta);
+            return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta);
         }
     }
 
@@ -55,8 +55,16 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     transv[0]=transv_in[0];
     transw[0]=transw_in[0];
     
+    ghost_densemat_t *x;
     ghost_densemat_t *v = v_in;
     ghost_densemat_t *w = w_in;
+    
+    if (x_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("The result vector x is scattered. It will be cloned and compressed before the computation and transformed back afterwards.");
+        GHOST_CALL_RETURN(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0));
+    } else {
+        x = x_in;
+    }
         
     // if the result should be transposed swap the transv and transw if possible.
     int needMemTransposeX=0; // compute X.' and transpose back afterwards
@@ -117,11 +125,6 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         ghost_densemat_t *wc;
         w->clone(w,&wc,w->traits.nrows,0,w->traits.ncols,0);
         w = wc;
-    }
-    if (x->traits.flags & GHOST_DENSEMAT_SCATTERED)
-    {
-        ERROR_LOG("The result vector x is scattered.");
-        return GHOST_ERR_NOT_IMPLEMENTED;
     }
     
     if (v->traits.datatype != w->traits.datatype) {
@@ -431,6 +434,12 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         WARNING_LOG("gemm-result explicitly memtransposed, which presently means memory is"
         " reallocated!");
         GHOST_CALL_RETURN(x->memtranspose(x));
+    }
+    
+    if (x != x_in) {
+        INFO_LOG("Transform x back");
+        GHOST_CALL_RETURN(x_in->fromVec(x_in,x,0,0));
+        x->destroy(x);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
