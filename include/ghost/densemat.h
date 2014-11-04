@@ -39,9 +39,14 @@ typedef enum {
      */
     GHOST_DENSEMAT_VIEW      = 32,
     /**
-     * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not consecutive in memory.
+     * @brief The densemat is scattered, i.e., the rows/columns are not consecutive in memory. This is only valid for views.
      */
-    GHOST_DENSEMAT_SCATTERED = 64
+    GHOST_DENSEMAT_SCATTERED = 64,
+    /**
+     * @brief The densemat has been permuted in "ORIG2PERM" direction via its permute() function. 
+     * This flag gets deleted once the densemat has been permuted back ("PERM2ORIG").
+     */
+    GHOST_DENSEMAT_PERMUTED = 128
 } 
 ghost_densemat_flags_t;
 

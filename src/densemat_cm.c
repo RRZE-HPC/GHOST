@@ -1521,6 +1521,12 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
 
     vec->uploadNonHalo(vec);
 
+    if (dir == GHOST_PERMUTATION_ORIG2PERM) {
+        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+    } else {
+        vec->traits.flags &= ~GHOST_DENSEMAT_PERMUTED;
+    }
+
     return GHOST_SUCCESS;
 }
 
