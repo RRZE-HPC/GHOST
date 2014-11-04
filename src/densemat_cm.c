@@ -557,7 +557,6 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
         for (v=0; v<nc; v++) {
             (*new)->val[v] = VECVAL_CM(src,src->val,coffs[v],0);
-            INFO_LOG("val[%"PRLIDX"] = %"PRLIDX" = %p",v,coffs[v],(*new)->val[v]);
         }    
     }
     (*new)->viewing = src;
