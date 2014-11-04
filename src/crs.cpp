@@ -42,7 +42,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
     
         
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
 
 #pragma omp parallel 
         {
@@ -113,7 +113,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                             } else {
                                 lhsv[v] = tmp[colidx];
                             }
-                            if (options & GHOST_SPMV_DOT) {
+                            if (options & GHOST_SPMV_DOT_ANY) {
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[v])*lhsv[v];
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[v])*rhsrow[v];
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsrow[v])*rhsrow[v];
@@ -158,7 +158,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
                         lhsv[i] = (hlp1);
                     }
 
-                    if (options & GHOST_SPMV_DOT) {
+                    if (options & GHOST_SPMV_DOT_ANY) {
                         partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[i])*lhsv[i];
                         partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[i])*rhsv[i];
                         partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[i])*rhsv[i];
@@ -167,7 +167,7 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
             }
         }
     }
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;

@@ -73,7 +73,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
     v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
 
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
 #pragma omp parallel
         nthreads = ghost_omp_nthread();
 
@@ -147,7 +147,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                                     lhsv[i][col] = tmp[i][colidx];
                                 }
 
-                                if (options & GHOST_SPMV_DOT) {
+                                if (options & GHOST_SPMV_DOT_ANY) {
                                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+0] += conjugate(&lhsv[i][col])*lhsv[i][col];
                                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+1] += conjugate(&lhsv[i][col])*rhsrow[col];
                                     partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+2] += conjugate(&rhsrow[col])*rhsrow[col];
@@ -206,7 +206,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
                                 lhsv[c*chunkHeight+i] = tmp[i];
                             }
 
-                            if (options & GHOST_SPMV_DOT) {
+                            if (options & GHOST_SPMV_DOT_ANY) {
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+0] += conjugate(&lhsv[c*chunkHeight+i])*lhsv[c*chunkHeight+i];
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+1] += conjugate(&lhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
                                 partsums[((padding+3*lhs->traits.ncols)*tid)+3*v+2] += conjugate(&rhsv[c*chunkHeight+i])*rhsv[c*chunkHeight+i];
@@ -219,7 +219,7 @@ ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *l
             }
         }
     }
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
         if (!local_dot_product) {
             WARNING_LOG("The location of the local dot products is NULL. Will not compute them!");
             return GHOST_SUCCESS;
@@ -260,7 +260,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
     v_t *shift = NULL;
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
 
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
 #pragma omp parallel
         nthreads = ghost_omp_nthread();
 
@@ -306,7 +306,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
                 } else {
                     lhsv[i] = tmp;
                 }
-                if (options & GHOST_SPMV_DOT) {
+                if (options & GHOST_SPMV_DOT_ANY) {
                     partsums[(v+tid*lhs->traits.ncols)*16 + 0] += conjugate(&lhsv[i])*lhsv[i];
                     partsums[(v+tid*lhs->traits.ncols)*16 + 1] += conjugate(&lhsv[i])*rhsv[i];
                     partsums[(v+tid*lhs->traits.ncols)*16 + 2] += conjugate(&rhsv[i])*rhsv[i];
@@ -314,7 +314,7 @@ template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmp
             }
         }
     }
-    if (options & GHOST_SPMV_DOT) {
+    if (options & GHOST_SPMV_DOT_ANY) {
         for (v=0; v<MIN(lhs->traits.ncols,rhs->traits.ncols); v++) {
             local_dot_product[v                       ] = 0.; 
             local_dot_product[v  +   lhs->traits.ncols] = 0.;
