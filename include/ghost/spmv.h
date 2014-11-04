@@ -31,6 +31,11 @@ typedef enum {
     GHOST_SPMV_REMOTE = 16384
 } ghost_spmv_flags_t;
 
+#ifdef __cplusplus
+inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a, const ghost_spmv_flags_t &b)
+{return static_cast<ghost_spmv_flags_t>(static_cast<int>(a) | static_cast<int>(b));}
+#endif
+
 #define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX)
 
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt_in,dt_out){\

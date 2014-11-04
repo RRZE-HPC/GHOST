@@ -60,8 +60,7 @@ typedef enum {
 
 #ifdef __cplusplus
 inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
-{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));
-}
+{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
 #endif
 
 typedef enum {
