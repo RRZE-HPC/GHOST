@@ -77,6 +77,7 @@ set (SOURCES
     src/densemat_cm.cpp 
     src/densemat_rm.cpp 
     src/error.c
+    src/gemm.c
     src/instr.c
     src/locality.c
     src/machine.c
