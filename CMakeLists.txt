@@ -72,7 +72,6 @@ set (SOURCES
 		src/crs_kacz.cpp
         src/datatransfers.cpp 
         src/densemat.c
-        src/densemat.cpp
             src/densemat_cm.c 
             src/densemat_rm.c 
             src/densemat_cm.cpp 
@@ -108,7 +107,6 @@ set (SOURCES
             src/tsmttsm.c
             src/tsmttsm_kernelmap.cpp
             src/types.c
-            src/types.cpp
             src/util.c 
         )
 
