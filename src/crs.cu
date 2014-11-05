@@ -12,14 +12,14 @@
 #include <cusparse_v2.h>
 
 typedef cusparseStatus_t (*crskernel_t) (cusparseHandle_t handle, cusparseOperation_t transA, 
-                       int m, int n, int nnz, const void           *alpha, 
-                                      const cusparseMatDescr_t descrA, 
-                                                     const void           *csrValA, 
-                                                                    const void *csrRowPtrA, const void *csrColIndA,
-                                                                                   const void           *x, const void           *beta, 
-                                                                                                  void           *y);
+        int m, int n, int nnz, const void           *alpha, 
+        const cusparseMatDescr_t descrA, 
+        const void           *csrValA, 
+        const void *csrRowPtrA, const void *csrColIndA,
+        const void           *x, const void           *beta, 
+        void           *y);
 
-template<typename dt1, typename dt2>
+    template<typename dt1, typename dt2>
 static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp, crskernel_t crskernel)
 {
     if (options & GHOST_SPMV_DOT_ANY) {
@@ -36,27 +36,53 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
 
     cusparseCreateMatDescr(&descr);
     GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
-    
+
     dt2 *localdot = NULL;
     dt1 *shift = NULL, scale, beta;
-    
+
     one<dt1>(scale);
 
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,localdot,dt2,dt1);
-    
+
     if (options & GHOST_SPMV_AXPY) {
         one<dt1>(beta);
     } else {
         zero<dt1>(beta);
     }
     
-   
+    ghost_densemat_t *lhscompact, *rhscompact;
+    void *lhsval, *rhsval;
+    
+    if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) lhs before operation");
+        GHOST_CALL_RETURN(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0));
+    } else {
+        lhscompact = lhs;
+    }
+    if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        INFO_LOG("Cloning (and compressing) v2 before operation");
+        GHOST_CALL_RETURN(rhs->clone(rhs,&rhscompact,rhs->traits.nrows,0,rhs->traits.ncols,0));
+    } else {
+        rhscompact = rhs;
+    }
+    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(lhscompact,&lhsval));
+    GHOST_CALL_RETURN(ghost_densemat_cu_valptr(rhscompact,&rhsval));
+
+
     if (localdot || shift) {
-       WARNING_LOG("Localdot or shift are not NULL, something went wrong!");
+        WARNING_LOG("Localdot or shift are not NULL, something went wrong!");
     } 
 
-    crskernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,mat->ncols,mat->nnz,&scale,descr,(dt1 *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (dt1 *)rhs->cu_val, &beta, (dt1 *)lhs->cu_val);
+    crskernel(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,mat->ncols,mat->nnz,&scale,descr,(dt1 *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (dt1 *)rhsval, &beta, (dt1 *)lhsval);
 
+    if (lhscompact != lhs) {
+        GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));
+        lhscompact->destroy(lhscompact);
+    }
+    if (rhscompact != rhs) {
+        GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
+        rhscompact->destroy(rhscompact);
+    }
 
     return GHOST_SUCCESS;
 
@@ -87,18 +113,18 @@ ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, g
 
 
     /*cusparseHandle_t cusparse_handle;
-    cusparseMatDescr_t descr;
+      cusparseMatDescr_t descr;
 
-    cusparseCreateMatDescr(&descr);
-    GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
+      cusparseCreateMatDescr(&descr);
+      GHOST_CALL_RETURN(ghost_cu_cusparse_handle(&cusparse_handle));
 
-    double one = 1.;
+      double one = 1.;
 
-    cusparseDcsrmv(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,mat->ncols,mat->nnz,&one,descr,(const double *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (const double *)rhs->cu_val, &one, (double *)lhs->cu_val);
+      cusparseDcsrmv(cusparse_handle,CUSPARSE_OPERATION_NON_TRANSPOSE,mat->nrows,mat->ncols,mat->nnz,&one,descr,(const double *)CR(mat)->cumat->val, CR(mat)->cumat->rpt, CR(mat)->cumat->col, (const double *)rhs->cu_val, &one, (double *)lhs->cu_val);
 
     //ERROR_LOG("CUDA CRS spMV not implemented");
     //return GHOST_ERR_NOT_IMPLEMENTED;
-  
+
     INFO_LOG("ready"); 
     return GHOST_SUCCESS;*/
 
