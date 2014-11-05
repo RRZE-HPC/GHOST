@@ -771,6 +771,12 @@ static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     GHOST_CALL_GOTO(mat->split(mat),err,ret);
     DEBUG_LOG(1,"Matrix read in successfully");
 
+#ifdef GHOST_HAVE_CUDA
+    if (mat->traits->flags & GHOST_SPARSEMAT_DEVICE) {
+        GHOST_CALL_GOTO(mat->upload(mat),err,ret);
+    }
+#endif
+
     goto out;
 err:
     free(CR(mat)->rpt); CR(mat)->rpt = NULL;
