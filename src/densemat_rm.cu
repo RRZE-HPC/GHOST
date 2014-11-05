@@ -310,7 +310,6 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
         v1compact->destroy(v1compact);
     }
     if (v2compact != v2) {
-        GHOST_CALL_GOTO(v2->fromVec(v2,v2compact,0,0),err,ret);
         v2compact->destroy(v2compact);
     }
     
@@ -337,41 +336,41 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
     }
     size_t sizeofdt;
     ghost_datatype_size(&sizeofdt,vec->traits.datatype);
-    ghost_densemat_t *vecclone;
-    ghost_densemat_t *vec2clone;
+    ghost_densemat_t *veccompact;
+    ghost_densemat_t *vec2compact;
 
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
         INFO_LOG("Cloning (and compressing) vec1 before dotproduct");
-        vec->clone(vec,&vecclone,vec->traits.nrows,0,vec->traits.ncols,0);
+        vec->clone(vec,&veccompact,vec->traits.nrows,0,vec->traits.ncols,0);
     } else {
-        vecclone = vec;
+        veccompact = vec;
     }
     if (vec2->traits.flags & GHOST_DENSEMAT_VIEW) {
         INFO_LOG("Cloning (and compressing) vec2 before dotproduct");
-        vec2->clone(vec2,&vec2clone,vec2->traits.nrows,0,vec2->traits.ncols,0);
+        vec2->clone(vec2,&vec2compact,vec2->traits.nrows,0,vec2->traits.ncols,0);
     } else {
-        vec2clone = vec2;
+        vec2compact = vec2;
     }
   
      
     cublasHandle_t ghost_cublas_handle;
     GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
     ghost_lidx_t v;
-    for (v=0; v<vecclone->traits.ncols; v++)
+    for (v=0; v<veccompact->traits.ncols; v++)
     {
-        char *v1 = &((char *)(vecclone->cu_val))[(ghost_bitmap_first(vecclone->ldmask)+v)*sizeofdt];
-        char *v2 = &((char *)(vec2clone->cu_val))[(ghost_bitmap_first(vec2clone->ldmask)+v)*sizeofdt];
+        char *v1 = &((char *)(veccompact->cu_val))[(ghost_bitmap_first(veccompact->ldmask)+v)*sizeofdt];
+        char *v2 = &((char *)(vec2compact->cu_val))[(ghost_bitmap_first(vec2compact->ldmask)+v)*sizeofdt];
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuDoubleComplex *)v1,vecclone->traits.ncolspadded,(const cuDoubleComplex *)v2,vec2clone->traits.ncolspadded,&((cuDoubleComplex *)res)[v]),err,ret);
+                            (const cuDoubleComplex *)v1,veccompact->traits.ncolspadded,(const cuDoubleComplex *)v2,vec2compact->traits.ncolspadded,&((cuDoubleComplex *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuFloatComplex *)v1,vecclone->traits.ncolspadded,(const cuFloatComplex *)v2,vec2clone->traits.ncolspadded,&((cuFloatComplex *)res)[v]),err,ret);
+                            (const cuFloatComplex *)v1,veccompact->traits.ncolspadded,(const cuFloatComplex *)v2,vec2compact->traits.ncolspadded,&((cuFloatComplex *)res)[v]),err,ret);
             }
         }
         else
@@ -379,26 +378,25 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const double *)v1,vecclone->traits.ncolspadded,(const double *)v2,vec2clone->traits.ncolspadded,&((double *)res)[v]),err,ret);
+                            (const double *)v1,veccompact->traits.ncolspadded,(const double *)v2,vec2compact->traits.ncolspadded,&((double *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const float *)v1,vecclone->traits.ncolspadded,(const float *)v2,vec2clone->traits.ncolspadded,&((float *)res)[v]),err,ret);
+                            (const float *)v1,veccompact->traits.ncolspadded,(const float *)v2,vec2compact->traits.ncolspadded,&((float *)res)[v]),err,ret);
             }
         }
+    }
+    if (veccompact != vec) {
+        veccompact->destroy(veccompact);
+    }
+    if (vec2compact != vec2) {
+        vec2compact->destroy(vec2compact);
     }
 
     goto out;
 err:
 out:
-    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        vecclone->destroy(vecclone);
-    }
-    
-    if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        vec2clone->destroy(vec2clone);
-    }
     cudaDeviceSynchronize();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
@@ -501,7 +499,6 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         v1compact->destroy(v1compact);
     }
     if (v2compact != v2) {
-        GHOST_CALL_GOTO(v2->fromVec(v2,v2compact,0,0),err,ret);
         v2compact->destroy(v2compact);
     }
 

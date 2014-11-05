@@ -80,7 +80,6 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
         lhscompact->destroy(lhscompact);
     }
     if (rhscompact != rhs) {
-        GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
         rhscompact->destroy(rhscompact);
     }
 
