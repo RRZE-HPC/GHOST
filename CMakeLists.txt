@@ -61,6 +61,7 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
 
 set (SOURCES
+    src/averaging.c
     src/bincrs.c
     src/bincrs.cpp
     src/carp.c

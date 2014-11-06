@@ -631,6 +631,8 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat);
 
+    ghost_error_t ghost_densemat_averagehalo(ghost_densemat_t *vec);
+
 #ifdef __cplusplus
 }
 #endif
