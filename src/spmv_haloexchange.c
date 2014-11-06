@@ -235,7 +235,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
     
-    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *)),err,ret);
         
@@ -253,10 +253,14 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
         if (vec->context->wishes[from_PE]>0){
-            if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR) {
-                recv = vec->val[vec->context->hput_pos[from_PE]];
+            if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
+                if (vec->traits.ncols > 1) {
+                    recv = tmprecv[from_PE];
+                } else {
+                    recv = &vec->val[0][vec->context->hput_pos[from_PE]*vec->elSize];
+                }
             } else {
-                recv = tmprecv[from_PE];
+                recv = vec->val[vec->context->hput_pos[from_PE]];
             }
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
@@ -324,7 +328,7 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     int nprocs;
     int i, from_PE;
     ghost_gidx_t c;
-    
+   
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     GHOST_INSTR_START("waitall");
