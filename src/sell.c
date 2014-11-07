@@ -30,18 +30,10 @@ static ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densem
     {&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
 #endif
 
-static ghost_error_t (*SELL_fromCRS_funcs[4]) (ghost_sparsemat_t *, ghost_sparsemat_t *) = 
-{&s_SELL_fromCRS, &d_SELL_fromCRS, &c_SELL_fromCRS, &z_SELL_fromCRS}; 
-
-static ghost_error_t (*SELL_stringify_funcs[4]) (ghost_sparsemat_t *, char **, int) = 
-{&s_SELL_stringify, &d_SELL_stringify, &c_SELL_stringify, &z_SELL_stringify}; 
-
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * SELL_formatName(ghost_sparsemat_t *mat);
 static ghost_lidx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i);
 static size_t SELL_byteSize (ghost_sparsemat_t *mat);
-static ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
-static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 static ghost_error_t SELL_split(ghost_sparsemat_t *mat);
 static ghost_error_t SELL_permute(ghost_sparsemat_t *, ghost_lidx_t *, ghost_lidx_t *);
 static ghost_error_t SELL_upload(ghost_sparsemat_t *mat);
@@ -49,7 +41,6 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *);
 static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
 static void SELL_free(ghost_sparsemat_t *mat);
-static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 static int ghost_selectSellChunkHeight(int datatype);
 #ifdef GHOST_HAVE_CUDA
 static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags, va_list argp);
@@ -87,9 +78,8 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->formatName = &SELL_formatName;
     mat->rowLen     = &SELL_rowLen;
     mat->byteSize   = &SELL_byteSize;
-    mat->spmv     = &SELL_kernel_plain;
-    mat->fromCRS    = &SELL_fromCRS;
-    mat->string    = &SELL_stringify;
+    mat->spmv     = &SELL_kernel_selector;
+    mat->string    = &SELL_stringify_selector;
     mat->split = &SELL_split;
     mat->permute = &SELL_permute;
 #ifdef VSX_INTR
@@ -862,21 +852,6 @@ out:
     return ret;
 }
 
-static ghost_error_t SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
-
-    return SELL_stringify_funcs[dtIdx](mat, str, dense);
-}
-
-static ghost_error_t SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
-    return SELL_fromCRS_funcs[dtIdx](mat,crs);
-}
-
 static ghost_error_t SELL_upload(ghost_sparsemat_t* mat) 
 {
 #ifdef GHOST_HAVE_CUDA
@@ -953,55 +928,6 @@ static void SELL_free(ghost_sparsemat_t *mat)
 {
     return (int)log2((double)i);
 }*/
-
-
-static ghost_error_t SELL_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
-{
-    DEBUG_LOG(1,"Calling plain (maybe intrinsics) SELL kernel");
-    DEBUG_LOG(2,"lhs vector has %s data and %"PRLIDX" sub-vectors",ghost_datatype_string(lhs->traits.datatype),lhs->traits.ncols);
-
-    ghost_error_t (*kernel) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list) = NULL;
-
-#ifdef GHOST_HAVE_OPENMP
-    /*    static int first = 1;
-          if ((mat->byteSize(mat) < ghost_getSizeOfLLC()) || (SELL(mat)->deviation*1./(ghost_getMatNnz(mat)*1.0/(double)ghost_getMatNrows(mat)) < 0.4)) {
-          if (first) {
-          INFO_LOG("Setting OpenMP scheduling to STATIC for SELL SpMVM kernel");
-          }
-          omp_set_schedule(omp_sched_static,0);
-          } else {
-          if (first) {
-          INFO_LOG("Setting OpenMP scheduling to GUIDED,4 for SELL SpMVM kernel");
-          }
-          omp_set_schedule(omp_sched_guided,4);
-          }
-          first=0;*/
-#endif
-    ghost_datatype_idx_t matDtIdx;
-    ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
-
-    ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
-    
-    if (!(rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-#ifdef GHOST_HAVE_MIC
-        impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX)
-        impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
-        impl = GHOST_IMPLEMENTATION_SSE;
-#endif
-    }
-
-    ghost_sellspmv_parameters_t par = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
-    kernel = ghost_sellspmv_kernel(par,lhs,rhs);
-
-    return kernel(mat,lhs,rhs,options,argp);
-
-
-}
-
 
 #ifdef GHOST_HAVE_CUDA
 static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags,va_list argp)

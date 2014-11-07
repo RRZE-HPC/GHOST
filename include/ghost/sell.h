@@ -72,60 +72,15 @@ typedef ghost_error_t (*sellspmv_kernel)(ghost_sparsemat_t *, ghost_densemat_t *
 
 
 ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
+
 #ifdef __cplusplus
-//template<typename, typename, int> void SELL_kernel_plain_tmpl(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp);
-//template<typename, typename> void SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp);
-template <typename> ghost_error_t SELL_fromCRS(ghost_sparsemat_t *, ghost_sparsemat_t *);
 extern "C" {
 #endif
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs);
 void ghost_sellspmv_kernelmap_generate(void);
-ghost_error_t dd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t ds_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dz_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t sd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t ss_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t sc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t sz_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t cd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t cs_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t cc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t cz_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t zd_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t zs_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t zc_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t zz_SELL_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
+ghost_error_t SELL_kernel_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t SELL_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
 
-ghost_error_t dd_SELL_kernel_SSE_32_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_16_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_16_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_8_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_8_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_4_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_4_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_2_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_2_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_1_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_SSE_1_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_32_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_32_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_16_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_16_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_8_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_8_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_4_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_4_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_2_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_2_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_1_multivec_cm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_1_multivec_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_16_multivec_4_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_16_multivec_8_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_AVX_8_multivec_8_rm(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_MIC_16(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-ghost_error_t dd_SELL_kernel_MIC_32(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 #ifdef GHOST_HAVE_CUDA
 ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t ds_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
@@ -144,15 +99,6 @@ ghost_error_t zs_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_d
 ghost_error_t zc_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 ghost_error_t zz_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
 #endif
-ghost_error_t d_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
-ghost_error_t s_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
-ghost_error_t c_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
-ghost_error_t z_SELL_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crs);
-
-ghost_error_t d_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t s_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t c_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t z_SELL_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 #ifdef __cplusplus
 }
 #endif

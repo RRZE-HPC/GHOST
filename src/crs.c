@@ -28,15 +28,6 @@
 
 #include <dlfcn.h>
 
-static ghost_error_t (*CRS_kernels_plain[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp) = 
-{{&ss_CRS_kernel_plain,&sd_CRS_kernel_plain,&sc_CRS_kernel_plain,&sz_CRS_kernel_plain},
-    {&ds_CRS_kernel_plain,&dd_CRS_kernel_plain,&dc_CRS_kernel_plain,&dz_CRS_kernel_plain},
-    {&cs_CRS_kernel_plain,&cd_CRS_kernel_plain,&cc_CRS_kernel_plain,&cz_CRS_kernel_plain},
-    {&zs_CRS_kernel_plain,&zd_CRS_kernel_plain,&zc_CRS_kernel_plain,&zz_CRS_kernel_plain}};
-
-static ghost_error_t (*CRS_stringify_funcs[4]) (ghost_sparsemat_t *, char **, int) = 
-{&s_CRS_stringify, &d_CRS_stringify, &c_CRS_stringify, &z_CRS_stringify}; 
-
 static ghost_error_t CRS_fromBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_toBin(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
@@ -45,13 +36,9 @@ static void CRS_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * CRS_formatName(ghost_sparsemat_t *mat);
 static ghost_lidx_t CRS_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i);
 static size_t CRS_byteSize (ghost_sparsemat_t *mat);
-static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
 static void CRS_free(ghost_sparsemat_t * mat);
-static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);
-static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat);
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat);
 static ghost_error_t CRS_upload(ghost_sparsemat_t *mat);
-
 
 ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
 {
@@ -78,21 +65,20 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     }
     else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
     {
-        mat->spmv   = &CRS_kernel_plain;
+        mat->spmv   = &CRS_kernel_plain_selector;
         mat->kacz   = &ghost_crs_kacz;
     }
 
     mat->fromFile = &CRS_fromBin;
     mat->toFile = &CRS_toBin;
     mat->fromRowFunc = &CRS_fromRowFunc;
-    mat->fromCRS = &CRS_fromCRS;
     mat->auxString = &CRS_printInfo;
     mat->formatName = &CRS_formatName;
     mat->rowLen   = &CRS_rowLen;
     mat->byteSize = &CRS_byteSize;
     mat->permute = &CRS_permute;
     mat->destroy  = &CRS_free;
-    mat->string = &CRS_stringify;
+    mat->string = &CRS_stringify_selector;
     mat->upload = &CRS_upload;
     mat->split = &CRS_split;
     GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->data),sizeof(ghost_crs_t)),err,ret);
@@ -263,14 +249,6 @@ out:
     ERROR_LOG("Not implemented");
     return GHOST_ERR_NOT_IMPLEMENTED;
 
-}
-
-static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,mat->traits->datatype));
-
-    return CRS_stringify_funcs[dtIdx](mat, str, dense);
 }
 
 static void CRS_printInfo(ghost_sparsemat_t *mat, char **str)
@@ -512,54 +490,6 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
-
-static ghost_error_t CRS_fromCRS(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsmat)
-{
-    DEBUG_LOG(1,"Creating CRS matrix from CRS matrix");
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_crs_t *cr = (ghost_crs_t*)(crsmat->data);
-    ghost_gidx_t i,j;
-
-
-    //    mat->data = (ghost_crs_t *)ghost_malloc(sizeof(ghost_crs_t));
-    mat->nrows = crsmat->nrows;
-    mat->ncols = crsmat->ncols;
-    mat->nEnts = crsmat->nEnts;
-
-    CR(mat)->rpt = NULL;
-    CR(mat)->col = NULL;
-    CR(mat)->val = NULL;
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->rpt),(crsmat->nrows+1)*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->col),crsmat->nEnts*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&(CR(mat)->val),crsmat->nEnts*mat->elSize),err,ret);
-
-#pragma omp parallel for schedule(runtime)
-    for( i = 0; i < mat->nrows+1; i++ ) {
-        CR(mat)->rpt[i] = cr->rpt[i];
-    }
-
-#pragma omp parallel for schedule(runtime) private(j)
-    for( i = 0; i < mat->nrows; i++ ) {
-        for(j = CR(mat)->rpt[i]; j < CR(mat)->rpt[i+1] ; j++) {
-            CR(mat)->col[j] = cr->col[j];
-            memcpy(&CR(mat)->val[j*mat->elSize],&cr->val[j*mat->elSize],mat->elSize);
-        }
-    }
-
-    DEBUG_LOG(1,"Successfully created CRS matrix from CRS data");
-
-    goto out;
-
-err:
-    free(CR(mat)->rpt); CR(mat)->rpt = NULL;
-    free(CR(mat)->col); CR(mat)->col = NULL;
-    free(CR(mat)->val); CR(mat)->val = NULL;
-
-out:
-    return ret;
-}
-
 
 static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
 {
@@ -973,15 +903,5 @@ static void CRS_free(ghost_sparsemat_t * mat)
         free(mat);
         DEBUG_LOG(1,"CRS matrix freed successfully");
     }
-}
-
-static ghost_error_t CRS_kernel_plain (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
-{
-    ghost_datatype_idx_t matDtIdx;
-    ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
-
-    return CRS_kernels_plain[matDtIdx][vecDtIdx](mat,lhs,rhs,options,argp);
 }
 

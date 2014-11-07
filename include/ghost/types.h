@@ -34,6 +34,84 @@ typedef int ghost_mpi_datatype_t;
 #include <complex.h>
 #endif
 
+#define SELECT_TMPL_2DATATYPES(dt1,dt2,complexclass,ret,func,...)\
+    if (dt1 & GHOST_DT_COMPLEX) {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<double>,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<double>,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<double>,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<double>,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<float>,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<float>,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<float>,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<float>,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    } else {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    }\
+   
+#define SELECT_TMPL_1DATATYPE(dt,complexclass,ret,func,...)\
+    if (dt & GHOST_DT_COMPLEX) {\
+        if (dt & GHOST_DT_DOUBLE) {\
+            ret = func<complexclass<double>>(__VA_ARGS__);\
+        } else {\
+            ret = func<complexclass<float>>(__VA_ARGS__);\
+        }\
+    } else {\
+        if (dt & GHOST_DT_DOUBLE) {\
+            ret = func<double>(__VA_ARGS__);\
+        } else {\
+            ret = func<float>(__VA_ARGS__);\
+        }\
+    }\
+
 /**
  * @brief Available primitive data types.
  *

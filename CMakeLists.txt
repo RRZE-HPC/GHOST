@@ -87,7 +87,6 @@ set (SOURCES
     src/rand.c
     src/sell.c 
     src/sell.cpp
-    src/sellspmv_kernelmap.cpp
     src/sparsemat.c
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp

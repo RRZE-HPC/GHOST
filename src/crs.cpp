@@ -20,7 +20,8 @@
 using namespace std;
 // TODO shift, scale als templateparameter
 
-template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
+template<typename m_t, typename v_t> 
+static ghost_error_t CRS_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
     ghost_crs_t *cr = CR(mat);
     v_t *rhsv = NULL;
@@ -187,7 +188,8 @@ template<typename m_t, typename v_t> static ghost_error_t CRS_kernel_plain_tmpl(
     return GHOST_SUCCESS;
 }
 
-template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *mat, char ** str, int dense)
+template <typename m_t> 
+static ghost_error_t CRS_stringify_tmpl(ghost_sparsemat_t *mat, char ** str, int dense)
 {
     ghost_lidx_t i,j,col;
     m_t *val = (m_t *)CR(mat)->val;
@@ -229,62 +231,21 @@ template <typename m_t> static ghost_error_t CRS_stringify(ghost_sparsemat_t *ma
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t dd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< double,double >(mat,lhs,rhs,options,argp); }
+extern "C" ghost_error_t CRS_kernel_plain_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
+{
+    ghost_error_t ret;
 
-extern "C" ghost_error_t ds_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< double,float >(mat,lhs,rhs,options,argp); }
+    SELECT_TMPL_2DATATYPES(mat->traits->datatype,rhs->traits.datatype,ghost_complex,ret,CRS_kernel_plain_tmpl,mat,lhs,rhs,options,argp);
 
-extern "C" ghost_error_t dc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< double,ghost_complex<float> >(mat,lhs,rhs,options,argp); }
+    return ret;
+}
 
-extern "C" ghost_error_t dz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< double,ghost_complex<double> >(mat,lhs,rhs,options,argp); }
+extern "C" ghost_error_t CRS_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense)
+{
+    ghost_error_t ret;
 
-extern "C" ghost_error_t sd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< float,double >(mat,lhs,rhs,options,argp); }
+    SELECT_TMPL_1DATATYPE(mat->traits->datatype,ghost_complex,ret,CRS_stringify_tmpl,mat,str,dense);
 
-extern "C" ghost_error_t ss_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< float,float >(mat,lhs,rhs,options,argp); }
+    return ret;
+}
 
-extern "C" ghost_error_t sc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< float,ghost_complex<float> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t sz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< float,ghost_complex<double> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t cd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<float>,double >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t cs_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<float>,float >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t cc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<float> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t cz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<float>,ghost_complex<double> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t zd_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<double>,double >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t zs_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<double>,float >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<float> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
-{ return CRS_kernel_plain_tmpl< ghost_complex<double>,ghost_complex<double> >(mat,lhs,rhs,options,argp); }
-
-extern "C" ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{ return CRS_stringify< double >(mat, str, dense); }
-
-extern "C" ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{ return CRS_stringify< float >(mat, str, dense); }
-
-extern "C" ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{ return CRS_stringify< ghost_complex<double> >(mat, str, dense); }
-
-extern "C" ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense)
-{ return CRS_stringify< ghost_complex<float> >(mat, str, dense); }

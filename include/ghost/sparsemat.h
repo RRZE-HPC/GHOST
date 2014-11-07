@@ -425,13 +425,6 @@ struct ghost_sparsemat_t
      */
     size_t     (*byteSize)(ghost_sparsemat_t *mat);
     /**
-     * @brief Create a matrix from a CRS matrix.
-     *
-     * @param mat The matrix. 
-     * @param crsMat The CRS matrix.
-     */
-    ghost_error_t     (*fromCRS)(ghost_sparsemat_t *mat, ghost_sparsemat_t *crsMat);
-    /**
      * @brief Split the matrix into a local and a remote part.
      *
      * @param mat The matrix.
