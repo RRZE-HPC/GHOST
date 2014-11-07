@@ -4,6 +4,7 @@
 #include "ghost/cu_crs.h"
 #endif
 #include "ghost/crs.h"
+#include "ghost/crs_kacz.h"
 #include "ghost/util.h"
 #include "ghost/core.h"
 #include "ghost/sparsemat.h"
@@ -78,6 +79,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
     {
         mat->spmv   = &CRS_kernel_plain;
+        mat->kacz   = &ghost_crs_kacz;
     }
 
     mat->fromFile = &CRS_fromBin;

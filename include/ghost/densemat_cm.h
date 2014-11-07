@@ -137,6 +137,8 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec);
 
+    ghost_error_t ghost_densemat_cm_averagehalo(ghost_densemat_t *vec);
+
     ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
     ghost_error_t d_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec); 
     ghost_error_t s_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec); 

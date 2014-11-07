@@ -61,11 +61,11 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
 
 set (SOURCES
+    src/averaging.cpp
     src/bincrs.c
     src/bincrs.cpp
     src/carp.c
     src/context.c
-    src/colpack.cpp
     src/core.c
     src/crs.c 
     src/crs.cpp
@@ -90,6 +90,8 @@ set (SOURCES
     src/sellspmv_kernelmap.cpp
     src/sparsemat.c
     src/sparsemat.cpp
+    src/sparsemat_perm_colpack.cpp
+    src/sparsemat_perm_scotch.c
     src/spmv_haloexchange.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
@@ -117,7 +119,6 @@ set (HEADERS
     include/ghost/bitmap.h
     include/ghost/blas_mangle.h
     include/ghost/carp.h
-    include/ghost/colpack.h
     include/ghost/complex.h
     include/ghost/context.h
     include/ghost/core.h
