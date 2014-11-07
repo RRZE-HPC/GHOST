@@ -10,6 +10,10 @@ static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost
     if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
+    if (x->traits.ncols > 1) {
+        ERROR_LOG("Multi-vec not implemented!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
    
     ghost_lidx_t i;
     ghost_lidx_t row;
