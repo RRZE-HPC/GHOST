@@ -10,6 +10,7 @@
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
 #include "ghost/instr.h"
+#include "ghost/colpack.h"
 
 #include <libgen.h>
 #ifdef GHOST_HAVE_SCOTCH
@@ -171,6 +172,8 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_spar
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_perm_scotch(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
+        } else if (mat->traits->flags & GHOST_SPARSEMAT_COLOR) {
+            ghost_sparsemat_perm_color(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC);
         } else {
             ghost_sparsemat_perm_sort(mat,(void *)src,GHOST_SPARSEMAT_SRC_FUNC,mat->traits->sortScope);
         }
@@ -255,6 +258,8 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
         if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
             ghost_sparsemat_perm_scotch(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
+        } else if (mat->traits->flags & GHOST_SPARSEMAT_COLOR) {
+            ghost_sparsemat_perm_color(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE);
         } else {
             ghost_sparsemat_perm_sort(mat,matrixPath,GHOST_SPARSEMAT_SRC_FILE,mat->traits->sortScope);
         }

@@ -134,7 +134,11 @@ typedef enum {
     /**
      * @brief Save the un-compressed original columns of a distributed matrix.
      */
-    GHOST_SPARSEMAT_SAVE_ORIG_COLS = 256
+    GHOST_SPARSEMAT_SAVE_ORIG_COLS = 256,
+    /**
+     * @brief Create a matrix permutation reflecting a distance-2-coloring.
+     */
+    GHOST_SPARSEMAT_COLOR
 } ghost_sparsemat_flags_t;
 
 
@@ -532,6 +536,8 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope);
+
+    ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType);
     /**
      * @brief Sort the entries in a given row physically to have increasing column indices.
      *

@@ -43,10 +43,6 @@ ghost_error_t ghost_densemat_averagehalo(ghost_densemat_t *vec)
 
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
     
-    for (i=0; i<acc_dues; i++) {
-    //    printf("rank %d work[%d] = %f\n",rank,i,((double *)work)[i]);
-    }
-    
     ghost_lidx_t *curdue;
     double *sum;
     int *nrankspresent;
@@ -81,24 +77,9 @@ ghost_error_t ghost_densemat_averagehalo(ghost_densemat_t *vec)
     }
         
     for (currow=0; currow<vec->context->lnrows[rank]; currow++) {
-    //    printf("rank %d row %d nrankspresent %d\n",rank,currow,nrankspresent[currow]);
         ((double *)vec->val[0])[currow] = sum[currow]/nrankspresent[currow];
     }
         
-        
-   /* 
-    for (i=0; i<nrank; i++) {
-        printf("dues %d->%d: %d\n",rank,i,vec->context->dues[i]);
-        for (j=0; j<vec->context->dues[i]; j++) {
-            printf("  %d\n",vec->context->duelist[i][j]);
-        }
-    }
-    */
-
-    //MPI_CALL_GOTO(MPI_Allreduce(
-
-
-
     goto out;
 err:
 
