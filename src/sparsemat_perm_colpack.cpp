@@ -32,11 +32,6 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     rpt[0] = 0;
     rptlocal[0] = 0;
 
-    if (mat->traits->format != GHOST_SPARSEMAT_CRS) {
-        ERROR_LOG("Coloring only working for CRS at the moment!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-    
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
         char *matrixPath = (char *)matrixSource;
         GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, NULL),err,ret);

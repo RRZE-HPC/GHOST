@@ -7,8 +7,7 @@
 template<typename m_t, typename v_t, bool forward>
 static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega, int forward)
 {
-    INFO_LOG("in kacz kernel");
-    if (!mat->color_ptr) {
+    if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
     }
    
