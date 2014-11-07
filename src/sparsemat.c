@@ -90,9 +90,7 @@ ghost_error_t ghost_sparsemat_create(ghost_sparsemat_t ** mat, ghost_context_t *
     (*mat)->nEnts = 0;
     (*mat)->nnz = 0;
     (*mat)->ncolors = 0;
-    (*mat)->colors = NULL;
     (*mat)->color_ptr = NULL;
-    (*mat)->color_map = NULL;
 
     if ((*mat)->traits->sortScope == GHOST_SPARSEMAT_SORT_GLOBAL) {
         (*mat)->traits->sortScope = (*mat)->context->gnrows;

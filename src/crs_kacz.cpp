@@ -42,7 +42,7 @@ static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost
     for (color=firstcolor; color!=lastcolor; color+=stride) {
 #pragma omp parallel for private(i,j,row,rownorm)
         for (i=mat->color_ptr[color]; i<mat->color_ptr[color+1]; i++) {
-            row = i;//mat->color_map[i];
+            row = i;
             rownorm = 0.;
             v_t scal = -bval[row];
 

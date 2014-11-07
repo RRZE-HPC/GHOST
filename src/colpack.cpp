@@ -148,8 +148,6 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     GHOST_CALL_GOTO(ghost_cu_malloc((void **)&mat->context->permutation->cu_perm,sizeof(ghost_gidx_t)*mat->nrows),err,ret);
 #endif
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->colors,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_map,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx_t)),err,ret);
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx_t)),err,ret);
@@ -157,16 +155,12 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     
     colvec = GC->GetVertexColorsPtr();
 
-    for (int i=0;i<mat->nrows;i++) {
-        mat->colors[i] = (*colvec)[i];
-    }
-    
     for (int i=0;i<mat->ncolors+1;i++) {
         mat->color_ptr[i] = 0;
     }
 
     for (int i=0;i<mat->nrows;i++) {
-        mat->color_ptr[mat->colors[i]+1]++;
+        mat->color_ptr[(*colvec)[i]+1]++;
     }
 
     for (int i=1;i<mat->ncolors+1;i++) {
@@ -174,10 +168,8 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     }
     
     for (int i=0;i<mat->nrows;i++) {
-        mat->color_map[i] = curcol[mat->colors[i]] + mat->color_ptr[mat->colors[i]];
-        mat->context->permutation->perm[i] = mat->color_map[i];
-        curcol[mat->colors[i]]++;
-        printf("colormap[%d] = %d\n",i,mat->color_map[i]);
+        mat->context->permutation->perm[i] = curcol[(*colvec)[i]] + mat->color_ptr[(*colvec)[i]];
+        curcol[(*colvec)[i]]++;
     }
     
     for (int i=0;i<mat->nrows;i++) {
@@ -197,97 +189,6 @@ out:
     free(col);
     free(rptlocal);
     free(collocal);
-
-    return ret;
-#else
-    UNUSED(mat);
-    ERROR_LOG("ColPack not available!");
-    return GHOST_ERR_NOT_IMPLEMENTED;
-#endif
-}
-
-
-extern "C" ghost_error_t ghost_sparsemat_coloring_create(ghost_sparsemat_t *mat)
-{
-#ifdef GHOST_HAVE_COLPACK
-    WARNING_LOG("DEPRECATED (done via permutation)");
-    ghost_error_t ret = GHOST_SUCCESS;
-    ghost_crs_t *crmat = CR(mat->localPart);
-    ghost_lidx_t *curcol = NULL;
-    int64_t nzloc=mat->localPart->nnz;
-    uint32_t** adolc = new uint32_t*[mat->nrows];
-    std::vector<int>* colvec = NULL;
-    uint32_t *adolc_data=new uint32_t[nzloc+mat->nrows];
-    ColPack::GraphColoring *GC=new ColPack::GraphColoring();
-
-
-    if (mat->traits->format != GHOST_SPARSEMAT_CRS) {
-        ERROR_LOG("Coloring only working for CRS at the moment!");
-        return GHOST_ERR_NOT_IMPLEMENTED;
-    }
-
-    int64_t pos=0;
-    for (int i=0;i<mat->nrows;i++)
-    {
-        adolc[i]=&(adolc_data[pos]);
-        adolc_data[pos++]=crmat->rpt[i+1]-crmat->rpt[i];
-        for (int j=crmat->rpt[i];j<crmat->rpt[i+1];j++)
-        {
-            adolc_data[pos++]=crmat->col[j];
-        }
-    }
-
-    GC->BuildGraphFromRowCompressedFormat(adolc, mat->nrows);
-
-    COLPACK_CALL_GOTO(GC->DistanceTwoColoring(),err,ret);
-
-    if (GC->CheckDistanceTwoColoring(2)) {
-        ERROR_LOG("Error in coloring!");
-        ret = GHOST_ERR_COLPACK;
-        goto err;
-    }
-
-    mat->ncolors = GC->GetVertexColorCount();
-    
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->colors,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_map,mat->nrows*sizeof(ghost_lidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&mat->color_ptr,(mat->ncolors+1)*sizeof(ghost_lidx_t)),err,ret);
-
-    GHOST_CALL_GOTO(ghost_malloc((void **)&curcol,(mat->ncolors)*sizeof(ghost_lidx_t)),err,ret);
-    memset(curcol,0,mat->ncolors*sizeof(ghost_lidx_t));
-    
-    colvec = GC->GetVertexColorsPtr();
-
-    for (int i=0;i<mat->nrows;i++) {
-        mat->colors[i] = (*colvec)[i];
-    }
-    
-    for (int i=0;i<mat->ncolors+1;i++) {
-        mat->color_ptr[i] = 0;
-    }
-
-    for (int i=0;i<mat->nrows;i++) {
-        mat->color_ptr[mat->colors[i]+1]++;
-    }
-
-    for (int i=1;i<mat->ncolors+1;i++) {
-        mat->color_ptr[i] += mat->color_ptr[i-1];
-    }
-    
-    for (int i=0;i<mat->nrows;i++) {
-        mat->color_map[i] = curcol[mat->colors[i]] + mat->color_ptr[mat->colors[i]];
-        curcol[mat->colors[i]]++;
-        printf("colormap[%d] = %d\n",i,mat->color_map[i]);
-    }
-    
-    goto out;
-err:
-
-out:
-    delete [] adolc_data;
-    delete [] adolc;
-    delete GC;
-    free(curcol);
 
     return ret;
 #else

@@ -240,20 +240,9 @@ struct ghost_sparsemat_t
      */
     ghost_lidx_t ncolors;
     /**
-     * @brief The color of each matrix row. 
-     */
-    ghost_lidx_t *colors;
-    /**
      * @brief The number of rows with each color (length: ncolors+1).
      */
     ghost_lidx_t *color_ptr;
-    /**
-     * @brief This maps each row to contiguously colored rows. 
-     *
-     * By using this mapping, the rows of each color can be processed in parallel.
-     * TODO: This should be reflected by a permutation.
-     */
-    ghost_lidx_t *color_map;
     /**
      * @brief The number of rows.
      */
