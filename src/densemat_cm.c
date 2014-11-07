@@ -75,6 +75,7 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec);
+static ghost_error_t vec_cm_averageHalo(ghost_densemat_t *vec);
 ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
@@ -127,6 +128,8 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
+
+    vec->averageHalo = &vec_cm_averageHalo;
 
     vec->upload = &vec_cm_upload;
     vec->download = &vec_cm_download;
@@ -1624,4 +1627,11 @@ ghost_error_t ghost_densemat_traits_clone(ghost_densemat_traits_t *t1, ghost_den
     memcpy(*t2,t1,sizeof(ghost_densemat_traits_t));
 
     return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_cm_averageHalo(ghost_densemat_t *vec)
+{
+
+    return ghost_densemat_cm_averagehalo(vec);
+
 }

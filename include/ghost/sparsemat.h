@@ -437,6 +437,17 @@ struct ghost_sparsemat_t
      * @param mat The matrix.
      */
     ghost_error_t       (*split)(ghost_sparsemat_t *mat);
+
+    /**
+     * @brief Perform a forward or backward Kaczmarz sweep on the system Ax=b.
+     *
+     * @param mat The matrix.
+     * @param lhs The vector b.
+     * @param rhs The vector x.
+     * @param omega The scaling factor omega.
+     * @param forward 1 if forward, 0 if backward sweep should be done.
+     */
+    ghost_error_t (*kacz) (ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, void *omega, int forward);
 };
 
 

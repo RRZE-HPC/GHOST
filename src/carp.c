@@ -14,9 +14,9 @@ ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_dens
     GHOST_CALL_RETURN(ghost_spmv_haloexchange_initiate(x,mat->context->permutation,false));
     GHOST_CALL_RETURN(ghost_spmv_haloexchange_finalize(x));
     
-    GHOST_CALL_RETURN(ghost_crs_kacz(mat,x,b,omega,1));
-    GHOST_CALL_RETURN(ghost_densemat_averagehalo(x));
-    GHOST_CALL_RETURN(ghost_crs_kacz(mat,x,b,omega,0));
+    GHOST_CALL_RETURN(mat->kacz(mat,x,b,omega,1));
+    GHOST_CALL_RETURN(x->averageHalo(x));
+    GHOST_CALL_RETURN(mat->kacz(mat,x,b,omega,0));
 
     return GHOST_SUCCESS;
 

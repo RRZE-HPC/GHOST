@@ -5,7 +5,7 @@
 #include <complex>
 
 template<typename m_t, typename v_t, bool forward>
-static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega, int forward)
+static ghost_error_t crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_densemat_t *b, v_t *omega)
 {
     if (!mat->color_ptr || mat->ncolors == 0) {
         WARNING_LOG("Matrix has not been colored!");
@@ -70,29 +70,29 @@ ghost_error_t ghost_crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghos
     if (rhs->traits.datatype & GHOST_DT_COMPLEX) {
         if (rhs->traits.datatype & GHOST_DT_DOUBLE) {
             if (forward) {
-                return crs_kacz<std::complex<double>, std::complex<double>, true>(mat,lhs,rhs,(std::complex<double> *)omega,forward);
+                return crs_kacz<std::complex<double>, std::complex<double>, true>(mat,lhs,rhs,(std::complex<double> *)omega);
             } else {
-                return crs_kacz<std::complex<double>, std::complex<double>, false>(mat,lhs,rhs,(std::complex<double> *)omega,forward);
+                return crs_kacz<std::complex<double>, std::complex<double>, false>(mat,lhs,rhs,(std::complex<double> *)omega);
             }
         } else {
             if (forward) {
-                return crs_kacz<std::complex<float>, std::complex<float>, true>(mat,lhs,rhs,(std::complex<float> *)omega,forward);
+                return crs_kacz<std::complex<float>, std::complex<float>, true>(mat,lhs,rhs,(std::complex<float> *)omega);
             } else {
-                return crs_kacz<std::complex<float>, std::complex<float>, false>(mat,lhs,rhs,(std::complex<float> *)omega,forward);
+                return crs_kacz<std::complex<float>, std::complex<float>, false>(mat,lhs,rhs,(std::complex<float> *)omega);
             }
         }
     } else {
         if (rhs->traits.datatype & GHOST_DT_DOUBLE) {
             if (forward) {
-                return crs_kacz<double, double, true>(mat,lhs,rhs,(double *)omega,forward);
+                return crs_kacz<double, double, true>(mat,lhs,rhs,(double *)omega);
             } else {
-                return crs_kacz<double, double, false>(mat,lhs,rhs,(double *)omega,forward);
+                return crs_kacz<double, double, false>(mat,lhs,rhs,(double *)omega);
             }
         } else {
             if (forward) {
-                return crs_kacz<float, float, true>(mat,lhs,rhs,(float *)omega,forward);
+                return crs_kacz<float, float, true>(mat,lhs,rhs,(float *)omega);
             } else {
-                return crs_kacz<float, float, false>(mat,lhs,rhs,(float *)omega,forward);
+                return crs_kacz<float, float, false>(mat,lhs,rhs,(float *)omega);
             }
         }
     }

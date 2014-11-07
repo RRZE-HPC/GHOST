@@ -544,6 +544,8 @@ struct ghost_densemat_t
      * @param b The scale factors b. Length must be the same as the number of densemat columns.
      */
     ghost_error_t       (*vaxpby) (ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+
+    ghost_error_t (*averageHalo) (ghost_densemat_t *);
 };
 
 /**
