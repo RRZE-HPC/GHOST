@@ -722,7 +722,7 @@ static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2,
         memcpy(&b[i*vec->elSize],_b,vec->elSize);
     }
 
-    ret = vec->vaxpby(vec,vec2,scale,_b);
+    ret = vec->vaxpby(vec,vec2,scale,b);
 
     goto out;
 err:
