@@ -9,10 +9,13 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
-    
     int rank, nrank, i, acc_dues = 0;
     T *work = NULL, *curwork = NULL;
     MPI_Request *req = NULL;
+    ghost_lidx_t *curdue = NULL;
+    T *sum = NULL;
+    int *nrankspresent = NULL;
+    
     
     if (vec->traits.ncols > 1) {
         ERROR_LOG("Multi-vec case not yet implemented");
@@ -51,10 +54,6 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
 
     MPI_CALL_GOTO(MPI_Waitall(2*nrank,req,MPI_STATUSES_IGNORE),err,ret);
     
-    ghost_lidx_t *curdue;
-    T *sum;
-    int *nrankspresent;
-    
     GHOST_CALL_GOTO(ghost_malloc((void **)&curdue, nrank*sizeof(ghost_lidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&sum, vec->context->lnrows[rank]*sizeof(T)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&nrankspresent, vec->context->lnrows[rank]*sizeof(int)),err,ret);
@@ -85,7 +84,7 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     }
         
     for (currow=0; currow<vec->context->lnrows[rank]; currow++) {
-        ((T *)vec->val[0])[currow] = sum[currow]/nrankspresent[currow];
+        ((T *)vec->val[0])[currow] = sum[currow]/(T)nrankspresent[currow];
     }
         
     goto out;

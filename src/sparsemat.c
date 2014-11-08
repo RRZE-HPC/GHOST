@@ -10,7 +10,6 @@
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
 #include "ghost/instr.h"
-#include "ghost/colpack.h"
 
 #include <libgen.h>
 

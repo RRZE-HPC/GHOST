@@ -1,5 +1,4 @@
-#include "ghost/colpack.h"
-#include "ghost/crs.h"
+#include "ghost/sparsemat.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
 #include "ghost/bincrs.h"
@@ -188,6 +187,8 @@ out:
     return ret;
 #else
     UNUSED(mat);
+    UNUSED(matrixSource);
+    UNUSED(srcType);
     ERROR_LOG("ColPack not available!");
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif

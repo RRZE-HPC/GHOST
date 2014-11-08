@@ -661,11 +661,11 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             }
         }
     } else {
-        void *v1val, *v2val, *cuv1val, *cuv2val;
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(vec,&cuv1val));
-        GHOST_CALL_RETURN(ghost_densemat_valptr(vec,&v1val));
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(vec2,&cuv2val));
-        GHOST_CALL_RETURN(ghost_densemat_valptr(vec2,&v2val));
+        char *v1val, *v2val, *cuv1val, *cuv2val;
+        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(vec,(void **)&cuv1val));
+        GHOST_CALL_RETURN(ghost_densemat_valptr(vec,(void **)&v1val));
+        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(vec2,(void **)&cuv2val));
+        GHOST_CALL_RETURN(ghost_densemat_valptr(vec2,(void **)&v2val));
                 
         cuv2val += roffs*vec2->traits.ncolspadded*vec->elSize + coffs*vec->elSize;
         v2val += roffs*vec2->traits.ncolspadded*vec->elSize + coffs*vec->elSize;

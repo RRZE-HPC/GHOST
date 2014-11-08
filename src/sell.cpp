@@ -1,4 +1,3 @@
-#include "ghost/config.h"
 #include "ghost/types.h"
 #include "ghost/omp.h"
 
@@ -137,9 +136,10 @@ static ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densem
     } else {
 #pragma omp parallel private(c,j,i,v) shared(partsums)
         {
-            v_t tmp[chunkHeight];
+            v_t *tmp = new v_t[chunkHeight];
             v_t *lhsv = NULL;
             int tid = ghost_omp_threadnum();
+
 
 #pragma omp for schedule(runtime) 
             for (c=0; c<mat->nrowsPadded/chunkHeight; c++) 
@@ -191,6 +191,7 @@ static ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densem
 
                 }
             }
+            free(tmp);
         }
     }
     if (options & GHOST_SPMV_DOT_ANY) {
@@ -386,7 +387,13 @@ extern "C" ghost_error_t SELL_kernel_selector(ghost_sparsemat_t *mat, ghost_dens
     }
 
     
-    ghost_sellspmv_parameters_t p = {.impl = impl, .vdt = rhs->traits.datatype, .mdt = mat->traits->datatype, .blocksz = rhs->traits.ncols, .storage = rhs->traits.storage, .chunkheight = SELL(mat)->chunkHeight};
+    ghost_sellspmv_parameters_t p;
+    p.impl = impl;
+    p.vdt = rhs->traits.datatype;
+    p.mdt = mat->traits->datatype;
+    p.blocksz = rhs->traits.ncols;
+    p.storage = rhs->traits.storage;
+    p.chunkheight = SELL(mat)->chunkHeight;
 
 
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && rhs->traits.ncolsorig == 1 && lhs->traits.ncolsorig== 1) {
