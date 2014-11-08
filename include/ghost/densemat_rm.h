@@ -120,34 +120,13 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);
-    ghost_error_t d_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec); 
-    ghost_error_t s_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec); 
-    ghost_error_t z_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec);
-    ghost_error_t c_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec);
-    ghost_error_t d_ghost_densemat_rm_normalize(ghost_densemat_t *vec); 
-    ghost_error_t s_ghost_densemat_rm_normalize(ghost_densemat_t *vec); 
-    ghost_error_t z_ghost_densemat_rm_normalize(ghost_densemat_t *vec);
-    ghost_error_t c_ghost_densemat_rm_normalize(ghost_densemat_t *vec);
-    ghost_error_t d_ghost_densemat_rm_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2); 
-    ghost_error_t s_ghost_densemat_rm_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2); 
-    ghost_error_t z_ghost_densemat_rm_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2);
-    ghost_error_t c_ghost_densemat_rm_dotprod(ghost_densemat_t *vec1, void *res, ghost_densemat_t *vec2);
-    ghost_error_t d_ghost_densemat_rm_vscale(ghost_densemat_t *vec1, void *vscale); 
-    ghost_error_t s_ghost_densemat_rm_vscale(ghost_densemat_t *vec1, void *vscale); 
-    ghost_error_t z_ghost_densemat_rm_vscale(ghost_densemat_t *vec1, void *vscale);
-    ghost_error_t c_ghost_densemat_rm_vscale(ghost_densemat_t *vec1, void *vscale);
-    ghost_error_t d_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
-    ghost_error_t s_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
-    ghost_error_t z_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *);
-    ghost_error_t c_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *);
-    ghost_error_t d_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
-    ghost_error_t s_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
-    ghost_error_t z_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *);
-    ghost_error_t c_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *);
-    ghost_error_t d_ghost_densemat_rm_fromRand(ghost_densemat_t *vec); 
-    ghost_error_t s_ghost_densemat_rm_fromRand(ghost_densemat_t *vec); 
-    ghost_error_t z_ghost_densemat_rm_fromRand(ghost_densemat_t *vec); 
-    ghost_error_t c_ghost_densemat_rm_fromRand(ghost_densemat_t *vec); 
+    ghost_error_t ghost_densemat_rm_string_selector(ghost_densemat_t *vec, char **str);
+    ghost_error_t ghost_densemat_rm_normalize_selector(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_rm_dotprod_selector(ghost_densemat_t *vec, void *, ghost_densemat_t *);
+    ghost_error_t ghost_densemat_rm_vscale_selector(ghost_densemat_t *vec1, void *); 
+    ghost_error_t ghost_densemat_rm_vaxpy_selector(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
+    ghost_error_t ghost_densemat_rm_vaxpby_selector(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
+    ghost_error_t ghost_densemat_rm_fromRand_selector(ghost_densemat_t *vec);
 #ifdef __cplusplus
 }
 #endif

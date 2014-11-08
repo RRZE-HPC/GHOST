@@ -365,88 +365,66 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
 }
 
 
-extern "C" ghost_error_t d_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_string_tmpl< double >(str,vec); }
+extern "C" ghost_error_t ghost_densemat_rm_string_selector(ghost_densemat_t *vec, char **str) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t s_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_string_tmpl< float >(str,vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_string_tmpl,str,vec);
 
+    return ret;
+}
 
-extern "C" ghost_error_t z_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_string_tmpl< ghost_complex<double> >(str,vec); }
+extern "C" ghost_error_t ghost_densemat_rm_normalize_selector(ghost_densemat_t *vec) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t c_ghost_densemat_rm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_string_tmpl< ghost_complex<float> >(str,vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_normalize_tmpl,vec);
 
-extern "C" ghost_error_t d_ghost_densemat_rm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_normalize_tmpl< double >(vec); }
+    return ret;
+}
 
-extern "C" ghost_error_t s_ghost_densemat_rm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_normalize_tmpl< float >(vec); }
+extern "C" ghost_error_t ghost_densemat_rm_dotprod_selector(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t z_ghost_densemat_rm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_normalize_tmpl< ghost_complex<double> >(vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_dotprod_tmpl,vec,res,vec2);
 
-extern "C" ghost_error_t c_ghost_densemat_rm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_normalize_tmpl< ghost_complex<float> >(vec); }
+    return ret;
+}
 
-extern "C" ghost_error_t d_ghost_densemat_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_rm_dotprod_tmpl< double >(vec,res,vec2); }
+extern "C" ghost_error_t ghost_densemat_rm_vscale_selector(ghost_densemat_t *vec, void *scale) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t s_ghost_densemat_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_rm_dotprod_tmpl< float >(vec,res,vec2); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_vscale_tmpl,vec,scale);
 
-extern "C" ghost_error_t z_ghost_densemat_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_rm_dotprod_tmpl< ghost_complex<double> >(vec,res,vec2); }
+    return ret;
+}
 
-extern "C" ghost_error_t c_ghost_densemat_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_rm_dotprod_tmpl< ghost_complex<float> >(vec,res,vec2); }
+extern "C" ghost_error_t ghost_densemat_rm_vaxpy_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t d_ghost_densemat_rm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_rm_vscale_tmpl< double >(vec, scale); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_vaxpy_tmpl,vec,vec2,scale);
 
-extern "C" ghost_error_t s_ghost_densemat_rm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_rm_vscale_tmpl< float  >(vec, scale); }
+    return ret;
+}
 
-extern "C" ghost_error_t z_ghost_densemat_rm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_rm_vscale_tmpl< ghost_complex<double> >(vec, scale); }
+extern "C" ghost_error_t ghost_densemat_rm_vaxpby_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t c_ghost_densemat_rm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_rm_vscale_tmpl< ghost_complex<float> >(vec, scale); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_vaxpby_tmpl,vec,vec2,scale,b);
 
-extern "C" ghost_error_t d_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_rm_vaxpy_tmpl< double >(vec, vec2, scale); }
+    return ret;
+}
 
-extern "C" ghost_error_t s_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_rm_vaxpy_tmpl< float >(vec, vec2, scale); }
+extern "C" ghost_error_t ghost_densemat_rm_fromRand_selector(ghost_densemat_t *vec) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t z_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_rm_vaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_rm_fromRand_tmpl,vec);
 
-extern "C" ghost_error_t c_ghost_densemat_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_rm_vaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
-
-extern "C" ghost_error_t d_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_rm_vaxpby_tmpl< double >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t s_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_rm_vaxpby_tmpl< float >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t z_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_rm_vaxpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t c_ghost_densemat_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_rm_vaxpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t d_ghost_densemat_rm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_fromRand_tmpl< double >(vec); }
-
-extern "C" ghost_error_t s_ghost_densemat_rm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_fromRand_tmpl< float >(vec); }
-
-extern "C" ghost_error_t z_ghost_densemat_rm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_fromRand_tmpl< ghost_complex<double> >(vec); }
-
-extern "C" ghost_error_t c_ghost_densemat_rm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_rm_fromRand_tmpl< ghost_complex<float> >(vec); }
+    return ret;
+}
 

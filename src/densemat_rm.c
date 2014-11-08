@@ -20,42 +20,14 @@
 #include <unistd.h>
 #include <errno.h>
 
-static ghost_error_t (*ghost_densemat_rm_normalize_funcs[4]) (ghost_densemat_t *) = 
-{&s_ghost_densemat_rm_normalize, &d_ghost_densemat_rm_normalize, &c_ghost_densemat_rm_normalize, &z_ghost_densemat_rm_normalize};
-
-static ghost_error_t (*ghost_densemat_rm_dotprod_funcs[4]) (ghost_densemat_t *, void *, ghost_densemat_t *) = 
-{&s_ghost_densemat_rm_dotprod, &d_ghost_densemat_rm_dotprod, &c_ghost_densemat_rm_dotprod, &z_ghost_densemat_rm_dotprod};
-
-static ghost_error_t (*ghost_densemat_rm_vscale_funcs[4]) (ghost_densemat_t *, void*) = 
-{&s_ghost_densemat_rm_vscale, &d_ghost_densemat_rm_vscale, &c_ghost_densemat_rm_vscale, &z_ghost_densemat_rm_vscale};
-
-static ghost_error_t (*ghost_densemat_rm_vaxpy_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*) = 
-{&s_ghost_densemat_rm_vaxpy, &d_ghost_densemat_rm_vaxpy, &c_ghost_densemat_rm_vaxpy, &z_ghost_densemat_rm_vaxpy};
-
-static ghost_error_t (*ghost_densemat_rm_vaxpby_funcs[4]) (ghost_densemat_t *, ghost_densemat_t *, void*, void*) = 
-{&s_ghost_densemat_rm_vaxpby, &d_ghost_densemat_rm_vaxpby, &c_ghost_densemat_rm_vaxpby, &z_ghost_densemat_rm_vaxpby};
-
-static ghost_error_t (*ghost_densemat_rm_fromRand_funcs[4]) (ghost_densemat_t *) = 
-{&s_ghost_densemat_rm_fromRand, &d_ghost_densemat_rm_fromRand, &c_ghost_densemat_rm_fromRand, &z_ghost_densemat_rm_fromRand};
-
-static ghost_error_t (*ghost_densemat_rm_string_funcs[4]) (char **str, ghost_densemat_t *) = 
-{&s_ghost_densemat_rm_string, &d_ghost_densemat_rm_string, &c_ghost_densemat_rm_string, &z_ghost_densemat_rm_string};
-
-static ghost_error_t vec_rm_print(ghost_densemat_t *vec, char **str);
 static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale);
-static ghost_error_t vec_rm_vscale(ghost_densemat_t *vec, void *scale);
-static ghost_error_t vec_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
-static ghost_error_t vec_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
 static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
 static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b);
-static ghost_error_t vec_rm_dotprod(ghost_densemat_t *vec, void * res, ghost_densemat_t *vec2);
 static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gidx_t, ghost_lidx_t, void *));
 static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec2, ghost_lidx_t roffs, ghost_lidx_t coffs);
-static ghost_error_t vec_rm_fromRand(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val);
 static ghost_error_t vec_rm_fromFile(ghost_densemat_t *vec, char *path, bool singleFile);
 static ghost_error_t vec_rm_toFile(ghost_densemat_t *vec, char *path, bool singleFile);
-static ghost_error_t ghost_densemat_rm_normalize( ghost_densemat_t *vec);
 static ghost_error_t ghost_distributeVector(ghost_densemat_t *vec, ghost_densemat_t *nodeVec);
 static ghost_error_t ghost_collectVectors(ghost_densemat_t *vec, ghost_densemat_t *totalVec); 
 static void ghost_freeVector( ghost_densemat_t* const vec );
@@ -97,27 +69,27 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     }
     else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
     {
-        vec->dot = &vec_rm_dotprod;
-        vec->vaxpy = &vec_rm_vaxpy;
-        vec->vaxpby = &vec_rm_vaxpby;
+        vec->dot = &ghost_densemat_rm_dotprod_selector;
+        vec->vaxpy = &ghost_densemat_rm_vaxpy_selector;
+        vec->vaxpby = &ghost_densemat_rm_vaxpby_selector;
         vec->axpy = &vec_rm_axpy;
         vec->axpby = &vec_rm_axpby;
         vec->scale = &vec_rm_scale;
-        vec->vscale = &vec_rm_vscale;
+        vec->vscale = &ghost_densemat_rm_vscale_selector;
         vec->fromScalar = &vec_rm_fromScalar;
-        vec->fromRand = &vec_rm_fromRand;
+        vec->fromRand = &ghost_densemat_rm_fromRand_selector;
     }
 
     vec->memtranspose = &vec_rm_memtranspose;
     vec->compress = &vec_rm_compress;
-    vec->string = &vec_rm_print;
+    vec->string = &ghost_densemat_rm_string_selector;
     vec->fromFunc = &vec_rm_fromFunc;
     vec->fromVec = &vec_rm_fromVec;
     vec->fromFile = &vec_rm_fromFile;
     vec->toFile = &vec_rm_toFile;
     vec->distribute = &ghost_distributeVector;
     vec->collect = &ghost_collectVectors;
-    vec->normalize = &ghost_densemat_rm_normalize;
+    vec->normalize = &ghost_densemat_rm_normalize_selector;
     vec->destroy = &ghost_freeVector;
     vec->permute = &ghost_permuteVector;
     vec->clone = &ghost_cloneVector;
@@ -560,21 +532,6 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
     return GHOST_SUCCESS;
 }
 
-static ghost_error_t ghost_densemat_rm_normalize( ghost_densemat_t *vec)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,vec->traits.datatype));
-    ghost_densemat_rm_normalize_funcs[dtIdx](vec);
-    return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_rm_print(ghost_densemat_t *vec, char **str)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,vec->traits.datatype));
-    return ghost_densemat_rm_string_funcs[dtIdx](str,vec);
-}
-
 ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
 {
     ghost_lidx_t v;
@@ -738,9 +695,7 @@ static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, 
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
     }
 
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_rm_vaxpy_funcs[dtIdx](vec,vec2,s),err,ret);
+    ret = vec->vaxpy(vec,vec2,s);
 
     goto out;
 err:
@@ -766,9 +721,8 @@ static ghost_error_t vec_rm_axpby(ghost_densemat_t *vec, ghost_densemat_t *vec2,
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
         memcpy(&b[i*vec->elSize],_b,vec->elSize);
     }
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_rm_vaxpby_funcs[dtIdx](vec,vec2,s,b),err,ret);
+
+    ret = vec->vaxpby(vec,vec2,scale,_b);
 
     goto out;
 err:
@@ -777,35 +731,6 @@ out:
     free(s);
     free(b);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-    return ret;
-}
-
-static ghost_error_t vec_rm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
-{
-    ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    ret = ghost_densemat_rm_vaxpy_funcs[dtIdx](vec,vec2,scale);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-
-    goto out;
-err:
-out:
-    return ret;
-}
-
-static ghost_error_t vec_rm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b)
-{
-    ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    ret = ghost_densemat_rm_vaxpby_funcs[dtIdx](vec,vec2,scale,b);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-    goto out;
-err:
-out:
     return ret;
 }
 
@@ -821,9 +746,8 @@ static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale)
     for (i=0; i<nc; i++) {
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
     }
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    GHOST_CALL_GOTO(ghost_densemat_rm_vscale_funcs[dtIdx](vec,s),err,ret);
+
+    ret = vec->vscale(vec,s);
 
     goto out;
 err:
@@ -832,36 +756,6 @@ out:
     free(s);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_rm_vscale(ghost_densemat_t *vec, void *scale)
-{
-    ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    ret = ghost_densemat_rm_vscale_funcs[dtIdx](vec,scale);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
-
-    goto out;
-err:
-out:
-    return ret;
-}
-
-static ghost_error_t vec_rm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
-{
-    ghost_error_t ret = GHOST_SUCCESS;
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_GOTO(ghost_datatype_idx(&dtIdx,vec->traits.datatype),err,ret);
-    ret = ghost_densemat_rm_dotprod_funcs[dtIdx](vec,res,vec2);
-    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
- 
-    goto out;
-err:
-out:
-    return ret;
 }
 
 static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c) 
@@ -889,13 +783,6 @@ static ghost_error_t vec_rm_entry(ghost_densemat_t * vec, void *val, ghost_lidx_
     }
 
     return GHOST_SUCCESS;
-}
-
-static ghost_error_t vec_rm_fromRand(ghost_densemat_t *vec)
-{
-    ghost_datatype_idx_t dtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&dtIdx,vec->traits.datatype));
-    return ghost_densemat_rm_fromRand_funcs[dtIdx](vec);
 }
 
 static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
