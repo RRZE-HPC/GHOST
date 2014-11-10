@@ -19,6 +19,7 @@ extern "C" {
 #endif
 
 ghost_error_t ghost_svqb(ghost_densemat_t * v_ot , ghost_densemat_t * v);
+ghost_error_t ghost_blockortho(ghost_densemat_t * w , ghost_densemat_t * v);
 
 #ifdef __cplusplus
 }
