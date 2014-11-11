@@ -656,7 +656,7 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
                         GHOST_CALL_RETURN(ghost_cu_download(v1val,cuv2val,vec2->traits.nrows*vec->elSize));
 #endif
                     } else {
-                        memcpy(v1val,v2val,vec2->traits.nrows*vec->elSize);
+                        memcpy(v1val,v2val,vec->traits.nrows*vec->elSize);
                     }
                 }
                 cuv1val += vec->traits.nrowspadded*vec->elSize;
