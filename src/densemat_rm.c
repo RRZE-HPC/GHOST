@@ -634,20 +634,20 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
                 if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                     if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                        GHOST_CALL_RETURN(ghost_cu_memcpy(cuv1val,cuv2val,vec2->traits.ncols*vec->elSize));
+                        GHOST_CALL_RETURN(ghost_cu_memcpy(cuv1val,cuv2val,vec->traits.ncols*vec->elSize));
 #endif
                     } else {
 #ifdef GHOST_HAVE_CUDA
-                        GHOST_CALL_RETURN(ghost_cu_upload(cuv1val,v2val,vec2->traits.ncols*vec->elSize));
+                        GHOST_CALL_RETURN(ghost_cu_upload(cuv1val,v2val,vec->traits.ncols*vec->elSize));
 #endif
                     }
                 } else {
                     if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                        GHOST_CALL_RETURN(ghost_cu_download(v1val,cuv2val,vec2->traits.ncols*vec->elSize));
+                        GHOST_CALL_RETURN(ghost_cu_download(v1val,cuv2val,vec->traits.ncols*vec->elSize));
 #endif
                     } else {
-                        memcpy(v1val,v2val,vec2->traits.ncols*vec->elSize);
+                        memcpy(v1val,v2val,vec->traits.ncols*vec->elSize);
                     }
                 }
                 cuv1val += vec->traits.ncolspadded*vec->elSize;
@@ -659,20 +659,20 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                 if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                    GHOST_CALL_RETURN(ghost_cu_memcpy(cuv1val,cuv2val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize));
+                    GHOST_CALL_RETURN(ghost_cu_memcpy(cuv1val,cuv2val,vec->traits.ncolspadded*vec->traits.nrows*vec->elSize));
 #endif
                 } else {
 #ifdef GHOST_HAVE_CUDA
-                    GHOST_CALL_RETURN(ghost_cu_upload(cuv1val,v2val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize));
+                    GHOST_CALL_RETURN(ghost_cu_upload(cuv1val,v2val,vec->traits.ncolspadded*vec->traits.nrows*vec->elSize));
 #endif
                 }
             } else {
                 if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-                    GHOST_CALL_RETURN(ghost_cu_download(v1val,cuv2val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize));
+                    GHOST_CALL_RETURN(ghost_cu_download(v1val,cuv2val,vec->traits.ncolspadded*vec->traits.nrows*vec->elSize));
 #endif
                 } else {
-                    memcpy(v1val,v2val,vec2->traits.ncolspadded*vec2->traits.nrows*vec->elSize);
+                    memcpy(v1val,v2val,vec->traits.ncolspadded*vec->traits.nrows*vec->elSize);
                 }
             }
         }
