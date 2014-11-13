@@ -757,7 +757,7 @@ static ghost_error_t vec_cm_scale(ghost_densemat_t *vec, void *scale)
         memcpy(&s[i*vec->elSize],scale,vec->elSize);
     }
 
-    ret = vec->scale(vec,scale);
+    ret = vec->vscale(vec,s);
 
     goto out;
 err:
