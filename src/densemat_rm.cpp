@@ -6,6 +6,7 @@
 #endif
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 #include <complex>
 #include <stdio.h>
 
@@ -283,8 +284,11 @@ template <typename v_t>
 static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t *vec)
 {
     stringstream buffer;
-    buffer.precision(6);
-    buffer.setf(ios::fixed, ios::floatfield);
+    buffer << std::setprecision(6)
+           << std::right
+           << std::scientific
+           << std::setw(10);
+
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         ghost_lidx_t i,v,r,j;
@@ -294,7 +298,7 @@ static ghost_error_t ghost_densemat_rm_string_tmpl(char **str, ghost_densemat_t 
                     if (ghost_bitmap_isset(vec->ldmask,j)) {
                         v_t val = 0.;
                         GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[i*vec->traits.ncolspadded+j]),sizeof(v_t)));
-                        buffer << val << "\t";
+                        buffer << val;
                         v++;
                     }
                 }
