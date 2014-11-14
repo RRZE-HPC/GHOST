@@ -1,3 +1,5 @@
+#ifndef GHOST_PUMAP_H
+#define GHOST_PUMAP_H
 /**
  * @ingroup task @{
  * @file pumap.h
@@ -126,3 +128,4 @@ extern "C" {
 #endif
 
 /** @} */
+#endif
