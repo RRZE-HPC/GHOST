@@ -358,7 +358,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             } 
             else 
             {
-                sgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
+                sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx);
             }    
         }
     }
