@@ -138,7 +138,7 @@ typedef enum {
     /**
      * @brief Create a matrix permutation reflecting a distance-2-coloring.
      */
-    GHOST_SPARSEMAT_COLOR
+    GHOST_SPARSEMAT_COLOR = 512
 } ghost_sparsemat_flags_t;
 
 
