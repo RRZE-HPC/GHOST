@@ -64,7 +64,7 @@ ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
     xtraits.nrows = n;
-    xtraits.storage = GHOST_DENSEMAT_ROWMAJOR;
+    xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
@@ -86,7 +86,7 @@ ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
         }
     }
     
-    if (call_eig_function<T,T_b>( LAPACK_ROW_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
+    if (call_eig_function<T,T_b>( LAPACK_COL_MAJOR, 'V' , 'U', n, xval, ldx, eigs)) {
         ERROR_LOG("LAPACK eigenvalue function failed!");
         ret = GHOST_ERR_LAPACK;
         goto err;
@@ -95,7 +95,7 @@ ghost_error_t ghost_svqb_tmpl (ghost_densemat_t * v_ot , ghost_densemat_t * v)
     for ( i=0;i<n;i++) eigs[i] = 1./sqrt(eigs[i]);
     for ( i=0;i<n;i++) {
          for( j=0;j<n;j++) {
-            xval[i*ldx+j] *= D[i]*eigs[j];
+            xval[i*ldx+j] *= D[j]*eigs[i];
          }
     }
     GHOST_CALL_GOTO(ghost_tsmm( v_ot, v, x, &one, &zero),err,ret);
@@ -130,7 +130,7 @@ static ghost_error_t ghost_blockortho_tmpl (ghost_densemat_t * w , ghost_densema
     xtraits.flags |= GHOST_DENSEMAT_NO_HALO; 
     xtraits.ncols = n;
     xtraits.nrows = m;
-    xtraits.storage = GHOST_DENSEMAT_ROWMAJOR;
+    xtraits.storage = GHOST_DENSEMAT_COLMAJOR;
     xtraits.datatype = DT;
     GHOST_CALL_GOTO(ghost_densemat_create(&x,NULL,xtraits),err,ret);
     GHOST_CALL_GOTO(x->fromScalar(x,&zero),err,ret);
