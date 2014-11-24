@@ -46,6 +46,14 @@ extern "C" {
     /**
      * @ingroup core
      *
+     * @brief Check if GHOST is initialized. 
+     *
+     * @return True if GHOST is initialized, false otherwise.
+     */
+    int ghost_initialized();
+    /**
+     * @ingroup core
+     *
      * @brief Finalize GHOST.
      *
      * @return GHOST_SUCCESS on success or an error indicator.
