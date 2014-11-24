@@ -30,7 +30,8 @@ typedef enum {
     GHOST_ERR_IO,
     GHOST_ERR_DATATYPE,
     GHOST_ERR_COLPACK,
-    GHOST_ERR_LAPACK
+    GHOST_ERR_LAPACK,
+    GHOST_ERR_BLAS
 } ghost_error_t;
 
 /**
@@ -244,6 +245,28 @@ typedef enum {
     if (err != _TRUE) {\
         ERROR_LOG("ColPack Error: %d",err);\
         __err = GHOST_ERR_COLPACK;\
+    }\
+}\
+
+#define BLAS_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    BLAS_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define BLAS_CALL_GOTO(call,label,__err) {\
+    BLAS_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define BLAS_CALL(call,__err) {\
+    call;\
+    if (ghost_blas_err_pop()) {\
+        __err = GHOST_ERR_BLAS;\
     }\
 }\
 

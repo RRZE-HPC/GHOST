@@ -33,6 +33,15 @@ char * ghost_error_string(ghost_error_t e)
         case GHOST_ERR_DATATYPE:
             return "Error with data types";
             break;
+        case GHOST_ERR_COLPACK:
+            return "Error in ColPack";
+            break;
+        case GHOST_ERR_LAPACK:
+            return "Error in LAPACK";
+            break;
+        case GHOST_ERR_BLAS:
+            return "Error in BLAS";
+            break;
         case GHOST_ERR_UNKNOWN:
             return "Unknown error";
             break;

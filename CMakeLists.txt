@@ -64,6 +64,7 @@ set (SOURCES
     src/averaging.cpp
     src/bincrs.c
     src/bincrs.cpp
+    src/blas_util.c
     src/carp.c
     src/context.c
     src/core.c

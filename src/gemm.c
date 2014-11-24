@@ -4,6 +4,7 @@
 #include "ghost/math.h"
 #include "ghost/locality.h"
 #include "ghost/blas_mangle.h"
+#include "ghost/blas_util.h"
 
 #include <strings.h>
 #ifdef GHOST_HAVE_CUDA
@@ -346,11 +347,11 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
+                BLAS_CALL_RETURN(zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx));
             } 
             else 
             {
-                cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx);
+                BLAS_CALL_RETURN(cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx));
             }
         } 
         else 
@@ -361,7 +362,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             } 
             else 
             {
-                sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx);
+                BLAS_CALL_RETURN(sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx));
             }    
         }
     }
