@@ -24,6 +24,7 @@
 
 static ghost_type_t ghost_type = GHOST_TYPE_INVALID;
 static int MPIwasInitialized = 0;
+static int initialized = 0;
 
 char * ghost_type_string(ghost_type_t t)
 {
@@ -62,10 +63,13 @@ ghost_error_t ghost_type_get(ghost_type_t *t)
     return GHOST_SUCCESS;
 }
 
+int ghost_initialized()
+{
+    return initialized; 
+}
+
 ghost_error_t ghost_init(int argc, char **argv)
 {
-    static int initialized = 0;
-
     if (initialized) {
         return GHOST_SUCCESS;
     } else {
