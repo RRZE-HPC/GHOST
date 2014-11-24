@@ -18,8 +18,10 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     ColPack::GraphColoring *GC=new ColPack::GraphColoring();
 
     int me, i, j;
-    ghost_gidx_t *rpt = NULL, *rptlocal = NULL;
-    ghost_gidx_t *col = NULL, *collocal = NULL;
+    ghost_gidx_t *rpt = NULL;
+    ghost_lidx_t *rptlocal = NULL;
+    ghost_gidx_t *col = NULL;
+    ghost_lidx_t *collocal = NULL;
     ghost_lidx_t nnz = 0, nnzlocal = 0;
     int64_t pos=0;
 
@@ -96,7 +98,7 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
         }
     }
         
-    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_gidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&collocal,nnzlocal * sizeof(ghost_lidx_t)),err,ret);
 
     for (i=0; i<mat->context->lnrows[me]; i++) {
         rptlocal[i+1] = rptlocal[i];
