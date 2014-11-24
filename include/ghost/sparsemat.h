@@ -613,6 +613,9 @@ extern "C" {
      */
     void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat);
 
+    int ghost_cmp_entsperrow(const void* a, const void* b);
+        
+
 #ifdef __cplusplus
 } 
 #endif

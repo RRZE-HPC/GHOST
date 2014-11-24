@@ -1365,7 +1365,7 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
         permvec = vec;
     }
     if (permvec->traits.nrows != permutation->len) {
-        WARNING_LOG("Lenghts do not match: vec has %d rows, permutation has length %d",permvec->traits.nrows,permutation->len);
+        WARNING_LOG("Lenghts do not match: vec has %d rows, permutation has length %"PRGIDX,permvec->traits.nrows,permutation->len);
         return GHOST_ERR_INVALID_ARG;
     }
     len = permvec->traits.nrows;

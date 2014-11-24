@@ -18,13 +18,13 @@ extern "C" ghost_error_t ghost_sparsemat_perm_color(ghost_sparsemat_t *mat, void
     ColPack::GraphColoring *GC=new ColPack::GraphColoring();
 
     int me, i, j;
-    ghost_lidx_t *rpt = NULL, *rptlocal = NULL;
+    ghost_gidx_t *rpt = NULL, *rptlocal = NULL;
     ghost_gidx_t *col = NULL, *collocal = NULL;
     ghost_lidx_t nnz = 0, nnzlocal = 0;
     int64_t pos=0;
 
     GHOST_CALL_GOTO(ghost_rank(&me,mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rptlocal,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx_t)),err,ret);
 
         

@@ -1,5 +1,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/util.h"
+#include "ghost/locality.h"
+#include "ghost/bincrs.h"
 
 #ifdef GHOST_HAVE_SCOTCH
 #ifdef GHOST_HAVE_MPI
@@ -20,10 +22,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #else
     GHOST_INSTR_START("scotch")
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t *rpt = NULL;
     ghost_gidx_t *col = NULL, i, c;
     ghost_sorting_t *rowSort = NULL;
-    ghost_gidx_t *grpt = NULL;
+    ghost_gidx_t *rpt = NULL;
     ghost_gidx_t *col_loopless = NULL;
     ghost_gidx_t *rpt_loopless = NULL;
     ghost_lidx_t nnz = 0;
@@ -50,7 +51,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_lidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t)),err,ret);
     
     GHOST_INSTR_START("scotch_readin")
     if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
@@ -61,6 +62,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
             rpt[i] -= rpt[0];
         }
         rpt[0] = 0;
+
         nnz = rpt[mat->context->lnrows[me]];
         GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_lidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
@@ -217,16 +219,15 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         ghost_gidx_t scope = mat->traits->sortScope;
         
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_t)),err,ret);
-        GHOST_CALL_GOTO(ghost_malloc((void **)&grpt,nrows*sizeof(ghost_gidx_t)),err,ret);
 
-        memset(grpt,0,nrows*sizeof(ghost_gidx_t));
+        memset(rpt,0,nrows*sizeof(ghost_gidx_t));
         
         if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
             char *matrixPath = (char *)matrixSource;
-            GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, 0, nrows+1, NULL),err,ret);
+            GHOST_CALL_GOTO(ghost_bincrs_rpt_read(rpt, matrixPath, 0, nrows+1, NULL),err,ret);
             for (i=0; i<nrows; i++) {
                 rowSort[mat->context->permutation->perm[i]].row = i;
-                rowSort[mat->context->permutation->perm[i]].nEntsInRow = grpt[i+1]-grpt[i];
+                rowSort[mat->context->permutation->perm[i]].nEntsInRow = rpt[i+1]-rpt[i];
             
             }
         
@@ -247,9 +248,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
        
         for (c=0; c<nrows/scope; c++) {
-            qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), compareNZEPerRow );
+            qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
         }
-        qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), compareNZEPerRow);
+        qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
         
         for(i=0; i < nrows; ++i) {
             (mat->context->permutation->invPerm)[i] =rowSort[i].row;
@@ -272,7 +273,6 @@ err:
 
 out:
     free(rpt);
-    free(grpt);
     free(rowSort);
     free(col);
     free(rpt_loopless);

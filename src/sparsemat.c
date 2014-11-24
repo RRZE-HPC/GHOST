@@ -368,7 +368,7 @@ out:
     return ret;
 }
 
-static int compareNZEPerRow( const void* a, const void* b ) 
+int ghost_cmp_entsperrow(const void* a, const void* b) 
 {
     return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
 }
@@ -446,9 +446,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
 
     for (c=0; c<nrows/scope; c++) {
-        qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), compareNZEPerRow );
+        qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
     }
-    qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), compareNZEPerRow);
+    qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
     
     for(i=0; i < nrows; ++i) {
         (mat->context->permutation->invPerm)[i] = rowSort[i].row;
