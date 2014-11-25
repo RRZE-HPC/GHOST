@@ -318,8 +318,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, ghost_
 {
     // if map is empty include generated code for map construction
     if (ghost_sellspmv_kernels.empty()) {
-#include "sell_kernel_avx.def"
-#include "sell_kernel_sse.def"
+#include "sell_spmv_avx.def"
+#include "sell_spmv_sse.def"
     }
 
     ghost_error_t ret = GHOST_SUCCESS;
