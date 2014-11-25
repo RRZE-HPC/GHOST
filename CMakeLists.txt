@@ -71,6 +71,7 @@ set (SOURCES
     src/crs.c 
     src/crs.cpp
     src/crs_kacz.cpp
+    src/crs_spmv.cpp
     src/datatransfers.cpp 
     src/densemat.c
     src/densemat_cm.c 
