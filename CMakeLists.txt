@@ -177,21 +177,21 @@ endforeach()
 set(SELL_C_NCOLS_SWITCHCASCADE "${SELL_C_NCOLS_SWITCHCASCADE}    default:\\\n        WARNING_LOG(\"Non-configured chunk height: %d!\",SELL(mat)->chunkHeight);\\\n        do_fallback = true;\\\n}\\\n")
 
 configure_file(
-    ${PROJECT_SOURCE_DIR}/src/sell_kernel.cu.in
-    ${PROJECT_BINARY_DIR}/src/sell_kernel.cu
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv.cu.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv.cu
     )
 
 configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_kernel_sse.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_sse.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     )
 configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_kernel_avx.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
     )
 configure_file (
-    ${PROJECT_SOURCE_DIR}/src/sell_kernel_mic.c.in
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
+    ${PROJECT_SOURCE_DIR}/src/sell_spmv_mic.c.in
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     )
 configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm.c.in
@@ -207,9 +207,9 @@ configure_file (
     )
 
 set (TO_PREPROCESS
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_avx.c
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_sse.c
-    ${PROJECT_BINARY_DIR}/src/sell_kernel_mic.c
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
+    ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
@@ -325,7 +325,7 @@ if (USE_CUDA)
         #set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
         #set(CUDA_SEPARABLE_COMPILATION_ON)
         #set(BUILD_SHARED_LIBS OFF)
-        cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_kernel.cu)
+        cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_spmv.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
