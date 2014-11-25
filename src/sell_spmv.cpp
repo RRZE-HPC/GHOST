@@ -216,7 +216,8 @@ static ghost_error_t SELL_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densem
     return GHOST_SUCCESS;
 }
 
-template<typename m_t, typename v_t> ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
+template<typename m_t, typename v_t> 
+static ghost_error_t SELL_kernel_plain_ELLPACK_tmpl(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     DEBUG_LOG(2,"In plain ELLPACK (SELL) kernel");
@@ -313,7 +314,7 @@ static bool operator<(const ghost_sellspmv_parameters_t &a, const ghost_sellspmv
 
 static map<ghost_sellspmv_parameters_t, sellspmv_kernel> ghost_sellspmv_kernels = map<ghost_sellspmv_parameters_t, sellspmv_kernel>();
 
-extern "C" ghost_error_t SELL_kernel_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
+extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
     // if map is empty include generated code for map construction
     if (ghost_sellspmv_kernels.empty()) {

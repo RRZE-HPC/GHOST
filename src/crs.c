@@ -65,7 +65,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     }
     else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)
     {
-        mat->spmv   = &CRS_kernel_plain_selector;
+        mat->spmv   = &ghost_crs_spmv_selector;
         mat->kacz   = &ghost_crs_kacz;
     }
 
@@ -78,7 +78,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     mat->byteSize = &CRS_byteSize;
     mat->permute = &CRS_permute;
     mat->destroy  = &CRS_free;
-    mat->string = &CRS_stringify_selector;
+    mat->string = &ghost_crs_stringify_selector;
     mat->upload = &CRS_upload;
     mat->split = &CRS_split;
     GHOST_CALL_GOTO(ghost_malloc((void **)&(mat->data),sizeof(ghost_crs_t)),err,ret);

@@ -181,7 +181,7 @@ static ghost_error_t CRS_kernel_plain_tmpl(ghost_sparsemat_t *mat, ghost_densema
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t CRS_kernel_plain_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
+extern "C" ghost_error_t ghost_crs_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp)
 {
     ghost_error_t ret;
 

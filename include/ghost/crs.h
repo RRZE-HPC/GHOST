@@ -46,8 +46,8 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat);
 extern "C" {
 #endif
     
-ghost_error_t CRS_kernel_plain_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t CRS_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t ghost_crs_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t ghost_crs_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
 
 #ifdef __cplusplus
 }

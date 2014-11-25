@@ -76,9 +76,8 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 #ifdef __cplusplus
 extern "C" {
 #endif
-sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs);
-ghost_error_t SELL_kernel_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t SELL_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
+ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
+ghost_error_t ghost_sell_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
 
 #ifdef GHOST_HAVE_CUDA
 ghost_error_t dd_SELL_kernel_CU(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list);

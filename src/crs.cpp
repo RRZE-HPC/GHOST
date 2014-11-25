@@ -62,7 +62,7 @@ static ghost_error_t CRS_stringify_tmpl(ghost_sparsemat_t *mat, char ** str, int
     return GHOST_SUCCESS;
 }
 
-extern "C" ghost_error_t CRS_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense)
+extern "C" ghost_error_t ghost_crs_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense)
 {
     ghost_error_t ret;
 

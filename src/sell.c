@@ -79,9 +79,9 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->formatName = &SELL_formatName;
     mat->rowLen     = &SELL_rowLen;
     mat->byteSize   = &SELL_byteSize;
-    mat->spmv     = &SELL_kernel_selector;
+    mat->spmv     = &ghost_sell_spmv_selector;
     mat->kacz   = &ghost_sell_kacz;
-    mat->string    = &SELL_stringify_selector;
+    mat->string    = &ghost_sell_stringify_selector;
     mat->split = &SELL_split;
     mat->permute = &SELL_permute;
 #ifdef VSX_INTR
