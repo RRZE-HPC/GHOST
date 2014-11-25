@@ -88,6 +88,7 @@ set (SOURCES
     src/rand.c
     src/sell.c 
     src/sell.cpp
+    src/sell_kacz.cpp
     src/sparsemat.c
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
@@ -139,6 +140,7 @@ set (HEADERS
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sell.h
+    include/ghost/sell_kacz.h
     include/ghost/sparsemat.h
     include/ghost/spmv.h
     include/ghost/spmv_solvers.h

@@ -1,4 +1,5 @@
 #include "ghost/sell.h"
+#include "ghost/sell_kacz.h"
 #include "ghost/core.h"
 #include "ghost/crs.h"
 #include "ghost/util.h"
@@ -79,6 +80,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->rowLen     = &SELL_rowLen;
     mat->byteSize   = &SELL_byteSize;
     mat->spmv     = &SELL_kernel_selector;
+    mat->kacz   = &ghost_sell_kacz;
     mat->string    = &SELL_stringify_selector;
     mat->split = &SELL_split;
     mat->permute = &SELL_permute;
