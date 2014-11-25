@@ -77,7 +77,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat);
 extern "C" {
 #endif
 sellspmv_kernel ghost_sellspmv_kernel(ghost_sellspmv_parameters_t p, ghost_densemat_t *lhs, ghost_densemat_t *rhs);
-void ghost_sellspmv_kernelmap_generate(void);
 ghost_error_t SELL_kernel_selector(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, ghost_spmv_flags_t options, va_list argp);
 ghost_error_t SELL_stringify_selector(ghost_sparsemat_t *mat, char **str, int dense);
 

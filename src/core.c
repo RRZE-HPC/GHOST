@@ -419,7 +419,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
 
-    ghost_sellspmv_kernelmap_generate();
     ghost_tsmm_kernelmap_generate();
     ghost_tsmm_inplace_kernelmap_generate();
     ghost_tsmttsm_kernelmap_generate();

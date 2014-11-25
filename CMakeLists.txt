@@ -89,6 +89,7 @@ set (SOURCES
     src/sell.c 
     src/sell.cpp
     src/sell_kacz.cpp
+    src/sell_spmv.cpp
     src/sparsemat.c
     src/sparsemat.cpp
     src/sparsemat_perm_colpack.cpp
