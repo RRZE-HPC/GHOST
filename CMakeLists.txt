@@ -425,11 +425,10 @@ if (USE_COLPACK)
     include_directories(${COLPACK_INCLUDE_DIR})
     get_filename_component(COLPACK_LIBDIR ${COLPACK_INCLUDE_DIR}/../lib REALPATH)
 
-    set(LIBCOLPACK LIBCOLPACK-NOTFOUND)
-
-    find_library(LIBCOLPACK ColPack ${COLPACK_LIBDIR})
-    set(COLPACK_LIBRARIES ${LIBCOLPACK})
-    mark_as_advanced(LIBCOLPACK)
+    find_library(COLPACK_LIBRARIES ColPack ${COLPACK_LIBDIR})
+    if (NOT COLPACK_LIBRARIES)
+        message(FATAL_ERROR "COLPACK_INCLUDE_DIR not set correctly!")
+    endif()
 endif()
 
 
