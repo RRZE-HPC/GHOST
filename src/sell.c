@@ -19,18 +19,6 @@
 #include <omp.h>
 #endif
 
-#if defined(VSX)
-#include <altivec.h>
-#endif
-
-#ifdef GHOST_HAVE_CUDA
-static ghost_error_t (*SELL_kernels_CU[4][4]) (ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t, va_list argp) = 
-{{&ss_SELL_kernel_CU,&sd_SELL_kernel_CU,&sc_SELL_kernel_CU,&sz_SELL_kernel_CU},
-    {&ds_SELL_kernel_CU,&dd_SELL_kernel_CU,&dc_SELL_kernel_CU,&dz_SELL_kernel_CU},
-    {&cs_SELL_kernel_CU,&cd_SELL_kernel_CU,&cc_SELL_kernel_CU,&cz_SELL_kernel_CU},
-    {&zs_SELL_kernel_CU,&zd_SELL_kernel_CU,&zc_SELL_kernel_CU,&zz_SELL_kernel_CU}};
-#endif
-
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * SELL_formatName(ghost_sparsemat_t *mat);
 static ghost_lidx_t SELL_rowLen (ghost_sparsemat_t *mat, ghost_lidx_t i);
@@ -43,12 +31,6 @@ static ghost_error_t SELL_toBinCRS(ghost_sparsemat_t *mat, char *matrixPath);
 static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src_rowfunc_t *src);
 static void SELL_free(ghost_sparsemat_t *mat);
 static int ghost_selectSellChunkHeight(int datatype);
-#ifdef GHOST_HAVE_CUDA
-static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags, va_list argp);
-#endif
-#ifdef VSX_INTR
-static void SELL_kernel_VSX (ghost_sparsemat_t *mat, ghost_densemat_t *lhs, ghost_densemat_t *rhs, int options);
-#endif
 
 ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
 {
@@ -66,8 +48,6 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
             mat->traits->flags |= GHOST_SPARSEMAT_HOST;
         }
     }
-    //TODO is it reasonable that a matrix has HOST&DEVICE?
-
     ghost_type_t ghost_type;
     GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
 
@@ -84,12 +64,9 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
     mat->string    = &ghost_sell_stringify_selector;
     mat->split = &SELL_split;
     mat->permute = &SELL_permute;
-#ifdef VSX_INTR
-    mat->spmv = &SELL_kernel_VSX;
-#endif
 #ifdef GHOST_HAVE_CUDA
-    if (ghost_type == GHOST_TYPE_CUDA) {
-        mat->spmv   = &SELL_kernel_CU;
+    if ((ghost_type == GHOST_TYPE_CUDA) && (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)) {
+        mat->spmv   = &ghost_cu_sell_spmv_selector;
     }
 #endif
     mat->destroy  = &SELL_free;
@@ -931,55 +908,6 @@ static void SELL_free(ghost_sparsemat_t *mat)
     return (int)log2((double)i);
 }*/
 
-#ifdef GHOST_HAVE_CUDA
-static ghost_error_t SELL_kernel_CU (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t flags,va_list argp)
-{
-    DEBUG_LOG(1,"Calling SELL CUDA kernel");
-    DEBUG_LOG(2,"lhs vector has %s data",ghost_datatype_string(lhs->traits.datatype));
-    ghost_datatype_idx_t matDtIdx;
-    ghost_datatype_idx_t vecDtIdx;
-    GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,mat->traits->datatype));
-    GHOST_CALL_RETURN(ghost_datatype_idx(&vecDtIdx,lhs->traits.datatype));
-
-    return SELL_kernels_CU
-        [matDtIdx]
-        [vecDtIdx](mat,lhs,rhs,flags,argp);
-
-
-}
-#endif
-
-#ifdef VSX_INTR
-static void SELL_kernel_VSX (ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * invec, int options)
-{
-    ghost_lidx_t c,j;
-    ghost_lidx_t offs;
-    vector double tmp;
-    vector double val;
-    vector double rhs;
-
-
-#pragma omp parallel for schedule(runtime) private(j,tmp,val,rhs,offs)
-    for (c=0; c<mat->nrowsPadded>>1; c++) 
-    { // loop over chunks
-        tmp = vec_splats(0.);
-        offs = SELL(mat)->chunkStart[c];
-
-        for (j=0; j<(SELL(mat)->chunkStart[c+1]-SELL(mat)->chunkStart[c])>>1; j++) 
-        { // loop inside chunk
-            val = vec_xld2(offs*sizeof(ghost_dt),SELL(mat)->val);                      // load values
-            rhs = vec_insert(invec->val[SELL(mat)->col[offs++]],rhs,0);
-            rhs = vec_insert(invec->val[SELL(mat)->col[offs++]],rhs,1);
-            tmp = vec_madd(val,rhs,tmp);
-        }
-        if (options & GHOST_SPMV_AXPY) {
-            vec_xstd2(vec_add(tmp,vec_xld2(c*SELL(mat)->chunkHeight*sizeof(ghost_dt),lhs->val)),c*SELL(mat)->chunkHeight*sizeof(ghost_dt),lhs->val);
-        } else {
-            vec_xstd2(tmp,c*SELL(mat)->chunkHeight*sizeof(ghost_dt),lhs->val);
-        }
-    }
-}
-#endif
 
 static int ghost_selectSellChunkHeight(int datatype) {
     /* int ch = 1;

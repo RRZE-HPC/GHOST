@@ -96,6 +96,72 @@ typedef int ghost_mpi_datatype_t;
             }\
         }\
     }\
+
+/**
+ * @brief Calls the function with template arguments <dt1_device,dt2_host,dt2_device,dt2_base>.
+ */
+#define SELECT_TMPL_4DATATYPES(dt1,dt2,complexclass,ret,func,...)\
+    if (dt1 & GHOST_DT_COMPLEX) {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuDoubleComplex,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuDoubleComplex,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuDoubleComplex,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuDoubleComplex,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuFloatComplex,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuFloatComplex,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuFloatComplex,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuFloatComplex,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    } else {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    }\
    
 #define SELECT_TMPL_1DATATYPE(dt,complexclass,ret,func,...)\
     if (dt & GHOST_DT_COMPLEX) {\
