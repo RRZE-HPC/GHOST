@@ -795,18 +795,20 @@ static ghost_error_t vec_rm_fromScalar(ghost_densemat_t *vec, void *val)
     if (ghost_bitmap_weight(vec->ldmask) != vec->traits.ncolsorig || 
             ghost_bitmap_weight(vec->trmask) != vec->traits.nrowsorig) {
         ghost_lidx_t col,row,colidx;
-        WARNING_LOG("Potentially slow fromScalar operation because some rows or columns are masked out!");
+        WARNING_LOG("Potentially slow and NUMA-unaware fromScalar operation because some rows or columns are masked out!");
         ITER_BEGIN_RM(vec,col,row,colidx)
         memcpy(VECVAL_RM(vec,vec->val,row,col),val,vec->elSize);
         ITER_END_RM(colidx)
-        vec->upload(vec);
     } else {
-        ghost_lidx_t i;
-        for (i=0; i<vec->traits.ncolspadded*vec->traits.nrows; i++) {
-            memcpy(&vec->val[0][i*vec->elSize],val,vec->elSize);
+        ghost_lidx_t i,j;
+#pragma omp parallel for schedule(runtime) private(j)
+        for (i=0; i<vec->traits.nrows; i++) {
+            for (j=0; j<vec->traits.ncols; j++) {
+                memcpy(&vec->val[i][j*vec->elSize],val,vec->elSize);
+            }
         }
     }
-        
+    vec->upload(vec);
 
     return GHOST_SUCCESS;
 }

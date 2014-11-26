@@ -799,10 +799,23 @@ static ghost_error_t vec_cm_fromScalar(ghost_densemat_t *vec, void *val)
     ghost_densemat_cm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRLIDX" rows",vec->traits.nrows);
 
-    int row,col,rowidx;
-    ITER_BEGIN_CM(vec,col,row,rowidx)
-    memcpy(VECVAL_CM(vec,vec->val,col,row),val,vec->elSize);
-    ITER_END_CM(rowidx)
+    if (ghost_bitmap_weight(vec->trmask) != vec->traits.ncolsorig || 
+            ghost_bitmap_weight(vec->ldmask) != vec->traits.nrowsorig) {
+        WARNING_LOG("Potentially slow and NUMA-unaware fromScalar operation because some rows or columns are masked out!");
+        int row,col,rowidx;
+        ITER_BEGIN_CM(vec,col,row,rowidx)
+        memcpy(VECVAL_CM(vec,vec->val,col,row),val,vec->elSize);
+        ITER_END_CM(rowidx)
+    } else {
+        ghost_lidx_t i,j;
+        for (j=0; j<vec->traits.ncols; j++) {
+#pragma omp parallel for schedule(runtime)
+            for (i=0; i<vec->traits.nrows; i++) {
+                memcpy(&vec->val[j][i*vec->elSize],val,vec->elSize);
+            }
+        }
+
+    }
     vec->upload(vec);
 
     return GHOST_SUCCESS;
