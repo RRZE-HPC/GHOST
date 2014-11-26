@@ -227,7 +227,9 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     wishptr[0] = 0;
     for (i=0;i<nprocs;i++) {
         wishptr[i+1] = wishptr[i]+vec->context->wishes[i];
-        nMsgsOverall += ((size_t)rowsize*vec->context->wishes[i])/INT_MAX + 1;
+        if (vec->context->wishes[i]) {
+            nMsgsOverall += ((size_t)rowsize*vec->context->wishes[i])/INT_MAX + 1;
+        }
     }
     acc_wishes = wishptr[nprocs];
     nMsgsOverall *= 2; // we need to send _and_ receive
@@ -245,14 +247,14 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     }
 
     msgcount = 0;
-    for (i=0;i<2*nprocs;i++) {
+    for (i=0;i<nMsgsOverall;i++) {
         request[i] = MPI_REQUEST_NULL;
     }
     
     char *recv;
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
-        if (vec->context->wishes[from_PE]>0){
+        if (vec->context->wishes[from_PE]>0) {
             if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
                 if (vec->traits.ncols > 1) {
                     recv = tmprecv[from_PE];
@@ -328,6 +330,16 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
     int nprocs;
     int i, from_PE;
     ghost_gidx_t c;
+    if (!request) {
+        ERROR_LOG("The request array is NULL!");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
+    if (!status) {
+        ERROR_LOG("The status array is NULL!");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
    
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
