@@ -15,8 +15,8 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 
-#include "ghost/sell_kernel_avx_gen.h"
-#include "ghost/sell_kernel_sse_gen.h"
+#include "ghost/sell_spmv_avx_gen.h"
+#include "ghost/sell_spmv_sse_gen.h"
 
 #include <sstream>
 #include <cstdlib>
