@@ -8,19 +8,22 @@ Requirements
 ============
 
 1. A C/C++ compiler ([Tested compilers](https://bitbucket.org/essex/ghost/wiki/Compatibility))
-1. [CMake >= 2.8](http://www.cmake.org)
-1. [hwloc >= 1.7](http://www.open-mpi.org/projects/hwloc) ([Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
-1. A BLAS library ([Intel MKL](http://software.intel.com/en-us/intel-mkl) or [GSL](http://www.gnu.org/software/gsl/))
+1. [CMake](http://www.cmake.org) >= 2.8
+1. [hwloc](http://www.open-mpi.org/projects/hwloc) >= 1.7 (older versions *may* work as well) ([Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
+1. A **BLAS** library ([Intel MKL](http://software.intel.com/en-us/intel-mkl) (preferred) or [GSL](http://www.gnu.org/software/gsl/))
 
 Optional
 ========
 
 In order to use GHOST at its best you can decide to make use of the following optional dependencies:
 
-1. An OpenMP-capable C/C++ compiler
+1. An **OpenMP**-capable C/C++ compiler
 1. MPI ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [CUDA](http://www.nvidia.com/cuda) for employing GPU computation ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [SCOTCH](http://www.labri.fr/perso/pelegrin/scotch/) for sparse matrix re-ordering ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility), [Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
+1. [ColPack](http://cscapes.cs.purdue.edu/coloringpage/software.htm) for sparse matrix coloring which is required for the CARP kernel.
+1. A **LAPACKE** library. If MKL is used as the BLAS lib, LAPACKE is present automatically.
+
 
 Installation
 ============
