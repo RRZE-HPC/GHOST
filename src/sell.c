@@ -1,5 +1,4 @@
 #include "ghost/sell.h"
-#include "ghost/sell_kacz.h"
 #include "ghost/core.h"
 #include "ghost/crs.h"
 #include "ghost/util.h"
@@ -18,6 +17,11 @@
 #ifdef GHOST_HAVE_OPENMP
 #include <omp.h>
 #endif
+
+const ghost_sell_aux_t GHOST_SELL_AUX_INITIALIZER = {
+    .C = 32, 
+    .T = 1
+};
 
 static void SELL_printInfo(ghost_sparsemat_t *mat, char **str);
 static const char * SELL_formatName(ghost_sparsemat_t *mat);
@@ -181,7 +185,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     ghost_gidx_t i,col,row;
     ghost_gidx_t chunk,j;
 
-    ghost_sorting_t* rowSort = NULL;
+    ghost_sorting_helper_t* rowSort = NULL;
 
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, mat->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);

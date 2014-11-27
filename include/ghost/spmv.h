@@ -6,7 +6,8 @@
 #ifndef GHOST_SPMV_H
 #define GHOST_SPMV_H
 
-#include "ghost/densemat.h"
+#include "sparsemat.h"
+#include "densemat.h"
 
 /**
  * @brief Flags to be passed to sparse matrix-vector multiplication.
@@ -31,13 +32,30 @@ typedef enum {
     GHOST_SPMV_REMOTE = 16384
 } ghost_spmv_flags_t;
 
-#ifdef __cplusplus
-inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a, const ghost_spmv_flags_t &b)
-{return static_cast<ghost_spmv_flags_t>(static_cast<int>(a) | static_cast<int>(b));}
-#endif
 
-#define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX)
+#define GHOST_SPMV_DOT_ANY (GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|\
+        GHOST_SPMV_DOT_XX)
 
+/**
+ * @brief Parse the SPMV arguments.
+ *
+ * This macro parses the varargs given to an SpMV call and initializes given
+ * variables for the SpMV parameters alpha, beta, gamma, and dot.
+ * Also, it checks whether the current SpMV works on the local or remote matrix
+ * in case of split computation. Depending on that, the flags are manipulated,
+ * e.g., to not compute dot products for the local matrix.
+ *
+ * @param flags The defined flags.
+ * @param argp The argument pointer.
+ * @param alpha Where to store alpha.
+ * @param beta Where to store beta.
+ * @param gamma Where to store gamma.
+ * @param dot Where to store the dot array.
+ * @param dt_in The data type in which the args are present. 
+ * @param dt_out The data of which alpha, beta, gamma, and dot.
+ *
+ * @return 
+ */
 #define GHOST_SPMV_PARSE_ARGS(flags,argp,alpha,beta,gamma,dot,dt_in,dt_out){\
     dt_in *arg = NULL;\
     if (flags & GHOST_SPMV_SCALE) {\
@@ -98,12 +116,51 @@ inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a, const ghost_spm
 #define GHOST_SPMV_MODES_MPI (GHOST_SPMV_MODE_VECTOR | GHOST_SPMV_MODES_SPLIT)
 
 #ifdef __cplusplus
+/**
+ * @brief Bitwise OR operator for ghost_spmv_flags_t.
+ *
+ * @param a First input.
+ * @param b Second input.
+ *
+ * @return Bitwise OR of the inputs cast to int.
+ */
+inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a, 
+        const ghost_spmv_flags_t &b)
+{
+    return static_cast<ghost_spmv_flags_t>(
+            static_cast<int>(a) | static_cast<int>(b));
+}
+
 extern "C" {
 #endif
 
-ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled);
-ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation);
-ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec);
+    /**
+     * @brief Initiate the exchange of halo elements.
+     *
+     * @param vec The densemat.
+     * @param assembled True if ::ghost_spmv_haloexchange_assemble() has already
+     * been called for this densemat. If set to false, this function will be
+     * called.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assembled);
+    /**
+     * @brief Assemble communication buffers for halo exchange.
+     *
+     * @param vec The densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec);
+    /**
+     * @brief Finalize the halo exchange.
+     *
+     * @param vec The densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec);
     
 
 #ifdef __cplusplus

@@ -1,12 +1,14 @@
-#include "ghost/spmv.h"
 #include "ghost/instr.h"
 #include "ghost/error.h"
 #include "ghost/util.h"
 #include "ghost/sparsemat.h"
 #include "ghost/context.h"
 #include "ghost/locality.h"
-#include "ghost/densemat_cm.h"
 #include "ghost/datatransfers.h"
+#ifdef GHOST_HAVE_CUDA
+#include "ghost/cu_densemat_rm.h"
+#include "ghost/cu_densemat_cm.h"
+#endif
 
 
 // one of the three options below has to be commented out
@@ -38,12 +40,13 @@ static void *cu_work;
 
 #endif
 
-ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec, ghost_permutation_t *permutation)
+ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
     int nprocs;
+    ghost_permutation_t *permutation = vec->context->permutation;
     //max_dues = 0;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     int i, to_PE;
@@ -200,12 +203,11 @@ out:
     return ret;
 #else
     UNUSED(vec);
-    UNUSED(permutation);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 }
 
-ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_permutation_t *permutation, bool assembled)
+ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assembled)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
@@ -283,7 +285,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, ghost_perm
     }
    
     if (!assembled) { 
-        GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(vec,permutation),err,ret);
+        GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(vec),err,ret);
     }
     
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
@@ -315,7 +317,6 @@ out:
     return ret;
 #else
     UNUSED(vec);
-    UNUSED(permutation);
     UNUSED(assembled);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif

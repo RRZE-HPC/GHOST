@@ -4,7 +4,6 @@
 #include "ghost/cu_crs.h"
 #endif
 #include "ghost/crs.h"
-#include "ghost/crs_kacz.h"
 #include "ghost/util.h"
 #include "ghost/core.h"
 #include "ghost/sparsemat.h"
@@ -60,7 +59,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     {
 #ifdef GHOST_HAVE_CUDA
         WARNING_LOG("It is not recommended to use CRS on a GPU!");
-        mat->spmv = &ghost_cu_crsspmv;
+        mat->spmv = &ghost_cu_crs_spmv_selector;
 #endif
     }
     else if (mat->traits->flags & GHOST_SPARSEMAT_HOST)

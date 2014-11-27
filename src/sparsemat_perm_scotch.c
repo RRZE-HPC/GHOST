@@ -23,7 +23,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     GHOST_INSTR_START("scotch")
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_gidx_t *col = NULL, i, c;
-    ghost_sorting_t *rowSort = NULL;
+    ghost_sorting_helper_t *rowSort = NULL;
     ghost_gidx_t *rpt = NULL;
     ghost_gidx_t *col_loopless = NULL;
     ghost_gidx_t *rpt_loopless = NULL;
@@ -218,7 +218,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         ghost_gidx_t nrows = mat->context->gnrows;
         ghost_gidx_t scope = mat->traits->sortScope;
         
-        GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper_t)),err,ret);
 
         memset(rpt,0,nrows*sizeof(ghost_gidx_t));
         
@@ -248,9 +248,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
        
         for (c=0; c<nrows/scope; c++) {
-            qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
+            qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow);
         }
-        qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
+        qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow);
         
         for(i=0; i < nrows; ++i) {
             (mat->context->permutation->invPerm)[i] =rowSort[i].row;

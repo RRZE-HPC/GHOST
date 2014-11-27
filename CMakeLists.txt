@@ -126,7 +126,6 @@ set (HEADERS
     include/ghost/context.h
     include/ghost/core.h
     include/ghost/crs.h
-    include/ghost/crs_kacz.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
     include/ghost/densemat_rm.h
@@ -142,7 +141,6 @@ set (HEADERS
     include/ghost/pumap.h
     include/ghost/rand.h
     include/ghost/sell.h
-    include/ghost/sell_kacz.h
     include/ghost/sparsemat.h
     include/ghost/spmv.h
     include/ghost/spmv_solvers.h
@@ -349,7 +347,6 @@ if (USE_CUDA)
             )
         include_directories(${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
-            include/ghost/cu_crs.h
             include/ghost/cu_util.h
             include/ghost/cu_densemat_cm.h
             include/ghost/cu_densemat_rm.h

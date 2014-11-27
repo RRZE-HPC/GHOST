@@ -1,4 +1,3 @@
-#include "ghost/crs_kacz.h"
 #include "ghost/crs.h"
 #include "ghost/complex.h"
 #include "ghost/locality.h"

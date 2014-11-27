@@ -1,5 +1,4 @@
 #include "ghost/carp.h"
-#include "ghost/crs_kacz.h"
 #include "ghost/util.h"
 #include "ghost/locality.h"
 
@@ -11,7 +10,7 @@ ghost_error_t ghost_carp(ghost_sparsemat_t *mat, ghost_densemat_t *x, ghost_dens
     // 3. communicate remote halo x entries to local
     //    if column is present on more procs: average!
 
-    GHOST_CALL_RETURN(ghost_spmv_haloexchange_initiate(x,mat->context->permutation,false));
+    GHOST_CALL_RETURN(ghost_spmv_haloexchange_initiate(x,false));
     GHOST_CALL_RETURN(ghost_spmv_haloexchange_finalize(x));
     
     GHOST_CALL_RETURN(mat->kacz(mat,x,b,omega,1));

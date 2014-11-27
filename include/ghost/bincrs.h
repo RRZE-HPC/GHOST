@@ -13,11 +13,22 @@
 
 #include <stdio.h>
 
-#define GHOST_BINCRS_SIZE_HEADER 44 /* header consumes 44 bytes */
-#define GHOST_BINCRS_SIZE_RPT_EL 8 /* one rpt element is 8 bytes */
-#define GHOST_BINCRS_SIZE_COL_EL 8 /* one col element is 8 bytes */
-
-#define GHOST_BINCRS_LITTLE_ENDIAN (0)
+/**
+ * @brief The header consumes 44 bytes.
+ */
+#define GHOST_BINCRS_SIZE_HEADER 44
+/**
+ * @brief One rpt element is 8 bytes.
+ */
+#define GHOST_BINCRS_SIZE_RPT_EL 8
+/**
+ * @brief One col element is 8 bytes.
+ */
+#define GHOST_BINCRS_SIZE_COL_EL 8
+/**
+ * @brief Indicates that the file is stored in little endianess.
+ */
+#define GHOST_BINCRS_LITTLE_ENDIAN 0
 
 #define GHOST_BINCRS_SYMM_GENERAL GHOST_SPARSEMAT_SYMM_GENERAL
 #define GHOST_BINCRS_SYMM_SYMMETRIC GHOST_SPARSEMAT_SYMM_SYMMETRIC
@@ -34,13 +45,37 @@
  * @brief The header of a sparse matrix file.
  */
 typedef struct { 
+    /**
+     * @brief The endianess of the machine on which the file has been written.
+     */
     int32_t endianess;
+    /**
+     * @brief Version of the file format.
+     */
     int32_t version;
+    /**
+     * @brief Base index. 0 for C, 1 for Fortran.
+     */
     int32_t base;
+    /**
+     * @brief Matrix symmetry information.
+     */
     int32_t symmetry;
+    /**
+     * @brief The data type of the matrix data.
+     */
     int32_t datatype;
+    /**
+     * @brief The number of matrix rows.
+     */
     int64_t nrows;
+    /**
+     * @brief The number of matrix columns.
+     */
     int64_t ncols;
+    /**
+     * @brief The number of nonzeros in the matrix.
+     */
     int64_t nnz;
 } ghost_bincrs_header_t;
 

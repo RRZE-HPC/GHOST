@@ -1,4 +1,3 @@
-#include "ghost/sell_kacz.h"
 #include "ghost/sell.h"
 #include "ghost/complex.h"
 #include "ghost/locality.h"

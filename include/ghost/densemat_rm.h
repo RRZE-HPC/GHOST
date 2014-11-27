@@ -11,6 +11,9 @@
 #include "context.h"
 #include "perm.h"
 #include "densemat.h"
+#ifdef GHOST_HAVE_CUDA
+#include "cu_densemat_rm.h"
+#endif
 
 #define VECVAL_RM(vec,val,__x,__y) &(val[__x][(__y)*vec->elSize])
 #define CUVECVAL_RM(vec,val,__x,__y) &(val[((__x)*vec->traits.ncolspadded+(__y))*vec->elSize])

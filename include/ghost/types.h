@@ -207,6 +207,9 @@ inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatyp
 {return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
 #endif
 
+/**
+ * @brief Possible implementations of a CPU function.
+ */
 typedef enum {
     GHOST_IMPLEMENTATION_AVX,
     GHOST_IMPLEMENTATION_SSE,

@@ -87,7 +87,7 @@ static ghost_error_t ghost_cu_crsspmv_tmpl(ghost_sparsemat_t *mat, ghost_densema
 
 }
 
-ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
+ghost_error_t ghost_cu_crs_spmv_selector(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, ghost_spmv_flags_t options, va_list argp)
 {
     if (mat->traits->datatype != lhs->traits.datatype) {
         ERROR_LOG("Mixed data types not implemented!");

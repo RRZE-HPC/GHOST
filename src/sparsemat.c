@@ -370,7 +370,7 @@ out:
 
 int ghost_cmp_entsperrow(const void* a, const void* b) 
 {
-    return  ((ghost_sorting_t*)b)->nEntsInRow - ((ghost_sorting_t*)a)->nEntsInRow;
+    return  ((ghost_sorting_helper_t*)b)->nEntsInRow - ((ghost_sorting_helper_t*)a)->nEntsInRow;
 }
 
 ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSource, ghost_sparsemat_src_t srcType, ghost_gidx_t scope)
@@ -382,7 +382,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     
     int me;    
     ghost_gidx_t i,c,nrows,rowOffset;
-    ghost_sorting_t *rowSort = NULL;
+    ghost_sorting_helper_t *rowSort = NULL;
     ghost_gidx_t *rpt = NULL;
 
     GHOST_CALL_GOTO(ghost_rank(&me, mat->context->mpicomm),err,ret);
@@ -410,7 +410,7 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     memset(mat->context->permutation->perm,0,sizeof(ghost_gidx_t)*nrows);
     memset(mat->context->permutation->invPerm,0,sizeof(ghost_gidx_t)*nrows);
     
-    GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper_t)),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1) * sizeof(ghost_gidx_t)),err,ret);
 
     if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
@@ -446,9 +446,9 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
     }
 
     for (c=0; c<nrows/scope; c++) {
-        qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
+        qsort(rowSort+c*scope, scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow);
     }
-    qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_t), ghost_cmp_entsperrow);
+    qsort(rowSort+c*scope, nrows-c*scope, sizeof(ghost_sorting_helper_t), ghost_cmp_entsperrow);
     
     for(i=0; i < nrows; ++i) {
         (mat->context->permutation->invPerm)[i] = rowSort[i].row;
