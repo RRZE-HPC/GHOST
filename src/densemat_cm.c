@@ -799,9 +799,8 @@ static ghost_error_t vec_cm_fromScalar(ghost_densemat_t *vec, void *val)
     ghost_densemat_cm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from scalar value with %"PRLIDX" rows",vec->traits.nrows);
 
-    if (ghost_bitmap_weight(vec->trmask) != vec->traits.ncolsorig || 
-            ghost_bitmap_weight(vec->ldmask) != vec->traits.nrowsorig) {
-        WARNING_LOG("Potentially slow and NUMA-unaware fromScalar operation because some rows or columns are masked out!");
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        WARNING_LOG("Potentially slow and NUMA-unaware fromScalar operation for scattered densemat!");
         int row,col,rowidx;
         ITER_BEGIN_CM(vec,col,row,rowidx)
         memcpy(VECVAL_CM(vec,vec->val,col,row),val,vec->elSize);

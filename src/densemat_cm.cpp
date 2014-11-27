@@ -176,7 +176,7 @@ static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *
     v_t *s = (v_t *)scale;
 
     if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
+        WARNING_LOG("Potentially slow and NUMA-unaware SCAL operation for scattered densemat!");
         ITER_BEGIN_CM(vec,col,row,rowidx)
             *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
         ITER_END_CM(rowidx)
