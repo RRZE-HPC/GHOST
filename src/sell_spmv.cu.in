@@ -773,7 +773,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         v_dt_host hbeta = 1.;
         beta = *((v_dt_device *)&hbeta);
     }
-    strcpy(boolstr,"0");
+    strcpy(boolstr,"\0");
     if (flags & GHOST_SPMV_AXPBY || flags & GHOST_SPMV_AXPY) {
         strcat(boolstr,"true,");
     } else {
