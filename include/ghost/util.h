@@ -10,10 +10,7 @@
 #include "types.h"
 #include "instr.h"
 #include "func_util.h"
-
-#ifdef GHOST_HAVE_CUDA
 #include "cu_util.h"
-#endif
 
 #include <stdio.h>
 /*

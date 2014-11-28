@@ -1,11 +1,21 @@
 #ifndef GHOST_CU_UTIL_H
 #define GHOST_CU_UTIL_H
 
-#include <cublas_v2.h>
-#include <cusparse_v2.h>
 #include "config.h"
 #include "types.h"
 #include "error.h"
+#ifdef GHOST_HAVE_CUDA
+#include <cublas_v2.h>
+#include <cusparse_v2.h>
+#endif
+
+#ifdef GHOST_HAVE_CUDA
+typedef cublasHandle_t ghost_cublas_handle_t;
+typedef cusparseHandle_t ghost_cusparse_handle_t;
+#else
+typedef int ghost_cublas_handle_t;
+typedef int ghost_cusparse_handle_t;
+#endif
 
 typedef struct
 {
@@ -31,13 +41,12 @@ extern "C" {
     ghost_error_t ghost_cu_free(void * mem);
     void ghost_cu_free_host(void * mem);
     ghost_error_t ghost_cu_barrier();
-    ghost_error_t ghost_cu_finish();
     ghost_error_t ghost_cu_ndevice(int *devcount);
     ghost_error_t ghost_cu_version(int *ver);
     ghost_error_t ghost_cu_gpu_info_create(ghost_gpu_info_t **gpu_info);
     ghost_error_t ghost_cu_device(int *device);
-    ghost_error_t ghost_cu_cublas_handle(cublasHandle_t *handle);
-    ghost_error_t ghost_cu_cusparse_handle(cusparseHandle_t *handle);
+    ghost_error_t ghost_cu_cublas_handle(ghost_cublas_handle_t *handle);
+    ghost_error_t ghost_cu_cusparse_handle(ghost_cusparse_handle_t *handle);
 
 #ifdef __cplusplus
 }

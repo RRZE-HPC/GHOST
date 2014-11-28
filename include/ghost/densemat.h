@@ -204,12 +204,10 @@ struct ghost_densemat_t
      * @brief An MPI data type which holds a complete row of the densemat.
      */
     ghost_mpi_datatype_t row_mpidt;
-#ifdef GHOST_HAVE_CUDA
     /**
      * @brief The values of the densemat on the CUDA device.
      */
     void * cu_val;
-#endif
 
     /**
      * @brief Average each entry over all it's halo siblings.

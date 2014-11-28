@@ -72,6 +72,7 @@ set (SOURCES
     src/crs.cpp
     src/crs_kacz.cpp
     src/crs_spmv.cpp
+    src/cu_util.c
     src/datatransfers.cpp 
     src/densemat.c
     src/densemat_cm.c 
@@ -126,6 +127,7 @@ set (HEADERS
     include/ghost/context.h
     include/ghost/core.h
     include/ghost/crs.h
+    include/ghost/cu_util.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
     include/ghost/densemat_iter_macros.h
@@ -344,11 +346,9 @@ if (USE_CUDA)
             ${CRS_CU_O}
             #${CMAKE_BINARY_DIR}/libghost_cuda.a
             #${LIBCUDADEVRT}
-            src/cu_util.c
             )
         include_directories(${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
-            include/ghost/cu_util.h
             include/ghost/cu_densemat_cm.h
             include/ghost/cu_densemat_rm.h
             )
