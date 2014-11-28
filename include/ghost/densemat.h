@@ -12,6 +12,22 @@
 #include "perm.h"
 #include "bitmap.h"
 
+
+#define GHOST_DENSEMAT_CHECK_SIMILARITY(vec1,vec2)\
+    if (vec1->traits.nrows != vec2->traits.nrows) {\
+        ERROR_LOG("Number of rows do not match!");\
+        return GHOST_ERR_INVALID_ARG;\
+    }\
+    if (vec1->traits.ncols != vec2->traits.ncols) {\
+        ERROR_LOG("Number of cols do not match!");\
+        return GHOST_ERR_INVALID_ARG;\
+    }\
+    if (vec1->traits.storage != vec2->traits.storage) {\
+        ERROR_LOG("Storage orders do not match!");\
+        return GHOST_ERR_INVALID_ARG;\
+    }
+
+
 /**
  * @brief Flags to configure a densemat.
  */

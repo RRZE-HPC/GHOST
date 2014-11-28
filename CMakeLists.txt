@@ -128,6 +128,7 @@ set (HEADERS
     include/ghost/crs.h
     include/ghost/densemat.h
     include/ghost/densemat_cm.h
+    include/ghost/densemat_iter_macros.h
     include/ghost/densemat_rm.h
     include/ghost/error.h
     include/ghost/helper.h

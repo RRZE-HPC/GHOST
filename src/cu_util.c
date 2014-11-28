@@ -81,6 +81,22 @@ ghost_error_t ghost_cu_upload(void * devmem, void *hostmem,
     return GHOST_SUCCESS;
 }
 
+ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+{
+    if (width > 0 && height > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyHostToDevice));
+    }
+    return GHOST_SUCCESS;
+}
+
+ghost_error_t ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height)
+{
+    if (width > 0 && height > 0) {
+        CUDA_CALL_RETURN(cudaMemcpy2D(dest,dpitch,src,spitch,width,height,cudaMemcpyDeviceToHost));
+    }
+    return GHOST_SUCCESS;
+}
+
 ghost_error_t ghost_cu_download(void *hostmem, void *devmem,
         size_t bytesize)
 {

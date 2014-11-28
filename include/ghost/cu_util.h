@@ -23,7 +23,9 @@ extern "C" {
     ghost_error_t ghost_cu_malloc_mapped(void **mem, const size_t size);
     ghost_error_t ghost_cu_malloc_pinned(void **mem, const size_t size);
     ghost_error_t ghost_cu_download(void * hostmem, void * devmem, size_t bytesize);
+    ghost_error_t ghost_cu_download2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
     ghost_error_t ghost_cu_upload(void * devmem, void *hostmem, size_t bytesize);
+    ghost_error_t ghost_cu_upload2d(void *dest, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height);
     ghost_error_t ghost_cu_memcpy(void *dest, void *src, size_t bytesize);
     ghost_error_t ghost_cu_memset(void *s, int c, size_t n);
     ghost_error_t ghost_cu_free(void * mem);
