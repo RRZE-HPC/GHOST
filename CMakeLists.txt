@@ -62,23 +62,33 @@ set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
 
 set (SOURCES
     src/averaging.cpp
-    src/bincrs.c
     src/bincrs.cpp
+    src/crs.cpp
+    src/crs_kacz.cpp
+    src/crs_spmv.cpp
+    src/datatransfers.cpp 
+    src/densemat_cm.cpp 
+    src/densemat_rm.cpp 
+    src/sell.cpp
+    src/sell_kacz.cpp
+    src/sell_spmv.cpp
+    src/sparsemat.cpp
+    src/sparsemat_perm_colpack.cpp
+    src/svqb.cpp
+    src/timing.cpp
+    src/tsmm_kernelmap.cpp
+    src/tsmm_inplace_kernelmap.cpp
+    src/tsmttsm_kernelmap.cpp
+    src/bincrs.c
     src/blas_util.c
     src/carp.c
     src/context.c
     src/core.c
     src/crs.c 
-    src/crs.cpp
-    src/crs_kacz.cpp
-    src/crs_spmv.cpp
     src/cu_util.c
-    src/datatransfers.cpp 
     src/densemat.c
     src/densemat_cm.c 
     src/densemat_rm.c 
-    src/densemat_cm.cpp 
-    src/densemat_rm.cpp 
     src/error.c
     src/gemm.c
     src/instr.c
@@ -89,30 +99,20 @@ set (SOURCES
     src/pumap.c
     src/rand.c
     src/sell.c 
-    src/sell.cpp
-    src/sell_kacz.cpp
-    src/sell_spmv.cpp
     src/sparsemat.c
-    src/sparsemat.cpp
-    src/sparsemat_perm_colpack.cpp
     src/sparsemat_perm_scotch.c
     src/spmv_haloexchange.c
     src/spmv_overlap.c 
     src/spmv_nompi.c 
     src/spmv_task.c
     src/spmv_vector.c 
-    src/svqb.cpp
     src/task.c
     src/taskq.c
     src/thpool.c
     src/timing.c
-    src/timing.cpp
     src/tsmm.c
-    src/tsmm_kernelmap.cpp
     src/tsmm_inplace.c
-    src/tsmm_inplace_kernelmap.cpp
     src/tsmttsm.c
-    src/tsmttsm_kernelmap.cpp
     src/types.c
     src/util.c 
     )
