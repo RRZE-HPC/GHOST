@@ -18,8 +18,9 @@ ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
+    double dalpha = *(double *)alpha;
 
-    INFO_LOG("In in-place TSMM with fixed block size %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,m,n,m,m,m);
+    INFO_LOG("In in-place TSMM with fixed block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
     double * restrict wval, * restrict xval;
     ghost_lidx_t ldw, ldx;
@@ -30,11 +31,10 @@ ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double dalpha = *(double *)alpha;
     double tmp;
     ghost_lidx_t i,j,s;
     
-#pragma omp parallel for private(j,s) schedule(runtime)
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
         for (s=0; s<BLOCKSZ; s++) {
             tmp = 0.;
