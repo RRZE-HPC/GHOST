@@ -8,7 +8,9 @@ Views can be identified by the flag `::GHOST_DENSEMAT_VIEW` in the the ghost_den
 A view can be either a *dense* view or a *scattered* (in which case the flag `::GHOST_DENSEMAT_SCATTERED` is set) view.
 A dense view is a view in which the data is contiguous with a certain stride and leading dimension.
 Otherwise, the view is scattered.
-BLAS routines can be called only with dense matrix views.
+Some function are not implemented natively for scattered views.
+If this is the case, a warning will be printed and a temporary densemat will be created for this function.
+Afterwards, the scattered view will be updated with the result data and the temporary densemat gets destroyed.
 
 Host (CPU) Representation
 -------------------------
