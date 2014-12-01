@@ -400,11 +400,12 @@ ghost_error_t ghost_cu_version(int *ver)
     return GHOST_SUCCESS;
 }
     
-void ghost_cu_free_host(void * mem)
+ghost_error_t ghost_cu_free_host(void * mem)
 {
 #ifdef GHOST_HAVE_CUDA
-    cudaFreeHost(mem);
+    CUDA_CALL_RETURN(cudaFreeHost(mem));
 #else
     UNUSED(mem);
 #endif
+    return GHOST_SUCCESS;
 }

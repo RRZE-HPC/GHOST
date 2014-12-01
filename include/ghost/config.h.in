@@ -1,3 +1,8 @@
+/**
+ * @file config.h.in
+ * @brief The config header for GHOST.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_CONFIG_H
 #define GHOST_CONFIG_H
 #cmakedefine GHOST_HAVE_MPI

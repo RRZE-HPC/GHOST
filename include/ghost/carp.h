@@ -1,3 +1,8 @@
+/**
+ * @file carp.h
+ * @brief The CARP (component-averaged row projection) method.
+ * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
+ */
 #ifndef GHOST_CARP_H
 #define GHOST_CARP_H
 

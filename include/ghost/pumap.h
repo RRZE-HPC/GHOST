@@ -1,11 +1,11 @@
-#ifndef GHOST_PUMAP_H
-#define GHOST_PUMAP_H
 /**
  * @ingroup task @{
  * @file pumap.h
  * @brief Types and functions for the PU (processing unit) map functionality. 
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
+#ifndef GHOST_PUMAP_H
+#define GHOST_PUMAP_H
 #include <hwloc.h>
 
 #include "error.h"
