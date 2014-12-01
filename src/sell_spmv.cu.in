@@ -933,18 +933,18 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     if (flags & GHOST_SPMV_DOT_ANY) {
 #ifdef LOCALDOT_ONTHEFLY
         GHOST_INSTR_START("spmv_cuda_dot_reduction")
-        int col;
+        ghost_lidx_t col;
         for (col=0; col<rhs->traits.ncols; col++) {
             deviceReduce3<v_dt_device>(&cu_localdot[grid.x*col], &cu_localdot[col], rhs->traits.ncols*grid.x, grid.x);
         }
         if (flags & GHOST_SPMV_DOT_YY) {
-        GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(v_dt_host)));
+            GHOST_CALL_RETURN(ghost_cu_download(localdot,cu_localdot,rhs->traits.ncols*sizeof(v_dt_host)));
         }
         if (flags & GHOST_SPMV_DOT_XY) {
-        GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
+            GHOST_CALL_RETURN(ghost_cu_download(&localdot[rhs->traits.ncols],&cu_localdot[rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
         }
         if (flags & GHOST_SPMV_DOT_XX) {
-        GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
+            GHOST_CALL_RETURN(ghost_cu_download(&localdot[2*rhs->traits.ncols],&cu_localdot[2*rhs->traits.ncols*grid.x],rhs->traits.ncols*sizeof(v_dt_host)));
         }
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
