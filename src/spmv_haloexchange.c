@@ -49,13 +49,13 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
     }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
-    
+
     dueptr[0] = 0;
     for (i=0;i<nprocs;i++) {
         dueptr[i+1] = dueptr[i]+vec->context->dues[i];
     }
     acc_dues = dueptr[nprocs];
-    
+
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         CUDA_CALL_RETURN(cudaHostAlloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize,cudaHostAllocDefault));
@@ -63,7 +63,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
     } else {
         GHOST_CALL_RETURN(ghost_malloc((void **)&work,(size_t)vec->traits.ncols*acc_dues*vec->elSize));
     }
-    
+
 #ifdef GHOST_HAVE_CUDA
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
         GHOST_CALL_GOTO(ghost_cu_malloc(&cu_work,vec->traits.ncols*acc_dues*vec->elSize),err,ret);
@@ -76,30 +76,30 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
                 ghost_densemat_rm_cu_communicationassembly(cu_work,dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
             } else 
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
 #pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                    for (i=0; i<vec->context->dues[to_PE]; i++){
-                        memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
+                        for (i=0; i<vec->context->dues[to_PE]; i++){
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[permutation->perm[vec->context->duelist[to_PE][i]]],vec->elSize*vec->traits.ncols);
+                        }
                     }
                 }
-            }
         } else {
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                 ghost_densemat_rm_cu_communicationassembly(cu_work,dueptr,vec,NULL);
             } else 
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
 #pragma omp parallel private(to_PE,i)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                    for (i=0; i<vec->context->dues[to_PE]; i++){
-                        memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[vec->context->duelist[to_PE][i]],vec->elSize*vec->traits.ncols);
+                        for (i=0; i<vec->context->dues[to_PE]; i++){
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[vec->context->duelist[to_PE][i]],vec->elSize*vec->traits.ncols);
+                        }
                     }
                 }
-            }
         }
     } else if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
@@ -108,38 +108,51 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
                 ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
             } else
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
-                ghost_gidx_t c;
+                if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                    ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                    for (i=0; i<vec->context->dues[to_PE]; i++){
-                        for (c=0; c<vec->traits.ncols; c++) {
-                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                        for (i=0; i<vec->context->dues[to_PE]; i++){
+                            for (c=0; c<vec->traits.ncols; c++) {
+                                memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                            }
                         }
                     }
                 }
-            }
         } else {
 #ifdef GHOST_HAVE_CUDA
             if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
                 ghost_densemat_cm_cu_communicationassembly(cu_work,dueptr,vec,NULL);
             } else
 #endif
-            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
-                ghost_gidx_t c;
+                if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                    ghost_gidx_t c;
 #pragma omp parallel private(to_PE,i,c)
-                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+                    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
-                    for (i=0; i<vec->context->dues[to_PE]; i++){
-                        for (c=0; c<vec->traits.ncols; c++) {
+                        for (i=0; i<vec->context->dues[to_PE]; i++){
+                            for (c=0; c<vec->traits.ncols; c++) {
                                 memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                            }
                         }
                     }
                 }
-            }
         }
     }
+
+#ifdef GHOST_HAVE_CUDA
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        GHOST_INSTR_START("downloadwork");
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*acc_dues*vec->elSize);
+
+#endif
+        ghost_cu_download(work,cu_work,vec->traits.ncols*acc_dues*vec->elSize);
+        GHOST_INSTR_STOP("downloadwork");
+    }
+#endif
+
     goto out;
 err:
 
@@ -156,16 +169,16 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
-    int nprocs;
+        int nprocs;
     int me; 
     int i, from_PE, to_PE;
     ghost_error_t ret = GHOST_SUCCESS;
     int rowsize;
     MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret); 
-    
+
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
-    
+
     msgcount = 0;
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishptr,(nprocs+1)*sizeof(ghost_lidx_t)),err,ret);
 
@@ -180,14 +193,14 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
     }
     acc_wishes = wishptr[nprocs];
     nMsgsOverall *= 2; // we need to send _and_ receive
-    
+
     GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
-    
+
     if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *)),err,ret);
-        
+
         for (from_PE=0; from_PE<nprocs; from_PE++){
             tmprecv[from_PE] = &tmprecv_mem[wishptr[from_PE]*vec->traits.ncols*vec->elSize];
         }
@@ -197,7 +210,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
     for (i=0;i<nMsgsOverall;i++) {
         request[i] = MPI_REQUEST_NULL;
     }
-    
+
     char *recv;
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
@@ -228,11 +241,11 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
             msgcount++;
         }
     }
-   
+
     if (!assembled) { 
         GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(vec),err,ret);
     }
-    
+
     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
         if (vec->context->dues[to_PE]>0){
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
@@ -251,7 +264,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
             MPI_CALL_GOTO(MPI_Isend(work + dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, vec->context->dues[to_PE] - msg*msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &request[msgcount]),err,ret);
             msgcount++;
         }
-    ;}
+        ;}
 
 
     goto out;
@@ -286,13 +299,13 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
         ret = GHOST_ERR_UNKNOWN;
         goto err;
     }
-   
+
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     GHOST_INSTR_START("waitall");
     MPI_CALL_GOTO(MPI_Waitall(msgcount, request, status),err,ret);
     GHOST_INSTR_STOP("waitall");
-    
+
     if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
         GHOST_INSTR_START("re-order from col-major");
         for (from_PE=0; from_PE<nprocs; from_PE++){
@@ -308,21 +321,22 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
-    }
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
+        }
 #endif
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
     GHOST_INSTR_STOP("upload")
 #endif
-    
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ghost_cu_free(cu_work);
 #ifdef GHOST_HAVE_CUDA
-        cudaFreeHost(work); work = NULL;
+            cudaFreeHost(work); work = NULL;
 #endif
-    } else {
-        free(work); work = NULL;
-    }
+        } else {
+            free(work); work = NULL;
+        }
     free(tmprecv_mem); tmprecv_mem = NULL;
     free(tmprecv); tmprecv = NULL;
     free(request); request = NULL;
