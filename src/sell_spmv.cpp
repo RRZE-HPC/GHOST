@@ -82,7 +82,6 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                     for (cidx = 0; cidx<lhs->traits.ncols; cidx++) {
                         col = ghost_bitmap_next(lhs->ldmask,col);
                         tmp[i][cidx] +=  matrixval * rhsrow[col];
-                        cidx++;
                     }
                 }
             }
