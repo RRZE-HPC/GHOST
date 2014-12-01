@@ -61,13 +61,14 @@ set(GHOST_VERBOSITY ${VERBOSITY})
 set(GHOST_ERR_WARN_INFO_PRINTONCE ${ERR_WARN_INFO_PRINTONCE})
 
 set (SOURCES
-    src/averaging.cpp
     src/bincrs.cpp
     src/crs.cpp
     src/crs_kacz.cpp
     src/crs_spmv.cpp
     src/datatransfers.cpp 
+    src/densemat_cm_averagehalo.cpp
     src/densemat_cm.cpp 
+    src/densemat_rm_averagehalo.cpp
     src/densemat_rm.cpp 
     src/sell.cpp
     src/sell_kacz.cpp

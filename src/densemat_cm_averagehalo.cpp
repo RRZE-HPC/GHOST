@@ -100,20 +100,11 @@ out:
     return ret;
 }
 
-ghost_error_t ghost_densemat_cm_averagehalo(ghost_densemat_t *vec)
+ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec)
 {
-    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-            return ghost_densemat_cm_averagehalo_tmpl<std::complex<double>>(vec);
-        } else {
-            return ghost_densemat_cm_averagehalo_tmpl<std::complex<float>>(vec);
-        }
-    } else {
-        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-            return ghost_densemat_cm_averagehalo_tmpl<double>(vec);
-        } else {
-            return ghost_densemat_cm_averagehalo_tmpl<float>(vec);
-        }
-    }
-}
+    ghost_error_t ret = GHOST_SUCCESS;
 
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,std::complex,ret,ghost_densemat_cm_averagehalo_tmpl,vec);
+
+    return ret;
+}

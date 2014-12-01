@@ -29,7 +29,6 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec);
 
-    ghost_error_t ghost_densemat_cm_averagehalo(ghost_densemat_t *vec);
 
     ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
     ghost_error_t ghost_densemat_cm_string_selector(ghost_densemat_t *vec, char **str);
@@ -39,6 +38,7 @@ extern "C" {
     ghost_error_t ghost_densemat_cm_vaxpy_selector(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *); 
     ghost_error_t ghost_densemat_cm_vaxpby_selector(ghost_densemat_t *vec1, ghost_densemat_t *vec2, void *, void *); 
     ghost_error_t ghost_densemat_cm_fromRand_selector(ghost_densemat_t *vec);
+    ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec);
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,5 @@
 /**
- * @file cu_densemat.h
+ * @file cu_densemat_rm.h
  * @brief Functions for row-major dense matrices/vectors with CUDA.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */

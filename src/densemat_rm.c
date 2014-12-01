@@ -104,7 +104,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredCols = &vec_rm_viewScatteredCols;
     vec->viewCols = &vec_rm_viewCols;
     
-    vec->averageHalo = NULL;
+    vec->averageHalo = &ghost_densemat_rm_averagehalo_selector;
 
     vec->upload = &vec_rm_upload;
     vec->download = &vec_rm_download;

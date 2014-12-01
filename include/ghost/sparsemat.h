@@ -26,7 +26,7 @@ typedef enum {
      */
     GHOST_SPARSEMAT_CRS,
     /**
-     * @brief The SELL-C-\f$\sigma\f$ data format.
+     * @brief The SELL-C-&sigma; data format.
      */
     GHOST_SPARSEMAT_SELL
 } ghost_sparsemat_format_t;
