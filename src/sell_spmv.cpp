@@ -15,8 +15,8 @@
 #include <map>
 
 using namespace std;
-
-    template<typename m_t, typename v_t> 
+    
+    template<typename m_t, typename v_t, bool scatteredrows> 
 static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat, 
         ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
         ghost_spmv_flags_t options, va_list argp)
@@ -80,17 +80,26 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                         [sell->col[sell->chunkStart[c]+j*ch+i]];
                     col = -1;
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
-                        col = ghost_bitmap_next(rhs->ldmask,col);
+                        if (scatteredrows) {
+                            col = ghost_bitmap_next(rhs->ldmask,col);
+                        } else {
+                            col++;
+                        }
                         tmp[i][cidx] +=  matrixval * rhsrow[col];
                     }
+
                 }
             }
 
-            for (i=0; i<ch && c*ch+i < mat->nrows; i++) {
+            for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
                 rhsrow = (v_t *)rhs->val[c*ch+i];
                 col = -1;
                 for (cidx = 0; cidx<lhs->traits.ncols; cidx++) {
-                    col = ghost_bitmap_next(lhs->ldmask,col);
+                    if (scatteredrows) {
+                        col = ghost_bitmap_next(rhs->ldmask,col);
+                    } else {
+                        col++;
+                    }
                     if ((options & GHOST_SPMV_SHIFT) && shift) {
                         tmp[i][cidx] = tmp[i][cidx]-shift[0]*rhsrow[col];
                     }
@@ -144,6 +153,19 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
+}
+    
+    template<typename m_t, typename v_t> 
+static ghost_error_t ghost_sell_spmv_plain_rm_selector(ghost_sparsemat_t *mat, 
+        ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
+        ghost_spmv_flags_t options, va_list argp)
+{
+    if (lhs->traits.ncolsorig != lhs->traits.ncols || 
+            rhs->traits.ncolsorig != rhs->traits.ncols) {
+        return ghost_sell_spmv_plain_rm<m_t,v_t,true>(mat,lhs,rhs,options,argp);
+    } else {
+        return ghost_sell_spmv_plain_rm<m_t,v_t,false>(mat,lhs,rhs,options,argp);
+    }
 }
 
     template<typename m_t, typename v_t> 
@@ -482,6 +504,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     if (kernel) {
         kernel(mat,lhs,rhs,options,argp);
     } else { // execute plain kernel as fallback
+        INFO_LOG("Execute fallback kernel");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
             if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
                 SELECT_TMPL_2DATATYPES(mat->traits->datatype,
@@ -497,7 +520,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         } else {
             SELECT_TMPL_2DATATYPES(mat->traits->datatype,
                     rhs->traits.datatype,ghost_complex,ret,
-                    ghost_sell_spmv_plain_rm,mat,lhs,rhs,options,argp);
+                    ghost_sell_spmv_plain_rm_selector,mat,lhs,rhs,options,argp);
         }
     } 
 
