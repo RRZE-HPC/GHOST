@@ -330,8 +330,8 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
 #endif
 
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            ghost_cu_free(cu_work);
 #ifdef GHOST_HAVE_CUDA
+            ghost_cu_free(cu_work);
             cudaFreeHost(work); work = NULL;
 #endif
         } else {
