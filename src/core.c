@@ -175,7 +175,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else {
             ghost_type = GHOST_TYPE_WORK;
         }
-        if (ncudadevs) {
+        if (ncudadevs && nnoderanks > 1) {
             INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
         }
     } 
