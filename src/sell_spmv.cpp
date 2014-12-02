@@ -423,6 +423,15 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         ERROR_LOG("Different number of rows for the densemats and matrix!");
         return GHOST_ERR_INVALID_ARG;
     }
+    if (((rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
+                (rhs->traits.nrowsorig != rhs->traits.nrows)) || 
+            ((lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) && 
+            (lhs->traits.nrowsorig != lhs->traits.nrows))) {
+        ERROR_LOG("Col-major densemats with masked out rows currently not "
+                "supported!");
+        return GHOST_ERR_NOT_IMPLEMENTED;
+    }
+
 
     // if map is empty include generated code for map construction
     if (ghost_sellspmv_kernels.empty()) {
@@ -504,7 +513,8 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     if (kernel) {
         kernel(mat,lhs,rhs,options,argp);
     } else { // execute plain kernel as fallback
-        INFO_LOG("Execute fallback kernel");
+        PERFWARNING_LOG("Execute fallback SELL SpMV kernel which is potentially"
+                " slow!");
         if (lhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
             if (SELL(mat)->chunkHeight == GHOST_SELL_CHUNKHEIGHT_ELLPACK) {
                 SELECT_TMPL_2DATATYPES(mat->traits->datatype,
