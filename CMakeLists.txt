@@ -21,19 +21,19 @@ option(USE_OPENMP "Build with OpenMP" 1)
 option(USE_CUDA "Build with CUDA" 0)
 option(USE_SCOTCH "Use PT-Scotch for matrix re-ordering" 0)
 option(USE_COLPACK "Use ColPack for matrix coloring" 0)
-option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local matrices and vectors" 0)
-option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global matrices and vectors" 0)
+option(USE_LONGIDX_LOCAL "Enable 64-bit indices for local quantities" 0)
+option(USE_LONGIDX_GLOBAL "Enable 64-bit indices for global quantities" 1)
 option(BUILD_MIC "Build for Intel MIC" 0)
-set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
-set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,false,false;false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
-set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
-set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
 option(ERR_WARN_INFO_PRINTONCE "Print all errors, warnings and info only once for each occurence" 1)
-set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
-set(INSTRUMENTATION_FUNCTYPES "(functype | GHOST_FUNCTYPE_MATH) && (functype | GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
 option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled for large-scale runs)" 0)
+set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
+set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
+set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,false,false;false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
+set(LIBTYPE "SHARED" CACHE STRING "Type of GHOST build (required). Valid values: SHARED, STATIC")
+set(VERBOSITY 1 CACHE STRING "Level of verbosity information. Valid values: 0 (be totally silent), 1 (print warnings, errors and further important information), 2, 3, 4 (increasing level of verbosity)")
+set(INSTRUMENTATION "" CACHE STRING "Type of instrumentation (semicolon separated list). Valid values: TIMING, LIKWID")
+set(INSTRUMENTATION_FUNCTYPES "(functype | GHOST_FUNCTYPE_MATH) && (functype | GHOST_FUNCTYPE_KERNEL)" CACHE STRING "Logical selection of function types to instrument. Check the variable functype against valid values as defined in func_util.h. Example: functype & (GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_COMMUNICATION) ")
 
 find_package(PkgConfig)
 
@@ -252,14 +252,6 @@ set (SOURCES ${SOURCES} ${PP_FILES})
 
 add_custom_target(preprocess DEPENDS ${PP_FILES})
 
-#if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray") # Cray compiler cannot compile intrinsics
-#    set (SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_avx.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_sse.c ${CMAKE_BINARY_DIR}/src_pp/sell_kernel_mic.c)
-#else()
-#    set(INTRINSICS_COMPILER "" CACHE PATH "Compiler to use for files containing compiler intrinsics (tested with icc)")
-#    add_custom_command(OUTPUT CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o COMMAND ${INTRINSICS_COMPILER}  -DVERBOSITY=0 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Dghost_EXPORTS -openmp -fPIC -O3 -I${CMAKE_SOURCE_DIR}/include/ -I${CMAKE_SOURCE_DIR}/include/ghost/ -I${CMAKE_BINARY_DIR}/ -I${CMAKE_BINARY_DIR}/ghost/ -o CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o  -c ${CMAKE_SOURCE_DIR}/src/sell_kernel_intr.c) 
-#    set (SOURCES ${SOURCES} CMakeFiles/ghost.dir/src/sell_kernel_intr.c.o)
-#endif()
-
 if (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type specified. Setting it to Release.")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -324,29 +316,16 @@ if (USE_CUDA)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
-        #set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-        #set(CUDA_SEPARABLE_COMPILATION_ON)
-        #set(BUILD_SHARED_LIBS OFF)
         cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_spmv.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
-        #set(CU_OBJS ${SELL_KERNEL_CU_O} ${DENSEMAT_CM_CU_O} ${DENSEMAT_RM_CU_O} ${CRS_CU_O})
-        #if ("${CUDA_VERSION_MAJOR}" STREQUAL "6")
-        #cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC;-arch=sm_35" "${CU_OBJS}")
-        #else()
-        #cuda_link_separable_compilation_objects(${CMAKE_BINARY_DIR}/libghost_cuda.a ghost_cuda "-lcudadevrt;-Xcompiler;-fPIC" "${CU_OBJS}")
-        #endif()
-        #set(LIBCUDADEVRT ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcudadevrt.a)
-        #install(FILES ${CMAKE_BINARY_DIR}/libghost_cuda.a DESTINATION lib/ghost)
         set (SOURCES 
             ${SOURCES}
             ${SELL_KERNEL_CU_O}
             ${DENSEMAT_CM_CU_O}
             ${DENSEMAT_RM_CU_O}
             ${CRS_CU_O}
-            #${CMAKE_BINARY_DIR}/libghost_cuda.a
-            #${LIBCUDADEVRT}
             )
         include_directories(${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
@@ -380,8 +359,6 @@ add_dependencies(ghost preprocess)
 
 if (USE_CUDA)
     set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusparse_LIBRARY} ${LIBCUDADEVRT})
-    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES
-        ${CUDA_LIBRARIES})
 endif()
 
 if (USE_SCOTCH)
@@ -413,7 +390,6 @@ if (USE_SCOTCH)
     else()
         set(SCOTCH_LIBRARIES ${LIBSCOTCH} ${LIBSCOTCHERR})
     endif()
-    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${SCOTCH_LIBRARIES})
     mark_as_advanced(LIBPTSCOTCH LIBSCOTCH LIBPTSCOTCHERR LIBSCOTCHERR)
 endif()
 
@@ -430,35 +406,12 @@ if (USE_COLPACK)
     endif()
 endif()
 
-
-
-
 if (USE_OPENMP)	
     find_package(OpenMP REQUIRED)
     set(GHOST_HAVE_OPENMP 1)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
-
-#if (${BLAS} STREQUAL "MKL")
-#    set(MKL_LIBDIR "" CACHE PATH "Location of libmkl")
-#	link_directories(${MKL_LIBDIR})
-#	link_libraries("-lmkl_core")
-#	if (CMAKE_COMPILER_IS_GNUCC)
-#		link_libraries("-lmkl_gf_lp64")
-#	else ()
-#		link_libraries("-mkl -lmkl_intel_lp64")
-#	endif()
-#elseif(${BLAS} STREQUAL "GSL")
-#	find_package(GSL REQUIRED)
-#	link_libraries(${GSL_LIBRARIES})
-#elseif(${BLAS} STREQUAL "LIBSCI")
-#	set(LIBSCI_LIBDIR "${LIBSCI_LIBDIR}" CACHE PATH "Location of LibSCI library")
-#	set(LIBSCI_INCDIR "${LIBSCI_INCDIR}" CACHE PATH "Location of cblas.h")
-#    include_directories(${LIBSCI_INCDIR})
-#    link_directories(${LIBSCI_LIBDIR})
-#    link_libraries("-lsci_cray_mp")
-#endif()
 
 set(CBLAS_INCLUDE_DIR CBLAS_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of *cblas.h")
 
@@ -644,10 +597,6 @@ if (USE_MPI)
     endforeach()
     get_filename_component(MPI_LIBDIR "${MPI_LIBRARY}" PATH)
     find_library(LIBMPI_CXX mpi_cxx ${MPI_LIBDIR})
-    if (LIBMPI_CXX)
-        set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${LIBMPI_CXX})
-    endif()
-    set_property(TARGET ghost APPEND PROPERTY LINK_INTERFACE_LIBRARIES ${MPI_LIBRARIES})
     set(GHOST_HAVE_MPI 1)
     mark_as_advanced(MPI_EXTRA_LIBRARY MPI_LIBRARY LIBMPI_CXX)
     mark_as_advanced(CLEAR MPI_C_INCLUDE_PATH)
@@ -692,10 +641,8 @@ configure_file(${CMAKE_SOURCE_DIR}/ghost-config-version.cmake.in ${CMAKE_BINARY_
 
 if (${LIBTYPE} STREQUAL "STATIC")
     install(TARGETS ghost EXPORT ghost-targets ARCHIVE DESTINATION lib/ghost)
-    #    install(EXPORT ghost-targets DESTINATION lib/ghost)
 elseif (${LIBTYPE} STREQUAL "SHARED")
     install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)
-    #    install(EXPORT ghost-targets DESTINATION lib/ghost)
 endif()
 install(FILES ${CMAKE_BINARY_DIR}/ghost-config.cmake DESTINATION lib/ghost)
 install(FILES ${CMAKE_BINARY_DIR}/ghost-config-version.cmake DESTINATION lib/ghost)
@@ -710,7 +657,6 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake"
     IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake") 
-
 
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
