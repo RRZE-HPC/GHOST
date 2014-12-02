@@ -154,7 +154,6 @@ void ghost_task_destroy(ghost_task_t *t)
 
 ghost_error_t ghost_task_create(ghost_task_t **t, int nThreads, int LD, void *(*func)(void *), void *arg, ghost_task_flags_t flags, ghost_task_t **depends, int ndepends)
 {
-    WARNING_LOG("in task create");
     ghost_error_t ret = GHOST_SUCCESS;
 
     GHOST_CALL_RETURN(ghost_malloc((void **)t,sizeof(ghost_task_t)));
