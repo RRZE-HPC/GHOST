@@ -62,6 +62,8 @@ For interactive specification of build options and variables, use ccmake to conf
 
 `ccmake ..`
 
+See the section about [Code generation](#code-generation) for details on how to generate fast kernels.
+
 If you do not want to use the system compilers, invoke (c)cmake as follows (e.g., Intel Compilers):
 
 `CC=icc CXX=icpc ccmake ..`
@@ -73,3 +75,6 @@ If the detected Cblas is neither MKL or GSL, the variable `BLAS_LIBRARIES` has t
 
 The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBRARIES`.
 
+---
+# Code generation
+---
