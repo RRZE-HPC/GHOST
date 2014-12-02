@@ -635,6 +635,7 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/include/ghost/func_util.h.in"
     "${PROJECT_BINARY_DIR}/ghost/func_util.h"
     )
+configure_file(${PROJECT_SOURCE_DIR}/ghost.pc.in ${PROJECT_BINARY_DIR}/ghost.pc @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config.cmake.in ${PROJECT_BINARY_DIR}/ghost-config.cmake @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/ghost-config-version.cmake.in ${PROJECT_BINARY_DIR}/ghost-config-version.cmake @ONLY)
 
