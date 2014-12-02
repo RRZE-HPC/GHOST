@@ -431,11 +431,26 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                     } else {
                         #GHOST_UNROLL#_mm256_store_pd(&lval[invec->traits.ncolspadded*@+donecols],tmp@);#CHUNKHEIGHT
                     }
-                    if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
-                        for (col = donecols; col<donecols+4; col++) {
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
-                            #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                    if ((c+1)*CHUNKHEIGHT < mat->nrows) {
+                        if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                            for (col = donecols; col<donecols+4; col++) {
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+@*invec->traits.ncolspadded]*lval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                                #GHOST_UNROLL#partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+@*invec->traits.ncolspadded]*rval[col+@*invec->traits.ncolspadded];#CHUNKHEIGHT
+                            }
+                        }
+                    } else {
+                        ghost_lidx_t row = c*CHUNKHEIGHT;
+                        ghost_lidx_t rowinchunk = 0;
+                        for (; row<mat->nrows; row++) {
+                            if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
+                                for (col = donecols; col<donecols+4; col++) {
+                                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+0] += lval[col+rowinchunk*invec->traits.ncolspadded]*lval[col+rowinchunk*invec->traits.ncolspadded];
+                                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+1] += lval[col+rowinchunk*invec->traits.ncolspadded]*rval[col+rowinchunk*invec->traits.ncolspadded];
+                                    partsums[((padding+3*invec->traits.ncols)*tid)+3*col+2] += rval[col+rowinchunk*invec->traits.ncolspadded]*rval[col+rowinchunk*invec->traits.ncolspadded];
+                                }
+                            }
+                            rowinchunk++;
                         }
                     }
                 } else { 
