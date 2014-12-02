@@ -511,12 +511,12 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     
 #ifdef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
-        INFO_LOG("In-place column compression!");
+        DEBUG_LOG(1,"In-place column compression!");
         CR(mat)->col = mat->col_orig;
     } else 
 #endif
     {
-        INFO_LOG("Duplicate col array!");
+        DEBUG_LOG(1,"Duplicate col array!");
         GHOST_CALL_GOTO(ghost_malloc((void **)&CR(mat)->col,sizeof(ghost_lidx_t)*mat->nnz),err,ret);
     }
    
@@ -529,7 +529,7 @@ static ghost_error_t CRS_split(ghost_sparsemat_t *mat)
     }
 #ifndef GHOST_HAVE_UNIFORM_IDX
     if (!(mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)) {
-        INFO_LOG("Free orig cols");
+        DEBUG_LOG(1,"Free orig cols");
         free(mat->col_orig);
         mat->col_orig = NULL;
     }
