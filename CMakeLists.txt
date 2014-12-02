@@ -217,11 +217,11 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
 
-set (PP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_pp.pl)
-set (PP_HEADER_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_extractfunc.pl)
-set (PP_KERNELMAP_SCRIPT ${CMAKE_SOURCE_DIR}/bin/ghost_mapfunc.pl)
-set (PP_SRC_DIR ${CMAKE_BINARY_DIR}/src_pp/)
-set (PP_INC_DIR ${CMAKE_BINARY_DIR}/ghost/)
+set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_pp.pl)
+set (PP_HEADER_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_extractfunc.pl)
+set (PP_KERNELMAP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_mapfunc.pl)
+set (PP_SRC_DIR ${PROJECT_BINARY_DIR}/src_pp/)
+set (PP_INC_DIR ${PROJECT_BINARY_DIR}/ghost/)
 
 foreach (TO_PP_FILE ${TO_PREPROCESS})
     get_filename_component(TO_PP_FILENAME ${TO_PP_FILE} NAME)
@@ -304,8 +304,8 @@ if (USE_CUDA)
     find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
-        cuda_include_directories(${CMAKE_SOURCE_DIR}/include
-            ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
+        cuda_include_directories(${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_BINARY_DIR} ${PROJECT_BINARY_DIR}/ghost ${HWLOC_INCLUDE_DIR} ${LIKWID_INCLUE_DIR})
         list(APPEND CUDA_NVCC_FLAGS -Xcompiler;-fPIC;-arch=sm_35)
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -O0)
@@ -316,7 +316,7 @@ if (USE_CUDA)
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             list(APPEND CUDA_NVCC_FLAGS -G -g)
         endif()
-        cuda_compile(SELL_KERNEL_CU_O ${CMAKE_BINARY_DIR}/src/sell_spmv.cu)
+        cuda_compile(SELL_KERNEL_CU_O ${PROJECT_BINARY_DIR}/src/sell_spmv.cu)
         cuda_compile(DENSEMAT_CM_CU_O src/densemat_cm.cu)
         cuda_compile(DENSEMAT_RM_CU_O src/densemat_rm.cu)
         cuda_compile(CRS_CU_O src/crs.cu)
@@ -530,7 +530,7 @@ if (NOT EXISTS "${HWLOC_INCLUDE_DIR}/hwloc.h")
     message(FATAL_ERROR "Could not find hwloc.h neither via pkg-config nor in the defined HWLOC_INCLUDEDIR!")
 endif()
 
-include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include)
+include_directories(BEFORE ${HWLOC_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/ghost ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/include)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Cray")
     # msg 193 complains about commented out lines in config.h
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -h c99 -h msglevel_3 -h nomessage=193")
@@ -635,22 +635,21 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/include/ghost/func_util.h.in"
     "${PROJECT_BINARY_DIR}/ghost/func_util.h"
     )
-configure_file(${CMAKE_SOURCE_DIR}/ghost.pc.in ${CMAKE_BINARY_DIR}/ghost.pc @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/ghost-config.cmake.in ${CMAKE_BINARY_DIR}/ghost-config.cmake @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/ghost-config-version.cmake.in ${CMAKE_BINARY_DIR}/ghost-config-version.cmake @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/ghost-config.cmake.in ${PROJECT_BINARY_DIR}/ghost-config.cmake @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/ghost-config-version.cmake.in ${PROJECT_BINARY_DIR}/ghost-config-version.cmake @ONLY)
 
 if (${LIBTYPE} STREQUAL "STATIC")
     install(TARGETS ghost EXPORT ghost-targets ARCHIVE DESTINATION lib/ghost)
 elseif (${LIBTYPE} STREQUAL "SHARED")
     install(TARGETS ghost EXPORT ghost-targets LIBRARY DESTINATION lib/ghost)
 endif()
-install(FILES ${CMAKE_BINARY_DIR}/ghost-config.cmake DESTINATION lib/ghost)
-install(FILES ${CMAKE_BINARY_DIR}/ghost-config-version.cmake DESTINATION lib/ghost)
+install(FILES ${PROJECT_BINARY_DIR}/ghost-config.cmake DESTINATION lib/ghost)
+install(FILES ${PROJECT_BINARY_DIR}/ghost-config-version.cmake DESTINATION lib/ghost)
 install(FILES include/ghost.h DESTINATION include)
 install(FILES ${HEADERS} DESTINATION include/ghost)
-install(FILES ${CMAKE_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
-install(FILES ${CMAKE_BINARY_DIR}/ghost/config.h DESTINATION include/ghost)
-install(FILES ${CMAKE_BINARY_DIR}/ghost/func_util.h DESTINATION include/ghost)
+install(FILES ${PROJECT_BINARY_DIR}/ghost.pc DESTINATION lib/pkgconfig)
+install(FILES ${PROJECT_BINARY_DIR}/ghost/config.h DESTINATION include/ghost)
+install(FILES ${PROJECT_BINARY_DIR}/ghost/func_util.h DESTINATION include/ghost)
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -660,35 +659,35 @@ add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/c
 
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
-    configure_file(${CMAKE_SOURCE_DIR}/doxygen/mainpage.md.in ${CMAKE_BINARY_DIR}/doxygen/mainpage.md @ONLY)
-    configure_file(${CMAKE_SOURCE_DIR}/doxygen/Doxyfile.in ${CMAKE_BINARY_DIR}/doxygen/Doxyfile @ONLY)
+    configure_file(${PROJECT_SOURCE_DIR}/doxygen/mainpage.md.in ${PROJECT_BINARY_DIR}/doxygen/mainpage.md @ONLY)
+    configure_file(${PROJECT_SOURCE_DIR}/doxygen/Doxyfile.in ${PROJECT_BINARY_DIR}/doxygen/Doxyfile @ONLY)
     set(DOC_INSTALL_PREFIX "" CACHE PATH "Where to store the generated documentation")
     mark_as_advanced(DOC_INSTALL_PREFIX)
-    file(GLOB DOCFILES "${CMAKE_SOURCE_DIR}/doxygen/[^.]*")
+    file(GLOB DOCFILES "${PROJECT_SOURCE_DIR}/doxygen/[^.]*")
     if (EXISTS ${DOC_INSTALL_PREFIX})
         add_custom_command(
-            OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
+            OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${HEADERS} ${DOCFILES}
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && 
-            cp ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${CMAKE_BINARY_DIR}/doc/html && 
-            rsync -a ${CMAKE_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
+            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
+            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html && 
+            rsync -a ${PROJECT_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
             find ${DOC_INSTALL_PREFIX} -type d -exec chmod 755 {} + &&
             find ${DOC_INSTALL_PREFIX} -type f -exec chmod 644 {} +
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
             )
     else ()
         add_custom_command(
-            OUTPUT ${CMAKE_BINARY_DIR}/doc/html/index.html 
+            OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doxygen/Doxyfile && cp ${CMAKE_SOURCE_DIR}/contrib/ghost_logo.svg ${CMAKE_BINARY_DIR}/doc/html 
+            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html 
             )
     endif()
 
-    add_custom_target(doc DEPENDS ${CMAKE_BINARY_DIR}/doc/html/index.html)
+    add_custom_target(doc DEPENDS ${PROJECT_BINARY_DIR}/doc/html/index.html)
 endif()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 enable_testing()
-add_test(NAME simple WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test COMMAND simple)
+add_test(NAME simple WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test COMMAND simple)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS simple)
 
