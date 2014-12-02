@@ -653,28 +653,6 @@ static ghost_error_t SELL_split(ghost_sparsemat_t *mat)
 #endif
     }
 
-    /*    INFO_LOG("+ local +++++++");
-          for(chunk = 0; chunk < localSELL->nrowsPadded/localSELL->chunkHeight; chunk++) {
-          INFO_LOG("chunk %d, start %d, len %d",chunk,localSELL->chunkStart[chunk],localSELL->chunkLen[chunk]);
-          for (i=0; i<localSELL->chunkLen[chunk]; i++) {
-          for (j=0; j<localSELL->chunkHeight; j++) {
-          idx = localSELL->chunkStart[chunk]+i*localSELL->chunkHeight+j;
-          INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(localSELL->val))[idx],localSELL->col[idx]);
-          }
-          }
-          }
-
-          INFO_LOG("+ remote +++++++");
-          for(chunk = 0; chunk < remoteSELL->nrowsPadded/remoteSELL->chunkHeight; chunk++) {
-          INFO_LOG("chunk %d, start %d, len %d",chunk,remoteSELL->chunkStart[chunk],remoteSELL->chunkLen[chunk]);
-          for (i=0; i<remoteSELL->chunkLen[chunk]; i++) {
-          for (j=0; j<remoteSELL->chunkHeight; j++) {
-          idx = remoteSELL->chunkStart[chunk]+i*remoteSELL->chunkHeight+j;
-          INFO_LOG("%d,%d,%d:%d: %f|%d",chunk,i,j,idx,((double *)(remoteSELL->val))[idx],remoteSELL->col[idx]);
-          }
-          }
-          }*/
-
     goto out;
 err:
     mat->localPart->destroy(mat->localPart); mat->localPart = NULL;
