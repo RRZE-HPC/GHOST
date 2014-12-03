@@ -63,7 +63,7 @@ if (do_fallback) {\
         ghost_cu_free(cu_localdot);\
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)\
                     *rhs->traits.ncols*3*grid.x));\
-        INFO_LOG("Executing row-major fallback kernel with grid %dx%d "\
+        PERFWARNING_LOG("Executing row-major fallback kernel with grid %dx%d "\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,\
@@ -76,7 +76,7 @@ if (do_fallback) {\
                 flags&(GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT),\
                 flags&GHOST_SPMV_DOT_ANY);\
     } else {\
-        WARNING_LOG("Executing col-major fallback kernel with grid %dx%d "\
+        PERFWARNING_LOG("Executing col-major fallback kernel with grid %dx%d "\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
                 (dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,\
@@ -790,13 +790,13 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     void *lhsval, *rhsval;
     ghost_densemat_t *lhscompact, *rhscompact;
     if (lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) lhs before operation");
+        PERFWARNING_LOG("Cloning (and compressing) lhs before operation");
         GHOST_CALL_RETURN(lhs->clone(lhs,&lhscompact,lhs->traits.nrows,0,lhs->traits.ncols,0));
     } else {
         lhscompact = lhs;
     }
     if (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED) {
-        INFO_LOG("Cloning (and compressing) rhs before operation");
+        PERFWARNING_LOG("Cloning (and compressing) rhs before operation");
         GHOST_CALL_RETURN(rhs->clone(rhs,&rhscompact,rhs->traits.nrows,0,rhs->traits.ncols,0));
     } else {
         rhscompact = rhs;
@@ -849,7 +849,6 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     size_t shiftsize = sizeof(v_dt_device)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
     GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));
     if (flags & GHOST_SPMV_SHIFT) {
-        INFO_LOG("scatter shift %zu bytes",shiftsize);
         ghost_lidx_t c;
         for (c=0; c<rhs->traits.ncols; c++) {
             GHOST_CALL_RETURN(ghost_cu_upload(&cu_shift[c],shift,sizeof(v_dt_device)));
@@ -870,16 +869,15 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         size_t reqSmem = 0;
         if (flags & GHOST_SPMV_DOT_ANY) {
             reqSmem = sizeof(v_dt_device)*32*block.y;
-            WARNING_LOG("Maybe too little shared mem allocated!");
         }
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
-        INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
+        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
     } else if (rhs->traits.ncols == 32) {
-        INFO_LOG("Experimental row-major CUDA SELL-SpMMV");
+        DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV");
         block.x = 32;
         block.y = SELL_CUDA_THREADSPERBLOCK/block.x;
         grid.x = (int)ceil(mat->nrows/((double)block.y*block.x/rhs->traits.ncols));
@@ -888,7 +886,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
-        INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
+        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
         /*INFO_LOG("Very experimental row-major CUDA SELL-SpMMV");
@@ -900,7 +898,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(dt2)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl_v2,dt1,dt2,grid,block,0)*/
     } else {
-        INFO_LOG("Experimental row-major CUDA SELL-SpMMV with ncols != 32");
+        DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV with ncols != 32");
         /*block.x = MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);*/
         block.x = SELL_CUDA_THREADSPERBLOCK;
         block.y = 1;
@@ -913,18 +911,18 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         if (prop.sharedMemPerBlock < reqSmem) {
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
-        INFO_LOG("grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
+        DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_1dblock_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
     }
     CUDA_CALL_RETURN(cudaGetLastError());
     if (lhscompact != lhs) {
-        INFO_LOG("Transform lhs back");
+        DEBUG_LOG(1,"Transform lhs back");
         GHOST_CALL_RETURN(lhs->fromVec(lhs,lhscompact,0,0));
         lhscompact->destroy(lhscompact);
     }
     if (rhscompact != rhs) {
-        INFO_LOG("Transform rhs back");
+        DEBUG_LOG(1,"Transform rhs back");
         GHOST_CALL_RETURN(rhs->fromVec(rhs,rhscompact,0,0));
         rhscompact->destroy(rhscompact);
     }
@@ -949,7 +947,7 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         GHOST_INSTR_STOP("spmv_cuda_dot_reduction")
 #else
             GHOST_INSTR_START("spmv_cuda_dot")
-        INFO_LOG("Not doing the local dot product on-the-fly!");
+        PERFWARNING_LOG("Not doing the local dot product on-the-fly!");
         memset(localdot,0,rhs->traits.ncols*3*sizeof(v_dt_host));
         lhs->dot(lhs,&localdot[0],lhs);
         lhs->dot(lhs,&localdot[rhs->traits.ncols],rhs);

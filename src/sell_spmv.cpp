@@ -472,7 +472,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     if (p.impl == GHOST_IMPLEMENTATION_AVX && 
             p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz <= 2 && 
             !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
-        INFO_LOG("Chose SSE over AVX for blocksz=2");
+        PERFWARNING_LOG("Chose SSE over AVX for blocksz=2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
 
@@ -480,23 +480,23 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
             p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 4 
             && !(rhs->traits.datatype & GHOST_DT_COMPLEX)) {
         if (p.chunkheight < 2) {
-            INFO_LOG("Chose plain kernel for col-major densemats and C<2");
+            PERFWARNING_LOG("Chose plain kernel for col-major densemats and C<2");
             p.impl = GHOST_IMPLEMENTATION_PLAIN;
         } else {
-            INFO_LOG("Chose SSE for col-major densemats and C<4");
+            PERFWARNING_LOG("Chose SSE for col-major densemats and C<4");
             p.impl = GHOST_IMPLEMENTATION_SSE;
         }
     }
 
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        INFO_LOG("Use plain implementation for scattered views");
+        PERFWARNING_LOG("Use plain implementation for scattered views");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
 
     if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
             || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
-        INFO_LOG("Use plain implementation for views. This is subject to be "
+        PERFWARNING_LOG("Use plain implementation for views. This is subject to be "
                 "fixed, i.e., the vectorized kernels should work with dense "
                 "views.");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
@@ -505,7 +505,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
 
     if (!kernel) {
-        INFO_LOG("Try kernel with arbitrary blocksz");
+        PERFWARNING_LOG("Try kernel with arbitrary blocksz");
         p.blocksz = -1;
     }
     kernel = ghost_sellspmv_kernels[p];

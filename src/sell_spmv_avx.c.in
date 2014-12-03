@@ -14,7 +14,6 @@
 ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
-    INFO_LOG("in CM kernel");
     ghost_lidx_t i;
     double *lval = NULL, *rval = NULL;
     double *mval = (double *)SELL(mat)->val;
@@ -176,7 +175,6 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=2
-    INFO_LOG("in CM kernel");
     ghost_lidx_t i;
     complex double *lval = NULL, *rval = NULL;
     complex double *mval = (complex double *)SELL(mat)->val;
@@ -348,7 +346,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
-    INFO_LOG("in RM kernel with %"PRLIDX" vecs",invec->traits.ncols);
+    PERFWARNING_LOG("In variable-ncols kernel with %"PRLIDX" cols",invec->traits.ncols);
     ghost_lidx_t j,c,col;
     ghost_lidx_t offs;
     double *mval = (double *)SELL(mat)->val;
@@ -502,7 +500,6 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && NVECS>=4
-    INFO_LOG("in RM kernel");
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
@@ -628,7 +625,6 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && NVECS >= 2
-    INFO_LOG("in RM kernel");
     const double * const restrict mval = (const double * const restrict)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
