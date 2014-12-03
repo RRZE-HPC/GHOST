@@ -71,6 +71,7 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
 #ifdef GHOST_HAVE_CUDA
     if ((ghost_type == GHOST_TYPE_CUDA) && (mat->traits->flags & GHOST_SPARSEMAT_DEVICE)) {
         mat->spmv   = &ghost_cu_sell_spmv_selector;
+        mat->kacz = NULL;
     }
 #endif
     mat->destroy  = &SELL_free;
