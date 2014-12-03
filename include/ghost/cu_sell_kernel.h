@@ -225,17 +225,29 @@ struct CustomSum
     }
 };
 
+template<typename v_t>
+__global__ void ghost_deviceReduceSum(v_t *in, v_t *out, ghost_lidx_t N)
+{
+
+    ghost_lidx_t i;
+    v_t sum;
+    zero<v_t>(sum);
+
+    for (i=blockIdx.x*blockDim.x+threadIdx.x; i<N; i += blockDim.x*gridDim.x) {
+        sum = axpy<v_t>(sum,in[i],1.f);
+    }
+    sum = ghost_blockReduceSum(sum);
+    if (threadIdx.x == 0) {
+        out[blockIdx.x] = sum;
+    }
+}
+
 template <typename T>
 inline void deviceReduce3(T *cu_data_in, T *cu_data_out, unsigned int stride, unsigned int N)
 {
-    CustomSum sumop;
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_in,N,sumop);
-    ghost_cu_malloc((void **)&d_temp_storage,temp_storage_bytes);
-    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,cu_data_in,cu_data_out,N,sumop);
-    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[stride],&cu_data_out[stride],N,sumop);
-    cub::DeviceReduce::Reduce(d_temp_storage,temp_storage_bytes,&cu_data_in[2*stride],&cu_data_out[2*stride],N,sumop);
+    ghost_deviceReduceSum<T><<<1,1024,32*sizeof(T)>>>(cu_data_in,cu_data_out,N);
+    ghost_deviceReduceSum<T><<<1,1024,32*sizeof(T)>>>(&cu_data_in[stride],&cu_data_out[stride],N);
+    ghost_deviceReduceSum<T><<<1,1024,32*sizeof(T)>>>(&cu_data_in[2*stride],&cu_data_out[2*stride],N);
 }
 
 #endif

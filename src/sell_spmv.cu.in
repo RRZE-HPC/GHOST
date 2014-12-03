@@ -13,7 +13,6 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <complex.h>
-#include <cub/cub.cuh>
 
 #include "ghost/cu_complex.h"
 #include "ghost/cu_sell_kernel.h"
