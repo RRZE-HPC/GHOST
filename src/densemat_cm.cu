@@ -1,5 +1,4 @@
 #include "ghost/config.h"
-#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/densemat_cm.h"

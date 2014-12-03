@@ -1,5 +1,4 @@
 #include "ghost/config.h"
-#undef GHOST_HAVE_MPI
 #include "ghost/types.h"
 #include "ghost/util.h"
 #include "ghost/densemat_rm.h"
@@ -128,7 +127,7 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
     for (proc=0 ; proc<nrank ; proc++){
         dim3 block((int)ceil((double)THREADSPERBLOCK/vec->traits.ncols),vec->traits.ncols);
         dim3 grid((int)ceil((double)ctx->dues[proc]/block.x));
-        INFO_LOG("communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
+        DEBUG_LOG(1,"communication assembly with grid %d block %dx%d %d->%d",grid.x,block.x,block.y,me,proc);
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
