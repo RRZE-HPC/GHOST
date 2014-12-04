@@ -5,6 +5,7 @@
 #include "ghost/locality.h"
 #include "ghost/util.h"
 
+
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
@@ -26,7 +27,7 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
     ghost_lidx_t n = v->traits.nrows;
     ghost_lidx_t m = v->traits.ncols;
     
-    double * restrict vval, * restrict wval, * restrict xval;
+    double * const restrict vval, * const restrict wval, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -60,26 +61,18 @@ ghost_error_t ghost_tsmttsm__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *v,
             memset(x_priv,0,sizeof(x_priv));
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-                for (j=0; j<m; j++) {
 #pragma simd
-#pragma vector always
-#pragma vector aligned
-#pragma ivdep
-#pragma unroll
-                    for (k=0; k<BLOCKSZ; k++) {
+                for (k=0; k<BLOCKSZ; k++) {
+                  for (j=0; j<m; j++) {
                         x_priv[j*BLOCKSZ+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
 
             }
 #pragma omp critical
-            for (j=0; j<m; j++) {
 #pragma simd
-#pragma vector always
-#pragma vector aligned
-#pragma ivdep
-#pragma unroll
-                for (k=0; k<BLOCKSZ; k++) {
+            for (k=0; k<BLOCKSZ; k++) {
+                for (j=0; j<m; j++) {
                     xval[k*ldx+j] += x_priv[j*BLOCKSZ+k];
                 }
             }
