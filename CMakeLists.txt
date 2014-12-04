@@ -96,6 +96,8 @@ set (SOURCES
     src/locality.c
     src/machine.c
     src/math.c
+    src/matrixmarket.c
+    src/mmio.c
     src/omp.c
     src/pumap.c
     src/rand.c
@@ -140,6 +142,7 @@ set (HEADERS
     include/ghost/log.h
     include/ghost/machine.h
     include/ghost/math.h
+    include/ghost/matrixmarket.h
     include/ghost/omp.h
     include/ghost/perm.h
     include/ghost/pumap.h
