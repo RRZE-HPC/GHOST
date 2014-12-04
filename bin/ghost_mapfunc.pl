@@ -44,7 +44,12 @@ while (<>) {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
             print "pars.dt = ".$datatypes{$funcpars[0]}.";\n";
-            print "pars.blocksz = ".$funcpars[1].";\n";
+            print "pars.blocksz1 = ".$funcpars[1].";\n";
+            if ($funcpars[2] eq "x") {
+                print "pars.blocksz2= -1;\n";
+            } else {
+                print "pars.blocksz2= ".$funcpars[2].";\n";
+            }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
         } elsif ($funcname eq "ghost_tsmm") {

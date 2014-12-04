@@ -53,7 +53,7 @@ ghost_tsmm_kernel_t ghost_tsmm_kernel(ghost_tsmm_parameters_t p, ghost_densemat_
 
     ghost_tsmm_kernel_t kernel = ghost_tsmm_kernels[p];
     if (!kernel) {
-        INFO_LOG("Try kernel with arbitrary blocksz2");
+        PERFWARNING_LOG("Try kernel with arbitrary blocksz2");
         p.blocksz2 = -1;
     }
     kernel = ghost_tsmm_kernels[p];

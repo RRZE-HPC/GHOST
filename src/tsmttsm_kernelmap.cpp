@@ -12,7 +12,7 @@ using namespace std;
 
 bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.blocksz,0) < ghost_hash(b.dt,b.blocksz,0); 
+    return ghost_hash(a.dt,a.blocksz1,a.blocksz2) < ghost_hash(b.dt,b.blocksz1,b.blocksz2); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
@@ -40,6 +40,11 @@ ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_
     }
     
     ghost_tsmttsm_kernel_t kernel = ghost_tsmttsm_kernels[p];
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary blocksz2");
+        p.blocksz2 = -1;
+    }
+    kernel = ghost_tsmttsm_kernels[p];
     
     return kernel;
 }

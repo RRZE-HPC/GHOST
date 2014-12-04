@@ -43,7 +43,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             INFO_LOG("Doing TSMM instead of GEMM!");
             return ghost_tsmm(x_in,v_in,w_in,alpha,beta);
         }
-        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x_in->traits.datatype, .blocksz = x_in->traits.ncols};
+        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x_in->traits.datatype, .blocksz1 = x_in->traits.ncols, .blocksz2 = x_in->traits.nrows};
         ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x_in,v_in,w_in,reduce);
         if (tsmttsm_kernel) {
             INFO_LOG("Doing TSMTTSM instead of GEMM!");
