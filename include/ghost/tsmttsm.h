@@ -39,7 +39,7 @@ extern "C" {
      *
      * v is NxM, distributed, row-major.
      *
-     * w is MxK, distributed, row-major.
+     * w is NxK, distributed, row-major.
      *
      * x is NxK, distributed, row- or col-major.
      *
