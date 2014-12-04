@@ -137,7 +137,6 @@ out:
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    INFO_LOG("tsmttsm with blocksz %d",CFGK);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
@@ -160,6 +159,7 @@ ghost_error_t ghost_tsmttsm__d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *
     GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
 
     ghost_lidx_t n = v->traits.nrows;
+    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     double * const restrict vval, * const restrict wval, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
