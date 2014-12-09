@@ -29,7 +29,8 @@ typedef struct
  *
  * If called with row #GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT, the parameter
  * \p val has to be a ghost_sparsemat_rowfunc_mm_initargs * with the according
- * information filled in.
+ * information filled in. The parameter \p col has to be a ghost_gidx_t[2] in 
+ * which the number of rows and columns will be stored.
  */
 int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val);
 
