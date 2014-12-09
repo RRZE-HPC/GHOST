@@ -431,6 +431,13 @@ struct ghost_sparsemat_t
      */
     ghost_error_t (*fromFile)(ghost_sparsemat_t *mat, char *path);
     /**
+     * @brief Create the matrix from a Matrix Market file.
+     *
+     * @param mat The matrix. 
+     * @param path Path to the file.
+     */
+    ghost_error_t (*fromMM)(ghost_sparsemat_t *mat, char *path);
+    /**
      * @brief Create the matrix from a function which defined the matrix row 
      * by row.
      *
@@ -691,6 +698,8 @@ extern "C" {
     void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat);
 
     int ghost_cmp_entsperrow(const void* a, const void* b);
+
+    ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path);
         
 
 #ifdef __cplusplus

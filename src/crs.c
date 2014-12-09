@@ -70,6 +70,7 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     }
 
     mat->fromFile = &CRS_fromBin;
+    mat->fromMM = &ghost_sparsemat_from_mm;
     mat->toFile = &CRS_toBin;
     mat->fromRowFunc = &CRS_fromRowFunc;
     mat->auxString = &CRS_printInfo;

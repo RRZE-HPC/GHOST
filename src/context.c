@@ -6,6 +6,7 @@
 #include "ghost/sparsemat.h"
 #include "ghost/locality.h"
 #include "ghost/bincrs.h"
+#include "ghost/matrixmarket.h"
 #include "ghost/log.h"
 
 
@@ -64,21 +65,41 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
         if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
             ERROR_LOG("The correct dimensions have to be given if the sparsemat source is a function!");
             return GHOST_ERR_INVALID_ARG;
-        }
-        ghost_bincrs_header_t fileheader;
-        GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
+        } else if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
+            ghost_bincrs_header_t fileheader;
+            GHOST_CALL_GOTO(ghost_bincrs_header_read(&fileheader,(char *)matrixSource),err,ret);
 #ifndef GHOST_HAVE_LONGIDX_GLOBAL
-        if (fileheader.nrows >= (int64_t)INT_MAX) {
-            ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
-            return GHOST_ERR_DATATYPE;
-        }
+            if (fileheader.nrows >= (int64_t)INT_MAX) {
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                return GHOST_ERR_DATATYPE;
+            }
 #endif
-        if (gnrows == 0) {
-            (*context)->gnrows = (ghost_gidx_t)fileheader.nrows;
+            if (gnrows == 0) {
+                (*context)->gnrows = (ghost_gidx_t)fileheader.nrows;
+            }
+            if (gncols == 0) {
+                (*context)->gncols = (ghost_gidx_t)fileheader.ncols;
+            }
+        } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
+            ghost_sparsemat_rowfunc_mm_initargs args;
+            args.filename = (char *)matrixSource;
+            
+            ghost_gidx_t dim[2]; 
+            ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM,NULL,dim,&args);
+#ifndef GHOST_HAVE_LONGIDX_GLOBAL
+            if (dim[0] >= (int64_t)INT_MAX) {
+                ERROR_LOG("The matrix is too big for 32-bit indices. Recompile with LONGIDX enabled!");
+                return GHOST_ERR_DATATYPE;
+            }
+#endif
+            if (gnrows == 0) {
+                (*context)->gnrows = (ghost_gidx_t)dim[0];
+            }
+            if (gncols == 0) {
+                (*context)->gncols = (ghost_gidx_t)dim[1];
+            }
         }
-        if (gncols == 0) {
-            (*context)->gncols = (ghost_gidx_t)fileheader.ncols;
-        }
+
 
     } else if ((gnrows < 0) || (gncols < 0)) {
             ERROR_LOG("The given context dimensions are smaller than zero which may be due to an integer overlow. Check your idx types!");
@@ -242,6 +263,13 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
                 }
                 if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
                     GHOST_CALL_GOTO(ghost_bincrs_rpt_read((*context)->rpt,(char *)matrixSource,0,(*context)->gnrows+1,NULL),err,ret);
+                } else if (srcType == GHOST_SPARSEMAT_SRC_MM) {
+                    ghost_sparsemat_rowfunc_mm_initargs args;
+                    args.filename = (char *)matrixSource;
+                    
+                    ghost_sparsemat_rowfunc_mm(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT,NULL,(*context)->rpt,&args);
+
+
                 } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
                     ghost_sparsemat_src_rowfunc_t *matsrc = (ghost_sparsemat_src_rowfunc_t *)matrixSource;
                     GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,matsrc->maxrowlen*GHOST_DT_MAX_SIZE),err,ret);

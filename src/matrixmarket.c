@@ -10,7 +10,30 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
     static char *values = NULL;
     static size_t dtsize = 0;
 
-    if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT) {
+    if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETDIM) {
+        ghost_sparsemat_rowfunc_mm_initargs args = 
+            *(ghost_sparsemat_rowfunc_mm_initargs *)val;
+        char *filename = args.filename;
+
+        FILE *f;
+        int ret_code;
+        int M, N, nz;
+
+        if ((f = fopen(filename,"r")) == NULL) {
+            ERROR_LOG("fopen with %s failed!",filename);
+            return 1;
+        }
+
+        if((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) != 0){
+            ERROR_LOG("Could not read header!");
+            return 1;
+        }
+        col[0] = M;
+        col[1] = N;
+        
+        fclose(f);
+    } else if ((row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) || (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT)) {
+
         ghost_sparsemat_rowfunc_mm_initargs args = 
             *(ghost_sparsemat_rowfunc_mm_initargs *)val;
         char *filename = args.filename;
@@ -27,7 +50,7 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
         int symm = 0;
 
         if ((f = fopen(filename,"r")) == NULL) {
-            ERROR_LOG("fopen failed!");
+            ERROR_LOG("fopen with %s failed!",filename);
             return 1;
         }
 
@@ -107,31 +130,36 @@ int ghost_sparsemat_rowfunc_mm(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gid
             rowPtr[i] += rowPtr[i-1];
         }
 
-        fsetpos(f,&pos);
+        if (row == GHOST_SPARSEMAT_ROWFUNC_MM_ROW_GETRPT) {
+            col = rowPtr;
+        } else {
 
-        for (i = 0; i < nz; ++i){
-            if (matdt & GHOST_DT_COMPLEX) {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
-            } else {
-                fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+            fsetpos(f,&pos);
+
+            for (i = 0; i < nz; ++i){
+                if (matdt & GHOST_DT_COMPLEX) {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg %lg\n", &readrow,&readcol,(double *)value,(double *)(value+dtsize/2));
+                } else {
+                    fscanf(f, "%"PRGIDX" %"PRGIDX" %lg\n", &readrow,&readcol,(double *)value);
+                }
+                readrow--;
+                readcol--;
+
+                memcpy(&values[(rowPtr[readrow] + offset[readrow])*dtsize],value,dtsize);
+                colInd[rowPtr[readrow] + offset[readrow]] = readcol;
+                offset[readrow]++;
+                
+                if (symm && (readrow != readcol)) {
+                    memcpy(&values[(rowPtr[readcol] + offset[readcol])*dtsize],value,dtsize);
+                    colInd[rowPtr[readcol] + offset[readcol]] = readrow;
+                    offset[readcol]++;
+                }
+
             }
-            readrow--;
-            readcol--;
 
-            memcpy(&values[(rowPtr[readrow] + offset[readrow])*dtsize],value,dtsize);
-            colInd[rowPtr[readrow] + offset[readrow]] = readcol;
-            offset[readrow]++;
-            
-            if (symm && (readrow != readcol)) {
-                memcpy(&values[(rowPtr[readcol] + offset[readcol])*dtsize],value,dtsize);
-                colInd[rowPtr[readcol] + offset[readcol]] = readrow;
-                offset[readcol]++;
-            }
-
+            col[0] = M;
+            col[1] = N;
         }
-
-        col[0] = M;
-        col[1] = N;
 
 
         free(offset);

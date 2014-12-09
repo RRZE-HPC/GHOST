@@ -9,6 +9,7 @@
 #include "ghost/log.h"
 #include "ghost/machine.h"
 #include "ghost/bincrs.h"
+#include "ghost/matrixmarket.h"
 #include "ghost/instr.h"
 
 #include <libgen.h>
@@ -732,4 +733,22 @@ void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
     free(mat->col_orig); mat->col_orig = NULL;
 }
 
+ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
+{
+        ghost_sparsemat_rowfunc_mm_initargs args;
+        ghost_gidx_t dim[2];
+        ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+        
+        src.func = &ghost_sparsemat_rowfunc_mm;
+        args.filename = path;
+        args.dt = mat->traits->datatype;
+        src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,dim,&args);
+        
+        src.maxrowlen = dim[1];
+        
+        mat->fromRowFunc(mat,&src);
+        src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL);
 
+        return GHOST_SUCCESS;
+
+}
