@@ -54,7 +54,7 @@ Gather region information
 ### Likwid
 
 In order to get information about instrumented regions using hardware performance monitoring with Likwid, the program binary call has to be wrapped with `likwid-perfctr`.
-For detailed documentation see the [http://code.google.com/p/likwid/wiki/LikwidPerfCtr](Likwid homepage).
+For detailed documentation see the [Likwid homepage](http://code.google.com/p/likwid/wiki/LikwidPerfCtr).
 
 \note It is important to match the cores used by GHOST to the cores specified to `likwid-perfctr`.
 

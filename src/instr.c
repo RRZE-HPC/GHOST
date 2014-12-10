@@ -2,10 +2,11 @@
 
 static char *ghost_instr_prefix = "";
 static char *ghost_instr_suffix = "";
+int ghost_instr_enable = 1;
 
-void ghost_instr_prefix_set(char *prefix)
+void ghost_instr_prefix_set(const char *prefix)
 {
-    ghost_instr_prefix = prefix;
+    ghost_instr_prefix = (char *)prefix;
 
 }
 
@@ -14,9 +15,9 @@ char *ghost_instr_prefix_get()
     return ghost_instr_prefix;
 }
 
-void ghost_instr_suffix_set(char *suffix)
+void ghost_instr_suffix_set(const char *suffix)
 {
-    ghost_instr_suffix = suffix;
+    ghost_instr_suffix = (char *)suffix;
 
 }
 

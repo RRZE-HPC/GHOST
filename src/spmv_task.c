@@ -29,22 +29,23 @@
 #ifdef GHOST_HAVE_MPI
 typedef struct {
     ghost_densemat_t *rhs;
-    ghost_permutation_t *perm;
 } commArgs;
 
 static void *communicate(void *vargs)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     commArgs *args = (commArgs *)vargs;
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(args->rhs,args->perm,true),err,*ret);
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(args->rhs,true),err,*ret);
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(args->rhs),err,*ret);
 
     goto out;
 err:
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
 }
 
@@ -60,18 +61,18 @@ static void *computeLocal(void *vargs)
 {
 //#pragma omp parallel
 //    INFO_LOG("comp local t %d running @ core %d",ghost_ompGetThreadNum(),ghost_getCore());
+    //GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
 
-    GHOST_INSTR_START(spmv_task_computeLocal);
     compArgs *args = (compArgs *)vargs;
     GHOST_CALL_GOTO(args->mat->spmv(args->mat,args->res,args->invec,args->spmvOptions,args->argp),err,*ret);
-    GHOST_INSTR_STOP(spmv_task_computeLocal);
 
     goto out;
 err:
 out:
+    //GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
 #endif
@@ -87,12 +88,16 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
-    GHOST_INSTR_START(spmv_task_entiresolver)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    GHOST_INSTR_START("prepare");
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_spmv_flags_t localopts = spmvOptions;
     ghost_spmv_flags_t remoteopts = spmvOptions;
 
+/*    int remoteExists;
+    ghost_nrank(&remoteExists,mat->context->mpicomm);
+    remoteExists -= 1;*/
     int remoteExists = mat->remotePart->nnz > 0;
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
@@ -105,7 +110,6 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     compArgs cplargs;
     ghost_task_t *commTask;
     ghost_task_t *compTask;
-    GHOST_INSTR_START(spmv_task_prepare);
 
     int taskflags = GHOST_TASK_DEFAULT;
     ghost_task_t *parent = NULL;
@@ -126,18 +130,21 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     }
 
     cargs.rhs = invec;
-    cargs.perm = mat->permutation;
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
     cplargs.spmvOptions = localopts;
     va_copy(cplargs.argp,argp);
 
-    GHOST_INSTR_STOP(spmv_task_prepare);
+    GHOST_INSTR_STOP("prepare");
     
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec, mat->permutation),err,ret);
+    GHOST_INSTR_START("haloassembly");
+    
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec),err,ret);
+    
+    GHOST_INSTR_STOP("haloassembly");
 
-    GHOST_INSTR_START(spmv_task_both_tasks);
+    GHOST_INSTR_START("both_tasks");
     if (remoteExists) {
         ghost_task_enqueue(commTask);
     }
@@ -152,15 +159,15 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
             goto err;
         }
     }
-    GHOST_INSTR_STOP(spmv_task_both_tasks);
+    GHOST_INSTR_STOP("both_tasks");
 
-    GHOST_INSTR_START(spmv_task_computeRemote);
+    GHOST_INSTR_START("remote");
     if (remoteExists) {
         mat->remotePart->spmv(mat->remotePart,res,invec,remoteopts,argp);
     }
-    GHOST_INSTR_STOP(spmv_task_computeRemote);
+    GHOST_INSTR_STOP("remote");
        
-    GHOST_INSTR_STOP(spmv_task_entiresolver)
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
     goto out;
 err:

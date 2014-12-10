@@ -1,6 +1,27 @@
 Code generation
 ===============
 
+GHOST features the possibility to generate fast mathematical kernels for common usage scenarios.
+Which kernels are generated gets decided at compile time.
+Calling the auto-generated kernels is transparent, i.e., GHOST first tries to find a suitable generated kernel and, if that fails, calls a fallback implementation.
+
+Usage
+-----
+
+The relevant build variables for code generation have the prefix `CFG_`.
+Concretely, there are currently three variables: `CFG_BLOCKVECTOR_SIZES`, `CFG_SELL_CHUNKHEIGHTS`, and `CFG_SELL_CUDA_KERNELS`.
+`CFG_BLOCKVECTOR_SIZES` and `CFG_SELL_CHUNKHEIGHTS` are comma-separated lists of numbers. They should reflect commonly used widths of block vectors and chunkheights of SELL matrices.
+For example, if block vectors of width 4 and 8 occur and the matrix should be stored in SELL-32, `CFG_BLOCKVECTOR_SIZES=4,8` and `CFG_SELL_CHUNKHEIGHTS=32`.
+
+CUDA kernels are very sensitive to branches. This is the reason why there is a fully-templated version of the CUDA SELL SpMV where all constant decisions regarding scaling, shifts and dot computations are based on template parameters.
+In total, this sums up to six boolean template parameters.
+Generating all possible instances would result in a very large compile time.
+Thus, certain combinations of those boolean values for which kernel code should be created can be selected at compile time via the variable `CFG_SELL_CUDA_KERNELS`.
+
+
+Implementation
+--------------
+
 GHOST comes with a simple code generator consisting of several perl scripts which are located in `bin/`.
 The main preprocessing script `/bin/ghost_pp.pl` duplication of code lines (`GHOST_UNROLL`) and the generation of function variants (`GHOST_FUNC_BEGIN/END`).
 The latter mechanism works similar to C++ function templates.
@@ -11,8 +32,8 @@ In addition, a header file containg prototypes of all generated functions is gen
 Lastly, the script `bin/ghost_mapfunc.pl` creates a .def file which should be included in a GHOST source file.
 In this .def file, all generated kernels are inserted into a map for easy lookup.
 
-GHOST_FUNC_BEGIN/END
---------------------
+### GHOST_FUNC_BEGIN/END
+
 
 This macro is used for the generation of function variants with one or more parameters.
 In GHOST, the generation of block vector kernels with fixed block sizes and the generation of SpMV kernels with fixed chunk heights for the SELL matrix are done with this mechanism. 
@@ -44,8 +65,8 @@ int func_2_6(void) {
 }
 ~~~
 
-GHOST_UNROLL
-------------
+### GHOST_UNROLL
+
 
 This macro is used in the intrinsics implementation of compute kernels.
 The code line to be duplicated has to start with `#GHOST_UNROLL#`. After that, the actual code follows in a single line.

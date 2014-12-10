@@ -184,8 +184,7 @@ ghost_error_t ghost_hwconfig_get(ghost_hwconfig_t * hwconfig)
         ERROR_LOG("NULL pointer");
         return GHOST_ERR_INVALID_ARG;
     }
-    hwconfig->ncore = ghost_hwconfig.ncore;
-    hwconfig->nsmt = ghost_hwconfig.nsmt;
+    *hwconfig = ghost_hwconfig;
     
     return GHOST_SUCCESS;
 }
@@ -287,6 +286,7 @@ static ghost_error_t ghost_hostname(char ** hostnamePtr, size_t * hostnameLength
         nHostname += MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&hostname,sizeof(char) * nHostname));
+        memset(hostname,0,nHostname);
 
         int error;
 
@@ -375,8 +375,9 @@ ghost_error_t ghost_nodecomm_setup(ghost_mpi_comm_t comm)
     int nSend = MAX(HOST_NAME_MAX, LOCAL_HOSTNAME_MAX);
     char * send = NULL;
     GHOST_CALL_RETURN(ghost_malloc((void **)&send,sizeof(char) * nSend));
-
-    strncpy(send, hostname, nSend);
+    memset(send,0,nSend);
+    
+    strncpy(send, hostname, strlen(hostname));
 
     // Ensure terminating \x00 at the end, this may not be
     // garanteed if if len(send) = nSend.

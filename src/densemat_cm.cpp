@@ -6,6 +6,7 @@
 #endif
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 #include <complex>
 #include <stdio.h>
 
@@ -16,6 +17,9 @@
 #include "ghost/math.h"
 #include "ghost/locality.h"
 #include "ghost/log.h"
+#include "ghost/machine.h"
+#define COLMAJOR
+#include "ghost/densemat_iter_macros.h"
 
 
 using namespace std;
@@ -24,8 +28,9 @@ using namespace std;
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_normalize_tmpl(ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_idx_t v;
+    ghost_lidx_t v;
     v_t *s = NULL;
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&s,vec->traits.ncols*sizeof(v_t)),err,ret);
@@ -44,6 +49,7 @@ err:
 out:
     free(s);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 
 }
@@ -51,84 +57,67 @@ out:
 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_dotprod_tmpl(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2)
-{ // the parallelization is done manually because reduction does not work with ghost_complex numbers
-    if (vec->traits.nrows != vec2->traits.nrows) {
-        WARNING_LOG("The input vectors of the dot product have different numbers of rows");
-    }
-    if (vec->traits.ncols != vec2->traits.ncols) {
-        WARNING_LOG("The input vectors of the dot product have different numbers of columns");
-    }
-    ghost_idx_t i,v = 0;
+{ 
+    // the parallelization is done manually because reduction does not work with ghost_complex numbers
+   
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
 
-    int nthreads;
+    ghost_error_t ret = GHOST_SUCCESS;
+    int nthreads, i;
+    v_t *partsums;
+    unsigned clsize;
+
 #pragma omp parallel
 #pragma omp single
     nthreads = ghost_omp_nthread();
+   
+    ghost_machine_cacheline_size(&clsize);
+    int padding = (int)clsize/sizeof(v_t);
+        
+    GHOST_CALL_GOTO(ghost_malloc((void **)&partsums,nthreads*(vec->traits.ncols+padding)*sizeof(v_t)),err,ret);
+    memset(partsums,0,nthreads*(vec->traits.ncols+padding)*sizeof(v_t));
+    
+#pragma omp parallel shared(partsums) 
+    {
+        int tid = ghost_omp_threadnum();
+        DENSEMAT_ITER2(vec,vec2,
+            partsums[(padding+vec->traits.ncols)*tid+col] += *(v_t *)DENSEMAT_VAL(vec2,memrow2,col)*
+                conjugate((v_t *)(DENSEMAT_VAL(vec,memrow1,col))));
+    }
+    ghost_lidx_t col;
+    for (col=0; col<vec->traits.ncols; col++) {
+        ((v_t *)res)[col] = 0.;
 
-    v_t *partsums;
-    GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,16*nthreads*sizeof(v_t)));
-
-    for (v=0; v<MIN(vec->traits.ncols,vec2->traits.ncols); v++) {
-        v_t sum = 0;
-        for (i=0; i<nthreads*16; i++) partsums[i] = (v_t)0.;
-
-#pragma omp parallel 
-        {
-            ghost_idx_t row1,row2,rowidx = 0;
-            int tid = ghost_omp_threadnum();
-            if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
-                if (tid==0 && v==0) {
-                    WARNING_LOG("Potentially slow DOT operation because some rows are masked out!");
-                }
-                ITER2_ROWS_BEGIN(vec,vec2,row1,row2,rowidx)
-                    partsums[tid*16] += *(v_t *)VECVAL_CM(vec2,vec2->val,v,row2) * conjugate((v_t *)(VECVAL_CM(vec,vec->val,v,row1)));
-                ITER2_ROWS_END(rowidx)
-            } else {
-                ITER2_COMPACT_ROWS_BEGIN(vec,vec2,row1,row2,rowidx)
-                    partsums[tid*16] += *(v_t *)VECVAL_CM(vec2,vec2->val,v,row2) * conjugate((v_t *)(VECVAL_CM(vec,vec->val,v,row1)));
-                ITER2_COMPACT_ROWS_END()
-            }
+        for (i=0; i<nthreads; i++) {
+            ((v_t *)res)[col] += partsums[i*(vec->traits.ncols+padding)+col];
         }
-
-        for (i=0; i<nthreads; i++) sum += partsums[i*16];
-
-        ((v_t *)res)[v] = sum;
     }
 
+    goto out;
+err:
+
+out:
     free(partsums);
     
-    return GHOST_SUCCESS;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return ret;
 }
 
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale)
 {
-    if (vec->traits.storage != vec2->traits.storage) {
-        ERROR_LOG("Cannot VAXPY densemats with different storage order");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.ncols != vec2->traits.ncols) {
-        ERROR_LOG("Cannot VAXPY densemats with different number of columns");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.nrows != vec2->traits.nrows) {
-        ERROR_LOG("Cannot VAXPY densemats with different number of rows");
-        return GHOST_ERR_INVALID_ARG;
-    }
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    
     v_t *s = (v_t *)scale;
+    
+    DENSEMAT_ITER2(vec,vec2,
+            *(v_t *)DENSEMAT_VAL(vec,memrow1,col) += 
+            *(v_t *)DENSEMAT_VAL(vec2,memrow2,col) * s[col]);
 
-    ghost_idx_t row1,row2,col,rowidx = 0;
-    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
-        WARNING_LOG("Potentially slow VAXPY operation because some rows are masked out!");
-        ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
-        ITER2_END_CM(rowidx)
-    } else {
-        ITER2_COMPACT_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) += *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col];
-        ITER2_COMPACT_END_CM()
-    }
-
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+    return GHOST_SUCCESS;
     
     return GHOST_SUCCESS;
 }
@@ -136,55 +125,29 @@ static ghost_error_t ghost_densemat_cm_vaxpy_tmpl(ghost_densemat_t *vec, ghost_d
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b_)
 {
-    if (vec->traits.storage != vec2->traits.storage) {
-        ERROR_LOG("Cannot VAXPBY densemats with different storage order");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.ncols != vec2->traits.ncols) {
-        ERROR_LOG("Cannot VAXPBY densemats with different number of columns");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    if (vec->traits.nrows != vec2->traits.nrows) {
-        ERROR_LOG("Cannot VAXPBY densemats with different number of rows");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    ghost_idx_t row1,row2,col,rowidx;
+    GHOST_DENSEMAT_CHECK_SIMILARITY(vec,vec2);
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+
     v_t *s = (v_t *)scale;
     v_t *b = (v_t *)b_;
 
-    if (!ghost_bitmap_iscompact(vec->ldmask) || !ghost_bitmap_iscompact(vec2->ldmask)) {
-        WARNING_LOG("Potentially slow VAXPBY operation because some rows are masked out!");
-        ITER2_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col] +
-                *(v_t *)VECVAL_CM(vec,vec->val,col,row1) * b[col];
-        ITER2_END_CM(rowidx)
-    } else {
-        ITER2_COMPACT_BEGIN_CM(vec,vec2,col,row1,row2,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row1) = *(v_t *)VECVAL_CM(vec2,vec2->val,col,row2) * s[col] +
-                *(v_t *)VECVAL_CM(vec,vec->val,col,row1) * b[col];
-        ITER2_COMPACT_END_CM()
-    }
+    DENSEMAT_ITER2(vec,vec2,
+            *(v_t *)DENSEMAT_VAL(vec,memrow1,col) = 
+            *(v_t *)DENSEMAT_VAL(vec2,memrow2,col) * s[col] + 
+                *(v_t *)DENSEMAT_VAL(vec,row,memcol1) * b[col]);
     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
 template<typename v_t> 
 static ghost_error_t ghost_densemat_cm_vscale_tmpl(ghost_densemat_t *vec, void *scale)
 {
-    ghost_idx_t row,col,rowidx = 0;
-    v_t *s = (v_t *)scale;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
+        
+    DENSEMAT_ITER(vec,*(v_t *)DENSEMAT_VAL(vec,memrow,col) *= ((v_t *)scale)[col]);
 
-    if (!ghost_bitmap_iscompact(vec->ldmask)) {
-        WARNING_LOG("Potentially slow SCAL operation because some rows are masked out!");
-        ITER_BEGIN_CM(vec,col,row,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
-        ITER_END_CM(rowidx)
-    } else {
-        ITER_COMPACT_BEGIN_CM(vec,col,row,rowidx)
-            *(v_t *)VECVAL_CM(vec,vec->val,col,row) *= s[col];
-        ITER_COMPACT_END_CM()
-    }
-
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
 }
 
@@ -218,20 +181,18 @@ static void my_rand(unsigned int* state, ghost_complex<float_type>* result)
 template <typename v_t> 
 static ghost_error_t ghost_densemat_cm_fromRand_tmpl(ghost_densemat_t *vec)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
     ghost_densemat_cm_malloc(vec);
-    DEBUG_LOG(1,"Filling vector with random values");
 
 #pragma omp parallel
     {
-    ghost_idx_t col,row,rowidx;
-    unsigned int *state;
-    ghost_rand_get(&state);
-    ITER_BEGIN_CM_INPAR(vec,col,row,rowidx)
-    my_rand(state,(v_t *)VECVAL_CM(vec,vec->val,col,row));
-    ITER_END_CM_INPAR(rowidx)
+        unsigned int *state;
+        ghost_rand_get(&state);
+        DENSEMAT_ITER(vec,my_rand(state,(v_t *)DENSEMAT_VAL(vec,memrow,col)));
     }
-    vec->upload(vec);
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
@@ -239,20 +200,22 @@ template <typename v_t>
 static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t *vec)
 {
     stringstream buffer;
-    buffer.precision(6);
-    buffer.setf(ios::fixed, ios::floatfield);
+    buffer << std::setprecision(6)
+           << std::right
+           << std::scientific
+           << std::setw(10);
 
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_idx_t i,v,r,j;
+        ghost_lidx_t i,v,r,j;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
             if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
                     if (ghost_bitmap_isset(vec->trmask,j)) {
                         v_t val = 0.;
-                        //INFO_LOG("dl col %d row %d idx %d cu_val %p val %p",j,i,j*vec->traits.nrowspadded+i,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),&val);
+                        //printf("dl col %d row %d idx %d cu_val %p val %p\n",j,i,j*vec->traits.nrowspadded+i,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),&val);
                         GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t)));
-                        buffer << val << "\t";
+                        buffer << val;
                         v++;
                     }
                 }
@@ -264,22 +227,22 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
         }
 #endif
     } else {
-        ghost_idx_t i,v,r;
+        ghost_lidx_t i,v,r;
         for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
             if (ghost_bitmap_isset(vec->ldmask,i)) {
                 for (v=0; v<vec->traits.ncols; v++) {
                     if (vec->traits.datatype & GHOST_DT_COMPLEX) {
                         if (vec->traits.datatype & GHOST_DT_DOUBLE) {
                             double *val;
-                            val = (double *)VECVAL_CM(vec,vec->val,v,i);
+                            val = (double *)DENSEMAT_VAL(vec,i,v);
                             buffer << "(" << *val << ", " << *(val+1) << ")\t";
                         } else {
                             float *val;
-                            val = (float *)VECVAL_CM(vec,vec->val,v,i);
+                            val = (float *)DENSEMAT_VAL(vec,i,v);
                             buffer << "(" << *val << ", " << *(val+1) << ")\t";
                         }
                     } else {
-                        v_t val = *(v_t *)VECVAL_CM(vec,vec->val,v,i);
+                        v_t val = *(v_t *)DENSEMAT_VAL(vec,i,v);
                         buffer << val << "\t";
                     }
 
@@ -291,95 +254,73 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
             }
         }
     }
+ 
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
-    strcpy(*str,buffer.str().c_str());
+    *str = strdup(buffer.str().c_str()); 
 
     return GHOST_SUCCESS;
 }
 
+extern "C" ghost_error_t ghost_densemat_cm_string_selector(ghost_densemat_t *vec, char **str) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t d_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_string_tmpl< double >(str,vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_string_tmpl,str,vec);
 
-extern "C" ghost_error_t s_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_string_tmpl< float >(str,vec); }
+    return ret;
+}
 
+extern "C" ghost_error_t ghost_densemat_cm_normalize_selector(ghost_densemat_t *vec) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t z_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_string_tmpl< ghost_complex<double> >(str,vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_normalize_tmpl,vec);
 
-extern "C" ghost_error_t c_ghost_densemat_cm_string(char **str, ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_string_tmpl< ghost_complex<float> >(str,vec); }
+    return ret;
+}
 
-extern "C" ghost_error_t d_ghost_densemat_cm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_normalize_tmpl< double >(vec); }
+extern "C" ghost_error_t ghost_densemat_cm_dotprod_selector(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
+{
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t s_ghost_densemat_cm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_normalize_tmpl< float >(vec); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_dotprod_tmpl,vec,res,vec2);
 
-extern "C" ghost_error_t z_ghost_densemat_cm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_normalize_tmpl< ghost_complex<double> >(vec); }
+    return ret;
+}
 
-extern "C" ghost_error_t c_ghost_densemat_cm_normalize(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_normalize_tmpl< ghost_complex<float> >(vec); }
+extern "C" ghost_error_t ghost_densemat_cm_vscale_selector(ghost_densemat_t *vec, void *scale) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t d_ghost_densemat_cm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_cm_dotprod_tmpl< double >(vec,res,vec2); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_vscale_tmpl,vec,scale);
 
-extern "C" ghost_error_t s_ghost_densemat_cm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_cm_dotprod_tmpl< float >(vec,res,vec2); }
+    return ret;
+}
 
-extern "C" ghost_error_t z_ghost_densemat_cm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_cm_dotprod_tmpl< ghost_complex<double> >(vec,res,vec2); }
+extern "C" ghost_error_t ghost_densemat_cm_vaxpy_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t c_ghost_densemat_cm_dotprod(ghost_densemat_t *vec, void *res, ghost_densemat_t *vec2) 
-{ return ghost_densemat_cm_dotprod_tmpl< ghost_complex<float> >(vec,res,vec2); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_vaxpy_tmpl,vec,vec2,scale);
 
-extern "C" ghost_error_t d_ghost_densemat_cm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_cm_vscale_tmpl< double >(vec, scale); }
+    return ret;
+}
 
-extern "C" ghost_error_t s_ghost_densemat_cm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_cm_vscale_tmpl< float  >(vec, scale); }
+extern "C" ghost_error_t ghost_densemat_cm_vaxpby_selector(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t z_ghost_densemat_cm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_cm_vscale_tmpl< ghost_complex<double> >(vec, scale); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_vaxpby_tmpl,vec,vec2,scale,b);
 
-extern "C" ghost_error_t c_ghost_densemat_cm_vscale(ghost_densemat_t *vec, void *scale) 
-{ return ghost_densemat_cm_vscale_tmpl< ghost_complex<float> >(vec, scale); }
+    return ret;
+}
 
-extern "C" ghost_error_t d_ghost_densemat_cm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_cm_vaxpy_tmpl< double >(vec, vec2, scale); }
+extern "C" ghost_error_t ghost_densemat_cm_fromRand_selector(ghost_densemat_t *vec) 
+{ 
+    ghost_error_t ret = GHOST_SUCCESS;
 
-extern "C" ghost_error_t s_ghost_densemat_cm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_cm_vaxpy_tmpl< float >(vec, vec2, scale); }
+    SELECT_TMPL_1DATATYPE(vec->traits.datatype,ghost_complex,ret,ghost_densemat_cm_fromRand_tmpl,vec);
 
-extern "C" ghost_error_t z_ghost_densemat_cm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_cm_vaxpy_tmpl< ghost_complex<double> >(vec, vec2, scale); }
-
-extern "C" ghost_error_t c_ghost_densemat_cm_vaxpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale) 
-{ return ghost_densemat_cm_vaxpy_tmpl< ghost_complex<float> >(vec, vec2, scale); }
-
-extern "C" ghost_error_t d_ghost_densemat_cm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_cm_vaxpby_tmpl< double >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t s_ghost_densemat_cm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_cm_vaxpby_tmpl< float >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t z_ghost_densemat_cm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_cm_vaxpby_tmpl< ghost_complex<double> >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t c_ghost_densemat_cm_vaxpby(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale, void *b) 
-{ return ghost_densemat_cm_vaxpby_tmpl< ghost_complex<float> >(vec, vec2, scale, b); }
-
-extern "C" ghost_error_t d_ghost_densemat_cm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_fromRand_tmpl< double >(vec); }
-
-extern "C" ghost_error_t s_ghost_densemat_cm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_fromRand_tmpl< float >(vec); }
-
-extern "C" ghost_error_t z_ghost_densemat_cm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_fromRand_tmpl< ghost_complex<double> >(vec); }
-
-extern "C" ghost_error_t c_ghost_densemat_cm_fromRand(ghost_densemat_t *vec) 
-{ return ghost_densemat_cm_fromRand_tmpl< ghost_complex<float> >(vec); }
+    return ret;
+}
 

@@ -13,6 +13,7 @@
 #include "densemat.h"
 #include "error.h"
 #include "tsmm.h"
+#include "tsmm_inplace.h"
 #include "tsmttsm.h"
 
 #include <stdarg.h>
@@ -20,6 +21,37 @@
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
+typedef struct {
+    ghost_sparsemat_t *mat;
+    ghost_densemat_t *rhs;
+    ghost_spmv_flags_t flags;
+}
+ghost_spmv_perf_args_t;
+#define GHOST_SPMV_PERF_UNIT "GF/s"
+#define GHOST_SPMV_PERF_TAG "spmv"
+
+typedef struct {
+    ghost_densemat_t *vec1;
+    ghost_densemat_t *vec2;
+}
+ghost_axpy_perf_args_t;
+#define GHOST_AXPY_PERF_UNIT "GB/s"
+#define GHOST_AXPY_PERF_TAG "axpy"
+
+typedef struct {
+    ghost_densemat_t *vec1;
+    ghost_densemat_t *vec2;
+}
+ghost_dot_perf_args_t;
+#define GHOST_DOT_PERF_UNIT "GB/s"
+#define GHOST_DOT_PERF_TAG "dot"
+
+typedef struct {
+    ghost_densemat_t *vec;
+}
+ghost_scale_perf_args_t;
+#define GHOST_SCALE_PERF_UNIT "GB/s"
+#define GHOST_SCALE_PERF_TAG "scale"
 
 typedef ghost_error_t (*ghost_spmvsolver_t)(ghost_densemat_t*, ghost_sparsemat_t *, ghost_densemat_t*, ghost_spmv_flags_t, va_list argp);
 
@@ -112,32 +144,26 @@ extern "C" {
      * @return 
      */
     ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce); 
-    /**
-     * @brief 
-     *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
-     * @param beta
-     *
-     * x = alpha*v^T*w + beta*x
-     * v is NxM, row-major
-     * w is NxK, row-major
-     * x is MxK, col-major
-     * M<<N
-     * K=4,8,...
-     * Allreduce should be done on x
-     *
-     * @return 
-     */
-    //ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);
     
     ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t);
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string about the SpMV solver mode. 
+     *
+     * @param flags The SpMV flags.
+     *
+     * @return The string.
+     */
     char * ghost_spmv_mode_string(ghost_spmv_flags_t flags);
+
+    int ghost_spmv_perf(double *perf, double time, void *arg);
+    int ghost_axpy_perf(double *perf, double time, void *arg);
+    int ghost_scale_perf(double *perf, double time, void *arg);
+    int ghost_dot_perf(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"

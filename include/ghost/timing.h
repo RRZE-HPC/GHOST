@@ -43,6 +43,7 @@ for (func ## _it=0; func ## _it<nIter; func ## _it++) {\
 ghost_timing_wc(&func ## _tend);\
 func ## _tavg = (func ## _tend - func ## _tstart)/((double)nIter);\
 
+typedef int (*ghost_compute_performance_func_t)(double *perf, double time, void *arg);
 
 /**
  * @brief Information about a timed region.
@@ -69,6 +70,11 @@ typedef struct
      * @brief The maximum runtime.
      */
     double maxTime;
+    /**
+     * @brief The accumulated runtime.
+     */
+    double accTime;
+    
 }
 ghost_timing_region_t;
 
@@ -81,13 +87,13 @@ extern "C" {
      *
      * @param tag The region tag.
      */
-    void ghost_timing_tick(char *tag);
+    void ghost_timing_tick(const char *tag);
     /**
      * @brief Save the runtime for a region using the start time from ghost_timing_tick().
      *
      * @param tag The region tag.
      */
-    void ghost_timing_tock(char *tag);
+    void ghost_timing_tock(const char *tag);
     /**
      * @brief Summarize all timed regions into a string.
      *
@@ -104,7 +110,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** region, char *tag);
+    ghost_error_t ghost_timing_region_create(ghost_timing_region_t ** region, const char *tag);
     /**
      * @brief Destroy a timing region.
      *
@@ -128,6 +134,16 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_timing_wcmilli(double *time);
+
+    /**
+     * @brief Set a performance computation function to a given tag.
+     *
+     * @param[in] tag The region tag.
+     * @param[in] func The performance callback function.
+     * @param[in] arg Argument to the function.
+     * @param[in] unit The unit of performance.
+     */
+    void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, const char *unit);
 
 #ifdef __cplusplus
 }

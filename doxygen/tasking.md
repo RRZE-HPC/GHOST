@@ -58,6 +58,3 @@ added from within another task. When this flag is set, the child task can use
 all cores which are actually reserved for the adding task.
 
 
-Task selection
---------------
-

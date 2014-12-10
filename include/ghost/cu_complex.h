@@ -7,39 +7,57 @@
 #define GHOST_CU_COMPLEX_H
 
 template<typename T>
-__device__ inline void zero(T &val)
+__device__  __host__ inline void zero(T &val)
 {
     val = 0.;
 }
 
 template<>
-__device__ inline void zero<cuFloatComplex>(cuFloatComplex &val)
+__device__  __host__ inline void zero<cuFloatComplex>(cuFloatComplex &val)
 {
     val = make_cuFloatComplex(0.,0.);
 }
 
 template<>
-__device__ inline void zero<cuDoubleComplex>(cuDoubleComplex &val)
+__device__  __host__ inline void zero<cuDoubleComplex>(cuDoubleComplex &val)
 {
     val = make_cuDoubleComplex(0.,0.);
 }
 
 template<typename T>
-__device__ inline void one(T &val)
+__device__ __host__ inline void one(T &val)
 {
     val = 1.;
 }
 
 template<>
-__device__ inline void one<cuFloatComplex>(cuFloatComplex &val)
+__device__  __host__ inline void one<cuFloatComplex>(cuFloatComplex &val)
 {
     val = make_cuFloatComplex(1.,1.);
 }
 
 template<>
-__device__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
+__device__  __host__ inline void one<cuDoubleComplex>(cuDoubleComplex &val)
 {
     val = make_cuDoubleComplex(1.,1.);
+}
+
+template<typename T, typename T_b>
+__device__ inline void fromReal(T &val, T_b real)
+{
+    val = real;
+}
+
+template<>
+__device__ inline void fromReal<cuDoubleComplex,double>(cuDoubleComplex &val, double real)
+{
+    val = make_cuDoubleComplex(real,0.);
+}
+
+template<>
+__device__ inline void fromReal<cuFloatComplex,float>(cuFloatComplex &val, float real)
+{
+    val = make_cuFloatComplex(real,0.f);
 }
 
 // val += val2*val3
@@ -129,6 +147,42 @@ __device__ inline T axpby(T x, T y, T a, T b)
     return b*y+a*x;
 }
 
+template<typename T,typename T_b>
+__device__ inline T_b mulConjSame(T x)
+{
+    return x*x;
+}
+
+template<>
+__device__ inline float mulConjSame<cuFloatComplex,float>(cuFloatComplex x)
+{
+    return cuCrealf(x)*cuCrealf(x) + cuCimagf(x)*cuCimagf(x);
+}
+
+template<>
+__device__ inline double mulConjSame<cuDoubleComplex,double>(cuDoubleComplex x)
+{
+    return cuCreal(x)*cuCreal(x) + cuCimag(x)*cuCimag(x);
+}
+
+template<typename T>
+__device__ inline T mulConj(T x, T y)
+{
+    return x*y;
+}
+
+template<>
+__device__ inline cuFloatComplex mulConj<cuFloatComplex>(cuFloatComplex x, cuFloatComplex y)
+{
+    return cuCmulf(cuConjf(x),y);
+}
+
+template<>
+__device__ inline cuDoubleComplex mulConj<cuDoubleComplex>(cuDoubleComplex x, cuDoubleComplex y)
+{
+    return cuCmul(cuConj(x),y);
+}
+
 template<>
 __device__ inline cuFloatComplex axpby<cuFloatComplex>(cuFloatComplex x, cuFloatComplex y, cuFloatComplex a, cuFloatComplex b)
 {
@@ -175,13 +229,13 @@ __device__ inline cuFloatComplex scale2<cuFloatComplex,cuFloatComplex>(cuFloatCo
 template<>
 __device__ inline cuFloatComplex scale2<cuFloatComplex,float>(cuFloatComplex y, float a)
 {
-    return cuCmulf(make_cuFloatComplex(a,a),y);
+    return cuCmulf(make_cuFloatComplex(a,0.f),y);
 }
 
 template<>
 __device__ inline cuFloatComplex scale2<cuFloatComplex,double>(cuFloatComplex y, double a)
 {
-    return cuCmulf(make_cuFloatComplex(a,a),y);
+    return cuCmulf(make_cuFloatComplex((float)a,0.f),y);
 }
 
 template<>
@@ -194,13 +248,13 @@ __device__ inline cuDoubleComplex scale2<cuDoubleComplex,cuDoubleComplex>(cuDoub
 template<>
 __device__ inline cuDoubleComplex scale2<cuDoubleComplex,float>(cuDoubleComplex y, float a)
 {
-    return cuCmul(make_cuDoubleComplex(a,a),y);
+    return cuCmul(make_cuDoubleComplex(a,0.),y);
 }
 
 template<>
 __device__ inline cuDoubleComplex scale2<cuDoubleComplex,double>(cuDoubleComplex y, double a)
 {
-    return cuCmul(make_cuDoubleComplex(a,a),y);
+    return cuCmul(make_cuDoubleComplex(a,0.),y);
 }
 
 

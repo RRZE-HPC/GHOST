@@ -13,10 +13,11 @@
 typedef struct
 {
     ghost_datatype_t dt;
-    int blocksz;
+    int blocksz1;
+    int blocksz2;
 } ghost_tsmttsm_parameters_t;
 
-typedef ghost_error_t (*tsmttsm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -24,25 +25,34 @@ extern "C" {
 #endif
 
     /**
-     * @brief 
+     * @ingroup globops
      *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
+     * @brief Multiple a transposed distributed dense tall skinny matrix with another distributed dense tall skinny matrix and Allreduce the result.
      *
-     * x = alpha*v*w
-     * v is NxM, distributed, row-major
-     * w is MxK, redundant, col-mjaor
-     * x is NxK, distributed, row-major
+     * @param[inout] x
+     * @param[in] v
+     * @param[in] w
+     * @param[in] alpha
+     * @param[in] beta
+     *
+     *
+     * \f$ x = \alpha \cdot v^T \cdot w + \beta \cdot x \f$.
+     *
+     * v is NxM, distributed, row-major.
+     *
+     * w is NxK, distributed, row-major.
+     *
+     * x is NxK, distributed, row- or col-major.
+     *
      * M<<N
-     * K=4,8,...
+     * 
+     * This kernel is auto-generated at compile time for given values of K and M.
      *
-     * @return 
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
     void ghost_tsmttsm_kernelmap_generate();
-    tsmttsm_kernel ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p);
+    ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
 
 #ifdef __cplusplus
 }

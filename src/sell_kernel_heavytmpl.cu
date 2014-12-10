@@ -211,7 +211,7 @@ extern __shared__ char shared[];
 }
 
     template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+__global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
 {
     UNUSED(C);
     UNUSED(T);
@@ -269,7 +269,7 @@ __global__ void SELL_kernel_CU_ELLPACK_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags
 }
 
     template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+__global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, int nrows, int nrowspadded, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, int C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
 {
     UNUSED(T);
     int i = threadIdx.x+blockIdx.x*blockDim.x;
@@ -334,7 +334,7 @@ __global__ void SELL_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags
 }
 
     template<typename m_t, typename v_t, bool do_axpy, bool do_axpby, bool do_scale, bool do_shift, bool do_localdot>  
-__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_idx_t nrows, ghost_idx_t nrowspadded, ghost_idx_t *rowlen, ghost_idx_t *col, m_t *val, ghost_nnz_t *chunkstart, ghost_idx_t *chunklen, ghost_idx_t C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
+__global__ void SELLT_kernel_CU_tmpl(v_t *lhs, v_t *rhs, ghost_spmv_flags_t flags, ghost_lidx_t nrows, ghost_lidx_t nrowspadded, ghost_lidx_t *rowlen, ghost_lidx_t *col, m_t *val, ghost_lidx_t *chunkstart, ghost_lidx_t *chunklen, ghost_lidx_t C, int T, v_t shift, v_t alpha, v_t beta, v_t *localdot)
 {
     int i = threadIdx.x+blockIdx.x*blockDim.x;
 

@@ -1,0 +1,236 @@
+
+{
+    *libmpi.so*_malloc
+    Memcheck:Leak
+    fun:malloc
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_memalign
+    Memcheck:Leak
+    fun:memalign
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_calloc
+    Memcheck:Leak
+    fun:calloc
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_value8
+    Memcheck:Value8
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_addr8
+    Memcheck:Addr8
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_addr4
+    Memcheck:Addr4
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi.so*_cond
+    Memcheck:Cond
+    ...
+    obj:*libmpi.so*
+    ...
+}
+{
+    *libmpi_mt.so*_malloc
+    Memcheck:Leak
+    fun:malloc
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_memalign
+    Memcheck:Leak
+    fun:memalign
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_calloc
+    Memcheck:Leak
+    fun:calloc
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_value8
+    Memcheck:Value8
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_addr8
+    Memcheck:Addr8
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_addr4
+    Memcheck:Addr4
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libmpi_mt.so*_cond
+    Memcheck:Cond
+    ...
+    obj:*libmpi_mt.so*
+    ...
+}
+{
+    *libibverbs.so*_malloc
+    Memcheck:Leak
+    fun:malloc
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_memalign
+    Memcheck:Leak
+    fun:memalign
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_calloc
+    Memcheck:Leak
+    fun:calloc
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_value8
+    Memcheck:Value8
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_addr8
+    Memcheck:Addr8
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_addr4
+    Memcheck:Addr4
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    *libibverbs.so*_cond
+    Memcheck:Cond
+    ...
+    obj:*libibverbs.so*
+    ...
+}
+{
+    libiomp5.so_cond
+    Memcheck:Cond
+    ...
+    obj:*libiomp5.so
+    ...
+}
+{
+    libiomp5.so_value8
+    Memcheck:Value8
+   ...
+     obj:*libiomp5.so
+    ...
+}
+{
+    libiomp5.so_addr8
+    Memcheck:Addr8
+   ...
+     obj:*libiomp5.so
+    ...
+}
+{
+    libiomp5.so_addr16
+    Memcheck:Addr16
+   ...
+     obj:*libiomp5.so
+    ...
+}
+{
+    hwloc__get_dmi_one_info_cond
+    Memcheck:Cond
+    ...
+    fun:hwloc__get_dmi_one_info
+    ...
+}
+{
+    hwloc__linux_parse_cpuinfo_cond
+    Memcheck:Cond
+    ...
+    fun:hwloc_linux_parse_cpuinfo
+    ...
+}
+{
+    hwloc__linux_parse_cpuinfo_value8
+    Memcheck:Value8
+    ...
+    fun:hwloc_linux_parse_cpuinfo
+    ...
+}
+{
+    hwloc__get_dmi_one_info_value8
+    Memcheck:Value8
+    ...
+    fun:hwloc__get_dmi_one_info
+    ...
+}
+{
+    hwloc_obj_add_info_nodup_addr8
+    Memcheck:Addr8
+    ...
+    fun:hwloc_obj_add_info_nodup
+    ...
+}
+{
+    libiomp5.so_malloc
+    Memcheck:Leak
+    fun:malloc
+    ...
+    obj:*libiomp5.so
+    ...
+}
+{
+    kmpc_fork_call_calloc
+    Memcheck:Leak
+    fun:calloc
+    ...
+    obj:*libpthread-2.12.so
+    ...
+}

@@ -200,6 +200,7 @@ err:
 out:
     hwloc_bitmap_free(nodeset); nodeset = NULL;
     hwloc_bitmap_free(remoteCPUset); remoteCPUset = NULL;
+    hwloc_bitmap_free(localCPUset); localCPUset = NULL;
     free(domains); domains = NULL;
     return ret;
 

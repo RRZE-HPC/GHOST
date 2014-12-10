@@ -11,30 +11,59 @@
 #include "log.h"
 #include "timing.h"
 
+#endif
+
+#ifdef GHOST_HAVE_INSTR_LIKWID
+
+#include <likwid.h>
+
+#endif
+
+extern int ghost_instr_enable;
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+
+#ifdef GHOST_HAVE_INSTR_LIKWID
+
 #define GHOST_INSTR_START(tag) {\
-    char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
+    char region[256] = "";\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
     ghost_timing_tick(region);\
+    _Pragma("omp parallel")\
+    LIKWID_MARKER_START(region);\
 }\
 
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
+    char region[256] = "";\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
     ghost_timing_tock(region);\
+    _Pragma("omp parallel")\
+    LIKWID_MARKER_STOP(region);\
 }\
     
-/*double __start_##tag;\
-ghost_error_t __err_##tag;\
-GHOST_CALL(ghost_wctime(&__start_##tag),__err_##tag);\
+#else
 
-#define GHOST_INSTR_STOP(tag)\
-    double __end_##tag;\
-GHOST_CALL(ghost_wctime(&__end_##tag),__err_##tag);\
-LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPrefix(),#tag,ghost_instr_getSuffix(),__end_##tag-__start_##tag);
-*/
-#elif defined(GHOST_HAVE_INSTR_LIKWID)
+#define GHOST_INSTR_START(tag) {\
+    if (ghost_instr_enable) {\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tick(region);\
+    }\
+}\
 
-#include <likwid.h>
+#define GHOST_INSTR_STOP(tag) {\
+    if (ghost_instr_enable) {\
+        char region[256] = "";\
+        snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
+        ghost_timing_tock(region);\
+    }\
+}\
+
+#endif
+
+#else //GHOST_HAVE_INSTR_TIMING
+
+#ifdef GHOST_HAVE_INSTR_LIKWID
 
 /**
  * @brief Start a LIKWID marker region.
@@ -42,11 +71,11 @@ LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPr
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_START(tag) {\
-    char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
+    char region[256] = "";\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_START(region);\
-}
+}\
 
 /**
  * @brief Stop a LIKWID marker region.
@@ -54,24 +83,28 @@ LOG(TIMING,ANSI_COLOR_BLUE, "%s%s%s: %e secs" ANSI_COLOR_RESET,ghost_instr_getPr
  * @param tag The tag identifying the region.
  */
 #define GHOST_INSTR_STOP(tag) {\
-    char region[256];\
-    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), #tag, ghost_instr_suffix_get());\
+    char region[256] = "";\
+    snprintf(region,256,"%s%s%s",ghost_instr_prefix_get(), tag, ghost_instr_suffix_get());\
     _Pragma("omp parallel")\
     LIKWID_MARKER_STOP(region);\
-}
-
+}\
+    
 #else
 
 /**
  * @brief Instrumentation will be ignored. 
  */
 #define GHOST_INSTR_START(tag)
+
 /**
  * @brief Instrumentation will be ignored. 
  */
 #define GHOST_INSTR_STOP(tag)
 
 #endif
+
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,7 +117,7 @@ extern "C" {
      *
      * The prefix will be prepended to the instrumentation tag.
      */
-    void ghost_instr_prefix_set(char *prefix);
+    void ghost_instr_prefix_set(const char *prefix);
     
     char *ghost_instr_prefix_get();
     /**
@@ -94,7 +127,7 @@ extern "C" {
      *
      * The suffix will be appended to the instrumentation tag.
      */
-    void ghost_instr_suffix_set(char *suffix);
+    void ghost_instr_suffix_set(const char *suffix);
 
     char *ghost_instr_suffix_get();
 

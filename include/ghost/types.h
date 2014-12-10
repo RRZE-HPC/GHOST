@@ -6,7 +6,7 @@
 #ifndef GHOST_TYPES_H
 #define GHOST_TYPES_H
 
-#include "error.h"
+#include "config.h"
 
 #ifdef GHOST_HAVE_MPI
 #include <mpi.h>
@@ -23,6 +23,8 @@ typedef int ghost_mpi_datatype_t;
 #define MPI_COMM_WORLD 0
 #endif
 
+#include "error.h"
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -31,6 +33,150 @@ typedef int ghost_mpi_datatype_t;
 #ifndef __cplusplus
 #include <complex.h>
 #endif
+
+#define SELECT_TMPL_2DATATYPES(dt1,dt2,complexclass,ret,func,...)\
+    if (dt1 & GHOST_DT_COMPLEX) {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<double>,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<double>,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<double>,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<double>,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<float>,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<float>,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<complexclass<float>,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<complexclass<float>,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    } else {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,complexclass<double>>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,complexclass<float>>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    }\
+
+/**
+ * @brief Calls the function with template arguments <dt1_device,dt2_host,dt2_device,dt2_base>.
+ */
+#define SELECT_TMPL_4DATATYPES(dt1,dt2,complexclass,ret,func,...)\
+    if (dt1 & GHOST_DT_COMPLEX) {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuDoubleComplex,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuDoubleComplex,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuDoubleComplex,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuDoubleComplex,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuFloatComplex,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuFloatComplex,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<cuFloatComplex,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<cuFloatComplex,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    } else {\
+        if (dt1 & GHOST_DT_DOUBLE) {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<double,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<double,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        } else {\
+            if (dt2 & GHOST_DT_COMPLEX) {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,complexclass<double>,cuDoubleComplex,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,complexclass<float>,cuFloatComplex,float>(__VA_ARGS__);\
+                }\
+            } else {\
+                if (dt2 & GHOST_DT_DOUBLE) {\
+                    ret = func<float,double,double,double>(__VA_ARGS__);\
+                } else {\
+                    ret = func<float,float,float,float>(__VA_ARGS__);\
+                }\
+            }\
+        }\
+    }\
+   
+#define SELECT_TMPL_1DATATYPE(dt,complexclass,ret,func,...)\
+    if (dt & GHOST_DT_COMPLEX) {\
+        if (dt & GHOST_DT_DOUBLE) {\
+            ret = func<complexclass<double>>(__VA_ARGS__);\
+        } else {\
+            ret = func<complexclass<float>>(__VA_ARGS__);\
+        }\
+    } else {\
+        if (dt & GHOST_DT_DOUBLE) {\
+            ret = func<double>(__VA_ARGS__);\
+        } else {\
+            ret = func<float>(__VA_ARGS__);\
+        }\
+    }\
 
 /**
  * @brief Available primitive data types.
@@ -56,6 +202,14 @@ typedef enum {
     GHOST_DT_COMPLEX = 8
 } ghost_datatype_t;
 
+#ifdef __cplusplus
+inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatype_t &b)
+{return static_cast<ghost_datatype_t>(static_cast<int>(a) | static_cast<int>(b));}
+#endif
+
+/**
+ * @brief Possible implementations of a CPU function.
+ */
 typedef enum {
     GHOST_IMPLEMENTATION_AVX,
     GHOST_IMPLEMENTATION_SSE,
@@ -112,29 +266,89 @@ ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_REAL); \
     typedef float name ## _t; \
 ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_REAL); \
 
+#ifdef __cplusplus
+/**
+ * @see GHOST_REGISTER_DT_D with float complex instead of double.
+ */
+#define GHOST_REGISTER_DT_C(name) \
+    typedef ghost_complex<float> name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+#else
 /**
  * @see GHOST_REGISTER_DT_D with float complex instead of double.
  */
 #define GHOST_REGISTER_DT_C(name) \
     typedef complex float name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX); \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_FLOAT|GHOST_DT_COMPLEX);
+#endif
 
+#ifdef __cplusplus
+/**
+ * @see GHOST_REGISTER_DT_D with double complex instead of double.
+ */
+#define GHOST_REGISTER_DT_Z(name) \
+    typedef ghost_complex<double> name ## _t; \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+#else
 /**
  * @see GHOST_REGISTER_DT_D with double complex instead of double.
  */
 #define GHOST_REGISTER_DT_Z(name) \
     typedef complex double name ## _t; \
-ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX); \
+ghost_datatype_t name = (ghost_datatype_t)(GHOST_DT_DOUBLE|GHOST_DT_COMPLEX);
+#endif
 
-#ifdef GHOST_HAVE_LONGIDX
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+
 /**
- * @brief Type for row/column indices of matrices/vectors.
+ * @brief Type for global indices.
  */
-typedef int64_t ghost_idx_t; 
+typedef int64_t ghost_gidx_t; 
 /**
- * @brief Type for nonzero indices of matrix
+ * @brief MPI data type for matrix row/column indices
  */
-typedef int64_t ghost_nnz_t;
+#define ghost_mpi_dt_gidx MPI_INT64_T
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRGIDX PRId64
+
+#define GHOST_GIDX_MAX INT64_MAX
+
+#else
+
+/**
+ * @brief Type for global indices.
+ */
+typedef int32_t ghost_gidx_t; 
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_gidx MPI_INT32_T
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRGIDX PRId32
+
+#define GHOST_GIDX_MAX INT32_MAX
+
+#endif
+
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
+
+/**
+ * @brief Type for local indices.
+ */
+typedef int64_t ghost_lidx_t; 
+/**
+ * @brief MPI data type for matrix row/column indices
+ */
+#define ghost_mpi_dt_lidx MPI_INT64_T
+/**
+ * @brief Macro to print matrix/vector row/column indices depending on index size
+ */
+#define PRLIDX PRId64
+
 #ifdef GHOST_HAVE_MKL
 /**
  * @brief Type for indices used in BLAS calls
@@ -146,38 +360,40 @@ typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 #endif
 
-/**
- * @brief MPI data type for matrix row/column indices
- */
-#define ghost_mpi_dt_idx MPI_LONG_LONG
-/**
- * @brief MPI data type for matrix nonzero indices
- */
-#define ghost_mpi_dt_nnz MPI_LONG_LONG
+#define PRLIDX PRId64
 
-/**
- * @brief Macro to print matrix nonzero indices depending on index size
- */
-#define PRNNZ PRId64
-/**
- * @brief Macro to print matrix/vector row/column indices depending on index size
- */
-#define PRIDX PRId64
+#define GHOST_LIDX_MAX INT64_MAX
 
 #else
 
-typedef int32_t ghost_idx_t;
-typedef int32_t ghost_nnz_t; 
+typedef int32_t ghost_lidx_t;
+#define ghost_mpi_dt_lidx MPI_INT32_T
 typedef int ghost_blas_idx_t;
 #define PRBLASIDX PRId32
 
-#define ghost_mpi_dt_idx MPI_INT
-#define ghost_mpi_dt_nnz MPI_INT
+#define PRLIDX PRId32
 
-#define PRNNZ PRId32
-#define PRIDX PRId32
+#define GHOST_LIDX_MAX INT32_MAX
 
 #endif
+
+#if defined(GHOST_HAVE_LONGIDX_LOCAL) && defined(GHOST_HAVE_LONGIDX_GLOBAL)
+#define GHOST_HAVE_UNIFORM_IDX
+#endif
+
+#if !defined(GHOST_HAVE_LONGIDX_LOCAL) && !defined(GHOST_HAVE_LONGIDX_GLOBAL)
+#define GHOST_HAVE_UNIFORM_IDX
+#endif
+
+
+/**
+ * @brief For backward compatibility.
+ */
+typedef ghost_gidx_t ghost_idx_t;
+#define PRIDX PRGIDX
+#define ghost_mpi_dt_idx ghost_mpi_dt_gidx
+
+
 
 typedef struct ghost_mpi_c ghost_mpi_c;
 typedef struct ghost_mpi_z ghost_mpi_z;
@@ -217,6 +433,8 @@ extern "C" {
      */
     bool ghost_datatype_valid(ghost_datatype_t datatype);
     /**
+     * @ingroup stringification
+     *
      * @brief Stringify a ghost_datatype_t.
      *
      * @param datatype The data type.

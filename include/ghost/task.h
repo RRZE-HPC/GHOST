@@ -210,6 +210,8 @@ extern "C" {
      */
     ghost_error_t ghost_task_unpin(ghost_task_t *task);
     /**
+     * @ingroup stringification
+     *
      * @brief Return a string representing the task's state
      *
      * @param[in] state The task state
@@ -218,6 +220,8 @@ extern "C" {
      */
     char *ghost_task_state_string(ghost_task_state_t state);
     /**
+     * @ingroup stringification
+     *
      * @brief Stringify a task
      *
      * @param[out] str Where to store the string.

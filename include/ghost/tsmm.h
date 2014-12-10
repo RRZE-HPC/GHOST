@@ -12,12 +12,24 @@
 
 typedef struct
 {
+    /**
+     * @brief The data type of the densemats.
+     */
     ghost_datatype_t dt;
+    /**
+     * @brief The first configured block size K.
+     */
     int blocksz1;
+    /**
+     * @brief The second configure block size M.
+     */
     int blocksz2;
 } ghost_tsmm_parameters_t;
 
-typedef ghost_error_t (*tsmm_kernel)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *);
+/**
+ * @brief A tsmm kernel function. 
+ */
+typedef ghost_error_t (*ghost_tsmm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -25,25 +37,45 @@ extern "C" {
 #endif
 
     /**
-     * @brief 
+     * @ingroup locops
      *
-     * @param x
-     * @param v
-     * @param w
-     * @param alpha
+     * @brief Multiply a distributed dense tall skinny matrix with a redundant dense matrix. 
      *
-     * x = alpha*v*w
-     * v is NxM, distributed, row-major
-     * w is MxK, redundant, col-mjaor
-     * x is NxK, distributed, row-major
+     * @param[inout] x
+     * @param[in] v
+     * @param[in] w
+     * @param[in] alpha
+     * @param[in] beta
+     *
+     *
+     * Compute \f$ x = \alpha \cdot v \cdot w  + \beta \cdot x\f$.
+     *
+     * v is NxM, distributed, row-major.
+     *
+     * w is MxK, redundant, col-major.
+     *
+     * x is NxK, distributed, row-major.
+     *
      * M<<N
-     * K=4,8,...
      *
-     * @return 
+     * This kernel is auto-generated at compile time for given values of K and M.
+     * Additionally, a version for given K but arbitrary M is being generated.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha);
+    ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
+    /**
+     * @brief Generate the map of auto-generated tsmm kernels.
+     */
     void ghost_tsmm_kernelmap_generate();
-    tsmm_kernel ghost_tsmm_kernel(ghost_tsmm_parameters_t p);
+    /**
+     * @brief Get the auto-generated tsmm kernel which fits the given parameters or, if not found, a fallback kernel. 
+     *
+     * @param[in] p The tsmm kernel parameters
+     *
+     * @return The according kernel. 
+     */
+    ghost_tsmm_kernel_t ghost_tsmm_kernel(ghost_tsmm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
 
 #ifdef __cplusplus
 }

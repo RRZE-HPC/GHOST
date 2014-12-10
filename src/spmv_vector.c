@@ -29,25 +29,30 @@ ghost_error_t ghost_spmv_vectormode(ghost_densemat_t* res, ghost_sparsemat_t* ma
     ERROR_LOG("Cannot execute this spMV solver without MPI");
     return GHOST_ERR_UNKNOWN;
 #else
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
     if (mat->context == NULL) {
         ERROR_LOG("The mat->context is NULL");
-        return GHOST_ERR_INVALID_ARG;
+        ret = GHOST_ERR_INVALID_ARG;
+        goto err;
     }
 
-    ghost_error_t ret = GHOST_SUCCESS;
     
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,mat->permutation,false),err,ret);
+    GHOST_INSTR_START("comm");
+    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(invec,false),err,ret);
     GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(invec),err,ret);
+    GHOST_INSTR_STOP("comm");
 
-    GHOST_INSTR_START(spmv_vector_comp);
+    GHOST_INSTR_START("comp");
     GHOST_CALL_GOTO(mat->spmv(mat,res,invec,flags,argp),err,ret);    
-    GHOST_INSTR_STOP(spmv_vector_comp);
+    GHOST_INSTR_STOP("comp");
 
     goto out;
 err:
 
 out:
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 #endif
 }

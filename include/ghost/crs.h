@@ -11,48 +11,130 @@
 #include "sparsemat.h"
 
 /**
+ * @brief Struct defining a CRS matrix on CUDA.
+ */
+typedef struct 
+{
+    /**
+     * @brief The row pointers.
+     */
+    ghost_lidx_t  *rpt;
+    /**
+     * @brief The column indices
+     */
+    ghost_lidx_t  *col;
+    /**
+     * @brief The values.
+     */
+    char *val;
+} 
+ghost_cu_crs_t;
+
+/**
  * @brief Struct defining a CRS matrix.
  */
 typedef struct 
 {
-    ghost_nnz_t  *rpt;
-    ghost_idx_t  *col;
+    /**
+     * @brief The row pointers.
+     */
+    ghost_lidx_t  *rpt;
+    /**
+     * @brief The column indices
+     */
+    ghost_lidx_t  *col;
+    /**
+     * @brief The values.
+     */
     char *val;
+    /**
+     * @brief The CUDA matrix.
+     */
+    ghost_cu_crs_t *cumat;
 } 
 ghost_crs_t;
 
-
+/**
+ * @brief Get the CRS data of a general sparsemat.
+ *
+ * @param mat The sparsemat.
+ *
+ * @return Pointer to the CRS data.
+ */
 #define CR(mat) ((ghost_crs_t *)((mat)->data))
 
+/**
+ * @brief Initialize a sparsemat as a CRS matrix.
+ *
+ *
+ * The major part of this function is setting the function pointers 
+ * for all sparsemat functions to the corresponding CRS functions.
+ *
+ * @param mat The sparsemat.
+ *
+ * @return ::GHOST_SUCCESS on success or an error indicator.
+ */
 ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
     
-ghost_error_t dd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t ds_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t dc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t dz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t sd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t ss_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t sc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t sz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t cd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t cs_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t cc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t cz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t zd_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t zs_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t zc_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t zz_CRS_kernel_plain(ghost_sparsemat_t *, ghost_densemat_t *, ghost_densemat_t *, ghost_spmv_flags_t options, va_list argp);
-ghost_error_t d_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t s_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t c_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
-ghost_error_t z_CRS_stringify(ghost_sparsemat_t *mat, char **str, int dense);
+    /**
+     * @brief Select and call the right CRS SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param options Options to the SpMV.
+     * @param argp The varargs. 
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_crs_spmv_selector(ghost_sparsemat_t *mat, 
+            ghost_densemat_t *lhs, ghost_densemat_t *rhs, 
+            ghost_spmv_flags_t options, va_list argp);
+    
+    /**
+     * @brief Select and call the right CRS stringification function.
+     *
+     * @param mat The matrix.
+     * @param str Where to store the string.
+     * @param dense Print in a dense or sparse manner.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_crs_stringify_selector(ghost_sparsemat_t *mat, 
+            char **str, int dense);
 
-#ifdef GHOST_HAVE_CUDA
-ghost_error_t ghost_cu_crsspmv(ghost_sparsemat_t *mat, ghost_densemat_t * lhs, ghost_densemat_t * rhs, int options);
-#endif
+    /**
+     * @brief Select and call the right CUDA CRS SpMV kernel. 
+     *
+     * @param mat The matrix.
+     * @param lhs The result densemat.
+     * @param rhs The input densemat.
+     * @param options Options to the SpMV.
+     * @param argp The varargs. 
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_cu_crs_spmv_selector(ghost_sparsemat_t *mat, 
+            ghost_densemat_t * lhs, ghost_densemat_t * rhs, 
+            ghost_spmv_flags_t options, va_list argp);
+
+    /**
+     * @brief Perform a Kaczmarz sweep with the CRS matrix. 
+     *
+     * @param mat The matrix.
+     * @param lhs Output densemat.
+     * @param rhs Input densemat.
+     * @param omega The scaling factor omega.
+     * @param forward 1 if forward, 0 if backward sweep should be done.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_crs_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, 
+            ghost_densemat_t *rhs, void *omega, int forward);
 
 #ifdef __cplusplus
 }

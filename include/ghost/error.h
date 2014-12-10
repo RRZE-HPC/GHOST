@@ -25,12 +25,17 @@ typedef enum {
     GHOST_ERR_MPI,
     GHOST_ERR_CUDA,
     GHOST_ERR_CUBLAS,
+    GHOST_ERR_CUSPARSE,
     GHOST_ERR_CURAND,
     GHOST_ERR_HWLOC,
     GHOST_ERR_SCOTCH,
     GHOST_ERR_UNKNOWN,
     GHOST_ERR_NOT_IMPLEMENTED,
-    GHOST_ERR_IO
+    GHOST_ERR_IO,
+    GHOST_ERR_DATATYPE,
+    GHOST_ERR_COLPACK,
+    GHOST_ERR_LAPACK,
+    GHOST_ERR_BLAS
 } ghost_error_t;
 
 /**
@@ -106,6 +111,29 @@ typedef enum {
         MPI_Error_string(err,errstr,&strlen);\
         ERROR_LOG("MPI Error: %s",errstr);\
         __err = GHOST_ERR_MPI;\
+    }\
+}\
+
+#define HWLOC_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    HWLOC_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define HWLOC_CALL_GOTO(call,label,__err) {\
+    HWLOC_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define HWLOC_CALL(call,__err) {\
+    int __hwlocerr = call;\
+    if (__hwlocerr) {\
+        ERROR_LOG("HWLOC Error: %d",__hwlocerr);\
+        __err = GHOST_ERR_HWLOC;\
     }\
 }\
 
@@ -201,10 +229,64 @@ typedef enum {
     }\
 }\
 
+#define COLPACK_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    COLPACK_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define COLPACK_CALL_GOTO(call,label,__err) {\
+    COLPACK_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define COLPACK_CALL(call,__err) {\
+    int err = call;\
+    if (err != _TRUE) {\
+        ERROR_LOG("ColPack Error: %d",err);\
+        __err = GHOST_ERR_COLPACK;\
+    }\
+}\
+
+#define BLAS_CALL_RETURN(call) {\
+    ghost_error_t ret = GHOST_SUCCESS;\
+    BLAS_CALL(call,ret);\
+    if (ret != GHOST_SUCCESS) {\
+        return ret;\
+    }\
+}\
+
+#define BLAS_CALL_GOTO(call,label,__err) {\
+    BLAS_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define BLAS_CALL(call,__err) {\
+    call;\
+    if (ghost_blas_err_pop()) {\
+        __err = GHOST_ERR_BLAS;\
+    }\
+}\
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+    /**
+     * @ingroup stringification
+     *
+     * @brief Get a string of the GHOST error. 
+     *
+     * @param e The error.
+     *
+     * @return The string.
+     */
     char * ghost_error_string(ghost_error_t e);
 
 #ifdef __cplusplus

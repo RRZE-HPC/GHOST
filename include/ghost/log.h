@@ -14,8 +14,10 @@
 
 #ifdef __cplusplus
 #include <cstdio>
+#include <cstring>
 #else
 #include <stdio.h>
+#include <string.h>
 #endif
 
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -72,10 +74,17 @@
 
 
 #define DEBUG_LOG(level,...) {if(GHOST_VERBOSITY > level) { LOG(DEBUG,ANSI_COLOR_RESET,__VA_ARGS__) }}
-#define INFO_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__); __printed=1; }}
-#define WARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { WARNING_LOG_ALWAYS(__VA_ARGS__); __printed=1; }}
-#define ERROR_LOG(...) {if(GHOST_VERBOSITY) { LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__) }}
 
-#define WARNING_LOG_ALWAYS(...) {if(GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__) }}
+#ifdef GHOST_ERR_WARN_INFO_PRINTONCE
+#define INFO_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__); __printed=1; }}
+#define WARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__); __printed=1; }}
+#define PERFWARNING_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(PERFWARNING,ANSI_COLOR_MAGENTA,__VA_ARGS__); __printed=1; }}
+#define ERROR_LOG(...) {static int __printed = 0; if(!__printed && GHOST_VERBOSITY) { LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__); __printed=1; }}
+#else
+#define INFO_LOG(...) {if (GHOST_VERBOSITY) { LOG(INFO,ANSI_COLOR_BLUE,__VA_ARGS__); }}
+#define WARNING_LOG(...) {if (GHOST_VERBOSITY) { LOG(WARNING,ANSI_COLOR_YELLOW,__VA_ARGS__); }}
+#define PERFWARNING_LOG(...) {if (GHOST_VERBOSITY) { LOG(PERFWARNING,ANSI_COLOR_MAGENTA,__VA_ARGS__); }}
+#define ERROR_LOG(...) {if (GHOST_VERBOSITY) { LOG(ERROR,ANSI_COLOR_RED,__VA_ARGS__); }}
+#endif
 
 #endif

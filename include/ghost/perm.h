@@ -27,15 +27,18 @@ typedef struct
      *
      * NULL if no permutation applied to the matrix.
      */
-    ghost_idx_t *perm;
+    ghost_gidx_t *perm;
     /**
      * @brief Gets an index in the permuted system and returns the original index.
      *
      * NULL if no permutation applied to the matrix.
      */
-    ghost_idx_t *invPerm;
+    ghost_gidx_t *invPerm;
+
+    ghost_gidx_t *cu_perm;
+
     ghost_permutation_scope_t scope;
-    ghost_idx_t len;
+    ghost_gidx_t len;
 }
 ghost_permutation_t;
 

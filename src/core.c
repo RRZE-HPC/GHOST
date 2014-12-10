@@ -13,11 +13,18 @@
 #include "ghost/rand.h"
 #include "ghost/sell.h"
 #include "ghost/tsmm.h"
+#include "ghost/tsmm_inplace.h"
 #include "ghost/tsmttsm.h"
+#include "ghost/instr.h"
 
 #include <hwloc.h>
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
+#endif
+
+#ifdef GHOST_HAVE_CUDA
+#include <hwloc/cudart.h>
+#include <cuda_runtime.h>
 #endif
 
 #include <strings.h>
@@ -70,6 +77,7 @@ int ghost_initialized()
 
 ghost_error_t ghost_init(int argc, char **argv)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_PREPROCESS);
     if (initialized) {
         return GHOST_SUCCESS;
     } else {
@@ -166,7 +174,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         } else {
             ghost_type = GHOST_TYPE_WORK;
         }
-        if (ncudadevs) {
+        if (ncudadevs && nnoderanks > 1) {
             INFO_LOG("Setting GHOST type to %s due to heuristics.",ghost_type_string(ghost_type));
         }
     } 
@@ -241,7 +249,6 @@ ghost_error_t ghost_init(int argc, char **argv)
     if (hwconfig.nsmt == GHOST_HWCONFIG_INVALID) {
         ghost_machine_nsmt(&hwconfig.nsmt);
     }
-    ghost_hwconfig_set(hwconfig);
 
     IF_DEBUG(2) {
         char *cpusetStr;
@@ -253,33 +260,43 @@ ghost_error_t ghost_init(int argc, char **argv)
 #ifdef GHOST_HAVE_CUDA
     int cudaDevice = 0;
 
-    for (i=0; i<nnoderanks; i++) {
-        if (localTypes[i] == GHOST_TYPE_CUDA) {
-            if (i == noderank) {
-                ghost_cu_init(cudaDevice%ncudadevs);
+    if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
+        ghost_cu_init(hwconfig.cudevice);
+    } else { // automatically assign a CUDA device
+        for (i=0; i<nnoderanks; i++) {
+            if (localTypes[i] == GHOST_TYPE_CUDA) {
+                if (i == noderank) {
+                    hwconfig.cudevice = cudaDevice%ncudadevs;
+                    ghost_cu_init(hwconfig.cudevice);
+                }
+                cudaDevice++;
             }
-            cudaDevice++;
         }
     }
+    ghost_hwconfig_set(hwconfig);
 
 
     // CUDA ranks have a physical core
     cudaDevice = 0;
     for (i=0; i<nnoderanks; i++) {
         if (localTypes[i] == GHOST_TYPE_CUDA) {
-            hwloc_obj_t mynode = hwloc_get_obj_by_type(topology,HWLOC_OBJ_NODE,cudaDevice%nnumanodes);
-            hwloc_obj_t runner = mynode;
-            while (hwloc_compare_types(runner->type, HWLOC_OBJ_CORE) < 0) {
-                runner = runner->first_child;
-            }
-            if (i == noderank) {
-                hwloc_bitmap_copy(mycpuset,runner->cpuset);
-                //    corestaken[runner->logical_index] = 1;
-            }
-            cudaDevice++;
-
+            hwloc_cpuset_t fullCuCpuset = hwloc_bitmap_alloc();
+            hwloc_cpuset_t reducedCuCpuset;
+            
+            HWLOC_CALL_RETURN(hwloc_cudart_get_device_cpuset(topology,cudaDevice,fullCuCpuset));
+            
+            // restrict CUDA cpuset to CPUs which are still in global cpuset
+            hwloc_bitmap_and(fullCuCpuset,fullCuCpuset,globcpuset);
+            
+            reducedCuCpuset = hwloc_get_next_obj_inside_cpuset_by_type(topology,fullCuCpuset,HWLOC_OBJ_CORE,NULL)->cpuset;
+        
             // delete CUDA cores from global cpuset
-            hwloc_bitmap_andnot(globcpuset,globcpuset,runner->cpuset);
+            hwloc_bitmap_andnot(globcpuset,globcpuset,reducedCuCpuset);
+            hwloc_bitmap_copy(mycpuset,reducedCuCpuset);
+            
+            hwloc_bitmap_free(fullCuCpuset);
+            
+            cudaDevice++;
         }
     }
 #endif
@@ -366,6 +383,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     // delete PUs from cpuset according to hwconfig
     hwloc_obj_t obj;
     unsigned int cpu;
+
+    // we probably need this because we would manipulate the CPU set which we are iterating otherwise
     hwloc_bitmap_t backup = hwloc_bitmap_dup(mycpuset);
 
     // delete excess cores
@@ -386,6 +405,8 @@ ghost_error_t ghost_init(int argc, char **argv)
     } 
     hwloc_bitmap_foreach_end();
 
+    hwloc_bitmap_free(backup);
+
     void *(*threadFunc)(void *);
 
     ghost_taskq_create();
@@ -397,9 +418,10 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
 
-    ghost_sellspmv_kernelmap_generate();
     ghost_tsmm_kernelmap_generate();
+    ghost_tsmm_inplace_kernelmap_generate();
     ghost_tsmttsm_kernelmap_generate();
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
     return GHOST_SUCCESS;
 }
 
@@ -477,12 +499,30 @@ ghost_error_t ghost_string(char **str)
 #else
     ghost_line_string(str,"CUDA support",NULL,"Disabled");
 #endif
+    ghost_line_string(str,"Configured SELL chunk heights",NULL,"%s",GHOST_CFG_SELL_CHUNKHEIGHTS);
+    ghost_line_string(str,"Configured blockvector widths",NULL,"%s",GHOST_CFG_BLOCKVECTOR_SIZES);
 #ifdef GHOST_HAVE_INSTR_LIKWID
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_line_string(str,"Instrumentation",NULL,"Likwid+Timing");
+#else
     ghost_line_string(str,"Instrumentation",NULL,"Likwid");
-#elif defined(GHOST_HAVE_INSTR_TIMING)
+#endif
+#else
+#ifdef GHOST_HAVE_INSTR_TIMING
     ghost_line_string(str,"Instrumentation",NULL,"Timing");
 #else
     ghost_line_string(str,"Instrumentation",NULL,"Disabled");
+#endif
+#endif
+#ifdef GHOST_HAVE_LONGIDX_GLOBAL
+    ghost_line_string(str,"Gobal index size","bits","64");
+#else
+    ghost_line_string(str,"Gobal index size","bits","32");
+#endif
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
+    ghost_line_string(str,"Local index size","bits","64");
+#else
+    ghost_line_string(str,"Local index size","bits","32");
 #endif
     ghost_footer_string(str);
 
@@ -490,3 +530,20 @@ ghost_error_t ghost_string(char **str)
 
 }
 
+ghost_error_t ghost_barrier()
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+#ifdef GHOST_HAVE_MPI
+    MPI_CALL_RETURN(MPI_Barrier(MPI_COMM_WORLD));
+#endif
+#ifdef GHOST_HAVE_CUDA
+    ghost_type_t type;
+    ghost_type_get(&type);
+    if (type == GHOST_TYPE_CUDA) {
+        CUDA_CALL_RETURN(ghost_cu_barrier());
+    }
+#endif
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+
+    return GHOST_SUCCESS;
+}

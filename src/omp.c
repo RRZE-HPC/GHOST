@@ -33,3 +33,28 @@ int ghost_omp_threadnum()
 #endif
 }
 
+int ghost_omp_get_nested()
+{
+#ifdef GHOST_HAVE_OPENMP
+    return omp_get_nested();
+#else
+    return 0;
+#endif
+}
+
+int ghost_omp_in_parallel()
+{
+#ifdef GHOST_HAVE_OPENMP
+    return omp_in_parallel();
+#else
+    return 0;
+#endif
+}
+
+
+void ghost_omp_set_nested(int nested)
+{
+#ifdef GHOST_HAVE_OPENMP
+    omp_set_nested(nested);
+#endif
+}

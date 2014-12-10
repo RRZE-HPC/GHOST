@@ -16,6 +16,7 @@
 typedef struct {
     int ncore;
     int nsmt;
+    int cudevice;
 } ghost_hwconfig_t;
 
 typedef enum {
@@ -27,7 +28,7 @@ typedef enum {
 } ghost_hybridmode_t;
 
 #define GHOST_HWCONFIG_INVALID -1
-#define GHOST_HWCONFIG_INITIALIZER {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID}
+#define GHOST_HWCONFIG_INITIALIZER {.ncore = GHOST_HWCONFIG_INVALID, .nsmt = GHOST_HWCONFIG_INVALID, .cudevice = GHOST_HWCONFIG_INVALID}
 
 #ifdef __cplusplus
 extern "C" {
