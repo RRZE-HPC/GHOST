@@ -845,20 +845,26 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
     } else {
         strcat(boolstr,"false");
     }
-    size_t shiftsize = sizeof(v_dt_device)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
-    GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));
-    if (flags & GHOST_SPMV_SHIFT) {
-        ghost_lidx_t c;
-        for (c=0; c<rhs->traits.ncols; c++) {
-            GHOST_CALL_RETURN(ghost_cu_upload(&cu_shift[c],shift,sizeof(v_dt_device)));
+    if (flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        size_t shiftsize = sizeof(v_dt_device)*(flags & (GHOST_SPMV_VSHIFT|GHOST_SPMV_SHIFT)?rhs->traits.ncols:0);
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_shift,shiftsize));
+        if (flags & GHOST_SPMV_SHIFT) {
+            ghost_lidx_t c;
+            for (c=0; c<rhs->traits.ncols; c++) {
+                GHOST_CALL_RETURN(ghost_cu_upload(&cu_shift[c],shift,sizeof(v_dt_device)));
+            }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_upload(cu_shift,shift,shiftsize));
         }
-    } else {
-        GHOST_CALL_RETURN(ghost_cu_upload(cu_shift,shift,shiftsize));
     }
-    struct cudaDeviceProp prop;
-    CUDA_CALL_RETURN(cudaGetDeviceProperties(&prop,cu_device));
 
-
+    ghost_cu_deviceprop_t prop;
+    GHOST_CALL_RETURN(ghost_cu_deviceprop(&prop));
+        
+    if (flags & GHOST_SPMV_DOT_ANY) {
+        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
+    }
+       
     GHOST_INSTR_START("spmv_cuda")
     if (rhs->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         block.x = SELL_CUDA_THREADSPERBLOCK/MIN(MAX_COLS_PER_BLOCK,rhs->traits.ncols);
@@ -873,7 +879,6 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
         DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
     } else if (rhs->traits.ncols == 32) {
         DEBUG_LOG(1,"Experimental row-major CUDA SELL-SpMMV");
@@ -886,7 +891,6 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
         DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
         /*INFO_LOG("Very experimental row-major CUDA SELL-SpMMV");
         block.x = 32;
@@ -911,7 +915,6 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
             WARNING_LOG("Not enough shared memory available! CUDA kernel will not execute!");
         }
         DEBUG_LOG(1,"grid %dx%d block %dx%d shmem %zu",grid.x,grid.y,block.x,block.y,reqSmem);
-        GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_localdot,sizeof(v_dt_device)*rhs->traits.ncols*3*grid.x));
         SELL_CU_SPMV_SELECTOR(SELL_kernel_CU_rm_1dblock_tmpl,m_dt,v_dt_device,v_dt_base,grid,block,reqSmem)
     }
     CUDA_CALL_RETURN(cudaGetLastError());
@@ -954,8 +957,12 @@ static ghost_error_t ghost_cu_sell_spmv_tmpl(ghost_sparsemat_t *mat, ghost_dense
         GHOST_INSTR_STOP("spmv_cuda_dot")
 #endif
     }
-    GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));
-    GHOST_CALL_RETURN(ghost_cu_free(cu_shift));
+    if (flags & GHOST_SPMV_DOT_ANY) {
+        GHOST_CALL_RETURN(ghost_cu_free(cu_localdot));
+    }
+    if (flags & (GHOST_SPMV_SHIFT|GHOST_SPMV_VSHIFT)) {
+        GHOST_CALL_RETURN(ghost_cu_free(cu_shift));
+    }
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
     return ret;
 }
