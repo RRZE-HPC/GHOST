@@ -737,6 +737,10 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
 {
     PERFWARNING_LOG("The current implementation of Matrix Market read-in is "
             "unefficient!");
+    
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
+    ghost_error_t ret = GHOST_SUCCESS;
     ghost_sparsemat_rowfunc_mm_initargs args;
     ghost_gidx_t dim[2];
     ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
@@ -744,13 +748,26 @@ ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
     src.func = &ghost_sparsemat_rowfunc_mm;
     args.filename = path;
     args.dt = mat->traits->datatype;
-    src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,dim,&args);
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_INIT,NULL,dim,&args)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
     
     src.maxrowlen = dim[1];
     
-    mat->fromRowFunc(mat,&src);
-    src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL);
+    GHOST_CALL_GOTO(mat->fromRowFunc(mat,&src),err,ret);
+    if (src.func(GHOST_SPARSEMAT_ROWFUNC_MM_ROW_FINALIZE,NULL,NULL,NULL)) {
+        ERROR_LOG("Error in matrix creation function");
+        ret = GHOST_ERR_UNKNOWN;
+        goto err;
+    }
 
-    return GHOST_SUCCESS;
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
+    return ret;
 
 }
