@@ -735,8 +735,8 @@ void ghost_sparsemat_destroy_common(ghost_sparsemat_t *mat)
 
 ghost_error_t ghost_sparsemat_from_mm(ghost_sparsemat_t *mat, char *path)
 {
-    PERFWARNING_LOG("The current implementation of Matrix Market read-in is
-            unefficient!");
+    PERFWARNING_LOG("The current implementation of Matrix Market read-in is "
+            "unefficient!");
     ghost_sparsemat_rowfunc_mm_initargs args;
     ghost_gidx_t dim[2];
     ghost_sparsemat_src_rowfunc_t src = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
