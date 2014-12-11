@@ -1,4 +1,11 @@
 ---
+# Disclaimer #
+---
+
+**Please, do not expect anything to work!** This is a pre-alpha release. Things may, and probably will, be broken. 
+Nevertheless, please report any bugs, issues and feature requests to the [issue tracker](https://bitbucket.org/essex/ghost/issues).
+
+---
 # What is GHOST? #
 ---
 
@@ -9,28 +16,35 @@ which is part of the German Priority Programme 1648: Software for Exascale
 Computing ([SPPEXA](http://www.sppexa.de/)).
 
 ---
+# Examples #
+---
+
+Have a look at the [GHOST-Apps](https://bitbucket.org/essex/ghost-apps) project for simple and more elaborate example applications using GHOST.
+
+---
 # Dependencies and optional packages #
 ---
 
 1. A C/C++ compiler ([Tested compilers](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [CMake](http://www.cmake.org) >= 2.8
 1. [hwloc](http://www.open-mpi.org/projects/hwloc) >= 1.7 (older versions *may* work as well) ([Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
-1. A **BLAS** library (e.g., [Intel MKL](http://software.intel.com/en-us/intel-mkl) (preferred) or [GSL](http://www.gnu.org/software/gsl/))
+1. A BLAS library (e.g., [Intel MKL](http://software.intel.com/en-us/intel-mkl) (preferred) or [GSL](http://www.gnu.org/software/gsl/))
 
 In order to use GHOST at its best and make use of the full functionality 
 you can decide to make use of the following optional dependencies:
 
-1. An **OpenMP**-capable C/C++ compiler
+1. An OpenMP-capable C/C++ compiler
 1. MPI ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [CUDA](http://www.nvidia.com/cuda) for employing GPU computation ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility))
 1. [SCOTCH](http://www.labri.fr/perso/pelegrin/scotch/) for sparse matrix re-ordering ([Tested versions](https://bitbucket.org/essex/ghost/wiki/Compatibility), [Install notes](https://bitbucket.org/essex/ghost/wiki/Dependencies))
 1. [ColPack](http://cscapes.cs.purdue.edu/coloringpage/software.htm) for sparse matrix coloring which is required for the CARP kernel.
-1. A **LAPACKE** library. If MKL is used as the BLAS lib, LAPACKE is present automatically.
+1. A LAPACKE library. If MKL is used as the BLAS lib, LAPACKE is present automatically.
 
 ---
 # Documentation #
 ---
 
+Please note that the documentation is currently incomplete.
 Have a look at the Doxygen pages of GHOST for [API documentation](https://grid.rrze.uni-erlangen.de/~unrza317/).
 
 More information can be found in the [Wiki](https://bitbucket.org/essex/ghost/wiki) pages on Bitbucket.
