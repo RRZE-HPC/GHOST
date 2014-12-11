@@ -6,6 +6,8 @@
 #ifndef GHOST_INSTR_H
 #define GHOST_INSTR_H
 
+#include "config.h"
+
 #ifdef GHOST_HAVE_INSTR_TIMING
 
 #include "log.h"
