@@ -418,7 +418,7 @@ ghost_error_t ghost_cu_deviceprop(ghost_cu_deviceprop_t *prop)
 #ifdef GHOST_HAVE_CUDA
     *prop = ghost_cu_device_prop;
 #else
-    *handle = -1;
+    *prop = -1;
 #endif
 
     return GHOST_SUCCESS;
