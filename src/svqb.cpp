@@ -4,6 +4,7 @@
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmm.h"
 #include <complex>
+#include <cstdlib>
 
 #ifdef GHOST_HAVE_LAPACK
 #ifdef GHOST_HAVE_MKL
