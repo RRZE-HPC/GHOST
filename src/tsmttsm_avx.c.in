@@ -140,6 +140,7 @@ out:
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
+#ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
@@ -296,5 +297,9 @@ err:
 out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
+#else
+    ERROR_LOG("No AVX available!");
+    return GHOST_ERR_UNKNOWN;
+#endif
 }
 #GHOST_FUNC_END
