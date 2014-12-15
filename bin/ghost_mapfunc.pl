@@ -12,6 +12,7 @@ my %storages = (
         );
 
 my %implementations = (
+        'plain' => 'GHOST_IMPLEMENTATION_PLAIN',
         'avx' => 'GHOST_IMPLEMENTATION_AVX',
         'sse' => 'GHOST_IMPLEMENTATION_SSE',
         'mic' => 'GHOST_IMPLEMENTATION_MIC',
@@ -43,12 +44,13 @@ while (<>) {
         } elsif ($funcname eq "ghost_tsmttsm") {
             print "{\n";
             print $funcname."_parameters_t pars;\n";
-            print "pars.dt = ".$datatypes{$funcpars[0]}.";\n";
-            print "pars.blocksz1 = ".$funcpars[1].";\n";
-            if ($funcpars[2] eq "x") {
+            print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
+            print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
+            print "pars.blocksz1 = ".$funcpars[2].";\n";
+            if ($funcpars[3] eq "x") {
                 print "pars.blocksz2= -1;\n";
             } else {
-                print "pars.blocksz2= ".$funcpars[2].";\n";
+                print "pars.blocksz2= ".$funcpars[3].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";

@@ -5,6 +5,7 @@
 #include "ghost/math.h"
 #include "ghost/tsmttsm.h"
 #include "ghost/tsmttsm_gen.h"
+#include "ghost/tsmttsm_avx_gen.h"
 
 #include <map>
 
@@ -12,13 +13,14 @@ using namespace std;
 
 bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.blocksz1,a.blocksz2) < ghost_hash(b.dt,b.blocksz1,b.blocksz2); 
+    return ghost_hash(a.dt,a.blocksz1,ghost_hash(a.blocksz2,a.impl,0)) < ghost_hash(b.dt,b.blocksz1,ghost_hash(b.blocksz2,b.impl,0)); 
 }
 
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
 
 void ghost_tsmttsm_kernelmap_generate() {
 #include "tsmttsm.def"
+#include "tsmttsm_avx.def"
 }
 
 ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce)

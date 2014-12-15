@@ -3,7 +3,13 @@
     
 ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    ghost_tsmttsm_parameters_t par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = x->traits.nrows};
+    ghost_implementation_t impl = GHOST_IMPLEMENTATION_PLAIN;
+
+#ifdef GHOST_HAVE_AVX
+        impl = GHOST_IMPLEMENTATION_AVX;
+#endif
+    
+    ghost_tsmttsm_parameters_t par = {.dt = x->traits.datatype, .blocksz1 = x->traits.ncols, .blocksz2 = x->traits.nrows, .impl = impl};
     ghost_tsmttsm_kernel_t kernel = ghost_tsmttsm_kernel(par,x,v,w,GHOST_GEMM_ALL_REDUCE);
 
     if (!kernel) {

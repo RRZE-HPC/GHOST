@@ -27,6 +27,7 @@ option(BUILD_MIC "Build for Intel MIC" 0)
 option(ERR_WARN_INFO_PRINTONCE "Print all errors, warnings and info only once for each occurence" 1)
 option(TRACK_DATATRANSFERS "Track MPI and CUDA data transfers" 0)
 option(GATHER_GLOBAL_INFO "Gather some global information (should be disabled for large-scale runs)" 0)
+option(GHOST_TSMTTSM_KAHAN "Use Kahan summation in the hand-vectorized TSMTTSM kernel" 0)
 set(CFG_BLOCKVECTOR_SIZES "1" CACHE STRING "The block vector sizes for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CHUNKHEIGHTS "32" CACHE STRING "The SELL chunk heights for which generated kernels are being created (comma-separated list)")
 set(CFG_SELL_CUDA_KERNELS "true,true,true,true,true,true;true,false,false,false,false,false;false,false,false,false,false,false" CACHE STRING "The permutations of SELL SpMV CUDA kernels to instantiate (semicolon-separated list of comma-separated lists). AXP(B)Y,SCALE,(V)SHIFT,DOT_YY,DOT_XY,DOT_XX")
@@ -210,6 +211,10 @@ configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmttsm.c.in
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     )
+configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmttsm_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
+    )
 
 set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_avx.c
@@ -218,6 +223,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
+    ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c
     )
 
 set (PP_SCRIPT ${PROJECT_SOURCE_DIR}/bin/ghost_pp.pl)

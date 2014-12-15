@@ -4,12 +4,12 @@
 #include "ghost/instr.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
-
+#include <immintrin.h>
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmttsm__avx_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    INFO_LOG("tsmttsm with blocksz %d",CFGK);
+    INFO_LOG("Plain instead of AVX tsmttsm with blocksz %d",CFGK);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
@@ -138,7 +138,7 @@ out:
 
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -146,26 +146,23 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     ghost_lidx_t m = v->traits.ncols;
 
     if (k != CFGK) {
-        ERROR_LOG("Invalid dimensions for k: %d != %d",k,CFGK);
+        ERROR_LOG("Invalid dimensions");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
     
     if (m != CFGM) {
-        ERROR_LOG("Invalid dimensions for m: %d != %d",m,CFGM);
+        ERROR_LOG("Invalid dimensions");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
     }
-#ifdef GHOST_TSMTTSM_KAHAN
-    WARNING_LOG("Kahan summation not implemented for this kernel. Falling back to normal summation!");
-#endif
     
     int myrank=0;
 
     GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
 
     ghost_lidx_t n = v->traits.nrows;
-    INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
+    INFO_LOG("In AVX TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
     double * const restrict vval, * const restrict wval, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
@@ -177,6 +174,11 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     ghost_densemat_valptr(v,(void **)&vval);
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
+
+    __m256d betavec, alphavec;
+   
+    betavec = _mm256_broadcast_sd(beta);
+    alphavec = _mm256_broadcast_sd(alpha);
     
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -190,34 +192,86 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx_t k;
-#pragma simd
         for (k=0; k<CFGK; k++) {
-            for (j=0; j<CFGM; j++) {
+            for (j=0; j+4<=CFGM; j+=4) {
+                _mm256_store_pd(&xval[k*ldx+j],_mm256_mul_pd(_mm256_load_pd(&xval[k*ldx+j]),betavec));
+            }
+            for (; j<CFGM; j++) {
                 xval[k*ldx+j] = dbeta*xval[k*ldx+j];
             }
         }
 #pragma omp parallel private(j,k)
         {
+#ifdef GHOST_TSMTTSM_KAHAN
+            #GHOST_UNROLL#__m256d c@ = _mm256_setzero_pd();#4
+            #GHOST_UNROLL#__m256d y@;#4
+            #GHOST_UNROLL#__m256d t@;#4
+#endif
+            #GHOST_UNROLL#__m256d vvec@;#4
+            #GHOST_UNROLL#__m256d wvec@;#4
+
             double x_priv[CFGM*CFGK];
             memset(x_priv,0,sizeof(x_priv));
+
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
-#pragma simd
-                for (k=0; k<CFGK; k++) {
-                  for (j=0; j<CFGM; j++) {
-                        x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                for (k=0; k+4<=CFGK; k+=4) {
+                    #GHOST_UNROLL#wvec@ = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+@)]),alphavec);#4
+                    
+                    for (j=0; j+4<=CFGM; j+=4) {
+                        #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec@);#4
+
+#ifdef GHOST_TSMTTSM_KAHAN
+                        #GHOST_UNROLL#y@ = _mm256_sub_pd(vvec@,c@);#4
+                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&x_priv[(k+@)*CFGM+j]));#4
+                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&x_priv[(k+@)*CFGM+j])),y@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*CFGM+j],t@);#4
+#else
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*CFGM+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*CFGM+j]),vvec@));#4
+#endif
+
+                    }
+                }
+#ifdef GHOST_TSMTTSM_KAHAN
+                if (CFGK%4 || CFGM%4) {
+                    WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
+                            "Fallback to normal summation for the remainder!");
+                }
+#endif
+                for (; k<CFGK; k++) {
+                    for (; j<CFGM; j++) {
+                        x_priv[k*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                    }
+                }
+            }
+            
+            #GHOST_UNROLL#c@ = _mm256_setzero_pd();#4
+#pragma omp critical
+            {
+                for (k=0; k+4<=CFGK; k+=4) {
+                    for (j=0; j+4<=CFGM; j+=4) {
+                        #GHOST_UNROLL#y@ = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+@)*CFGM+j]),c@);#4
+                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&xval[(k+@)*ldx+j]));#4
+                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&xval[(k+@)*ldx+j])),y@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],t@);#4
                     }
                 }
 
-            }
-#pragma omp critical
-#pragma simd
-            for (k=0; k<CFGK; k++) {
-                for (j=0; j<CFGM; j++) {
-                    xval[k*ldx+j] += x_priv[j*CFGK+k];
+#ifdef GHOST_TSMTTSM_KAHAN
+                if (CFGK%4 || CFGM%4) {
+                    WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
+                            "Fallback to normal summation for the remainder!");
+                }
+#endif
+                
+                for (; k<CFGK; k++) {
+                    for (; j<CFGM; j++) {
+                        xval[k*ldx+j] += x_priv[k*CFGM+j];
+                    }
                 }
             }
-        }
+    }
+            
 #ifdef GHOST_HAVE_MPI
         MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
 #endif
