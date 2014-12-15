@@ -482,7 +482,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_lidx_t *duel_mem   = NULL;
     ghost_lidx_t acc_transfer_wishes, acc_transfer_dues;
 
-    size_t size_nint, size_col;
+    size_t size_nint, size_lcol, size_gcol;
     size_t size_a2ai, size_nptr, size_pval;  
     size_t size_wish, size_dues;
 
@@ -509,7 +509,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     }
 
     size_pval = (size_t)( max_loc_elements * sizeof(ghost_lidx_t) );
-    size_col  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_lidx_t ) );
+    size_lcol  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_lidx_t ) );
+    size_gcol  = (size_t)( (size_t)(ctx->lnEnts[me])   * sizeof( ghost_gidx_t ) );
 
     /*       / 1  2  .  3  4  . \
      *       | .  5  6  7  .  . |
@@ -532,8 +533,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&item_from, size_nint),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&wishlist_counts, nprocs*sizeof(ghost_lidx_t)),err,ret); 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_col),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_col),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remotePE, size_lcol),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm_remoteEl, size_lcol),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&present_values, size_pval),err,ret); 
     GHOST_CALL_GOTO(ghost_malloc((void **)&tmp_transfers,  size_a2ai),err,ret); 
 
@@ -647,8 +648,8 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
      * acc_transfer_dues = <3,2,2>
      */
 
-    GHOST_CALL_GOTO(ghost_malloc((void **)&pseudocol,size_col),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&globcol,size_col),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&pseudocol,size_lcol),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&globcol,size_gcol),err,ret);
     
     /*
      * pseudocol = <{0,0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0}> PE where element is on
