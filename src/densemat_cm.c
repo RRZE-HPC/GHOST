@@ -50,6 +50,8 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec);
+static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root);
+
 ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
@@ -102,6 +104,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
+    vec->equalize = &vec_cm_equalize;
 
     vec->averageHalo = &ghost_densemat_cm_averagehalo_selector;
 
@@ -321,6 +324,36 @@ static ghost_error_t vec_cm_download(ghost_densemat_t *vec)
 {
     GHOST_CALL_RETURN(vec->downloadNonHalo(vec));
     GHOST_CALL_RETURN(vec->downloadHalo(vec));
+    return GHOST_SUCCESS;
+}
+
+static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root)
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_mpi_datatype_t vecdt;
+    ghost_mpi_datatype(&vecdt,vec->traits.datatype);
+
+    vec->downloadNonHalo(vec);
+
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ghost_lidx_t row,col;
+        for (col=0; col<vec->traits.ncols; col++) {
+            for (row=0; row<vec->traits.nrows; row++) {
+                MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,row,col),1,vecdt,root,vec->context->mpicomm));
+            }
+        }
+    } else {
+        MPI_CALL_RETURN(MPI_Bcast(DENSEMAT_VAL(vec,0,ghost_bitmap_first(vec->ldmask)),vec->traits.nrowspadded*vec->traits.ncols,vecdt,root,vec->context->mpicomm));
+    }
+    
+    vec->uploadNonHalo(vec);
+     
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+#else
+    UNUSED(vec);
+    UNUSED(root);
+#endif
     return GHOST_SUCCESS;
 }
 

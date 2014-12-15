@@ -410,6 +410,15 @@ struct ghost_densemat_t
      */
     ghost_error_t (*fromRand) (ghost_densemat_t *vec);
     /**
+     * @brief Sets the densemat to have the same values on all processes.
+     *
+     * @param vec The densemat.
+     * @param root The process from which to take the values.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*equalize) (ghost_densemat_t *vec, int root);
+    /**
      * @ingroup denseinit
      *
      * @brief Initializes a densemat from a given scalar value.
