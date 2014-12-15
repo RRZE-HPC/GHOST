@@ -245,15 +245,23 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 }
             }
             
+#ifdef GHOST_TSMTTSM_KAHAN
             #GHOST_UNROLL#c@ = _mm256_setzero_pd();#4
+#endif
+
 #pragma omp critical
             {
                 for (k=0; k+4<=CFGK; k+=4) {
                     for (j=0; j+4<=CFGM; j+=4) {
+#ifdef GHOST_TSMTTSM_KAHAN
                         #GHOST_UNROLL#y@ = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+@)*CFGM+j]),c@);#4
                         #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&xval[(k+@)*ldx+j]));#4
                         #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&xval[(k+@)*ldx+j])),y@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],t@);#4
+#else
+                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+j]),_mm256_load_pd(&x_priv[(k+@)*CFGM+j])));#4
+#endif
+
                     }
                 }
 
