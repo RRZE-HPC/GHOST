@@ -203,7 +203,8 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
     }
 #pragma omp parallel private(c,j,i,v) shared(partsums)
     {
-        v_t *tmp = new v_t[ch];
+        v_t *tmp = NULL;
+        ghost_malloc((void **)&tmp,ch*sizeof(v_t));
         v_t *lhsv = NULL;
         int tid = ghost_omp_threadnum();
 
