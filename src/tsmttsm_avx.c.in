@@ -203,6 +203,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
         }
 #pragma omp parallel private(j,k)
         {
+            j=0;
 #ifdef GHOST_TSMTTSM_KAHAN
             #GHOST_UNROLL#__m256d c@ = _mm256_setzero_pd();#4
             #GHOST_UNROLL#__m256d y@;#4
@@ -239,8 +240,9 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                             "Fallback to normal summation for the remainder!");
                 }
 #endif
+                ghost_lidx_t startj = j;
                 for (; k<CFGK; k++) {
-                    for (; j<CFGM; j++) {
+                    for (j=startj; j<CFGM; j++) {
                         x_priv[k*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
@@ -252,6 +254,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
 #pragma omp critical
             {
+                j=0;
                 for (k=0; k+4<=CFGK; k+=4) {
                     for (j=0; j+4<=CFGM; j+=4) {
 #ifdef GHOST_TSMTTSM_KAHAN
@@ -273,8 +276,9 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 }
 #endif
                 
+                ghost_lidx_t startj = j;
                 for (; k<CFGK; k++) {
-                    for (; j<CFGM; j++) {
+                    for (j=startj; j<CFGM; j++) {
                         xval[k*ldx+j] += x_priv[k*CFGM+j];
                     }
                 }
