@@ -146,7 +146,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (size_t)(nEnts)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -154,7 +154,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
                 col[i] = bswap_64(tmp[i]);
             }
         } else {
-            if ((ret = fread(col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+            if ((ret = fread(col, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (size_t)(nEnts)){
                 ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -163,7 +163,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
         DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
-        if ((ghost_lidx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (nEnts)){
+        if ((ghost_lidx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (size_t)(nEnts)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
@@ -508,7 +508,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
         if (swapReq) {
             int64_t *tmp;
             GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nRows*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
+            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (size_t)(nRows)){
                 ERROR_LOG("fread failed with %"PRLIDX" rows: %s (%zu)",nRows,strerror(errno),ret);
                 return GHOST_ERR_IO;
             }
@@ -517,7 +517,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
             }
             free(tmp);
         } else {
-            if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (nRows)){
+            if ((ret = fread(rpt, GHOST_BINCRS_SIZE_RPT_EL, nRows,filed)) != (size_t)(nRows)){
                 ERROR_LOG("fread failed with %"PRLIDX" rows: %s (%zu)",nRows,strerror(errno),ret);
                 return GHOST_ERR_IO;
             }

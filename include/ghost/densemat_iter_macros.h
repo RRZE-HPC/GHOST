@@ -103,7 +103,7 @@
 #endif
 
 #define DENSEMAT_VAL(vec,row,col) &vec->val[row][col*vec->elSize]
-#define DENSEMAT_CUVAL(vec,row,col) &vec->cu_val[(row*vec->traits.ncolspadded+col)*vec->elSize]
+#define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[(row*vec->traits.ncolspadded+col)*vec->elSize]
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,row,col,memrow,memcol)\
     ghost_lidx_t rowoffs = ghost_bitmap_first(vec->trmask);\
@@ -169,7 +169,7 @@
 #elif defined(COLMAJOR)
 
 #define DENSEMAT_VAL(vec,row,col) &vec->val[col][row*vec->elSize]
-#define DENSEMAT_CUVAL(vec,row,col) &vec->cu_val[(col*vec->traits.nrowspadded+row)*vec->elSize]
+#define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[(col*vec->traits.nrowspadded+row)*vec->elSize]
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,row,col,memrow,memcol)\
     ghost_lidx_t rowoffs = ghost_bitmap_first(vec->ldmask);\
