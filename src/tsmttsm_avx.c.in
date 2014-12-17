@@ -256,7 +256,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                         vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec0);
 
 #ifdef GHOST_TSMTTSM_KAHAN
-                        y0 = _mm256_sub_pd(vvec0,c0);#4
+                        y0 = _mm256_sub_pd(vvec0,c0);
                         t0 = _mm256_add_pd(y0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j]));
                         c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j])),y0);
                         _mm256_store_pd(&x_priv[(k+0)*CFGM+j],t0);
