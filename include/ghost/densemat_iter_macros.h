@@ -69,7 +69,7 @@
  * @return 
  */
 #define DENSEMAT_ITER2_OFFS(vec1,vec2,vec2roffs,vec2coffs,call)\
-    ghost_lidx_t row,col,memrow1,memcol1,memrow2,memcol2;\
+    ghost_lidx_t row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
     if (DENSEMAT_COMPACT(vec1) && DENSEMAT_COMPACT(vec2)) {\
         if (ghost_omp_in_parallel()) {\
             DENSEMAT_ITER2_BEGIN_COMPACT_OFFS(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
