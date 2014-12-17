@@ -21,7 +21,8 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
     v_t *local_dot_product = NULL, *partsums = NULL;
     m_t *mval = (m_t *)(cr->val);
     ghost_lidx_t i, j;
-    ghost_lidx_t col;
+    ghost_lidx_t rcol,lcol;
+    ghost_lidx_t cidx;
     int nthreads = 1;
 
     unsigned clsize;
@@ -47,11 +48,10 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
             partsums[i] = 0.;
         }
     }
-#pragma omp parallel private (i, j, lhsv,col) shared (partsums)
+#pragma omp parallel private (i, j, lhsv,rcol,lcol,cidx) shared (partsums)
     {
         v_t matrixval;
         v_t * rhsrow;
-        ghost_lidx_t cidx;
         v_t *tmp;
         ghost_malloc((void **)&tmp,rhs->traits.ncols*sizeof(v_t));
         int tid = ghost_omp_threadnum();
@@ -59,65 +59,68 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
         for (i=0; i<mat->nrows; i++) {
             lhsv = (v_t *)lhs->val[i];
 
-            for (col=0; col<rhs->traits.ncols; col++) {
-                tmp[col] = 0.;
+            for (cidx=0; cidx<rhs->traits.ncols; cidx++) {
+                tmp[cidx] = 0.;
             }
             for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
                 matrixval = ((v_t)(mval[j]));
                 rhsrow = (v_t *)rhs->val[cr->col[j]];
-                col = -1;
+                rcol = ghost_bitmap_first(rhs->ldmask)-1;
                 for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                     if (scatteredrows) {
-                        col = ghost_bitmap_next(rhs->ldmask,col);
+                        rcol = ghost_bitmap_next(rhs->ldmask,rcol);
                     } else {
-                        col++;
+                        rcol++;
                     }
-                    tmp[cidx] += matrixval * rhsrow[col];
+                    tmp[cidx] += matrixval * rhsrow[rcol];
                 }
             }
 
             rhsrow = (v_t *)rhs->val[i];
-            col = -1;
+            rcol = ghost_bitmap_first(rhs->ldmask)-1;
+            lcol = ghost_bitmap_first(lhs->ldmask)-1;
             for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                 if (scatteredrows) {
-                    col = ghost_bitmap_next(rhs->ldmask,col);
+                    rcol = ghost_bitmap_next(rhs->ldmask,rcol);
+                    lcol = ghost_bitmap_next(lhs->ldmask,lcol);
                 } else {
-                    col++;
+                    rcol++;
+                    lcol++;
                 }
                 if ((options & GHOST_SPMV_SHIFT) && shift) {
-                    tmp[cidx] = tmp[cidx]-shift[0]*rhsrow[col];
+                    tmp[cidx] = tmp[cidx]-shift[0]*rhsrow[rcol];
                 }
                 if ((options & GHOST_SPMV_VSHIFT) && shift) {
-                    tmp[cidx] = tmp[cidx]-shift[col]*rhsrow[col];
+                    tmp[cidx] = tmp[cidx]-shift[cidx]*rhsrow[rcol];
                 }
                 if (options & GHOST_SPMV_SCALE) {
                     tmp[cidx] = tmp[cidx]*scale;
                 }
                 if (options & GHOST_SPMV_AXPY) {
-                    lhsv[col] += tmp[cidx];
+                    lhsv[lcol] += tmp[cidx];
                 } else if (options & GHOST_SPMV_AXPBY) {
-                    lhsv[col] = beta*lhsv[col] + tmp[cidx];
+                    lhsv[lcol] = beta*lhsv[lcol] + tmp[cidx];
                 } else {
-                    lhsv[col] = tmp[cidx];
+                    lhsv[lcol] = tmp[cidx];
                 }
                 if (options & GHOST_SPMV_DOT_ANY) {
-                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+0] += conjugate(&lhsv[col])*lhsv[col];
-                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+1] += conjugate(&lhsv[col])*rhsrow[col];
-                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*col+2] += conjugate(&rhsrow[col])*rhsrow[col];
+                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+0] += conjugate(&lhsv[lcol])*lhsv[lcol];
+                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+1] += conjugate(&lhsv[lcol])*rhsrow[rcol];
+                    partsums[((padding+3*lhs->traits.ncols)*tid)+3*cidx+2] += conjugate(&rhsrow[rcol])*rhsrow[rcol];
                 }
             }
         }
         free(tmp);
     }
     if (options & GHOST_SPMV_DOT_ANY) {
-        for (col=0; col<lhs->traits.ncols; col++) {
-            local_dot_product[col                       ] = 0.; 
-            local_dot_product[col  +   lhs->traits.ncols] = 0.;
-            local_dot_product[col  + 2*lhs->traits.ncols] = 0.;
+        for (cidx=0; cidx<lhs->traits.ncols; cidx++) {
+            local_dot_product[cidx                       ] = 0.; 
+            local_dot_product[cidx  +   lhs->traits.ncols] = 0.;
+            local_dot_product[cidx  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
-                local_dot_product[col                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*col + 0];
-                local_dot_product[col  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*col + 1];
-                local_dot_product[col  + 2*lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*col + 2];
+                local_dot_product[cidx                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*cidx + 0];
+                local_dot_product[cidx  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*cidx + 1];
+                local_dot_product[cidx  + 2*lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*cidx + 2];
             }
         }
         free(partsums);

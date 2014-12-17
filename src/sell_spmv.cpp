@@ -24,7 +24,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
     v_t *local_dot_product = NULL, *partsums = NULL;
-    ghost_lidx_t i,j,c,col,cidx;
+    ghost_lidx_t i,j,c,rcol,lcol,cidx;
     ghost_lidx_t v;
     int nthreads = 1;
     int ch = sell->chunkHeight;
@@ -48,7 +48,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             partsums[i] = 0.;
         }
     }
-#pragma omp parallel private(c,j,col,cidx,i,v) shared(partsums)
+#pragma omp parallel private(c,j,rcol,lcol,cidx,i,v) shared(partsums)
     {
         v_t **tmp;
         ghost_malloc((void **)&tmp,sizeof(v_t *)*ch);
@@ -67,8 +67,8 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             lhsv = (v_t **)&(lhs->val[c*ch]);
 
             for (i=0; i<ch; i++) {
-                for (col=0; col<rhs->traits.ncols; col++) {
-                    tmp[i][col] = (v_t)0;
+                for (rcol=0; rcol<rhs->traits.ncols; rcol++) {
+                    tmp[i][rcol] = (v_t)0;
                 }
             }
 
@@ -78,14 +78,14 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                             [sell->chunkStart[c]+j*ch+i]);
                     rhsrow = (v_t *)rhs->val
                         [sell->col[sell->chunkStart[c]+j*ch+i]];
-                    col = -1;
+                    rcol = ghost_bitmap_first(rhs->ldmask)-1;
                     for (cidx = 0; cidx<rhs->traits.ncols; cidx++) {
                         if (scatteredrows) {
-                            col = ghost_bitmap_next(rhs->ldmask,col);
+                            rcol = ghost_bitmap_next(rhs->ldmask,rcol);
                         } else {
-                            col++;
+                            rcol++;
                         }
-                        tmp[i][cidx] +=  matrixval * rhsrow[col];
+                        tmp[i][cidx] +=  matrixval * rhsrow[rcol];
                     }
 
                 }
@@ -93,37 +93,40 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
 
             for (i=0; (i<ch) && (c*ch+i < mat->nrows); i++) {
                 rhsrow = (v_t *)rhs->val[c*ch+i];
-                col = -1;
+                rcol = ghost_bitmap_first(rhs->ldmask)-1;
+                lcol = ghost_bitmap_first(lhs->ldmask)-1;
                 for (cidx = 0; cidx<lhs->traits.ncols; cidx++) {
                     if (scatteredrows) {
-                        col = ghost_bitmap_next(rhs->ldmask,col);
+                        rcol = ghost_bitmap_next(rhs->ldmask,rcol);
+                        lcol = ghost_bitmap_next(lhs->ldmask,lcol);
                     } else {
-                        col++;
+                        rcol++;
+                        lcol++;
                     }
                     if ((options & GHOST_SPMV_SHIFT) && shift) {
-                        tmp[i][cidx] = tmp[i][cidx]-shift[0]*rhsrow[col];
+                        tmp[i][cidx] = tmp[i][cidx]-shift[0]*rhsrow[rcol];
                     }
                     if ((options & GHOST_SPMV_VSHIFT) && shift) {
-                        tmp[i][cidx] = tmp[i][cidx]-shift[cidx]*rhsrow[col];
+                        tmp[i][cidx] = tmp[i][cidx]-shift[cidx]*rhsrow[rcol];
                     }
                     if (options & GHOST_SPMV_SCALE) {
                         tmp[i][cidx] = tmp[i][cidx]*scale;
                     }
                     if (options & GHOST_SPMV_AXPY) {
-                        lhsv[i][col] += tmp[i][cidx];
+                        lhsv[i][lcol] += tmp[i][cidx];
                     } else if (options & GHOST_SPMV_AXPBY) {
-                        lhsv[i][col] = beta*lhsv[i][col] + tmp[i][cidx];
+                        lhsv[i][lcol] = beta*lhsv[i][lcol] + tmp[i][cidx];
                     } else {
-                        lhsv[i][col] = tmp[i][cidx];
+                        lhsv[i][lcol] = tmp[i][cidx];
                     }
 
                     if (options & GHOST_SPMV_DOT_ANY) {
-                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*col+0] += 
-                            conjugate(&lhsv[i][col])*lhsv[i][col];
-                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*col+1] += 
-                            conjugate(&lhsv[i][col])*rhsrow[col];
-                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*col+2] += 
-                            conjugate(&rhsrow[col])*rhsrow[col];
+                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+0] += 
+                            conjugate(&lhsv[i][lcol])*lhsv[i][rcol];
+                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+1] += 
+                            conjugate(&lhsv[i][lcol])*rhsrow[rcol];
+                        partsums[((pad+3*lhs->traits.ncols)*tid)+3*cidx+2] += 
+                            conjugate(&rhsrow[rcol])*rhsrow[rcol];
                     }
                 }
             }
