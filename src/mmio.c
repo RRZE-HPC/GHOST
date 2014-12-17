@@ -265,6 +265,7 @@ int mm_write_mtx_array_size(FILE *f, int M, int N)
 int mm_read_mtx_crd_data(FILE *f, int M, int N, int nz, int I[], int J[],
         double val[], MM_typecode matcode)
 {
+    UNUSED(M);
     int i;
     if (mm_is_complex(matcode))
     {
@@ -505,6 +506,9 @@ char  *mm_typecode_to_str(MM_typecode matcode)
     else
         return NULL;
 
+    if (error) {
+        fprintf(stderr,"An error occured!\n");
+    }
     sprintf(buffer,"%s %s %s %s", types[0], types[1], types[2], types[3]);
     return mm_strdup(buffer);
 
