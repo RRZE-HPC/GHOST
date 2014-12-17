@@ -190,6 +190,13 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
     }
 
     ghost_lidx_t i,j;
+
+#ifdef GHOST_TSMTTSM_KAHAN
+                if (CFGK%4 || CFGM%4) {
+                    WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
+                            "Fallback to normal summation for the remainder!");
+                }
+#endif
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx_t k;
@@ -233,16 +240,32 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #endif
 
                     }
+                    for (; j<CFGM; j++) {
+                        x_priv[(k+0)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+0)];
+                        x_priv[(k+1)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+1)];
+                        x_priv[(k+2)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+2)];
+                        x_priv[(k+3)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+3)];
+                    }
                 }
 #ifdef GHOST_TSMTTSM_KAHAN
-                if (CFGK%4 || CFGM%4) {
-                    WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
-                            "Fallback to normal summation for the remainder!");
-                }
+                c0 = _mm256_setzero_pd();
 #endif
-                ghost_lidx_t startj = j;
                 for (; k<CFGK; k++) {
-                    for (j=startj; j<CFGM; j++) {
+                    wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
+                    for (j=0; j+4<=CFGM; j+=4) {
+                        vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec0);
+
+#ifdef GHOST_TSMTTSM_KAHAN
+                        y0 = _mm256_sub_pd(vvec0,c0);#4
+                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j]));
+                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j])),y0);
+                        _mm256_store_pd(&x_priv[(k+0)*CFGM+j],t0);
+#else
+                        _mm256_store_pd(&x_priv[(k+0)*CFGM+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*CFGM+j]),vvec0));
+#endif
+
+                    }
+                    for (; j<CFGM; j++) {
                         x_priv[k*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
@@ -267,18 +290,29 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #endif
 
                     }
+                    for (; j<CFGM; j++) {
+                        xval[(k+0)*ldx+j] += x_priv[(k+0)*CFGM+j];
+                        xval[(k+1)*ldx+j] += x_priv[(k+1)*CFGM+j];
+                        xval[(k+2)*ldx+j] += x_priv[(k+2)*CFGM+j];
+                        xval[(k+3)*ldx+j] += x_priv[(k+3)*CFGM+j];
+                    }
                 }
-
 #ifdef GHOST_TSMTTSM_KAHAN
-                if (CFGK%4 || CFGM%4) {
-                    WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
-                            "Fallback to normal summation for the remainder!");
-                }
+                c0 = _mm256_setzero_pd();
 #endif
-                
-                ghost_lidx_t startj = j;
                 for (; k<CFGK; k++) {
-                    for (j=startj; j<CFGM; j++) {
+                    for (j=0; j+4<=CFGM; j+=4) {
+#ifdef GHOST_TSMTTSM_KAHAN
+                        y0 = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+0)*CFGM+j]),c0);
+                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&xval[(k+0)*ldx+j]));
+                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&xval[(k+0)*ldx+j])),y0);
+                        _mm256_store_pd(&xval[(k+0)*ldx+j],t0);
+#else
+                        _mm256_store_pd(&xval[(k+0)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+j]),_mm256_load_pd(&x_priv[(k+0)*CFGM+j])));
+#endif
+
+                    }
+                    for (; j<CFGM; j++) {
                         xval[k*ldx+j] += x_priv[k*CFGM+j];
                     }
                 }
