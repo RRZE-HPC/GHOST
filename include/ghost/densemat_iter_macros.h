@@ -22,7 +22,7 @@
  * @return 
  */
 #define DENSEMAT_ITER(vec,call)\
-    ghost_lidx_t row,col,memrow,memcol;\
+    ghost_lidx_t row=0,col=0,memrow=0,memcol=0;\
     if (DENSEMAT_COMPACT(vec)) {\
         if (ghost_omp_in_parallel()) {\
             DENSEMAT_ITER_BEGIN_COMPACT(vec,row,col,memrow,memcol);\
