@@ -336,6 +336,11 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
+    UNUSED(x);
+    UNUSED(v);
+    UNUSED(w);
+    UNUSED(alpha);
+    UNUSED(beta);
     ERROR_LOG("No AVX available!");
     return GHOST_ERR_UNKNOWN;
 #endif
