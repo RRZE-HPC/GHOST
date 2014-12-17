@@ -219,7 +219,15 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
             }
         }
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if( CFGK*CFGM == 1 )
+        {
+          MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,1,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
+        else
+        {
+          // melven: out of bounds for 1 1 somehow
+          MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
 #endif
     
     } else {
