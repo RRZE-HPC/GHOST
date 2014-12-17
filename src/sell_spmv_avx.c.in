@@ -7,6 +7,7 @@
 #include "ghost/omp.h"
 #include <immintrin.h>
 
+
 #define complex_mul(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_shuffle_pd(a,a,5)))
 #define complex_mul_conj1(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
@@ -19,6 +20,13 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     double *mval = (double *)SELL(mat)->val;
     double *local_dot_product = NULL;
     double *partsums = NULL;
+    int lhsaligned;
+    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),32)) {
+        lhsaligned = 1;
+    } else {
+        lhsaligned = 0;
+        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
+    }
     
     double sscale = 1., sbeta = 1.;
     double *sshift = NULL;
@@ -94,8 +102,10 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+4*@],_mm256_add_pd(tmp@,_mm256_load_pd(&lval[c*CHUNKHEIGHT+4*@])));#CHUNKHEIGHT/4
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+4*@],_mm256_add_pd(tmp@,_mm256_mul_pd(beta,_mm256_load_pd(&lval[c*CHUNKHEIGHT+4*@]))));#CHUNKHEIGHT/4
-                } else {
+                } else if (lhsaligned) {
                     #GHOST_UNROLL#_mm256_stream_pd(&lval[c*CHUNKHEIGHT+4*@],tmp@);#CHUNKHEIGHT/4
+                } else {
+                    #GHOST_UNROLL#_mm256_store_pd(&lval[c*CHUNKHEIGHT+4*@],tmp@);#CHUNKHEIGHT/4
                 }
 
                 if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
@@ -180,6 +190,13 @@ ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     complex double *mval = (complex double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
+    int lhsaligned;
+    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),32)) {
+        lhsaligned = 1;
+    } else {
+        lhsaligned = 0;
+        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
+    }
     
     complex double sscale = 1., sbeta = 1.;
     complex double *sshift = NULL;
@@ -261,8 +278,10 @@ ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                     #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+2*@],_mm256_add_pd(tmp@,_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+2*@])));#CHUNKHEIGHT/2
                 } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                     #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+2*@],_mm256_add_pd(tmp@,complex_mul(beta,_mm256_load_pd((double *)&lval[c*CHUNKHEIGHT+2*@]))));#CHUNKHEIGHT/2
-                } else {
+                } else if (lhsaligned) {
                     #GHOST_UNROLL#_mm256_stream_pd((double *)&lval[c*CHUNKHEIGHT+2*@],tmp@);#CHUNKHEIGHT/2
+                } else {
+                    #GHOST_UNROLL#_mm256_store_pd((double *)&lval[c*CHUNKHEIGHT+2*@],tmp@);#CHUNKHEIGHT/2
                 }
 
                 if (spmvmOptions & GHOST_SPMV_DOT_YY) {
@@ -355,6 +374,15 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
     __m256d rhs;
     int nthreads = 1, i;
     int ncolspadded = PAD(invec->traits.ncols,4);
+    int lhsaligned;
+    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),32)) {
+        lhsaligned = 1;
+    } else {
+        lhsaligned = 0;
+        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
+    }
+    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
+    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -399,8 +427,8 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrowsPadded/CHUNKHEIGHT; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c*CHUNKHEIGHT];
-            double *rval = (double *)invec->val[c*CHUNKHEIGHT];
+            double *lval = (double *)res->val[c*CHUNKHEIGHT]+loffs;
+            double *rval = (double *)invec->val[c*CHUNKHEIGHT]+roffs;
 
             for (donecols = 0; donecols < ncolspadded; donecols+=4) {
                 #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#CHUNKHEIGHT
@@ -460,7 +488,11 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
                 }
             }
             if (!axpy && ncolspadded>4 && CHUNKHEIGHT != 1) {
-                #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=4) {tmp@ = _mm256_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm256_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
+                if (lhsaligned) {
+                    #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=4) {tmp@ = _mm256_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm256_stream_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
+                } else {
+                    #GHOST_UNROLL#for (donecols = 0; donecols < ncolspadded; donecols+=4) {tmp@ = _mm256_load_pd(&tmpresult[@*ncolspadded+donecols]); _mm256_store_pd(&lval[@*ncolspadded+donecols],tmp@);}#CHUNKHEIGHT
+                }
             }
             
         }
@@ -504,6 +536,16 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     double *local_dot_product = NULL;
     double *partsums = NULL;
     int nthreads = 1, i;
+    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
+    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
+
+    int lhsaligned;
+    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),32)) {
+        lhsaligned = 1;
+    } else {
+        lhsaligned = 0;
+        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
+    }
     
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
@@ -548,8 +590,8 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            double *lval = (double *)res->val[c];
-            double *rval = (double *)invec->val[c];
+            double *lval = (double *)res->val[c]+loffs;
+            double *rval = (double *)invec->val[c]+roffs;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/4
@@ -568,9 +610,12 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(lval+@*4)));#NVECS/4
             } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(lval+@*4,_mm256_add_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),beta)));#NVECS/4
-            } else {
+            } else if (lhsaligned) {
                 #GHOST_UNROLL#_mm256_stream_pd(lval+@*4,tmp@);#NVECS/4
+            } else {
+                #GHOST_UNROLL#_mm256_store_pd(lval+@*4,tmp@);#NVECS/4
             }
+
             if (spmvmOptions & GHOST_SPMV_DOT_ANY) {
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,_mm256_mul_pd(_mm256_load_pd(lval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
                 #GHOST_UNROLL#dot2_@ = _mm256_add_pd(dot2_@,_mm256_mul_pd(_mm256_load_pd(rval+@*4),_mm256_load_pd(lval+@*4)));#NVECS/4
@@ -633,6 +678,15 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
     unsigned clsize;
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(double);
+    int lhsaligned;
+    if (IS_ALIGNED(((double *)res->val[0])+ghost_bitmap_first(res->ldmask),32)) {
+        lhsaligned = 1;
+    } else {
+        lhsaligned = 0;
+        PERFWARNING_LOG("Will not use streaming stores because of violated alignment!");
+    }
+    ghost_lidx_t loffs = ghost_bitmap_first(res->ldmask);
+    ghost_lidx_t roffs = ghost_bitmap_first(invec->ldmask);
 
     UNUSED(argp);
     
@@ -688,8 +742,8 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            complex double * const restrict lval = (complex double * const restrict)res->val[c];
-            const complex double * const restrict rval = (const complex double * const restrict)invec->val[c];
+            complex double * const restrict lval = (complex double * const restrict)res->val[c]+loffs;
+            const complex double * const restrict rval = (const complex double * const restrict)invec->val[c]+roffs;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/2
@@ -709,8 +763,10 @@ ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
                 #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,_mm256_add_pd(tmp@,_mm256_load_pd(((double *)lval)+@*4)));#NVECS/2
             } else if (spmvmOptions & GHOST_SPMV_AXPBY) {
                 #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,_mm256_add_pd(tmp@,complex_mul(_mm256_load_pd(((double *)lval)+@*4),beta)));#NVECS/2
-            } else {
+            } else if (lhsaligned) {
                 #GHOST_UNROLL#_mm256_stream_pd(((double *)lval)+@*4,tmp@);#NVECS/2
+            } else {
+                #GHOST_UNROLL#_mm256_store_pd(((double *)lval)+@*4,tmp@);#NVECS/2
             }
             if (spmvmOptions & GHOST_SPMV_DOT_YY) {
                 #GHOST_UNROLL#dot1_@ = _mm256_add_pd(dot1_@,complex_mul_conj1(_mm256_load_pd((const double*)lval+@*4),_mm256_load_pd((const double*)lval+@*4)));#NVECS/2

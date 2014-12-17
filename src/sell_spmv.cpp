@@ -457,6 +457,9 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 #endif
     }
 
+    char dummybeta[rhs->elSize];
+    memset(dummybeta,0,sizeof(dummybeta));
+
 
     ghost_sellspmv_parameters_t p;
     p.impl = impl;
@@ -498,12 +501,11 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
 
-    if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
-            || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
-        PERFWARNING_LOG("Use plain implementation for views. This is subject to be "
-                "fixed, i.e., the vectorized kernels should work with dense "
-                "views.");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    if (((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
+            || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) &&
+            p.impl = GHOST_IMPLEMENTATION_SSE) {
+        WARNING_LOG("Not sure whether aligned load intrinsics on potentially "
+                "unaligned addresses work with SSE.");
     }
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
