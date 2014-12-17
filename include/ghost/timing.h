@@ -24,7 +24,7 @@
  * @param func The function.
  * @param ... The function's arguments.
  *
- * This macro creates the variables <func>_tmin/_tmax/_tavg of type double holding the minimal, maximal and average execution time.
+ * This macro creates the variables \<func\>_tmin/_tmax/_tavg of type double holding the minimal, maximal and average execution time.
  */
 #define GHOST_TIME(nIter,func,...) \
     double func ## _start, func ## _end, func ## _tstart, func ## _tend;\

@@ -63,8 +63,12 @@ extern "C" {
      * @brief Get the auto-generated tsmm kernel which fits the given parameters or, if not found, a fallback kernel. 
      *
      * @param[in] p The tsmm kernel parameters
+     * @param[in] x The densemat x
+     * @param[in] v The densemat v
+     * @param[in] w The densemat w
+     * @param[in] reduce The reduce argument which may comm from a ghost_gemm() call.
      *
-     * @return The according kernel. 
+     * @return The according kernel or NULL if no suiting kernel found. 
      */
     ghost_tsmm_inplace_kernel_t ghost_tsmm_inplace_kernel(ghost_tsmm_inplace_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
 

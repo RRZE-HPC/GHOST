@@ -536,7 +536,7 @@ extern "C" {
     /**
      * @brief Obtain the global number of rows of a sparse matrix.
      
-     * @param[out] nnz Where to store the result.
+     * @param[out] nrows Where to store the result.
      * @param[in] mat The sparse matrix.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.

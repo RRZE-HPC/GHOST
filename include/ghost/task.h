@@ -174,6 +174,8 @@ extern "C" {
      * @param func The function the task should execute
      * @param arg The arguments to the task's function
      * @param flags The task's flags
+     * @param depends List of ghost_task_t * on which this task depends
+     * @param ndepends Length of the depends argument
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
@@ -194,17 +196,17 @@ extern "C" {
      *
      * @return  The state of the task
      */
-    ghost_task_state_t ghost_task_test(ghost_task_t *);
+    ghost_task_state_t ghost_task_test(ghost_task_t *t);
     /**
      * @brief Destroy a task.
      *
      * @param[inout] t The task to be destroyed
      */
-    void ghost_task_destroy(ghost_task_t *); 
+    void ghost_task_destroy(ghost_task_t *t); 
     /**
      * @brief Unpin a task's threads.
      *
-     * @param[inout] t The task.
+     * @param[inout] task The task.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */

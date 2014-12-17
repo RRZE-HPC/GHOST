@@ -222,7 +222,7 @@ extern "C" {
      * @param mat The matrix.
      * @param lhs The result densemat.
      * @param rhs The input densemat.
-     * @param options Options to the SpMV.
+     * @param flags Options to the SpMV.
      * @param argp The varargs. 
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.

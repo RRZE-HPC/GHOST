@@ -224,7 +224,7 @@ extern "C" {
     /**
      * @brief Get the CUDA device properties.
      *
-     * @param handle Where to store the properties.
+     * @param prop Where to store the properties.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */

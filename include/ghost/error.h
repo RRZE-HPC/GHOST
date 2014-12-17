@@ -72,7 +72,7 @@ typedef enum {
 /**
  * @brief This macro should be used for calling a GHOST function inside
  * another function. The parameter __err will be set to the error which occured in the call.
- * This macro is probably not very useful by itself, cf. @GHOST_CALL_GOTO and @GHOST_CALL_RETURN instead.
+ * This macro is probably not very useful by itself, cf. #GHOST_CALL_GOTO and #GHOST_CALL_RETURN instead.
  *
  * @param call The function call.
  * @param __err A defined ghost_error_t variable which will be set to the error returned by the calling function.

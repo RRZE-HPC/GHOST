@@ -459,7 +459,6 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
     /**
      * @brief Helper function to add a task to a queue
      *
-     * @param q The queue
      * @param t The task
      *
      * @return GHOST_SUCCESS on success or GHOST_FAILURE on failure.
