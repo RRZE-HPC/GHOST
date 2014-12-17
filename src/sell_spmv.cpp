@@ -457,10 +457,6 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 #endif
     }
 
-    char dummybeta[rhs->elSize];
-    memset(dummybeta,0,sizeof(dummybeta));
-
-
     ghost_sellspmv_parameters_t p;
     p.impl = impl;
     p.vdt = rhs->traits.datatype;
