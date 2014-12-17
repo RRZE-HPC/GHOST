@@ -503,7 +503,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
 
     if (((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
             || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) &&
-            p.impl = GHOST_IMPLEMENTATION_SSE) {
+            p.impl == GHOST_IMPLEMENTATION_SSE) {
         WARNING_LOG("Not sure whether aligned load intrinsics on potentially "
                 "unaligned addresses work with SSE.");
     }
