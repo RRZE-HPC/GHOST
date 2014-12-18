@@ -208,6 +208,14 @@ inline ghost_datatype_t operator|(const ghost_datatype_t &a, const ghost_datatyp
 #endif
 
 /**
+ * @brief Possible alignments of data access.
+ */
+typedef enum {
+    GHOST_ALIGNED,
+    GHOST_UNALIGNED
+} ghost_alignment_t;
+
+/**
  * @brief Possible implementations of a CPU function.
  */
 typedef enum {

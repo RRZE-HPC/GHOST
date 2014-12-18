@@ -399,9 +399,9 @@ static bool operator<(const ghost_sellspmv_parameters_t &a,
         const ghost_sellspmv_parameters_t &b) 
 { 
     return ghost_hash(ghost_hash(a.mdt,a.blocksz,a.storage),
-            ghost_hash(a.vdt,a.impl,a.chunkheight),0) <
+            ghost_hash(a.vdt,a.impl,a.chunkheight),a.alignment) <
         ghost_hash(ghost_hash(b.mdt,b.blocksz,b.storage),
-                ghost_hash(b.vdt,b.impl,b.chunkheight),0); 
+                ghost_hash(b.vdt,b.impl,b.chunkheight),b.alignment); 
 }
 
 static map<ghost_sellspmv_parameters_t, ghost_spmv_kernel_t> 
@@ -458,6 +458,7 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     }
 
     ghost_sellspmv_parameters_t p;
+    p.alignment = GHOST_ALIGNED;
     p.impl = impl;
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits->datatype;
@@ -497,11 +498,18 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
 
-    if (((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
+    /*if (((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
             || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) &&
             p.impl == GHOST_IMPLEMENTATION_SSE) {
         WARNING_LOG("Not sure whether aligned load intrinsics on potentially "
                 "unaligned addresses work with SSE.");
+        p.alignment = GHOST_UNALIGNED;
+    }*/
+    if ((lhs->traits.flags & GHOST_DENSEMAT_VIEW) 
+            || (rhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        PERFWARNING_LOG("Using unaligned version for compact views. In the future we "
+                "should check for the actual alignment.");
+        p.alignment = GHOST_UNALIGNED;
     }
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];

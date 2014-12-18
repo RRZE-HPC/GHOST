@@ -128,6 +128,10 @@ ghost_sell_t;
 typedef struct 
 {
     /**
+     * @brief The data access alignment.
+     */
+    ghost_alignment_t alignment;
+    /**
      * @brief The implementation.
      */
     ghost_implementation_t impl;

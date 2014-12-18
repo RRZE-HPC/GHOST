@@ -12,7 +12,7 @@
 #define complex_mul_conj1(a,b) _mm256_addsub_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0),a),_mm256_mul_pd(_mm256_mul_pd(_mm256_shuffle_pd(b,b,0xF),_mm256_set1_pd(-1.)),_mm256_shuffle_pd(a,a,5)))
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
-ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmv__a_avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=4
     ghost_lidx_t i;
@@ -182,7 +182,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
-ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && CHUNKHEIGHT>=2
     ghost_lidx_t i;
@@ -362,7 +362,7 @@ ghost_error_t ghost_sellspmv__avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
-ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #ifdef GHOST_HAVE_AVX
     PERFWARNING_LOG("In variable-ncols kernel with %"PRLIDX" cols",invec->traits.ncols);
@@ -529,7 +529,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat, g
 #GHOST_FUNC_END
 
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
-ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && NVECS>=4
     double *mval = (double *)SELL(mat)->val;
@@ -667,7 +667,7 @@ ghost_error_t ghost_sellspmv__avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *ma
 
 
 #GHOST_FUNC_BEGIN#NVECS=${CFG_BLOCKVECTOR_SIZES}#CHUNKHEIGHT=${CFG_SELL_CHUNKHEIGHTS}
-ghost_error_t ghost_sellspmv__avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
+ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && NVECS >= 2
     const double * const restrict mval = (const double * const restrict)SELL(mat)->val;
