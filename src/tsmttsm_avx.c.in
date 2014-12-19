@@ -187,6 +187,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
     // make sure that the initial x only gets added up once
     if (myrank) {
         dbeta = 0.;
+        betavec = _mm256_setzero_pd();
     }
 
     ghost_lidx_t i,j;
