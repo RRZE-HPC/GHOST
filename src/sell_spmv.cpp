@@ -178,7 +178,6 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_sell_t *sell = (ghost_sell_t *)(mat->data);
-    v_t *rhsv = NULL;
     v_t *local_dot_product = NULL, *partsums = NULL;
     ghost_lidx_t i,j,c;
     ghost_lidx_t v;
@@ -209,6 +208,7 @@ static ghost_error_t ghost_sell_spmv_plain_cm(ghost_sparsemat_t *mat,
         v_t *tmp = NULL;
         ghost_malloc((void **)&tmp,ch*sizeof(v_t));
         v_t *lhsv = NULL;
+        v_t *rhsv = NULL;
         int tid = ghost_omp_threadnum();
 
 
