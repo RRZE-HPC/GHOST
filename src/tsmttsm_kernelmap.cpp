@@ -48,5 +48,9 @@ ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_
     }
     kernel = ghost_tsmttsm_kernels[p];
     
+    if (!kernel) {
+        PERFWARNING_LOG("Could not find auto-generated kernel!");
+    }
+    
     return kernel;
 }
