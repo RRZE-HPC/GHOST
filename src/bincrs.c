@@ -163,7 +163,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
         DEBUG_LOG(1,"Casting from 64 bit to 32 bit column indices");
         int64_t *tmp;
         GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,nEnts*8));
-        if ((ghost_lidx_t)(ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (size_t)(nEnts)){
+        if ((ret = fread(tmp, GHOST_BINCRS_SIZE_COL_EL, nEnts,filed)) != (size_t)(nEnts)){
             ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
             return GHOST_ERR_IO;
         }
