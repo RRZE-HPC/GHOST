@@ -104,7 +104,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
-    vec->equalize = &vec_cm_equalize;
+    vec->syncValues = &vec_cm_equalize;
 
     vec->averageHalo = &ghost_densemat_cm_averagehalo_selector;
 
