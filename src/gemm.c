@@ -408,7 +408,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             }
             else if (x->traits.flags & GHOST_DENSEMAT_HOST)
             {
-                val = x->val[i];
+                val = x->val[i]+ghost_bitmap_first(x->ldmask)*x->elSize;
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
