@@ -325,18 +325,18 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
         ghost_line_string(str,"Dimension of viewed densemat",NULL,"%"PRLIDX"x%"PRLIDX,densemat->traits.nrowsorig,densemat->traits.ncolsorig);
         char colmask[densemat->traits.ncolsorig];
         char colmaskstr[densemat->traits.ncolsorig+1];
-        ghost_densemat_mask2charfield((densemat->traits.flags&GHOST_DENSEMAT_ROWMAJOR)?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
+        ghost_densemat_mask2charfield((densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR)?densemat->ldmask:densemat->trmask,densemat->traits.ncolsorig,colmask);
         charfield2string(colmaskstr,colmask,densemat->traits.ncolsorig);
         ghost_line_string(str,"Viewed columns",NULL,"%s",colmaskstr);
         char rowmask[densemat->traits.nrowsorig];
         char rowmaskstr[densemat->traits.nrowsorig+1];
-        ghost_densemat_mask2charfield(densemat->traits.flags&GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
+        ghost_densemat_mask2charfield(densemat->traits.storage==GHOST_DENSEMAT_ROWMAJOR?densemat->trmask:densemat->ldmask,densemat->traits.nrowsorig,rowmask);
         charfield2string(rowmaskstr,rowmask,densemat->traits.nrowsorig);
         ghost_line_string(str,"Viewed rows",NULL,"%s",rowmaskstr);
 
     }
    
-     ghost_line_string(str,"Location",NULL,"%s",densemat->traits.flags&GHOST_DENSEMAT_DEVICE?densemat->traits.flags&GHOST_DENSEMAT_HOST?"Device+Host":"Device":"Host");
+    ghost_line_string(str,"Location",NULL,"%s",densemat->traits.storage&GHOST_DENSEMAT_DEVICE?densemat->traits.flags&GHOST_DENSEMAT_HOST?"Device+Host":"Device":"Host");
     ghost_line_string(str,"Storage order",NULL,"%s",ghost_densemat_storage_string(densemat));
     ghost_footer_string(str);
     
