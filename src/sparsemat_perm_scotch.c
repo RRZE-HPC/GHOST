@@ -27,7 +27,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     ghost_gidx_t *rpt = NULL;
     ghost_gidx_t *col_loopless = NULL;
     ghost_gidx_t *rpt_loopless = NULL;
-    ghost_lidx_t nnz = 0;
+    ghost_gidx_t nnz = 0;
     int me, nprocs;
 #ifdef GHOST_HAVE_MPI
     SCOTCH_Dgraph * dgraph = NULL;
@@ -64,7 +64,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         rpt[0] = 0;
 
         nnz = rpt[mat->context->lnrows[me]];
-        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_lidx_t)),err,ret);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx_t)),err,ret);
         GHOST_CALL_GOTO(ghost_bincrs_col_read(col, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me], NULL,1),err,ret);
 
     } else if (srcType == GHOST_SPARSEMAT_SRC_FUNC) {
