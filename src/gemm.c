@@ -87,10 +87,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             }
             // w has transposed mem-layout and "no transpose" is requested for w, cheat
             // cblas_xgemm into doing the right thing:
-            if (w->traits.datatype & GHOST_DT_COMPLEX) 
-                transw[0]='C';
-            else
-                transw[0]='T';
+            transw[0]='T';
         }
         if (x->traits.storage != v->traits.storage)
         {
