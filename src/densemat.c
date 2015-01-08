@@ -159,6 +159,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 #elif defined(GHOST_HAVE_AVX)
             padding = 32; // 32 byte padding
             if (vec->traits.ncols <= 2) {
+                PERFWARNING_LOG("Force SSE over AVX vor densemat with less than 2 columns!");
                 padding = 16; // SSE in this case: only 16 byte alignment required
             }
 #elif defined (GHOST_HAVE_SSE)
