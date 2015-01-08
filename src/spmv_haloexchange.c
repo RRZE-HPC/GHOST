@@ -47,6 +47,11 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
     if (nprocs == 1) {
         goto out;
     }
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ERROR_LOG("Parallel SpMV for scattered densemats not yet supported!");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
 
     GHOST_CALL_RETURN(ghost_malloc((void **)&dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
 
