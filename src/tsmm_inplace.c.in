@@ -19,7 +19,7 @@ ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_
         goto err;
     }
     double dalpha = *(double *)alpha;
-
+    
     INFO_LOG("In in-place TSMM with fixed block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
     double * restrict wval, * restrict xval;
@@ -31,24 +31,21 @@ ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp;
+    double tmp[BLOCKSZ];
     ghost_lidx_t i,j,s;
-    
+
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-        for (s=0; s<BLOCKSZ; s++) {
-            tmp = 0.;
+        memset(tmp,0,BLOCKSZ*sizeof(double));
 #pragma simd
-#pragma vector aligned
-#pragma vector always
-#pragma ivdep
+        for (s=0; s<BLOCKSZ; s++) {
             for (j=0; j<BLOCKSZ; j++) {
-                tmp += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
             }
-            xval[i*ldx+s] = tmp;
         }
+        memcpy(&xval[i*ldx],tmp,BLOCKSZ*sizeof(double));
     }
-
+    
     goto out;
 err:
 
