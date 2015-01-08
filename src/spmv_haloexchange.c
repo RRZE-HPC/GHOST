@@ -96,7 +96,7 @@ ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec)
                     for (to_PE=0 ; to_PE<nprocs ; to_PE++){
 #pragma omp for 
                         for (i=0; i<vec->context->dues[to_PE]; i++){
-                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,vec->val[vec->context->duelist[to_PE][i]],vec->elSize*vec->traits.ncols);
+                            memcpy(work + (dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols,&(vec->val[vec->context->duelist[to_PE][i]][ghost_bitmap_first(vec->ldmask)*vec->elSize]),vec->elSize*vec->traits.ncols);
                         }
                     }
                 }
@@ -174,7 +174,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
     int i, from_PE, to_PE;
     ghost_error_t ret = GHOST_SUCCESS;
     int rowsize;
-    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret); 
+    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret);
 
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
@@ -197,7 +197,7 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
     GHOST_CALL_GOTO(ghost_malloc((void **)&request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
 
-    if (vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) {
+    if ((vec->traits.storage == GHOST_DENSEMAT_COLMAJOR && vec->traits.ncols > 1) || (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && vec->traits.ncols != vec->traits.ncolspadded)) {
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv_mem,vec->traits.ncols*vec->elSize*acc_wishes),err,ret);
         GHOST_CALL_GOTO(ghost_malloc((void **)&tmprecv,nprocs*sizeof(char *)),err,ret);
 
@@ -222,7 +222,11 @@ ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assem
                     recv = &vec->val[0][vec->context->hput_pos[from_PE]*vec->elSize];
                 }
             } else {
-                recv = vec->val[vec->context->hput_pos[from_PE]];
+                if (vec->traits.ncols != vec->traits.ncolspadded) {
+                    recv = tmprecv[from_PE];
+                } else {
+                    recv = vec->val[vec->context->hput_pos[from_PE]];
+                }
             }
 #ifdef GHOST_HAVE_TRACK_DATATRANSFERS
             ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
@@ -317,6 +321,15 @@ ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec)
         }
         GHOST_INSTR_STOP("re-order from col-major");
     }   
+    if (vec->traits.storage == GHOST_DENSEMAT_ROWMAJOR && vec->traits.ncols != vec->traits.ncolspadded) {
+        GHOST_INSTR_START("Assemble row-major view");
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            for (i=0; i<vec->context->wishes[from_PE]; i++){
+                memcpy(&(vec->val[(vec->context->hput_pos[from_PE]+i)][ghost_bitmap_first(vec->ldmask)*vec->elSize]),&tmprecv[from_PE][(i*vec->traits.ncols)*vec->elSize],vec->elSize*vec->traits.ncols);
+            }
+        }
+        GHOST_INSTR_STOP("Assemble row-major view");
+    }
 
 #ifdef GHOST_HAVE_CUDA 
     GHOST_INSTR_START("upload")
