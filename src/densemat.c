@@ -512,7 +512,7 @@ out:
 
 }
 
-ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_halo_comm_t *comm)
 {
 #ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
@@ -530,7 +530,6 @@ out:
     return ret;
 
 #else
-    UNUSED(vec);
     UNUSED(comm);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif

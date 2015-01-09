@@ -1550,7 +1550,7 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
-    ghost_densemat_halocommFinalize_common(vec,comm);
+    ghost_densemat_halocommFinalize_common(comm);
     if (vec->traits.ncols != vec->traits.ncolspadded) {
         GHOST_INSTR_START("Assemble row-major view");
         for (from_PE=0; from_PE<nprocs; from_PE++){

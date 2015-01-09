@@ -827,7 +827,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_halo_comm_t *comm);
 
 #ifdef __cplusplus
 }

@@ -1558,7 +1558,7 @@ static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_d
     
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
-    ghost_densemat_halocommFinalize_common(vec,comm);
+    ghost_densemat_halocommFinalize_common(comm);
     if (vec->traits.ncols > 1) {
         GHOST_INSTR_START("re-order from col-major");
         for (from_PE=0; from_PE<nprocs; from_PE++){
