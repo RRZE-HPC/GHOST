@@ -89,6 +89,63 @@ typedef enum
 }
 ghost_densemat_storage_t;
 
+/**
+ * @brief Densemat halo exchange communication data structure.
+ */
+typedef struct
+{
+#ifdef GHOST_HAVE_MPI
+    /**
+     * @brief The number of messages sent.
+     */
+    int msgcount;
+    /**
+     * @brief The request array.
+     */
+    MPI_Request *request;
+    /**
+     * @brief The status array.
+     */
+    MPI_Status  *status;
+    /**
+     * @brief Holds a pointer where to receive from each PE.
+     */
+    char **tmprecv;
+    /**
+     * @brief This is NULL if receiving is done directly into the densemat halo.
+     * In other cases (i.e., col-major with ncols>1 and row-major with missing 
+     * columns), this will hold space for receiving elements.
+     */
+    char *tmprecv_mem;
+    /**
+     * @brief The assembled data to be sent.
+     */
+    char *work;
+    /**
+     * @brief Offset into the work array for each PE which receives data from me. 
+     */
+    ghost_lidx_t *dueptr;
+    /**
+     * @brief Offset into the tmprecv array for each PE from which I receive data. 
+     */
+    ghost_lidx_t *wishptr;
+    /**
+     * @brief Total number of dues.
+     */
+    ghost_lidx_t acc_dues;
+    /**
+     * @brief Total number of wishes.
+     */
+    ghost_lidx_t acc_wishes;
+#ifdef GHOST_HAVE_CUDA
+    /**
+     * @brief The assembled data to be sent on the CUDA device.
+     */
+    void *cu_work;
+#endif
+#endif
+}
+ghost_densemat_halo_comm_t;
 
 /**
  * @brief Traits of the densemat.
@@ -430,6 +487,35 @@ struct ghost_densemat_t
      */
     ghost_error_t (*fromScalar) (ghost_densemat_t *vec, void *val);
     /**
+     * @brief Initialize a halo communication data structure.
+     *
+     * @param vec The densemat.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*halocommInit) (ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    /**
+     * @brief Start halo communication asynchronously.
+     *
+     * @param vec The densemat.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*halocommStart) (ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    /**
+     * @brief Finalize halo communication.
+     *
+     * This includes waiting for the communication to finish and freeing the data in the comm data structure.
+     *
+     * @param vec The densemat.
+     * @param comm The halo communication data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*halocommFinalize) (ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    /**
      * @brief Change the memory layout between row-/col-major.
      *
      * @param vec The densemat.
@@ -708,6 +794,40 @@ extern "C" {
      */
     ghost_error_t ghost_densemat_info_string(char **str, 
             ghost_densemat_t *densemat);
+
+    /**
+     * @brief Common (storage-independent) functions for ghost_densemat_t::halocommInit()
+     *
+     * This function should not be called by a user.
+     *
+     * @param vec The densemat.
+     * @param comm The comm data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    /**
+     * @brief Common (storage-independent) functions for ghost_densemat_t::halocommStart()
+     *
+     * This function should not be called by a user.
+     *
+     * @param vec The densemat.
+     * @param comm The comm data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_densemat_halocommStart_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+    /**
+     * @brief Common (storage-independent) functions for ghost_densemat_t::halocommFinalize()
+     *
+     * This function should not be called by a user.
+     *
+     * @param vec The densemat.
+     * @param comm The comm data structure.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 
 #ifdef __cplusplus
 }

@@ -344,3 +344,194 @@ ghost_error_t ghost_densemat_info_string(char **str, ghost_densemat_t *densemat)
     return GHOST_SUCCESS;
 
 }
+
+ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm) 
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    int nprocs;
+    int me; 
+    int i;
+    ghost_error_t ret = GHOST_SUCCESS;
+    int rowsize;
+
+    GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
+    GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
+    
+    comm->msgcount = 0;
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->wishptr,(nprocs+1)*sizeof(ghost_lidx_t)),err,ret);
+
+    int nMsgsOverall = 0;
+
+    comm->wishptr[0] = 0;
+    for (i=0;i<nprocs;i++) {
+        comm->wishptr[i+1] = comm->wishptr[i]+vec->context->wishes[i];
+        if (vec->context->wishes[i]) {
+            nMsgsOverall += ((size_t)rowsize*vec->context->wishes[i])/INT_MAX + 1;
+        }
+    }
+    comm->acc_wishes = comm->wishptr[nprocs];
+    nMsgsOverall *= 2; // we need to send _and_ receive
+
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
+
+    for (i=0;i<nMsgsOverall;i++) {
+        comm->request[i] = MPI_REQUEST_NULL;
+    }
+    
+
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        ERROR_LOG("Parallel SpMV for scattered densemats not yet supported!");
+        ret = GHOST_ERR_NOT_IMPLEMENTED;
+        goto err;
+    }
+
+    GHOST_CALL_RETURN(ghost_malloc((void **)&comm->dueptr,(nprocs+1)*sizeof(ghost_lidx_t)));
+
+    comm->dueptr[0] = 0;
+    for (i=0;i<nprocs;i++) {
+        comm->dueptr[i+1] = comm->dueptr[i]+vec->context->dues[i];
+    }
+    comm->acc_dues = comm->dueptr[nprocs];
+
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        CUDA_CALL_RETURN(cudaHostAlloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize,cudaHostAllocDefault));
+#endif
+    } else {
+        GHOST_CALL_RETURN(ghost_malloc((void **)&comm->work,(size_t)vec->traits.ncols*comm->acc_dues*vec->elSize));
+    }
+
+#ifdef GHOST_HAVE_CUDA
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        GHOST_CALL_GOTO(ghost_cu_malloc(&comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize),err,ret);
+    }
+#endif
+
+#ifdef GHOST_HAVE_CUDA
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        GHOST_INSTR_START("downloadcomm->work");
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+        ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,GHOST_DATATRANSFER_RANK_GPU,vec->traits.ncols*comm->acc_dues*vec->elSize);
+
+#endif
+        ghost_cu_download(comm->work,comm->cu_work,vec->traits.ncols*comm->acc_dues*vec->elSize);
+        GHOST_INSTR_STOP("downloadcomm->work");
+    }
+#endif
+
+    goto out;
+err:
+    ERROR_LOG("Error in function!");
+    return GHOST_ERR_UNKNOWN;
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
+#else
+    UNUSED(vec);
+    UNUSED(comm);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+
+
+}
+
+ghost_error_t ghost_densemat_halocommStart_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION)
+    ghost_error_t ret = GHOST_SUCCESS;
+    char *recv;
+    int from_PE, to_PE;
+    int nprocs;
+    int rowsize;
+    int me; 
+    GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
+    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret);
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
+
+    for (from_PE=0; from_PE<nprocs; from_PE++){
+        if (vec->context->wishes[from_PE]>0) {
+            recv = comm->tmprecv[from_PE];
+
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_IN,from_PE,vec->context->wishes[from_PE]*vec->elSize*vec->traits.ncols);
+#endif
+            int msg;
+            int nmsgs = (size_t)rowsize*vec->context->wishes[from_PE]/INT_MAX + 1;
+            size_t msgSizeRows = vec->context->wishes[from_PE]/nmsgs;
+
+            for (msg = 0; msg < nmsgs-1; msg++) {
+                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
+                comm->msgcount++;
+            }
+
+            // remainder
+            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, vec->context->wishes[from_PE] - msg*msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
+            comm->msgcount++;
+        }
+    }
+    for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+        if (vec->context->dues[to_PE]>0){
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,to_PE,vec->context->dues[to_PE]*vec->elSize*vec->traits.ncols);
+#endif
+            int msg;
+            int nmsgs = (size_t)rowsize*vec->context->dues[to_PE]/INT_MAX + 1;
+            size_t msgSizeRows = vec->context->dues[to_PE]/nmsgs;
+
+            for (msg = 0; msg < nmsgs-1; msg++) {
+                MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
+                comm->msgcount++;
+            }
+
+            // remainder
+            MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, vec->context->dues[to_PE] - msg*msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
+            comm->msgcount++;
+        }
+    }
+
+
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
+#else
+    UNUSED(vec);
+    UNUSED(comm);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+
+
+
+}
+
+ghost_error_t ghost_densemat_halocommFinalize_common(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    GHOST_INSTR_START("waitall");
+    MPI_CALL_GOTO(MPI_Waitall(comm->msgcount, comm->request, comm->status),err,ret);
+    GHOST_INSTR_STOP("waitall");
+
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
+
+#else
+    UNUSED(vec);
+    UNUSED(comm);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+}

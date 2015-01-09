@@ -29,6 +29,7 @@
 #ifdef GHOST_HAVE_MPI
 typedef struct {
     ghost_densemat_t *rhs;
+    ghost_densemat_halo_comm_t *comm;
 } commArgs;
 
 static void *communicate(void *vargs)
@@ -38,8 +39,8 @@ static void *communicate(void *vargs)
     ghost_error_t *ret = NULL;
     GHOST_CALL_GOTO(ghost_malloc((void **)&ret,sizeof(ghost_error_t)),err,*ret);
     *ret = GHOST_SUCCESS;
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_initiate(args->rhs,true),err,*ret);
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_finalize(args->rhs),err,*ret);
+    GHOST_CALL_GOTO(args->rhs->halocommStart(args->rhs,args->comm),err,*ret);
+    GHOST_CALL_GOTO(args->rhs->halocommFinalize(args->rhs,args->comm),err,*ret);
 
     goto out;
 err:
@@ -106,6 +107,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
         remoteopts |= GHOST_SPMV_REMOTE;
     }
 
+    ghost_densemat_halo_comm_t comm;
     commArgs cargs;
     compArgs cplargs;
     ghost_task_t *commTask;
@@ -130,6 +132,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     }
 
     cargs.rhs = invec;
+    cargs.comm = &comm;
     cplargs.mat = mat->localPart;
     cplargs.invec = invec;
     cplargs.res = res;
@@ -140,7 +143,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     
     GHOST_INSTR_START("haloassembly");
     
-    GHOST_CALL_GOTO(ghost_spmv_haloexchange_assemble(invec),err,ret);
+    GHOST_CALL_GOTO(invec->halocommInit(invec,&comm),err,ret);
     
     GHOST_INSTR_STOP("haloassembly");
 

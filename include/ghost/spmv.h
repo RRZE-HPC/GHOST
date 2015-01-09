@@ -131,40 +131,6 @@ inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a,
             static_cast<int>(a) | static_cast<int>(b));
 }
 
-extern "C" {
-#endif
-
-    /**
-     * @brief Initiate the exchange of halo elements.
-     *
-     * @param vec The densemat.
-     * @param assembled True if ::ghost_spmv_haloexchange_assemble() has already
-     * been called for this densemat. If set to false, this function will be
-     * called.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t ghost_spmv_haloexchange_initiate(ghost_densemat_t *vec, bool assembled);
-    /**
-     * @brief Assemble communication buffers for halo exchange.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t ghost_spmv_haloexchange_assemble(ghost_densemat_t *vec);
-    /**
-     * @brief Finalize the halo exchange.
-     *
-     * @param vec The densemat.
-     *
-     * @return ::GHOST_SUCCESS on success or an error indicator.
-     */
-    ghost_error_t ghost_spmv_haloexchange_finalize(ghost_densemat_t *vec);
-    
-
-#ifdef __cplusplus
-} extern "C"
 #endif
 
 #endif

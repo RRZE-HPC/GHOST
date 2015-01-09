@@ -6,6 +6,7 @@
 template<typename T>
 static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
 {
+#ifdef GHOST_HAVE_MPI
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
     ghost_error_t ret = GHOST_SUCCESS;
 
@@ -98,6 +99,10 @@ out:
     free(req);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
     return ret;
+#else
+    ERROR_LOG("MPI is required!");
+    return GHOST_ERR_MPI;
+#endif
 }
 
 ghost_error_t ghost_densemat_cm_averagehalo_selector(ghost_densemat_t *vec)

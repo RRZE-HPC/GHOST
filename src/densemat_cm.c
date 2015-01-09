@@ -51,6 +51,8 @@ static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec);
 static ghost_error_t vec_cm_equalize(ghost_densemat_t *vec, int root);
+static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
+static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 
 ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec);
 
@@ -105,6 +107,9 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
     vec->syncValues = &vec_cm_equalize;
+    vec->halocommInit = &densemat_cm_halocommInit;
+    vec->halocommFinalize = &densemat_cm_halocommFinalize;
+    vec->halocommStart = &ghost_densemat_halocommStart_common;
 
     vec->averageHalo = &ghost_densemat_cm_averagehalo_selector;
 
@@ -1461,4 +1466,148 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
 
     return GHOST_SUCCESS;
 }
+    
+static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_error_t ret = GHOST_SUCCESS;
+    ghost_permutation_t *permutation = vec->context->permutation;
+    int i, to_PE, from_PE;
+    int nprocs;
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
+    ghost_densemat_halocommInit_common(vec,comm);
+    
+    GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
+    if (vec->traits.ncols > 1) {
+        GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv_mem,vec->traits.ncols*vec->elSize*comm->acc_wishes),err,ret);
+
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            comm->tmprecv[from_PE] = &comm->tmprecv_mem[comm->wishptr[from_PE]*vec->traits.ncols*vec->elSize];
+        }
+    } else {
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            comm->tmprecv[from_PE] = &vec->val[0][vec->context->hput_pos[from_PE]*vec->elSize];
+        }
+        comm->tmprecv_mem = NULL;
+    }
+        
+    
+    if (permutation && permutation->scope == GHOST_PERMUTATION_LOCAL) {
+#ifdef GHOST_HAVE_CUDA
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,(ghost_lidx_t *)permutation->cu_perm);
+        } else
+#endif
+            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                ghost_gidx_t c;
+#pragma omp parallel private(to_PE,i,c)
+                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+#pragma omp for 
+                    for (i=0; i<vec->context->dues[to_PE]; i++){
+                        for (c=0; c<vec->traits.ncols; c++) {
+                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][permutation->perm[vec->context->duelist[to_PE][i]]*vec->elSize],vec->elSize);
+                        }
+                    }
+                }
+            }
+    } else {
+#ifdef GHOST_HAVE_CUDA
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ghost_densemat_cm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
+        } else
+#endif
+            if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+                ghost_gidx_t c;
+#pragma omp parallel private(to_PE,i,c)
+                for (to_PE=0 ; to_PE<nprocs ; to_PE++){
+#pragma omp for 
+                    for (i=0; i<vec->context->dues[to_PE]; i++){
+                        for (c=0; c<vec->traits.ncols; c++) {
+                            memcpy(comm->work + (comm->dueptr[to_PE]+i)*vec->elSize*vec->traits.ncols + c*vec->elSize,&vec->val[c][vec->context->duelist[to_PE][i]*vec->elSize],vec->elSize);
+                        }
+                    }
+                }
+            }
+    }
+
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
+#else
+    UNUSED(vec);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+
+
+}
+
+static ghost_error_t densemat_cm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm)
+{
+#ifdef GHOST_HAVE_MPI
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_COMMUNICATION);
+    ghost_error_t ret = GHOST_SUCCESS;
+    
+    int nprocs;
+    int i, from_PE;
+    ghost_gidx_t c;
+    
+    GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
+
+    ghost_densemat_halocommFinalize_common(vec,comm);
+    if (vec->traits.ncols > 1) {
+        GHOST_INSTR_START("re-order from col-major");
+        for (from_PE=0; from_PE<nprocs; from_PE++){
+            for (i=0; i<vec->context->wishes[from_PE]; i++){
+                for (c=0; c<vec->traits.ncols; c++) {
+                    memcpy(&vec->val[c][(vec->context->hput_pos[from_PE]+i)*vec->elSize],&comm->tmprecv[from_PE][(i*vec->traits.ncols+c)*vec->elSize],vec->elSize);
+                }
+            }
+        }
+        GHOST_INSTR_STOP("re-order from col-major");
+    }   
+
+#ifdef GHOST_HAVE_CUDA 
+    GHOST_INSTR_START("upload")
+#ifdef GHOST_HAVE_TRACK_DATATRANSFERS
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ghost_datatransfer_register("spmv_halo",GHOST_DATATRANSFER_OUT,GHOST_DATATRANSFER_RANK_GPU,vec->context->halo_elements*vec->traits.ncols*vec->elSize);
+        }
+#endif
+    GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
+    GHOST_INSTR_STOP("upload")
+#endif
+
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+            ghost_cu_free(comm->cu_work);
+            cudaFreeHost(comm->work); comm->work = NULL;
+#endif
+        } else {
+            free(comm->work); comm->work = NULL;
+        }
+    free(comm->tmprecv_mem); comm->tmprecv_mem = NULL;
+    free(comm->tmprecv); comm->tmprecv = NULL;
+    free(comm->request); comm->request = NULL;
+    free(comm->status); comm->status = NULL;
+    free(comm->dueptr); comm->dueptr = NULL;
+    free(comm->wishptr); comm->wishptr = NULL;
+    
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);
+    return ret;
+
+#else
+    UNUSED(vec);
+    return GHOST_ERR_NOT_IMPLEMENTED;
+#endif
+
+
+}
