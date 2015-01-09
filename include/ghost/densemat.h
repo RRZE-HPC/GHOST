@@ -822,7 +822,6 @@ extern "C" {
      *
      * This function should not be called by a user.
      *
-     * @param vec The densemat.
      * @param comm The comm data structure.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
