@@ -24,7 +24,7 @@ The following code example performs a sparse matrix-vector multiplication with r
 #define N 4
 GHOST_REGISTER_DT_D(mydata)
 
-static int diag(ghost_idx_t row, ghost_idx_t *rowlen, ghost_idx_t *col, void *val)
+static int diag(ghost_gidx_t row, ghost_lidx_t *rowlen, ghost_gidx_t *col, void *val)
 {
     *rowlen = 1;
     col[0] = row;
@@ -47,14 +47,16 @@ int main(int argc, char **argv)
 
     ghost_init(argc,argv);
 
+    // create matrix source
+    ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
+    matsrc.func = diag;
+    matsrc.maxrowlen = N;
+
     // create context
-    ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,diag,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
+    ghost_context_create(&ctx,N,N,GHOST_CONTEXT_DEFAULT,&matsrc,GHOST_SPARSEMAT_SRC_FUNC,MPI_COMM_WORLD,1.);
    
     // create sparse matrix A from row-wise function    
     ghost_sparsemat_create(&A, ctx, &mtraits, 1);
-    ghost_sparsemat_src_rowfunc_t matsrc = GHOST_SPARSEMAT_SRC_ROWFUNC_INITIALIZER;
-    matsrc.func = diag;
-    matsrc.maxrowlen = 1;
     A->fromRowFunc(A,&matsrc);
 
     // create input vector x and output vector y
