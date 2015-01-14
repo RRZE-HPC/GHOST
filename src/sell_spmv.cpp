@@ -491,6 +491,13 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
             p.impl = GHOST_IMPLEMENTATION_SSE;
         }
     }
+    
+    if (p.impl == GHOST_IMPLEMENTATION_AVX && 
+            p.storage == GHOST_DENSEMAT_COLMAJOR && p.chunkheight < 2 
+            && rhs->traits.datatype & GHOST_DT_COMPLEX) {
+        PERFWARNING_LOG("Chose SSE for col-major densemats, complex vector and C<2");
+        p.impl = GHOST_IMPLEMENTATION_SSE;
+    }
 
     if ((lhs->traits.flags & GHOST_DENSEMAT_SCATTERED) || 
             (rhs->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
