@@ -81,8 +81,12 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t 
             }
         }
 #ifdef GHOST_HAVE_MPI
-        for (k=0; k<CFGK; k++) {
-            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,x->val[k]+ghost_bitmap_first(x->ldmask)*x->elSize,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+            for (k=0; k<CFGK; k++) {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx*x->elSize,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        } else {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
         }
 #endif
     
@@ -124,7 +128,13 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t 
             }
         }
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+            for (j=0; j<m; j++) {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+j*ldx*x->elSize,CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        } else {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
 #endif
 
     }
@@ -323,7 +333,13 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
     }
             
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
+            for (k=0; k<CFGK; k++) {
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx*x->elSize,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+            }
+        } else {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
 #endif
     
     } else {
