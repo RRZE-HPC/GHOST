@@ -81,7 +81,9 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t 
             }
         }
 #ifdef GHOST_HAVE_MPI
-        MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,ldx*CFGK,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        for (k=0; k<CFGK; k++) {
+            MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,x->val[k]+ghost_bitmap_first(x->ldmask)*x->elSize,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+        }
 #endif
     
     } else {
