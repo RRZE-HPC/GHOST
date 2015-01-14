@@ -37,6 +37,10 @@ ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_
     if (reduce != GHOST_GEMM_ALL_REDUCE) {
         return NULL;
     }
+    if (v->traits.flags & GHOST_DENSEMAT_SCATTERED || w->traits.flags & GHOST_DENSEMAT_SCATTERED || x->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        PERFWARNING_LOG("Scattered densemats not supported!");
+        return NULL;
+    }
     
     ghost_tsmttsm_kernel_t kernel = ghost_tsmttsm_kernels[p];
     if (!kernel) {
