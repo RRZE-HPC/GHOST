@@ -9,7 +9,7 @@
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__avx_d_CFGK_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
-    INFO_LOG("Plain instead of AVX tsmttsm with blocksz %d",CFGK);
+    INFO_LOG("Promised to do AVX but actually doing plain TSMTTSM with blocksz %d",CFGK);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t k = w->traits.ncols;
