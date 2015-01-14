@@ -31,9 +31,6 @@ ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_
     if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         return NULL;
     }
-    if (v->traits.datatype != (GHOST_DT_DOUBLE|GHOST_DT_REAL)) {
-        return NULL;
-    }
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         return NULL;
     }
@@ -50,7 +47,7 @@ ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_
     
     if (!kernel) {
         PERFWARNING_LOG("Could not find auto-generated kernel!");
-    }
+    } 
     
     return kernel;
 }
