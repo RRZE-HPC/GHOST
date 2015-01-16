@@ -5,7 +5,7 @@
 #include "ghost/util.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -13,7 +13,7 @@ ghost_error_t ghost_tsmm_inplace__d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_
     ghost_lidx_t m = x->traits.ncols;
     ghost_lidx_t n = x->traits.nrows;
 
-    if (m != BLOCKSZ) {
+    if (x->traits.ncols != BLOCKSZ) {
         ERROR_LOG("Invalid dimensions");
         ret = GHOST_ERR_INVALID_ARG;
         goto err;
@@ -54,4 +54,48 @@ out:
     return ret;
 }
 #GHOST_FUNC_END
+
+ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
+
+    ghost_lidx_t m = x->traits.ncols;
+    ghost_lidx_t n = x->traits.nrows;
+
+    double dalpha = *(double *)alpha;
+    
+    INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
+
+    double * restrict wval, * restrict xval;
+    ghost_lidx_t ldw, ldx;
+
+    ldw = *w->stride;
+    ldx = *x->stride;
+
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double tmp[x->traits.ncols];
+    ghost_lidx_t i,j,s;
+
+#pragma omp parallel for private(j,s,tmp) schedule(runtime)
+    for (i=0; i<n; i++) {
+        memset(tmp,0,x->traits.ncols*sizeof(double));
+#pragma simd
+        for (s=0; s<x->traits.ncols; s++) {
+            for (j=0; j<x->traits.ncols; j++) {
+                tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
+            }
+        }
+        memcpy(&xval[i*ldx],tmp,x->traits.ncols*sizeof(double));
+    }
+    
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
 

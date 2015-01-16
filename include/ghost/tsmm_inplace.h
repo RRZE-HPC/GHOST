@@ -20,6 +20,8 @@ typedef struct
      * @brief The first configured block size M.
      */
     int blocksz;
+
+    ghost_implementation_t impl;
 } ghost_tsmm_inplace_parameters_t;
 
 /**

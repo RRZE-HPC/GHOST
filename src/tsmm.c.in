@@ -5,7 +5,7 @@
 #include "ghost/util.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -65,8 +65,7 @@ out:
 }
 #GHOST_FUNC_END
 
-#GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -74,12 +73,6 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
     ghost_lidx_t k = w->traits.ncols;
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
-
-    if (k != BLOCKSZ1) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
 
     
     INFO_LOG("In TSMM with one fixed block size %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
@@ -99,11 +92,11 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
     double dbeta = *(double *)beta;
     ghost_lidx_t i,j,s;
     
-    if (BLOCKSZ1 <= 4) 
+    if (w->traits.ncolspadded <= 4) 
     {
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s<BLOCKSZ1; s++) {
+            for (s=0; s<w->traits.ncolspadded; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
 #pragma vector aligned
@@ -123,7 +116,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-            for (s=0; s<BLOCKSZ1; s++) {
+            for (s=0; s<w->traits.ncolspadded; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
             }
             for (j=0; j<m; j++) {
@@ -131,7 +124,7 @@ ghost_error_t ghost_tsmm__d_BLOCKSZ1_x(ghost_densemat_t *x, ghost_densemat_t *v,
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-                for (s=0; s<BLOCKSZ1; s++) {
+                for (s=0; s<w->traits.ncolspadded; s++) {
                     xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                 }
             }
@@ -146,4 +139,3 @@ out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
-#GHOST_FUNC_END

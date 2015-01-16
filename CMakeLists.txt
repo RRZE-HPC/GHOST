@@ -78,9 +78,9 @@ set (SOURCES
     src/sparsemat_perm_colpack.cpp
     src/svqb.cpp
     src/timing.cpp
-    src/tsmm_kernelmap.cpp
-    src/tsmm_inplace_kernelmap.cpp
-    src/tsmttsm_kernelmap.cpp
+    src/tsmm.cpp
+    src/tsmm_inplace.cpp
+    src/tsmttsm.cpp
     src/bincrs.c
     src/blas_util.c
     src/carp.c
@@ -113,9 +113,6 @@ set (SOURCES
     src/taskq.c
     src/thpool.c
     src/timing.c
-    src/tsmm.c
-    src/tsmm_inplace.c
-    src/tsmttsm.c
     src/types.c
     src/util.c 
     )
@@ -203,6 +200,10 @@ configure_file (
     ${PROJECT_BINARY_DIR}/src/tsmm.c
     )
 configure_file (
+    ${PROJECT_SOURCE_DIR}/src/tsmm_avx.c.in
+    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
+    )
+configure_file (
     ${PROJECT_SOURCE_DIR}/src/tsmm_inplace.c.in
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     )
@@ -220,6 +221,7 @@ set (TO_PREPROCESS
     ${PROJECT_BINARY_DIR}/src/sell_spmv_sse.c
     ${PROJECT_BINARY_DIR}/src/sell_spmv_mic.c
     ${PROJECT_BINARY_DIR}/src/tsmm.c
+    ${PROJECT_BINARY_DIR}/src/tsmm_avx.c
     ${PROJECT_BINARY_DIR}/src/tsmm_inplace.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm.c
     ${PROJECT_BINARY_DIR}/src/tsmttsm_avx.c

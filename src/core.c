@@ -11,10 +11,10 @@
 #include "ghost/pumap.h"
 #include "ghost/omp.h"
 #include "ghost/rand.h"
-#include "ghost/sell.h"
-#include "ghost/tsmm.h"
-#include "ghost/tsmm_inplace.h"
-#include "ghost/tsmttsm.h"
+//#include "ghost/sell.h"
+//#include "ghost/tsmm.h"
+//#include "ghost/tsmm_inplace.h"
+//#include "ghost/tsmttsm.h"
 #include "ghost/instr.h"
 
 #include <hwloc.h>
@@ -425,9 +425,9 @@ ghost_error_t ghost_init(int argc, char **argv)
     hwloc_bitmap_free(mycpuset); mycpuset = NULL; 
     hwloc_bitmap_free(globcpuset); globcpuset = NULL;
 
-    ghost_tsmm_kernelmap_generate();
-    ghost_tsmm_inplace_kernelmap_generate();
-    ghost_tsmttsm_kernelmap_generate();
+//    ghost_tsmm_kernelmap_generate();
+//    ghost_tsmm_inplace_kernelmap_generate();
+//    ghost_tsmttsm_kernelmap_generate();
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_PREPROCESS);
     return GHOST_SUCCESS;
 }

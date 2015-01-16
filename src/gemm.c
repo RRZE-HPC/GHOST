@@ -29,7 +29,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
         return GHOST_ERR_INVALID_ARG;
     }
 
-   
+  /* 
     if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE)) { 
         ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x_in->traits.datatype, .blocksz = x_in->traits.ncols};
         ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x_in,v_in,w_in,reduce);
@@ -50,7 +50,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta);
         }
     }
-
+*/
     char transv[1], transw[1];
     
     transv[0]=transv_in[0];

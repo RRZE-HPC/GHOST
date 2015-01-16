@@ -24,6 +24,7 @@ typedef struct
      * @brief The second configure block size M.
      */
     int blocksz2;
+    ghost_implementation_t impl;
 } ghost_tsmm_parameters_t;
 
 /**

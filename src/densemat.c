@@ -167,10 +167,10 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
 #endif
         }
         padding /= vec->elSize;
-        if (vec->traits.ncols % padding) {
-            INFO_LOG("Cols will be padded to a multiple of %"PRLIDX,padding);
-        }
         vec->traits.ncolspadded = PAD(vec->traits.ncols,padding);
+        if (vec->traits.ncols % padding) {
+            INFO_LOG("Cols will be padded to a multiple of %"PRLIDX" to %"PRLIDX,padding,vec->traits.ncolspadded);
+        }
     }
     if (vec->traits.ncolsorig == 0) {
         vec->traits.ncolsorig = vec->traits.ncols;
