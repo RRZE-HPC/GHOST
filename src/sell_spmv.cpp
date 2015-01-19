@@ -527,8 +527,9 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
 
     if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary blocksz");
+        PERFWARNING_LOG("Try kernel with arbitrary blocksz. The vectorized version is broken so I will fall back to the plain implementation!");
         p.blocksz = -1;
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
     kernel = ghost_sellspmv_kernels[p];
 
