@@ -523,6 +523,11 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
                 "should check for the actual alignment.");
         p.alignment = GHOST_UNALIGNED;
     }
+    if (lhs->traits.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz > 1 && p.blocksz % 4) {
+        PERFWARNING_LOG("Use plain implementation non-multiples of four!");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+
 
     ghost_spmv_kernel_t kernel = ghost_sellspmv_kernels[p];
 
