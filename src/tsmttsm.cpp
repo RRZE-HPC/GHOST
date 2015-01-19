@@ -34,6 +34,12 @@ ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int prin
         }
         return GHOST_ERR_INVALID_ARG;
     }
+    if (x->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
+        if (printerror) {
+            ERROR_LOG("x must be stored row-major!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
     if (v->traits.datatype != w->traits.datatype || v->traits.datatype != x->traits.datatype) {
         if (printerror) {
             ERROR_LOG("Different data types!");
