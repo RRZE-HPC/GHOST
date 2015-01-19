@@ -14,34 +14,81 @@ using namespace std;
     
 bool operator<(const ghost_tsmm_parameters_t &a, const ghost_tsmm_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.blocksz1,ghost_hash(a.blocksz2,a.impl,0)) < ghost_hash(b.dt,b.blocksz1,ghost_hash(b.blocksz2,b.impl,0)); 
+    return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,0)) < ghost_hash(b.dt,b.xcols,ghost_hash(b.vcols,b.impl,0)); 
 }
 
 
 static map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
 
-ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
+ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror)
 {
-
     if (x->traits.datatype != v->traits.datatype || x->traits.datatype != w->traits.datatype) {
-        ERROR_LOG("Different data types!");
+        if (printerror) {
+            ERROR_LOG("Different data types!");
+        }
         return GHOST_ERR_INVALID_ARG;
     }
+    if (x == v) {
+        if (printerror) {
+           ERROR_LOG("x must not be equal to v!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
     if (w->traits.storage != GHOST_DENSEMAT_COLMAJOR) {
-        ERROR_LOG("w must be stored col-major!");
+        if (printerror) {
+           ERROR_LOG("w must be stored col-major!");
+        }
         return GHOST_ERR_INVALID_ARG;
     }
     if (x->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("x must be stored row-major!");
+        if (printerror) {
+            ERROR_LOG("x must be stored row-major!");
+        }
         return GHOST_ERR_INVALID_ARG;
     }
     if (v->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
-        ERROR_LOG("v must be stored row-major!");
+        if (printerror) {
+           ERROR_LOG("v must be stored row-major!");
+        }
         return GHOST_ERR_INVALID_ARG;
     }
     if ((x->traits.flags & GHOST_DENSEMAT_SCATTERED) || (v->traits.flags & GHOST_DENSEMAT_SCATTERED) || (w->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        ERROR_LOG("Scattered views not supported!");
+        if (printerror) {
+            ERROR_LOG("Scattered views not supported!");
+        }
         return GHOST_ERR_INVALID_ARG;
+    }
+    if (reduce != GHOST_GEMM_NO_REDUCE) { 
+        if (printerror) {
+            ERROR_LOG("Only NO_REDUCE valid!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (strncasecmp(transv,"N",1)) {
+        if (printerror) {
+            ERROR_LOG("v must not be transposed!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (strncasecmp(transw,"N",1)) {
+        if (printerror) {
+            ERROR_LOG("w must not be transposed!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    return GHOST_SUCCESS;
+} 
+
+
+ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    ghost_error_t ret;
+
+    if ((ret = ghost_tsmm_valid(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
+        return ret;
     }
     
     if (ghost_tsmm_kernels.empty()) {
@@ -50,6 +97,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     }
 
     ghost_tsmm_parameters_t p;
+    ghost_tsmm_kernel_t kernel = NULL;
 #ifdef GHOST_HAVE_MIC
     p.impl = GHOST_IMPLEMENTATION_MIC;
 #elif defined(GHOST_HAVE_AVX)
@@ -59,31 +107,36 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 #endif
 
     p.dt = x->traits.datatype;
-    p.blocksz1 = x->traits.ncolspadded;
-    p.blocksz2 = v->traits.ncolspadded;
-
-    if (w->traits.ncolspadded < 4 && v->traits.ncolspadded < 4) {
-        PERFWARNING_LOG("Try SSE for small densemats");
+    
+    p.xcols = x->traits.ncols;
+    p.vcols = v->traits.ncols;
+    if (p.vcols == 2 || p.xcols == 2) {
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
-
-    ghost_tsmm_kernel_t kernel = ghost_tsmm_kernels[p];
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
-        p.blocksz1 = -1;
-        p.blocksz2 = -1;
+    if (p.vcols == 1 || p.xcols == 1) {
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+    if (p.vcols % 4 || p.xcols % 4) {
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
     kernel = ghost_tsmm_kernels[p];
+    
+    if (!kernel) {
+        PERFWARNING_LOG("Try kernel with arbitrary block sizes");
+        p.xcols = -1;
+        p.vcols = -1;
+        kernel = ghost_tsmm_kernels[p];
+    }
 
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        kernel = ghost_tsmm_kernels[p];
     }
-    kernel = ghost_tsmm_kernels[p];
 
     if (!kernel) {
-        INFO_LOG("Could not find TSMM kernel with %d %d %d %d. Fallback to GEMM.",p.impl,p.dt,p.blocksz1,p.blocksz2);
-        return ghost_gemm(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE);
+        INFO_LOG("Could not find TSMM kernel with %d %d %d %d!",p.impl,p.dt,p.xcols,p.vcols);
+        return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
 

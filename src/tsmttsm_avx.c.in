@@ -8,26 +8,13 @@
 
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t k = w->traits.ncols;
     ghost_lidx_t m = v->traits.ncols;
 
-    if (k != CFGK) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    
-    if (m != CFGM) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    
     int myrank=0;
 
     GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
@@ -193,7 +180,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #ifdef GHOST_HAVE_MPI
         if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
             for (k=0; k<CFGK; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx*x->elSize,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
         } else {
             MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);

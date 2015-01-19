@@ -13,7 +13,7 @@
 
 
 ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in,  char * transv_in, 
-ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce) 
+ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
 #ifdef GHOST_HAVE_LONGIDX_LOCAL
 #ifndef GHOST_HAVE_MKL
@@ -27,6 +27,21 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
         ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
         return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+        if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMM");
+            return ghost_tsmm(x_in,v_in,w_in,alpha,beta);
+        }
+        if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMM-inplace");
+            return ghost_tsmm_inplace(x_in,w_in,alpha);
+        }
+        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMTTSM %c",transv_in[0]);
+            return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c');
+        }
     }
 
   /* 
@@ -71,7 +86,15 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
     int needMemTransposeX=0; // compute X.' and transpose back afterwards
     int swapDimsX=0; /* formally compute X' because X has different storage layout, but no 
                             need to transpose back */
+        
+    if (v->traits.storage != w->traits.storage || x->traits.storage != w->traits.storage) {
+        ERROR_LOG("Different storage layouts of input densemats!");
+        return GHOST_ERR_INVALID_ARG;
+    }
 
+    INFO_LOG("in gemm");
+
+#if 0
     if (!(x->traits.flags & GHOST_DENSEMAT_DEVICE)) {
         // we support the special cases V*W and V'*W with V row-major and W col-major or vice 
         // versa. If the result X has different storage layout than V, we use the 
@@ -108,6 +131,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce)
             }
         }
     }
+#endif
 
     // scattered vectors are copied together, if this occurs the user should rethink his or 
     // her data layout.

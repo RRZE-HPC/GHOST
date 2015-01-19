@@ -18,6 +18,14 @@
 
 #include <stdarg.h>
 
+typedef enum {
+    GHOST_GEMM_DEFAULT = 0,
+    /**
+     * @brief Do _not_ look for special implementations!
+     */
+    GHOST_GEMM_NOT_SPECIAL = 1,
+} ghost_gemm_flags_t;
+
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
@@ -143,7 +151,7 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce); 
+    ghost_error_t ghost_gemm(ghost_densemat_t *x, ghost_densemat_t *v, char *transv, ghost_densemat_t *w, char * transw, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags); 
     ghost_error_t ghost_mpi_operations_create();
     ghost_error_t ghost_mpi_operations_destroy();
     ghost_error_t ghost_mpi_op_sum(ghost_mpi_op_t * op, int datatype);

@@ -19,7 +19,7 @@ typedef struct
     /**
      * @brief The first configured block size M.
      */
-    int blocksz;
+    int xcols;
 
     ghost_implementation_t impl;
 } ghost_tsmm_inplace_parameters_t;
@@ -57,22 +57,9 @@ extern "C" {
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha);
-    /**
-     * @brief Generate the map of auto-generated tsmm kernels.
-     */
-    void ghost_tsmm_inplace_kernelmap_generate();
-    /**
-     * @brief Get the auto-generated tsmm kernel which fits the given parameters or, if not found, a fallback kernel. 
-     *
-     * @param[in] p The tsmm kernel parameters
-     * @param[in] x The densemat x
-     * @param[in] v The densemat v
-     * @param[in] w The densemat w
-     * @param[in] reduce The reduce argument which may comm from a ghost_gemm() call.
-     *
-     * @return The according kernel or NULL if no suiting kernel found. 
-     */
-    ghost_tsmm_inplace_kernel_t ghost_tsmm_inplace_kernel(ghost_tsmm_inplace_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
+
+    ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
+        ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus
 }

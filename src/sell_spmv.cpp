@@ -462,9 +462,14 @@ extern "C" ghost_error_t ghost_sell_spmv_selector(ghost_sparsemat_t *mat,
     p.impl = impl;
     p.vdt = rhs->traits.datatype;
     p.mdt = mat->traits->datatype;
-    p.blocksz = rhs->traits.ncols;
     p.storage = rhs->traits.storage;
     p.chunkheight = SELL(mat)->chunkHeight;
+    
+    if (!(lhs->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        p.blocksz = rhs->traits.ncolspadded;
+    } else {
+        p.blocksz = rhs->traits.ncols;
+    }
 
 
     if (p.storage == GHOST_DENSEMAT_ROWMAJOR && p.blocksz == 1 && 

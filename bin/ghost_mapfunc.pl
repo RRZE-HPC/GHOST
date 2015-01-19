@@ -53,14 +53,14 @@ while (<>) {
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
             if ($funcpars[2] eq "x") {
-                print "pars.blocksz1= -1;\n";
+                print "pars.wcols = -1;\n";
             } else {
-                print "pars.blocksz1= ".$funcpars[2].";\n";
+                print "pars.wcols = ".$funcpars[2].";\n";
             }
             if ($funcpars[3] eq "x") {
-                print "pars.blocksz2= -1;\n";
+                print "pars.vcols = -1;\n";
             } else {
-                print "pars.blocksz2= ".$funcpars[3].";\n";
+                print "pars.vcols = ".$funcpars[3].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
@@ -70,14 +70,14 @@ while (<>) {
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
             if ($funcpars[2] eq "x") {
-                print "pars.blocksz1= -1;\n";
+                print "pars.xcols = -1;\n";
             } else {
-                print "pars.blocksz1= ".$funcpars[2].";\n";
+                print "pars.xcols = ".$funcpars[2].";\n";
             }
             if ($funcpars[3] eq "x") {
-                print "pars.blocksz2= -1;\n";
+                print "pars.vcols = -1;\n";
             } else {
-                print "pars.blocksz2= ".$funcpars[3].";\n";
+                print "pars.vcols = ".$funcpars[3].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";
@@ -87,9 +87,9 @@ while (<>) {
             print "pars.impl = ".$implementations{$funcpars[0]}.";\n";
             print "pars.dt = ".$datatypes{$funcpars[1]}.";\n";
             if ($funcpars[2] eq "x") {
-                print "pars.blocksz= -1;\n";
+                print "pars.xcols = -1;\n";
             } else {
-                print "pars.blocksz= ".$funcpars[2].";\n";
+                print "pars.xcols = ".$funcpars[2].";\n";
             }
             print $funcname."_kernels[pars] = ".$funcname_full.";\n"; 
             print "}\n";

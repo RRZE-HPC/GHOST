@@ -16,18 +16,7 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    if (w->traits.ncolspadded != BLOCKSZ1) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (v->traits.ncolspadded != BLOCKSZ2) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-
-    INFO_LOG("In AVX TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In AVX TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * const restrict vval, * const restrict wval, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
@@ -62,7 +51,7 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+4<=BLOCKSZ1; s+=4) {
-                tmp = _mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx]));
+                tmp = _mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx+s]));
                 for (j=0; j<BLOCKSZ2; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(alphavec,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_load_pd(&wtran[j*ncols_wtran+s]))));
@@ -84,11 +73,6 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
         }
     }
 
-
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -138,7 +122,7 @@ ghost_error_t ghost_tsmm__avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, gh
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+4<=w->traits.ncolspadded; s+=4) {
-                tmp = _mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx]));
+                tmp = _mm256_mul_pd(betavec,_mm256_load_pd(&xval[i*ldx+s]));
                 for (j=0; j<m; j++) {
                     tmp = _mm256_add_pd(tmp,_mm256_mul_pd(alphavec,_mm256_mul_pd(
                                     _mm256_set1_pd(vval[i*ldv+j]),_mm256_load_pd(&wtran[j*ncols_wtran+s]))));

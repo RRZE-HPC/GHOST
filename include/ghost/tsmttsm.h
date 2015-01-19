@@ -9,16 +9,17 @@
 #include "config.h"
 #include "types.h"
 #include "densemat.h"
+#include "math.h"
 
 typedef struct
 {
     ghost_datatype_t dt;
-    int blocksz1;
-    int blocksz2;
+    int wcols;
+    int vcols;
     ghost_implementation_t impl;
 } ghost_tsmttsm_parameters_t;
 
-typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *);
+typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *, int);
 
 
 #ifdef __cplusplus
@@ -51,9 +52,10 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
-    void ghost_tsmttsm_kernelmap_generate();
-    ghost_tsmttsm_kernel_t ghost_tsmttsm_kernel(ghost_tsmttsm_parameters_t p, ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, int reduce);
+    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv);
+
+    ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
+        ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus
 }

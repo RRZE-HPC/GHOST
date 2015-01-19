@@ -14,17 +14,6 @@ ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
     ghost_lidx_t m = v->traits.ncols;
     ghost_lidx_t n = v->traits.nrows;
 
-    if (k != BLOCKSZ1) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-    if (m != BLOCKSZ2) {
-        ERROR_LOG("Invalid dimensions");
-        ret = GHOST_ERR_INVALID_ARG;
-        goto err;
-    }
-
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval, * restrict wval, * restrict xval;
@@ -56,10 +45,6 @@ ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
         }
     }
 
-    goto out;
-err:
-
-out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
@@ -75,7 +60,7 @@ ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
     ghost_lidx_t n = v->traits.nrows;
 
     
-    INFO_LOG("In TSMM with one fixed block size %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
     double * restrict vval, * restrict wval, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
@@ -96,7 +81,7 @@ ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
     {
 #pragma omp parallel for private(j,s) schedule(runtime)
         for (i=0; i<n; i++) {
-            for (s=0; s<w->traits.ncolspadded; s++) {
+            for (s=0; s<w->traits.ncols; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
 #pragma simd
 #pragma vector aligned
@@ -116,7 +101,7 @@ ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-            for (s=0; s<w->traits.ncolspadded; s++) {
+            for (s=0; s<w->traits.ncols; s++) {
                 xval[i*ldx+s] = dbeta*xval[i*ldx+s];
             }
             for (j=0; j<m; j++) {
@@ -124,18 +109,83 @@ ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
 #pragma vector aligned
 #pragma vector always
 #pragma ivdep
-                for (s=0; s<w->traits.ncolspadded; s++) {
+                for (s=0; s<w->traits.ncols; s++) {
                     xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
                 }
             }
         }
     }    
 
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
+    return ret;
+}
 
-    goto out;
-err:
+ghost_error_t ghost_tsmm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+{
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    ghost_error_t ret = GHOST_SUCCESS;
 
-out:
+    ghost_lidx_t k = w->traits.ncols;
+    ghost_lidx_t m = v->traits.ncols;
+    ghost_lidx_t n = v->traits.nrows;
+
+    
+    INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
+
+    double complex * restrict vval, * restrict wval, * restrict xval;
+    ghost_lidx_t ldv, ldw, ldx;
+
+    ldv = *v->stride;
+    ldw = *w->stride;
+    ldx = *x->stride;
+
+    ghost_densemat_valptr(v,(void **)&vval);
+    ghost_densemat_valptr(w,(void **)&wval);
+    ghost_densemat_valptr(x,(void **)&xval);
+
+    double complex dalpha = *(double complex *)alpha;
+    double complex dbeta = *(double complex *)beta;
+    ghost_lidx_t i,j,s;
+    
+    if (w->traits.ncolspadded <= 4) 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (j=0; j<m; j++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                }
+            }
+        }
+    } 
+    else 
+    {
+#pragma omp parallel for private(j,s) schedule(runtime)
+        for (i=0; i<n; i++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+            for (s=0; s<w->traits.ncols; s++) {
+                xval[i*ldx+s] = dbeta*xval[i*ldx+s];
+            }
+            for (j=0; j<m; j++) {
+#pragma simd
+#pragma vector aligned
+#pragma vector always
+#pragma ivdep
+                for (s=0; s<w->traits.ncols; s++) {
+                    xval[i*ldx+s] += dalpha*vval[i*ldv+j]*wval[s*ldw+j];
+                }
+            }
+        }
+    }    
+
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 }
