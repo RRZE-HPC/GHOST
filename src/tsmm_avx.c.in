@@ -5,6 +5,7 @@
 #include "ghost/util.h"
 #include <immintrin.h>
 #include <math.h>
+#include <float.h>
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
