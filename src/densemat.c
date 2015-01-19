@@ -371,9 +371,11 @@ ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_de
         if (vec->context->wishes[i]) {
             nMsgsOverall += ((size_t)rowsize*vec->context->wishes[i])/INT_MAX + 1;
         }
+        if (vec->context->dues[i]) {
+            nMsgsOverall += ((size_t)rowsize*vec->context->dues[i])/INT_MAX + 1;
+        }
     }
     comm->acc_wishes = comm->wishptr[nprocs];
-    nMsgsOverall *= 2; // we need to send _and_ receive
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->request,sizeof(MPI_Request)*nMsgsOverall),err,ret);
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->status,sizeof(MPI_Status)*nMsgsOverall),err,ret);
