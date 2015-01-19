@@ -39,7 +39,7 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,gho
             return ghost_tsmm_inplace(x_in,w_in,alpha);
         }
         if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
-            INFO_LOG("Transparently call special implementation TSMTTSM %c",transv_in[0]);
+            INFO_LOG("Transparently call special implementation TSMTTSM");
             return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c');
         }
     }
