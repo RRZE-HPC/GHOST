@@ -21,25 +21,25 @@ static lapack_int call_eig_function(int matrix_order, char jobz, char uplo, lapa
 }
 
 template<>
-static lapack_int call_eig_function<double,double>(int matrix_order, char jobz, char uplo, lapack_int n, double *a, lapack_int lda, double *w)
+lapack_int call_eig_function<double,double>(int matrix_order, char jobz, char uplo, lapack_int n, double *a, lapack_int lda, double *w)
 {
     return LAPACKE_dsyevd(matrix_order, jobz, uplo, n, a, lda, w);
 }
 
 template<>
-static lapack_int call_eig_function<float,float>(int matrix_order, char jobz, char uplo, lapack_int n, float *a, lapack_int lda, float *w)
+lapack_int call_eig_function<float,float>(int matrix_order, char jobz, char uplo, lapack_int n, float *a, lapack_int lda, float *w)
 {
     return LAPACKE_ssyevd(matrix_order, jobz, uplo, n, a, lda, w);
 }
 
 template<>
-static lapack_int call_eig_function<std::complex<float>,float>(int matrix_order, char jobz, char uplo, lapack_int n, std::complex<float> *a, lapack_int lda, float *w)
+lapack_int call_eig_function<std::complex<float>,float>(int matrix_order, char jobz, char uplo, lapack_int n, std::complex<float> *a, lapack_int lda, float *w)
 {
     return LAPACKE_cheevd(matrix_order, jobz, uplo, n, (lapack_complex_float *)a, lda, w);
 }
 
 template<>
-static lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char jobz, char uplo, lapack_int n, std::complex<double> *a, lapack_int lda, double *w)
+lapack_int call_eig_function<std::complex<double>,double>(int matrix_order, char jobz, char uplo, lapack_int n, std::complex<double> *a, lapack_int lda, double *w)
 {
     return LAPACKE_zheevd(matrix_order, jobz, uplo, n, (lapack_complex_double *)a, lda, w);
 }
