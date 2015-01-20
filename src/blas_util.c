@@ -16,6 +16,7 @@ void cblas_xerbla (int p, const char *rout, const char *form, ...)
 {
     ERROR_LOG("Error in BLAS call %s in parameter %d",rout,p);
     ghost_blas_err = 1;
+    UNUSED(form);
 }
 #endif
 

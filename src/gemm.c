@@ -12,8 +12,8 @@
 #endif
 
 
-ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in,  char * transv_in, 
-ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
+ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
 #ifdef GHOST_HAVE_LONGIDX_LOCAL
 #ifndef GHOST_HAVE_MKL
