@@ -134,6 +134,8 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
         ERROR_LOG("Cannot memtranspose scattered densemat views!");
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
+    
+    vec->stride = &vec->traits.nrowspadded;
 
     ghost_lidx_t col,row;
     if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
