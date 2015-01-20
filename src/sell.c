@@ -47,9 +47,9 @@ ghost_error_t ghost_sell_init(ghost_sparsemat_t *mat)
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
-            mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
+            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
         } else {
-            mat->traits->flags |= GHOST_SPARSEMAT_HOST;
+            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
         }
     }
     ghost_type_t ghost_type;
@@ -219,7 +219,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
 #pragma omp for schedule(runtime)
             for( chunk = 0; chunk < nChunks; chunk++ ) {
                 for (i=0; i<SELL(mat)->chunkHeight; i++) {
-                    ghost_lidx_t row = chunk*SELL(mat)->chunkHeight+i;
+                    row = chunk*SELL(mat)->chunkHeight+i;
 
                     if (row < mat->nrows) {
                         if ((mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) && mat->context->permutation) {

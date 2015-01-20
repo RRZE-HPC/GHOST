@@ -36,6 +36,8 @@ extern "C" {
      * @param[in] w
      * @param[in] alpha
      * @param[in] beta
+     * @param[in] reduce
+     * @param[in] conjv If v should be conjugated, set this to != 1.
      *
      *
      * \f$ x = \alpha \cdot v^T \cdot w + \beta \cdot x \f$.
@@ -54,6 +56,21 @@ extern "C" {
      */
     ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv);
 
+    /**
+     * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
+     *
+     * @param x
+     * @param v
+     * @param transv
+     * @param w
+     * @param transw
+     * @param alpha
+     * @param beta
+     * @param reduce
+     * @param printerror Print an error message if application is not possible.
+     *
+     * @return 
+     */
     ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
         ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
 

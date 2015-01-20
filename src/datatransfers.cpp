@@ -44,7 +44,7 @@ ghost_error_t ghost_datatransfer_register(const char *tag, ghost_datatransfer_di
     return GHOST_SUCCESS;
 }
 
-size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
+static size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_direction_t dir, int rank)
 {
     size_t vol = 0;
 
@@ -77,7 +77,7 @@ size_t ghost_datatransfer_volume_get(const char *tag, ghost_datatransfer_directi
     return vol;
 }
 
-int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_direction_t dir)
+static int ghost_datatransfer_nneigh_get(const char *tag, ghost_datatransfer_direction_t dir)
 {
 
     if (dir == GHOST_DATATRANSFER_OUT) {

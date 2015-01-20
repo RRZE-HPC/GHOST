@@ -313,7 +313,7 @@ endforeach()
 if (USE_MPI)
     set(MPI_LIBRARIES "-lmpi_mt")
     find_package(MPI QUIET)
-    include_directories(${MPI_INCLUDE_PATH})
+    include_directories(SYSTEM ${MPI_INCLUDE_PATH})
     foreach(item ${MPI_LIBRARIES})
         if (BUILD_MIC)
             string(REPLACE "intel64" "mic" item_mic ${item})
@@ -366,7 +366,7 @@ if (USE_CUDA)
             ${DENSEMAT_RM_CU_O}
             ${CRS_CU_O}
             )
-        include_directories(${CUDA_INCLUDE_DIRS})
+        include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
         set (HEADERS ${HEADERS}
             include/ghost/cu_densemat_cm.h
             include/ghost/cu_densemat_rm.h
@@ -544,7 +544,7 @@ if (NOT LAPACK_INCLUDE_DIR)
         if (LAPACK_FOUND)
             message(STATUS "LAPACK found!")
             set(GHOST_HAVE_LAPACK 1)
-            include_directories(LAPACK_INCLUDE_DIR)
+            include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})
 
             string(REPLACE "lapack.so" "lapacke.so" LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
         else()
@@ -561,7 +561,7 @@ if (NOT LAPACK_LIBRARIES AND LAPACK_INCLUDE_DIR)
     set(GHOST_HAVE_LAPACK 1)
 endif()
 
-include_directories(${LAPACK_INCLUDE_DIR})    
+include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})    
 mark_as_advanced(CLEAR LAPACK_INCLUDE_DIR)
 mark_as_advanced(CLEAR LAPACK_LIBRARIES)
 
@@ -578,8 +578,10 @@ else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -Wextra -pedantic")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=c++0x -Wall -Wextra -pedantic")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3")
+        set(CMAKE_INCLUDE_SYSTEM_FLAG_C "-isystem ") # Not present in Cmake 2.8.11.2
+        set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem ") # Not present in Cmake 2.8.11.2
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunused-variable -save-temps -fsource-asm -w3 -wd981 -wd383")
         if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-alias")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-alias")

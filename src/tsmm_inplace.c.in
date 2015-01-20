@@ -3,6 +3,7 @@
 #include "ghost/math.h"
 #include "ghost/instr.h"
 #include "ghost/util.h"
+#include "ghost/tsmm_inplace_gen.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
@@ -17,7 +18,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
     
     INFO_LOG("In in-place TSMM with fixed block size [BLOCKSZ] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
-    double * restrict wval, * restrict xval;
+    double * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;
@@ -58,7 +59,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
-    double * restrict wval, * restrict xval;
+    double * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;
@@ -98,7 +99,7 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f+I*%f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,creal(dalpha),cimag(dalpha),n,m,m,m);
 
-    double complex * restrict wval, * restrict xval;
+    double complex * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;

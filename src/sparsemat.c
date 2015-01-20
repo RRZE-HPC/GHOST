@@ -156,7 +156,7 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_spar
     mat->upperBandwidth = 0;
     
     if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_PERMUTE;
     }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -171,8 +171,8 @@ ghost_error_t ghost_sparsemat_fromfunc_common(ghost_sparsemat_t *mat, ghost_spar
         if (mat->traits->sortScope > 1) {
             WARNING_LOG("Ignoring sorting scope");
         }
-        mat->traits->flags |= GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
-        mat->traits->flags |= GHOST_SPARSEMAT_NOT_SORT_COLS;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
     goto out;
@@ -217,7 +217,7 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
-    if (!ghost_sparsemat_symmetry_valid(header.symmetry)) {
+    if (!ghost_sparsemat_symmetry_valid((ghost_sparsemat_symmetry_t)header.symmetry)) {
         ERROR_LOG("Symmetry is invalid! (%d)",header.symmetry);
         return GHOST_ERR_IO;
     }
@@ -227,7 +227,7 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         return GHOST_ERR_IO;
     }
 
-    if (!ghost_datatype_valid(header.datatype)) {
+    if (!ghost_datatype_valid((ghost_datatype_t)header.datatype)) {
         ERROR_LOG("Datatype is invalid! (%d)",header.datatype);
         return GHOST_ERR_IO;
     }
@@ -238,11 +238,11 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
     mat->lowerBandwidth = 0;
     mat->upperBandwidth = 0;
     mat->name = basename(matrixPath);
-    mat->traits->symmetry = header.symmetry;
+    mat->traits->symmetry = (ghost_sparsemat_symmetry_t)header.symmetry;
     mat->ncols = (ghost_gidx_t)header.ncols;
         
     if (mat->traits->flags & GHOST_SPARSEMAT_SCOTCHIFY) {
-        mat->traits->flags |= GHOST_SPARSEMAT_PERMUTE;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_PERMUTE;
     }
 
     if (mat->traits->flags & GHOST_SPARSEMAT_PERMUTE) {
@@ -257,8 +257,8 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         if (mat->traits->sortScope > 1) {
             WARNING_LOG("Ignoring sorting scope");
         }
-        mat->traits->flags |= GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
-        mat->traits->flags |= GHOST_SPARSEMAT_NOT_SORT_COLS;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_PERMUTE_COLS;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_NOT_SORT_COLS;
     }
 
 
@@ -683,12 +683,12 @@ ghost_error_t ghost_sparsemat_tofile_header(ghost_sparsemat_t *mat, char *path)
 
 bool ghost_sparsemat_symmetry_valid(ghost_sparsemat_symmetry_t symmetry)
 {
-    if ((symmetry & GHOST_SPARSEMAT_SYMM_GENERAL) &&
-            (symmetry & ~GHOST_SPARSEMAT_SYMM_GENERAL))
+    if ((symmetry & (ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL) &&
+            (symmetry & ~(ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_GENERAL))
         return 0;
 
-    if ((symmetry & GHOST_SPARSEMAT_SYMM_SYMMETRIC) &&
-            (symmetry & ~GHOST_SPARSEMAT_SYMM_SYMMETRIC))
+    if ((symmetry & (ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_SYMMETRIC) &&
+            (symmetry & ~(ghost_sparsemat_symmetry_t)GHOST_SPARSEMAT_SYMM_SYMMETRIC))
         return 0;
 
     return 1;

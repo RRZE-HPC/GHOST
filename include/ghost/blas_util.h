@@ -7,5 +7,6 @@
 #define GHOST_BLAS_UTIL_H
 
 int ghost_blas_err_pop();
+void cblas_xerbla(const char *name, const int num);
 
 #endif

@@ -4,16 +4,17 @@
 #include "ghost/instr.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
+#include "ghost/tsmttsm_avx_gen.h"
 #include <immintrin.h>
 
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
+    UNUSED(conjv);
 #ifdef GHOST_HAVE_AVX
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_lidx_t m = v->traits.ncols;
 
     int myrank=0;
 
@@ -22,7 +23,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
     ghost_lidx_t n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * const restrict vval, * const restrict wval, * restrict xval;
+    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -180,7 +181,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #ifdef GHOST_HAVE_MPI
         if (x->traits.flags & GHOST_DENSEMAT_VIEW) {
             for (k=0; k<CFGK; k++) {
-                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,m,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval+k*ldx,x->traits.ncols,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);
             }
         } else {
             MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,xval,CFGK*ldx,MPI_DOUBLE,MPI_SUM,v->context->mpicomm),err,ret);

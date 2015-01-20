@@ -43,10 +43,9 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
             nthreads = ghost_omp_nthread();
         }
 
-        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t))); 
-        for (i=0; i<(3*lhs->traits.ncols+padding)*nthreads; i++) {
-            partsums[i] = 0.;
-        }
+        GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t)));
+        memset(partsums,0,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t));
+        memset(local_dot_product,0,3*lhs->traits.ncols*sizeof(v_t));
     }
 #pragma omp parallel private (i, j, lhsv,rcol,lcol,cidx) shared (partsums)
     {
@@ -59,9 +58,7 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
         for (i=0; i<mat->nrows; i++) {
             lhsv = (v_t *)lhs->val[i];
 
-            for (cidx=0; cidx<rhs->traits.ncols; cidx++) {
-                tmp[cidx] = 0.;
-            }
+            memset(tmp,0,rhs->traits.ncols*sizeof(v_t));
             for (j=cr->rpt[i]; j<cr->rpt[i+1]; j++){
                 matrixval = ((v_t)(mval[j]));
                 rhsrow = (v_t *)rhs->val[cr->col[j]];
@@ -114,9 +111,6 @@ static ghost_error_t ghost_crs_spmv_plain_rm(ghost_sparsemat_t *mat, ghost_dense
     }
     if (options & GHOST_SPMV_DOT_ANY) {
         for (cidx=0; cidx<lhs->traits.ncols; cidx++) {
-            local_dot_product[cidx                       ] = 0.; 
-            local_dot_product[cidx  +   lhs->traits.ncols] = 0.;
-            local_dot_product[cidx  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[cidx                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*cidx + 0];
                 local_dot_product[cidx  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*cidx + 1];
@@ -157,8 +151,8 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
     ghost_machine_cacheline_size(&clsize);
     int padding = (int)clsize/sizeof(v_t);
 
-    v_t hlp1 = 0.;
-    v_t scale = 1., beta = 1.;
+    v_t hlp1 = (v_t)0.;
+    v_t scale = (v_t)1., beta = (v_t)1.;
     v_t *shift = NULL;
 
     GHOST_SPMV_PARSE_ARGS(options,argp,scale,beta,shift,local_dot_product,v_t,v_t);
@@ -173,9 +167,8 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
         }
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t))); 
-        for (i=0; i<(3*lhs->traits.ncols+padding)*nthreads; i++) {
-            partsums[i] = 0.;
-        }
+        memset(partsums,0,(3*lhs->traits.ncols+padding)*nthreads*sizeof(v_t));
+        memset(local_dot_product,0,3*lhs->traits.ncols*sizeof(v_t));
     }
 
 #pragma omp parallel private (i,hlp1, j, rhsv, lhsv,v) shared (partsums)
@@ -219,9 +212,6 @@ static ghost_error_t ghost_crs_spmv_plain_cm(ghost_sparsemat_t *mat, ghost_dense
     }
     if (options & GHOST_SPMV_DOT_ANY) {
         for (v=0; v<lhs->traits.ncols; v++) {
-            local_dot_product[v                       ] = 0.; 
-            local_dot_product[v  +   lhs->traits.ncols] = 0.;
-            local_dot_product[v  + 2*lhs->traits.ncols] = 0.;
             for (i=0; i<nthreads; i++) {
                 local_dot_product[v                       ] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 0];
                 local_dot_product[v  +   lhs->traits.ncols] += partsums[(padding+3*lhs->traits.ncols)*i + 3*v + 1];

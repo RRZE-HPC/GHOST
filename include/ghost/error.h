@@ -45,10 +45,10 @@ typedef enum {
  * @return A ghost_error_t in case the function return an error.
  */
 #define GHOST_CALL_RETURN(call) {\
-    ghost_error_t err = GHOST_SUCCESS;\
-    GHOST_CALL(call,err);\
-    if (err != GHOST_SUCCESS) {\
-        return err;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    GHOST_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -85,10 +85,10 @@ typedef enum {
 }\
 
 #define MPI_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    MPI_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    MPI_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -100,21 +100,21 @@ typedef enum {
 }\
 
 #define MPI_CALL(call,__err) {\
-    int err = call;\
-    if (err != MPI_SUCCESS) {\
+    int mpicallmacroerr = call;\
+    if (mpicallmacroerr != MPI_SUCCESS) {\
         char errstr[MPI_MAX_ERROR_STRING];\
         int strlen;\
-        MPI_Error_string(err,errstr,&strlen);\
+        MPI_Error_string(mpicallmacroerr,errstr,&strlen);\
         ERROR_LOG("MPI Error: %s",errstr);\
         __err = GHOST_ERR_MPI;\
     }\
 }\
 
 #define HWLOC_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    HWLOC_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    HWLOC_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -134,10 +134,10 @@ typedef enum {
 }\
 
 #define CUDA_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    CUDA_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    CUDA_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -151,16 +151,16 @@ typedef enum {
 #define CUDA_CALL(call,__err) {\
     cudaError_t __cuerr = call;\
     if (__cuerr != cudaSuccess) {\
-        ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),__cuerr);\
+        ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString((cudaError_t)__cuerr),(int)__cuerr);\
         __err = GHOST_ERR_CUDA;\
     }\
 }\
 
 #define CUBLAS_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    CUBLAS_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    CUBLAS_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -174,16 +174,16 @@ typedef enum {
 #define CUBLAS_CALL(call,__err) {\
     cublasStatus_t err = call;\
     if (err != CUBLAS_STATUS_SUCCESS) {\
-        ERROR_LOG("CUBLAS Error: %d",err);\
+        ERROR_LOG("CUBLAS Error: %d",(int)err);\
         __err = GHOST_ERR_CUBLAS;\
     }\
 }\
 
 #define CURAND_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    CURAND_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    CURAND_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -197,16 +197,39 @@ typedef enum {
 #define CURAND_CALL(call,__err) {\
     curandStatus_t err = call;\
     if (err != CURAND_STATUS_SUCCESS) {\
-        ERROR_LOG("CURAND Error: %d",err);\
+        ERROR_LOG("CURAND Error: %d",(int)err);\
         __err = GHOST_ERR_CURAND;\
     }\
 }\
 
+#define CUSPARSE_CALL_RETURN(call) {\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    CUSPARSE_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
+    }\
+}\
+
+#define CUSPARSE_CALL_GOTO(call,label,__err) {\
+    CUSPARSE_CALL(call,__err);\
+    if (__err != GHOST_SUCCESS) {\
+        goto label;\
+    }\
+}\
+
+#define CUSPARSE_CALL(call,__err) {\
+    cusparseStatus_t err = call;\
+    if (err != CUSPARSE_STATUS_SUCCESS) {\
+        ERROR_LOG("CUSPARSE Error: %d",(int)err);\
+        __err = GHOST_ERR_CUSPARSE;\
+    }\
+}\
+
 #define SCOTCH_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    SCOTCH_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    SCOTCH_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -226,10 +249,10 @@ typedef enum {
 }\
 
 #define COLPACK_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    COLPACK_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    COLPACK_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 
@@ -249,10 +272,10 @@ typedef enum {
 }\
 
 #define BLAS_CALL_RETURN(call) {\
-    ghost_error_t ret = GHOST_SUCCESS;\
-    BLAS_CALL(call,ret);\
-    if (ret != GHOST_SUCCESS) {\
-        return ret;\
+    ghost_error_t macroerr = GHOST_SUCCESS;\
+    BLAS_CALL(call,macroerr);\
+    if (macroerr != GHOST_SUCCESS) {\
+        return macroerr;\
     }\
 }\
 

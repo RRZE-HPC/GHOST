@@ -114,10 +114,10 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
         storage_scheme) != 5)
         return MM_PREMATURE_EOF;
 
-    for (p=mtx; *p!='\0'; *p=tolower(*p),p++);  /* convert to lower case */
-    for (p=crd; *p!='\0'; *p=tolower(*p),p++);  
-    for (p=data_type; *p!='\0'; *p=tolower(*p),p++);
-    for (p=storage_scheme; *p!='\0'; *p=tolower(*p),p++);
+    for (p=mtx; *p!='\0'; *p=(char)tolower((int)*p),p++);  /* convert to lower case */
+    for (p=crd; *p!='\0'; *p=(char)tolower((int)*p),p++);  
+    for (p=data_type; *p!='\0'; *p=(char)tolower((int)*p),p++);
+    for (p=storage_scheme; *p!='\0'; *p=(char)tolower((int)*p),p++);
 
     /* check for banner */
     if (strncmp(banner, MatrixMarketBanner, strlen(MatrixMarketBanner)) != 0)
@@ -448,7 +448,7 @@ int mm_write_mtx_crd(char fname[], int M, int N, int nz, int I_[], int J[],
 *  not part of ANSI C, so it is included here.  Used by mm_typecode_to_str().
 *
 */
-char *mm_strdup(const char *s)
+static char *mm_strdup(const char *s)
 {
 	int len = strlen(s);
 	char *s2 = (char *) malloc((len+1)*sizeof(char));

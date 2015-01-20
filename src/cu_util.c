@@ -47,7 +47,7 @@ ghost_error_t ghost_cu_init(int dev)
         return GHOST_ERR_CUDA;
     }
     CUBLAS_CALL_RETURN(cublasCreate(&ghost_cublas_handle));
-    CUBLAS_CALL_RETURN(cusparseCreate(&ghost_cusparse_handle));
+    CUSPARSE_CALL_RETURN(cusparseCreate(&ghost_cusparse_handle));
     CUDA_CALL_RETURN(cudaGetDeviceProperties(&ghost_cu_device_prop,cu_device));
 
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM

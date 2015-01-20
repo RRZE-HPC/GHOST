@@ -10,11 +10,10 @@
 
 using namespace std;
 
-bool operator<(const ghost_tsmm_inplace_parameters_t &a, const ghost_tsmm_inplace_parameters_t &b) 
+static bool operator<(const ghost_tsmm_inplace_parameters_t &a, const ghost_tsmm_inplace_parameters_t &b) 
 { 
     return ghost_hash(a.dt,a.xcols,a.impl) < ghost_hash(b.dt,b.xcols,b.impl); 
 }
-
 
 static map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_tsmm_inplace_kernels;
 
@@ -63,6 +62,15 @@ ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int prin
         }
         return GHOST_ERR_INVALID_ARG;
     }
+    if (reduce != GHOST_GEMM_NO_REDUCE) { 
+        if (printerror) {
+            ERROR_LOG("Only NO_REDUCE valid!");
+        }
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    UNUSED(alpha);
+    UNUSED(beta);
 
     return GHOST_SUCCESS;
 

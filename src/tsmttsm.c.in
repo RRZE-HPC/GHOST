@@ -4,10 +4,12 @@
 #include "ghost/instr.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
+#include "ghost/tsmttsm_gen.h"
 
 
 ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
+    UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
     ghost_lidx_t K = w->traits.ncols;
@@ -25,7 +27,7 @@ ghost_error_t ghost_tsmttsm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double * const restrict vval, * const restrict wval, * restrict xval;
+    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -161,7 +163,7 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *
     
     INFO_LOG("In TSMTTSM with arbitrary block sizes %dx%d <- %dx%d * %dx%d",m,K,m,n,n,K);
     
-    double complex * const restrict vval, * const restrict wval, * restrict xval;
+    double complex * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -177,8 +179,8 @@ ghost_error_t ghost_tsmttsm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *
 
     ghost_mpi_op_t mpiop_zadd;
     ghost_mpi_datatype_t mpidt_z;
-    ghost_mpi_op_sum(&mpiop_zadd,GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
-    ghost_mpi_datatype(&mpidt_z,GHOST_DT_COMPLEX|GHOST_DT_DOUBLE);
+    ghost_mpi_op_sum(&mpiop_zadd,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
+    ghost_mpi_datatype(&mpidt_z,(ghost_datatype_t)(GHOST_DT_COMPLEX|GHOST_DT_DOUBLE));
     
     // make sure that the initial x only gets added up once
     if (myrank) {
@@ -318,6 +320,7 @@ out:
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
 ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
+    UNUSED(conjv);
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
@@ -332,7 +335,7 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     ghost_lidx_t n = v->traits.nrows;
     INFO_LOG("In TSMTTSM with two fixed block sizes %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * const restrict vval, * const restrict wval, * restrict xval;
+    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;

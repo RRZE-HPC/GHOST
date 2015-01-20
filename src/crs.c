@@ -47,11 +47,11 @@ ghost_error_t ghost_crs_init(ghost_sparsemat_t *mat)
     if (!(mat->traits->flags & (GHOST_SPARSEMAT_HOST | GHOST_SPARSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting matrix placement");
-        mat->traits->flags |= GHOST_SPARSEMAT_HOST;
+        mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_GOTO(ghost_type_get(&ghost_type),err,ret);
         if (ghost_type == GHOST_TYPE_CUDA) {
-            mat->traits->flags |= GHOST_SPARSEMAT_DEVICE;
+            mat->traits->flags |= (ghost_sparsemat_flags_t)GHOST_SPARSEMAT_DEVICE;
         }
     }
 
@@ -396,7 +396,7 @@ static ghost_error_t CRS_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_src
     GHOST_INSTR_START("readcolval")
 #pragma omp parallel private(i,j,rowlen,tmpcol) reduction(+:funcerrs)
     {
-        int funcret = 0;
+        funcret = 0;
         GHOST_CALL(ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t)),ret);
         memset(tmpcol,0,sizeof(ghost_gidx_t)*src->maxrowlen);
     

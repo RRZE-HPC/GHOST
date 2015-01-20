@@ -8,7 +8,7 @@ template<typename m_t, typename f_t> void ghost_castarray_tmpl(void *out, void *
     f_t *fd = (f_t *)in;
 
     for (i = 0; i<nEnts; i++) {
-        md[i] = (m_t)(fd[i]);
+        md[i] = (m_t)fd[i];
     }
 }
 

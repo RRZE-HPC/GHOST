@@ -22,6 +22,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef GHOST_HAVE_CUDA
+#include <cuda_runtime.h>
+#endif
 
 static ghost_error_t vec_rm_scale(ghost_densemat_t *vec, void *scale);
 static ghost_error_t vec_rm_axpy(ghost_densemat_t *vec, ghost_densemat_t *vec2, void *scale);
@@ -53,8 +56,6 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec);
 static ghost_error_t vec_rm_equalize(ghost_densemat_t *vec, int root);
 static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
 static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_densemat_halo_comm_t *comm);
-
-ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
 {
@@ -143,8 +144,8 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
         char *oldval;
         ghost_densemat_valptr(vec,(void **)&oldval);
         
-        vec->traits.storage = GHOST_DENSEMAT_COLMAJOR;
-        vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
+        vec->traits.storage = (ghost_densemat_storage_t)GHOST_DENSEMAT_COLMAJOR;
+        vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
         ghost_bitmap_set_range(vec->ldmask,0,vec->traits.nrows-1);
         vec->traits.ncolsorig = vec->traits.ncols;
         vec->traits.nrowsorig = vec->traits.nrows;
@@ -165,7 +166,7 @@ static ghost_error_t vec_rm_memtranspose(ghost_densemat_t *vec)
         ghost_densemat_cm_setfuncs(vec);
         if (vec->viewing) {
             INFO_LOG("In-place back-transpose. The densemat will regain its view property.");
-            vec->traits.flags |= GHOST_DENSEMAT_VIEW;
+            vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
             vec->traits.ncolsorig = vec->viewing->traits.ncols;
             vec->traits.nrowsorig = vec->viewing->traits.nrows;
             
@@ -373,7 +374,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
-    newTraits.flags |= GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
@@ -439,7 +440,7 @@ static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data,
             vec->val[v] = &((char *)data)[(lda*(roffs+v)+coffs)*vec->elSize];
         }
     }
-    vec->traits.flags |= GHOST_DENSEMAT_VIEW;
+    vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     ghost_bitmap_set_range(vec->ldmask,0,vec->traits.ncolsorig);
     ghost_bitmap_set_range(vec->trmask,0,vec->traits.nrowsorig);
     vec->traits.ncolsorig = vec->traits.ncols;
@@ -459,8 +460,8 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
     newTraits.nrows = nr;
-    newTraits.flags |= GHOST_DENSEMAT_VIEW;
-    newTraits.flags |= GHOST_DENSEMAT_SCATTERED;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
@@ -518,7 +519,7 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src,
     ghost_lidx_t r,c,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
-    newTraits.flags |= GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
@@ -565,8 +566,8 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src,
     ghost_lidx_t c,i,r,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
-    newTraits.flags |= GHOST_DENSEMAT_VIEW;
-    newTraits.flags |= GHOST_DENSEMAT_SCATTERED;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
     ghost_densemat_create(new,src->context,newTraits);
     ghost_bitmap_copy((*new)->ldmask,src->ldmask);
@@ -637,7 +638,7 @@ ghost_error_t ghost_densemat_rm_malloc(ghost_densemat_t *vec)
         DEBUG_LOG(2,"Allocating device side of vector");
 #ifdef GHOST_HAVE_CUDA
         if (vec->cu_val == NULL) {
-            GHOST_CALL_RETURN(ghost_cu_malloc(&vec->cu_val,
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,
                         vec->traits.nrowspadded*vec->traits.ncolspadded*
                         vec->elSize));
         }
@@ -1120,8 +1121,8 @@ static ghost_error_t vec_rm_fromFunc(ghost_densemat_t *vec, void (*fp)(ghost_gid
     } else {
         ghost_densemat_t *hostVec;
         ghost_densemat_traits_t htraits = vec->traits;
-        htraits.flags &= ~GHOST_DENSEMAT_DEVICE;
-        htraits.flags |= GHOST_DENSEMAT_HOST;
+        htraits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_DEVICE;
+        htraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_HOST;
         GHOST_CALL_RETURN(ghost_densemat_create(&hostVec,vec->context,htraits));
         GHOST_CALL_RETURN(hostVec->fromFunc(hostVec,fp));
 
@@ -1376,9 +1377,9 @@ static ghost_error_t ghost_permuteVector( ghost_densemat_t* vec, ghost_permutati
     }
     
     if (dir == GHOST_PERMUTATION_ORIG2PERM) {
-        vec->traits.flags |= GHOST_DENSEMAT_PERMUTED;
+        vec->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_PERMUTED;
     } else {
-        vec->traits.flags &= ~GHOST_DENSEMAT_PERMUTED;
+        vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_PERMUTED;
     }
 
     return GHOST_SUCCESS;
@@ -1395,8 +1396,8 @@ static ghost_error_t ghost_cloneVector(ghost_densemat_t *src, ghost_densemat_t *
 
     // copy the data even if the input vector is itself a view
     // (bitwise NAND operation to unset the view flag if set)
-    (*new)->traits.flags &= ~GHOST_DENSEMAT_VIEW;
-    (*new)->traits.flags &= ~GHOST_DENSEMAT_SCATTERED;
+    (*new)->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    (*new)->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
     (*new)->fromVec(*new,src,roffs,coffs);
     return GHOST_SUCCESS;
@@ -1462,8 +1463,8 @@ static ghost_error_t vec_rm_compress(ghost_densemat_t *vec)
     ghost_bitmap_set_range(vec->trmask,0,vec->traits.nrows-1);
     vec->traits.ncolsorig = vec->traits.ncols;
     vec->traits.nrowsorig = vec->traits.nrows;
-    vec->traits.flags &= ~GHOST_DENSEMAT_VIEW;
-    vec->traits.flags &= ~GHOST_DENSEMAT_SCATTERED;
+    vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
+    vec->traits.flags &= ~(ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
     vec->viewing = NULL;
 
     return GHOST_SUCCESS;
@@ -1513,7 +1514,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     } else {
 #ifdef GHOST_HAVE_CUDA
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            ghost_densemat_rm_cu_communicationassembly(cu_work,comm->dueptr,vec,NULL);
+            ghost_densemat_rm_cu_communicationassembly(comm->cu_work,comm->dueptr,vec,NULL);
         } else 
 #endif
             if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
@@ -1536,6 +1537,7 @@ out:
     return ret;
 #else
     UNUSED(vec);
+    UNUSED(comm);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 
@@ -1598,6 +1600,7 @@ out:
 
 #else
     UNUSED(vec);
+    UNUSED(comm);
     return GHOST_ERR_NOT_IMPLEMENTED;
 #endif
 

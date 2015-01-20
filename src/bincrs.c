@@ -215,7 +215,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
     swapReq = SWAPREQ(header);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,header.datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype_t)header.datatype));
 
     int64_t *rpt_raw;
     GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
@@ -316,7 +316,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
         }
     } else {
         INFO_LOG("This matrix is supposed to be of %s data but"
-                " the file contains %s data. Casting...",ghost_datatype_string(datatype),ghost_datatype_string(header.datatype));
+                " the file contains %s data. Casting...",ghost_datatype_string(datatype),ghost_datatype_string((ghost_datatype_t)header.datatype));
 
 
         uint8_t *tmpval;
@@ -363,7 +363,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
             ghost_datatype_idx_t matDtIdx;
             ghost_datatype_idx_t headerDtIdx;
             GHOST_CALL_RETURN(ghost_datatype_idx(&matDtIdx,datatype));
-            GHOST_CALL_RETURN(ghost_datatype_idx(&headerDtIdx,header.datatype));
+            GHOST_CALL_RETURN(ghost_datatype_idx(&headerDtIdx,(ghost_datatype_t)header.datatype));
 
             ghost_castarray_funcs[matDtIdx][headerDtIdx](val_raw,tmpval,nEnts);
         }
@@ -632,7 +632,7 @@ ghost_error_t ghost_bincrs_header_read(ghost_bincrs_header_t *header, char *matr
     if (swapReq)  header->nnz  = bswap_64(header->nnz);
 
     size_t valSize;
-    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,header->datatype));
+    GHOST_CALL_RETURN(ghost_datatype_size(&valSize,(ghost_datatype_t)header->datatype));
 
     long rightFilesize = GHOST_BINCRS_SIZE_HEADER +
         (long)(header->nrows+1) * GHOST_BINCRS_SIZE_RPT_EL +

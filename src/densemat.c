@@ -20,6 +20,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef GHOST_HAVE_CUDA
+#include <cuda_runtime.h>
+#endif
 
 const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER = {
     .nrows = 0,
@@ -60,11 +63,11 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     if (!((*vec)->traits.flags & (GHOST_DENSEMAT_HOST | GHOST_DENSEMAT_DEVICE)))
     { // no placement specified
         DEBUG_LOG(2,"Setting vector placement");
-        (*vec)->traits.flags |= GHOST_DENSEMAT_HOST;
+        (*vec)->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_HOST;
         ghost_type_t ghost_type;
         GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
         if (ghost_type == GHOST_TYPE_CUDA) {
-            (*vec)->traits.flags |= GHOST_DENSEMAT_DEVICE;
+            (*vec)->traits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_DEVICE;
         }
     }
 

@@ -3,6 +3,8 @@
 #include "ghost/math.h"
 #include "ghost/instr.h"
 #include "ghost/util.h"
+#include "ghost/tsmm_avx_gen.h"
+
 #include <immintrin.h>
 #include <math.h>
 #include <float.h>
@@ -20,7 +22,7 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
 
     INFO_LOG("In AVX TSMM with two fixed block sizes [BLOCKSZ1][BLOCKSZ2] %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * const restrict vval, * const restrict wval, * restrict xval;
+    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -39,7 +41,7 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
     alphavec = _mm256_broadcast_sd(alpha);
     ghost_lidx_t i,j,s;
 
-    double * const restrict wtran;
+    double * const restrict wtran = NULL;
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,4);
     ghost_malloc((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran);
     for (s=0; s<w->traits.ncols; s++) {
@@ -101,7 +103,7 @@ ghost_error_t ghost_tsmm__avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, gh
 
     INFO_LOG("In AVX TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * const restrict vval, * const restrict wval, * restrict xval;
+    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -120,7 +122,7 @@ ghost_error_t ghost_tsmm__avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, gh
     alphavec = _mm256_broadcast_sd(alpha);
     ghost_lidx_t i,j,s;
 
-    double * const restrict wtran;
+    double * const restrict wtran = NULL;
     ghost_lidx_t ncols_wtran = PAD(w->traits.ncols,4);
     GHOST_CALL_GOTO(ghost_malloc((void **)&wtran,sizeof(double)*w->traits.nrows*ncols_wtran),err,ret);
     for (s=0; s<w->traits.ncols; s++) {

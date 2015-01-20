@@ -27,6 +27,8 @@ int mm_write_banner(FILE *f, MM_typecode matcode);
 int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz);
 int mm_write_mtx_array_size(FILE *f, int M, int N);
 
+int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **I_, int **J, 
+        double **val, MM_typecode *matcode);
 
 /********************* MM_typecode query fucntions ***************************/
 

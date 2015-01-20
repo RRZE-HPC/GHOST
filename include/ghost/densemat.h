@@ -264,7 +264,7 @@ struct ghost_densemat_t
     /**
      * @brief The values of the densemat on the CUDA device.
      */
-    void * cu_val;
+    char * cu_val;
 
     /**
      * @brief Average each entry over all it's halo siblings.

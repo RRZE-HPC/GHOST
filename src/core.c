@@ -159,10 +159,10 @@ ghost_error_t ghost_init(int argc, char **argv)
                 "domains)",nnoderanks,nnumanodes+ncudadevs,ncudadevs,nnumanodes);
     }
 
-    ghost_type_t ghost_type;
-    GHOST_CALL_RETURN(ghost_type_get(&ghost_type));
+    ghost_type_t settype;
+    GHOST_CALL_RETURN(ghost_type_get(&settype));
     
-    if (ghost_type == GHOST_TYPE_INVALID) {
+    if (settype == GHOST_TYPE_INVALID) {
         char *envtype = getenv("GHOST_TYPE");
         if (envtype) {
             if (!strncasecmp(envtype,"CUDA",4)) {
@@ -173,7 +173,7 @@ ghost_error_t ghost_init(int argc, char **argv)
         }
     }
 
-    if (ghost_type == GHOST_TYPE_INVALID) {
+    if (settype == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
             ghost_type = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
@@ -547,7 +547,7 @@ ghost_error_t ghost_barrier()
     ghost_type_t type;
     ghost_type_get(&type);
     if (type == GHOST_TYPE_CUDA) {
-        CUDA_CALL_RETURN(ghost_cu_barrier());
+        GHOST_CALL_RETURN(ghost_cu_barrier());
     }
 #endif
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_COMMUNICATION);

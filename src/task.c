@@ -85,7 +85,7 @@ ghost_task_state_t ghost_task_test(ghost_task_t * t)
 
 ghost_error_t ghost_task_wait(ghost_task_t * task)
 {
-    DEBUG_LOG(1,"Waiting for task %p whose state is %d",(void *)task,task->state);
+    DEBUG_LOG(1,"Waiting for task %p whose state is %s",(void *)task,ghost_task_state_string(task->state));
 
 
     //    ghost_task_t *parent = (ghost_task_t *)pthread_getspecific(ghost_thread_key);

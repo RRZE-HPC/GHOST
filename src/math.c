@@ -150,7 +150,7 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     ghost_error_t ret = GHOST_SUCCESS;
 
     if (*flags & GHOST_SPMV_DOT) {
-        *flags |= GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX;
+        *flags |= (ghost_spmv_flags_t)(GHOST_SPMV_DOT_YY|GHOST_SPMV_DOT_XY|GHOST_SPMV_DOT_XX);
     }
     va_list argp;
     va_start(argp, flags);
@@ -195,21 +195,21 @@ static void ghost_spmv_selectMode(ghost_context_t * context, ghost_spmv_flags_t 
     if (!(*flags & GHOST_SPMV_MODES_ALL)) { // no mode specified
 #ifdef GHOST_HAVE_MPI
         if (context->flags & GHOST_CONTEXT_REDUNDANT) {
-            *flags |= GHOST_SPMV_MODE_NOMPI;
+            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
         } else {
-            *flags |= GHOST_SPMV_MODE_OVERLAP;
+            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_OVERLAP;
         }
 #else
         UNUSED(context);
-        *flags |= GHOST_SPMV_MODE_NOMPI;
+        *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
 #endif
         DEBUG_LOG(1,"No spMVM mode has been specified, selecting a sensible default, namely %s",ghost_spmv_mode_string(*flags));
     } else {
 #ifndef GHOST_HAVE_MPI
         if ((*flags & GHOST_SPMV_MODES_MPI)) {
             WARNING_LOG("Forcing non-MPI SpMV!");
-            *flags &= ~(GHOST_SPMV_MODES_MPI);
-            *flags |= GHOST_SPMV_MODE_NOMPI;
+            *flags &= ~(ghost_spmv_flags_t)GHOST_SPMV_MODES_MPI;
+            *flags |= (ghost_spmv_flags_t)GHOST_SPMV_MODE_NOMPI;
         }
 #endif
     }

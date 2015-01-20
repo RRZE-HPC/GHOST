@@ -184,8 +184,9 @@ ghost_error_t ghost_malloc_pinned(void **mem, const size_t size)
 {
 #ifdef GHOST_HAVE_CUDA
     return ghost_cu_malloc_pinned(mem,size);
-#endif
+#else
     return ghost_malloc(mem,size);
+#endif
 }
 
 ghost_error_t ghost_malloc_align(void **mem, const size_t size, const size_t align)

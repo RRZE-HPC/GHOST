@@ -60,12 +60,26 @@ extern "C" {
      * M<<N
      *
      * This kernel is auto-generated at compile time for given values of K and M.
-     * Additionally, a version for given K but arbitrary M is being generated.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
     ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta);
 
+    /**
+     * @brief Check whether TSMM can be applied instead of GEMM with the given arguments.
+     *
+     * @param x
+     * @param v
+     * @param transv
+     * @param w
+     * @param transw
+     * @param alpha
+     * @param beta
+     * @param reduce
+     * @param printerror Print an error message if application is not possible.
+     *
+     * @return 
+     */
     ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
         ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
 

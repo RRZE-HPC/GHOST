@@ -58,7 +58,7 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
     }
 
     if (!((*context)->flags & GHOST_CONTEXT_DIST_NZ)) {
-        (*context)->flags |= GHOST_CONTEXT_DIST_ROWS;
+        (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DIST_ROWS;
     }
 
     if ((gnrows == 0) || (gncols == 0)) {
@@ -119,16 +119,16 @@ ghost_error_t ghost_context_create(ghost_context_t **context, ghost_gidx_t gnrow
 #ifdef GHOST_HAVE_MPI
     if (!((*context)->flags & (GHOST_CONTEXT_DISTRIBUTED|GHOST_CONTEXT_REDUNDANT))) { // neither flag is set
         DEBUG_LOG(1,"Context is set to be distributed");
-        (*context)->flags |= GHOST_CONTEXT_DISTRIBUTED;
+        (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_DISTRIBUTED;
     }
 #else
     if ((*context)->flags & GHOST_CONTEXT_DISTRIBUTED) {
         WARNING_LOG("Creating a distributed matrix without MPI is not possible. Forcing redundant.");
-        (*context)->flags &= ~GHOST_CONTEXT_DISTRIBUTED;
-        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
+        (*context)->flags &= ~(ghost_context_flags_t)GHOST_CONTEXT_DISTRIBUTED;
+        (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_REDUNDANT;
     } else if (!((*context)->flags & GHOST_CONTEXT_REDUNDANT)) {
         DEBUG_LOG(1,"Context is set to be redundant");
-        (*context)->flags |= GHOST_CONTEXT_REDUNDANT;
+        (*context)->flags |= (ghost_context_flags_t)GHOST_CONTEXT_REDUNDANT;
     }
 #endif
 
@@ -735,7 +735,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
     ghost_type_t type;
     ghost_type_get(&type); 
 #ifdef GHOST_HAVE_CUDA
-    void *cu_duel_mem;
+    ghost_lidx_t *cu_duel_mem;
     if (type == GHOST_TYPE_CUDA) {
         GHOST_CALL_GOTO(ghost_cu_malloc((void **)&cu_duel_mem,size_dues),err,ret);
     }
@@ -750,7 +750,7 @@ ghost_error_t ghost_context_comm_init(ghost_context_t *ctx, ghost_gidx_t *col_or
         ctx->duelist[i]    = &(duel_mem[acc_dues]);
 #ifdef GHOST_HAVE_CUDA
         if (type == GHOST_TYPE_CUDA) {
-            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues*sizeof(ghost_lidx_t)]);
+            ctx->cu_duelist[i]    = &(cu_duel_mem[acc_dues]);
         }
 #endif
         ctx->wishlist[i]   = &(wishl_mem[acc_wishes]);

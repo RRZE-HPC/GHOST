@@ -58,6 +58,21 @@ extern "C" {
      */
     ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha);
 
+    /**
+     * @brief Check whether TSMM-inplace can be applied instead of GEMM with the given arguments.
+     *
+     * @param x
+     * @param v
+     * @param transv
+     * @param w
+     * @param transw
+     * @param alpha
+     * @param beta
+     * @param reduce
+     * @param printerror Print an error message if application is not possible.
+     *
+     * @return 
+     */
     ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
         ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
 

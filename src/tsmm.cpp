@@ -11,12 +11,10 @@
 
 using namespace std;
 
-    
-bool operator<(const ghost_tsmm_parameters_t &a, const ghost_tsmm_parameters_t &b) 
+static bool operator<(const ghost_tsmm_parameters_t &a, const ghost_tsmm_parameters_t &b) 
 { 
     return ghost_hash(a.dt,a.xcols,ghost_hash(a.vcols,a.impl,0)) < ghost_hash(b.dt,b.xcols,ghost_hash(b.vcols,b.impl,0)); 
 }
-
 
 static map<ghost_tsmm_parameters_t, ghost_tsmm_kernel_t> ghost_tsmm_kernels;
 
@@ -78,6 +76,9 @@ ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int prin
         }
         return GHOST_ERR_INVALID_ARG;
     }
+
+    UNUSED(alpha);
+    UNUSED(beta);
 
     return GHOST_SUCCESS;
 } 

@@ -27,6 +27,7 @@ struct ghost_complex
         ghost_complex<T>& operator*=(const ghost_complex<T>&);
         ghost_complex<T> operator/(const ghost_complex<T>&);
         ghost_complex<T>& operator/=(const ghost_complex<T>&);
+        std::ostream& operator <<(std::ostream& o);
 };
 
 template <typename T>
@@ -74,8 +75,8 @@ ghost_complex<T> ghost_complex<T>::operator /(const ghost_complex<T>& c) {
 }
 
 template <typename T>
-std::ostream& operator <<(std::ostream& o, const ghost_complex<T>& c) {
-    o << "(" << c.re << ", " << c.im << ")";
+std::ostream& ghost_complex<T>::operator <<(std::ostream& o) {
+    o << "(" << this->re << ", " << this->im << ")";
     return o;
 }
 

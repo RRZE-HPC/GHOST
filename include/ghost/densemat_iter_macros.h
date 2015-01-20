@@ -46,7 +46,7 @@
         }\
     }\
     /* Trick the compiler to not produce warnings about unused variables */\
-    if (row+col+memrow+memcol == 1.12345) {printf("Never happens\n");}
+    if (row+col+memrow+memcol < 0) {printf("Never happens\n");}
 
 /**
  * @see #DENSEMAT_ITER2_OFFS with offsets set to (0,0).
@@ -93,7 +93,7 @@
         }\
     }\
     /* Trick the compiler to not produce warnings about unused variables */\
-    if (row+col+memrow1+memcol1+memrow2+memcol2 == 1.12345) {printf("Never happens\n");}
+    if (row+col+memrow1+memcol1+memrow2+memcol2 < 0) {printf("Never happens\n");}
 
 
 

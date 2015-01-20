@@ -54,7 +54,7 @@ typedef struct {
     ghost_sparsemat_t *mat;
     ghost_densemat_t *res;
     ghost_densemat_t *invec;
-    int spmvOptions;
+    ghost_spmv_flags_t spmvOptions;
     va_list argp;
 } compArgs;
 
@@ -103,8 +103,8 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,&remoteExists,1,MPI_INT,MPI_MAX,mat->context->mpicomm));
    
     if (remoteExists) {
-        localopts |= GHOST_SPMV_LOCAL;
-        remoteopts |= GHOST_SPMV_REMOTE;
+        localopts |= (ghost_spmv_flags_t)GHOST_SPMV_LOCAL;
+        remoteopts |= (ghost_spmv_flags_t)GHOST_SPMV_REMOTE;
     }
 
     ghost_densemat_halo_comm_t comm;
@@ -113,7 +113,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
     ghost_task_t *commTask;
     ghost_task_t *compTask;
 
-    int taskflags = GHOST_TASK_DEFAULT;
+    ghost_task_flags_t taskflags = GHOST_TASK_DEFAULT;
     ghost_task_t *parent = NULL;
     GHOST_CALL_RETURN(ghost_task_cur(&parent));
     if (parent) {

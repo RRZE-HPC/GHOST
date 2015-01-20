@@ -131,6 +131,13 @@ inline ghost_spmv_flags_t operator|(const ghost_spmv_flags_t &a,
             static_cast<int>(a) | static_cast<int>(b));
 }
 
+inline ghost_spmv_flags_t operator&(const ghost_spmv_flags_t &a, 
+        const ghost_spmv_flags_t &b)
+{
+    return static_cast<ghost_spmv_flags_t>(
+            static_cast<int>(a) & static_cast<int>(b));
+}
+
 #endif
 
 #endif
