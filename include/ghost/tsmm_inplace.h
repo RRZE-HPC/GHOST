@@ -73,8 +73,8 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
-        ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror);
+    ghost_error_t ghost_tsmm_inplace_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+        ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus
 }

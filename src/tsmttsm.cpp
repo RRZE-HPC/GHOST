@@ -19,8 +19,8 @@ static bool operator<(const ghost_tsmttsm_parameters_t &a, const ghost_tsmttsm_p
 static map<ghost_tsmttsm_parameters_t, ghost_tsmttsm_kernel_t> ghost_tsmttsm_kernels;
 
 
-ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v,  char * transv, 
-ghost_densemat_t *w, char *transw, void *alpha, void *beta, int reduce, int printerror) 
+ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror) 
 {
     if (w->traits.storage != GHOST_DENSEMAT_ROWMAJOR) {
         if (printerror) {
