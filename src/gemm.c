@@ -44,28 +44,6 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,gho
         }
     }
 
-  /* 
-    if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE)) { 
-        ghost_tsmm_inplace_parameters_t tsmm_inplace_par = {.dt = x_in->traits.datatype, .blocksz = x_in->traits.ncols};
-        ghost_tsmm_inplace_kernel_t tsmm_inplace_kernel = ghost_tsmm_inplace_kernel(tsmm_inplace_par,x_in,v_in,w_in,reduce);
-        if (tsmm_inplace_kernel) {
-            INFO_LOG("Doing in-place TSMM instead of GEMM!");
-            return ghost_tsmm_inplace(x_in,w_in,alpha);
-        }
-        ghost_tsmm_parameters_t tsmm_par = {.dt = x_in->traits.datatype, .blocksz1 = x_in->traits.ncols, .blocksz2 = v_in->traits.ncols};
-        ghost_tsmm_kernel_t tsmm_kernel = ghost_tsmm_kernel(tsmm_par,x_in,v_in,w_in,reduce);
-        if (tsmm_kernel) {
-            INFO_LOG("Doing TSMM instead of GEMM!");
-            return ghost_tsmm(x_in,v_in,w_in,alpha,beta);
-        }
-        ghost_tsmttsm_parameters_t tsmttsm_par = {.dt = x_in->traits.datatype, .blocksz1 = x_in->traits.ncols, .blocksz2 = x_in->traits.nrows};
-        ghost_tsmttsm_kernel_t tsmttsm_kernel = ghost_tsmttsm_kernel(tsmttsm_par,x_in,v_in,w_in,reduce);
-        if (tsmttsm_kernel) {
-            INFO_LOG("Doing TSMTTSM instead of GEMM!");
-            return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta);
-        }
-    }
-*/
     char transv[1], transw[1];
     
     transv[0]=transv_in[0];
@@ -82,56 +60,12 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,gho
         x = x_in;
     }
         
-    // if the result should be transposed swap the transv and transw if possible.
-    int needMemTransposeX=0; // compute X.' and transpose back afterwards
-    int swapDimsX=0; /* formally compute X' because X has different storage layout, but no 
-                            need to transpose back */
-        
     if (v->traits.storage != w->traits.storage || x->traits.storage != w->traits.storage) {
         ERROR_LOG("Different storage layouts of input densemats!");
         return GHOST_ERR_INVALID_ARG;
     }
 
     INFO_LOG("in gemm");
-
-#if 0
-    if (!(x->traits.flags & GHOST_DENSEMAT_DEVICE)) {
-        // we support the special cases V*W and V'*W with V row-major and W col-major or vice 
-        // versa. If the result X has different storage layout than V, we use the 
-        // memtranspose function afterwards if X is complex.
-        if (v->traits.storage != w->traits.storage)
-        {
-            DEBUG_LOG(1,"gemm with different storage layout for V and W...");
-            if (strncasecmp(transw,"N",1)) 
-            {
-                ERROR_LOG("GEMM with different storage layouts for V and W only implemented " 
-                          "for transw='N'!");
-                return GHOST_ERR_NOT_IMPLEMENTED;
-            }
-            // w has transposed mem-layout and "no transpose" is requested for w, cheat
-            // cblas_xgemm into doing the right thing:
-            transw[0]='T';
-        }
-        if (x->traits.storage != v->traits.storage)
-        {
-            DEBUG_LOG(1,"gemm with different storage layout for V and X...");
-            if (strncasecmp(transv,"C",1) && strncasecmp(transv,"T",1))
-            {
-                // compute x=v'w and transpose afterwards
-                DEBUG_LOG(1,"case a: post-memtranspose of X needed.");
-                needMemTransposeX=1;
-            }
-            else
-            {
-                    DEBUG_LOG(1,"case b: fool gemm to compute transp(X)=W'V instead.");
-                    // compute x' = w'*v instead of v'*w
-                    v=w_in;
-                    w=v_in;
-                    swapDimsX=1;
-            }
-        }
-    }
-#endif
 
     // scattered vectors are copied together, if this occurs the user should rethink his or 
     // her data layout.
@@ -198,16 +132,9 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,gho
         nrW=w->traits.nrows; ncW=w->traits.ncols;
     }
 
-    if (swapDimsX)
-    {
-        nrX=x->traits.ncols;
-        ncX=x->traits.nrows;
-    }
-    else
-    {
-        nrX=x->traits.nrows;
-        ncX=x->traits.ncols;
-    }
+    nrX=x->traits.nrows;
+    ncX=x->traits.ncols;
+    
     if (ncV!=nrW || nrV!=nrX || ncW!=ncX) {
         ERROR_LOG("GEMM with incompatible vectors: %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX" = %"PRLIDX"x%"PRLIDX,nrV,ncV,nrW,ncW,nrX,ncX);
        // return GHOST_ERR_INVALID_ARG;
@@ -466,15 +393,6 @@ ghost_densemat_t *w_in, char *transw_in, void *alpha, void *beta, int reduce,gho
     UNUSED(reduce);
 #endif
 
-    // in the case v^w for complex vectors we can't handle different storage layout of X
-    // in xgemm directly so we need to explicitly transpose the result in memory
-    if (needMemTransposeX!=0)
-    {
-        WARNING_LOG("gemm-result explicitly memtransposed, which presently means memory is"
-        " reallocated!");
-        GHOST_CALL_RETURN(x->memtranspose(x));
-    }
-    
     if (x != x_in) {
         INFO_LOG("Transform x back");
         GHOST_CALL_RETURN(x_in->fromVec(x_in,x,0,0));
