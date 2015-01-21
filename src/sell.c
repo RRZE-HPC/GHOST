@@ -210,7 +210,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     int funcerrs = 0;
     ghost_gidx_t gnents = 0, gnnz = 0;
 
-#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol) reduction (+:gnents,gnnz,funcerrs) 
+#pragma omp parallel private(maxRowLenInChunk,i,tmpval,tmpcol,row) reduction (+:gnents,gnnz,funcerrs) 
         {
             int funcret = 0;
             maxRowLenInChunk = 0; 
