@@ -1,5 +1,6 @@
 #include "ghost/blas_util.h"
 #include "ghost/log.h"
+#include "ghost/util.h"
 
 static int ghost_blas_err = 0;
 
