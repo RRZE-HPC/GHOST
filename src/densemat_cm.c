@@ -654,6 +654,7 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
                         DENSEMAT_VAL(vec2,memrow2,col+coffs),vec->elSize));
         }
     }
+    vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
 
     return GHOST_SUCCESS;
 }
