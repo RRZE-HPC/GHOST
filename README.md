@@ -72,7 +72,7 @@ Once the Makefile is present you can type
 
 `make && make install`
 
-You can toggle shared/static libs with `-DBUILD_SHARED_LIBS=ON/OFF` (default: static).
+You can toggle shared/static libs with `-DBUILD_SHARED_LIBS=ON/OFF` (default: shared).
 
 For interactive specification of build options and variables, use ccmake to configure and generate a Makefile:
 
