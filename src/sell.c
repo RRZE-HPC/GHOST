@@ -266,7 +266,7 @@ static ghost_error_t SELL_fromRowFunc(ghost_sparsemat_t *mat, ghost_sparsemat_sr
     }
 
     if (gnents > (ghost_gidx_t)GHOST_LIDX_MAX) {
-        ERROR_LOG("The local number of entries is too large.");
+        ERROR_LOG("The local number of entries is too large: %"PRGIDX,gnents);
         return GHOST_ERR_DATATYPE;
     }
 
