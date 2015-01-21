@@ -66,11 +66,13 @@ It is preferrable to perform an out-of-source build, i.e., create a build direct
 
 To do a quick build with the system compilers, MPI and OpenMP enabled, and the default settings for code generation:
 
-`cmake .. -DCMAKE_INSTALL_PREFIX=<where-to-install> && make install`
+`cmake .. -DCMAKE_INSTALL_PREFIX=<where-to-install>`
 
 Once the Makefile is present you can type
 
 `make && make install`
+
+You can toggle shared/static libs with `-DBUILD_SHARED_LIBS=ON/OFF` (default: static).
 
 For interactive specification of build options and variables, use ccmake to configure and generate a Makefile:
 
