@@ -86,6 +86,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 
 ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret;
 
     if ((ret = ghost_tsmm_valid(x,v,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
@@ -140,6 +141,8 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
+    ret = kernel(x,v,w,alpha,beta);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
-    return kernel(x,v,w,alpha,beta);
+    return ret;
 }

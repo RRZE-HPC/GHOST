@@ -20,7 +20,8 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
 #endif
 #endif
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
        
     int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
 
@@ -32,15 +33,18 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
         if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM");
-            return ghost_tsmm(x_in,v_in,w_in,alpha,beta);
+            ret = ghost_tsmm(x_in,v_in,w_in,alpha,beta);
+            goto out;
         }
         if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
-            return ghost_tsmm_inplace(x_in,w_in,alpha);
+            ret = ghost_tsmm_inplace(x_in,w_in,alpha);
+            goto out;
         }
         if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMTTSM");
-            return ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c');
+            ret =ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c');
+            goto out;
         }
     }
 
@@ -55,7 +59,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     
     if (x_in->traits.flags & GHOST_DENSEMAT_SCATTERED) {
         INFO_LOG("The result vector x is scattered. It will be cloned and compressed before the computation and transformed back afterwards.");
-        GHOST_CALL_RETURN(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0));
+        GHOST_CALL_GOTO(x_in->clone(x_in,&x,x_in->traits.nrows,0,x_in->traits.ncols,0),err,ret);
     } else {
         x = x_in;
     }
@@ -111,7 +115,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     }
 
     int nranks;
-    GHOST_CALL_RETURN(ghost_nrank(&nranks, v->context->mpicomm));
+    GHOST_CALL_GOTO(ghost_nrank(&nranks, v->context->mpicomm),err,ret);
 
     if ((reduce != GHOST_GEMM_NO_REDUCE) && (reduce >= nranks)) {
         WARNING_LOG("Reduction should be done to rank %d but only %d ranks are present. Reducing to 0...",
@@ -159,9 +163,9 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     void *vdata = NULL;
     void *wdata = NULL;
     void *xdata = NULL;
-    GHOST_CALL_RETURN(ghost_densemat_valptr(v,&vdata));
-    GHOST_CALL_RETURN(ghost_densemat_valptr(w,&wdata));
-    GHOST_CALL_RETURN(ghost_densemat_valptr(x,&xdata));
+    GHOST_CALL_GOTO(ghost_densemat_valptr(v,&vdata),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_valptr(w,&wdata),err,ret);
+    GHOST_CALL_GOTO(ghost_densemat_valptr(x,&xdata),err,ret);
     
     //note: if no reduction is requested, none of the input vecs may have
     // a context (or an MPI comm). If any reduction is requested, only v
@@ -170,7 +174,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     int myrank=0;
 
     if (reduce!=GHOST_GEMM_NO_REDUCE) {
-        GHOST_CALL_RETURN(ghost_rank(&myrank,v->context->mpicomm));
+        GHOST_CALL_GOTO(ghost_rank(&myrank,v->context->mpicomm),err,ret);
     }
 
     void *mybeta;
@@ -208,7 +212,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         cublasHandle_t ghost_cublas_handle;
         ghost_blas_idx_t culdv,culdw,culdx;
         
-        GHOST_CALL_RETURN(ghost_cu_cublas_handle(&ghost_cublas_handle)); 
+        GHOST_CALL_GOTO(ghost_cu_cublas_handle(&ghost_cublas_handle),err,ret); 
         cublasOperation_t cutransv = !strncasecmp(transv,"T",1)?CUBLAS_OP_T:!strncasecmp(transv,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
         cublasOperation_t cutransw = !strncasecmp(transw,"T",1)?CUBLAS_OP_T:!strncasecmp(transw,"C",1)?CUBLAS_OP_C:CUBLAS_OP_N;
 
@@ -261,30 +265,30 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         void *xcuval;
         void *vcuval;
         void *wcuval;
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(x,&xcuval));
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(v,&vcuval));
-        GHOST_CALL_RETURN(ghost_densemat_cu_valptr(w,&wcuval));
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(x,&xcuval),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(v,&vcuval),err,ret);
+        GHOST_CALL_GOTO(ghost_densemat_cu_valptr(w,&wcuval),err,ret);
 
         if (v->traits.datatype & GHOST_DT_COMPLEX) 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)vcuval,culdv,(cuDoubleComplex *)wcuval,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)xcuval,culdx));
+                CUBLAS_CALL_GOTO(cublasZgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuDoubleComplex *)alpha,(cuDoubleComplex *)vcuval,culdv,(cuDoubleComplex *)wcuval,culdw,(cuDoubleComplex *)mybeta,(cuDoubleComplex *)xcuval,culdx),err,ret);
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)vcuval,culdv,(cuFloatComplex *)wcuval,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)xcuval,culdx));
+                CUBLAS_CALL_GOTO(cublasCgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(cuFloatComplex *)alpha,(cuFloatComplex *)vcuval,culdv,(cuFloatComplex *)wcuval,culdw,(cuFloatComplex *)mybeta,(cuFloatComplex *)xcuval,culdx),err,ret);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                CUBLAS_CALL_RETURN(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)vcuval,culdv,(double *)wcuval,culdw,(double *)mybeta,(double *)xcuval,culdx));
+                CUBLAS_CALL_GOTO(cublasDgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(double *)alpha,(double *)vcuval,culdv,(double *)wcuval,culdw,(double *)mybeta,(double *)xcuval,culdx),err,ret);
             } 
             else 
             {
-                CUBLAS_CALL_RETURN(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)vcuval,culdv,(float *)wcuval,culdw,(float *)mybeta,(float *)xcuval,culdx));
+                CUBLAS_CALL_GOTO(cublasSgemm(ghost_cublas_handle,cutransv,cutransw,*m,*n,*k,(float *)alpha,(float *)vcuval,culdv,(float *)wcuval,culdw,(float *)mybeta,(float *)xcuval,culdx),err,ret);
             }    
         }
 #endif
@@ -295,22 +299,22 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                BLAS_CALL_RETURN(zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx));
+                BLAS_CALL_GOTO(zgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_RETURN(cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx));
+                BLAS_CALL_GOTO(cgemm(v->traits.storage,transv,transw, m,n, k, alpha, vdata, ldv, wdata, ldw, mybeta, xdata, ldx),err,ret);
             }
         } 
         else 
         {
             if (v->traits.datatype & GHOST_DT_DOUBLE) 
             {
-                dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx);
+                BLAS_CALL_GOTO(dgemm(v->traits.storage,transv,transw, m,n, k, (double *)alpha, vdata, ldv, wdata, ldw, (double *)mybeta, xdata, ldx),err,ret);
             } 
             else 
             {
-                BLAS_CALL_RETURN(sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx));
+                BLAS_CALL_GOTO(sgemm(v->traits.storage,transv,transw, m,n, k, (float *)alpha, vdata, ldv, wdata, ldw, (float *)mybeta, xdata, ldx),err,ret);
             }    
         }
     }
@@ -349,7 +353,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
 
-                GHOST_CALL_RETURN(ghost_malloc((void **)&val,dimb*sizeofdt));
+                GHOST_CALL_GOTO(ghost_malloc((void **)&val,dimb*sizeofdt),err,ret);
                 ghost_cu_download(val, &x->cu_val[i*lda*sizeofdt], dimb*sizeofdt);
                 copied = 1;
 #endif
@@ -360,22 +364,22 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
             }
             ghost_mpi_op_t sumOp;
             ghost_mpi_datatype_t mpiDt;
-            GHOST_CALL_RETURN(ghost_mpi_op_sum(&sumOp,x->traits.datatype));
-            GHOST_CALL_RETURN(ghost_mpi_datatype(&mpiDt,x->traits.datatype));
+            GHOST_CALL_GOTO(ghost_mpi_op_sum(&sumOp,x->traits.datatype),err,ret);
+            GHOST_CALL_GOTO(ghost_mpi_datatype(&mpiDt,x->traits.datatype),err,ret);
 
             if (reduce == GHOST_GEMM_ALL_REDUCE) 
             {
-                MPI_CALL_RETURN(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm));
+                MPI_CALL_GOTO(MPI_Allreduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,v->context->mpicomm),err,ret);
             } 
             else 
             {
                 if (myrank == reduce) 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_GOTO(MPI_Reduce(MPI_IN_PLACE,val,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
                 } 
                 else 
                 {
-                    MPI_CALL_RETURN(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm));
+                    MPI_CALL_GOTO(MPI_Reduce(val,NULL,dimb,mpiDt,sumOp,reduce,v->context->mpicomm),err,ret);
                 }
             }
             if (copied)
@@ -383,7 +387,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 #ifdef GHOST_HAVE_CUDA
                 size_t sizeofdt;
                 ghost_datatype_size(&sizeofdt,x->traits.datatype);
-                GHOST_CALL_RETURN(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt));
+                GHOST_CALL_GOTO(ghost_cu_upload(&x->cu_val[i*lda*sizeofdt],val,dimb*sizeofdt),err,ret);
                 free(val);
 #endif
             }
@@ -395,11 +399,15 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
 
     if (x != x_in) {
         INFO_LOG("Transform x back");
-        GHOST_CALL_RETURN(x_in->fromVec(x_in,x,0,0));
+        GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
         x->destroy(x);
     }
+    
+    goto out;
+err:
 
+out:
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
-    return GHOST_SUCCESS;
+    return ret;
 }
 
