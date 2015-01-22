@@ -73,6 +73,13 @@ void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t
     memcpy(pf.perfFuncArg,arg,sizeofarg);
     pf.perfUnit = unit;
 
+    for (std::vector<ghost_timing_perfFunc_t>::iterator it = timings[tag].perfFuncs.begin();
+            it != timings[tag].perfFuncs.end(); ++it) {
+        if (it->perfFunc == func && !strcmp(it->perfUnit,unit)) {
+            return;
+        }
+    }
+
     timings[tag].perfFuncs.push_back(pf);
 }
 
