@@ -674,7 +674,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *mat, ghost_densemat_t* res, ghost_densemat_t* invec, ghost_spmv_flags_t spmvmOptions,va_list argp)
 {
 #if defined(GHOST_HAVE_AVX) && NVECS >= 2
-    const double * const restrict mval = (const double * const restrict)SELL(mat)->val;
+    const double * const restrict mval = (double *)SELL(mat)->val;
     complex double *local_dot_product = NULL;
     complex double *partsums = NULL;
     int nthreads = 1, i;
@@ -746,8 +746,8 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
 #pragma omp for schedule(runtime)
         for (c=0; c<mat->nrows; c++) 
         { // loop over chunks
-            complex double * const restrict lval = (complex double * const restrict)res->val[c]+loffs;
-            const complex double * const restrict rval = (const complex double * const restrict)invec->val[c]+roffs;
+            complex double * const restrict lval = (complex double *)res->val[c]+loffs;
+            const complex double * const restrict rval = (complex double *)invec->val[c]+roffs;
             offs = SELL(mat)->chunkStart[c/CHUNKHEIGHT]+c%CHUNKHEIGHT;
 
             #GHOST_UNROLL#tmp@ = _mm256_setzero_pd();#NVECS/2
