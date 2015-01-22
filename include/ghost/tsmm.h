@@ -10,6 +10,14 @@
 #include "types.h"
 #include "densemat.h"
 
+typedef struct {
+    ghost_lidx_t m,k;
+    ghost_gidx_t n;
+    ghost_datatype_t dt;
+}
+ghost_tsmm_perf_args_t;
+
+
 typedef struct
 {
     /**
@@ -82,6 +90,8 @@ extern "C" {
      */
     ghost_error_t ghost_tsmm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
         ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
+
+    int ghost_tsmm_perf_GBs(double *perf, double time, void *varg);
 
 #ifdef __cplusplus
 }
