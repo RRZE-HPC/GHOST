@@ -65,11 +65,12 @@ void ghost_timing_tock(const char *tag)
     ti->times.push_back(end-ti->start);
 }
 
-void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, const char *unit)
+void ghost_timing_set_perfFunc(const char *tag, ghost_compute_performance_func_t func, void *arg, size_t sizeofarg, const char *unit)
 {
     ghost_timing_perfFunc_t pf;
     pf.perfFunc = func;
-    pf.perfFuncArg = arg;
+    ghost_malloc((void **)&(pf.perfFuncArg),sizeofarg);
+    memcpy(pf.perfFuncArg,arg,sizeofarg);
     pf.perfUnit = unit;
 
     timings[tag].perfFuncs.push_back(pf);

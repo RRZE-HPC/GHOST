@@ -30,8 +30,10 @@ typedef enum {
 #define GHOST_GEMM_NO_REDUCE -2
 
 typedef struct {
-    ghost_sparsemat_t *mat;
-    ghost_densemat_t *rhs;
+    ghost_lidx_t vecncols;
+    ghost_lidx_t globalrows;
+    ghost_gidx_t globalnnz;
+    ghost_datatype_t dt;
     ghost_spmv_flags_t flags;
 }
 ghost_spmv_perf_args_t;
@@ -39,23 +41,28 @@ ghost_spmv_perf_args_t;
 #define GHOST_SPMV_PERF_TAG "spmv"
 
 typedef struct {
-    ghost_densemat_t *vec1;
-    ghost_densemat_t *vec2;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
 }
 ghost_axpy_perf_args_t;
 #define GHOST_AXPY_PERF_UNIT "GB/s"
 #define GHOST_AXPY_PERF_TAG "axpy"
 
 typedef struct {
-    ghost_densemat_t *vec1;
-    ghost_densemat_t *vec2;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
+    bool samevec;
 }
 ghost_dot_perf_args_t;
 #define GHOST_DOT_PERF_UNIT "GB/s"
 #define GHOST_DOT_PERF_TAG "dot"
 
 typedef struct {
-    ghost_densemat_t *vec;
+    ghost_lidx_t ncols;
+    ghost_gidx_t globnrows;
+    ghost_datatype_t dt;
 }
 ghost_scale_perf_args_t;
 #define GHOST_SCALE_PERF_UNIT "GB/s"

@@ -156,6 +156,23 @@ ghost_error_t ghost_spmv(ghost_densemat_t *res, ghost_sparsemat_t *mat, ghost_de
     va_start(argp, flags);
     ret = ghost_vspmv(res,mat,invec,flags,argp);
     va_end(argp);
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gidx_t nnz;
+    ghost_gidx_t nrow;
+    
+    ghost_sparsemat_nnz(&nnz,mat);
+    ghost_sparsemat_nrows(&nrow,mat);
+
+    ghost_spmv_perf_args_t spmv_perfargs;
+    spmv_perfargs.vecncols = invec->traits.ncols;
+    spmv_perfargs.globalnnz = nnz;
+    spmv_perfargs.globalrows = nrow;
+    spmv_perfargs.dt = invec->traits.datatype;
+    spmv_perfargs.flags = *flags;
+    ghost_timing_set_perfFunc(GHOST_SPMV_PERF_TAG,ghost_spmv_perf,(void *)&spmv_perfargs,sizeof(spmv_perfargs),GHOST_SPMV_PERF_UNIT);
+#endif 
+    
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
 
@@ -269,8 +286,12 @@ ghost_error_t ghost_mpi_operations_destroy()
 
 ghost_error_t ghost_spmv_nflops(int *nFlops, ghost_datatype_t m_t, ghost_datatype_t v_t)
 {
-    if (!ghost_datatype_valid(m_t) || !ghost_datatype_valid(v_t)) {
-        ERROR_LOG("Invalid data type");
+    if (!ghost_datatype_valid(m_t)) {
+        ERROR_LOG("Invalid matrix data type: %d",(int)m_t);
+        return GHOST_ERR_INVALID_ARG;
+    }
+    if (!ghost_datatype_valid(v_t)) {
+        ERROR_LOG("Invalid vector data type: %d",(int)v_t);
         return GHOST_ERR_INVALID_ARG;
     }
     if (!nFlops) {
@@ -313,51 +334,49 @@ char * ghost_spmv_mode_string(ghost_spmv_flags_t flags)
 
 int ghost_spmv_perf(double *perf, double time, void *varg)
 {
-    ghost_spmv_perf_args_t *arg = (ghost_spmv_perf_args_t *)varg;
+    ghost_spmv_perf_args_t arg = *(ghost_spmv_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg->rhs->traits.ncols;
+    ghost_lidx_t ncol = arg.vecncols;
     double flops;
-    ghost_gidx_t nnz;
-    ghost_gidx_t nrow;
+    ghost_gidx_t nnz = arg.globalnnz;
+    ghost_gidx_t nrow = arg.globalrows;
     int spmvFlopsPerMatrixEntry = 0;
     int flopsPerAdd = 1;
     int flopsPerMul = 1;
     int flopsPerMulSame = 1;
 
-    if (arg->rhs->traits.datatype & GHOST_DT_COMPLEX) {
+    if (arg.dt & GHOST_DT_COMPLEX) {
         flopsPerAdd = 2;
         flopsPerMul = 6;
         flopsPerMulSame = 3;
     }
 
 
-    ghost_sparsemat_nnz(&nnz,arg->mat);
-    ghost_sparsemat_nrows(&nrow,arg->mat);
-    ghost_spmv_nflops(&spmvFlopsPerMatrixEntry,arg->mat->traits->datatype,arg->rhs->traits.datatype);
+    ghost_spmv_nflops(&spmvFlopsPerMatrixEntry,arg.dt,arg.dt);
 
     flops = (double)spmvFlopsPerMatrixEntry*(double)nnz*(double)ncol;
 
-    if (arg->flags & GHOST_SPMV_AXPY) {
+    if (arg.flags & GHOST_SPMV_AXPY) {
         flops += flopsPerAdd*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_AXPBY) {
+    if (arg.flags & GHOST_SPMV_AXPBY) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_SHIFT) {
+    if (arg.flags & GHOST_SPMV_SHIFT) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
-    } else if (arg->flags & GHOST_SPMV_VSHIFT) {
+    } else if (arg.flags & GHOST_SPMV_VSHIFT) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_SCALE) {
+    if (arg.flags & GHOST_SPMV_SCALE) {
         flops += flopsPerMul*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_DOT_YY) {
+    if (arg.flags & GHOST_SPMV_DOT_YY) {
         flops += (flopsPerMulSame+1)*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_DOT_XY) {
+    if (arg.flags & GHOST_SPMV_DOT_XY) {
         flops += (flopsPerMul+flopsPerAdd)*nrow*ncol;
     }
-    if (arg->flags & GHOST_SPMV_DOT_XX) {
+    if (arg.flags & GHOST_SPMV_DOT_XX) {
         flops += (flopsPerMulSame+1)*nrow*ncol;
     }
 
@@ -369,13 +388,13 @@ int ghost_spmv_perf(double *perf, double time, void *varg)
 
 int ghost_axpy_perf(double *perf, double time, void *varg)
 {
-    ghost_axpy_perf_args_t *arg = (ghost_axpy_perf_args_t *)varg;
+    ghost_axpy_perf_args_t arg = *(ghost_axpy_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg->vec1->traits.ncols;
-    ghost_lidx_t nrow = arg->vec1->traits.nrows;
+    ghost_lidx_t ncol = arg.ncols;
+    ghost_lidx_t nrow = arg.globnrows;
 
     size_t size;
-    ghost_datatype_size(&size,arg->vec1->traits.datatype);
+    ghost_datatype_size(&size,arg.dt);
 
     *perf = size*3*ncol*nrow/1.e9/time;
 
@@ -384,17 +403,17 @@ int ghost_axpy_perf(double *perf, double time, void *varg)
 
 int ghost_dot_perf(double *perf, double time, void *varg)
 {
-    ghost_dot_perf_args_t *arg = (ghost_dot_perf_args_t *)varg;
+    ghost_dot_perf_args_t arg = *(ghost_dot_perf_args_t *)varg;
 
-    ghost_lidx_t ncol = arg->vec1->traits.ncols;
-    ghost_lidx_t nrow = arg->vec1->traits.nrows;
+    ghost_lidx_t ncol = arg.ncols;
+    ghost_lidx_t nrow = arg.globnrows;
 
     size_t size;
-    ghost_datatype_size(&size,arg->vec1->traits.datatype);
+    ghost_datatype_size(&size,arg.dt);
 
     *perf = size*ncol*nrow/1.e9/time;
 
-    if (arg->vec1 != arg->vec2) {
+    if (arg.samevec) {
         *perf *= 2;
     }
 
@@ -403,14 +422,13 @@ int ghost_dot_perf(double *perf, double time, void *varg)
 
 int ghost_scale_perf(double *perf, double time, void *varg)
 {
-    ghost_scale_perf_args_t *arg = (ghost_scale_perf_args_t *)varg;
-
-    ghost_lidx_t ncol = arg->vec->traits.ncols;
-    ghost_lidx_t nrow = arg->vec->traits.nrows;
+    ghost_scale_perf_args_t arg = *(ghost_scale_perf_args_t *)varg;
+    
+    ghost_lidx_t ncol = arg.ncols;
+    ghost_lidx_t nrow = arg.globnrows;
 
     size_t size;
-    ghost_datatype_size(&size,arg->vec->traits.datatype);
-
+    ghost_datatype_size(&size,arg.dt);
 
     *perf = size*2*ncol*nrow/1.e9/time;
 
