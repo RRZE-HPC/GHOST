@@ -27,6 +27,9 @@ typedef enum
     }\
     char * __prefixbackup = ghost_instr_prefix_get();\
     char __prefix[256];\
+    char __ghost_functag[256];\
+    snprintf(__ghost_functag,256,"%s%s",__prefixbackup,\
+            __FUNCTION__+__funcnameoffset);\
     snprintf(__prefix,256,"%s%s->",__prefixbackup,\
             __FUNCTION__+__funcnameoffset);\
     ghost_instr_prefix_set(__prefix);\
