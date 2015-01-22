@@ -26,6 +26,15 @@ typedef enum {
     GHOST_GEMM_NOT_SPECIAL = 1,
 } ghost_gemm_flags_t;
 
+typedef struct {
+    ghost_lidx_t vcols,xcols;
+    ghost_gidx_t vrows;
+    ghost_datatype_t dt;
+}
+ghost_gemm_perf_args_t;
+
+
+
 #define GHOST_GEMM_ALL_REDUCE -1
 #define GHOST_GEMM_NO_REDUCE -2
 
@@ -180,6 +189,7 @@ extern "C" {
     int ghost_axpy_perf(double *perf, double time, void *arg);
     int ghost_scale_perf(double *perf, double time, void *arg);
     int ghost_dot_perf(double *perf, double time, void *arg);
+    int ghost_gemm_perf_GFs(double *perf, double time, void *arg);
 
 #ifdef __cplusplus
 } //extern "C"

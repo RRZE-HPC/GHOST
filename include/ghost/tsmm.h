@@ -9,14 +9,7 @@
 #include "config.h"
 #include "types.h"
 #include "densemat.h"
-
-typedef struct {
-    ghost_lidx_t m,k;
-    ghost_gidx_t n;
-    ghost_datatype_t dt;
-}
-ghost_tsmm_perf_args_t;
-
+#include "math.h"
 
 typedef struct
 {
@@ -92,6 +85,7 @@ extern "C" {
         ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
     int ghost_tsmm_perf_GBs(double *perf, double time, void *varg);
+    int ghost_tsmm_perf_GFs(double *perf, double time, void *varg);
 
 #ifdef __cplusplus
 }

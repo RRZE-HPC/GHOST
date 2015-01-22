@@ -11,43 +11,13 @@
 #include <cublas_v2.h>
 #endif
 
-
-ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
+static ghost_error_t ghost_gemm_blas(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
 ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
 {
-#ifdef GHOST_HAVE_LONGIDX_LOCAL
-#ifndef GHOST_HAVE_MKL
-    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
-#endif
-#endif
-    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    UNUSED(flags);
+
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     ghost_error_t ret = GHOST_SUCCESS;
-       
-    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
-
-    if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
-        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
-        return GHOST_ERR_INVALID_ARG;
-    }
-    
-    if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
-        if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
-            INFO_LOG("Transparently call special implementation TSMM");
-            ret = ghost_tsmm(x_in,v_in,w_in,alpha,beta);
-            goto out;
-        }
-        if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
-            INFO_LOG("Transparently call special implementation TSMM-inplace");
-            ret = ghost_tsmm_inplace(x_in,w_in,alpha);
-            goto out;
-        }
-        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
-            INFO_LOG("Transparently call special implementation TSMTTSM");
-            ret =ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c');
-            goto out;
-        }
-    }
-
     char transv[1], transw[1];
     
     transv[0]=transv_in[0];
@@ -402,6 +372,62 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         GHOST_CALL_GOTO(x_in->fromVec(x_in,x,0,0),err,ret);
         x->destroy(x);
     }
+
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gemm_perf_args_t gemm_perfargs;
+    gemm_perfargs.xcols = x->traits.ncols;
+    gemm_perfargs.vcols = v->traits.ncols;
+    gemm_perfargs.vrows = v->context->gnrows;
+    gemm_perfargs.dt = x->traits.datatype;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&gemm_perfargs,sizeof(gemm_perfargs),"GF/s");
+#endif
+    
+    goto out;
+err:
+
+out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
+    return ret;
+
+}
+
+ghost_error_t ghost_gemm(ghost_densemat_t *x_in, ghost_densemat_t *v_in, const char * transv_in, 
+ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int reduce,ghost_gemm_flags_t flags) 
+{
+#ifdef GHOST_HAVE_LONGIDX_LOCAL
+#ifndef GHOST_HAVE_MKL
+    WARNING_LOG("Will cast 64-bit indices to 32 bit for non-MKL GEMM with LONGIDX");
+#endif
+#endif
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
+    ghost_error_t ret = GHOST_SUCCESS;
+       
+    int deviceflags = (v_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (w_in->traits.flags & GHOST_DENSEMAT_DEVICE) + (x_in->traits.flags & GHOST_DENSEMAT_DEVICE);
+
+    if (deviceflags != 0 && deviceflags != (3*GHOST_DENSEMAT_DEVICE)) {
+        ERROR_LOG("The storage of all densemats has to be uniform (host or device)!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+    
+    if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+        if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMM");
+            GHOST_CALL_GOTO(ghost_tsmm(x_in,v_in,w_in,alpha,beta),err,ret);
+            goto out;
+        }
+        if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMM-inplace");
+            GHOST_CALL_GOTO(ghost_tsmm_inplace(x_in,w_in,alpha),err,ret);
+            goto out;
+        }
+        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMTTSM");
+            GHOST_CALL_GOTO(ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
+            goto out;
+        }
+    }
+
+    ret = ghost_gemm_blas(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,flags);
     
     goto out;
 err:
@@ -411,3 +437,11 @@ out:
     return ret;
 }
 
+int ghost_gemm_perf_GFs(double *perf, double time, void *varg)
+{
+    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
+    
+    *perf = (arg.vrows*arg.xcols*(1+arg.vcols*3))/1.e9/time;
+
+    return 0;
+}

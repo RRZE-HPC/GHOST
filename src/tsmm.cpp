@@ -144,12 +144,13 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     ret = kernel(x,v,w,alpha,beta);
     
 #ifdef GHOST_HAVE_INSTR_TIMING
-    ghost_tsmm_perf_args_t tsmm_perfargs;
-    tsmm_perfargs.m = p.xcols;
-    tsmm_perfargs.k = p.vcols;
-    tsmm_perfargs.n = v->context->gnrows;
+    ghost_gemm_perf_args_t tsmm_perfargs;
+    tsmm_perfargs.xcols = p.xcols;
+    tsmm_perfargs.vcols = p.vcols;
+    tsmm_perfargs.vrows = v->context->gnrows;
     tsmm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_tsmm_perf_GBs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GB/s");
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
 #endif
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
@@ -160,11 +161,12 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
 int ghost_tsmm_perf_GBs(double *perf, double time, void *varg)
 {
     size_t size;
-    ghost_tsmm_perf_args_t arg = *(ghost_tsmm_perf_args_t *)varg;
+    ghost_gemm_perf_args_t arg = *(ghost_gemm_perf_args_t *)varg;
     
     ghost_datatype_size(&size,arg.dt);
 
-    *perf = size*(arg.n*arg.k+arg.n*arg.m+arg.m*arg.k)/1.e9/time;
+    *perf = size*(arg.vrows*arg.vcols+arg.vrows*arg.xcols+arg.vcols*arg.xcols)/1.e9/time;
 
     return 0;
 }
+
