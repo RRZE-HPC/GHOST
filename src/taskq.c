@@ -20,6 +20,10 @@
 #include "ghost/log.h"
 #include "ghost/omp.h"
 
+#ifdef GHOST_HAVE_MKL
+#include <mkl.h>
+#endif
+
 #ifdef GHOST_HAVE_INSTR_LIKWID
 #include <likwid.h>
 #endif
@@ -218,6 +222,9 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         taskq_deleteTask(q,curTask);    
         DEBUG_LOG(1,"Pinning the task's threads");
         ghost_omp_nthread_set(curTask->nThreads);
+#ifdef GHOST_HAVE_MKL
+        mkl_set_num_threads(curTask->nThreads); 
+#endif
 
         //        if (curTask->flags & GHOST_TASK_NO_PIN) {
         //            return curTask;
