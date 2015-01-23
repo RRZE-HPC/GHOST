@@ -42,11 +42,11 @@ module() { eval `/usr/bin/modulecmd bash $*`; }
 module load "PrgEnv/$PRGENV"
 # set compiler names
 set -- $(mpicc -show)
-CC=$1
+export CC=$1
 set -- $(mpicxx -show)
-CXX=$1
+export CXX=$1
 set -- $(mpif90 -show)
-FC=$1
+export FC=$1
 
 echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
 
