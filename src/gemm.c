@@ -60,7 +60,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         w = wc;
     }
 
-    if (v == x) {
+    if (v == x && !(flags & GHOST_GEMM_NOT_CLONE_ALIASED)) {
         WARNING_LOG("x equals v! v will be cloned.");
         ghost_densemat_t *vc;
         v->clone(v,&vc,v->traits.nrows,0,v->traits.ncols,0);
