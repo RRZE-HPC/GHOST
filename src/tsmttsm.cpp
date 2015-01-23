@@ -80,6 +80,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 
 ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta,int reduce,int conjv)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
     ghost_error_t ret;
 
     if ((ret = ghost_tsmttsm_valid(x,v,"T",w,"N",alpha,beta,reduce,1)) != GHOST_SUCCESS) {
@@ -149,11 +150,24 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     
     if (!kernel) {
         INFO_LOG("Could not find TSMTTSM kernel with %d %d %d. Fallback to GEMM",p.dt,p.wcols,p.vcols);
+        return GHOST_ERR_INVALID_ARG;
         
-            return ghost_gemm(x,v,"T",w,"N",alpha,beta,GHOST_GEMM_ALL_REDUCE,GHOST_GEMM_NOT_SPECIAL);
+            //return ghost_gemm(x,v,"T",w,"N",alpha,beta,GHOST_GEMM_ALL_REDUCE,GHOST_GEMM_NOT_SPECIAL);
     }
+    
+    ret = kernel(x,v,w,alpha,beta,conjv);
 
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gemm_perf_args_t tsmttsm_perfargs;
+    tsmttsm_perfargs.xcols = p.wcols;
+    tsmttsm_perfargs.vcols = p.vcols;
+    tsmttsm_perfargs.vrows = v->context->gnrows;
+    tsmttsm_perfargs.dt = x->traits.datatype;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmttsm_perfargs,sizeof(tsmttsm_perfargs),"GF/s");
+#endif
 
-    return kernel(x,v,w,alpha,beta,conjv);
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+    return ret;
 }
 

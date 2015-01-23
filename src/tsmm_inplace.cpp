@@ -79,6 +79,7 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
 {
     ghost_error_t ret;
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
     if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,NULL,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         return ret;
@@ -113,6 +114,11 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
         }
         kernel = ghost_tsmm_inplace_kernels[p];
     }
+    if (!kernel) {
+        PERFWARNING_LOG("Try plain implementation");
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+        kernel = ghost_tsmm_inplace_kernels[p];
+    }
     
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with non-padded blocks");
@@ -130,18 +136,26 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
         p.xcols = -1;
         kernel = ghost_tsmm_inplace_kernels[p];
     }
-    if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        kernel = ghost_tsmm_inplace_kernels[p];
-    }
 
     if (!kernel) {
         INFO_LOG("Could not find in-place TSMM kernel with %d %d %d!",p.impl,p.dt,p.xcols);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
+    ret = kernel(x,w,alpha);
 
-    return kernel(x,w,alpha);
+#ifdef GHOST_HAVE_INSTR_TIMING
+    ghost_gemm_perf_args_t tsmm_perfargs;
+    tsmm_perfargs.xcols = p.xcols;
+    tsmm_perfargs.vcols = p.xcols;
+    tsmm_perfargs.vrows = x->context->gnrows;
+    tsmm_perfargs.dt = x->traits.datatype;
+    ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");
+#endif
+
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH);
+
+
+    return ret;
 
 }
