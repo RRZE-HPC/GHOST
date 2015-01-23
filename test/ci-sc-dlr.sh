@@ -48,6 +48,8 @@ CXX=$1
 set -- $(mpif90 -show)
 FC=$1
 
+echo "compilers: CC=$CC, CXX=$CXX, FC=$FC"
+
 for m in $MODULES_BASIC; do module load $m; done
 
 module list
