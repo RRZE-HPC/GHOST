@@ -64,6 +64,7 @@ ghost_error_t ghost_tsmm__avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
             }
         }
     } else { // common case: X = V*W
+        INFO_LOG("Fast case: alpha=1 and beta=0");
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+4<=BLOCKSZ1; s+=4) {
