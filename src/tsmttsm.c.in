@@ -358,7 +358,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
     
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx_t k;
+#if CFGK>1
 #pragma simd
+#endif
         for (k=0; k<CFGK; k++) {
             for (j=0; j<CFGM; j++) {
                 xval[k*ldx+j] = dbeta*xval[k*ldx+j];
@@ -370,7 +372,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
             memset(x_priv,0,sizeof(x_priv));
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
+#if CFGK>1
 #pragma simd
+#endif
                 for (k=0; k<CFGK; k++) {
                   for (j=0; j<CFGM; j++) {
                         x_priv[j*CFGK+k] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
@@ -379,7 +383,9 @@ ghost_error_t ghost_tsmttsm__plain_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densem
 
             }
 #pragma omp critical
+#if CFGK>1
 #pragma simd
+#endif
             for (k=0; k<CFGK; k++) {
                 for (j=0; j<CFGM; j++) {
                     xval[k*ldx+j] += x_priv[j*CFGK+k];
