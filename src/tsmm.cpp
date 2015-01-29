@@ -6,6 +6,7 @@
 #include "ghost/tsmm.h"
 #include "ghost/tsmm_gen.h"
 #include "ghost/tsmm_avx_gen.h"
+#include "ghost/tsmm_sse_gen.h"
 
 #include <map>
 
@@ -96,6 +97,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (ghost_tsmm_kernels.empty()) {
 #include "tsmm.def"
 #include "tsmm_avx.def"
+#include "tsmm_sse.def"
     }
 
     ghost_tsmm_parameters_t p;
@@ -112,13 +114,16 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
-    if (p.vcols == 2 || p.xcols == 2) {
+    if (p.xcols == 2) {
+        PERFWARNING_LOG("Use SSE for ncols==2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
     }
-    if (p.vcols == 1 || p.xcols == 1) {
+    if (p.xcols == 1) {
+        PERFWARNING_LOG("Use plain for ncols==1");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
-    if (p.vcols % 4 || p.xcols % 4) {
+    if (p.xcols % 2) {
+        PERFWARNING_LOG("Use plain for non-even column count");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
     }
     kernel = ghost_tsmm_kernels[p];
