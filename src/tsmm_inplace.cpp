@@ -76,12 +76,12 @@ ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, in
 
 }
 
-ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     ghost_error_t ret;
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH);
 
-    if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,NULL,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
+    if ((ret = ghost_tsmm_inplace_valid(x,x,"N",w,"N",alpha,beta,GHOST_GEMM_NO_REDUCE,1)) != GHOST_SUCCESS) {
         return ret;
     }
     
@@ -103,34 +103,26 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 #endif
 
     p.dt = x->traits.datatype;
-
-    if (!(x->traits.flags & GHOST_DENSEMAT_VIEW)) {
-        p.xcols = x->traits.ncolspadded;
-        if (p.xcols == 2) {
-            p.impl = GHOST_IMPLEMENTATION_SSE;
-        }
-        if (p.xcols == 1) {
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
-        kernel = ghost_tsmm_inplace_kernels[p];
+    p.xcols = x->traits.ncols;
+    
+    if (p.xcols == 2) {
+        p.impl = GHOST_IMPLEMENTATION_SSE;
     }
+    if (p.xcols == 1) {
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+    if (p.xcols % 4) {
+        p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+    
+    kernel = ghost_tsmm_inplace_kernels[p];
+    
     if (!kernel) {
         PERFWARNING_LOG("Try plain implementation");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
         kernel = ghost_tsmm_inplace_kernels[p];
     }
     
-    if (!kernel) {
-        PERFWARNING_LOG("Try kernel with non-padded blocks");
-        p.xcols = x->traits.ncols;
-        if (p.xcols == 2) {
-            p.impl = GHOST_IMPLEMENTATION_SSE;
-        }
-        if (p.xcols == 1) {
-            p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        }
-        kernel = ghost_tsmm_inplace_kernels[p];
-    }
     if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block size");
         p.xcols = -1;
@@ -142,7 +134,7 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
-    ret = kernel(x,w,alpha);
+    ret = kernel(x,w,alpha,beta);
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmm_perfargs;

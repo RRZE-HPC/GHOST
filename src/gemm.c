@@ -417,7 +417,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         }
         if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
-            GHOST_CALL_GOTO(ghost_tsmm_inplace(x_in,w_in,alpha),err,ret);
+            GHOST_CALL_GOTO(ghost_tsmm_inplace(x_in,w_in,alpha,beta),err,ret);
             goto out;
         }
         if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {

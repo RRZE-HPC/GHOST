@@ -6,7 +6,7 @@
 #include "ghost/tsmm_inplace_gen.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -15,6 +15,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
     ghost_lidx_t n = x->traits.nrows;
 
     double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
     
     INFO_LOG("In in-place TSMM with fixed block size [BLOCKSZ] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
@@ -32,8 +33,12 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-        memset(tmp,0,BLOCKSZ*sizeof(double));
+        for (s=0; s<BLOCKSZ; s++) {
+            tmp[s] = dbeta*xval[i*ldx+s];
+        }
+#if BLOCKSZ>1
 #pragma simd
+#endif
         for (s=0; s<BLOCKSZ; s++) {
             for (j=0; j<BLOCKSZ; j++) {
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
@@ -47,7 +52,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
 }
 #GHOST_FUNC_END
 
-ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -56,6 +61,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
     ghost_lidx_t n = x->traits.nrows;
 
     double dalpha = *(double *)alpha;
+    double dbeta = *(double *)beta;
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
@@ -73,7 +79,10 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-        memset(tmp,0,x->traits.ncols*sizeof(double));
+#pragma simd
+        for (s=0; s<x->traits.ncols; s++) {
+            tmp[s] = dbeta*xval[i*ldx+s];
+        }
 #pragma simd
         for (s=0; s<x->traits.ncols; s++) {
             for (j=0; j<x->traits.ncols; j++) {
@@ -87,7 +96,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
     return ret;
 }
 
-ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha)
+ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -96,6 +105,7 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_
     ghost_lidx_t n = x->traits.nrows;
 
     double complex dalpha = *(double complex *)alpha;
+    double complex dbeta = *(double complex *)beta;
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f+I*%f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,creal(dalpha),cimag(dalpha),n,m,m,m);
 
@@ -113,7 +123,10 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-        memset(tmp,0,x->traits.ncols*sizeof(double complex));
+#pragma simd
+        for (s=0; s<x->traits.ncols; s++) {
+            tmp[s] = dbeta*xval[i*ldx+s];
+        }
 #pragma simd
         for (s=0; s<x->traits.ncols; s++) {
             for (j=0; j<x->traits.ncols; j++) {

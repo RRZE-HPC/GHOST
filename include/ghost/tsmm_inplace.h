@@ -25,9 +25,9 @@ typedef struct
 } ghost_tsmm_inplace_parameters_t;
 
 /**
- * @brief A tsmm kernel function. 
+ * @brief A tsmm-inplace kernel function. 
  */
-typedef ghost_error_t (*ghost_tsmm_inplace_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, void *);
+typedef ghost_error_t (*ghost_tsmm_inplace_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, void *, void *);
 
 
 #ifdef __cplusplus
@@ -42,9 +42,10 @@ extern "C" {
      * @param[inout] x
      * @param[in] w
      * @param[in] alpha
+     * @param[in] beta
      *
      *
-     * Compute \f$ x = \alpha \cdot x \cdot w \f$.
+     * Compute \f$ x = \alpha \cdot x \cdot w  + \beta \cdot x\f$.
      *
      * w is MxM, redundant, col-major.
      *
@@ -56,7 +57,7 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha);
+    ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta);
 
     /**
      * @brief Check whether TSMM-inplace can be applied instead of GEMM with the given arguments.
