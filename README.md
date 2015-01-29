@@ -45,7 +45,7 @@ you can decide to enable (some of) the following optional dependencies:
 ---
 
 Please note that the documentation is currently incomplete.
-Have a look at the Doxygen pages of GHOST for [API documentation](https://grid.rrze.uni-erlangen.de/~unrza317/).
+Have a look at the Doxygen pages of GHOST for [API documentation](http://mkreutzer.bitbucket.org/ghost_doc/).
 
 More information can be found in the [Wiki](https://bitbucket.org/essex/ghost/wiki) pages on Bitbucket.
 
