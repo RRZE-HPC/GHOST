@@ -12,7 +12,7 @@ using namespace std;
 
 static bool operator<(const ghost_tsmm_inplace_parameters_t &a, const ghost_tsmm_inplace_parameters_t &b) 
 { 
-    return ghost_hash(a.dt,a.xcols,a.impl) < ghost_hash(b.dt,b.xcols,b.impl); 
+    return ghost_hash(a.dt,a.ncolsin,ghost_hash(a.ncolsout,a.impl,0)) < ghost_hash(b.dt,b.ncolsin,ghost_hash(b.ncolsout,b.impl,0)); 
 }
 
 static map<ghost_tsmm_inplace_parameters_t, ghost_tsmm_inplace_kernel_t> ghost_tsmm_inplace_kernels;
@@ -92,45 +92,23 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
     ghost_tsmm_inplace_parameters_t p;
     ghost_tsmm_inplace_kernel_t kernel = NULL;
 
-#ifdef GHOST_HAVE_MIC
-    p.impl = GHOST_IMPLEMENTATION_MIC;
-#elif defined(GHOST_HAVE_AVX)
-    p.impl = GHOST_IMPLEMENTATION_AVX;
-#elif defined(GHOST_HAVE_SSE)
-    p.impl = GHOST_IMPLEMENTATION_SSE;
-#else
     p.impl = GHOST_IMPLEMENTATION_PLAIN;
-#endif
 
     p.dt = x->traits.datatype;
-    p.xcols = x->traits.ncols;
-    
-    if (p.xcols == 2) {
-        p.impl = GHOST_IMPLEMENTATION_SSE;
-    }
-    if (p.xcols == 1) {
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
-    if (p.xcols % 4) {
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-    }
+    p.ncolsin = w->traits.nrows;
+    p.ncolsout = w->traits.ncols;
     
     kernel = ghost_tsmm_inplace_kernels[p];
     
     if (!kernel) {
-        PERFWARNING_LOG("Try plain implementation");
-        p.impl = GHOST_IMPLEMENTATION_PLAIN;
-        kernel = ghost_tsmm_inplace_kernels[p];
-    }
-    
-    if (!kernel) {
         PERFWARNING_LOG("Try kernel with arbitrary block size");
-        p.xcols = -1;
+        p.ncolsin = -1;
+        p.ncolsout = -1;
         kernel = ghost_tsmm_inplace_kernels[p];
     }
 
     if (!kernel) {
-        INFO_LOG("Could not find in-place TSMM kernel with %d %d %d!",p.impl,p.dt,p.xcols);
+        INFO_LOG("Could not find in-place TSMM kernel with %d %d %d %d!",p.impl,p.dt,p.ncolsin,p.ncolsout);
         return GHOST_ERR_NOT_IMPLEMENTED;
     }
 
@@ -138,8 +116,8 @@ ghost_error_t ghost_tsmm_inplace(ghost_densemat_t *x, ghost_densemat_t *w, void 
 
 #ifdef GHOST_HAVE_INSTR_TIMING
     ghost_gemm_perf_args_t tsmm_perfargs;
-    tsmm_perfargs.xcols = p.xcols;
-    tsmm_perfargs.vcols = p.xcols;
+    tsmm_perfargs.xcols = p.ncolsin;
+    tsmm_perfargs.vcols = p.ncolsout;
     tsmm_perfargs.vrows = x->context->gnrows;
     tsmm_perfargs.dt = x->traits.datatype;
     ghost_timing_set_perfFunc(__ghost_functag,ghost_gemm_perf_GFs,(void *)&tsmm_perfargs,sizeof(tsmm_perfargs),"GF/s");

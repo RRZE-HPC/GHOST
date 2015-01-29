@@ -5,8 +5,8 @@
 #include "ghost/util.h"
 #include "ghost/tsmm_inplace_gen.h"
 
-#GHOST_FUNC_BEGIN#BLOCKSZ=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+#GHOST_FUNC_BEGIN#NCOLSIN=${CFG_BLOCKVECTOR_SIZES}#NCOLSOUT=${CFG_BLOCKVECTOR_SIZES}
+ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -17,7 +17,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
     
-    INFO_LOG("In in-place TSMM with fixed block size [BLOCKSZ] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
+    INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,w->traits.nrows,w->traits.ncols);
 
     double * const restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
@@ -28,23 +28,23 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp[BLOCKSZ];
+    double tmp[NCOLSOUT];
     ghost_lidx_t i,j,s;
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
-        for (s=0; s<BLOCKSZ; s++) {
+        for (s=0; s<NCOLSOUT; s++) {
             tmp[s] = dbeta*xval[i*ldx+s];
         }
-#if BLOCKSZ>1
+#if NCOLSOUT>1
 #pragma simd
 #endif
-        for (s=0; s<BLOCKSZ; s++) {
-            for (j=0; j<BLOCKSZ; j++) {
+        for (s=0; s<NCOLSOUT; s++) {
+            for (j=0; j<NCOLSIN; j++) {
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
             }
         }
-        memcpy(&xval[i*ldx],tmp,BLOCKSZ*sizeof(double));
+        memcpy(&xval[i*ldx],tmp,NCOLSOUT*sizeof(double));
     }
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
@@ -52,13 +52,15 @@ ghost_error_t ghost_tsmm_inplace__plain_d_BLOCKSZ(ghost_densemat_t *x, ghost_den
 }
 #GHOST_FUNC_END
 
-ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_lidx_t m = x->traits.ncols;
     ghost_lidx_t n = x->traits.nrows;
+    ghost_lidx_t ncolsout = w->traits.ncols;
+    ghost_lidx_t ncolsin = w->traits.nrows;
 
     double dalpha = *(double *)alpha;
     double dbeta = *(double *)beta;
@@ -74,18 +76,18 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double tmp[x->traits.ncols];
+    double tmp[ncolsout];
     ghost_lidx_t i,j,s;
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
 #pragma simd
-        for (s=0; s<x->traits.ncols; s++) {
+        for (s=0; s<ncolsout; s++) {
             tmp[s] = dbeta*xval[i*ldx+s];
         }
 #pragma simd
-        for (s=0; s<x->traits.ncols; s++) {
-            for (j=0; j<x->traits.ncols; j++) {
+        for (s=0; s<ncolsout; s++) {
+            for (j=0; j<ncolsin; j++) {
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
             }
         }
@@ -96,13 +98,15 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x(ghost_densemat_t *x, ghost_densemat_
     return ret;
 }
 
-ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH)
     ghost_error_t ret = GHOST_SUCCESS;
 
     ghost_lidx_t m = x->traits.ncols;
     ghost_lidx_t n = x->traits.nrows;
+    ghost_lidx_t ncolsout = w->traits.ncols;
+    ghost_lidx_t ncolsin = w->traits.nrows;
 
     double complex dalpha = *(double complex *)alpha;
     double complex dbeta = *(double complex *)beta;
@@ -118,18 +122,18 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x(ghost_densemat_t *x, ghost_densemat_
     ghost_densemat_valptr(w,(void **)&wval);
     ghost_densemat_valptr(x,(void **)&xval);
 
-    double complex tmp[x->traits.ncols];
+    double complex tmp[ncolsout];
     ghost_lidx_t i,j,s;
 
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
 #pragma simd
-        for (s=0; s<x->traits.ncols; s++) {
+        for (s=0; s<ncolsout; s++) {
             tmp[s] = dbeta*xval[i*ldx+s];
         }
 #pragma simd
-        for (s=0; s<x->traits.ncols; s++) {
-            for (j=0; j<x->traits.ncols; j++) {
+        for (s=0; s<ncolsout; s++) {
+            for (j=0; j<ncolsin; j++) {
                 tmp[s] += dalpha*xval[i*ldx+j]*wval[s*ldw+j];
             }
         }

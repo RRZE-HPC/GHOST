@@ -17,9 +17,13 @@ typedef struct
      */
     ghost_datatype_t dt;
     /**
-     * @brief The first configured block size M.
+     * @brief The number of columns for the input densemat.
      */
-    int xcols;
+    int ncolsin;
+    /**
+     * @brief The number of columns for the output densemat.
+     */
+    int ncolsout;
 
     ghost_implementation_t impl;
 } ghost_tsmm_inplace_parameters_t;
@@ -45,15 +49,15 @@ extern "C" {
      * @param[in] beta
      *
      *
-     * Compute \f$ x = \alpha \cdot x \cdot w  + \beta \cdot x\f$.
+     * Compute \f$ x(:,1:K) = \alpha \cdot x(:,1:M) \cdot w  + \beta \cdot x(:,1:M)\f$.
      *
-     * w is MxM, redundant, col-major.
+     * w is MxK, M>K, redundant, col-major.
      *
      * x is NxM, distributed, row-major.
      *
-     * M<<N
+     * M,K<<N
      *
-     * This kernel is auto-generated at compile time for given values of M.
+     * This kernel is auto-generated at compile time for given values of M and K.
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
