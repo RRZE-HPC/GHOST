@@ -274,7 +274,7 @@ endif()
 
 if (NOT BUILD_SHARED_LIBS)
     message(STATUS "No library type specified. Setting it to static.")
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Set to ON/OFF for shared/static library build.")
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "Set to ON/OFF for shared/static library build.")
 endif()
 
 set(HWLOC_INCLUDE_DIR HWLOC_INCLUDE_DIR-NOTFOUND CACHE PATH "Location of hwloc.h")
