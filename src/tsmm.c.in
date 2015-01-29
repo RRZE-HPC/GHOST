@@ -36,7 +36,9 @@ ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
     
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
     for (i=0; i<n; i++) {
+#if BLOCKSZ1>1
 #pragma simd
+#endif
         for (s=0; s<BLOCKSZ1; s++) {
             tmp = dbeta*xval[i*ldx+s];
             for (j=0; j<BLOCKSZ2; j++) {
