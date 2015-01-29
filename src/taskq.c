@@ -437,7 +437,7 @@ ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 
             //    kmp_set_blocktime(200);
             pthread_mutex_lock(&newTaskMutex);
-            pthread_cond_broadcast(&newTaskCond);
+            pthread_cond_signal(&newTaskCond);
             pthread_mutex_unlock(&newTaskMutex);
 
             pthread_mutex_lock(myTask->mutex); 
@@ -507,7 +507,7 @@ ghost_error_t ghost_taskq_add(ghost_task_t *t)
 
         sem_post(&taskSem);
         pthread_mutex_lock(&newTaskMutex);
-        pthread_cond_broadcast(&newTaskCond);
+        pthread_cond_signal(&newTaskCond);
         pthread_mutex_unlock(&newTaskMutex);
 
         return GHOST_SUCCESS;
