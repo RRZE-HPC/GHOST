@@ -297,7 +297,7 @@ endif()
 
 if (NOT LIBHWLOC)
     get_filename_component(HWLOC_LIBDIR ${HWLOC_INCLUDE_DIR}/../lib REALPATH)
-    find_library(LIBHWLOC hwloc ${HWLOC_LIBDIR} NO_DEFAULT_PATH)
+    find_library(LIBHWLOC hwloc HINTS ${HWLOC_LIBDIR})
 endif()
 
 set(HWLOC_LIBRARIES ${LIBHWLOC})
