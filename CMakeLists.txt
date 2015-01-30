@@ -533,6 +533,7 @@ endif()
 
 set(LAPACK_INCLUDE_DIR CACHE PATH "Location of lapacke.h")
 
+        find_package(LAPACK)
 if (NOT LAPACK_INCLUDE_DIR)
     message(STATUS "Determine LAPACK...")
 
@@ -543,7 +544,7 @@ if (NOT LAPACK_INCLUDE_DIR)
         find_path(LAPACK_INCLUDE_DIR mkl_lapacke.h ${CBLAS_INCLUDE_DIR})
     else()
         message(STATUS "Try to find LAPACK")
-        find_package(LAPACK)
+        find_package(LAPACK NO_MODULE)
         if (LAPACK_FOUND)
             message(STATUS "LAPACK found: ${LAPACK_INCLUDE_DIR} ${LAPACK_LIBRARIES}")
             set(GHOST_HAVE_LAPACK 1)
