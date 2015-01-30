@@ -85,7 +85,7 @@ typedef enum
     /**
      * @brief Column-major storage (as in Fortran).
      */
-    GHOST_DENSEMAT_COLMAJOR,
+    GHOST_DENSEMAT_COLMAJOR
 }
 ghost_densemat_storage_t;
 

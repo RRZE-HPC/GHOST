@@ -35,7 +35,7 @@ typedef enum {
     /**
      * @brief Distribute work among the ranks by number of rows.
      */
-    GHOST_CONTEXT_DIST_ROWS = 8,
+    GHOST_CONTEXT_DIST_ROWS = 8
 } ghost_context_flags_t;
 
 /**
@@ -147,7 +147,7 @@ typedef enum {
     /**
      * @brief Empty source.
      */
-    GHOST_SPARSEMAT_SRC_NONE,
+    GHOST_SPARSEMAT_SRC_NONE
 } ghost_sparsemat_src_t;
 
 

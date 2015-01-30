@@ -246,7 +246,7 @@ typedef enum {
     /**
      * @brief Complex double.
      */
-    GHOST_DT_Z_IDX = 3,
+    GHOST_DT_Z_IDX = 3
 } ghost_datatype_idx_t;
 
 /**
