@@ -545,7 +545,7 @@ if (NOT LAPACK_INCLUDE_DIR)
         message(STATUS "Try to find LAPACK")
         find_package(LAPACK)
         if (LAPACK_FOUND)
-            message(STATUS "LAPACK found!")
+            message(STATUS "LAPACK found: ${LAPACK_INCLUDE_DIR} ${LAPACK_LIBRARIES}")
             set(GHOST_HAVE_LAPACK 1)
             include_directories(SYSTEM ${LAPACK_INCLUDE_DIR})
 
