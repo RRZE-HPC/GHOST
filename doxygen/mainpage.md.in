@@ -1,7 +1,7 @@
 @CMAKE_PROJECT_NAME@ @GHOST_VERSION@ API documentation  {#mainpage}
 ======================================================
 
-<img src="ghost_logo.png" alt="GHOST logo" style="width: 100px;float: right"/>
+<img src="ghost_logo.png" alt="GHOST logo" style="width: 150px;float: right"/>
 
 This Doxygen documentation has been created with the following GHOST settings:
 
