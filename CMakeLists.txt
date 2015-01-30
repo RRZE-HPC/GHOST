@@ -706,7 +706,7 @@ if (DOXYGEN_FOUND)
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${HEADERS} ${DOCFILES}
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
-            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html && 
+            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html && 
             rsync -a ${PROJECT_BINARY_DIR}/doc/html/. ${DOC_INSTALL_PREFIX} && 
             find ${DOC_INSTALL_PREFIX} -type d -exec chmod 755 {} + &&
             find ${DOC_INSTALL_PREFIX} -type f -exec chmod 644 {} +
