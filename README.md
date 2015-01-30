@@ -1,8 +1,9 @@
+[![Build Status](https://drone.io/bitbucket.org/essex/ghost/status.png)](https://drone.io/bitbucket.org/essex/ghost/latest)
 ---
 # Disclaimer #
 ---
 
-**Please do not expect anything to work!** This is a pre-alpha release. Things may, and probably will, be broken. 
+This is a pre-alpha release, so **please do not expect anything to work!** Just kidding... But some things may, and probably will, be broken. 
 Nevertheless, please report any bugs, issues and feature requests to the [issue tracker](https://bitbucket.org/essex/ghost/issues).
 
 ---
@@ -91,5 +92,3 @@ If finding a Cblas header fails, or if you want to overwrite the found Cblas hea
 If the detected Cblas is neither MKL or GSL, the variable `BLAS_LIBRARIES` has to be set manually before linking any application to GHOST.
 
 The same applies for hwloc and the variables `HWLOC_INCLUDE_DIR` and `HWLOC_LIBRARIES`.
-
-
