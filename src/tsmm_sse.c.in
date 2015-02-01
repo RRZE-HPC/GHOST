@@ -51,7 +51,7 @@ ghost_error_t ghost_tsmm__sse_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_den
     }
 
     __m128d tmp;
-    if (fabs(dalpha-1.) > DBL_MIN || dbeta > DBL_MIN) { // general case: X = b*X + a*V*W
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+2<=BLOCKSZ1; s+=2) {
@@ -133,7 +133,7 @@ ghost_error_t ghost_tsmm__sse_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, gh
     } 
 
     __m128d tmp;
-    if (fabs(dalpha-1.) > DBL_MIN || dbeta > DBL_MIN) { // general case: X = b*X + a*V*W
+    if (fabs(dalpha-1.) > DBL_MIN || fabs(dbeta) > DBL_MIN) { // general case: X = b*X + a*V*W
 #pragma omp parallel for private(j,s,tmp) schedule(runtime)
         for (i=0; i<n; i++) {
             for (s=0; s+2<=w->traits.ncols; s+=2) {
