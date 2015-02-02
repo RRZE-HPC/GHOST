@@ -97,7 +97,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #ifdef GHOST_TSMTTSM_KAHAN
                         #GHOST_UNROLL#y@ = _mm256_sub_pd(vvec@,c@);#4
                         #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]));#4
-                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&x_priv[(k+@)*CFGM+j])),y@);#4
+                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j])),y@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],t@);#4
 #else
                         #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),vvec@));#4
@@ -150,7 +150,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                         #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&xval[(k+@)*ldx+j])),y@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],t@);#4
 #else
-                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+j]),_mm256_load_pd(&x_priv[(k+@)*CFGM+j])));#4
+                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+j]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j])));#4
 #endif
 
                     }
@@ -172,7 +172,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                         c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&xval[(k+0)*ldx+j])),y0);
                         _mm256_store_pd(&xval[(k+0)*ldx+j],t0);
 #else
-                        _mm256_store_pd(&xval[(k+0)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+j]),_mm256_load_pd(&x_priv[(k+0)*CFGM+j])));
+                        _mm256_store_pd(&xval[(k+0)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+j]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j])));
 #endif
 
                     }
