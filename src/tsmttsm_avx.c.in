@@ -78,8 +78,13 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
             #GHOST_UNROLL#__m256d vvec@;#4
             #GHOST_UNROLL#__m256d wvec@;#4
 
-            double x_priv[CFGM*CFGK];
-            memset(x_priv,0,sizeof(x_priv));
+            double *x_priv;
+            ghost_lidx_t ldxpriv = PAD(CFGM,4);
+            if (ldxpriv != CFGM) {
+                INFO_LOG("Pad xpriv from %d to %d",CFGM,ldxpriv);
+            }
+            ghost_malloc_align((void **)&x_priv,ldxpriv*CFGK*sizeof(double),32);
+            memset(x_priv,0,ldxpriv*CFGK*sizeof(double));
 
 #pragma omp for schedule(runtime)
             for (i=0; i<n; i++) {
@@ -91,19 +96,19 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
 #ifdef GHOST_TSMTTSM_KAHAN
                         #GHOST_UNROLL#y@ = _mm256_sub_pd(vvec@,c@);#4
-                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&x_priv[(k+@)*CFGM+j]));#4
+                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]));#4
                         #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&x_priv[(k+@)*CFGM+j])),y@);#4
-                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*CFGM+j],t@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],t@);#4
 #else
-                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*CFGM+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*CFGM+j]),vvec@));#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),vvec@));#4
 #endif
 
                     }
                     for (; j<CFGM; j++) {
-                        x_priv[(k+0)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+0)];
-                        x_priv[(k+1)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+1)];
-                        x_priv[(k+2)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+2)];
-                        x_priv[(k+3)*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+3)];
+                        x_priv[(k+0)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+0)];
+                        x_priv[(k+1)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+1)];
+                        x_priv[(k+2)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+2)];
+                        x_priv[(k+3)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+3)];
                     }
                 }
 #ifdef GHOST_TSMTTSM_KAHAN
@@ -116,16 +121,16 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
 #ifdef GHOST_TSMTTSM_KAHAN
                         y0 = _mm256_sub_pd(vvec0,c0);
-                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j]));
-                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&x_priv[(k+0)*CFGM+j])),y0);
-                        _mm256_store_pd(&x_priv[(k+0)*CFGM+j],t0);
+                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]));
+                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j])),y0);
+                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+j],t0);
 #else
-                        _mm256_store_pd(&x_priv[(k+0)*CFGM+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*CFGM+j]),vvec0));
+                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]),vvec0));
 #endif
 
                     }
                     for (; j<CFGM; j++) {
-                        x_priv[k*CFGM+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
+                        x_priv[k*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
                     }
                 }
             }
@@ -140,7 +145,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 for (k=0; k+4<=CFGK; k+=4) {
                     for (j=0; j+4<=CFGM; j+=4) {
 #ifdef GHOST_TSMTTSM_KAHAN
-                        #GHOST_UNROLL#y@ = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+@)*CFGM+j]),c@);#4
+                        #GHOST_UNROLL#y@ = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),c@);#4
                         #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&xval[(k+@)*ldx+j]));#4
                         #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&xval[(k+@)*ldx+j])),y@);#4
                         #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],t@);#4
@@ -150,10 +155,10 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
                     }
                     for (; j<CFGM; j++) {
-                        xval[(k+0)*ldx+j] += x_priv[(k+0)*CFGM+j];
-                        xval[(k+1)*ldx+j] += x_priv[(k+1)*CFGM+j];
-                        xval[(k+2)*ldx+j] += x_priv[(k+2)*CFGM+j];
-                        xval[(k+3)*ldx+j] += x_priv[(k+3)*CFGM+j];
+                        xval[(k+0)*ldx+j] += x_priv[(k+0)*ldxpriv+j];
+                        xval[(k+1)*ldx+j] += x_priv[(k+1)*ldxpriv+j];
+                        xval[(k+2)*ldx+j] += x_priv[(k+2)*ldxpriv+j];
+                        xval[(k+3)*ldx+j] += x_priv[(k+3)*ldxpriv+j];
                     }
                 }
 #ifdef GHOST_TSMTTSM_KAHAN
@@ -162,7 +167,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 for (; k<CFGK; k++) {
                     for (j=0; j+4<=CFGM; j+=4) {
 #ifdef GHOST_TSMTTSM_KAHAN
-                        y0 = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+0)*CFGM+j]),c0);
+                        y0 = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]),c0);
                         t0 = _mm256_add_pd(y0,_mm256_load_pd(&xval[(k+0)*ldx+j]));
                         c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&xval[(k+0)*ldx+j])),y0);
                         _mm256_store_pd(&xval[(k+0)*ldx+j],t0);
@@ -172,10 +177,11 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
                     }
                     for (; j<CFGM; j++) {
-                        xval[k*ldx+j] += x_priv[k*CFGM+j];
+                        xval[k*ldx+j] += x_priv[k*ldxpriv+j];
                     }
                 }
             }
+            free(x_priv);
     }
             
 #ifdef GHOST_HAVE_MPI
