@@ -110,6 +110,7 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     p.impl = GHOST_IMPLEMENTATION_SSE;
 #endif
 
+    p.alignment = GHOST_ALIGNED;
     p.dt = x->traits.datatype;
     
     p.xcols = x->traits.ncols;
@@ -125,6 +126,22 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     if (p.xcols % 2) {
         PERFWARNING_LOG("Use plain for non-even column count");
         p.impl = GHOST_IMPLEMENTATION_PLAIN;
+    }
+
+    void *xptr, *vptr, *wptr;
+    ghost_densemat_valptr(x,&xptr);
+    ghost_densemat_valptr(v,&vptr);
+    ghost_densemat_valptr(w,&wptr);
+
+    if (p.impl == GHOST_IMPLEMENTATION_SSE) {
+        if (!IS_ALIGNED(xptr,16) || !IS_ALIGNED(vptr,16) || !IS_ALIGNED(wptr,16)) {
+            p.alignment = GHOST_UNALIGNED;
+        }
+    }
+    if (p.impl == GHOST_IMPLEMENTATION_AVX) {
+        if (!IS_ALIGNED(xptr,32) || !IS_ALIGNED(vptr,32) || !IS_ALIGNED(wptr,32)) {
+            p.alignment = GHOST_UNALIGNED;
+        }
     }
     kernel = ghost_tsmm_kernels[p];
     

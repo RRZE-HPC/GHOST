@@ -6,7 +6,7 @@
 #include "ghost/tsmm_gen.h"
 
 #GHOST_FUNC_BEGIN#BLOCKSZ1=${CFG_BLOCKVECTOR_SIZES}#BLOCKSZ2=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -53,7 +53,7 @@ ghost_error_t ghost_tsmm__plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
 }
 #GHOST_FUNC_END
 
-ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error_t ret = GHOST_SUCCESS;
@@ -123,7 +123,7 @@ ghost_error_t ghost_tsmm__plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
     return ret;
 }
 
-ghost_error_t ghost_tsmm__plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
+ghost_error_t ghost_tsmm__u_plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta)
 {
     GHOST_FUNC_ENTER(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL)
     ghost_error_t ret = GHOST_SUCCESS;

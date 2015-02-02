@@ -26,6 +26,7 @@ typedef struct
      */
     int vcols;
     ghost_implementation_t impl;
+    ghost_alignment_t alignment;
 } ghost_tsmm_parameters_t;
 
 /**
