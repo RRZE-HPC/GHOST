@@ -274,7 +274,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (NOT BUILD_SHARED_LIBS)
-    message(STATUS "No library type specified. Setting it to static.")
+    message(STATUS "No library type specified. Setting it to shared.")
     set(BUILD_SHARED_LIBS ON CACHE BOOL "Set to ON/OFF for shared/static library build.")
 endif()
 
