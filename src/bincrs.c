@@ -47,71 +47,122 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
     
     
     if (perm) {
-        int64_t *rpt_raw;
-        GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
-        if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
-            ERROR_LOG("Seek failed");
-            return GHOST_ERR_IO;
-        }
-        if (swapReq) {
-            int64_t *tmp;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+        if ( perm->scope == GHOST_PERMUTATION_GLOBAL) {
+            int64_t *rpt_raw;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
+            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+                ERROR_LOG("Seek failed");
                 return GHOST_ERR_IO;
             }
-            for( i = 0; i < (header.nrows+1); i++ ) {
-                rpt_raw[i] = bswap_64(tmp[i]);
+            if (swapReq) {
+                int64_t *tmp;
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
+                for( i = 0; i < (header.nrows+1); i++ ) {
+                    rpt_raw[i] = bswap_64(tmp[i]);
+                }
+                free(tmp);
+            } else {
+                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
             }
-            free(tmp);
-        } else {
-            if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-        }
-        int64_t *col_raw;
-        GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,header.nnz*8));
-        if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1),SEEK_SET)) {
-            ERROR_LOG("Seek failed");
-            return GHOST_ERR_IO;
-        }
-        if (swapReq) {
-            int64_t *tmp;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,header.nnz*8));
-            if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != (size_t)(header.nnz)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-            for( i = 0; i < (header.nrows+1); i++ ) {
-                col_raw[i] = bswap_64(tmp[i]);
-            }
-            free(tmp);
-        } else {
-            if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != (size_t)(header.nnz)){
-                ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
-                return GHOST_ERR_IO;
-            }
-        }
-        e = 0;
-        //INFO_LOG("Read %d rows from row %d perm len %d %d %d %d %d",nRows,offsRows,perm->len,perm->perm[0],perm->perm[1],perm->perm[2],perm->perm[3]);
-        for(i = offsRows; i < offsRows+nRows; i++) {
-            for(j = rpt_raw[perm->invPerm[i-offsRows]]; j < rpt_raw[perm->invPerm[i-offsRows]+1]; j++) {
-                if (!keepCols) {
-                    if ((col_raw[j]>=offsRows+nRows) || (col_raw[j] < offsRows)) {
-                        col[e++] = col_raw[j];
-                    } else {
-                        col[e++] = offsRows+perm->perm[col_raw[j]-offsRows];
-                    }
-                } else {
-                    col[e++] = col_raw[j];
+            e = 0;
+            for(i = offsRows; i < offsRows+nRows; i++) {
+                if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+perm->invPerm[i]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
+                    ERROR_LOG("Seek failed");
+                    return GHOST_ERR_IO;
+                }
+                ghost_lidx_t rowlen = rpt_raw[perm->invPerm[i]]+1-rpt_raw[perm->invPerm[i]];
+                ghost_gidx_t rawcol[rowlen];
+                if ((ret = fread(rawcol, GHOST_BINCRS_SIZE_COL_EL, rowlen,filed)) != (size_t)(rowlen)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
                 }
 
+                if (keepCols) {
+                    memcpy(&col[e],rawcol,rowlen*sizeof(ghost_gidx_t));
+                    e+=rowlen;
+                } else {
+                    for(j = 0; j < rowlen; j++) {
+                        col[e++] = perm->perm[rawcol[j]];
+                    }
+                }
             }
-        }
 
-        free(col_raw);
-        free(rpt_raw);
+            //free(col_raw);
+            free(rpt_raw);
+        } else {
+            int64_t *rpt_raw;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
+            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+                ERROR_LOG("Seek failed");
+                return GHOST_ERR_IO;
+            }
+            if (swapReq) {
+                int64_t *tmp;
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
+                for( i = 0; i < (header.nrows+1); i++ ) {
+                    rpt_raw[i] = bswap_64(tmp[i]);
+                }
+                free(tmp);
+            } else {
+                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
+            }
+            int64_t *col_raw;
+            GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,header.nnz*8));
+            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1),SEEK_SET)) {
+                ERROR_LOG("Seek failed");
+                return GHOST_ERR_IO;
+            }
+            if (swapReq) {
+                int64_t *tmp;
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,header.nnz*8));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != (size_t)(header.nnz)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
+                for( i = 0; i < (header.nrows+1); i++ ) {
+                    col_raw[i] = bswap_64(tmp[i]);
+                }
+                free(tmp);
+            } else {
+                if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != (size_t)(header.nnz)){
+                    ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
+                    return GHOST_ERR_IO;
+                }
+            }
+            e = 0;
+            //INFO_LOG("Read %d rows from row %d perm len %d %d %d %d %d",nRows,offsRows,perm->len,perm->perm[0],perm->perm[1],perm->perm[2],perm->perm[3]);
+            for(i = offsRows; i < offsRows+nRows; i++) {
+                for(j = rpt_raw[perm->invPerm[i-offsRows]]; j < rpt_raw[perm->invPerm[i-offsRows]+1]; j++) {
+                    if (!keepCols) {
+                        if ((col_raw[j]>=offsRows+nRows) || (col_raw[j] < offsRows)) {
+                            col[e++] = col_raw[j];
+                        } else {
+                            col[e++] = offsRows+perm->perm[col_raw[j]-offsRows];
+                        }
+                    } else {
+                        col[e++] = col_raw[j];
+                    }
+
+                }
+            }
+
+            free(col_raw);
+            free(rpt_raw);
+        }
     } else {
         int64_t fEnt, lEnt;
         if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*offsRows,SEEK_SET)) {
