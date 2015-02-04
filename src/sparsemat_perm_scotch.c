@@ -222,7 +222,9 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         
         GHOST_CALL_GOTO(ghost_malloc((void **)&rowSort,nrows * sizeof(ghost_sorting_helper_t)),err,ret);
 
-        memset(rpt,0,nrows*sizeof(ghost_gidx_t));
+        free(rpt);
+        GHOST_CALL_GOTO(ghost_malloc((void **)&rpt,(nrows+1)*sizeof(ghost_gidx_t)),err,ret);
+        memset(rpt,0,(nrows+1)*sizeof(ghost_gidx_t));
         
         if (srcType == GHOST_SPARSEMAT_SRC_FILE) {
             char *matrixPath = (char *)matrixSource;
