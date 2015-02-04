@@ -77,7 +77,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
                     ERROR_LOG("Seek failed");
                     return GHOST_ERR_IO;
                 }
-                ghost_lidx_t rowlen = rpt_raw[perm->invPerm[i]]+1-rpt_raw[perm->invPerm[i]];
+                ghost_lidx_t rowlen = rpt_raw[perm->invPerm[i]+1]-rpt_raw[perm->invPerm[i]];
                 ghost_gidx_t rawcol[rowlen];
                 if ((ret = fread(rawcol, GHOST_BINCRS_SIZE_COL_EL, rowlen,filed)) != (size_t)(rowlen)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
