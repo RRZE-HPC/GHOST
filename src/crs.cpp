@@ -30,7 +30,7 @@ static ghost_error_t CRS_stringify_tmpl(ghost_sparsemat_t *mat, char ** str, int
     for (i=0; i<mat->nrows; i++) {
         if (dense) {
             for (col=0, j=CR(mat)->rpt[i]; col<mat->ncols; col++) {
-                if (j<CR(mat)->rpt[i+1] && (CR(mat)->col[j] == col)) { // there is an entry at col
+                if ((j<CR(mat)->rpt[i+1]) && ((mat->traits->flags & GHOST_SPARSEMAT_SAVE_ORIG_COLS)?(mat->col_orig[j] == col):(CR(mat)->col[j] == col))) { // there is an entry at col
                     buffer << val[j] << "\t";
                     j++;
                 } else {
