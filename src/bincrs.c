@@ -502,7 +502,7 @@ ghost_error_t ghost_bincrs_rpt_read_opened(ghost_gidx_t *rpt, char *matrixPath, 
             }
                 rpt[0] = rpt_raw[perm->invPerm[offsRows]];
                 for( i = 1; i < nRows; i++ ) {
-                    rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[i-1]+1]-rpt_raw[perm->invPerm[i-1]]);
+                    rpt[i] = rpt[i-1]+(rpt_raw[perm->invPerm[offsRows+i-1]+1]-rpt_raw[perm->invPerm[offsRows+i-1]]);
                 }
 
             free(rpt_raw);
