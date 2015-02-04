@@ -280,14 +280,14 @@ out:
     free(rpt_loopless);
     free(col_loopless);
 #ifdef GHOST_HAVE_MPI
-    if (dgraph && dorder) {
+    if (dgraph != NULL && dorder != NULL) {
         SCOTCH_dgraphOrderExit(dgraph,dorder);
     }
     if (dgraph) {
         SCOTCH_dgraphExit(dgraph);
     }
 #else
-    if (graph && order) {
+    if (graph != NULL && order != NULL) {
         SCOTCH_graphOrderExit(graph,order);
     }
     if (graph) {
