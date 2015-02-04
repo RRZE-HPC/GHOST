@@ -135,14 +135,15 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx_t)mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
+    
     dorder = SCOTCH_dorderAlloc();
     if (!dorder) {
         ERROR_LOG("Could not alloc SCOTCH order");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx_t)mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
@@ -194,14 +195,15 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_graphBuild(graph, 0, (ghost_gidx_t)mat->nrows, rpt_loopless, rpt_loopless+1, NULL, NULL, nnz_loopless, col_loopless, NULL),err,ret);
+    SCOTCH_CALL_GOTO(SCOTCH_graphCheck(graph),err,ret);
+    
     order = SCOTCH_orderAlloc();
     if (!order) {
         ERROR_LOG("Could not alloc SCOTCH order");
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
-    SCOTCH_CALL_GOTO(SCOTCH_graphBuild(graph, 0, (ghost_gidx_t)mat->nrows, rpt_loopless, rpt_loopless+1, NULL, NULL, nnz_loopless, col_loopless, NULL),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_graphCheck(graph),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_graphOrderInit(graph,order,mat->context->permutation->perm,NULL,NULL,NULL,NULL),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_stratGraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_graphOrderCompute(graph,order,strat),err,ret);
@@ -278,14 +280,23 @@ out:
     free(rpt_loopless);
     free(col_loopless);
 #ifdef GHOST_HAVE_MPI
-    SCOTCH_dgraphOrderExit(dgraph,dorder);
-    SCOTCH_dgraphExit(dgraph);
-    SCOTCH_stratExit(strat);
+    if (dgraph && dorder) {
+        SCOTCH_dgraphOrderExit(dgraph,dorder);
+    }
+    if (dgraph) {
+        SCOTCH_dgraphExit(dgraph);
+    }
 #else
-    SCOTCH_graphOrderExit(graph,order);
-    SCOTCH_graphExit(graph);
-    SCOTCH_stratExit(strat);
+    if (graph && order) {
+        SCOTCH_graphOrderExit(graph,order);
+    }
+    if (graph) {
+        SCOTCH_graphExit(graph);
+    }
 #endif
+    if (strat) {
+        SCOTCH_stratExit(strat);
+    }
     GHOST_INSTR_STOP("scotch")
     
     
