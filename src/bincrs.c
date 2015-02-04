@@ -73,7 +73,7 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             }
             e = 0;
             for(i = offsRows; i < offsRows+nRows; i++) {
-                if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+perm->invPerm[i]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
+                if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+rpt_raw[perm->invPerm[i]]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
                     ERROR_LOG("Seek failed");
                     return GHOST_ERR_IO;
                 }
