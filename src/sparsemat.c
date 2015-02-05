@@ -265,6 +265,7 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
     if (mat->context->flags & GHOST_CONTEXT_DISTRIBUTED) {
 #ifdef GHOST_HAVE_MPI
             ghost_gidx_t *grpt = NULL;
+            int grptAllocated = 1;
             if (mat->context->flags & GHOST_CONTEXT_DIST_NZ) { // rpt has already been read at rank 0
                 int msgcount = 0;
 
@@ -293,6 +294,7 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
                         ret = GHOST_ERR_UNKNOWN;
                         goto err;
                     }
+                    grptAllocated = 1;
 #pragma omp parallel for schedule(runtime)
                     for (i = 0; i < mat->context->lnrows[me]+1; i++) {
                         grpt[i] = 0;
@@ -307,6 +309,7 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
                 
             } else { // read rpt and compute first entry and number of entries
                 GHOST_CALL_GOTO(ghost_malloc_align((void **)&grpt,(mat->context->lnrows[me]+1) * sizeof(ghost_gidx_t), GHOST_DATA_ALIGNMENT),err,ret);
+                grptAllocated = 1;
                 GHOST_CALL_GOTO(ghost_bincrs_rpt_read(grpt, matrixPath, mat->context->lfRow[me], mat->context->lnrows[me]+1, mat->context->permutation),err,ret); 
 
                 ghost_gidx_t lfEnt = grpt[0];
@@ -328,6 +331,9 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
         }
 
         (*rpt)[mat->context->lnrows[me]] = mat->context->lnEnts[me];
+
+        if( grptAllocated )
+          free(grpt);
 #endif
     }
 
@@ -364,7 +370,10 @@ ghost_error_t ghost_sparsemat_fromfile_common(ghost_sparsemat_t *mat, char *matr
 err:
 
 out:
-
+#ifdef GHOST_HAVE_MPI
+    free(stat);
+    free(req);
+#endif
 
     return ret;
 }

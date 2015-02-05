@@ -444,6 +444,7 @@ ghost_error_t ghost_bincrs_val_read_opened(char *val, ghost_datatype_t datatype,
 
     }
 
+    free(rpt_raw);
     return GHOST_SUCCESS;
 }
 
