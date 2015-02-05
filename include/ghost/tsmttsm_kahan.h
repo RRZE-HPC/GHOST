@@ -1,10 +1,10 @@
 /**
- * @file tsmttsm.h
- * @brief The specialized GEMM function tsmttsm.
+ * @file tsmttsm_kahan.h
+ * @brief The specialized GEMM function Kahan-TSMTTSM.
  * @author Moritz Kreutzer <moritz.kreutzer@fau.de>
  */
-#ifndef GHOST_TSMTTSM_H
-#define GHOST_TSMTTSM_H
+#ifndef GHOST_TSMTTSM_KAHAN_H
+#define GHOST_TSMTTSM_KAHAN_H
 
 #include "config.h"
 #include "types.h"
@@ -17,9 +17,9 @@ typedef struct
     int wcols;
     int vcols;
     ghost_implementation_t impl;
-} ghost_tsmttsm_parameters_t;
+} ghost_tsmttsm_kahan_parameters_t;
 
-typedef ghost_error_t (*ghost_tsmttsm_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *, int);
+typedef ghost_error_t (*ghost_tsmttsm_kahan_kernel_t)(ghost_densemat_t *, ghost_densemat_t *, ghost_densemat_t *, void *, void *, int);
 
 
 #ifdef __cplusplus
@@ -54,10 +54,10 @@ extern "C" {
      *
      * @return ::GHOST_SUCCESS on success or an error indicator.
      */
-    ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv);
-    
+    ghost_error_t ghost_tsmttsm_kahan(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int reduce, int conjv);
+
     /**
-     * @brief Check whether TSMTTSM can be applied instead of GEMM with the given arguments.
+     * @brief Check whether Kahan-TSMTTSM can be applied instead of GEMM with the given arguments.
      *
      * @param x
      * @param v
@@ -71,7 +71,7 @@ extern "C" {
      *
      * @return 
      */
-    ghost_error_t ghost_tsmttsm_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
+    ghost_error_t ghost_tsmttsm_kahan_valid(ghost_densemat_t *x, ghost_densemat_t *v, const char * transv, 
         ghost_densemat_t *w, const char *transw, void *alpha, void *beta, int reduce, int printerror);
 
 #ifdef __cplusplus

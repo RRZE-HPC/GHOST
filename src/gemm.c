@@ -410,6 +410,21 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     }
     
     if (!(v_in->traits.flags & GHOST_DENSEMAT_DEVICE) && !(flags & GHOST_GEMM_NOT_SPECIAL)) { 
+        if (flags & GHOST_GEMM_KAHAN) {
+            if (ghost_tsmttsm_kahan_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+                INFO_LOG("Transparently call special implementation Kahan-TSMTTSM");
+                GHOST_CALL_GOTO(ghost_tsmttsm_kahan(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
+                goto out;
+            } else {
+                WARNING_LOG("Will not do Kahan summation although requested!");
+            }
+        }
+
+        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
+            INFO_LOG("Transparently call special implementation TSMTTSM");
+            GHOST_CALL_GOTO(ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
+            goto out;
+        }
         if (ghost_tsmm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM");
             GHOST_CALL_GOTO(ghost_tsmm(x_in,v_in,w_in,alpha,beta),err,ret);
@@ -418,11 +433,6 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
         if (ghost_tsmm_inplace_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
             INFO_LOG("Transparently call special implementation TSMM-inplace");
             GHOST_CALL_GOTO(ghost_tsmm_inplace(x_in,w_in,alpha,beta),err,ret);
-            goto out;
-        }
-        if (ghost_tsmttsm_valid(x_in,v_in,transv_in,w_in,transw_in,alpha,beta,reduce,0) == GHOST_SUCCESS) {
-            INFO_LOG("Transparently call special implementation TSMTTSM");
-            GHOST_CALL_GOTO(ghost_tsmttsm(x_in,v_in,w_in,alpha,beta,reduce,transv_in[0] == 'C' || transv_in[0] == 'c'),err,ret);
             goto out;
         }
     }
