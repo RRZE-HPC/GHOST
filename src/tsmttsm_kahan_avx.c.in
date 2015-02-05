@@ -4,12 +4,12 @@
 #include "ghost/instr.h"
 #include "ghost/locality.h"
 #include "ghost/util.h"
-#include "ghost/tsmttsm_avx_gen.h"
+#include "ghost/tsmttsm_kahan_avx_gen.h"
 #include <immintrin.h>
 
 
 #GHOST_FUNC_BEGIN#CFGK=${CFG_BLOCKVECTOR_SIZES}#CFGM=${CFG_BLOCKVECTOR_SIZES}
-ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
+ghost_error_t ghost_tsmttsm_kahan__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densemat_t *w, void *alpha, void *beta, int conjv)
 {
     UNUSED(conjv);
 #ifdef GHOST_HAVE_AVX
@@ -50,6 +50,12 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 
     ghost_lidx_t i,j;
 
+    INFO_LOG("Kahan summation");
+    if (CFGK%4 || CFGM%4) {
+        WARNING_LOG("Kahan TSMTTSM only implemented for K and M multiples of 4. "
+                "Fallback to normal summation for the remainder!");
+    }
+    
     if (x->traits.storage == GHOST_DENSEMAT_COLMAJOR) {
         ghost_lidx_t k;
         for (k=0; k<CFGK; k++) {
@@ -63,6 +69,9 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
 #pragma omp parallel private(j,k)
         {
             j=0;
+            #GHOST_UNROLL#__m256d c@ = _mm256_setzero_pd();#4
+            #GHOST_UNROLL#__m256d y@;#4
+            #GHOST_UNROLL#__m256d t@;#4
             #GHOST_UNROLL#__m256d vvec@;#4
             #GHOST_UNROLL#__m256d wvec@;#4
 
@@ -81,7 +90,11 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                     
                     for (j=0; j+4<=CFGM; j+=4) {
                         #GHOST_UNROLL#vvec@ = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec@);#4
-                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),vvec@));#4
+
+                        #GHOST_UNROLL#y@ = _mm256_sub_pd(vvec@,c@);#4
+                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]));#4
+                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j])),y@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&x_priv[(k+@)*ldxpriv+j],t@);#4
 
                     }
                     for (; j<CFGM; j++) {
@@ -91,11 +104,17 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                         x_priv[(k+3)*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+(k+3)];
                     }
                 }
+                c0 = _mm256_setzero_pd();
                 for (; k<CFGK; k++) {
                     wvec0 = _mm256_mul_pd(_mm256_set1_pd(wval[i*ldw+(k+0)]),alphavec);
                     for (j=0; j+4<=CFGM; j+=4) {
                         vvec0 = _mm256_mul_pd(_mm256_load_pd(&vval[i*ldv+j]),wvec0);
-                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+j],_mm256_add_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]),vvec0));
+
+                        y0 = _mm256_sub_pd(vvec0,c0);
+                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]));
+                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j])),y0);
+                        _mm256_store_pd(&x_priv[(k+0)*ldxpriv+j],t0);
+
                     }
                     for (; j<CFGM; j++) {
                         x_priv[k*ldxpriv+j] += dalpha*vval[i*ldv+j]*wval[i*ldw+k];
@@ -103,12 +122,18 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                 }
             }
             
+            #GHOST_UNROLL#c@ = _mm256_setzero_pd();#4
+
 #pragma omp critical
             {
                 j=0;
                 for (k=0; k+4<=CFGK; k+=4) {
                     for (j=0; j+4<=CFGM; j+=4) {
-                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+@)*ldx+j]),_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j])));#4
+                        #GHOST_UNROLL#y@ = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+@)*ldxpriv+j]),c@);#4
+                        #GHOST_UNROLL#t@ = _mm256_add_pd(y@,_mm256_load_pd(&xval[(k+@)*ldx+j]));#4
+                        #GHOST_UNROLL#c@ = _mm256_sub_pd(_mm256_sub_pd(t@,_mm256_load_pd(&xval[(k+@)*ldx+j])),y@);#4
+                        #GHOST_UNROLL#_mm256_store_pd(&xval[(k+@)*ldx+j],t@);#4
+
                     }
                     for (; j<CFGM; j++) {
                         xval[(k+0)*ldx+j] += x_priv[(k+0)*ldxpriv+j];
@@ -117,9 +142,14 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
                         xval[(k+3)*ldx+j] += x_priv[(k+3)*ldxpriv+j];
                     }
                 }
+                c0 = _mm256_setzero_pd();
                 for (; k<CFGK; k++) {
                     for (j=0; j+4<=CFGM; j+=4) {
-                        _mm256_store_pd(&xval[(k+0)*ldx+j],_mm256_add_pd(_mm256_load_pd(&xval[(k+0)*ldx+j]),_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j])));
+                        y0 = _mm256_sub_pd(_mm256_load_pd(&x_priv[(k+0)*ldxpriv+j]),c0);
+                        t0 = _mm256_add_pd(y0,_mm256_load_pd(&xval[(k+0)*ldx+j]));
+                        c0 = _mm256_sub_pd(_mm256_sub_pd(t0,_mm256_load_pd(&xval[(k+0)*ldx+j])),y0);
+                        _mm256_store_pd(&xval[(k+0)*ldx+j],t0);
+
                     }
                     for (; j<CFGM; j++) {
                         xval[k*ldx+j] += x_priv[k*ldxpriv+j];

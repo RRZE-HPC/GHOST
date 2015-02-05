@@ -15,6 +15,7 @@
 #include "tsmm.h"
 #include "tsmm_inplace.h"
 #include "tsmttsm.h"
+#include "tsmttsm_kahan.h"
 
 #include <stdarg.h>
 
@@ -24,7 +25,8 @@ typedef enum {
      * @brief Do _not_ look for special implementations!
      */
     GHOST_GEMM_NOT_SPECIAL = 1,
-    GHOST_GEMM_NOT_CLONE_ALIASED = 2
+    GHOST_GEMM_NOT_CLONE_ALIASED = 2,
+    GHOST_GEMM_KAHAN = 4
 } ghost_gemm_flags_t;
 
 typedef struct {
