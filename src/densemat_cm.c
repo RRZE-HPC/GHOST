@@ -154,6 +154,7 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
         free(vec->val);vec->val = NULL; 
         ghost_densemat_rm_malloc(vec);
         for (col=0; col<vec->traits.ncols; col++) {
+#pragma omp parallel for schedule(runtime)
             for (row=0; row<vec->traits.nrows; row++) {
                 memcpy(vec->val[0]+row*vec->traits.ncolspadded*vec->elSize+col*vec->elSize,
                         oldval+vec->traits.nrowspadded*col*vec->elSize+row*vec->elSize,
@@ -180,6 +181,7 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
             WARNING_LOG("%s",str);
 
             for (col=0; col<vec->traits.ncols; col++) {
+#pragma omp parallel for schedule(runtime)
                 for (row=0; row<vec->traits.nrows; row++) {
                     memcpy(&vec->viewing->val[vec->viewing_row+row][(vec->viewing_col+col)*vec->elSize],
                             vec->val[0]+vec->traits.nrowspadded*col*vec->elSize+row*vec->elSize,
@@ -199,6 +201,7 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
             vec->val = NULL;
             GHOST_CALL_RETURN(ghost_malloc((void **)&vec->val,vec->traits.nrowspadded*sizeof(char *)));
             vec->val[0] = oldval;
+#pragma omp parallel for schedule(runtime)
             for (row=1; row<vec->traits.nrowspadded; row++) {
                 vec->val[row] = vec->val[0]+vec->traits.ncolspadded*row*vec->elSize;
             }
@@ -209,6 +212,7 @@ static ghost_error_t vec_cm_memtranspose(ghost_densemat_t *vec)
             memcpy(tmp,vec->val[0],vec->elSize*vec->traits.nrowspadded*vec->traits.ncolspadded);
 
             for (col=0; col<vec->traits.ncols; col++) {
+#pragma omp parallel for schedule(runtime)
                 for (row=0; row<vec->traits.nrows; row++) {
                     memcpy(vec->val[0]+row*vec->traits.ncolspadded*vec->elSize+col*vec->elSize,
                             tmp+vec->traits.nrowspadded*col*vec->elSize+row*vec->elSize,
