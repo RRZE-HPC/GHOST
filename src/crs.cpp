@@ -57,7 +57,8 @@ static ghost_error_t CRS_stringify_tmpl(ghost_sparsemat_t *mat, char ** str, int
         }
     }
 
-    *str = strdup(buffer.str().c_str());
+    GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
+    strcpy(*str, buffer.str().c_str());
 
     return GHOST_SUCCESS;
 }

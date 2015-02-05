@@ -850,7 +850,6 @@ static void SELL_free(ghost_sparsemat_t *mat)
     if (!mat) {
         return;
     }
-    ghost_sparsemat_destroy_common(mat);
 
     if (mat->data) {
 #ifdef GHOST_HAVE_CUDA
@@ -883,8 +882,9 @@ static void SELL_free(ghost_sparsemat_t *mat)
         SELL_free(mat->remotePart);
     }
 
-    free(mat);
+    ghost_sparsemat_destroy_common(mat);
 
+    free(mat);
 }
 
 /*static int ld(int i) 

@@ -254,7 +254,7 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
     }
  
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
-    *str = strdup(buffer.str().c_str()); 
+    strcpy(*str, buffer.str().c_str());
 
     return GHOST_SUCCESS;
 }

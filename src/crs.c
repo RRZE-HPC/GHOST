@@ -884,7 +884,6 @@ static void CRS_free(ghost_sparsemat_t * mat)
 {
     if (mat) {
         DEBUG_LOG(1,"Freeing CRS matrix");
-        ghost_sparsemat_destroy_common(mat);
        
         if (CR(mat)) { 
             free(CR(mat)->rpt); CR(mat)->rpt = NULL;
@@ -901,6 +900,7 @@ static void CRS_free(ghost_sparsemat_t * mat)
             CRS_free(mat->remotePart);
         }
 
+        ghost_sparsemat_destroy_common(mat);
         free(mat);
         DEBUG_LOG(1,"CRS matrix freed successfully");
     }

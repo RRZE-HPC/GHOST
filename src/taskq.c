@@ -202,6 +202,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
         }
         if (availcores < curTask->nThreads) {
             DEBUG_LOG(1,"Skipping task %p because it needs %d threads and only %d threads are available",(void *)curTask,curTask->nThreads,availcores);
+            hwloc_bitmap_free(parentscores);
             curTask = curTask->next;
             continue;
         }
@@ -306,6 +307,7 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
             WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
         }
 
+        hwloc_bitmap_free(mybusy);
         hwloc_bitmap_free(parentscores);
         DEBUG_LOG(1,"Pinning successful, returning");
 
