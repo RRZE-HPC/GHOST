@@ -156,6 +156,7 @@ set (HEADERS
     include/ghost/tsmm.h
     include/ghost/tsmm_inplace.h
     include/ghost/tsmttsm.h
+    include/ghost/tsmttsm_kahan.h
     include/ghost/types.h
     include/ghost/util.h
     )
