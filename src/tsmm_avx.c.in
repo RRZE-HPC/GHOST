@@ -78,6 +78,7 @@ ghost_error_t ghost_tsmm__a_avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
         }
     }
 
+    free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -160,7 +161,8 @@ ghost_error_t ghost_tsmm__u_avx_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost_d
             }
         }
     }
-
+    
+    free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -246,6 +248,7 @@ ghost_error_t ghost_tsmm__a_avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
 err:
 
 out:
+    free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
@@ -330,6 +333,7 @@ ghost_error_t ghost_tsmm__u_avx_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v, 
 err:
 
 out:
+    free(wtran);
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH)
     return ret;
 #else
