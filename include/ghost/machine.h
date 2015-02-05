@@ -45,6 +45,18 @@ extern "C" {
     /**
      * @ingroup machine
      * 
+     * @brief Get the size of the first level cache. 
+     *
+     * @param size Where to store the size.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     *
+     * This information may be useful in situations where the locality of data (cache or memory) influences things like the OpenMP scheduling.
+     */
+    ghost_error_t ghost_machine_innercache_size(uint64_t *size);
+    /**
+     * @ingroup machine
+     * 
      * @brief Get the size of the last level cache. 
      *
      * @param size Where to store the size.
