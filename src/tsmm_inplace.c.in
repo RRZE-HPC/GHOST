@@ -19,7 +19,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_NCOLSIN_NCOLSOUT(ghost_densemat_t *x, 
     
     INFO_LOG("In in-place TSMM with fixed block sizes [NCOLSIN][NCOLSOUT] (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,w->traits.nrows,w->traits.ncols);
 
-    double * const restrict wval = NULL, * restrict xval;
+    double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;
@@ -67,7 +67,7 @@ ghost_error_t ghost_tsmm_inplace__plain_d_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,dalpha,n,m,m,m);
 
-    double * const restrict wval = NULL, * restrict xval;
+    double * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;
@@ -113,7 +113,7 @@ ghost_error_t ghost_tsmm_inplace__plain_z_x_x(ghost_densemat_t *x, ghost_densema
     
     INFO_LOG("In in-place TSMM with arbitrary block size (%"PRLIDX"x%"PRLIDX") <- %f+I*%f * (%"PRLIDX"x%"PRLIDX") * (%"PRLIDX"x%"PRLIDX")",n,m,creal(dalpha),cimag(dalpha),n,m,m,m);
 
-    double complex * const restrict wval = NULL, * restrict xval;
+    double complex * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldw, ldx;
 
     ldw = *w->stride;

@@ -23,7 +23,7 @@ ghost_error_t ghost_tsmttsm__avx_d_CFGK_CFGM(ghost_densemat_t *x, ghost_densemat
     ghost_lidx_t n = v->traits.nrows;
     INFO_LOG("In AVX TSMTTSM with two fixed block sizes [CFGK][CFGM] %dx%d <- %dx%d * %dx%d",CFGM,CFGK,CFGM,n,n,CFGK);
     
-    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;

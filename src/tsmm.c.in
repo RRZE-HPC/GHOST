@@ -17,7 +17,7 @@ ghost_error_t ghost_tsmm__u_plain_d_BLOCKSZ1_BLOCKSZ2(ghost_densemat_t *x, ghost
 
     INFO_LOG("In TSMM with two fixed block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -65,7 +65,7 @@ ghost_error_t ghost_tsmm__u_plain_d_x_x(ghost_densemat_t *x, ghost_densemat_t *v
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
+    double * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
@@ -135,7 +135,7 @@ ghost_error_t ghost_tsmm__u_plain_z_x_x(ghost_densemat_t *x, ghost_densemat_t *v
     
     INFO_LOG("In TSMM with arbitrary block sizes %"PRLIDX"x%"PRLIDX" <- %"PRLIDX"x%"PRLIDX" * %"PRLIDX"x%"PRLIDX,n,k,n,m,m,k);
 
-    double complex * const restrict vval = NULL, * const restrict wval = NULL, * restrict xval;
+    double complex * restrict vval = NULL, * restrict wval = NULL, * restrict xval;
     ghost_lidx_t ldv, ldw, ldx;
 
     ldv = *v->stride;
