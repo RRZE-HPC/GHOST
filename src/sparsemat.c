@@ -431,6 +431,8 @@ ghost_error_t ghost_sparsemat_perm_sort(ghost_sparsemat_t *mat, void *matrixSour
                 }
                 rowSort[i].row = i;
             }
+            free(tmpval);
+            free(tmpcol);
         }
         if (ret != GHOST_SUCCESS) {
             goto err;

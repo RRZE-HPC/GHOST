@@ -132,6 +132,8 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             }
 
         }
+        free(tmp[0]);
+        free(tmp);
     }
     if (options & GHOST_SPMV_DOT_ANY) {
         if (!local_dot_product) {

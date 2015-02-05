@@ -286,36 +286,37 @@ static ghost_task_t * taskq_findDeleteAndPinTask(ghost_taskq_t *q)
                         break;
                     }
                 }
-                }
+            }
 #ifdef GHOST_HAVE_INSTR_LIKWID
-                LIKWID_MARKER_THREADINIT;
+            LIKWID_MARKER_THREADINIT;
 #endif
-            }
-            if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
-                //char *a;
-                //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-                //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
-                hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
-                //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
-                //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
-            }
-            ghost_pumap_setbusy(mybusy);
+        }
+        if (curTask->parent && !(curTask->parent->flags & GHOST_TASK_NOT_ALLOW_CHILD)) {
+            //char *a;
+            //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+            //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+            hwloc_bitmap_or(curTask->parent->childusedmap,curTask->parent->childusedmap,mybusy);
+            //hwloc_bitmap_list_asprintf(&a,curTask->parent->childusedmap);
+            //WARNING_LOG("### %p %s",curTask->parent->childusedmap,a);
+        }
+        ghost_pumap_setbusy(mybusy);
 //            hwloc_bitmap_or(pumap->busy,pumap->busy,mybusy);
 
-            if (reservedCores < curTask->nThreads) {
-                WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
-            }
-
-            DEBUG_LOG(1,"Pinning successful, returning");
-
-            return curTask;
+        if (reservedCores < curTask->nThreads) {
+            WARNING_LOG("Too few cores reserved! %d < %d This should not have happened...",reservedCores,curTask->nThreads);
         }
 
-        DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
-        return NULL;
+        hwloc_bitmap_free(parentscores);
+        DEBUG_LOG(1,"Pinning successful, returning");
 
-
+        return curTask;
     }
+
+    DEBUG_LOG(1,"Could not find and delete a task, returning NULL");
+    return NULL;
+
+
+}
 
 ghost_error_t ghost_taskq_startroutine(void *(**func)(void *))
 {

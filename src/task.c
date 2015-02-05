@@ -145,7 +145,7 @@ void ghost_task_destroy(ghost_task_t *t)
 //        free(t->cores);
         hwloc_bitmap_free(t->coremap);
         hwloc_bitmap_free(t->childusedmap);
-        //free(t->ret);
+        free(t->ret);
         free(t->mutex);
         free(t->finishedCond);
     }
