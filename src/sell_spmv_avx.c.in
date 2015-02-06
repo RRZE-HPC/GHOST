@@ -567,6 +567,18 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     __m256d scale, beta;
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,double,double);
+    
+    double *sshiftpadded = NULL;
+    int sshiftcopied = 0;
+    if ((spmvmOptions & GHOST_SPMV_VSHIFT) && (invec->traits.ncols % 4)) {
+        INFO_LOG("Copy to padded VSHIFT");
+        GHOST_CALL_RETURN(ghost_malloc((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double)));
+        memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(double));
+        memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(double));
+        sshiftcopied = 1;
+    } else {
+        sshiftpadded = sshift;
+    }
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
     
@@ -610,7 +622,7 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             if (spmvmOptions & GHOST_SPMV_SHIFT) {
                 #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_broadcast_sd(&sshift[0]),_mm256_load_pd(rval+@*4)));#NVECS/4
             } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
-                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshift[(@%(NVECS/4))*4]),_mm256_load_pd(rval+@*4)));#NVECS/4
+                #GHOST_UNROLL#tmp@ = _mm256_sub_pd(tmp@,_mm256_mul_pd(_mm256_load_pd(&sshiftpadded[(@%(NVECS/4))*4]),_mm256_load_pd(rval+@*4)));#NVECS/4
             }
             if (spmvmOptions & GHOST_SPMV_SCALE) {
                 #GHOST_UNROLL#tmp@ = _mm256_mul_pd(scale,tmp@);#NVECS/4
@@ -656,6 +668,10 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         }
         free(partsums);
     }
+    if (sshiftcopied) {
+        free(sshiftpadded);
+    }
+
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
@@ -707,6 +723,19 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     #GHOST_UNROLL#__m256d vshift@;#NVECS/2
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,complex double,complex double);
+    
+    complex double *sshiftpadded = NULL;
+    int sshiftcopied = 0;
+    if ((spmvmOptions & GHOST_SPMV_VSHIFT) && (invec->traits.ncols % 4)) {
+        INFO_LOG("Copy to padded VSHIFT");
+        GHOST_CALL_RETURN(ghost_malloc((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(complex double)));
+        memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(complex double));
+        memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(complex double));
+        sshiftcopied = 1;
+    } else {
+        sshiftpadded = sshift;
+    }
+        
     scale = _mm256_setzero_pd();
     scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),0);
     scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),1);
@@ -719,7 +748,7 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),0);
         shift = _mm256_insertf128_pd(shift,_mm_load_pd((double *)&sshift[0]),1);
     } else if (spmvmOptions & GHOST_SPMV_VSHIFT) {
-        #GHOST_UNROLL#vshift@ = _mm256_load_pd(&((double *)sshift)[(@%(NVECS/2))*4]);#NVECS/2
+        #GHOST_UNROLL#vshift@ = _mm256_load_pd(&((double *)sshiftpadded)[(@%(NVECS/2))*4]);#NVECS/2
     }
 
     
@@ -832,6 +861,10 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
             }
         }
         free(partsums);
+    }
+
+    if (sshiftcopied) {
+        free(sshiftpadded);
     }
 
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
