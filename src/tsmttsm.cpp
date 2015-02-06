@@ -101,6 +101,8 @@ ghost_error_t ghost_tsmttsm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_dens
     p.impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
     p.impl = GHOST_IMPLEMENTATION_SSE;
+#else
+    p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
     if (x->traits.ncolspadded < 4 || x->traits.flags & GHOST_DENSEMAT_VIEW) {
         p.impl = GHOST_IMPLEMENTATION_PLAIN;

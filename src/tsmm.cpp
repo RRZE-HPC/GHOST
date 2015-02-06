@@ -108,6 +108,8 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     p.impl = GHOST_IMPLEMENTATION_AVX;
 #elif defined(GHOST_HAVE_SSE)
     p.impl = GHOST_IMPLEMENTATION_SSE;
+#else
+    p.impl = GHOST_IMPLEMENTATION_PLAIN;
 #endif
 
     p.alignment = GHOST_ALIGNED;
