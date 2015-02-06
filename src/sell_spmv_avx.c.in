@@ -208,11 +208,11 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_cm_CHUNKHEIGHT_x(ghost_sparsemat_t *mat,
 
     GHOST_SPMV_PARSE_ARGS(spmvmOptions,argp,sscale,sbeta,sshift,local_dot_product,complex double,complex double);
     scale = _mm256_setzero_pd();
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),0);
-    scale = _mm256_insertf128_pd(scale,_mm_load_pd((double *)&sscale),1);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),0);
+    scale = _mm256_insertf128_pd(scale,_mm_loadu_pd((double *)&sscale),1);
     beta = _mm256_setzero_pd();
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),0);
-    beta = _mm256_insertf128_pd(beta,_mm_load_pd((double *)&sbeta),1);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),0);
+    beta = _mm256_insertf128_pd(beta,_mm_loadu_pd((double *)&sbeta),1);
 
     int nthreads = 1;
     unsigned clsize;
@@ -570,14 +570,12 @@ ghost_error_t ghost_sellspmv__a_avx_d_d_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     
     double *sshiftpadded = NULL;
     int sshiftcopied = 0;
-    if ((spmvmOptions & GHOST_SPMV_VSHIFT) && (invec->traits.ncols % 4)) {
+    if ((spmvmOptions & GHOST_SPMV_VSHIFT) ) {
         INFO_LOG("Copy to padded VSHIFT");
-        GHOST_CALL_RETURN(ghost_malloc((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double)));
+        GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(double));
         sshiftcopied = 1;
-    } else {
-        sshiftpadded = sshift;
     }
     scale = _mm256_broadcast_sd(&sscale);
     beta = _mm256_broadcast_sd(&sbeta);
@@ -726,14 +724,12 @@ ghost_error_t ghost_sellspmv__a_avx_z_z_rm_CHUNKHEIGHT_NVECS(ghost_sparsemat_t *
     
     complex double *sshiftpadded = NULL;
     int sshiftcopied = 0;
-    if ((spmvmOptions & GHOST_SPMV_VSHIFT) && (invec->traits.ncols % 4)) {
+    if ((spmvmOptions & GHOST_SPMV_VSHIFT)) {
         INFO_LOG("Copy to padded VSHIFT");
-        GHOST_CALL_RETURN(ghost_malloc((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(complex double)));
+        GHOST_CALL_RETURN(ghost_malloc_align((void **)&sshiftpadded,PAD(invec->traits.ncols,4)*sizeof(complex double),256));
         memset(sshiftpadded,0,PAD(invec->traits.ncols,4)*sizeof(complex double));
         memcpy(sshiftpadded,sshift,invec->traits.ncols*sizeof(complex double));
         sshiftcopied = 1;
-    } else {
-        sshiftpadded = sshift;
     }
         
     scale = _mm256_setzero_pd();
