@@ -95,6 +95,39 @@
     /* Trick the compiler to not produce warnings about unused variables */\
     if (row+col+memrow1+memcol1+memrow2+memcol2 < 0) {printf("Never happens\n");}
 
+/**
+ * @brief Iterate over two densemats synchronously and execute a statement for
+ * each entry. The second densemat is stored transposed (compared to the first).
+ * An offset may be given for the second input densemat.
+ *
+ * This macro sets the following variables: 
+ * row,col,memrow1,memcol1,memrow2,memcol2
+ *
+ * @param vec1 The first densemat
+ * @param vec2 The second densemat
+ * @param vec2roffs The row offset to the second densemat.
+ * @param vec2coffs The col offset to the second densemat.
+ * @param call The statement to call for each entry.
+ *
+ * @return 
+ */
+#define DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec1,vec2,vec2roffs,vec2coffs,call)\
+    ghost_lidx_t row=0,col=0,memrow1=0,memcol1=0,memrow2=0,memcol2=0;\
+    if (ghost_omp_in_parallel()) {\
+        DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
+        call;\
+        DENSEMAT_ITER_END();\
+    } else {\
+        _Pragma("omp parallel")\
+        {\
+            DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs);\
+            call;\
+            DENSEMAT_ITER_END();\
+        }\
+    }\
+    /* Trick the compiler to not produce warnings about unused variables */\
+    if (row+col+memrow1+memcol1+memrow2+memcol2 < 0) {printf("Never happens\n");}
+
 
 
 #ifdef ROWMAJOR
@@ -103,6 +136,7 @@
 #endif
 
 #define DENSEMAT_VAL(vec,row,col) &vec->val[row][col*vec->elSize]
+#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[col][row*vec->elSize]
 #define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[(row*vec->traits.ncolspadded+col)*vec->elSize]
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,row,col,memrow,memcol)\
@@ -134,6 +168,18 @@
                 col<vec1->traits.ncols;\
                 col++, memcol1++, memcol2++) {
 
+#define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
+    ghost_lidx_t coloffs1 = ghost_bitmap_first(vec1->ldmask);\
+    ghost_lidx_t coloffs2 = ghost_bitmap_first(vec2->trmask)+vec2coffs;\
+    ghost_lidx_t rowoffs1 = ghost_bitmap_first(vec1->trmask);\
+    ghost_lidx_t rowoffs2 = ghost_bitmap_first(vec2->ldmask)+vec2roffs;\
+    _Pragma("omp for private(memrow1,memrow2,col,memcol1,memcol2) schedule(runtime)")\
+    for (row=0; row<vec1->traits.nrows; row++) {\
+        memrow1 = row+rowoffs1;\
+        memrow2 = row+rowoffs2;\
+        for (col = 0, memcol1 = coloffs1, memcol2 = coloffs2;\
+                col<vec1->traits.ncols;\
+                col++, memcol1++, memcol2++) {\
 
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\
@@ -169,6 +215,7 @@
 #elif defined(COLMAJOR)
 
 #define DENSEMAT_VAL(vec,row,col) &vec->val[col][row*vec->elSize]
+#define DENSEMAT_VAL_TRANSPOSED(vec,row,col) &vec->val[row][col*vec->elSize]
 #define DENSEMAT_CUVAL(vec,row,col) &((char *)(vec->cu_val))[(col*vec->traits.nrowspadded+row)*vec->elSize]
 
 #define DENSEMAT_ITER_BEGIN_COMPACT(vec,row,col,memrow,memcol)\
@@ -201,6 +248,18 @@
                 col<vec1->traits.ncols;\
                 col++, memcol1++, memcol2++) {\
 
+#define DENSEMAT_ITER2_BEGIN_COMPACT_OFFS_TRANSPOSED(vec1,vec2,row,col,memrow1,memrow2,memcol1,memcol2,vec2roffs,vec2coffs)\
+    ghost_lidx_t coloffs1 = ghost_bitmap_first(vec1->trmask);\
+    ghost_lidx_t coloffs2 = ghost_bitmap_first(vec2->ldmask)+vec2coffs;\
+    ghost_lidx_t rowoffs1 = ghost_bitmap_first(vec1->ldmask);\
+    ghost_lidx_t rowoffs2 = ghost_bitmap_first(vec2->trmask)+vec2roffs;\
+    _Pragma("omp for private(memrow1,memrow2,col,memcol1,memcol2) schedule(runtime)")\
+    for (row=0; row<vec1->traits.nrows; row++) {\
+        memrow1 = row+rowoffs1;\
+        memrow2 = row+rowoffs2;\
+        for (col = 0, memcol1 = coloffs1, memcol2 = coloffs2;\
+                col<vec1->traits.ncols;\
+                col++, memcol1++, memcol2++) {\
 
 
 #define DENSEMAT_ITER_BEGIN_SCATTERED(vec,row,col,memrow,memcol)\

@@ -691,7 +691,10 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec,
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
 
-        DENSEMAT_ITER(vec,memcpy(DENSEMAT_VAL(vec,row,col),&vec2->val[col+coffs][(row+ghost_bitmap_first(vec2->ldmask)+roffs)*vec2->elSize],vec->elSize));
+        /*DENSEMAT_ITER(vec,memcpy(DENSEMAT_VAL(vec,row,col),&vec2->val[col+coffs][(row+ghost_bitmap_first(vec2->ldmask)+roffs)*vec2->elSize],vec->elSize));*/
+        DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,memcpy(
+                    DENSEMAT_VAL(vec,row,memcol1),
+                    DENSEMAT_VAL_TRANSPOSED(vec2,memrow2,col+coffs),vec->elSize));
     }
 
     vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
