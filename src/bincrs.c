@@ -98,65 +98,64 @@ ghost_error_t ghost_bincrs_col_read_opened(ghost_gidx_t *col, char *matrixPath, 
             free(rpt_raw);
         } else {
             int64_t *rpt_raw;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(header.nrows+1)*8));
-            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER,SEEK_SET)) {
+            GHOST_CALL_RETURN(ghost_malloc((void **)&rpt_raw,(nRows+1)*8));
+            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+offsRows*GHOST_BINCRS_SIZE_RPT_EL,SEEK_SET)) {
                 ERROR_LOG("Seek failed");
                 return GHOST_ERR_IO;
             }
             if (swapReq) {
                 int64_t *tmp;
-                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(header.nrows+1)*8));
-                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,(nRows+1)*8));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, (nRows+1),filed)) != (size_t)(nRows+1)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
-                for( i = 0; i < (header.nrows+1); i++ ) {
+                for( i = 0; i < (nRows+1); i++ ) {
                     rpt_raw[i] = bswap_64(tmp[i]);
                 }
                 free(tmp);
             } else {
-                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (header.nrows+1),filed)) != (size_t)(header.nrows+1)){
+                if ((ret = fread(rpt_raw, GHOST_BINCRS_SIZE_RPT_EL, (nRows+1),filed)) != (size_t)(nRows+1)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
             }
+            ghost_gidx_t locnnz = rpt_raw[nRows]-rpt_raw[0];
             int64_t *col_raw;
-            GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,header.nnz*8));
-            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1),SEEK_SET)) {
+            GHOST_CALL_RETURN(ghost_malloc((void **)&col_raw,locnnz*8));
+            if (fseeko(filed,GHOST_BINCRS_SIZE_HEADER+GHOST_BINCRS_SIZE_RPT_EL*(header.nrows+1)+rpt_raw[0]*GHOST_BINCRS_SIZE_COL_EL,SEEK_SET)) {
                 ERROR_LOG("Seek failed");
                 return GHOST_ERR_IO;
             }
             if (swapReq) {
                 int64_t *tmp;
-                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,header.nnz*8));
-                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, header.nnz,filed)) != (size_t)(header.nnz)){
+                GHOST_CALL_RETURN(ghost_malloc((void **)&tmp,locnnz));
+                if ((ret = fread(tmp, GHOST_BINCRS_SIZE_RPT_EL, locnnz,filed)) != (size_t)(locnnz)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
-                for( i = 0; i < (header.nrows+1); i++ ) {
+                for( i = 0; i < (locnnz); i++ ) {
                     col_raw[i] = bswap_64(tmp[i]);
                 }
                 free(tmp);
             } else {
-                if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, header.nnz,filed)) != (size_t)(header.nnz)){
+                if ((ret = fread(col_raw, GHOST_BINCRS_SIZE_COL_EL, locnnz,filed)) != (size_t)(locnnz)){
                     ERROR_LOG("fread failed: %s (%zu)",strerror(errno),ret);
                     return GHOST_ERR_IO;
                 }
             }
             e = 0;
-            //INFO_LOG("Read %d rows from row %d perm len %d %d %d %d %d",nRows,offsRows,perm->len,perm->perm[0],perm->perm[1],perm->perm[2],perm->perm[3]);
-            for(i = offsRows; i < offsRows+nRows; i++) {
-                for(j = rpt_raw[perm->invPerm[i-offsRows]]; j < rpt_raw[perm->invPerm[i-offsRows]+1]; j++) {
+            for(i = 0; i < nRows; i++) {
+                for(j = rpt_raw[perm->invPerm[i]]; j < rpt_raw[perm->invPerm[i]+1]; j++) {
                     if (!keepCols) {
-                        if ((col_raw[j]>=offsRows+nRows) || (col_raw[j] < offsRows)) {
-                            col[e++] = col_raw[j];
+                        if ((col_raw[j-rpt_raw[0]]>=offsRows+nRows) || (col_raw[j-rpt_raw[0]] < offsRows)) {
+                            col[e++] = col_raw[j-rpt_raw[0]];
                         } else {
-                            col[e++] = offsRows+perm->perm[col_raw[j]-offsRows];
+                            col[e++] = offsRows+perm->perm[col_raw[j-rpt_raw[0]]-offsRows];
                         }
                     } else {
-                        col[e++] = col_raw[j];
+                        col[e++] = col_raw[j-rpt_raw[0]];
                     }
-
                 }
             }
 

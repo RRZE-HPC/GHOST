@@ -752,8 +752,8 @@ static ghost_error_t SELL_fromBin(ghost_sparsemat_t *mat, char *matrixPath)
     }
 
     DEBUG_LOG(1,"Memory usage may be high because read-in of CRS data is done at once and not chunk-wise");
-    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nEnts*sizeof(ghost_gidx_t)),err,ret);
-    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nEnts*mat->elSize),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpcol,mat->nnz*sizeof(ghost_gidx_t)),err,ret);
+    GHOST_CALL_GOTO(ghost_malloc((void **)&tmpval,mat->nnz*mat->elSize),err,ret);
     GHOST_CALL_GOTO(ghost_bincrs_col_read(tmpcol, matrixPath, mat->context->lfRow[me], mat->nrows, mat->context->permutation, mat->traits->flags & GHOST_SPARSEMAT_NOT_PERMUTE_COLS),err,ret);
     GHOST_CALL_GOTO(ghost_bincrs_val_read(tmpval, mat->traits->datatype, matrixPath,  mat->context->lfRow[me], mat->nrows, mat->context->permutation),err,ret);
 
