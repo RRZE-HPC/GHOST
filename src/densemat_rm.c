@@ -657,27 +657,43 @@ static ghost_error_t vec_rm_fromVec(ghost_densemat_t *vec,
     ghost_densemat_rm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRLIDX,coffs);
 
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
-        if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_memcpy(
-                        DENSEMAT_CUVAL(vec,memrow1,memcol1),
-                        DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
+    if (vec2->traits.storage == GHOST_DENSEMAT_ROWMAJOR) { 
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_memcpy(
+                            DENSEMAT_CUVAL(vec,memrow1,memcol1),
+                            DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
+            } else {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_upload(
+                            DENSEMAT_CUVAL(vec,memrow1,memcol1),
+                            DENSEMAT_VAL(vec2,row+roffs,memcol2),vec->elSize));
+            }
         } else {
-            DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_upload(
-                        DENSEMAT_CUVAL(vec,memrow1,memcol1),
-                        DENSEMAT_VAL(vec2,row+roffs,memcol2),vec->elSize));
+            if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_download(
+                            DENSEMAT_VAL(vec,row,memcol1),
+                            DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
+            } else {
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,memcpy(
+                            DENSEMAT_VAL(vec,row,memcol1),
+                            DENSEMAT_VAL(vec2,row+roffs,memcol2),vec->elSize));
+            }
         }
     } else {
-        if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-            DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_download(
-                        DENSEMAT_VAL(vec,row,memcol1),
-                        DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
-        } else {
-            DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,memcpy(
-                        DENSEMAT_VAL(vec,row,memcol1),
-                        DENSEMAT_VAL(vec2,row+roffs,memcol2),vec->elSize));
+        INFO_LOG("On-the-fly memtranpose");
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE || 
+                vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            ERROR_LOG("fromVec with memtranspose not available for GPU!");
+            return GHOST_ERR_NOT_IMPLEMENTED;
         }
+        if (vec2->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+            ERROR_LOG("Not implemented!");
+            return GHOST_ERR_NOT_IMPLEMENTED;
+        }
+
+        DENSEMAT_ITER(vec,memcpy(DENSEMAT_VAL(vec,row,col),&vec2->val[col+coffs][(row+ghost_bitmap_first(vec2->ldmask)+roffs)*vec2->elSize],vec->elSize));
     }
+
     vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
 
     return GHOST_SUCCESS;
