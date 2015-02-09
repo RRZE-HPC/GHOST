@@ -118,8 +118,10 @@ ghost_error_t ghost_tsmm(ghost_densemat_t *x, ghost_densemat_t *v, ghost_densema
     p.xcols = x->traits.ncols;
     p.vcols = v->traits.ncols;
     if (p.xcols == 2) {
+#ifdef GHOST_HAVE_SSE
         PERFWARNING_LOG("Use SSE for ncols==2");
         p.impl = GHOST_IMPLEMENTATION_SSE;
+#endif
     }
     if (p.xcols == 1) {
         PERFWARNING_LOG("Use plain for ncols==1");
