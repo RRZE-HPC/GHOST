@@ -200,7 +200,7 @@ struct ghost_sparsemat_traits_t {
 };
 
 #ifdef GHOST_HAVE_MPI
-#define GHOST_SCOTCH_STRAT_DEFAULT "n{ole=q{strat=g},ose=q{strat=g},osq=g}"
+#define GHOST_SCOTCH_STRAT_DEFAULT "n{ole=q{strat=g},ose=q{strat=g},osq=g,sep=m}"
 #else
 #define GHOST_SCOTCH_STRAT_DEFAULT "g"
 #endif
