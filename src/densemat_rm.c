@@ -43,6 +43,7 @@ static ghost_error_t vec_rm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghos
 static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
 static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
+static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_rm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t roffs, ghost_lidx_t coffs, ghost_lidx_t lda);
 static ghost_error_t vec_rm_compress(ghost_densemat_t *vec);
@@ -107,6 +108,7 @@ ghost_error_t ghost_densemat_rm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &vec_rm_viewScatteredVec;
     vec->viewScatteredCols = &vec_rm_viewScatteredCols;
     vec->viewCols = &vec_rm_viewCols;
+    vec->viewSetCols = &vec_rm_viewSetCols;
     vec->syncValues = &vec_rm_equalize;
     vec->halocommInit = &densemat_rm_halocommInit;
     vec->halocommFinalize = &densemat_rm_halocommFinalize;
@@ -512,6 +514,23 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
     return GHOST_SUCCESS;
 }
 
+static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc, 
+        ghost_lidx_t coffs)
+{
+    if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        ERROR_LOG("Must be a view!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    ghost_lidx_t coloffs = ghost_bitmap_first(vec->ldmask)+coffs;
+    vec->traits.ncols = nc;
+    ghost_bitmap_clr_range(vec->ldmask,0,vec->traits.ncolsorig);
+    ghost_bitmap_set_range(vec->ldmask,coloffs,coloffs+nc); 
+
+    vec->viewing_col = coffs;
+    return GHOST_SUCCESS;
+
+}
 
 static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, 
         ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)

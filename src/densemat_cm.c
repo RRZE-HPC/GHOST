@@ -43,6 +43,7 @@ static ghost_error_t vec_cm_entry(ghost_densemat_t *, void *, ghost_lidx_t, ghos
 static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t roffs, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nr, ghost_lidx_t *roffs, ghost_lidx_t nc, ghost_lidx_t *coffs);
 static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t *coffs);
+static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs);
 static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_lidx_t roffs, ghost_lidx_t coffs, ghost_lidx_t lda);
 static ghost_error_t vec_cm_compress(ghost_densemat_t *vec);
@@ -107,6 +108,7 @@ ghost_error_t ghost_densemat_cm_setfuncs(ghost_densemat_t *vec)
     vec->viewScatteredVec = &vec_cm_viewScatteredVec;
     vec->viewScatteredCols = &vec_cm_viewScatteredCols;
     vec->viewCols = &vec_cm_viewCols;
+    vec->viewSetCols = &vec_cm_viewSetCols;
     vec->syncValues = &vec_cm_equalize;
     vec->halocommInit = &densemat_cm_halocommInit;
     vec->halocommFinalize = &densemat_cm_halocommFinalize;
@@ -448,6 +450,32 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
 
     return GHOST_SUCCESS;
 }
+
+static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc, 
+        ghost_lidx_t coffs)
+{
+    if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
+        ERROR_LOG("Must be a view!");
+        return GHOST_ERR_INVALID_ARG;
+    }
+
+    ghost_lidx_t c;
+    ghost_lidx_t coloffs = ghost_bitmap_first(vec->trmask)+coffs;
+    vec->traits.ncols = nc;
+    
+    ghost_bitmap_clr_range(vec->trmask,0,vec->traits.ncolsorig);
+    ghost_bitmap_set_range(vec->trmask,coloffs,coloffs+nc); 
+    
+    if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+        for (c=0; c<nc; c++) {
+            vec->val[c] = DENSEMAT_VAL(vec,0,coffs+c);
+        }
+    }
+
+    vec->viewing_col = coffs;
+    return GHOST_SUCCESS;
+}
+
 
 static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)
 {

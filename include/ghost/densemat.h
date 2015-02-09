@@ -660,6 +660,17 @@ struct ghost_densemat_t
     ghost_error_t (*viewCols) (ghost_densemat_t *src, ghost_densemat_t **dst, 
             ghost_lidx_t nc, ghost_lidx_t coffs);
     /**
+     * @brief Set an existing view to view a new dense set of columns.
+     *
+     * @param vec The densemat view. 
+     * @param nc The number of columns.
+     * @param coffs The column offset in the source densemat.
+     *
+     * @return ::GHOST_SUCCESS on success or an error indicator.
+     */
+    ghost_error_t (*viewSetCols) (ghost_densemat_t *vec, ghost_lidx_t nc, 
+            ghost_lidx_t coffs);
+    /**
      * @brief Create a densemat as a view of another densemat.
      *
      * @param src The source densemat.
