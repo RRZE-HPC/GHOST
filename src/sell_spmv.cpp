@@ -39,7 +39,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             v_t);
 
     if (options & GHOST_SPMV_DOT_ANY) {
-//#pragma omp parallel
+#pragma omp parallel
         nthreads = ghost_omp_nthread();
 
         GHOST_CALL_RETURN(ghost_malloc((void **)&partsums,
@@ -48,7 +48,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
             partsums[i] = 0.;
         }
     }
-//#pragma omp parallel private(c,j,rcol,lcol,cidx,i,v) shared(partsums)
+#pragma omp parallel private(c,j,rcol,lcol,cidx,i,v) shared(partsums)
     {
         v_t **tmp;
         ghost_malloc((void **)&tmp,sizeof(v_t *)*ch);
@@ -62,7 +62,7 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
         v_t * rhsrow;
         v_t matrixval;
 
-//#pragma omp for schedule(runtime) 
+#pragma omp for schedule(runtime) 
         for (c=0; c<mat->nrowsPadded/ch; c++) { // loop over chunks
             lhsv = (v_t **)&(lhs->val[c*ch]);
 
@@ -107,7 +107,6 @@ static ghost_error_t ghost_sell_spmv_plain_rm(ghost_sparsemat_t *mat,
                         tmp[i][cidx] = tmp[i][cidx]-shift[0]*rhsrow[rcol];
                     }
                     if ((options & GHOST_SPMV_VSHIFT) && shift) {
-                        printf("%d %d %d %p\n",i,cidx,lhs->traits.ncols,&shift[cidx]);
                         tmp[i][cidx] = tmp[i][cidx]-shift[cidx]*rhsrow[rcol];
                     }
                     if (options & GHOST_SPMV_SCALE) {
