@@ -522,12 +522,12 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
         return GHOST_ERR_INVALID_ARG;
     }
 
-    ghost_lidx_t coloffs = ghost_bitmap_first(vec->ldmask)+coffs;
     vec->traits.ncols = nc;
     ghost_bitmap_clr_range(vec->ldmask,0,vec->traits.ncolsorig);
-    ghost_bitmap_set_range(vec->ldmask,coloffs,coloffs+nc); 
+    ghost_bitmap_set_range(vec->ldmask,coffs,coffs+nc); 
 
     vec->viewing_col = coffs;
+    vec->traits.ncols=nc;
     return GHOST_SUCCESS;
 
 }
