@@ -543,7 +543,7 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
             if (ghost_bitmap_isset(src->trmask,c)) {
                 viewedcol++;
             }
-            if (coffs[i] != viewedcol) {
+            if ((i>=nc) || (coffs[i] != viewedcol)) {
                 ghost_bitmap_clr((*new)->trmask,c);
             } else {
                 i++;
@@ -585,7 +585,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
         if (ghost_bitmap_isset(src->ldmask,r)) {
             viewedrow++;
         }
-        if (roffs[i] != viewedrow) {
+        if ((i>=nr) || (roffs[i] != viewedrow)) {
             ghost_bitmap_clr((*new)->ldmask,r);
         } else {
             i++;
@@ -601,7 +601,7 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
             if (ghost_bitmap_isset(src->trmask,c)) {
                 viewedcol++;
             }
-            if (coffs[i] != viewedcol) {
+            if ((i>=nc) || (coffs[i] != viewedcol)) {
                 ghost_bitmap_clr((*new)->trmask,c);
             } else {
                 i++;
@@ -1533,7 +1533,7 @@ static ghost_error_t densemat_cm_halocommInit(ghost_densemat_t *vec, ghost_dense
     int i, to_PE, from_PE;
     int nprocs;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
-    ghost_densemat_halocommInit_common(vec,comm);
+    GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,comm),err,ret);
     
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 

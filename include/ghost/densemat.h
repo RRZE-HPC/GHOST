@@ -137,12 +137,10 @@ typedef struct
      * @brief Total number of wishes.
      */
     ghost_lidx_t acc_wishes;
-#ifdef GHOST_HAVE_CUDA
     /**
      * @brief The assembled data to be sent on the CUDA device.
      */
     void *cu_work;
-#endif
 #endif
 }
 ghost_densemat_halo_comm_t;
@@ -847,5 +845,10 @@ extern "C" {
  * @brief Initializer for densemat traits.
  */
 extern const ghost_densemat_traits_t GHOST_DENSEMAT_TRAITS_INITIALIZER;
+
+/**
+ * @brief Initializer for densemat halo communicator.
+ */
+extern const ghost_densemat_halo_comm_t GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
 
 #endif

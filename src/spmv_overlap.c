@@ -33,7 +33,7 @@ ghost_error_t ghost_spmv_goodfaith(ghost_densemat_t* res, ghost_sparsemat_t* mat
 
     ghost_spmv_flags_t localopts = (ghost_spmv_flags_t)(flags|(ghost_spmv_flags_t)GHOST_SPMV_LOCAL);
     ghost_spmv_flags_t remoteopts = (ghost_spmv_flags_t)(flags|(ghost_spmv_flags_t)GHOST_SPMV_REMOTE);
-    ghost_densemat_halo_comm_t comm;
+    ghost_densemat_halo_comm_t comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
 
     va_list remote_argp;
     va_copy(remote_argp,argp);

@@ -379,6 +379,11 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc;
     newTraits.nrows = nr;
+    newTraits.nrowspadded = 0;
+    newTraits.nrowsorig = 0;
+    newTraits.nrowshalo = 0;
+    newTraits.ncolspadded = 0;
+    newTraits.ncolsorig = 0;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
 
     ghost_densemat_create(new,src->context,newTraits);
@@ -386,7 +391,7 @@ static ghost_error_t vec_rm_view (ghost_densemat_t *src, ghost_densemat_t **new,
     ghost_bitmap_copy((*new)->trmask,src->trmask);
     ghost_densemat_rm_malloc(*new);
     ghost_lidx_t r,c,viewedcol;
-    
+
     for (viewedcol=0, c=0; c<src->traits.ncolsorig; c++) {
         if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
             ghost_bitmap_clr((*new)->ldmask,c);
@@ -465,6 +470,8 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
     ghost_densemat_traits_t newTraits = src->traits;
     newTraits.ncols = nc; 
     newTraits.nrows = nr;
+    newTraits.ncolspadded = nc; 
+    newTraits.nrowspadded = nr;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
@@ -477,7 +484,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
         if (ghost_bitmap_isset(src->ldmask,c)) {
             viewedcol++;
         }
-        if (coffs[i] != viewedcol) {
+        if ((i >= nc) || (coffs[i] != viewedcol)) {
             ghost_bitmap_clr((*new)->ldmask,c);
         } else {
             i++;
@@ -492,7 +499,7 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
             if (ghost_bitmap_isset(src->trmask,r)) {
                 viewedrow++;
             }
-            if (roffs[i] != viewedrow) {
+            if ((i>=nr) || (roffs[i] != viewedrow)) {
                 ghost_bitmap_clr((*new)->trmask,r);
             } else {
                 i++;
@@ -587,7 +594,8 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src,
 
     ghost_lidx_t c,i,r,viewedcol;
     ghost_densemat_traits_t newTraits = src->traits;
-    newTraits.ncols = nc; 
+    newTraits.ncols = nc;
+    newTraits.ncolspadded = 0; 
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_VIEW;
     newTraits.flags |= (ghost_densemat_flags_t)GHOST_DENSEMAT_SCATTERED;
 
@@ -605,7 +613,7 @@ static ghost_error_t vec_rm_viewScatteredCols (ghost_densemat_t *src,
         if (ghost_bitmap_isset(src->ldmask,c)) {
             viewedcol++;
         }
-        if (coffs[i] != viewedcol) {
+        if ((i>=nc) || (coffs[i] != viewedcol)) {
             ghost_bitmap_clr((*new)->ldmask,c);
         } else {
             i++;
@@ -1521,7 +1529,7 @@ static ghost_error_t densemat_rm_halocommInit(ghost_densemat_t *vec, ghost_dense
     int i, to_PE, from_PE;
     int nprocs;
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
-    ghost_densemat_halocommInit_common(vec,comm);
+    GHOST_CALL_GOTO(ghost_densemat_halocommInit_common(vec,comm),err,ret);
         
     GHOST_CALL_GOTO(ghost_malloc((void **)&comm->tmprecv,nprocs*sizeof(char *)),err,ret);
 
@@ -1615,17 +1623,18 @@ static ghost_error_t densemat_rm_halocommFinalize(ghost_densemat_t *vec, ghost_d
         }
 #endif
     GHOST_CALL_GOTO(vec->uploadHalo(vec),err,ret);
-    GHOST_INSTR_STOP("upload")
+    GHOST_INSTR_STOP("upload");
 #endif
 
-        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+
+    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-            ghost_cu_free(comm->cu_work);
-            cudaFreeHost(comm->work); comm->work = NULL;
+        ghost_cu_free(comm->cu_work);
+        cudaFreeHost(comm->work); comm->work = NULL;
 #endif
-        } else {
-            free(comm->work); comm->work = NULL;
-        }
+    } else {
+        free(comm->work); comm->work = NULL;
+    }
     free(comm->tmprecv_mem); comm->tmprecv_mem = NULL;
     free(comm->tmprecv); comm->tmprecv = NULL;
     free(comm->request); comm->request = NULL;

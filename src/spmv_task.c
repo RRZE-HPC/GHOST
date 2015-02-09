@@ -107,7 +107,7 @@ ghost_error_t ghost_spmv_taskmode(ghost_densemat_t* res, ghost_sparsemat_t* mat,
         remoteopts |= (ghost_spmv_flags_t)GHOST_SPMV_REMOTE;
     }
 
-    ghost_densemat_halo_comm_t comm;
+    ghost_densemat_halo_comm_t comm = GHOST_DENSEMAT_HALO_COMM_INITIALIZER;
     commArgs cargs;
     compArgs cplargs;
     ghost_task_t *commTask;
