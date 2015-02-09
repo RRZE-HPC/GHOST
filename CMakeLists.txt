@@ -723,7 +723,8 @@ if (DOXYGEN_FOUND)
         add_custom_command(
             OUTPUT ${PROJECT_BINARY_DIR}/doc/html/index.html 
             DEPENDS ${SOURCES} ${HEADERS} ${DOCFILES} 
-            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.svg ${PROJECT_BINARY_DIR}/doc/html 
+            COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doxygen/Doxyfile && 
+            cp ${PROJECT_SOURCE_DIR}/contrib/ghost_logo.png ${PROJECT_BINARY_DIR}/doc/html 
             )
     endif()
 
