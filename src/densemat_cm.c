@@ -464,7 +464,10 @@ static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     vec->traits.ncols = nc;
     
     ghost_bitmap_clr_range(vec->trmask,0,vec->traits.ncolsorig);
-    ghost_bitmap_set_range(vec->trmask,coloffs,coloffs+nc); 
+    
+    if (nc>0) { // otherwise the end of the range would be -1 which would fill the whole bitmap
+        ghost_bitmap_set_range(vec->trmask,coloffs,coloffs+nc-1); 
+    }
     
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
         for (c=0; c<nc; c++) {

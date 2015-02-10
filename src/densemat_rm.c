@@ -530,9 +530,13 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     }
 
     ghost_lidx_t coloffs = ghost_bitmap_first(vec->ldmask)+coffs;
+
     vec->traits.ncols = nc;
     ghost_bitmap_clr_range(vec->ldmask,0,vec->traits.ncolsorig);
-    ghost_bitmap_set_range(vec->ldmask,coloffs,coloffs+nc); 
+   
+    if (nc>0) { // otherwise the end of the range would be -1 which would fill the whole bitmap
+        ghost_bitmap_set_range(vec->ldmask,coloffs,coloffs+nc-1); 
+    }
 
     vec->viewing_col = coffs;
     return GHOST_SUCCESS;
