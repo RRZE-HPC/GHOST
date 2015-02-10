@@ -248,6 +248,14 @@ extern "C" {
      */
     ghost_error_t ghost_sell_kacz(ghost_sparsemat_t *mat, ghost_densemat_t *lhs, 
             ghost_densemat_t *rhs, void *omega, int forward);
+
+    /**
+     * @brief Get the largest SELL chunk height of auto-generated kernels.
+     *
+     * @return The largest configured SELL chunk height or 0 if none has been 
+     * configured.
+     */
+    int ghost_sell_max_cfg_chunkheight();
 #ifdef __cplusplus
 }
 #endif

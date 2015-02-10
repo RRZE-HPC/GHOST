@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 500
 #include "ghost/sell.h"
 #include "ghost/core.h"
 #include "ghost/crs.h"
@@ -920,5 +921,20 @@ ch = 256;
 return ch;*/
     UNUSED(datatype);
     return 32;
+}
+
+int ghost_sell_max_cfg_chunkheight()
+{
+    int max = 0;
+    char *cfgch = strdup(GHOST_CFG_SELL_CHUNKHEIGHTS);
+    char *ch = strtok(cfgch,",");
+
+    while (ch) {
+        max = MAX(max,atoi(ch));
+        ch = strtok(NULL,",");
+    }
+
+    free(cfgch);
+    return max;
 }
 
