@@ -22,7 +22,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #else
     GHOST_INSTR_START("scotch")
     ghost_error_t ret = GHOST_SUCCESS;
-    ghost_gidx_t *col = NULL, i, c;
+    ghost_gidx_t *col = NULL, i, j, k, c;
     ghost_sorting_helper_t *rowSort = NULL;
     ghost_gidx_t *rpt = NULL;
     ghost_gidx_t *col_loopless = NULL;
@@ -89,7 +89,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
         GHOST_CALL_GOTO(ghost_malloc((void **)&col,nnz * sizeof(ghost_gidx_t)),err,ret);
         
-#pragma omp parallel private (tmpval,tmpcol,i,rowlen) reduction(+:nnz)
+#pragma omp parallel private (tmpval,tmpcol,i,j,rowlen) reduction(+:nnz)
         {
             ghost_malloc((void **)&tmpval,src->maxrowlen*mat->elSize);
             ghost_malloc((void **)&tmpcol,src->maxrowlen*sizeof(ghost_gidx_t));
@@ -98,6 +98,19 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
 #pragma omp ordered
                 {
                     src->func(mat->context->lfRow[me]+i,&rowlen,&col[rpt[i]],tmpval);
+                    /* remove the diagonal entry ("self-edge") */
+                    for (j=0;j<rowlen;j++)
+                    {
+                      if (col[rpt[i]+j]==mat->context->lfRow[me]+i)
+                      {
+                        for (k=j; k<rowlen-1;k++)
+                        {
+                          col[rpt[i]+k]=col[rpt[i]+k+1];
+                        }
+                        rowlen--;
+                        break;
+                      }
+                    }
                     rpt[i+1] = rpt[i] + rowlen;
                 }
             }
@@ -106,6 +119,7 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         }
             
     }
+    nnz=rpt[mat->context->lnrows[me]];
     GHOST_INSTR_STOP("scotch_readin")
 
     GHOST_CALL_GOTO(ghost_malloc((void **)&mat->context->permutation,sizeof(ghost_permutation_t)),err,ret);
@@ -134,10 +148,21 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         ret = GHOST_ERR_SCOTCH;
         goto err;
     }
-    SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphBuild(dgraph, 0, (ghost_gidx_t)mat->context->lnrows[me], mat->context->lnrows[me], rpt, rpt+1, NULL, NULL, nnz, nnz, col, NULL, NULL),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphCheck(dgraph),err,ret);
+
+    SCOTCH_CALL_GOTO(SCOTCH_stratInit(strat),err,ret);
     
+    /* use strategy string from traits */
+    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
+
+    /* or use some default strategy */
+    /* \todo: I'n not sure what the 'balrat' value does (last param),
+       I am assuming: allow at most 20% load imbalance (balrat=0.2))
+     */
+//    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrderBuild(strat, SCOTCH_STRATSCALABILITY, 
+//        (ghost_gidx_t)nprocs,0,0.1),err,ret);
+
     dorder = SCOTCH_dorderAlloc();
     if (!dorder) {
         ERROR_LOG("Could not alloc SCOTCH order");
@@ -145,7 +170,6 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
         goto err;
     }
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderInit(dgraph,dorder),err,ret);
-    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderCompute(dgraph,dorder,strat),err,ret);
     SCOTCH_CALL_GOTO(SCOTCH_dgraphOrderPerm(dgraph,dorder,mat->context->permutation->perm+mat->context->lfRow[me]),err,ret);
     GHOST_INSTR_STOP("scotch_createperm")
