@@ -12,6 +12,7 @@
 #include "ghost/machine.h"
 #include "ghost/log.h"
 #include "ghost/bindensemat.h"
+#include "ghost/sell.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -166,7 +167,6 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
         DEBUG_LOG(1,"The vector's context is NULL.");
     }
 
-
     if (vec->traits.nrowspadded == 0) {
         if (vec->traits.flags & GHOST_DENSEMAT_VIEW) {
             INFO_LOG("No padding for view!");
@@ -187,7 +187,10 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec)
                 padding = 16; // 16 byte padding
 #endif
             }
+            
             padding /= vec->elSize;
+            padding = MAX(padding,ghost_sell_max_cfg_chunkheight());
+            
             vec->traits.nrowspadded = PAD(MAX(vec->traits.nrowshalo,vec->traits.nrows),padding);
         }
     }
