@@ -157,12 +157,23 @@ ghost_error_t ghost_sparsemat_perm_scotch(ghost_sparsemat_t *mat, void *matrixSo
     SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrder(strat,mat->traits->scotchStrat),err,ret);
 
     /* or use some default strategy */
-    /* \todo: I'n not sure what the 'balrat' value does (last param),
+    /* \todo: I'm not sure what the 'balrat' value does (last param),
        I am assuming: allow at most 20% load imbalance (balrat=0.2))
      */
-//    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrderBuild(strat, SCOTCH_STRATSCALABILITY, 
+//     int flags=SCOTCH_STRATSPEED|
+//              SCOTCH_STRATSCALABILITY|
+//              SCOTCH_STRATBALANCE;
+//    SCOTCH_CALL_GOTO(SCOTCH_stratDgraphOrderBuild(strat, flags, 
 //        (ghost_gidx_t)nprocs,0,0.1),err,ret);
-
+        if (me==0)
+        {
+          INFO_LOG("SCOTCH strategy used:");
+          if (GHOST_VERBOSITY)
+          {
+            SCOTCH_CALL_GOTO(SCOTCH_stratSave(strat,stdout),err,ret);
+          }
+        }
+    
     dorder = SCOTCH_dorderAlloc();
     if (!dorder) {
         ERROR_LOG("Could not alloc SCOTCH order");
