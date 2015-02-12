@@ -132,7 +132,7 @@ static ghost_error_t ghost_densemat_cm_vaxpby_tmpl(ghost_densemat_t *vec, ghost_
     DENSEMAT_ITER2(vec,vec2,
             *(v_t *)DENSEMAT_VAL(vec,memrow1,col) = 
             *(v_t *)DENSEMAT_VAL(vec2,memrow2,col) * s[col] + 
-                *(v_t *)DENSEMAT_VAL(vec,row,memcol1) * b[col]);
+                *(v_t *)DENSEMAT_VAL(vec,memrow1,col) * b[col]);
     
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_MATH|GHOST_FUNCTYPE_KERNEL);
     return GHOST_SUCCESS;
