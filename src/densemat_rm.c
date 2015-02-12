@@ -539,6 +539,16 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     }
 
     vec->viewing_col = coffs;
+
+#ifdef GHOST_HAVE_MPI
+    ghost_mpi_datatype_t dt;
+    ghost_mpi_datatype(&dt,vec->traits.datatype);
+
+    MPI_CALL_RETURN(MPI_Type_free(&vec->row_mpidt));
+    MPI_CALL_RETURN(MPI_Type_contiguous(vec->traits.ncols,dt,&vec->row_mpidt));
+    MPI_CALL_RETURN(MPI_Type_commit(&vec->row_mpidt));
+#endif
+
     return GHOST_SUCCESS;
 
 }
