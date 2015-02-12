@@ -256,9 +256,9 @@ struct ghost_densemat_t
      */
     ghost_lidx_t viewing_row;
     /**
-     * @brief An MPI data type which holds a complete row of the densemat.
+     * @brief An MPI data type which holds one element.
      */
-    ghost_mpi_datatype_t row_mpidt;
+    ghost_mpi_datatype_t mpidt;
     /**
      * @brief The values of the densemat on the CUDA device.
      */

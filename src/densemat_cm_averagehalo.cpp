@@ -44,12 +44,12 @@ static ghost_error_t ghost_densemat_cm_averagehalo_tmpl(ghost_densemat_t *vec)
     }
 
     for (i=0; i<nrank; i++) {
-        MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val[0])[vec->context->hput_pos[i]],vec->context->wishes[i],vec->row_mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
+        MPI_CALL_GOTO(MPI_Isend(&((T *)vec->val[0])[vec->context->hput_pos[i]],vec->context->wishes[i]*vec->traits.ncols,vec->mpidt,i,rank,vec->context->mpicomm,&req[i]),err,ret);
     }
 
     curwork = work;
     for (i=0; i<nrank; i++) {
-        MPI_CALL_GOTO(MPI_Irecv(curwork,vec->context->dues[i],vec->row_mpidt,i,i,vec->context->mpicomm,&req[nrank+i]),err,ret);
+        MPI_CALL_GOTO(MPI_Irecv(curwork,vec->context->dues[i]*vec->traits.ncols,vec->mpidt,i,i,vec->context->mpicomm,&req[nrank+i]),err,ret);
         curwork += vec->context->dues[i];
     }
 

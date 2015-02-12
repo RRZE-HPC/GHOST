@@ -104,10 +104,10 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     ghost_mpi_datatype_t dt;
     ghost_mpi_datatype(&dt,(*vec)->traits.datatype);
 
-    MPI_CALL_RETURN(MPI_Type_contiguous((*vec)->traits.ncols,dt,&(*vec)->row_mpidt));
-    MPI_CALL_RETURN(MPI_Type_commit(&(*vec)->row_mpidt));
+    MPI_CALL_RETURN(MPI_Type_contiguous(1,dt,&(*vec)->mpidt));
+    MPI_CALL_RETURN(MPI_Type_commit(&(*vec)->mpidt));
 #else
-    (*vec)->row_mpidt = MPI_DATATYPE_NULL;
+    (*vec)->mpidt = MPI_DATATYPE_NULL;
 #endif
 
 
@@ -403,7 +403,7 @@ ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_de
     int me; 
     int i;
     ghost_error_t ret = GHOST_SUCCESS;
-    int rowsize;
+    int rowsize = vec->traits.ncols*vec->elSize;
 
     if (vec->traits.flags & GHOST_DENSEMAT_NO_HALO) {
         ERROR_LOG("The densemat has no halo buffer!");
@@ -417,7 +417,6 @@ ghost_error_t ghost_densemat_halocommInit_common(ghost_densemat_t *vec, ghost_de
 
 
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
     
@@ -505,10 +504,9 @@ ghost_error_t ghost_densemat_halocommStart_common(ghost_densemat_t *vec, ghost_d
     char *recv;
     int from_PE, to_PE;
     int nprocs;
-    int rowsize;
+    int rowsize = vec->traits.ncols*vec->elSize;
     int me; 
     GHOST_CALL_GOTO(ghost_rank(&me, vec->context->mpicomm),err,ret);
-    MPI_CALL_GOTO(MPI_Type_size(vec->row_mpidt,&rowsize),err,ret);
     GHOST_CALL_GOTO(ghost_nrank(&nprocs, vec->context->mpicomm),err,ret);
 
     for (from_PE=0; from_PE<nprocs; from_PE++){
@@ -521,14 +519,15 @@ ghost_error_t ghost_densemat_halocommStart_common(ghost_densemat_t *vec, ghost_d
             int msg;
             int nmsgs = (size_t)rowsize*vec->context->wishes[from_PE]/INT_MAX + 1;
             size_t msgSizeRows = vec->context->wishes[from_PE]/nmsgs;
+            size_t msgSizeEls = vec->context->wishes[from_PE]/nmsgs*vec->traits.ncols;
 
             for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
+                MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
                 comm->msgcount++;
             }
 
             // remainder
-            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, vec->context->wishes[from_PE] - msg*msgSizeRows, vec->row_mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Irecv(recv + msg*msgSizeRows*rowsize, vec->context->wishes[from_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, from_PE, from_PE, vec->context->mpicomm,&comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
     }
@@ -540,14 +539,15 @@ ghost_error_t ghost_densemat_halocommStart_common(ghost_densemat_t *vec, ghost_d
             int msg;
             int nmsgs = (size_t)rowsize*vec->context->dues[to_PE]/INT_MAX + 1;
             size_t msgSizeRows = vec->context->dues[to_PE]/nmsgs;
+            size_t msgSizeEls = vec->context->dues[to_PE]/nmsgs*vec->traits.ncols;
 
             for (msg = 0; msg < nmsgs-1; msg++) {
-                MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
+                MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, msgSizeEls, vec->mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
                 comm->msgcount++;
             }
 
             // remainder
-            MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, vec->context->dues[to_PE] - msg*msgSizeRows, vec->row_mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
+            MPI_CALL_GOTO(MPI_Isend(comm->work + comm->dueptr[to_PE]*vec->elSize*vec->traits.ncols+msg*msgSizeRows*rowsize, vec->context->dues[to_PE]*vec->traits.ncols - msg*msgSizeEls, vec->mpidt, to_PE, me, vec->context->mpicomm, &comm->request[comm->msgcount]),err,ret);
             comm->msgcount++;
         }
     }

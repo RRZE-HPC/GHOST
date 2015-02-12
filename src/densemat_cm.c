@@ -468,16 +468,6 @@ static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     }
     vec->traits.ncols = nc;
 
-#ifdef GHOST_HAVE_MPI
-    ghost_mpi_datatype_t dt;
-    ghost_mpi_datatype(&dt,vec->traits.datatype);
-
-    MPI_CALL_RETURN(MPI_Type_free(&vec->row_mpidt));
-    MPI_CALL_RETURN(MPI_Type_contiguous(vec->traits.ncols,dt,&vec->row_mpidt));
-    MPI_CALL_RETURN(MPI_Type_commit(&vec->row_mpidt));
-#endif
-
-    
     ghost_bitmap_clr_range(vec->trmask,0,vec->traits.ncolsorig);
     
     if (nc>0) { // otherwise the end of the range would be -1 which would fill the whole bitmap
@@ -1346,7 +1336,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         ghost_bitmap_free(vec->trmask); vec->trmask = NULL;
 
 #ifdef GHOST_HAVE_MPI
-        MPI_Type_free(&vec->row_mpidt); vec->row_mpidt = MPI_DATATYPE_NULL;
+        MPI_Type_free(&vec->mpidt); vec->mpidt = MPI_DATATYPE_NULL;
 #endif
         free(vec);
     }

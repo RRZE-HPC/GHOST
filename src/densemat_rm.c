@@ -524,6 +524,8 @@ static ghost_error_t vec_rm_viewScatteredVec (ghost_densemat_t *src,
 static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc, 
         ghost_lidx_t coffs)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
+    
     if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
         ERROR_LOG("Must be a view!");
         return GHOST_ERR_INVALID_ARG;
@@ -540,15 +542,7 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
 
     vec->viewing_col = coffs;
 
-#ifdef GHOST_HAVE_MPI
-    ghost_mpi_datatype_t dt;
-    ghost_mpi_datatype(&dt,vec->traits.datatype);
-
-    MPI_CALL_RETURN(MPI_Type_free(&vec->row_mpidt));
-    MPI_CALL_RETURN(MPI_Type_contiguous(vec->traits.ncols,dt,&vec->row_mpidt));
-    MPI_CALL_RETURN(MPI_Type_commit(&vec->row_mpidt));
-#endif
-
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 
 }
@@ -556,6 +550,7 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
 static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src, 
         ghost_densemat_t **new, ghost_lidx_t nc, ghost_lidx_t coffs)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     DEBUG_LOG(1,"Viewing a %"PRLIDX"x%"PRLIDX" contiguous dense matrix",
             src->traits.nrows,nc);
 
@@ -591,6 +586,7 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src,
     (*new)->viewing = src;
     (*new)->viewing_col = coffs;
     (*new)->viewing_row = 0;
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
 
@@ -1350,7 +1346,7 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         ghost_bitmap_free(vec->ldmask); vec->ldmask = NULL;
         ghost_bitmap_free(vec->trmask); vec->trmask = NULL;
 #ifdef GHOST_HAVE_MPI
-        MPI_Type_free(&vec->row_mpidt); vec->row_mpidt = MPI_DATATYPE_NULL;
+        MPI_Type_free(&vec->mpidt); vec->mpidt = MPI_DATATYPE_NULL;
 #endif
         free(vec);
     }
