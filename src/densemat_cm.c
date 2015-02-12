@@ -462,8 +462,8 @@ static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     ghost_lidx_t c;
     ghost_lidx_t coloffs = ghost_bitmap_first(vec->trmask)+coffs;
     
-    if (vec->traits.ncols <= nc) {
-        INFO_LOG("Reallocating because increasing number of cols");
+    if (vec->traits.ncols < nc) {
+        INFO_LOG("Reallocating because increasing number of cols (%"PRLIDX" => %"PRLIDX")",vec->traits.ncols,nc);
         vec->val = realloc(vec->val,nc*sizeof(char *));
     }
     vec->traits.ncols = nc;
