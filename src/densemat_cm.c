@@ -461,7 +461,13 @@ static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
 
     ghost_lidx_t c;
     ghost_lidx_t coloffs = ghost_bitmap_first(vec->trmask)+coffs;
+    
+    if (vec->traits.ncols <= nc) {
+        INFO_LOG("Reallocating because increasing number of cols");
+        vec->val = realloc(vec->val,nc*sizeof(char *));
+    }
     vec->traits.ncols = nc;
+
     
     ghost_bitmap_clr_range(vec->trmask,0,vec->traits.ncolsorig);
     
@@ -471,7 +477,7 @@ static ghost_error_t vec_cm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
     
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
         for (c=0; c<nc; c++) {
-            vec->val[c] = DENSEMAT_VAL(vec,0,coffs+c);
+            vec->val[c] = vec->val[0]+(coffs+c)*(*vec->stride)*vec->elSize;
         }
     }
 
@@ -1327,8 +1333,9 @@ static void ghost_freeVector( ghost_densemat_t* vec )
 #endif
         }
         free(vec->val); vec->val = NULL;
-        ghost_bitmap_free(vec->ldmask);
-        ghost_bitmap_free(vec->trmask);
+        ghost_bitmap_free(vec->ldmask); vec->ldmask = NULL;
+        ghost_bitmap_free(vec->trmask); vec->trmask = NULL;
+
 #ifdef GHOST_HAVE_MPI
         MPI_Type_free(&vec->row_mpidt);
 #endif
