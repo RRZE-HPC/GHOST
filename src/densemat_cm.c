@@ -1335,9 +1335,6 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         ghost_bitmap_free(vec->ldmask); vec->ldmask = NULL;
         ghost_bitmap_free(vec->trmask); vec->trmask = NULL;
 
-#ifdef GHOST_HAVE_MPI
-        MPI_Type_free(&vec->mpidt); vec->mpidt = MPI_DATATYPE_NULL;
-#endif
         free(vec);
     }
 }

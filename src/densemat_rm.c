@@ -538,7 +538,7 @@ static ghost_error_t vec_rm_viewSetCols (ghost_densemat_t *vec, ghost_lidx_t nc,
    
     if (nc>0) { // otherwise the end of the range would be -1 which would fill the whole bitmap
         ghost_bitmap_set_range(vec->ldmask,coloffs,coloffs+nc-1); 
-    }
+    } // else keep cleared
 
     vec->viewing_col = coffs;
 
@@ -578,7 +578,7 @@ static ghost_error_t vec_rm_viewCols (ghost_densemat_t *src,
             viewedcol++;
         }
     }
-    
+   
     for (r=0; r<newTraits.nrowspadded; r++) {
         (*new)->val[r] = DENSEMAT_VAL(src,r,0);
     }
@@ -1345,9 +1345,6 @@ static void ghost_freeVector( ghost_densemat_t* vec )
         free(vec->val); vec->val = NULL;
         ghost_bitmap_free(vec->ldmask); vec->ldmask = NULL;
         ghost_bitmap_free(vec->trmask); vec->trmask = NULL;
-#ifdef GHOST_HAVE_MPI
-        MPI_Type_free(&vec->mpidt); vec->mpidt = MPI_DATATYPE_NULL;
-#endif
         free(vec);
     }
 }

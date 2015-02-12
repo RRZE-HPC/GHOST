@@ -59,6 +59,7 @@ static ghost_error_t getNrowsFromContext(ghost_densemat_t *vec);
 
 ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx, ghost_densemat_traits_t traits)
 {
+    GHOST_FUNC_ENTER(GHOST_FUNCTYPE_INITIALIZATION);
     ghost_error_t ret = GHOST_SUCCESS;
     GHOST_CALL_GOTO(ghost_malloc((void **)vec,sizeof(ghost_densemat_t)),err,ret);
     (*vec)->context = ctx;
@@ -69,6 +70,10 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     (*vec)->cu_val = NULL;
     (*vec)->viewing = NULL;
     if (!(*vec)->ldmask) {
+        ERROR_LOG("Could not create dense matrix mask!");
+        goto err;
+    }
+    if (!(*vec)->trmask) {
         ERROR_LOG("Could not create dense matrix mask!");
         goto err;
     }
@@ -101,11 +106,7 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
         (*vec)->stride = &(*vec)->traits.nrowspadded;
     }
 #ifdef GHOST_HAVE_MPI
-    ghost_mpi_datatype_t dt;
-    ghost_mpi_datatype(&dt,(*vec)->traits.datatype);
-
-    MPI_CALL_RETURN(MPI_Type_contiguous(1,dt,&(*vec)->mpidt));
-    MPI_CALL_RETURN(MPI_Type_commit(&(*vec)->mpidt));
+    GHOST_CALL_RETURN(ghost_mpi_datatype(&(*vec)->mpidt,(*vec)->traits.datatype));
 #else
     (*vec)->mpidt = MPI_DATATYPE_NULL;
 #endif
@@ -116,6 +117,7 @@ err:
     free(*vec); *vec = NULL;
 
 out:
+    GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return ret;
 }
 
