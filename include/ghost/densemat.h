@@ -58,10 +58,15 @@ typedef enum {
      */
     GHOST_DENSEMAT_VIEW      = 32,
     /**
-     * @brief The densemat is scattered, i.e., the rows/columns are not 
-     * consecutive in memory. This is only possible for views.
+     * @brief The densemat is scattered in leading dimension, i.e., the rows/columns are not 
+     * consecutive in memory. This is only possible for views. The densemat::ldmask is a valid bitmask.
      */
-    GHOST_DENSEMAT_SCATTERED = 64,
+    GHOST_DENSEMAT_SCATTERED_LD = 64,
+    /**
+     * @brief The densemat is scattered in trailing dimension, i.e., the rows/columns are not 
+     * consecutive in memory. This is only possible for views. The densemat::val has one entry for each row.
+     */
+    GHOST_DENSEMAT_SCATTERED_TR = 64,
     /**
      * @brief The densemat has been permuted in #GHOST_PERMUTATION_ORIG2PERM 
      * direction via its ghost_densemat_t::permute() function. 
@@ -72,6 +77,8 @@ typedef enum {
     GHOST_DENSEMAT_PERMUTED = 128
 } 
 ghost_densemat_flags_t;
+
+#define GHOST_DENSEMAT_SCATTERED (GHOST_DENSEMAT_SCATTERED_LD|GHOST_DENSEMAT_SCATTERED_TR)
 
 /**
  * @brief Densemat storage orders
