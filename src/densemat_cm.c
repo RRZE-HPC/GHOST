@@ -645,9 +645,9 @@ ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec)
 
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && !vec->val[0]) {
         DEBUG_LOG(2,"Allocating host side of vector");
-        GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncols*vec->traits.nrowspadded*vec->elSize,GHOST_DATA_ALIGNMENT));
+        GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncols*(*vec->stride)*vec->elSize,GHOST_DATA_ALIGNMENT));
         for (v=1; v<vec->traits.ncols; v++) {
-            vec->val[v] = vec->val[0]+v*vec->traits.nrowspadded*vec->elSize;
+            vec->val[v] = vec->val[0]+v*(*vec->stride)*vec->elSize;
         }
     }
 
@@ -657,9 +657,9 @@ ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec)
         if (vec->cu_val == NULL) {
 #ifdef GHOST_HAVE_CUDA_PINNEDMEM
             WARNING_LOG("CUDA pinned memory is disabled");
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,*(vec->stride)*vec->traits.ncols*vec->elSize));
 #else
-            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+            GHOST_CALL_RETURN(ghost_cu_malloc((void **)&vec->cu_val,*(vec->stride)*vec->traits.ncols*vec->elSize));
 #endif
         }
 #endif
