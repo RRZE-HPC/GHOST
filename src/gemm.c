@@ -297,7 +297,7 @@ ghost_densemat_t *w_in, const char *transw_in, void *alpha, void *beta, int redu
     if (reduce != GHOST_GEMM_NO_REDUCE) {
 
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t lda = *x->stride;
+        ghost_lidx_t lda = x->stride;
 #endif
         ghost_lidx_t dima;
         ghost_lidx_t dimb;

@@ -104,9 +104,9 @@ ghost_error_t ghost_densemat_create(ghost_densemat_t **vec, ghost_context_t *ctx
     (*vec)->mpidt = MPI_DATATYPE_NULL;
 #endif
 
-    char *str;
-    ghost_densemat_info_string(&str,*vec);
-    printf("%s\n",str);
+//    char *str;
+//    ghost_densemat_info_string(&str,*vec);
+//    printf("%s\n",str);
     goto out;
 err:
     free(*vec); *vec = NULL;
@@ -275,13 +275,14 @@ ghost_error_t ghost_densemat_cu_valptr(ghost_densemat_t *vec, void **ptr)
         return GHOST_ERR_INVALID_ARG;
     }
 
-    if (ghost_bitmap_iszero(vec->ldmask)) {
+    if ((vec->traits.flags & GHOST_DENSEMAT_SCATTERED) && (ghost_bitmap_iszero(vec->ldmask))) {
         ERROR_LOG("Everything masked out. This is a zero-view.");
         return GHOST_ERR_INVALID_ARG;
     }
 
 #ifdef GHOST_HAVE_CUDA
-    *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(vec->stride)+ghost_bitmap_first(vec->ldmask))*vec->elSize];
+    *ptr = vec->cu_val;
+//    *ptr = &vec->cu_val[(ghost_bitmap_first(vec->trmask)*(vec->stride)+ghost_bitmap_first(vec->ldmask))*vec->elSize];
 #else
     *ptr = NULL;
 #endif

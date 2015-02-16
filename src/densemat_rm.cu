@@ -133,13 +133,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)vec->cu_val, ((cuDoubleComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)vec->cu_val, ((cuFloatComplex *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
                 }
             }
         }
@@ -148,13 +148,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_communicationassembly(void * work,
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<double><<< grid,block >>>((double *)vec->cu_val, ((double *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
                 }
             } 
             else 
             {
                 if (ctx->dues[proc]) {
-                    cu_communicationassembly_kernel<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->traits.ncolspadded,perm);
+                    cu_communicationassembly_kernel<float><<< grid,block >>>((float *)vec->cu_val, ((float *)work),dueptr[proc],ctx->cu_duelist[proc],vec->traits.ncols,ctx->dues[proc],vec->stride,perm);
                 }
             }
         }
@@ -280,13 +280,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
         {
             cu_vaxpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,(cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
-                 v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                 v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
             cu_vaxpby_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (cuFloatComplex *)v1val, (cuFloatComplex *)v2val,(cuFloatComplex *)d_a,(cuFloatComplex *)d_b,
-                 v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                 v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         }
     }
     else
@@ -295,13 +295,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
         {
             cu_vaxpby_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (double *)v1val, (double *)v2val,(double *)d_a,(double *)d_b,
-                 v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                 v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
             cu_vaxpby_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                 (float *)v1val, (float *)v2val,(float *)d_a,(float *)d_b,
-                 v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                 v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         }
     }
     if (v1compact != v1) {
@@ -357,19 +357,19 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
     ghost_lidx_t v;
     for (v=0; v<veccompact->traits.ncols; v++)
     {
-        char *v1 = &((char *)(veccompact->cu_val))[(ghost_bitmap_first(veccompact->ldmask)+v)*sizeofdt];
-        char *v2 = &((char *)(vec2compact->cu_val))[(ghost_bitmap_first(vec2compact->ldmask)+v)*sizeofdt];
+        char *v1 = veccompact->cu_val;
+        char *v2 = vec2compact->cu_val;
         if (vec->traits.datatype & GHOST_DT_COMPLEX)
         {
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuDoubleComplex *)v1,veccompact->traits.ncolspadded,(const cuDoubleComplex *)v2,vec2compact->traits.ncolspadded,&((cuDoubleComplex *)res)[v]),err,ret);
+                            (const cuDoubleComplex *)v1,veccompact->stride,(const cuDoubleComplex *)v2,vec2compact->stride,&((cuDoubleComplex *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuFloatComplex *)v1,veccompact->traits.ncolspadded,(const cuFloatComplex *)v2,vec2compact->traits.ncolspadded,&((cuFloatComplex *)res)[v]),err,ret);
+                            (const cuFloatComplex *)v1,veccompact->stride,(const cuFloatComplex *)v2,vec2compact->stride,&((cuFloatComplex *)res)[v]),err,ret);
             }
         }
         else
@@ -377,12 +377,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const double *)v1,veccompact->traits.ncolspadded,(const double *)v2,vec2compact->traits.ncolspadded,&((double *)res)[v]),err,ret);
+                            (const double *)v1,veccompact->stride,(const double *)v2,vec2compact->stride,&((double *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const float *)v1,veccompact->traits.ncolspadded,(const float *)v2,vec2compact->traits.ncolspadded,&((float *)res)[v]),err,ret);
+                            (const float *)v1,veccompact->stride,(const float *)v2,vec2compact->stride,&((float *)res)[v]),err,ret);
             }
         }
     }
@@ -471,12 +471,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
             cu_axpby_kernel<cuDoubleComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                ((cuDoubleComplex *)v1val, (cuDoubleComplex *)v2val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
             cu_axpby_kernel<cuFloatComplex><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((cuFloatComplex *)v1val, (cuFloatComplex *)v2val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                ((cuFloatComplex *)v1val, (cuFloatComplex *)v2val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
             
         }
     }
@@ -485,12 +485,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
             cu_axpby_kernel<double><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((double *)v1val, (double *)v2val,*((double *)a),*((double *)b),v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                ((double *)v1val, (double *)v2val,*((double *)a),*((double *)b),v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         } 
         else 
         {
             cu_axpby_kernel<float><<< (int)ceil((double)v1->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>
-                ((float *)v1val, (float *)v2val,*((float *)a),*((float *)b),v1->traits.nrows,v1->traits.ncols,v1->traits.ncolspadded,v2->traits.ncolspadded);
+                ((float *)v1val, (float *)v2val,*((float *)a),*((float *)b),v1->traits.nrows,v1->traits.ncols,v1->stride,v2->stride);
         }
     }
     if (v1compact != v1) {
@@ -532,13 +532,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *vec, void 
         {
             cu_scale_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_scale_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuFloatComplex *)vecval, *(cuFloatComplex *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     else
@@ -547,13 +547,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *vec, void 
         {
             cu_scale_kernel<double><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)vecval, *(double *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_scale_kernel<float><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (float *)vecval, *(float *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     if (veccompact != vec) {
@@ -604,13 +604,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *vec, void
         {
             cu_vscale_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuDoubleComplex *)vecval, (cuDoubleComplex *)d_a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_vscale_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuFloatComplex *)vecval, (cuFloatComplex *)d_a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     else
@@ -619,13 +619,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *vec, void
         {
             cu_vscale_kernel<double><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)vecval, (double *)d_a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_vscale_kernel<float><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (float *)vecval, (float *)d_a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     if (veccompact != vec) {
@@ -665,13 +665,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, 
         {
             cu_fromscalar_kernel<cuDoubleComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuDoubleComplex *)vecval, *(cuDoubleComplex *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_fromscalar_kernel<cuFloatComplex><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (cuFloatComplex *)vecval, *(cuFloatComplex *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     else
@@ -680,13 +680,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, 
         {
             cu_fromscalar_kernel<double><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (double *)vecval, *(double *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         } 
         else 
         {
             cu_fromscalar_kernel<float><<< (int)ceil((double)vec->traits.nrows/THREADSPERBLOCK),THREADSPERBLOCK >>>(
                     (float *)vecval, *(float *)a,
-                    vec->traits.nrows,vec->traits.ncols,vec->traits.ncolspadded);
+                    vec->traits.nrows,vec->traits.ncols,vec->stride);
         }
     }
     if (veccompact != vec) {
@@ -834,22 +834,22 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpy(ghost_densemat_t *v1, ghost_
     {
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            cu_vaxpy_kernel<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,(cuDoubleComplex *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+            cu_vaxpy_kernel<cuDoubleComplex><<< grid,block >>>((cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,(cuDoubleComplex *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
-            cu_vaxpy_kernel<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,(cuFloatComplex *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+            cu_vaxpy_kernel<cuFloatComplex><<< grid,block >>>((cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,(cuFloatComplex *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     else
     {
         if (v1->traits.datatype & GHOST_DT_DOUBLE)
         {
-            cu_vaxpy_kernel<double><<< grid,block >>>((double *)v1->cu_val, (double *)v2->cu_val,(double *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+            cu_vaxpy_kernel<double><<< grid,block >>>((double *)v1->cu_val, (double *)v2->cu_val,(double *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
-            cu_vaxpy_kernel<float><<< grid,block >>>((float *)v1->cu_val, (float *)v2->cu_val,(float *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+            cu_vaxpy_kernel<float><<< grid,block >>>((float *)v1->cu_val, (float *)v2->cu_val,(float *)d_a,v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     
@@ -920,13 +920,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
         {
             cu_vaxpby_kernel<cuDoubleComplex><<< grid,block >>>(
                 (cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,(cuDoubleComplex *)d_a,(cuDoubleComplex *)d_b,
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
             cu_vaxpby_kernel<cuFloatComplex><<< grid,block >>>(
                 (cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,(cuFloatComplex *)d_a,(cuFloatComplex *)d_b,
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     else
@@ -935,13 +935,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vaxpby(ghost_densemat_t *v1, ghost
         {
             cu_vaxpby_kernel<double><<< grid,block >>>(
                  (double *)v1->cu_val, (double *)v2->cu_val,(double *)d_a,(double *)d_b,
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
             cu_vaxpby_kernel<float><<< grid,block >>>(
                 (float *)v1->cu_val, (float *)v2->cu_val,(float *)d_a,(float *)d_b,
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     goto out;
@@ -999,12 +999,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasZdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuDoubleComplex *)v1,vec->traits.ncolspadded,(const cuDoubleComplex *)v2,vec2->traits.ncolspadded,&((cuDoubleComplex *)res)[v]),err,ret);
+                            (const cuDoubleComplex *)v1,vec->stride,(const cuDoubleComplex *)v2,vec2->stride,&((cuDoubleComplex *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasCdotc(ghost_cublas_handle,vec->traits.nrows,
-                            (const cuFloatComplex *)v1,vec->traits.ncolspadded,(const cuFloatComplex *)v2,vec2->traits.ncolspadded,&((cuFloatComplex *)res)[v]),err,ret);
+                            (const cuFloatComplex *)v1,vec->stride,(const cuFloatComplex *)v2,vec2->stride,&((cuFloatComplex *)res)[v]),err,ret);
             }
         }
         else
@@ -1012,12 +1012,12 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_dotprod(ghost_densemat_t *vec, voi
             if (vec->traits.datatype & GHOST_DT_DOUBLE)
             {
                 CUBLAS_CALL_GOTO(cublasDdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const double *)v1,vec->traits.ncolspadded,(const double *)v2,vec2->traits.ncolspadded,&((double *)res)[v]),err,ret);
+                            (const double *)v1,vec->stride,(const double *)v2,vec2->stride,&((double *)res)[v]),err,ret);
             } 
             else 
             {
                 CUBLAS_CALL_GOTO(cublasSdot(ghost_cublas_handle,vec->traits.nrows,
-                            (const float *)v1,vec->traits.ncolspadded,(const float *)v2,vec2->traits.ncolspadded,&((float *)res)[v]),err,ret);
+                            (const float *)v1,vec->stride,(const float *)v2,vec2->stride,&((float *)res)[v]),err,ret);
             }
         }
     }
@@ -1086,14 +1086,14 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpy(ghost_densemat_t *vec, ghost_
             const cuDoubleComplex one = make_cuDoubleComplex(1.,1.);
             cu_axpby_kernel<cuDoubleComplex><<< grid,block >>>
                 ((cuDoubleComplex *)vec->cu_val, (cuDoubleComplex *)vec2->cu_val,*((cuDoubleComplex *)a),one,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             const cuFloatComplex one = make_cuFloatComplex(1.,1.);
             cu_axpby_kernel<cuFloatComplex><<< grid,block >>>
                 ((cuFloatComplex *)vec->cu_val, (cuFloatComplex *)vec2->cu_val,*((cuFloatComplex *)a),one,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     else
@@ -1102,13 +1102,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpy(ghost_densemat_t *vec, ghost_
         {
             cu_axpby_kernel<double><<< grid,block >>>
                 ((double *)vec->cu_val, (double *)vec2->cu_val,*((double *)a),(double)1.,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_axpby_kernel<float><<< grid,block >>>
                 ((float *)vec->cu_val, (float *)vec2->cu_val,*((float *)a),(float)1.,
-                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                 vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
 
@@ -1172,13 +1172,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         {
             cu_axpby_kernel<cuDoubleComplex><<< grid,block >>>
                 ((cuDoubleComplex *)v1->cu_val, (cuDoubleComplex *)v2->cu_val,*((cuDoubleComplex *)a),*((cuDoubleComplex *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
             cu_axpby_kernel<cuFloatComplex><<< grid,block >>>
                 ((cuFloatComplex *)v1->cu_val, (cuFloatComplex *)v2->cu_val,*((cuFloatComplex *)a),*((cuFloatComplex *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     else
@@ -1187,13 +1187,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_axpby(ghost_densemat_t *v1, ghost_
         {
             cu_axpby_kernel<double><<< grid,block >>>
                 ((double *)v1->cu_val, (double *)v2->cu_val,*((double *)a),*((double *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         } 
         else 
         {
             cu_axpby_kernel<float><<< grid,block >>>
                 ((float *)v1->cu_val, (float *)v2->cu_val,*((float *)a),*((float *)b),
-                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->traits.ncolspadded);
+                 v1->traits.nrowsorig,curowfield,v1->traits.ncolsorig,cucolfield,v1->stride);
         }
     }
     
@@ -1240,13 +1240,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *vec, void 
         {
             cu_scale_kernel<cuDoubleComplex><<< grid,block >>>(
                     (cuDoubleComplex *)vec->cu_val, *(cuDoubleComplex *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_scale_kernel<cuFloatComplex><<< grid,block >>>(
                     (cuFloatComplex *)vec->cu_val, *(cuFloatComplex *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     else
@@ -1255,13 +1255,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_scale(ghost_densemat_t *vec, void 
         {
             cu_scale_kernel<double><<< grid,block >>>(
                     (double *)vec->cu_val, *(double *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_scale_kernel<float><<< grid,block >>>(
                     (float *)vec->cu_val, *(float *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     goto out;
@@ -1324,13 +1324,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *vec, void
         {
             cu_vscale_kernel<cuDoubleComplex><<< grid,block >>>(
                     (cuDoubleComplex *)vec->cu_val, (cuDoubleComplex *)d_a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_vscale_kernel<cuFloatComplex><<< grid,block >>>(
                     (cuFloatComplex *)vec->cu_val, (cuFloatComplex *)d_a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     else
@@ -1339,13 +1339,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_vscale(ghost_densemat_t *vec, void
         {
             cu_vscale_kernel<double><<< grid,block >>>(
                     (double *)vec->cu_val, (double *)d_a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_vscale_kernel<float><<< grid,block >>>(
                     (float *)vec->cu_val, (float *)d_a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
 
@@ -1392,13 +1392,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, 
         {
             cu_fromscalar_kernel<cuDoubleComplex><<< grid,block >>>(
                     (cuDoubleComplex *)vec->cu_val, *(cuDoubleComplex *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_fromscalar_kernel<cuFloatComplex><<< grid,block >>>(
                     (cuFloatComplex *)vec->cu_val, *(cuFloatComplex *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     else
@@ -1407,13 +1407,13 @@ extern "C" ghost_error_t ghost_densemat_rm_cu_fromScalar(ghost_densemat_t *vec, 
         {
             cu_fromscalar_kernel<double><<< grid,block >>>(
                     (double *)vec->cu_val, *(double *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         } 
         else 
         {
             cu_fromscalar_kernel<float><<< grid,block >>>(
                     (float *)vec->cu_val, *(float *)a,
-                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->traits.ncolspadded);
+                    vec->traits.nrowsorig,curowfield,vec->traits.ncolsorig,cucolfield,vec->stride);
         }
     }
     

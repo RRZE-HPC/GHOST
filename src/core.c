@@ -150,7 +150,7 @@ ghost_error_t ghost_init(int argc, char **argv)
     ghost_machine_nnuma(&nnumanodes);
 
 #ifdef GHOST_HAVE_CUDA
-    ghost_cu_ndevice(&ncudadevs);
+    GHOST_CALL_RETURN(ghost_cu_ndevice(&ncudadevs));
 #endif
 
     if (nnoderanks != nnumanodes+ncudadevs) {
@@ -173,7 +173,8 @@ ghost_error_t ghost_init(int argc, char **argv)
         }
     }
 
-    if (settype == GHOST_TYPE_INVALID) {
+    // type has been set by neither env nor API
+    if (settype == GHOST_TYPE_INVALID && ghost_type == GHOST_TYPE_INVALID) {
         if (noderank == 0) {
             ghost_type = GHOST_TYPE_WORK;
         } else if (noderank <= ncudadevs) {
@@ -268,19 +269,19 @@ ghost_error_t ghost_init(int argc, char **argv)
     int cudaDevice = 0;
 
     if (hwconfig.cudevice != GHOST_HWCONFIG_INVALID) {
-        ghost_cu_init(hwconfig.cudevice);
+        GHOST_CALL_RETURN(ghost_cu_init(hwconfig.cudevice));
     } else { // automatically assign a CUDA device
         for (i=0; i<nnoderanks; i++) {
             if (localTypes[i] == GHOST_TYPE_CUDA) {
                 if (i == noderank) {
                     hwconfig.cudevice = cudaDevice%ncudadevs;
-                    ghost_cu_init(hwconfig.cudevice);
+                    GHOST_CALL_RETURN(ghost_cu_init(hwconfig.cudevice));
                 }
                 cudaDevice++;
             }
         }
     }
-    ghost_hwconfig_set(hwconfig);
+    GHOST_CALL_RETURN(ghost_hwconfig_set(hwconfig));
 
 
     // CUDA ranks have a physical core

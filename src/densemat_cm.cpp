@@ -198,58 +198,16 @@ static ghost_error_t ghost_densemat_cm_string_tmpl(char **str, ghost_densemat_t 
            << std::right
            << std::scientific
            << std::setw(10);
-
+    
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t i,v,r,j;
-        for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (ghost_bitmap_isset(vec->ldmask,i)) {
-                for (j=0,v=0; j<vec->traits.ncolsorig; j++) {
-                    if (ghost_bitmap_isset(vec->trmask,j)) {
-                        v_t val = 0.;
-                        //printf("dl col %d row %d idx %d cu_val %p val %p\n",j,i,j*vec->traits.nrowspadded+i,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),&val);
-                        GHOST_CALL_RETURN(ghost_cu_download(&val,&(((v_t *)vec->cu_val)[j*vec->traits.nrowspadded+i]),sizeof(v_t)));
-                        buffer << val;
-                        v++;
-                    }
-                }
-                if (r<vec->traits.nrows-1) {
-                    buffer << std::endl;
-                }
-                r++;
-            }
-        }
+        v_t val;
+        GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,ghost_cu_download(&val,cuvalptr,vec->elSize);buffer<<val<<(col==vec->traits.ncols-1?"\n":"\t")));
 #endif
     } else {
         GHOST_SINGLETHREAD(DENSEMAT_ITER(vec,buffer<<*(v_t *)valptr<<(col==vec->traits.ncols-1?"\n":"\t")));
-        /*ghost_lidx_t i,v,r;
-        for (i=0,r=0; i<vec->traits.nrowsorig; i++) {
-            if (ghost_bitmap_isset(vec->ldmask,i)) {
-                for (v=0; v<vec->traits.ncols; v++) {
-                    if (vec->traits.datatype & GHOST_DT_COMPLEX) {
-                        if (vec->traits.datatype & GHOST_DT_DOUBLE) {
-                            double *val;
-                            val = (double *)DENSEMAT_VAL(vec,i,v);
-                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
-                        } else {
-                            float *val;
-                            val = (float *)DENSEMAT_VAL(vec,i,v);
-                            buffer << "(" << *val << ", " << *(val+1) << ")\t";
-                        }
-                    } else {
-                        v_t val = *(v_t *)DENSEMAT_VAL(vec,i,v);
-                        buffer << val << "\t";
-                    }
-
-                }
-                if (r<vec->traits.nrows-1) {
-                    buffer << std::endl;
-                }
-                r++;
-            }
-        }*/
     }
- 
+
     GHOST_CALL_RETURN(ghost_malloc((void **)str,buffer.str().length()+1));
     strcpy(*str, buffer.str().c_str());
 

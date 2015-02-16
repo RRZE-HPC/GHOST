@@ -183,11 +183,21 @@ static ghost_error_t vec_cm_uploadHalo(ghost_densemat_t *vec)
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
-        GHOST_CALL_RETURN(ghost_cu_upload(
-                    DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
-                    DENSEMAT_VAL(vec,vec->traits.nrows,0), 
-                    (vec->traits.nrowshalo-vec->traits.nrows)*
-                    vec->traits.ncolspadded*vec->elSize));
+        if (vec->traits.ncolsorig != vec->traits.ncols) {
+            ghost_lidx_t col;
+            for (col=0; col<vec->traits.ncols; col++) {
+                GHOST_CALL_RETURN(ghost_cu_upload(
+                            DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,col),
+                            DENSEMAT_VAL_COMPACT(vec,vec->traits.nrowsorig,col), 
+                            (vec->traits.nrowshalo-vec->traits.nrowsorig)*vec->elSize));
+            }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_upload(
+                        DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
+                        DENSEMAT_VAL(vec,vec->traits.nrows,0), 
+                        (vec->traits.nrowshalo-vec->traits.nrows)*
+                        vec->traits.ncolspadded*vec->elSize));
+        }
     } else {
         int col, memcol = -1;
 
@@ -212,11 +222,21 @@ static ghost_error_t vec_cm_downloadHalo(ghost_densemat_t *vec)
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
-        GHOST_CALL_RETURN(ghost_cu_download(
-                    DENSEMAT_VAL(vec,vec->traits.nrows,0), 
-                    DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
-                    (vec->traits.nrowshalo-vec->traits.nrows)*
-                    vec->traits.ncolspadded*vec->elSize));
+        if (vec->traits.ncolsorig != vec->traits.ncols) {
+            ghost_lidx_t col;
+            for (col=0; col<vec->traits.ncols; col++) {
+                GHOST_CALL_RETURN(ghost_cu_download(
+                            DENSEMAT_VAL_COMPACT(vec,vec->traits.nrowsorig,col), 
+                            DENSEMAT_CUVAL(vec,vec->traits.nrowsorig,col),
+                            (vec->traits.nrowshalo-vec->traits.nrowsorig)*vec->elSize));
+            }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_download(
+                        DENSEMAT_VAL(vec,vec->traits.nrows,0), 
+                        DENSEMAT_CUVAL(vec,vec->traits.nrows,0),
+                        (vec->traits.nrowshalo-vec->traits.nrows)*
+                        vec->traits.ncolspadded*vec->elSize));
+        }
     } else {
         int col, memcol = -1;
 
@@ -240,10 +260,20 @@ static ghost_error_t vec_cm_uploadNonHalo(ghost_densemat_t *vec)
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
-        GHOST_CALL_RETURN(ghost_cu_upload(
-                    DENSEMAT_CUVAL(vec,0,0),
-                    DENSEMAT_VAL(vec,0,0), 
-                    vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        if (vec->traits.ncolsorig != vec->traits.ncols) {
+            ghost_lidx_t col;
+            for (col=0; col<vec->traits.ncols; col++) {
+                GHOST_CALL_RETURN(ghost_cu_upload(
+                            DENSEMAT_CUVAL(vec,0,col),
+                            DENSEMAT_VAL_COMPACT(vec,0,col), 
+                            (vec->traits.nrows)*vec->elSize));
+            }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_upload(
+                        DENSEMAT_CUVAL(vec,0,0),
+                        DENSEMAT_VAL(vec,0,0), 
+                        vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        }
     } else {
         DENSEMAT_ITER(vec,ghost_cu_upload(
                     DENSEMAT_CUVAL(vec,memrow,memcol),
@@ -261,10 +291,20 @@ static ghost_error_t vec_cm_downloadNonHalo(ghost_densemat_t *vec)
         return GHOST_SUCCESS;
     }
     if (DENSEMAT_COMPACT(vec)) {
-        GHOST_CALL_RETURN(ghost_cu_download(
-                    DENSEMAT_CUVAL(vec,0,0),
-                    DENSEMAT_VAL(vec,0,0), 
-                    vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        if (vec->traits.ncolsorig != vec->traits.ncols) {
+            ghost_lidx_t col;
+            for (col=0; col<vec->traits.ncols; col++) {
+                GHOST_CALL_RETURN(ghost_cu_download(
+                            DENSEMAT_VAL_COMPACT(vec,0,col), 
+                            DENSEMAT_CUVAL(vec,0,col),
+                            (vec->traits.nrows)*vec->elSize));
+            }
+        } else {
+            GHOST_CALL_RETURN(ghost_cu_download(
+                        DENSEMAT_CUVAL(vec,0,0),
+                        DENSEMAT_VAL(vec,0,0), 
+                        vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        }
     } else {
         DENSEMAT_ITER(vec,ghost_cu_download(
                     DENSEMAT_CUVAL(vec,memrow,memcol),
@@ -357,14 +397,18 @@ static ghost_error_t vec_cm_view (ghost_densemat_t *src, ghost_densemat_t **new,
 
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t viewedcol;
-        (*new)->cu_val = src->cu_val;
-        for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
-            if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
-                ghost_bitmap_clr((*new)->trmask,v);
-            }
-            if (ghost_bitmap_isset(src->trmask,v)) {
-                viewedcol++;
+        if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+            (*new)->cu_val = DENSEMAT_CUVAL(src,roffs,coffs);
+        } else {
+            ghost_lidx_t viewedcol;
+            (*new)->cu_val = src->cu_val;
+            for (viewedcol=0, v=0; v<src->traits.ncolsorig; v++) {
+                if (viewedcol<coffs || (viewedcol >= coffs+nc)) {
+                    ghost_bitmap_clr((*new)->trmask,v);
+                }
+                if (ghost_bitmap_isset(src->trmask,v)) {
+                    viewedcol++;
+                }
             }
         }
 #endif
@@ -386,8 +430,7 @@ static ghost_error_t vec_cm_viewPlain (ghost_densemat_t *vec, void *data, ghost_
     if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
 #ifdef GHOST_HAVE_CUDA
         INFO_LOG("The plain memory has to be valid CUDA device memory!");
-        vec->cu_val = &((char *)data)[lda*vec->elSize];
-        vec->traits.ncolspadded = vec->traits.ncols;
+        vec->cu_val = data;
 #endif
     } 
     if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
@@ -437,7 +480,20 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
     (*new)->stride = src->stride;
     (*new)->src = src->src;
 
+#ifdef GHOST_HAVE_CUDA
     if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        (*new)->cu_val = DENSEMAT_CUVAL(src,0,coffs);
+    }
+#endif
+
+    if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
+        (*new)->val[0] = src->val[0];
+    } else {
+        if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
+            for (v=0; v<(*new)->traits.ncols; v++) {
+                (*new)->val[v] = DENSEMAT_VAL(src,0,coffs+v);
+            }
+        }
 #ifdef GHOST_HAVE_CUDA
         ghost_lidx_t viewedcol;
         (*new)->cu_val = src->cu_val;
@@ -450,18 +506,6 @@ static ghost_error_t vec_cm_viewCols (ghost_densemat_t *src, ghost_densemat_t **
             }
         }
 #endif
-    } 
-    //char *str;
-    //ghost_densemat_info_string(&str,src);
-    
-    if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        (*new)->val[0] = src->val[0];
-    } else {
-        if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
-            for (v=0; v<(*new)->traits.ncols; v++) {
-                (*new)->val[v] = DENSEMAT_VAL(src,0,coffs+v);
-            }
-        }
     }
 
     return GHOST_SUCCESS;
@@ -490,19 +534,25 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
     (*new)->stride = src->stride;
     (*new)->src = src->src;
 
+#ifdef GHOST_HAVE_CUDA
+    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+        (*new)->cu_val = DENSEMAT_CUVAL(src,0,coffs[0]);
+    }
+#endif
+    
+    ghost_bitmap_clr_range((*new)->trmask,0,(*new)->traits.ncolsorig);
+
     if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        INFO_LOG("Scattered view of a compact densemat");
-        
-        ghost_bitmap_clr_range((*new)->trmask,0,(*new)->traits.ncolsorig);
-        
         for (v=0; v<nc; v++) {
             (*new)->val[v] = DENSEMAT_VAL_COMPACT(src,0,coffs[v]);
-            ghost_bitmap_set((*new)->trmask,coffs[v]);
+            ghost_bitmap_set((*new)->trmask,coffs[v]-coffs[0]);
         }
-        
         ghost_bitmap_set_range((*new)->ldmask,0,(*new)->traits.nrowsorig);
-
     } else {
+
+        ghost_bitmap_copy((*new)->ldmask,src->ldmask);
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->trmask,src->trmask,coffs,nc));
+        
         if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
             for (v=0; v<nc; v++) {
                 (*new)->val[v] = DENSEMAT_VAL(src,0,coffs[v]);
@@ -510,23 +560,6 @@ static ghost_error_t vec_cm_viewScatteredCols (ghost_densemat_t *src, ghost_dens
         }
     }
     
-    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-        ghost_lidx_t c,i,viewedcol;
-        (*new)->cu_val = src->cu_val;
-        for (viewedcol=-1, c=0, i=0; c<src->traits.ncolsorig; c++) {
-            if (ghost_bitmap_isset(src->trmask,c)) {
-                viewedcol++;
-            }
-            if ((i>=nc) || (coffs[i] != viewedcol)) {
-                ghost_bitmap_clr((*new)->trmask,c);
-            } else {
-                i++;
-            }
-        }
-#endif
-    } 
-
     GHOST_FUNC_EXIT(GHOST_FUNCTYPE_INITIALIZATION);
     return GHOST_SUCCESS;
 }
@@ -549,12 +582,16 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
     (*new)->stride = src->stride;
     (*new)->src = src->src;
     
-    if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
-        INFO_LOG("Scattered view of a compact densemat");
+    ghost_bitmap_clr_range((*new)->trmask,0,(*new)->traits.ncolsorig);
+    ghost_bitmap_clr_range((*new)->ldmask,0,(*new)->traits.nrowsorig);
+    
+    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+        (*new)->cu_val = DENSEMAT_CUVAL(src,roffs[0],coffs[0]);
+#endif
+    }
 
-        ghost_bitmap_clr_range((*new)->trmask,0,(*new)->traits.ncolsorig);
-        ghost_bitmap_clr_range((*new)->ldmask,0,(*new)->traits.nrowsorig);
-        
+    if (!(src->traits.flags & GHOST_DENSEMAT_SCATTERED)) {
         for (i=0; i<nr; i++) {
             ghost_bitmap_set((*new)->ldmask,roffs[i]);
         }
@@ -565,18 +602,9 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
         
 
     } else {
-        ghost_bitmap_copy((*new)->ldmask,src->ldmask);
-        ghost_bitmap_copy((*new)->trmask,src->trmask);
-        for (viewedrow=-1,r=0,i=0; r<(*new)->traits.nrowsorig; r++) {
-            if (ghost_bitmap_isset(src->ldmask,r)) {
-                viewedrow++;
-            }
-            if ((i>=nr) || (roffs[i] != viewedrow)) {
-                ghost_bitmap_clr((*new)->ldmask,r);
-            } else {
-                i++;
-            }
-        }
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->ldmask,src->ldmask,coffs,nc));
+        GHOST_CALL_RETURN(ghost_bitmap_copy_indices((*new)->trmask,src->trmask,roffs,nr));
+        
         if ((*new)->traits.flags & GHOST_DENSEMAT_HOST) {
             for (v=0; v<nc; v++) {
                 (*new)->val[v] = DENSEMAT_VAL(src,0,coffs[v]);
@@ -584,23 +612,6 @@ static ghost_error_t vec_cm_viewScatteredVec (ghost_densemat_t *src, ghost_dense
         }
     }
 
-
-    if ((*new)->traits.flags & GHOST_DENSEMAT_DEVICE) {
-#ifdef GHOST_HAVE_CUDA
-    ghost_lidx_t c,viewedcol;
-        (*new)->cu_val = src->cu_val;
-        for (viewedcol=-1,c=0,i=0; c<(*new)->traits.ncolsorig; c++) {
-            if (ghost_bitmap_isset(src->trmask,c)) {
-                viewedcol++;
-            }
-            if ((i>=nc) || (coffs[i] != viewedcol)) {
-                ghost_bitmap_clr((*new)->trmask,c);
-            } else {
-                i++;
-            }
-        }
-#endif
-    } 
     return GHOST_SUCCESS;
 }
 
@@ -636,7 +647,16 @@ ghost_error_t ghost_densemat_cm_malloc(ghost_densemat_t *vec)
 
     if ((vec->traits.flags & GHOST_DENSEMAT_HOST) && !vec->val[0]) {
         DEBUG_LOG(2,"Allocating host side of vector");
-        GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],(size_t)vec->traits.ncols*(vec->stride)*vec->elSize,GHOST_DATA_ALIGNMENT));
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&vec->val[0],
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize));
+        } else {
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&vec->val[0],
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize,GHOST_DATA_ALIGNMENT));
+        }
+
         for (v=1; v<nptr; v++) {
             vec->val[v] = vec->val[0]+v*(vec->stride)*vec->elSize;
         }
@@ -663,23 +683,20 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
 {
     ghost_densemat_cm_malloc(vec);
     DEBUG_LOG(1,"Initializing vector from vector w/ col offset %"PRLIDX,coffs);
-   
+    
     if (vec2->traits.storage == GHOST_DENSEMAT_COLMAJOR) { 
         if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_memcpy(
-                            DENSEMAT_CUVAL(vec,memrow1,memcol1),
-                            DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_memcpy(cuvalptr1,cuvalptr2,vec->elSize));
             } else {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_upload(
-                            DENSEMAT_CUVAL(vec,memrow1,memcol1),
-                            DENSEMAT_VAL(vec2,memrow2,col+coffs),vec->elSize));
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_upload(cuvalptr1,valptr2,vec->elSize));
             }
         } else {
             if (vec2->traits.flags & GHOST_DENSEMAT_DEVICE) {
-                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,ghost_cu_download(
-                            DENSEMAT_VAL(vec,memrow1,col),
-                            DENSEMAT_CUVAL(vec2,memrow2,memcol2),vec->elSize));
+                DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
+                        ghost_cu_download(valptr1,cuvalptr2,vec->elSize));
             } else {
                 DENSEMAT_ITER2_OFFS(vec,vec2,roffs,coffs,
                         memcpy(valptr1,valptr2,vec->elSize));
@@ -697,12 +714,8 @@ static ghost_error_t vec_cm_fromVec(ghost_densemat_t *vec, ghost_densemat_t *vec
             return GHOST_ERR_NOT_IMPLEMENTED;
         }
 
-        /*DENSEMAT_ITER(vec,memcpy(DENSEMAT_VAL(vec,row,col),&vec2->val[row+roffs][(col+ghost_bitmap_first(vec2->ldmask)+coffs)*vec2->elSize],vec->elSize));*/
         DENSEMAT_ITER2_COMPACT_OFFS_TRANSPOSED(vec,vec2,roffs,coffs,memcpy(valptr1,valptr2,vec->elSize));
-//                    DENSEMAT_VAL_COMPACT(vec,memrow1,col),
-//                    DENSEMAT_VAL_TRANSPOSED_COMPACT(vec2,row+roffs,memcol2+coffs),vec->elSize));
     }
-
 
     vec->traits.flags |= (ghost_densemat_flags_t)(vec2->traits.flags & GHOST_DENSEMAT_PERMUTED);
 
@@ -787,25 +800,35 @@ out:
 
 static ghost_error_t vec_cm_entry(ghost_densemat_t * vec, void *val, ghost_lidx_t r, ghost_lidx_t c) 
 {
-    int i = 0;
-    int idx = ghost_bitmap_first(vec->ldmask);
-    for (i=0; i<r; i++) {
-        idx = ghost_bitmap_next(vec->ldmask,idx);
-    }
-    
-    if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
-    {
-#ifdef GHOST_HAVE_CUDA
-        int cidx = ghost_bitmap_first(vec->trmask);
-        for (i=0; i<c; i++) {
-            cidx = ghost_bitmap_next(vec->trmask,cidx);
+    if (vec->traits.flags & GHOST_DENSEMAT_SCATTERED) {
+        int i = 0;
+        int idx = 0;
+        for (i=0; i<r; i++) {
+            idx = ghost_bitmap_next(vec->ldmask,idx);
         }
-        ghost_cu_download(val,&vec->cu_val[(cidx*vec->traits.nrowspadded+idx)*vec->elSize],vec->elSize);
+        
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE)
+        {
+#ifdef GHOST_HAVE_CUDA
+            int cidx = 0;
+            for (i=0; i<c; i++) {
+                cidx = ghost_bitmap_next(vec->trmask,cidx);
+            }
+            ghost_cu_download(val,&vec->cu_val[(cidx*vec->stride+idx)*vec->elSize],vec->elSize);
 #endif
-    }
-    else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
-    {
-        memcpy(val,DENSEMAT_VAL(vec,idx,c),vec->elSize);
+        }
+        else if (vec->traits.flags & GHOST_DENSEMAT_HOST)
+        {
+            memcpy(val,DENSEMAT_VAL(vec,idx,c),vec->elSize);
+        }
+    } else {
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+            ghost_cu_download(val,DENSEMAT_CUVAL(vec,r,c),vec->elSize);
+#endif
+        } else if (vec->traits.flags & GHOST_DENSEMAT_HOST) {
+            memcpy(val,DENSEMAT_VAL_COMPACT(vec,r,c),vec->elSize);
+        }
     }
 
     return GHOST_SUCCESS;
@@ -1316,7 +1339,13 @@ static void ghost_freeVector( ghost_densemat_t* vec )
                 }
             }
             else {
-                free(vec->val[0]); vec->val[0] = NULL;
+                if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+#ifdef GHOST_HAVE_CUDA
+                    ghost_cu_free_host(vec->val[0]); vec->val[0] = NULL;
+#endif
+                } else {
+                    free(vec->val[0]); vec->val[0] = NULL;
+                }
             }
 #endif
 #ifdef GHOST_HAVE_CUDA
@@ -1463,7 +1492,15 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
         ghost_lidx_t v,i;
 
         char *val = NULL;
-        GHOST_CALL_RETURN(ghost_malloc((void **)&val,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        if (vec->traits.flags & GHOST_DENSEMAT_DEVICE) {
+            GHOST_CALL_RETURN(ghost_malloc_pinned((void **)&val,
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize));
+        } else {
+            GHOST_CALL_RETURN(ghost_malloc_align((void **)&val,
+                        (size_t)vec->traits.ncolspadded*vec->traits.nrowspadded*
+                        vec->elSize,GHOST_DATA_ALIGNMENT));
+        }
 
 #pragma omp parallel for schedule(runtime) private(v)
         for (i=0; i<vec->traits.nrowspadded; i++)
@@ -1499,20 +1536,10 @@ static ghost_error_t vec_cm_compress(ghost_densemat_t *vec)
 
         char *cu_val;
         GHOST_CALL_RETURN(ghost_cu_malloc((void **)&cu_val,vec->traits.nrowspadded*vec->traits.ncols*vec->elSize));
+        
+        DENSEMAT_ITER(vec,ghost_cu_memcpy(&cu_val[(col*vec->traits.nrowspadded+col)*vec->elSize],
+                    DENSEMAT_CUVAL(vec,memrow,memcol),vec->elSize));
 
-        for (v=0, i=0; v<vec->traits.ncolsorig; v++) {
-            if (ghost_bitmap_isset(vec->trmask,v)) {
-                for (r=0, j=0; r<vec->traits.nrowsorig; r++) {
-                    if (ghost_bitmap_isset(vec->ldmask,r)) {
-                        ghost_cu_memcpy(&cu_val[(i*vec->traits.nrowspadded+j)*vec->elSize],
-                                &vec->cu_val[(v*vec->traits.nrowspadded+r)*vec->elSize],
-                                vec->elSize);
-                        j++;
-                    }
-                }
-                i++;
-            }
-        }
         if (!(vec->traits.flags & GHOST_DENSEMAT_VIEW)) {
             ghost_cu_free(vec->cu_val);
         }

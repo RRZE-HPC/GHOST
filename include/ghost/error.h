@@ -151,7 +151,7 @@ typedef enum {
 #define CUDA_CALL(call,__err) {\
     cudaError_t __cuerr = call;\
     if (__cuerr != cudaSuccess) {\
-        ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString((cudaError_t)__cuerr),(int)__cuerr);\
+        ERROR_LOG("CUDA Error: %s (%d)",cudaGetErrorString(__cuerr),(int)__cuerr);\
         __err = GHOST_ERR_CUDA;\
     }\
 }\

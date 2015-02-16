@@ -65,8 +65,8 @@ if (do_fallback) {\
         PERFWARNING_LOG("Executing row-major fallback kernel with grid %dx%d "\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_rm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
-                (dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,\
-                *(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
+                (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
+                (int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
                 SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
                 SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,\
@@ -78,8 +78,8 @@ if (do_fallback) {\
         PERFWARNING_LOG("Executing col-major fallback kernel with grid %dx%d "\
                 "and block %dx%d smem %zu",grid.x,grid.y,block.x,block.y,smem);\
         SELL_kernel_cm_fallback_tmpl<dt1,dt2,dt2_b><<<grid,block,smem>>>(\
-                (dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,\
-                *(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
+                (dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,\
+                (int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,\
                 SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,\
                 SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,\
                 (dt2)beta,(dt2 *)cu_localdot,SELL(mat)->chunkHeight,\

@@ -83,6 +83,7 @@ set (SOURCES
     src/tsmttsm.cpp
     src/tsmttsm_kahan.cpp
     src/bincrs.c
+    src/bitmap.c
     src/blas_util.c
     src/carp.c
     src/context.c
@@ -171,7 +172,7 @@ foreach (SELL_CHUNKHEIGHT ${CFG_SELL_CHUNKHEIGHTS_LIST})
     foreach (SELL_NCOLS ${CFG_BLOCKVECTOR_SIZES_LIST})
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}            case ${SELL_NCOLS}:\\\n")
         foreach(SELL_CUDA_VARIANT ${CFG_SELL_CUDA_KERNELS})
-            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,*(int *)(lhs->stride),(dt2 *)rhsval,*(int *)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot); } else \\\n")
+            set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                if(!(strcmp(boolstr,\"${SELL_CUDA_VARIANT}\"))) { kernel<dt1,dt2,dt2_b,${SELL_CHUNKHEIGHT},${SELL_NCOLS},${SELL_CUDA_VARIANT}><<<grid,block,smem>>>((dt2 *)lhsval,(int)(lhs->stride),(dt2 *)rhsval,(int)rhs->stride,flags,mat->nrows,SELL(mat)->cumat->rowLen,SELL(mat)->cumat->col,(dt1 *)SELL(mat)->cumat->val,SELL(mat)->cumat->chunkStart,(dt2 *)cu_shift,(dt2)scale,(dt2)beta,(dt2 *)cu_localdot); } else \\\n")
         endforeach()
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}                { PERFWARNING_LOG(\"Non-configured bool variant: %s\",boolstr);\\\n                do_fallback = true; }\\\n")
         set(SELL_CU_SPMV_SWITCHCASCADE "${SELL_CU_SPMV_SWITCHCASCADE}        break;\\\n")
@@ -357,7 +358,6 @@ endif()
 
 
 if (USE_CUDA)
-    message(FATAL_ERROR "CUDA currently broken due to densemat refactoring")
     find_package(CUDA)
     if (CUDA_FOUND)
         set(GHOST_HAVE_CUDA 1)
